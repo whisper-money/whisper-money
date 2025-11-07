@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\AccountController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -20,6 +21,11 @@ Route::middleware('auth')->group(function () {
     Route::put('settings/password', [PasswordController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');
+
+    Route::get('settings/accounts', [AccountController::class, 'index'])->name('accounts.index');
+    Route::post('settings/accounts', [AccountController::class, 'store'])->name('accounts.store');
+    Route::patch('settings/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
+    Route::delete('settings/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy');
 
     Route::get('settings/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::post('settings/categories', [CategoryController::class, 'store'])->name('categories.store');

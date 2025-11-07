@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { edit as editAccount } from '@/routes/account';
 import { edit as editDeleteAccount } from '@/routes/delete-account';
@@ -12,8 +13,13 @@ import { type PropsWithChildren } from 'react';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'Account',
+        title: 'User account',
         href: editAccount(),
+        icon: null,
+    },
+    {
+        title: 'Bank accounts',
+        href: accountsIndex(),
         icon: null,
     },
     {
