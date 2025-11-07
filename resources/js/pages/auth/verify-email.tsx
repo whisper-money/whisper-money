@@ -3,11 +3,16 @@ import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
+import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import { send } from '@/routes/verification';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 
 export default function VerifyEmail({ status }: { status?: string }) {
+    const handleLogout = () => {
+        clearKey();
+    };
+
     return (
         <AuthLayout
             title="Verify email"
@@ -30,12 +35,14 @@ export default function VerifyEmail({ status }: { status?: string }) {
                             Resend verification email
                         </Button>
 
-                        <TextLink
+                        <Link
                             href={logout()}
-                            className="mx-auto block text-sm"
+                            as="button"
+                            onClick={handleLogout}
+                            className="mx-auto block text-sm text-blue-600 hover:text-blue-800 underline"
                         >
                             Log out
-                        </TextLink>
+                        </Link>
                     </>
                 )}
             </Form>

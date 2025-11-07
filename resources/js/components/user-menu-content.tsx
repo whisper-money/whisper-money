@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
+import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import { edit } from '@/routes/account';
 import { type User } from '@/types';
@@ -20,6 +21,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
 
     const handleLogout = () => {
+        clearKey();
         cleanup();
         router.flushAll();
     };

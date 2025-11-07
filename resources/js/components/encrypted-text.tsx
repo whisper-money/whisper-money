@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { getStoredKey } from '@/lib/key-storage';
 import { importKey, decrypt } from '@/lib/crypto';
@@ -13,6 +13,12 @@ interface EncryptedTextProps {
 
 const chars = "-_~`!@#$%^&*()+=[]{}|;:,.<>?";
 
+function generateRandomChars(length: number): string {
+    return Array.from({ length }, () =>
+        chars[Math.floor(Math.random() * chars.length)]
+    ).join('');
+}
+
 export function EncryptedText({
     encryptedText,
     iv,
@@ -22,9 +28,12 @@ export function EncryptedText({
 }: EncryptedTextProps) {
     const { isKeySet } = useEncryptionKey();
     const [decryptedText, setDecryptedText] = useState<string | null>(null);
-    const [outputText, setOutputText] = useState('');
     const [isMounted, setIsMounted] = useState(false);
-    const [targetText, setTargetText] = useState('');
+    const [isAnimating, setIsAnimating] = useState(false);
+    const isFirstLoad = useRef(true);
+    const fallbackCharsRef = useRef<string>(generateRandomChars(fallback.length));
+    const [targetText, setTargetText] = useState(() => fallbackCharsRef.current);
+    const [outputText, setOutputText] = useState(() => fallbackCharsRef.current);
 
     useEffect(() => {
         setIsMounted(true);
@@ -55,14 +64,21 @@ export function EncryptedText({
         if (decryptedText !== null && isKeySet) {
             setTargetText(decryptedText);
         } else {
-            setTargetText(generateRandomChars(fallback.length));
+            setTargetText(fallbackCharsRef.current);
         }
-    }, [decryptedText, isKeySet, fallback.length]);
+    }, [decryptedText, isKeySet]);
 
     useEffect(() => {
         let timer: NodeJS.Timeout;
 
+        if (isFirstLoad.current) {
+            setOutputText(targetText);
+            isFirstLoad.current = false;
+            return;
+        }
+
         if (outputText !== targetText) {
+            setIsAnimating(true);
             let currentIndex = 0;
 
             timer = setInterval(() => {
@@ -71,18 +87,17 @@ export function EncryptedText({
                     currentIndex++;
                 } else {
                     clearInterval(timer);
+                    setIsAnimating(false);
                 }
             }, interval);
         }
 
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            setIsAnimating(false);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [targetText, interval]);
-
-    function generateRandomChars(length: number): string {
-        return Array.from({ length }, () =>
-            chars[Math.floor(Math.random() * chars.length)]
-        ).join('');
-    }
 
     const remainder =
         outputText.length < targetText.length
@@ -98,7 +113,7 @@ export function EncryptedText({
     }
 
     return (
-        <span className={className}>
+        <span className={`${className} ${isAnimating ? 'animate-pulse' : ''}`}>
             {outputText}
             {remainder}
         </span>
