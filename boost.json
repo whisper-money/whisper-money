@@ -1,0 +1,12 @@
+{
+    "agents": [
+        "cursor"
+    ],
+    "editors": [
+        "cursor"
+    ],
+    "guidelines": [
+        "laravel/fortify"
+    ],
+    "sail": true
+}
