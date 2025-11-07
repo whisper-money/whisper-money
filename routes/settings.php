@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
@@ -18,6 +19,11 @@ Route::middleware('auth')->group(function () {
     Route::put('settings/password', [PasswordController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');
+
+    Route::get('settings/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::post('settings/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::patch('settings/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('settings/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');
