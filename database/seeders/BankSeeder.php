@@ -12,19 +12,14 @@ class BankSeeder extends Seeder
      */
     public function run(): void
     {
-        $banks = [
-            ['name' => 'Chase', 'logo' => null],
-            ['name' => 'Bank of America', 'logo' => null],
-            ['name' => 'Wells Fargo', 'logo' => null],
-            ['name' => 'Citibank', 'logo' => null],
-            ['name' => 'US Bank', 'logo' => null],
-        ];
+        $jsonPath = database_path('seeders/data/banks.json');
+        $banks = json_decode(file_get_contents($jsonPath), true);
 
         foreach ($banks as $bank) {
             Bank::create([
                 'name' => $bank['name'],
-                'name_iv' => fake()->regexify('[A-Za-z0-9]{16}'),
                 'logo' => $bank['logo'],
+                'user_id' => null,
             ]);
         }
     }

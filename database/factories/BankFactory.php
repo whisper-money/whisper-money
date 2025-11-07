@@ -18,8 +18,8 @@ class BankFactory extends Factory
     {
         return [
             'name' => fake()->company(),
-            'name_iv' => fake()->regexify('[A-Za-z0-9]{16}'),
             'logo' => fake()->imageUrl(200, 200, 'business'),
+            'user_id' => null,
         ];
     }
 }
