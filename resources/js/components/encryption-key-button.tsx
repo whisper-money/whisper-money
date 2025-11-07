@@ -71,9 +71,9 @@ export function EncryptionKeyButton() {
                             }
                         >
                             {isKeySet ? (
-                                <LockKeyhole className="h-5 w-5" />
-                            ) : (
                                 <LockKeyholeOpen className="h-5 w-5" />
+                            ) : (
+                                <LockKeyhole className="h-5 w-5" />
                             )}
                         </Button>
                     </TooltipTrigger>
