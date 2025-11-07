@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
 
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import AuthLayout from '@/layouts/auth-layout';
 import {
     bufferToBase64,
@@ -27,6 +28,7 @@ import { storeKey } from '@/lib/key-storage';
 import { dashboard } from '@/routes';
 
 export default function SetupEncryption() {
+    const { refreshKeyState } = useEncryptionKey();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [storagePreference, setStoragePreference] = useState<
@@ -88,6 +90,7 @@ export default function SetupEncryption() {
             });
 
             storeKey(exportedKey, storagePreference === 'persistent');
+            refreshKeyState();
 
             router.visit(dashboard().url);
         } catch (error) {
@@ -158,7 +161,7 @@ export default function SetupEncryption() {
                             value={storagePreference}
                             onValueChange={(value) =>
                                 setStoragePreference(
-                                    value as 'session' | 'persistent'
+                                    value as 'session' | 'persistent',
                                 )
                             }
                             disabled={processing}
@@ -202,4 +205,3 @@ export default function SetupEncryption() {
         </AuthLayout>
     );
 }
-

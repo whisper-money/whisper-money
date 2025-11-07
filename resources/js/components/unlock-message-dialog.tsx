@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
 
-import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -21,6 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
     base64ToBuffer,
     decrypt,
@@ -48,12 +47,20 @@ export default function UnlockMessageDialog({
     iv,
     salt,
 }: UnlockMessageDialogProps) {
+    const { refreshKeyState } = useEncryptionKey();
     const [password, setPassword] = useState('');
     const [storagePreference, setStoragePreference] = useState<
         'session' | 'persistent'
     >('session');
     const [processing, setProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!open) {
+            setPassword('');
+            setError(null);
+        }
+    }, [open]);
 
     async function handleUnlock(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -78,14 +85,17 @@ export default function UnlockMessageDialog({
             if (!storedKey && password) {
                 const exportedKey = await exportKey(aesKey);
                 storeKey(exportedKey, storagePreference === 'persistent');
+                refreshKeyState();
             }
 
             onUnlock(decrypted);
+            setPassword('');
+            setError(null);
             onOpenChange(false);
         } catch (err) {
             console.error('Decryption error:', err);
             setError(
-                'Failed to decrypt message. Please check your password and try again.'
+                'Failed to decrypt message. Please check your password and try again.',
             );
         } finally {
             setProcessing(false);
@@ -128,7 +138,7 @@ export default function UnlockMessageDialog({
                                 value={storagePreference}
                                 onValueChange={(value) =>
                                     setStoragePreference(
-                                        value as 'session' | 'persistent'
+                                        value as 'session' | 'persistent',
                                     )
                                 }
                                 disabled={processing}
@@ -164,4 +174,3 @@ export default function UnlockMessageDialog({
         </Dialog>
     );
 }
-

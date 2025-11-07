@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
 
-import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
 import { Skeleton } from '@/components/ui/skeleton';
+import UnlockMessageDialog from '@/components/unlock-message-dialog';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import AppLayout from '@/layouts/app-layout';
-import { base64ToBuffer, decrypt, importKey } from '@/lib/crypto';
-import { clearKey, getStoredKey } from '@/lib/key-storage';
+import { decrypt, importKey } from '@/lib/crypto';
+import { getStoredKey } from '@/lib/key-storage';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
@@ -27,11 +28,12 @@ interface EncryptedMessageData {
 }
 
 export default function Dashboard() {
+    const { clearEncryptionKey, isKeySet } = useEncryptionKey();
     const [messageData, setMessageData] = useState<EncryptedMessageData | null>(
-        null
+        null,
     );
     const [decryptedMessage, setDecryptedMessage] = useState<string | null>(
-        null
+        null,
     );
     const [showUnlockDialog, setShowUnlockDialog] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -41,13 +43,21 @@ export default function Dashboard() {
         fetchAndDecryptMessage();
     }, []);
 
+    useEffect(() => {
+        if (!isKeySet && decryptedMessage) {
+            setDecryptedMessage(null);
+        } else if (isKeySet && !decryptedMessage && messageData) {
+            attemptAutoDecrypt();
+        }
+    }, [isKeySet]);
+
     async function fetchAndDecryptMessage() {
         setLoading(true);
         setError(null);
 
         try {
             const response = await axios.get<EncryptedMessageData>(
-                '/api/encryption/message'
+                '/api/encryption/message',
             );
             const data = response.data;
             setMessageData(data);
@@ -60,17 +70,19 @@ export default function Dashboard() {
                     const decrypted = await decrypt(
                         data.encrypted_content,
                         aesKey,
-                        data.iv
+                        data.iv,
                     );
                     setDecryptedMessage(decrypted);
                 } catch (err) {
                     console.error('Auto-decrypt failed:', err);
-                    clearKey();
+                    clearEncryptionKey();
                 }
             }
         } catch (err: any) {
             if (err.response?.status === 404) {
-                setError('No encrypted message found. Please set up encryption first.');
+                setError(
+                    'No encrypted message found. Please set up encryption first.',
+                );
             } else {
                 console.error('Fetch error:', err);
                 setError('Failed to load encrypted message.');
@@ -80,12 +92,32 @@ export default function Dashboard() {
         }
     }
 
+    async function attemptAutoDecrypt() {
+        if (!messageData) return;
+
+        const storedKey = getStoredKey();
+        if (!storedKey) return;
+
+        try {
+            const aesKey = await importKey(storedKey);
+            const decrypted = await decrypt(
+                messageData.encrypted_content,
+                aesKey,
+                messageData.iv,
+            );
+            setDecryptedMessage(decrypted);
+        } catch (err) {
+            console.error('Auto-decrypt failed:', err);
+            clearEncryptionKey();
+        }
+    }
+
     function handleUnlock(message: string) {
         setDecryptedMessage(message);
     }
 
     function handleLock() {
-        clearKey();
+        clearEncryptionKey();
         setDecryptedMessage(null);
     }
 
@@ -123,10 +155,10 @@ export default function Dashboard() {
                                 </div>
                             ) : messageData ? (
                                 <div className="space-y-4">
-                                    <p className="break-all text-sm font-mono text-muted-foreground">
+                                    <p className="font-mono text-sm break-all text-muted-foreground">
                                         {messageData.encrypted_content.substring(
                                             0,
-                                            100
+                                            100,
                                         )}
                                         ...
                                     </p>
