@@ -8,7 +8,6 @@ use App\Models\User;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertDatabaseHas;
-use function Pest\Laravel\assertDatabaseMissing;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -28,8 +27,7 @@ it('displays user accounts on index page', function () {
     $response->assertSuccessful();
     $response->assertInertia(fn ($page) => $page
         ->component('settings/accounts')
-        ->has('accounts', 1)
-        ->has('banks'));
+        ->has('accounts', 1));
 });
 
 it('can create a new account', function () {
@@ -215,20 +213,19 @@ it('prevents deleting another users account', function () {
     assertDatabaseHas('accounts', ['id' => $account->id]);
 });
 
-it('only shows banks owned by user or global banks', function () {
+it('only shows banks owned by user or global banks via search', function () {
     Bank::query()->delete();
 
     actingAs($this->user);
 
-    $userBank = Bank::factory()->create(['user_id' => $this->user->id]);
-    $globalBank = Bank::factory()->create(['user_id' => null]);
-    $otherUserBank = Bank::factory()->create(['user_id' => User::factory()->create()->id]);
+    $userBank = Bank::factory()->create(['user_id' => $this->user->id, 'name' => 'Test User Bank']);
+    $globalBank = Bank::factory()->create(['user_id' => null, 'name' => 'Test Global Bank']);
+    $otherUserBank = Bank::factory()->create(['user_id' => User::factory()->create()->id, 'name' => 'Test Other Bank']);
 
-    $response = $this->get(route('accounts.index'));
+    $response = $this->get(route('banks.search', ['query' => 'Test']));
 
     $response->assertSuccessful();
-    $response->assertInertia(fn ($page) => $page
-        ->component('settings/accounts')
+    $response->assertJson(fn ($json) => $json
         ->has('banks', 2)
         ->where('banks.0.id', fn ($id) => in_array($id, [$userBank->id, $globalBank->id]))
         ->where('banks.1.id', fn ($id) => in_array($id, [$userBank->id, $globalBank->id])));

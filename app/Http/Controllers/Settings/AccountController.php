@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreAccountRequest;
 use App\Http\Requests\Settings\UpdateAccountRequest;
 use App\Models\Account;
-use App\Models\Bank;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -27,17 +26,8 @@ class AccountController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'name_iv', 'bank_id', 'type', 'currency_code']);
 
-        $banks = Bank::query()
-            ->where(function ($query) {
-                $query->where('user_id', auth()->id())
-                    ->orWhereNull('user_id');
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'logo']);
-
         return Inertia::render('settings/accounts', [
             'accounts' => $accounts,
-            'banks' => $banks,
         ]);
     }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import {
     ColumnDef,
@@ -38,25 +38,22 @@ import HeadingSmall from '@/components/heading-small';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
+import { EncryptedText } from '@/components/encrypted-text';
 import {
     type Account,
-    type Bank,
     formatAccountType,
 } from '@/types/account';
 import { type BreadcrumbItem } from '@/types';
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
-import { getStoredKey } from '@/lib/key-storage';
-import { importKey, decrypt } from '@/lib/crypto';
 
 interface AccountsProps {
     accounts: Account[];
-    banks: Bank[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Accounts settings',
-        href: accountsIndex(),
+        href: accountsIndex.url(),
     },
 ];
 
@@ -101,50 +98,12 @@ function AccountActions({ account }: { account: Account }) {
     );
 }
 
-export default function Accounts({ accounts, banks }: AccountsProps) {
+export default function Accounts({ accounts }: AccountsProps) {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
-    const [decryptedNames, setDecryptedNames] = useState<
-        Record<number, string>
-    >({});
-
-    useEffect(() => {
-        async function decryptAccountNames() {
-            const keyString = getStoredKey();
-            if (!keyString) return;
-
-            try {
-                const key = await importKey(keyString);
-                const decrypted: Record<number, string> = {};
-
-                for (const account of accounts) {
-                    try {
-                        const name = await decrypt(
-                            account.name,
-                            key,
-                            account.name_iv,
-                        );
-                        decrypted[account.id] = name;
-                    } catch (err) {
-                        console.error(
-                            `Failed to decrypt account ${account.id}:`,
-                            err,
-                        );
-                        decrypted[account.id] = '[Encrypted]';
-                    }
-                }
-
-                setDecryptedNames(decrypted);
-            } catch (err) {
-                console.error('Failed to decrypt account names:', err);
-            }
-        }
-
-        decryptAccountNames();
-    }, [accounts]);
 
     const columns: ColumnDef<Account>[] = [
         {
@@ -163,8 +122,14 @@ export default function Accounts({ accounts, banks }: AccountsProps) {
                 );
             },
             cell: ({ row }) => {
-                const name = decryptedNames[row.original.id] || '[Encrypted]';
-                return <div className="pl-3 font-medium">{name}</div>;
+                return (
+                    <div className="pl-3 font-medium">
+                        <EncryptedText
+                            encryptedText={row.original.name}
+                            iv={row.original.name_iv}
+                        />
+                    </div>
+                );
             },
         },
         {
@@ -235,14 +200,7 @@ export default function Accounts({ accounts, banks }: AccountsProps) {
     });
 
     return (
-        <AppLayout
-            breadcrumbs={breadcrumbs}
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-                    Accounts
-                </h2>
-            }
-        >
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Accounts settings" />
 
             <SettingsLayout>
@@ -268,7 +226,7 @@ export default function Accounts({ accounts, banks }: AccountsProps) {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateAccountDialog banks={banks} />
+                            <CreateAccountDialog />
                         </div>
 
                         <div className="rounded-md border">

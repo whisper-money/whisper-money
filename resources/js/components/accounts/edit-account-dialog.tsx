@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Form, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import {
     Dialog,
     DialogContent,
@@ -22,11 +22,11 @@ import {
     CURRENCY_OPTIONS,
     formatAccountType,
     type Account,
-    type Bank,
 } from '@/types/account';
 import { update } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { getStoredKey } from '@/lib/key-storage';
-import { importKey, encrypt, decrypt, bufferToBase64 } from '@/lib/crypto';
+import { importKey, encrypt, decrypt } from '@/lib/crypto';
+import { BankCombobox } from './bank-combobox';
 
 interface EditAccountDialogProps {
     account: Account;
@@ -39,10 +39,15 @@ export function EditAccountDialog({
     open,
     onOpenChange,
 }: EditAccountDialogProps) {
-    const { banks } = usePage<{ banks: Bank[] }>().props;
     const [decryptedName, setDecryptedName] = useState('');
+    const [selectedBankId, setSelectedBankId] = useState<number | null>(
+        account.bank.id,
+    );
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
+        if (!open) return;
+
         async function decryptName() {
             const keyString = getStoredKey();
             if (!keyString) {
@@ -64,16 +69,25 @@ export function EditAccountDialog({
             }
         }
 
-        if (open) {
-            decryptName();
+        decryptName();
+    }, [open, account.name, account.name_iv]);
+
+    // Update selected bank when dialog opens with a new account
+    useEffect(() => {
+        if (open && selectedBankId !== account.bank.id) {
+            // Schedule state update to avoid cascading renders
+            const timer = setTimeout(() => {
+                setSelectedBankId(account.bank.id);
+            }, 0);
+            return () => clearTimeout(timer);
         }
-    }, [open, account]);
+    }, [open, account.bank.id, selectedBankId]);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
         const formData = new FormData(event.currentTarget);
-        const name = formData.get('display_name') as string;
+        const displayName = formData.get('display_name') as string;
         const bankId = formData.get('bank_id') as string;
         const type = formData.get('type') as string;
         const currencyCode = formData.get('currency_code') as string;
@@ -84,28 +98,30 @@ export function EditAccountDialog({
             return;
         }
 
+        setIsSubmitting(true);
+
         try {
             const key = await importKey(keyString);
-            const iv = window.crypto.getRandomValues(new Uint8Array(12));
-            const ivString = bufferToBase64(iv);
-            const { encrypted } = await encrypt(name, key);
+            const { encrypted, iv } = await encrypt(displayName, key);
 
-            const form = event.currentTarget;
-            const hiddenNameInput = form.querySelector(
-                'input[name="name"]',
-            ) as HTMLInputElement;
-            const hiddenIvInput = form.querySelector(
-                'input[name="name_iv"]',
-            ) as HTMLInputElement;
-
-            if (hiddenNameInput && hiddenIvInput) {
-                hiddenNameInput.value = encrypted;
-                hiddenIvInput.value = ivString;
-                form.requestSubmit();
-            }
+            router.patch(update.url(account.id), {
+                name: encrypted,
+                name_iv: iv,
+                bank_id: bankId,
+                type: type,
+                currency_code: currencyCode,
+            }, {
+                onSuccess: () => {
+                    onOpenChange(false);
+                },
+                onFinish: () => {
+                    setIsSubmitting(false);
+                },
+            });
         } catch (err) {
             console.error('Encryption failed:', err);
             alert('Failed to encrypt account name. Please try again.');
+            setIsSubmitting(false);
         }
     }
 
@@ -118,145 +134,95 @@ export function EditAccountDialog({
                         Update the account information.
                     </DialogDescription>
                 </DialogHeader>
-                <Form
-                    {...update.form.patch(account.id)}
+                <form
                     onSubmit={handleSubmit}
-                    onSuccess={() => onOpenChange(false)}
                     className="space-y-4"
                 >
-                    {({ errors, processing }) => (
-                        <>
-                            <input type="hidden" name="name" id="name" />
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor="display_name">Name</Label>
+                            <Input
+                                id="display_name"
+                                name="display_name"
+                                defaultValue={decryptedName}
+                                placeholder="Account name"
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="bank_id">Bank</Label>
                             <input
                                 type="hidden"
-                                name="name_iv"
-                                id="name_iv"
+                                name="bank_id"
+                                value={selectedBankId || ''}
+                                required
                             />
+                            <BankCombobox
+                                value={selectedBankId}
+                                onValueChange={setSelectedBankId}
+                                defaultBank={account.bank}
+                            />
+                        </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="display_name">Name</Label>
-                                <Input
-                                    id="display_name"
-                                    name="display_name"
-                                    defaultValue={decryptedName}
-                                    placeholder="Account name"
-                                    required
-                                />
-                                {errors.name && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.name}
-                                    </p>
-                                )}
-                            </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="type">Account Type</Label>
+                            <Select
+                                name="type"
+                                defaultValue={account.type}
+                                required
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select account type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ACCOUNT_TYPES.map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                            {formatAccountType(type)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="bank_id">Bank</Label>
-                                <Select
-                                    name="bank_id"
-                                    defaultValue={account.bank.id.toString()}
-                                    required
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a bank" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {banks.map((bank) => (
-                                            <SelectItem
-                                                key={bank.id}
-                                                value={bank.id.toString()}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    {bank.logo ? (
-                                                        <img
-                                                            src={bank.logo}
-                                                            alt={bank.name}
-                                                            className="h-4 w-4 rounded object-contain"
-                                                        />
-                                                    ) : (
-                                                        <div className="h-4 w-4 rounded bg-muted" />
-                                                    )}
-                                                    <span>{bank.name}</span>
-                                                </div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errors.bank_id && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.bank_id}
-                                    </p>
-                                )}
-                            </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="currency_code">Currency</Label>
+                            <Select
+                                name="currency_code"
+                                defaultValue={account.currency_code}
+                                required
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select currency" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {CURRENCY_OPTIONS.map((currency) => (
+                                        <SelectItem
+                                            key={currency}
+                                            value={currency}
+                                        >
+                                            {currency}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="type">Account Type</Label>
-                                <Select
-                                    name="type"
-                                    defaultValue={account.type}
-                                    required
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select account type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {ACCOUNT_TYPES.map((type) => (
-                                            <SelectItem key={type} value={type}>
-                                                {formatAccountType(type)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errors.type && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.type}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="currency_code">Currency</Label>
-                                <Select
-                                    name="currency_code"
-                                    defaultValue={account.currency_code}
-                                    required
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select currency" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {CURRENCY_OPTIONS.map((currency) => (
-                                            <SelectItem
-                                                key={currency}
-                                                value={currency}
-                                            >
-                                                {currency}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errors.currency_code && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.currency_code}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="flex justify-end gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => onOpenChange(false)}
-                                    disabled={processing}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button type="submit" disabled={processing}>
-                                    {processing ? 'Updating...' : 'Update'}
-                                </Button>
-                            </div>
-                        </>
-                    )}
-                </Form>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onOpenChange(false)}
+                                disabled={isSubmitting}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? 'Updating...' : 'Update'}
+                            </Button>
+                        </div>
+                    </>
+                </form>
             </DialogContent>
         </Dialog>
     );

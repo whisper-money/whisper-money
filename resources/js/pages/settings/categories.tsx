@@ -71,6 +71,7 @@ function CategoryActions({ category }: { category: Category }) {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
                         Edit
                     </DropdownMenuItem>
