@@ -10,9 +10,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Fortify\Features;
 
 class ProfileController extends Controller
 {
+    /**
+     * Show the combined account settings page.
+     */
+    public function account(Request $request): Response
+    {
+        return Inertia::render('settings/account', [
+            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'status' => $request->session()->get('status'),
+            'twoFactorEnabled' => $request->user()->hasEnabledTwoFactorAuthentication(),
+            'requiresConfirmation' => Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm'),
+        ]);
+    }
+
     /**
      * Show the user's profile settings page.
      */
@@ -37,7 +51,7 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return to_route('profile.edit');
+        return to_route('account.edit');
     }
 
     /**
