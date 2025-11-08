@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
-import axios from 'axios';
 import { cn } from '@/lib/utils';
+import { bankSyncService } from '@/services/bank-sync';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -52,13 +52,7 @@ export function BankCombobox({
 
         setIsLoading(true);
         try {
-            const response = await axios.get<{ banks: Bank[] }>(
-                '/settings/banks/search',
-                {
-                    params: { query },
-                },
-            );
-            const results = response.data.banks;
+            const results = await bankSyncService.search(query);
             bankCache.set(query, results);
             setBanks(results);
         } catch (error) {

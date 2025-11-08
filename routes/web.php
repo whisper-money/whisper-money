@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\EncryptionController;
+use App\Http\Controllers\Sync\AccountSyncController;
+use App\Http\Controllers\Sync\BankSyncController;
+use App\Http\Controllers\Sync\CategorySyncController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -19,6 +22,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('api/encryption/setup', [EncryptionController::class, 'setup']);
     Route::get('api/encryption/message', [EncryptionController::class, 'getMessage']);
     Route::put('api/encryption/message', [EncryptionController::class, 'updateMessage']);
+
+    Route::get('api/sync/categories', [CategorySyncController::class, 'index']);
+    Route::get('api/sync/accounts', [AccountSyncController::class, 'index']);
+    Route::get('api/sync/banks', [BankSyncController::class, 'index']);
 });
 
 Route::middleware(['auth', 'verified', 'redirect.encryption'])->group(function () {

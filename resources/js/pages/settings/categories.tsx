@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import {
     ColumnDef,
@@ -45,10 +45,8 @@ import {
 } from '@/types/category';
 import { type BreadcrumbItem } from '@/types';
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
-
-interface CategoriesProps {
-    categories: Category[];
-}
+import { categorySyncService } from '@/services/category-sync';
+import { useSyncContext } from '@/contexts/sync-context';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -98,12 +96,33 @@ function CategoryActions({ category }: { category: Category }) {
     );
 }
 
-export default function Categories({ categories }: CategoriesProps) {
+export default function Categories() {
+    const { syncStatus } = useSyncContext();
+    const [categories, setCategories] = useState<Category[]>([]);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
+
+    useEffect(() => {
+        const loadCategories = async () => {
+            const data = await categorySyncService.getAll();
+            setCategories(data);
+        };
+
+        loadCategories();
+    }, []);
+
+    useEffect(() => {
+        if (syncStatus === 'success') {
+            const reloadCategories = async () => {
+                const data = await categorySyncService.getAll();
+                setCategories(data);
+            };
+            reloadCategories();
+        }
+    }, [syncStatus]);
 
     const columns: ColumnDef<Category>[] = [
         {

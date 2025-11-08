@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import {
     ColumnDef,
@@ -45,10 +45,8 @@ import {
 } from '@/types/account';
 import { type BreadcrumbItem } from '@/types';
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
-
-interface AccountsProps {
-    accounts: Account[];
-}
+import { accountSyncService } from '@/services/account-sync';
+import { useSyncContext } from '@/contexts/sync-context';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -98,12 +96,33 @@ function AccountActions({ account }: { account: Account }) {
     );
 }
 
-export default function Accounts({ accounts }: AccountsProps) {
+export default function Accounts() {
+    const { syncStatus } = useSyncContext();
+    const [accounts, setAccounts] = useState<Account[]>([]);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
+
+    useEffect(() => {
+        const loadAccounts = async () => {
+            const data = await accountSyncService.getAll();
+            setAccounts(data);
+        };
+
+        loadAccounts();
+    }, []);
+
+    useEffect(() => {
+        if (syncStatus === 'success') {
+            const reloadAccounts = async () => {
+                const data = await accountSyncService.getAll();
+                setAccounts(data);
+            };
+            reloadAccounts();
+        }
+    }, [syncStatus]);
 
     const columns: ColumnDef<Account>[] = [
         {
