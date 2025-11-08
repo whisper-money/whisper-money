@@ -145,6 +145,7 @@ export default function Accounts() {
                     <div className="pl-3 font-medium">
                         <EncryptedText
                             encryptedText={row.original.name}
+                            length={{ min: 10, max: 20 }}
                             iv={row.original.name_iv}
                         />
                     </div>
@@ -259,11 +260,11 @@ export default function Accounts() {
                                                         {header.isPlaceholder
                                                             ? null
                                                             : flexRender(
-                                                                  header.column
-                                                                      .columnDef
-                                                                      .header,
-                                                                  header.getContext(),
-                                                              )}
+                                                                header.column
+                                                                    .columnDef
+                                                                    .header,
+                                                                header.getContext(),
+                                                            )}
                                                     </TableHead>
                                                 );
                                             })}

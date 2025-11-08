@@ -89,7 +89,7 @@ export function ImportStepAccount({
                                     <EncryptedText
                                         encryptedText={account.name}
                                         iv={account.name_iv}
-                                        fallback="[Encrypted Account]"
+                                        length={19}
                                     />
                                 </span>
                                 <span className="text-sm text-muted-foreground">
