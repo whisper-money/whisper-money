@@ -10,6 +10,7 @@ import { useOnlineStatus } from '@/hooks/use-online-status';
 import { categorySyncService } from '@/services/category-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { bankSyncService } from '@/services/bank-sync';
+import { transactionSyncService } from '@/services/transaction-sync';
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
@@ -46,17 +47,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setError(null);
 
         try {
-            const [categoriesResult, accountsResult, banksResult] =
+            const [categoriesResult, accountsResult, banksResult, transactionsResult] =
                 await Promise.all([
                     categorySyncService.sync(),
                     accountSyncService.sync(),
                     bankSyncService.sync(),
+                    transactionSyncService.sync(),
                 ]);
 
             const allErrors = [
                 ...categoriesResult.errors,
                 ...accountsResult.errors,
                 ...banksResult.errors,
+                ...transactionsResult.errors,
             ];
 
             if (allErrors.length > 0) {

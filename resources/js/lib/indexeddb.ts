@@ -23,7 +23,7 @@ export async function resetDatabase(): Promise<void> {
 }
 
 export interface IndexedDBRecord {
-    id: number;
+    id: number | string;
     user_id?: number | null;
     created_at: string;
     updated_at: string;
@@ -170,7 +170,7 @@ class IndexedDBService {
 
     async getById<T extends IndexedDBRecord>(
         storeName: StoreName,
-        id: number,
+        id: number | string,
     ): Promise<T | null> {
         const db = await this.init();
         return new Promise((resolve, reject) => {
@@ -186,6 +186,13 @@ class IndexedDBService {
                 reject(new Error(`Failed to get from ${storeName}`));
             };
         });
+    }
+
+    async get<T extends IndexedDBRecord>(
+        storeName: StoreName,
+        id: number | string,
+    ): Promise<T | null> {
+        return this.getById<T>(storeName, id);
     }
 
     async put<T extends IndexedDBRecord>(
@@ -255,7 +262,7 @@ class IndexedDBService {
         });
     }
 
-    async delete(storeName: StoreName, id: number): Promise<void> {
+    async delete(storeName: StoreName, id: number | string): Promise<void> {
         const db = await this.init();
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(storeName, 'readwrite');
