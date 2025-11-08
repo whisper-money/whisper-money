@@ -9,9 +9,6 @@ use Illuminate\Http\Request;
 
 class BankSearchController extends Controller
 {
-    /**
-     * Search banks by query.
-     */
     public function __invoke(Request $request): JsonResponse
     {
         $query = $request->input('query', '');
@@ -29,7 +26,14 @@ class BankSearchController extends Controller
                     ->orWhereNull('user_id');
             })
             ->where('name', 'like', '%'.$query.'%')
-            ->orderBy('name')
+            ->orderByRaw('
+                CASE
+                    WHEN LOWER(name) = LOWER(?) THEN 1
+                    WHEN LOWER(name) LIKE LOWER(?) THEN 2
+                    ELSE 3
+                END,
+                name
+            ', [$query, $query.'%'])
             ->limit(100)
             ->get(['id', 'name', 'logo']);
 
