@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, X } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { type Category } from '@/types/category';
+import { EncryptedText } from '@/components/encrypted-text';
+import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type Account } from '@/types/account';
 import { type TransactionFilters } from '@/types/transaction';
 
@@ -31,6 +32,10 @@ export function TransactionFilters({
     isKeySet,
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const UncategorizedIcon = resolveIconComponent('CircleHelp');
+    const isUncategorizedSelected = filters.categoryIds.includes(
+        UNCATEGORIZED_CATEGORY_ID,
+    );
 
     function handleCategoryToggle(categoryId: number) {
         const newCategoryIds = filters.categoryIds.includes(categoryId)
@@ -106,20 +111,11 @@ export function TransactionFilters({
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <h4 className="font-medium">Filters</h4>
-                                {activeFilterCount > 0 && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={clearFilters}
-                                    >
-                                        Clear all
-                                    </Button>
-                                )}
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Date Range</Label>
-                                <div className="grid grid-cols-2 gap-2">
+                                <Label>Date</Label>
+                                <div className="pt-2 grid grid-cols-2 gap-2">
                                     <Input
                                         type="date"
                                         value={
@@ -158,8 +154,8 @@ export function TransactionFilters({
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Amount Range</Label>
-                                <div className="grid grid-cols-2 gap-2">
+                                <Label>Amount</Label>
+                                <div className="pt-2 grid grid-cols-2 gap-2">
                                     <Input
                                         type="number"
                                         step="0.01"
@@ -193,22 +189,53 @@ export function TransactionFilters({
 
                             <div className="space-y-2">
                                 <Label>Categories</Label>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="pt-2 flex flex-wrap gap-2">
+                                    <Badge
+                                        variant={
+                                            isUncategorizedSelected ? 'default' : 'outline'
+                                        }
+                                        className={`flex cursor-pointer items-center gap-1 py-1.5 ${isUncategorizedSelected
+                                            ? 'border-transparent bg-muted text-foreground dark:bg-muted/40'
+                                            : ''
+                                            }`}
+                                        onClick={() =>
+                                            handleCategoryToggle(UNCATEGORIZED_CATEGORY_ID)
+                                        }
+                                    >
+                                        <UncategorizedIcon className="h-4 w-4 opacity-80" />
+                                        Uncategorized
+                                    </Badge>
                                     {categories.map((category) => {
                                         const isSelected =
                                             filters.categoryIds.includes(category.id);
+                                        const IconComponent = resolveIconComponent(
+                                            category.icon,
+                                        );
+                                        const colorClasses =
+                                            getCategoryColorClasses(category.color);
                                         return (
                                             <Badge
                                                 key={category.id}
                                                 variant={
                                                     isSelected ? 'default' : 'outline'
                                                 }
-                                                className="cursor-pointer"
+                                                className={`flex cursor-pointer items-center gap-1 py-1.5  ${isSelected ? `${colorClasses.bg} ${colorClasses.text} border-transparent` : ''}`}
                                                 onClick={() =>
                                                     handleCategoryToggle(category.id)
                                                 }
                                             >
-                                                {category.icon} {category.name}
+                                                <IconComponent
+                                                    className={`h-4 w-4 ${isSelected ? colorClasses.text : 'text-muted-foreground'}`}
+                                                />
+                                                <span
+                                                    className={
+                                                        isSelected
+                                                            ? colorClasses.text
+                                                            : 'text-muted-foreground'
+                                                    }
+                                                >
+                                                    {category.name}
+                                                </span>
                                             </Badge>
                                         );
                                     })}
@@ -217,7 +244,7 @@ export function TransactionFilters({
 
                             <div className="space-y-2">
                                 <Label>Accounts</Label>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="pt-2 flex flex-wrap gap-2">
                                     {accounts.map((account) => {
                                         const isSelected =
                                             filters.accountIds.includes(account.id);
@@ -227,12 +254,16 @@ export function TransactionFilters({
                                                 variant={
                                                     isSelected ? 'default' : 'outline'
                                                 }
-                                                className="cursor-pointer"
+                                                className="cursor-pointer py-1 px-2"
                                                 onClick={() =>
                                                     handleAccountToggle(account.id)
                                                 }
                                             >
-                                                {account.name}
+                                                <EncryptedText
+                                                    encryptedText={account.name}
+                                                    iv={account.name_iv}
+                                                    length={{ min: 6, max: 28 }}
+                                                />
                                             </Badge>
                                         );
                                     })}
@@ -249,12 +280,37 @@ export function TransactionFilters({
                         onClick={clearFilters}
                         className="h-9"
                     >
-                        <X className="mr-1 h-4 w-4" />
+                        <Icons.X className="mr-1 h-4 w-4" />
                         Clear
                     </Button>
                 )}
             </div>
         </div>
     );
+}
+
+const UNCATEGORIZED_CATEGORY_ID = -1;
+const FALLBACK_ICON_NAMES = [
+    'CircleHelp',
+    'HelpCircle',
+    'CircleQuestion',
+    'CircleQuestionMark',
+    'Circle',
+];
+
+function resolveIconComponent(iconName?: string): Icons.LucideIcon {
+    if (iconName) {
+        const icon = Icons[iconName as keyof typeof Icons];
+        return icon as Icons.LucideIcon;
+    }
+
+    for (const fallbackName of FALLBACK_ICON_NAMES) {
+        const fallback = Icons[fallbackName as keyof typeof Icons];
+        if (typeof fallback === 'function') {
+            return fallback as Icons.LucideIcon;
+        }
+    }
+
+    return Icons.Circle as Icons.LucideIcon;
 }
 

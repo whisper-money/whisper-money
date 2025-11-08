@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { getStoredKey } from '@/lib/key-storage';
 import { importKey, decrypt } from '@/lib/crypto';
@@ -12,41 +12,72 @@ interface EncryptedTextProps {
     length: Length;
 }
 
-function randInt(min: number, max: number) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+type DisplayState = 'encrypted' | 'decrypted' | 'loading';
+
+const ENCRYPTED_CHARSET =
+    '0123456789$%&#@!ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+function resolveTargetLength(length: Length, fallback: number): number {
+    if (typeof length === 'number') {
+        return Math.max(1, length);
+    }
+
+    if (length && typeof length === 'object') {
+        const min = Math.max(1, length.min);
+        const max = Math.max(min, length.max);
+        const clampedFallback = Math.min(Math.max(fallback, min), max);
+
+        return clampedFallback;
+    }
+
+    return Math.max(1, fallback);
 }
 
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function generateMaskedText(targetLength: number): string {
+    if (targetLength <= 0) {
+        return '';
+    }
+
+    let result = '';
+    for (let index = 0; index < targetLength; index += 1) {
+        const randomIndex = Math.floor(
+            Math.random() * ENCRYPTED_CHARSET.length,
+        );
+        result += ENCRYPTED_CHARSET.charAt(randomIndex);
+    }
+
+    return result;
+}
 
 export function EncryptedText(props: EncryptedTextProps) {
     const { encryptedText, iv, className = '', length = null } = props;
     const { isKeySet } = useEncryptionKey();
-    const maxLength = useMemo<number>(() => {
-        if (typeof length === 'number') {
-            return length;
+    const targetLength = useMemo(
+        () => resolveTargetLength(length, encryptedText.length),
+        [length, encryptedText.length],
+    );
+    const maskedValue = useMemo(
+        () => generateMaskedText(targetLength),
+        [targetLength, encryptedText, iv],
+    );
+    const [cachedDecryption, setCachedDecryption] = useState<{
+        encryptedText: string;
+        iv: string;
+        value: string;
+    } | null>(null);
+    const [displayState, setDisplayState] = useState<DisplayState>(() => {
+        if (!isKeySet) {
+            return 'encrypted';
         }
 
-        if (length && typeof length === 'object' && 'max' in length) {
-            return randInt(length.min, length.max)
-        }
-
-        return randInt(10, 20)
-    }, [length]);
-    const [cachedDecryption, setCachedDecryption] = useState<{ encryptedText: string; iv: string; value: string; } | null>(null);
-    const maskedText = useMemo(() => {
-        if (isKeySet && cachedDecryption?.value) {
-            return cachedDecryption.value;
-        }
-
-        return encryptedText.slice(0, maxLength);
-    }, [cachedDecryption?.value, encryptedText, isKeySet, maxLength]);
-    const [displayValue, setDisplayValue] = useState<string>(maskedText);
-    const intervalRef = useRef<number | null>(null);
-    const displayValueRef = useRef(displayValue);
+        const keyString = getStoredKey();
+        return keyString ? 'loading' : 'encrypted';
+    });
 
     useEffect(() => {
         if (!isKeySet) {
             setCachedDecryption(null);
+            setDisplayState('encrypted');
             return;
         }
 
@@ -55,84 +86,64 @@ export function EncryptedText(props: EncryptedTextProps) {
             cachedDecryption.encryptedText === encryptedText &&
             cachedDecryption.iv === iv
         ) {
+            setDisplayState((current) =>
+                current === 'decrypted' ? current : 'decrypted',
+            );
             return;
         }
 
         const keyString = getStoredKey();
         if (!keyString) {
             setCachedDecryption(null);
+            setDisplayState('encrypted');
             return;
         }
+
+        let cancelled = false;
+        setDisplayState('loading');
 
         importKey(keyString)
             .then((key) => decrypt(encryptedText, key, iv))
             .then((value) => {
+                if (cancelled) {
+                    return;
+                }
                 setCachedDecryption({ encryptedText, iv, value });
+                setDisplayState('decrypted');
             })
             .catch(() => {
+                if (cancelled) {
+                    return;
+                }
                 setCachedDecryption(null);
+                setDisplayState('encrypted');
             });
-    }, [encryptedText, iv, isKeySet]);
-
-    useEffect(() => {
-        displayValueRef.current = displayValue;
-    }, [displayValue]);
-
-    useEffect(() => {
-        if (intervalRef.current) {
-            window.clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
-
-        if (maskedText === displayValueRef.current) {
-            return;
-        }
-
-        if (!maskedText.length) {
-            displayValueRef.current = '';
-            setDisplayValue('');
-            return;
-        }
-
-        let iteration = 0;
-        const target = maskedText;
-        const targetLength = target.length;
-
-        intervalRef.current = window.setInterval(() => {
-            iteration += 1;
-
-            if (iteration >= targetLength) {
-                if (intervalRef.current) {
-                    window.clearInterval(intervalRef.current);
-                    intervalRef.current = null;
-                }
-
-                displayValueRef.current = target;
-                setDisplayValue(target);
-                return;
-            }
-
-            const revealCount = Math.floor(iteration);
-
-            const randomValue = Array.from({ length: targetLength }, (_, index) => {
-                if (index < revealCount) {
-                    return target[index];
-                }
-
-                return LETTERS[Math.floor(Math.random() * LETTERS.length)];
-            }).join('');
-
-            displayValueRef.current = randomValue;
-            setDisplayValue(randomValue);
-        }, 20);
 
         return () => {
-            if (intervalRef.current) {
-                window.clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
+            cancelled = true;
         };
-    }, [maskedText]);
+    }, [encryptedText, iv, isKeySet]);
 
-    return <span className={className}>{displayValue}</span>;
+    if (displayState === 'loading') {
+        const widthInCharacters = Math.max(targetLength, 3) / 2;
+        const loadingClassName = ['inline-block animate-pulse rounded bg-muted/60', className]
+            .filter(Boolean)
+            .join(' ');
+
+        return (
+            <span
+                className={loadingClassName}
+                style={{
+                    width: `${widthInCharacters}ch`,
+                    height: '1em',
+                }}
+            />
+        );
+    }
+
+    if (displayState === 'decrypted' && cachedDecryption) {
+        return <span className={className}>{cachedDecryption.value}</span>;
+    }
+
+    return <span className={className}>{maskedValue}</span>;
 }
