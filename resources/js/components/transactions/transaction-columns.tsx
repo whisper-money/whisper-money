@@ -45,7 +45,7 @@ export function createTransactionColumns({
                         }
                     >
                         Date
-                        <ArrowDown className="ml-2 h-4 w-4 opacity-50" />
+                        <ArrowDown className="h-2 w-2 opacity-25" />
                     </Button>
                 );
             },
