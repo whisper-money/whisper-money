@@ -1,4 +1,4 @@
-import { Cloud, CloudAlert, CloudCheck, CloudOff, RefreshCw } from 'lucide-react';
+import { CloudAlert, CloudCheck, CloudOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
