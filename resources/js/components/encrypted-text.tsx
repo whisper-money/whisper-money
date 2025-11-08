@@ -1,122 +1,138 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { getStoredKey } from '@/lib/key-storage';
 import { importKey, decrypt } from '@/lib/crypto';
 
+type Length = number | { min: number; max: number } | null;
+
 interface EncryptedTextProps {
     encryptedText: string;
     iv: string;
-    interval?: number;
     className?: string;
-    fallback?: string;
+    length: Length;
 }
 
-const chars = "-_~`!@#$%^&*()+=[]{}|;:,.<>?";
-
-function generateRandomChars(length: number): string {
-    return Array.from({ length }, () =>
-        chars[Math.floor(Math.random() * chars.length)]
-    ).join('');
+function randInt(min: number, max: number) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-export function EncryptedText({
-    encryptedText,
-    iv,
-    interval = 30,
-    className = '',
-    fallback = '[Encrypted]',
-}: EncryptedTextProps) {
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+export function EncryptedText(props: EncryptedTextProps) {
+    const { encryptedText, iv, className = '', length = null } = props;
     const { isKeySet } = useEncryptionKey();
-    const [decryptedText, setDecryptedText] = useState<string | null>(null);
-    const [isMounted, setIsMounted] = useState(false);
-    const [isAnimating, setIsAnimating] = useState(false);
-    const isFirstLoad = useRef(true);
-    const fallbackCharsRef = useRef<string>(generateRandomChars(fallback.length));
-    const [targetText, setTargetText] = useState(() => fallbackCharsRef.current);
-    const [outputText, setOutputText] = useState(() => fallbackCharsRef.current);
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    useEffect(() => {
-        async function decryptData() {
-            const keyString = getStoredKey();
-            if (!keyString || !isKeySet) {
-                setDecryptedText(null);
-                return;
-            }
-
-            try {
-                const key = await importKey(keyString);
-                const text = await decrypt(encryptedText, key, iv);
-                setDecryptedText(text);
-            } catch (err) {
-                console.error('Failed to decrypt text:', err);
-                setDecryptedText(null);
-            }
+    const maxLength = useMemo<number>(() => {
+        if (typeof length === 'number') {
+            return length;
         }
 
-        decryptData();
-    }, [encryptedText, iv, isKeySet]);
-
-    useEffect(() => {
-        if (decryptedText !== null && isKeySet) {
-            setTargetText(decryptedText);
-        } else {
-            setTargetText(fallbackCharsRef.current);
+        if (length && typeof length === 'object' && 'max' in length) {
+            return randInt(length.min, length.max)
         }
-    }, [decryptedText, isKeySet]);
+
+        return randInt(10, 20)
+    }, [length]);
+    const [cachedDecryption, setCachedDecryption] = useState<{ encryptedText: string; iv: string; value: string; } | null>(null);
+    const maskedText = useMemo(() => {
+        if (isKeySet && cachedDecryption?.value) {
+            return cachedDecryption.value;
+        }
+
+        return encryptedText.slice(0, maxLength);
+    }, [cachedDecryption?.value, encryptedText, isKeySet, maxLength]);
+    const [displayValue, setDisplayValue] = useState<string>(maskedText);
+    const intervalRef = useRef<number | null>(null);
+    const displayValueRef = useRef(displayValue);
 
     useEffect(() => {
-        let timer: NodeJS.Timeout;
-
-        if (isFirstLoad.current) {
-            setOutputText(targetText);
-            isFirstLoad.current = false;
+        if (!isKeySet) {
+            setCachedDecryption(null);
             return;
         }
 
-        if (outputText !== targetText) {
-            setIsAnimating(true);
-            let currentIndex = 0;
-
-            timer = setInterval(() => {
-                if (currentIndex < targetText.length) {
-                    setOutputText(targetText.slice(0, currentIndex + 1));
-                    currentIndex++;
-                } else {
-                    clearInterval(timer);
-                    setIsAnimating(false);
-                }
-            }, interval);
+        if (
+            cachedDecryption &&
+            cachedDecryption.encryptedText === encryptedText &&
+            cachedDecryption.iv === iv
+        ) {
+            return;
         }
 
+        const keyString = getStoredKey();
+        if (!keyString) {
+            setCachedDecryption(null);
+            return;
+        }
+
+        importKey(keyString)
+            .then((key) => decrypt(encryptedText, key, iv))
+            .then((value) => {
+                setCachedDecryption({ encryptedText, iv, value });
+            })
+            .catch(() => {
+                setCachedDecryption(null);
+            });
+    }, [encryptedText, iv, isKeySet]);
+
+    useEffect(() => {
+        displayValueRef.current = displayValue;
+    }, [displayValue]);
+
+    useEffect(() => {
+        if (intervalRef.current) {
+            window.clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+
+        if (maskedText === displayValueRef.current) {
+            return;
+        }
+
+        if (!maskedText.length) {
+            displayValueRef.current = '';
+            setDisplayValue('');
+            return;
+        }
+
+        let iteration = 0;
+        const target = maskedText;
+        const targetLength = target.length;
+
+        intervalRef.current = window.setInterval(() => {
+            iteration += 1;
+
+            if (iteration >= targetLength) {
+                if (intervalRef.current) {
+                    window.clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+
+                displayValueRef.current = target;
+                setDisplayValue(target);
+                return;
+            }
+
+            const revealCount = Math.floor(iteration);
+
+            const randomValue = Array.from({ length: targetLength }, (_, index) => {
+                if (index < revealCount) {
+                    return target[index];
+                }
+
+                return LETTERS[Math.floor(Math.random() * LETTERS.length)];
+            }).join('');
+
+            displayValueRef.current = randomValue;
+            setDisplayValue(randomValue);
+        }, 20);
+
         return () => {
-            clearInterval(timer);
-            setIsAnimating(false);
+            if (intervalRef.current) {
+                window.clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [targetText, interval]);
+    }, [maskedText]);
 
-    const remainder =
-        outputText.length < targetText.length
-            ? targetText
-                  .slice(outputText.length)
-                  .split('')
-                  .map(() => chars[Math.floor(Math.random() * chars.length)])
-                  .join('')
-            : '';
-
-    if (!isMounted) {
-        return <span className={className}> </span>;
-    }
-
-    return (
-        <span className={`${className} ${isAnimating ? 'animate-pulse' : ''}`}>
-            {outputText}
-            {remainder}
-        </span>
-    );
+    return <span className={className}>{displayValue}</span>;
 }
-

@@ -4,6 +4,7 @@ use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\Sync\AccountSyncController;
 use App\Http\Controllers\Sync\BankSyncController;
 use App\Http\Controllers\Sync\CategorySyncController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -36,6 +37,10 @@ Route::middleware(['auth', 'verified', 'redirect.encryption'])->group(function (
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+
+    Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
+    Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
 });
 
 require __DIR__.'/settings.php';
