@@ -1,6 +1,7 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { EncryptionKeyButton } from '@/components/encryption-key-button';
 import { SyncStatusButton } from '@/components/sync-status-button';
+import { ImportTransactionsButton } from '@/components/transactions/import-transactions-button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { type BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
@@ -16,6 +17,7 @@ export function AppSidebarHeader({
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
             <div className="flex items-center gap-2">
+                <ImportTransactionsButton />
                 <SyncStatusButton />
                 <EncryptionKeyButton />
             </div>
