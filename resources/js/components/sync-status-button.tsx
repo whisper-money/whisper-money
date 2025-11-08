@@ -50,9 +50,6 @@ export function SyncStatusButton() {
     };
 
     const getVariant = () => {
-        if (syncStatus === 'error' || !isOnline) {
-            return 'destructive' as const;
-        }
         return 'ghost' as const;
     };
 
@@ -65,6 +62,7 @@ export function SyncStatusButton() {
                         size="icon"
                         onClick={sync}
                         disabled={syncStatus === 'syncing' || !isOnline}
+                        className={`${syncStatus === 'error' || !isOnline ? 'bg-red-100 dark:bg-red-900' : ''}`}
                     >
                         {getIcon()}
                     </Button>
@@ -73,7 +71,7 @@ export function SyncStatusButton() {
                     <p>{getTooltipText()}</p>
                 </TooltipContent>
             </Tooltip>
-        </TooltipProvider>
+        </TooltipProvider >
     );
 }
 

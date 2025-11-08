@@ -1,5 +1,26 @@
 const DB_NAME = 'whisper_money';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+
+// Force database recreation if needed
+export async function resetDatabase(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+        
+        deleteRequest.onsuccess = () => {
+            console.log('Database deleted successfully');
+            resolve();
+        };
+        
+        deleteRequest.onerror = () => {
+            reject(new Error('Failed to delete database'));
+        };
+        
+        deleteRequest.onblocked = () => {
+            console.warn('Database deletion blocked. Please close all other tabs.');
+            reject(new Error('Database deletion blocked'));
+        };
+    });
+}
 
 export interface IndexedDBRecord {
     id: number;
@@ -9,11 +30,16 @@ export interface IndexedDBRecord {
     [key: string]: any;
 }
 
-export type StoreName = 'categories' | 'accounts' | 'banks';
+export type StoreName = 'categories' | 'accounts' | 'banks' | 'transactions';
 
 class IndexedDBService {
     private db: IDBDatabase | null = null;
     private initPromise: Promise<IDBDatabase> | null = null;
+
+    async checkStoreExists(storeName: StoreName): Promise<boolean> {
+        const db = await this.init();
+        return db.objectStoreNames.contains(storeName);
+    }
 
     async init(): Promise<IDBDatabase> {
         if (this.db) {
@@ -75,6 +101,21 @@ class IndexedDBService {
                     });
                 }
 
+                if (!db.objectStoreNames.contains('transactions')) {
+                    const transactionStore = db.createObjectStore('transactions', {
+                        keyPath: 'id',
+                    });
+                    transactionStore.createIndex('user_id', 'user_id', {
+                        unique: false,
+                    });
+                    transactionStore.createIndex('account_id', 'account_id', {
+                        unique: false,
+                    });
+                    transactionStore.createIndex('updated_at', 'updated_at', {
+                        unique: false,
+                    });
+                }
+
                 if (!db.objectStoreNames.contains('sync_metadata')) {
                     db.createObjectStore('sync_metadata', { keyPath: 'key' });
                 }
@@ -102,17 +143,28 @@ class IndexedDBService {
     ): Promise<T[]> {
         const db = await this.init();
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction(storeName, 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.getAll();
+            try {
+                if (!db.objectStoreNames.contains(storeName)) {
+                    console.warn(`Object store '${storeName}' not found. Returning empty array.`);
+                    resolve([]);
+                    return;
+                }
 
-            request.onsuccess = () => {
-                resolve(request.result as T[]);
-            };
+                const transaction = db.transaction(storeName, 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
 
-            request.onerror = () => {
-                reject(new Error(`Failed to get all from ${storeName}`));
-            };
+                request.onsuccess = () => {
+                    resolve(request.result as T[]);
+                };
+
+                request.onerror = () => {
+                    reject(new Error(`Failed to get all from ${storeName}`));
+                };
+            } catch (error) {
+                console.error(`Error accessing ${storeName}:`, error);
+                resolve([]);
+            }
         });
     }
 
@@ -142,17 +194,26 @@ class IndexedDBService {
     ): Promise<void> {
         const db = await this.init();
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction(storeName, 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.put(record);
+            try {
+                if (!db.objectStoreNames.contains(storeName)) {
+                    reject(new Error(`Object store '${storeName}' not found. Please refresh the page.`));
+                    return;
+                }
 
-            request.onsuccess = () => {
-                resolve();
-            };
+                const transaction = db.transaction(storeName, 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.put(record);
 
-            request.onerror = () => {
-                reject(new Error(`Failed to put to ${storeName}`));
-            };
+                request.onsuccess = () => {
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    reject(new Error(`Failed to put to ${storeName}`));
+                };
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -269,22 +330,26 @@ class IndexedDBService {
     ): Promise<void> {
         const db = await this.init();
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction('pending_changes', 'readwrite');
-            const store = transaction.objectStore('pending_changes');
-            const request = store.add({
-                store: storeName,
-                operation,
-                data,
-                timestamp: new Date().toISOString(),
-            });
+            try {
+                const transaction = db.transaction('pending_changes', 'readwrite');
+                const store = transaction.objectStore('pending_changes');
+                const request = store.add({
+                    store: storeName,
+                    operation,
+                    data,
+                    timestamp: new Date().toISOString(),
+                });
 
-            request.onsuccess = () => {
-                resolve();
-            };
+                request.onsuccess = () => {
+                    resolve();
+                };
 
-            request.onerror = () => {
-                reject(new Error('Failed to add pending change'));
-            };
+                request.onerror = () => {
+                    reject(new Error('Failed to add pending change'));
+                };
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
