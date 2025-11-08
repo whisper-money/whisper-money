@@ -2,9 +2,10 @@ import { SyncManager } from '@/lib/sync-manager';
 import { indexedDBService } from '@/lib/indexeddb';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import { uuidv7 } from 'uuidv7';
 
 export interface Transaction {
-    id: number;
+    id: string;
     user_id: number;
     account_id: number;
     category_id: number | null;
@@ -37,8 +38,8 @@ class TransactionSyncService {
         return await this.syncManager.getAll<Transaction>();
     }
 
-    async getById(id: number): Promise<Transaction | null> {
-        return await this.syncManager.getById<Transaction>(id);
+    async getById(id: string): Promise<Transaction | null> {
+        return await indexedDBService.get<Transaction>('transactions', id);
     }
 
     async getByAccountId(accountId: number): Promise<Transaction[]> {
@@ -61,10 +62,9 @@ class TransactionSyncService {
             const created: Transaction[] = [];
 
             for (const data of transactions) {
-                const tempId = Date.now() + created.length;
                 const record = {
                     ...data,
-                    id: tempId,
+                    id: uuidv7(),
                     created_at: timestamp,
                     updated_at: timestamp,
                 } as Transaction;
@@ -86,12 +86,30 @@ class TransactionSyncService {
         }
     }
 
-    async update(id: number, data: Partial<Transaction>): Promise<void> {
-        await this.syncManager.updateLocal<Transaction>(id, data);
+    async update(id: string, data: Partial<Transaction>): Promise<void> {
+        const existing = await this.getById(id);
+        if (!existing) {
+            throw new Error('Transaction not found');
+        }
+
+        const updated = {
+            ...existing,
+            ...data,
+            updated_at: new Date().toISOString(),
+        };
+
+        await indexedDBService.put('transactions', updated);
+        await indexedDBService.addPendingChange('transactions', 'update', updated);
     }
 
-    async delete(id: number): Promise<void> {
-        await this.syncManager.deleteLocal(id);
+    async delete(id: string): Promise<void> {
+        const transaction = await this.getById(id);
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
+
+        await indexedDBService.delete('transactions', id);
+        await indexedDBService.addPendingChange('transactions', 'delete', transaction);
     }
 
     async isDuplicate(
