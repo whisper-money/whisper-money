@@ -82,15 +82,37 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     const [displayedCount, setDisplayedCount] = useState(25);
     const observerTarget = useRef<HTMLDivElement>(null);
 
-    function updateTransaction(updatedTransaction: DecryptedTransaction) {
-        setTransactions((prev) =>
-            prev.map((t) =>
-                t.id === updatedTransaction.id ? updatedTransaction : t
-            )
-        );
-    }
+    const updateTransaction = useCallback(
+        (updatedTransaction: DecryptedTransaction) => {
+            setTransactions((previous) =>
+                previous.map((transaction) => {
+                    if (transaction.id !== updatedTransaction.id) {
+                        return transaction;
+                    }
 
-    async function loadTransactions() {
+                    return {
+                        ...transaction,
+                        ...updatedTransaction,
+                        account:
+                            updatedTransaction.account === undefined
+                                ? transaction.account
+                                : updatedTransaction.account,
+                        bank:
+                            updatedTransaction.bank === undefined
+                                ? transaction.bank
+                                : updatedTransaction.bank,
+                        category:
+                            updatedTransaction.category === undefined
+                                ? transaction.category ?? null
+                                : updatedTransaction.category,
+                    };
+                }),
+            );
+        },
+        [setTransactions],
+    );
+
+    const loadTransactions = useCallback(async () => {
         setIsLoading(true);
         try {
             const rawTransactions = await transactionSyncService.getAll();
@@ -172,7 +194,8 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
             setTransactions(
                 decrypted.filter(
-                    (t): t is DecryptedTransaction => t !== null,
+                    (transaction): transaction is DecryptedTransaction =>
+                        transaction !== null,
                 ),
             );
         } catch (error) {
@@ -180,11 +203,11 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [accounts, banks, categories, isKeySet]);
 
     useEffect(() => {
         loadTransactions();
-    }, []);
+    }, [loadTransactions]);
 
     useEffect(() => {
         async function reDecryptTransactions() {
@@ -328,14 +351,18 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         return filteredTransactions.slice(0, displayedCount);
     }, [filteredTransactions, displayedCount]);
 
-    const columns = createTransactionColumns({
-        categories,
-        accounts,
-        banks,
-        onEdit: setEditTransaction,
-        onDelete: setDeleteTransaction,
-        onUpdate: updateTransaction,
-    });
+    const columns = useMemo(
+        () =>
+            createTransactionColumns({
+                categories,
+                accounts,
+                banks,
+                onEdit: setEditTransaction,
+                onDelete: setDeleteTransaction,
+                onUpdate: updateTransaction,
+            }),
+        [accounts, banks, categories, updateTransaction],
+    );
 
     const table = useReactTable({
         data: displayedTransactions,
@@ -394,7 +421,11 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         setIsDeleting(true);
         try {
             await transactionSyncService.delete(deleteTransaction.id);
-            await loadTransactions();
+            setTransactions((previous) =>
+                previous.filter(
+                    (transaction) => transaction.id !== deleteTransaction.id,
+                ),
+            );
             setDeleteTransaction(null);
         } catch (error) {
             console.error('Failed to delete transaction:', error);
@@ -454,7 +485,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 categories={categories}
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
-                onSuccess={loadTransactions}
+                onSuccess={updateTransaction}
             />
 
             <AlertDialog

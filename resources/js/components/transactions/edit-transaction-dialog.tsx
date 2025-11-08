@@ -30,7 +30,7 @@ interface EditTransactionDialogProps {
     categories: Category[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSuccess: () => void;
+    onSuccess: (transaction: DecryptedTransaction) => void;
 }
 
 export function EditTransactionDialog({
@@ -61,30 +61,49 @@ export function EditTransactionDialog({
 
         setIsSubmitting(true);
         try {
-            const updateData: {
-                category_id: number | null;
-                notes?: string;
-                notes_iv?: string;
-            } = {
-                category_id: categoryId === 'null' ? null : parseInt(categoryId),
-            };
+            const selectedCategoryId =
+                categoryId === 'null' ? null : parseInt(categoryId, 10);
+            const trimmedNotes = notes.trim();
+            let encryptedNotes: string | null = null;
+            let notesIv: string | null = null;
 
-            if (notes.trim()) {
+            if (trimmedNotes) {
                 const keyString = getStoredKey();
                 if (!keyString) {
                     throw new Error('Encryption key not available');
                 }
                 const key = await importKey(keyString);
-                const encrypted = await encrypt(notes, key);
-                updateData.notes = encrypted.encrypted;
-                updateData.notes_iv = encrypted.iv;
-            } else {
-                updateData.notes = null;
-                updateData.notes_iv = null;
+                const encrypted = await encrypt(trimmedNotes, key);
+                encryptedNotes = encrypted.encrypted;
+                notesIv = encrypted.iv;
             }
 
-            await transactionSyncService.update(transaction.id, updateData);
-            onSuccess();
+            await transactionSyncService.update(transaction.id, {
+                category_id: selectedCategoryId,
+                notes: encryptedNotes,
+                notes_iv: notesIv,
+            });
+
+            const updatedRecord = await transactionSyncService.getById(
+                transaction.id,
+            );
+            const updatedCategory = selectedCategoryId
+                ? categories.find(
+                      (category) => category.id === selectedCategoryId,
+                  ) || null
+                : null;
+
+            const updatedTransaction: DecryptedTransaction = {
+                ...transaction,
+                category_id: selectedCategoryId,
+                category: updatedCategory,
+                decryptedNotes: trimmedNotes || null,
+                notes: encryptedNotes,
+                notes_iv: notesIv,
+                updated_at: updatedRecord?.updated_at ?? transaction.updated_at,
+            };
+
+            onSuccess(updatedTransaction);
             onOpenChange(false);
         } catch (error) {
             console.error('Failed to update transaction:', error);
