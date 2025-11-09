@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
+import type { SharedData } from './types';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -19,11 +20,14 @@ createInertiaApp({
         ),
     setup({ el, App, props }) {
         const root = createRoot(el);
+        const initialPageProps = props.initialPage
+            ?.props as Partial<SharedData> | undefined;
+        const initialIsAuthenticated = Boolean(initialPageProps?.auth?.user);
 
         root.render(
             <StrictMode>
                 <EncryptionKeyProvider>
-                    <SyncProvider>
+                    <SyncProvider initialIsAuthenticated={initialIsAuthenticated}>
                         <App {...props} />
                     </SyncProvider>
                 </EncryptionKeyProvider>
