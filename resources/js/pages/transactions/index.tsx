@@ -15,6 +15,7 @@ import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { DataTable } from '@/components/ui/data-table';
 import HeadingSmall from '@/components/heading-small';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
@@ -454,9 +455,35 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                     />
 
                     {isLoading ? (
-                        <div className="flex h-64 items-center justify-center">
-                            <div className="text-muted-foreground">
-                                Loading transactions...
+                        <div className="space-y-4">
+                            <div className="overflow-hidden rounded-md border">
+                                <div className="grid grid-cols-6 gap-4 border-b p-4">
+                                    <Skeleton className="h-5 w-24" />
+                                    <Skeleton className="h-5 w-28" />
+                                    <Skeleton className="h-5 w-64" />
+                                    <Skeleton className="h-5 w-28" />
+                                    <Skeleton className="h-5 w-28" />
+                                    <Skeleton className="h-5 w-16 justify-self-end" />
+                                </div>
+                                <div className="divide-y">
+                                    {Array.from({ length: 6 }).map((_, index) => (
+                                        <div
+                                            key={index}
+                                            className="grid grid-cols-6 gap-4 p-4"
+                                        >
+                                            <Skeleton className="h-4 w-32" />
+                                            <Skeleton className="h-4 w-36" />
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-32" />
+                                            <Skeleton className="h-4 w-40" />
+                                            <Skeleton className="h-4 w-20 justify-self-end" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Skeleton className="h-5 w-32" />
+                                <Skeleton className="h-9 w-48" />
                             </div>
                         </div>
                     ) : (
