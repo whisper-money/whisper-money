@@ -6,6 +6,8 @@ import React, {
     useCallback,
     type ReactNode,
 } from 'react';
+import type { Page } from '@inertiajs/core';
+import { router } from '@inertiajs/react';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { categorySyncService } from '@/services/category-sync';
 import { accountSyncService } from '@/services/account-sync';
@@ -18,6 +20,7 @@ interface SyncContextType {
     syncStatus: SyncStatus;
     lastSyncTime: Date | null;
     isOnline: boolean;
+    isAuthenticated: boolean;
     sync: () => Promise<void>;
     error: string | null;
 }
@@ -26,14 +29,53 @@ const SyncContext = createContext<SyncContextType | undefined>(undefined);
 
 const SYNC_INTERVAL = 5 * 60 * 1000;
 
-export function SyncProvider({ children }: { children: ReactNode }) {
+interface SyncProviderProps {
+    children: ReactNode;
+    initialIsAuthenticated: boolean;
+}
+
+export function SyncProvider({
+    children,
+    initialIsAuthenticated,
+}: SyncProviderProps) {
     const isOnline = useOnlineStatus();
+    const [isAuthenticated, setIsAuthenticated] = useState(
+        initialIsAuthenticated,
+    );
     const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [wasOffline, setWasOffline] = useState(!isOnline);
 
+    useEffect(() => {
+        const unsubscribe = router.on('navigate', (event) => {
+            const page = event.detail.page as Page<{
+                auth?: { user?: unknown };
+            }>;
+
+            setIsAuthenticated(Boolean(page.props?.auth?.user));
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            return;
+        }
+
+        setSyncStatus('idle');
+        setLastSyncTime(null);
+        setError(null);
+    }, [isAuthenticated]);
+
     const sync = useCallback(async () => {
+        if (!isAuthenticated) {
+            return;
+        }
+
         if (!isOnline) {
             setError('Cannot sync while offline');
             return;
@@ -84,17 +126,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
                 setSyncStatus('idle');
             }, 5000);
         }
-    }, [isOnline, syncStatus]);
+    }, [isAuthenticated, isOnline, syncStatus]);
 
     useEffect(() => {
-        if (isOnline && wasOffline) {
+        if (isAuthenticated && isOnline && wasOffline) {
             sync();
         }
         setWasOffline(!isOnline);
-    }, [isOnline, wasOffline, sync]);
+    }, [isAuthenticated, isOnline, wasOffline, sync]);
 
     useEffect(() => {
-        if (!isOnline) {
+        if (!isOnline || !isAuthenticated) {
             return;
         }
 
@@ -103,12 +145,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }, SYNC_INTERVAL);
 
         return () => clearInterval(interval);
-    }, [isOnline, sync]);
+    }, [isAuthenticated, isOnline, sync]);
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            return;
+        }
+
         sync();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [isAuthenticated]);
 
     return (
         <SyncContext.Provider
@@ -116,6 +162,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
                 syncStatus,
                 lastSyncTime,
                 isOnline,
+                isAuthenticated,
                 sync,
                 error,
             }}
