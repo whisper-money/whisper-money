@@ -15,6 +15,7 @@ import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { DataTable } from '@/components/ui/data-table';
 import HeadingSmall from '@/components/heading-small';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
@@ -452,6 +453,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         categories={categories}
                         accounts={accounts}
                         isKeySet={isKeySet}
+                        actions={<DataTableViewOptions table={table} />}
                     />
 
                     {isLoading ? (

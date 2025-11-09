@@ -1,5 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { ArrowDown, ArrowUpDown, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDown, MoreHorizontal } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,7 @@ export function createTransactionColumns({
     return [
         {
             accessorKey: 'transaction_date',
+            meta: { label: 'Date' },
             header: ({ column }) => {
                 return (
                     <Button
@@ -56,9 +57,11 @@ export function createTransactionColumns({
                     </div>
                 );
             },
+            enableHiding: true,
         },
         {
             accessorKey: 'category_id',
+            meta: { label: 'Category' },
             header: 'Category',
             cell: ({ row }) => {
                 return (
@@ -74,6 +77,7 @@ export function createTransactionColumns({
         },
         {
             accessorKey: 'decryptedDescription',
+            meta: { label: 'Description' },
             header: 'Description',
             cell: ({ row }) => {
                 const transaction = row.original;
@@ -90,6 +94,7 @@ export function createTransactionColumns({
         },
         {
             accessorKey: 'bank',
+            meta: { label: 'Bank' },
             header: 'Bank',
             cell: ({ row }) => {
                 const bank = row.original.bank;
@@ -109,15 +114,28 @@ export function createTransactionColumns({
         },
         {
             accessorKey: 'account',
+            meta: { label: 'Account' },
             header: 'Account',
             cell: ({ row }) => {
                 const account = row.original.account;
-                return <div>{account?.name || 'N/A'}</div>;
+                if (!account) {
+                    return <div>N/A</div>;
+                }
+
+                return (
+                    <EncryptedText
+                        encryptedText={account.name}
+                        iv={account.name_iv}
+                        length={{ min: 5, max: 10 }}
+                        className="max-w-[100px] truncate"
+                    />
+                );
             },
             enableHiding: true,
         },
         {
             accessorKey: 'amount',
+            meta: { label: 'Amount' },
             header: () => {
                 return (
                     <div className="w-full text-right">

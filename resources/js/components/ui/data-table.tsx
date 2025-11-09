@@ -44,6 +44,8 @@ export function DataTable<TData, TValue>({
         virtualRows.length > 0
             ? totalSize - virtualRows[virtualRows.length - 1].end
             : 0;
+    const visibleColumnCount =
+        table.getVisibleLeafColumns().length || columns.length || 1;
 
     return (
         <div className="overflow-hidden rounded-md border">
@@ -76,7 +78,7 @@ export function DataTable<TData, TValue>({
                                 {paddingTop > 0 && (
                                     <TableRow className="border-none hover:bg-transparent">
                                         <TableCell
-                                            colSpan={columns.length}
+                                            colSpan={visibleColumnCount}
                                             style={{ height: paddingTop }}
                                         />
                                     </TableRow>
@@ -110,7 +112,7 @@ export function DataTable<TData, TValue>({
                                 {paddingBottom > 0 && (
                                     <TableRow className="border-none hover:bg-transparent">
                                         <TableCell
-                                            colSpan={columns.length}
+                                            colSpan={visibleColumnCount}
                                             style={{ height: paddingBottom }}
                                         />
                                     </TableRow>
@@ -119,7 +121,7 @@ export function DataTable<TData, TValue>({
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={columns.length}
+                                    colSpan={visibleColumnCount}
                                     className="h-24 text-center"
                                 >
                                     {emptyMessage}
