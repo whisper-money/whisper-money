@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
+import { clearKey } from '@/lib/key-storage';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 import { Form, Head } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 interface LoginProps {
     status?: string;
@@ -22,6 +24,10 @@ export default function Login({
     canResetPassword,
     canRegister,
 }: LoginProps) {
+    useEffect(() => {
+        clearKey();
+    }, []);
+
     return (
         <AuthLayout
             title="Log in to your account"
@@ -32,6 +38,7 @@ export default function Login({
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
+                onSuccess={clearKey}
                 className="flex flex-col gap-6"
             >
                 {({ processing, errors }) => (
