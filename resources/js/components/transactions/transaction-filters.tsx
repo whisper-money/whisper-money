@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import * as Icons from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -22,6 +22,7 @@ interface TransactionFiltersProps {
     categories: Category[];
     accounts: Account[];
     isKeySet: boolean;
+    actions?: ReactNode;
 }
 
 export function TransactionFilters({
@@ -30,6 +31,7 @@ export function TransactionFilters({
     categories,
     accounts,
     isKeySet,
+    actions,
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
     const UncategorizedIcon = resolveIconComponent('CircleHelp');
@@ -284,6 +286,11 @@ export function TransactionFilters({
                         Clear
                     </Button>
                 )}
+                {actions ? (
+                    <div className="ml-auto flex items-center gap-2">
+                        {actions}
+                    </div>
+                ) : null}
             </div>
         </div>
     );
