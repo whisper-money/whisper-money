@@ -15,6 +15,7 @@ import { index as transactionsIndex } from '@/actions/App/Http/Controllers/Trans
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
+import { ImportTransactionsButton } from '@/components/transactions/import-transactions-button';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import {
@@ -940,7 +941,12 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         categories={categories}
                         accounts={accounts}
                         isKeySet={isKeySet}
-                        actions={<DataTableViewOptions table={table} />}
+                        actions={
+                            <>
+                                <ImportTransactionsButton />
+                                <DataTableViewOptions table={table} />
+                            </>
+                        }
                     />
 
                     {isLoading ? (
