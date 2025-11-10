@@ -27,6 +27,7 @@ import { accountSyncService } from '@/services/account-sync';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import AlertError from '@/components/alert-error';
+import { saveImportConfig, loadImportConfig } from '@/lib/import-config-storage';
 
 interface ImportTransactionsDrawerProps {
     open: boolean;
@@ -140,14 +141,34 @@ export function ImportTransactionsDrawer({
                 }
             }
 
+            let finalMapping = autoMapping;
+            let finalDateFormat = detectedFormat;
+
+            if (state.selectedAccountId) {
+                const savedConfig = loadImportConfig(state.selectedAccountId);
+
+                if (savedConfig) {
+                    const isValidMapping = (mapping: ColumnMapping): boolean => {
+                        const values = Object.values(mapping).filter(v => v !== null);
+                        return values.every(value => headers.includes(value as string));
+                    };
+
+                    if (isValidMapping(savedConfig.columnMapping)) {
+                        finalMapping = savedConfig.columnMapping;
+                        finalDateFormat = savedConfig.dateFormat;
+                        formatDetected = true;
+                    }
+                }
+            }
+
             setState((prev) => ({
                 ...prev,
                 file,
                 parsedData: data,
                 columnHeaders: headers,
                 columnOptions,
-                columnMapping: autoMapping,
-                dateFormat: detectedFormat,
+                columnMapping: finalMapping,
+                dateFormat: finalDateFormat,
                 dateFormatDetected: formatDetected,
             }));
         } catch (err) {
@@ -208,6 +229,13 @@ export function ImportTransactionsDrawer({
                     };
                 })
             );
+
+            if (state.selectedAccountId) {
+                saveImportConfig(state.selectedAccountId, {
+                    columnMapping: state.columnMapping,
+                    dateFormat: state.dateFormat,
+                });
+            }
 
             setState((prev) => ({
                 ...prev,
