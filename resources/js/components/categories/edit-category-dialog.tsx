@@ -1,5 +1,6 @@
-import { Form } from '@inertiajs/react';
-import * as Icons from 'lucide-react';
+import { update } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -7,7 +8,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -17,25 +17,27 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import {
-    CATEGORY_ICONS,
     CATEGORY_COLORS,
+    CATEGORY_ICONS,
     getCategoryColorClasses,
     type Category,
 } from '@/types/category';
-import { update } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { Form } from '@inertiajs/react';
+import * as Icons from 'lucide-react';
 
 interface EditCategoryDialogProps {
     category: Category;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
 }
 
 export function EditCategoryDialog({
     category,
     open,
     onOpenChange,
+    onSuccess,
 }: EditCategoryDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -48,7 +50,10 @@ export function EditCategoryDialog({
                 </DialogHeader>
                 <Form
                     {...update.form.patch(category.id)}
-                    onSuccess={() => onOpenChange(false)}
+                    onSuccess={() => {
+                        onOpenChange(false);
+                        onSuccess?.();
+                    }}
                     className="space-y-4"
                 >
                     {({ errors, processing }) => (
@@ -81,10 +86,9 @@ export function EditCategoryDialog({
                                     </SelectTrigger>
                                     <SelectContent>
                                         {CATEGORY_ICONS.map((iconName) => {
-                                            const IconComponent =
-                                                Icons[
-                                                    iconName as keyof typeof Icons
-                                                ] as Icons.LucideIcon;
+                                            const IconComponent = Icons[
+                                                iconName as keyof typeof Icons
+                                            ] as Icons.LucideIcon;
                                             return (
                                                 <SelectItem
                                                     key={iconName}
@@ -164,4 +168,3 @@ export function EditCategoryDialog({
         </Dialog>
     );
 }
-

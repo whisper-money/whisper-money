@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Form } from '@inertiajs/react';
-import * as Icons from 'lucide-react';
+import { store } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -9,7 +9,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -19,17 +18,20 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import {
-    CATEGORY_ICONS,
     CATEGORY_COLORS,
+    CATEGORY_ICONS,
     getCategoryColorClasses,
-    type CategoryIcon,
-    type CategoryColor,
 } from '@/types/category';
-import { store } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { Form } from '@inertiajs/react';
+import * as Icons from 'lucide-react';
+import { useState } from 'react';
 
-export function CreateCategoryDialog() {
+export function CreateCategoryDialog({
+    onSuccess,
+}: {
+    onSuccess?: () => void;
+}) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -46,7 +48,10 @@ export function CreateCategoryDialog() {
                 </DialogHeader>
                 <Form
                     {...store.form()}
-                    onSuccess={() => setOpen(false)}
+                    onSuccess={() => {
+                        setOpen(false);
+                        onSuccess?.();
+                    }}
                     className="space-y-4"
                 >
                     {({ errors, processing }) => (
@@ -74,10 +79,9 @@ export function CreateCategoryDialog() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {CATEGORY_ICONS.map((iconName) => {
-                                            const IconComponent =
-                                                Icons[
-                                                    iconName as keyof typeof Icons
-                                                ] as Icons.LucideIcon;
+                                            const IconComponent = Icons[
+                                                iconName as keyof typeof Icons
+                                            ] as Icons.LucideIcon;
                                             return (
                                                 <SelectItem
                                                     key={iconName}
@@ -153,4 +157,3 @@ export function CreateCategoryDialog() {
         </Dialog>
     );
 }
-

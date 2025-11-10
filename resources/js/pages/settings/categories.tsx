@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import {
     ColumnDef,
@@ -14,10 +13,22 @@ import {
 } from '@tanstack/react-table';
 import * as Icons from 'lucide-react';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-import AppLayout from '@/layouts/app-layout';
-import SettingsLayout from '@/layouts/settings/layout';
+import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { CreateCategoryDialog } from '@/components/categories/create-category-dialog';
+import { DeleteCategoryDialog } from '@/components/categories/delete-category-dialog';
+import { EditCategoryDialog } from '@/components/categories/edit-category-dialog';
+import HeadingSmall from '@/components/heading-small';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
     Table,
@@ -27,26 +38,12 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import HeadingSmall from '@/components/heading-small';
-import { CreateCategoryDialog } from '@/components/categories/create-category-dialog';
-import { EditCategoryDialog } from '@/components/categories/edit-category-dialog';
-import { DeleteCategoryDialog } from '@/components/categories/delete-category-dialog';
-import {
-    type Category,
-    getCategoryColorClasses,
-} from '@/types/category';
-import { type BreadcrumbItem } from '@/types';
-import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
-import { categorySyncService } from '@/services/category-sync';
 import { useSyncContext } from '@/contexts/sync-context';
+import AppLayout from '@/layouts/app-layout';
+import SettingsLayout from '@/layouts/settings/layout';
+import { categorySyncService } from '@/services/category-sync';
+import { type BreadcrumbItem } from '@/types';
+import { type Category, getCategoryColorClasses } from '@/types/category';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -55,7 +52,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function CategoryActions({ category }: { category: Category }) {
+function CategoryActions({
+    category,
+    onSuccess,
+}: {
+    category: Category;
+    onSuccess: () => void;
+}) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -75,7 +78,7 @@ function CategoryActions({ category }: { category: Category }) {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
-                        variant='destructive'
+                        variant="destructive"
                     >
                         Delete
                     </DropdownMenuItem>
@@ -86,11 +89,13 @@ function CategoryActions({ category }: { category: Category }) {
                 category={category}
                 open={editOpen}
                 onOpenChange={setEditOpen}
+                onSuccess={onSuccess}
             />
             <DeleteCategoryDialog
                 category={category}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
+                onSuccess={onSuccess}
             />
         </>
     );
@@ -105,22 +110,19 @@ export default function Categories() {
         {},
     );
 
-    useEffect(() => {
-        const loadCategories = async () => {
-            const data = await categorySyncService.getAll();
-            setCategories(data);
-        };
+    const loadCategories = async () => {
+        await categorySyncService.sync();
+        const data = await categorySyncService.getAll();
+        setCategories(data);
+    };
 
+    useEffect(() => {
         loadCategories();
     }, []);
 
     useEffect(() => {
         if (syncStatus === 'success') {
-            const reloadCategories = async () => {
-                const data = await categorySyncService.getAll();
-                setCategories(data);
-            };
-            reloadCategories();
+            loadCategories();
         }
     }, [syncStatus]);
 
@@ -142,15 +144,18 @@ export default function Categories() {
             },
             cell: ({ row }) => {
                 const iconName = row.original.icon;
-                const IconComponent =
-                    Icons[iconName as keyof typeof Icons] as Icons.LucideIcon;
+                const IconComponent = Icons[
+                    iconName as keyof typeof Icons
+                ] as Icons.LucideIcon;
 
                 return (
                     <div className="flex items-center gap-3 pl-3">
-                        <IconComponent className="opacity-80 h-4 w-4" />
-                        <div className="font-medium">{row.getValue('name')}</div>
+                        <IconComponent className="h-4 w-4 opacity-80" />
+                        <div className="font-medium">
+                            {row.getValue('name')}
+                        </div>
                     </div>
-                )
+                );
             },
         },
         {
@@ -160,7 +165,9 @@ export default function Categories() {
                 const color = row.getValue('color') as Category['color'];
                 const colorClasses = getCategoryColorClasses(color);
                 return (
-                    <Badge className={`${colorClasses.bg} ${colorClasses.text} tracking-widest text-[10px]`}>
+                    <Badge
+                        className={`${colorClasses.bg} ${colorClasses.text} text-[10px] tracking-widest`}
+                    >
                         {color.toLocaleUpperCase()}
                     </Badge>
                 );
@@ -169,7 +176,12 @@ export default function Categories() {
         {
             id: 'actions',
             enableHiding: false,
-            cell: ({ row }) => <CategoryActions category={row.original} />,
+            cell: ({ row }) => (
+                <CategoryActions
+                    category={row.original}
+                    onSuccess={loadCategories}
+                />
+            ),
         },
     ];
 
@@ -217,7 +229,7 @@ export default function Categories() {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateCategoryDialog />
+                            <CreateCategoryDialog onSuccess={loadCategories} />
                         </div>
 
                         <div className="overflow-hidden rounded-md border">
@@ -236,12 +248,12 @@ export default function Categories() {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                        header
-                                                                            .column
-                                                                            .columnDef
-                                                                            .header,
-                                                                        header.getContext(),
-                                                                    )}
+                                                                          header
+                                                                              .column
+                                                                              .columnDef
+                                                                              .header,
+                                                                          header.getContext(),
+                                                                      )}
                                                             </TableHead>
                                                         );
                                                     },
@@ -290,7 +302,7 @@ export default function Categories() {
                         </div>
 
                         <div className="flex items-center justify-end space-x-2">
-                            <div className="text-muted-foreground flex-1 text-sm">
+                            <div className="flex-1 text-sm text-muted-foreground">
                                 {table.getFilteredRowModel().rows.length}{' '}
                                 category(ies) total.
                             </div>
@@ -319,4 +331,3 @@ export default function Categories() {
         </AppLayout>
     );
 }
-
