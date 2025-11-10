@@ -193,9 +193,7 @@ export function TransactionFilters({
                                 <Label>Categories</Label>
                                 <div className="pt-2 flex flex-wrap gap-2">
                                     <Badge
-                                        variant={
-                                            isUncategorizedSelected ? 'default' : 'outline'
-                                        }
+                                        variant={isUncategorizedSelected ? 'default' : 'outline'}
                                         className={`flex cursor-pointer items-center gap-1 py-1.5 ${isUncategorizedSelected
                                             ? 'border-transparent bg-muted text-foreground dark:bg-muted/40'
                                             : ''
@@ -205,7 +203,15 @@ export function TransactionFilters({
                                         }
                                     >
                                         <UncategorizedIcon className="h-4 w-4 opacity-80" />
-                                        Uncategorized
+                                        <span
+                                            className={
+                                                isUncategorizedSelected
+                                                    ? ''
+                                                    : 'text-muted-foreground'
+                                            }
+                                        >
+                                            Uncategorized
+                                        </span>
                                     </Badge>
                                     {categories.map((category) => {
                                         const isSelected =
