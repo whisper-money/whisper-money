@@ -1,14 +1,6 @@
+import { CategorySelect } from '@/components/transactions/category-select';
+import { type Category } from '@/types/category';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import * as Icons from 'lucide-react';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { type Category, getCategoryColorClasses } from '@/types/category';
 
 interface BulkCategorySelectProps {
     categories: Category[];
@@ -30,31 +22,14 @@ export function BulkCategorySelect({
     }
 
     return (
-        <Select value={value} onValueChange={handleChange} disabled={disabled}>
-            <SelectTrigger className="h-9 w-[180px]">
-                <SelectValue placeholder="Change category" />
-            </SelectTrigger>
-            <SelectContent>
-                {categories.map((category) => {
-                    const IconComponent = Icons[
-                        category.icon as keyof typeof Icons
-                    ] as Icons.LucideIcon;
-                    const classes = getCategoryColorClasses(category.color);
-                    return (
-                        <SelectItem key={category.id} value={String(category.id)}>
-                            <Badge
-                                className={`flex items-center gap-2 py-0.5 ${classes.bg} ${classes.text}`}
-                            >
-                                <IconComponent
-                                    className={`opacity-80 h-2 w-2 ${classes.text}`}
-                                />
-                                <span>{category.name}</span>
-                            </Badge>
-                        </SelectItem>
-                    );
-                })}
-            </SelectContent>
-        </Select>
+        <CategorySelect
+            value={value}
+            onValueChange={handleChange}
+            categories={categories}
+            disabled={disabled}
+            placeholder="Change category"
+            triggerClassName="h-9 w-[180px]"
+            showUncategorized={true}
+        />
     );
 }
-

@@ -213,7 +213,7 @@ export function createTransactionColumns({
                             <DropdownMenuItem
                                 onClick={() => onReEvaluateRules(transaction)}
                             >
-                                Re-evaluate Rules
+                                Re-evaluate rules
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 variant="destructive"

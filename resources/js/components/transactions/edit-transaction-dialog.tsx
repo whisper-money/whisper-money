@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { CategorySelect } from '@/components/transactions/category-select';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -8,22 +8,15 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { type Category, getCategoryColorClasses } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
-import { transactionSyncService } from '@/services/transaction-sync';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import { transactionSyncService } from '@/services/transaction-sync';
+import { type Category } from '@/types/category';
+import { type DecryptedTransaction } from '@/types/transaction';
 import { format, parseISO } from 'date-fns';
+import { useEffect, useState } from 'react';
 
 interface EditTransactionDialogProps {
     transaction: DecryptedTransaction | null;
@@ -47,7 +40,9 @@ export function EditTransactionDialog({
     useEffect(() => {
         if (transaction) {
             setCategoryId(
-                transaction.category_id ? String(transaction.category_id) : 'null',
+                transaction.category_id
+                    ? String(transaction.category_id)
+                    : 'null',
             );
             setNotes(transaction.decryptedNotes || '');
         }
@@ -116,10 +111,6 @@ export function EditTransactionDialog({
         return null;
     }
 
-    const selectedCategory = categories.find(
-        (c) => c.id === parseInt(categoryId),
-    );
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[525px]">
@@ -133,16 +124,19 @@ export function EditTransactionDialog({
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label className="text-muted-foreground text-sm">
+                            <Label className="text-sm text-muted-foreground">
                                 Date
                             </Label>
                             <div className="text-sm">
-                                {format(parseISO(transaction.transaction_date), 'PPP')}
+                                {format(
+                                    parseISO(transaction.transaction_date),
+                                    'PPP',
+                                )}
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-muted-foreground text-sm">
+                            <Label className="text-sm text-muted-foreground">
                                 Description
                             </Label>
                             <div className="text-sm">
@@ -151,7 +145,7 @@ export function EditTransactionDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-muted-foreground text-sm">
+                            <Label className="text-sm text-muted-foreground">
                                 Amount
                             </Label>
                             <div className="text-sm font-medium">
@@ -164,43 +158,15 @@ export function EditTransactionDialog({
 
                         <div className="space-y-2">
                             <Label htmlFor="category">Category</Label>
-                            <Select
+                            <CategorySelect
                                 value={categoryId}
                                 onValueChange={setCategoryId}
-                            >
-                                <SelectTrigger id="category">
-                                    <SelectValue>
-                                        {selectedCategory ? (
-                                            <div className="flex items-center gap-2">
-                                                <span>{selectedCategory.icon}</span>
-                                                <span>{selectedCategory.name}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="text-zinc-500">
-                                                Uncategorized
-                                            </span>
-                                        )}
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="null">
-                                        <span className="text-zinc-500">
-                                            Uncategorized
-                                        </span>
-                                    </SelectItem>
-                                    {categories.map((category) => (
-                                        <SelectItem
-                                            key={category.id}
-                                            value={String(category.id)}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span>{category.icon}</span>
-                                                <span>{category.name}</span>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                categories={categories}
+                                disabled={isSubmitting}
+                                placeholder="Uncategorized"
+                                triggerClassName="w-full"
+                                showUncategorized={true}
+                            />
                         </div>
 
                         <div className="space-y-2">
@@ -233,4 +199,3 @@ export function EditTransactionDialog({
         </Dialog>
     );
 }
-
