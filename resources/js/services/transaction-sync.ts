@@ -102,6 +102,27 @@ class TransactionSyncService {
         await indexedDBService.addPendingChange('transactions', 'update', updated);
     }
 
+    async updateMany(ids: string[], data: Partial<Transaction>): Promise<void> {
+        const timestamp = new Date().toISOString();
+
+        for (const id of ids) {
+            const existing = await this.getById(id);
+            if (!existing) {
+                console.warn(`Transaction ${id} not found, skipping`);
+                continue;
+            }
+
+            const updated = {
+                ...existing,
+                ...data,
+                updated_at: timestamp,
+            };
+
+            await indexedDBService.put('transactions', updated);
+            await indexedDBService.addPendingChange('transactions', 'update', updated);
+        }
+    }
+
     async delete(id: string): Promise<void> {
         const transaction = await this.getById(id);
         if (!transaction) {
@@ -110,6 +131,19 @@ class TransactionSyncService {
 
         await indexedDBService.delete('transactions', id);
         await indexedDBService.addPendingChange('transactions', 'delete', transaction);
+    }
+
+    async deleteMany(ids: string[]): Promise<void> {
+        for (const id of ids) {
+            const transaction = await this.getById(id);
+            if (!transaction) {
+                console.warn(`Transaction ${id} not found, skipping`);
+                continue;
+            }
+
+            await indexedDBService.delete('transactions', id);
+            await indexedDBService.addPendingChange('transactions', 'delete', transaction);
+        }
     }
 
     async isDuplicate(
