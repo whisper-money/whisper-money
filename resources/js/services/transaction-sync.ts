@@ -1,7 +1,7 @@
-import { SyncManager } from '@/lib/sync-manager';
-import { indexedDBService } from '@/lib/indexeddb';
 import { encrypt, importKey } from '@/lib/crypto';
+import { indexedDBService } from '@/lib/indexeddb';
 import { getStoredKey } from '@/lib/key-storage';
+import { SyncManager } from '@/lib/sync-manager';
 import { uuidv7 } from 'uuidv7';
 
 export interface Transaction {
@@ -45,18 +45,28 @@ class TransactionSyncService {
     async getByAccountId(accountId: number): Promise<Transaction[]> {
         try {
             const allTransactions = await this.getAll();
-            return allTransactions.filter(t => t.account_id === accountId);
+            return allTransactions.filter((t) => t.account_id === accountId);
         } catch (error) {
             console.warn('Failed to get transactions from IndexedDB:', error);
             return [];
         }
     }
 
-    async create(data: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>): Promise<Transaction> {
-        return await this.syncManager.createLocal<Transaction>(data as Omit<Transaction, 'id' | 'created_at' | 'updated_at'> & { id?: number; created_at?: string; updated_at?: string });
+    async create(
+        data: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>,
+    ): Promise<Transaction> {
+        return await this.syncManager.createLocal<Transaction>(
+            data as Omit<Transaction, 'id' | 'created_at' | 'updated_at'> & {
+                id?: number;
+                created_at?: string;
+                updated_at?: string;
+            },
+        );
     }
 
-    async createMany(transactions: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>[]): Promise<Transaction[]> {
+    async createMany(
+        transactions: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>[],
+    ): Promise<Transaction[]> {
         try {
             const timestamp = new Date().toISOString();
             const created: Transaction[] = [];
@@ -82,7 +92,9 @@ class TransactionSyncService {
             return created;
         } catch (error) {
             console.error('Failed to create transactions in IndexedDB:', error);
-            throw new Error('Failed to save transactions locally. Please refresh the page and try again.');
+            throw new Error(
+                'Failed to save transactions locally. Please refresh the page and try again.',
+            );
         }
     }
 
@@ -99,7 +111,11 @@ class TransactionSyncService {
         };
 
         await indexedDBService.put('transactions', updated);
-        await indexedDBService.addPendingChange('transactions', 'update', updated);
+        await indexedDBService.addPendingChange(
+            'transactions',
+            'update',
+            updated,
+        );
     }
 
     async updateMany(ids: string[], data: Partial<Transaction>): Promise<void> {
@@ -119,7 +135,11 @@ class TransactionSyncService {
             };
 
             await indexedDBService.put('transactions', updated);
-            await indexedDBService.addPendingChange('transactions', 'update', updated);
+            await indexedDBService.addPendingChange(
+                'transactions',
+                'update',
+                updated,
+            );
         }
     }
 
@@ -130,7 +150,11 @@ class TransactionSyncService {
         }
 
         await indexedDBService.delete('transactions', id);
-        await indexedDBService.addPendingChange('transactions', 'delete', transaction);
+        await indexedDBService.addPendingChange(
+            'transactions',
+            'delete',
+            transaction,
+        );
     }
 
     async deleteMany(ids: string[]): Promise<void> {
@@ -142,7 +166,116 @@ class TransactionSyncService {
             }
 
             await indexedDBService.delete('transactions', id);
-            await indexedDBService.addPendingChange('transactions', 'delete', transaction);
+            await indexedDBService.addPendingChange(
+                'transactions',
+                'delete',
+                transaction,
+            );
+        }
+    }
+
+    async checkDuplicates(
+        accountId: number,
+        transactions: Array<{
+            transaction_date: string;
+            amount: number;
+            description: string;
+        }>,
+    ): Promise<boolean[]> {
+        try {
+            if (transactions.length === 0) {
+                return [];
+            }
+
+            const dates = transactions.map((t) => t.transaction_date);
+            const minDate = dates.reduce((a, b) => (a < b ? a : b));
+            const maxDate = dates.reduce((a, b) => (a > b ? a : b));
+
+            const allTransactions = await this.getByAccountId(accountId);
+            const transactionsInRange = allTransactions.filter(
+                (t) =>
+                    t.transaction_date >= minDate &&
+                    t.transaction_date <= maxDate,
+            );
+
+            console.log(
+                `Checking duplicates for ${transactions.length} transactions. Found ${transactionsInRange.length} existing transactions between ${minDate} and ${maxDate}`,
+            );
+
+            const keyString = getStoredKey();
+            if (!keyString) {
+                console.warn('No encryption key found for duplicate check');
+                return transactions.map(() => false);
+            }
+
+            const key = await importKey(keyString);
+            const { decrypt } = await import('@/lib/crypto');
+
+            const decryptedTransactions = await Promise.all(
+                transactionsInRange.map(async (t) => {
+                    try {
+                        const decryptedDescription = await decrypt(
+                            t.description,
+                            key,
+                            t.description_iv,
+                        );
+                        return {
+                            transaction_date: t.transaction_date,
+                            amount: parseFloat(t.amount),
+                            description: decryptedDescription
+                                .toLowerCase()
+                                .trim()
+                                .replace(/\s+/g, ' '),
+                        };
+                    } catch (error) {
+                        console.error(
+                            'Failed to decrypt transaction:',
+                            t.id,
+                            error,
+                        );
+                        return null;
+                    }
+                }),
+            );
+
+            const validDecryptedTransactions = decryptedTransactions.filter(
+                (t) => t !== null,
+            );
+
+            console.log(
+                `Successfully decrypted ${validDecryptedTransactions.length} transactions`,
+            );
+
+            const results = transactions.map((importingTx) => {
+                const normalizedDescription = importingTx.description
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, ' ');
+
+                const isDuplicate = validDecryptedTransactions.some(
+                    (existing) =>
+                        existing.transaction_date ===
+                            importingTx.transaction_date &&
+                        Math.abs(existing.amount - importingTx.amount) <
+                            0.001 &&
+                        existing.description === normalizedDescription,
+                );
+
+                return isDuplicate;
+            });
+
+            const duplicateCount = results.filter((r) => r).length;
+            console.log(
+                `Found ${duplicateCount} duplicates out of ${transactions.length} transactions`,
+            );
+
+            return results;
+        } catch (error) {
+            console.warn(
+                'Duplicate check failed, assuming no duplicates:',
+                error,
+            );
+            return transactions.map(() => false);
         }
     }
 
@@ -150,48 +283,17 @@ class TransactionSyncService {
         accountId: number,
         transactionDate: string,
         amount: number,
-        description: string
+        description: string,
     ): Promise<boolean> {
-        try {
-            const existingTransactions = await this.getByAccountId(accountId);
-            
-            const keyString = getStoredKey();
-            if (!keyString) {
-                return false;
-            }
-
-            const key = await importKey(keyString);
-
-            for (const existing of existingTransactions) {
-                if (
-                    existing.transaction_date === transactionDate &&
-                    parseFloat(existing.amount) === amount
-                ) {
-                    try {
-                        const { decrypt } = await import('@/lib/crypto');
-                        const decryptedExisting = await decrypt(
-                            existing.description,
-                            key,
-                            existing.description_iv
-                        );
-
-                        if (decryptedExisting.toLowerCase() === description.toLowerCase()) {
-                            return true;
-                        }
-                    } catch (error) {
-                        console.error('Failed to decrypt description for duplicate check:', error);
-                    }
-                }
-            }
-
-            return false;
-        } catch (error) {
-            console.warn('Duplicate check failed, assuming no duplicates:', error);
-            return false;
-        }
+        const results = await this.checkDuplicates(accountId, [
+            { transaction_date: transactionDate, amount, description },
+        ]);
+        return results[0] || false;
     }
 
-    async encryptDescription(description: string): Promise<{ encrypted: string; iv: string }> {
+    async encryptDescription(
+        description: string,
+    ): Promise<{ encrypted: string; iv: string }> {
         const keyString = getStoredKey();
         if (!keyString) {
             throw new Error('Encryption key not set');
@@ -211,4 +313,3 @@ class TransactionSyncService {
 }
 
 export const transactionSyncService = new TransactionSyncService();
-
