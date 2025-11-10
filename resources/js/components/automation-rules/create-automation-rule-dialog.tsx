@@ -202,7 +202,7 @@ export function CreateAutomationRuleDialog({
                             id="rules_json"
                             value={rulesJson}
                             onChange={(e) => setRulesJson(e.target.value)}
-                            placeholder='{"==": [{"var": "description"}, "GROCERY"]}'
+                            placeholder='{"in": ["grocery", {"var": "description"}]}'
                             rows={4}
                             className="font-mono text-sm"
                             required
@@ -230,18 +230,24 @@ export function CreateAutomationRuleDialog({
                             <div>
                                 <strong>Available fields:</strong>
                                 <ul className="ml-4 mt-1 list-disc">
-                                    <li>description (string)</li>
+                                    <li>description (string, case-insensitive)</li>
+                                    <li>notes (string or null, case-insensitive)</li>
                                     <li>amount (number)</li>
                                     <li>transaction_date (string)</li>
                                     <li>bank_name (string)</li>
                                     <li>account_name (string)</li>
                                     <li>category (string or null)</li>
                                 </ul>
+                                <p className="text-muted-foreground mt-2 text-xs">
+                                    Note: Use any case for description and notes - matching is automatic!
+                                </p>
                             </div>
                             <div>
                                 <strong>Example rules:</strong>
                                 <pre className="bg-muted mt-1 overflow-x-auto rounded p-2 text-xs">
-{`{"in": ["GROCERY", {"var": "description"}]}
+{`{"in": ["grocery", {"var": "description"}]}
+{"in": ["M3 SPORT", {"var": "description"}]}
+{"in": ["important", {"var": "notes"}]}
 {"and": [
   {">": [{"var": "amount"}, 100]},
   {"==": [{"var": "bank_name"}, "Chase"]}

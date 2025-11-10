@@ -19,6 +19,40 @@ export interface TransactionData {
     bank_name: string;
     account_name: string;
     category: string | null;
+    notes: string | null;
+}
+
+function normalizeRuleJson(rulesJson: unknown): unknown {
+    if (typeof rulesJson === 'string') {
+        return rulesJson.toLowerCase();
+    }
+
+    if (Array.isArray(rulesJson)) {
+        return rulesJson.map((item, index) => {
+            if (index === 0 && typeof item === 'string') {
+                return item.toLowerCase();
+            }
+            if (
+                typeof item === 'object' &&
+                item !== null &&
+                'var' in item &&
+                (item.var === 'description' || item.var === 'notes')
+            ) {
+                return item;
+            }
+            return normalizeRuleJson(item);
+        });
+    }
+
+    if (typeof rulesJson === 'object' && rulesJson !== null) {
+        const normalized: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(rulesJson)) {
+            normalized[key] = normalizeRuleJson(value);
+        }
+        return normalized;
+    }
+
+    return rulesJson;
 }
 
 export function prepareTransactionData(
@@ -36,12 +70,13 @@ export function prepareTransactionData(
         : null;
 
     return {
-        description: transaction.decryptedDescription || '',
+        description: (transaction.decryptedDescription || '').toLowerCase(),
         amount: parseFloat(transaction.amount),
         transaction_date: transaction.transaction_date,
         bank_name: bank?.name || '',
         account_name: account?.name || '',
         category: category?.name || null,
+        notes: transaction.decryptedNotes?.toLowerCase() || null,
     };
 }
 
@@ -71,7 +106,10 @@ export function evaluateRules(
             );
             consoleDebug('[Rule Engine] Rule JSON:', rule.rules_json);
 
-            const result = jsonLogic.apply(rule.rules_json, transactionData);
+            const normalizedRulesJson = normalizeRuleJson(rule.rules_json);
+            consoleDebug('[Rule Engine] Normalized Rule JSON:', normalizedRulesJson);
+
+            const result = jsonLogic.apply(normalizedRulesJson, transactionData);
 
             consoleDebug(`[Rule Engine] Rule #${rule.id} result:`, result);
 
