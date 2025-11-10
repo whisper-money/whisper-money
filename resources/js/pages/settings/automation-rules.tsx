@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import {
     ColumnDef,
@@ -13,10 +12,22 @@ import {
     VisibilityState,
 } from '@tanstack/react-table';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-import AppLayout from '@/layouts/app-layout';
-import SettingsLayout from '@/layouts/settings/layout';
+import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
+import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
+import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete-automation-rule-dialog';
+import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
+import HeadingSmall from '@/components/heading-small';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
     Table,
@@ -26,29 +37,14 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import HeadingSmall from '@/components/heading-small';
-import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
-import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
-import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete-automation-rule-dialog';
-import {
-    type AutomationRule,
-    formatRuleActions,
-    getRuleActions,
-} from '@/types/automation-rule';
-import { getCategoryColorClasses } from '@/types/category';
-import { type BreadcrumbItem } from '@/types';
-import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
-import { useSyncContext } from '@/contexts/sync-context';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useSyncContext } from '@/contexts/sync-context';
+import AppLayout from '@/layouts/app-layout';
+import SettingsLayout from '@/layouts/settings/layout';
+import { automationRuleSyncService } from '@/services/automation-rule-sync';
+import { type BreadcrumbItem } from '@/types';
+import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
+import { getCategoryColorClasses } from '@/types/category';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -57,7 +53,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
+function AutomationRuleActions({
+    rule,
+    onSuccess,
+}: {
+    rule: AutomationRule;
+    onSuccess: () => void;
+}) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -88,11 +90,13 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
                 rule={rule}
                 open={editOpen}
                 onOpenChange={setEditOpen}
+                onSuccess={onSuccess}
             />
             <DeleteAutomationRuleDialog
                 rule={rule}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
+                onSuccess={onSuccess}
             />
         </>
     );
@@ -108,22 +112,19 @@ export default function AutomationRules() {
         {},
     );
 
-    useEffect(() => {
-        const loadRules = async () => {
-            const data = await automationRuleSyncService.getAll();
-            setRules(data);
-        };
+    const loadRules = async () => {
+        await automationRuleSyncService.sync();
+        const data = await automationRuleSyncService.getAll();
+        setRules(data);
+    };
 
+    useEffect(() => {
         loadRules();
     }, []);
 
     useEffect(() => {
         if (syncStatus === 'success') {
-            const reloadRules = async () => {
-                const data = await automationRuleSyncService.getAll();
-                setRules(data);
-            };
-            reloadRules();
+            loadRules();
         }
     }, [syncStatus]);
 
@@ -171,7 +172,7 @@ export default function AutomationRules() {
                                     {actions.category?.name}
                                 </Badge>
                             )}
-                            <span className="text-muted-foreground text-sm">
+                            <span className="text-sm text-muted-foreground">
                                 and add note
                             </span>
                         </div>
@@ -192,7 +193,7 @@ export default function AutomationRules() {
                 }
 
                 return (
-                    <span className="text-muted-foreground text-sm">
+                    <span className="text-sm text-muted-foreground">
                         Add note
                     </span>
                 );
@@ -201,7 +202,12 @@ export default function AutomationRules() {
         {
             id: 'actions',
             enableHiding: false,
-            cell: ({ row }) => <AutomationRuleActions rule={row.original} />,
+            cell: ({ row }) => (
+                <AutomationRuleActions
+                    rule={row.original}
+                    onSuccess={loadRules}
+                />
+            ),
         },
     ];
 
@@ -249,7 +255,10 @@ export default function AutomationRules() {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateAutomationRuleDialog disabled={!isKeySet} />
+                            <CreateAutomationRuleDialog
+                                disabled={!isKeySet}
+                                onSuccess={loadRules}
+                            />
                         </div>
 
                         <div className="overflow-hidden rounded-md border">
@@ -322,9 +331,9 @@ export default function AutomationRules() {
                         </div>
 
                         <div className="flex items-center justify-end space-x-2">
-                            <div className="text-muted-foreground flex-1 text-sm">
-                                {table.getFilteredRowModel().rows.length} rule(s)
-                                total.
+                            <div className="flex-1 text-sm text-muted-foreground">
+                                {table.getFilteredRowModel().rows.length}{' '}
+                                rule(s) total.
                             </div>
                             <div className="space-x-2">
                                 <Button
@@ -351,4 +360,3 @@ export default function AutomationRules() {
         </AppLayout>
     );
 }
-

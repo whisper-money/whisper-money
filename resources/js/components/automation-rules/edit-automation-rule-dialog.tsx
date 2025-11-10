@@ -1,5 +1,10 @@
-import { useState, useEffect } from 'react';
-import { router } from '@inertiajs/react';
+import { update } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
+import { Button } from '@/components/ui/button';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     Dialog,
     DialogContent,
@@ -7,10 +12,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -18,29 +21,28 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { ChevronDown } from 'lucide-react';
-import { update } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
-import { categorySyncService } from '@/services/category-sync';
-import { encrypt, decrypt, importKey } from '@/lib/crypto';
+import { Textarea } from '@/components/ui/textarea';
+import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import type { Category } from '@/types/category';
+import { categorySyncService } from '@/services/category-sync';
 import type { AutomationRule } from '@/types/automation-rule';
+import type { Category } from '@/types/category';
+import { router } from '@inertiajs/react';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface EditAutomationRuleDialogProps {
     rule: AutomationRule;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
 }
 
 export function EditAutomationRuleDialog({
     rule,
     open,
     onOpenChange,
+    onSuccess,
 }: EditAutomationRuleDialogProps) {
     const [categories, setCategories] = useState<Category[]>([]);
     const [title, setTitle] = useState('');
@@ -65,7 +67,9 @@ export function EditAutomationRuleDialog({
             setTitle(rule.title);
             setPriority(String(rule.priority));
             setRulesJson(JSON.stringify(rule.rules_json, null, 2));
-            setCategoryId(rule.action_category_id ? String(rule.action_category_id) : '');
+            setCategoryId(
+                rule.action_category_id ? String(rule.action_category_id) : '',
+            );
 
             const decryptNote = async () => {
                 if (rule.action_note && rule.action_note_iv) {
@@ -95,7 +99,11 @@ export function EditAutomationRuleDialog({
     const validateJsonLogic = (json: string): boolean => {
         try {
             const parsed = JSON.parse(json);
-            if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            if (
+                typeof parsed !== 'object' ||
+                parsed === null ||
+                Array.isArray(parsed)
+            ) {
                 return false;
             }
             return Object.keys(parsed).length > 0;
@@ -114,7 +122,10 @@ export function EditAutomationRuleDialog({
         }
 
         if (!rulesJson.trim()) {
-            setErrors((prev) => ({ ...prev, rules_json: 'Rules JSON is required' }));
+            setErrors((prev) => ({
+                ...prev,
+                rules_json: 'Rules JSON is required',
+            }));
             return;
         }
 
@@ -157,7 +168,9 @@ export function EditAutomationRuleDialog({
                     title: title.trim(),
                     priority: parseInt(priority, 10),
                     rules_json: rulesJson.trim(),
-                    action_category_id: categoryId ? parseInt(categoryId, 10) : null,
+                    action_category_id: categoryId
+                        ? parseInt(categoryId, 10)
+                        : null,
                     action_note: encryptedNote,
                     action_note_iv: noteIv,
                 },
@@ -165,6 +178,7 @@ export function EditAutomationRuleDialog({
                     onSuccess: () => {
                         onOpenChange(false);
                         setErrors({});
+                        onSuccess?.();
                     },
                     onError: (errors) => {
                         setErrors(errors as Record<string, string>);
@@ -186,7 +200,8 @@ export function EditAutomationRuleDialog({
                 <DialogHeader>
                     <DialogTitle>Edit Automation Rule</DialogTitle>
                     <DialogDescription>
-                        Update the rule to automatically categorize transactions or add notes.
+                        Update the rule to automatically categorize transactions
+                        or add notes.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -200,7 +215,9 @@ export function EditAutomationRuleDialog({
                             required
                         />
                         {errors.title && (
-                            <p className="text-sm text-red-500">{errors.title}</p>
+                            <p className="text-sm text-red-500">
+                                {errors.title}
+                            </p>
                         )}
                     </div>
 
@@ -215,11 +232,13 @@ export function EditAutomationRuleDialog({
                             placeholder="0"
                             required
                         />
-                        <p className="text-muted-foreground text-xs">
+                        <p className="text-xs text-muted-foreground">
                             Lower numbers execute first
                         </p>
                         {errors.priority && (
-                            <p className="text-sm text-red-500">{errors.priority}</p>
+                            <p className="text-sm text-red-500">
+                                {errors.priority}
+                            </p>
                         )}
                     </div>
 
@@ -235,7 +254,9 @@ export function EditAutomationRuleDialog({
                             required
                         />
                         {errors.rules_json && (
-                            <p className="text-sm text-red-500">{errors.rules_json}</p>
+                            <p className="text-sm text-red-500">
+                                {errors.rules_json}
+                            </p>
                         )}
                     </div>
 
@@ -256,23 +277,28 @@ export function EditAutomationRuleDialog({
                         <CollapsibleContent className="space-y-2 rounded-md border p-3 text-sm">
                             <div>
                                 <strong>Available fields:</strong>
-                                <ul className="ml-4 mt-1 list-disc">
-                                    <li>description (string, case-insensitive)</li>
-                                    <li>notes (string or null, case-insensitive)</li>
+                                <ul className="mt-1 ml-4 list-disc">
+                                    <li>
+                                        description (string, case-insensitive)
+                                    </li>
+                                    <li>
+                                        notes (string or null, case-insensitive)
+                                    </li>
                                     <li>amount (number)</li>
                                     <li>transaction_date (string)</li>
                                     <li>bank_name (string)</li>
                                     <li>account_name (string)</li>
                                     <li>category (string or null)</li>
                                 </ul>
-                                <p className="text-muted-foreground mt-2 text-xs">
-                                    Note: Use any case for description and notes - matching is automatic!
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    Note: Use any case for description and notes
+                                    - matching is automatic!
                                 </p>
                             </div>
                             <div>
                                 <strong>Example rules:</strong>
-                                <pre className="bg-muted mt-1 overflow-x-auto rounded p-2 text-xs">
-{`{"in": ["grocery", {"var": "description"}]}
+                                <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 text-xs">
+                                    {`{"in": ["grocery", {"var": "description"}]}
 {"in": ["M3 SPORT", {"var": "description"}]}
 {"in": ["important", {"var": "notes"}]}
 {"and": [
@@ -287,13 +313,16 @@ export function EditAutomationRuleDialog({
 
                     <div className="space-y-4 rounded-md border p-4">
                         <h4 className="font-medium">Actions</h4>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                             At least one action is required
                         </p>
 
                         <div className="space-y-2">
                             <Label htmlFor="category">Set Category</Label>
-                            <Select value={categoryId} onValueChange={setCategoryId}>
+                            <Select
+                                value={categoryId}
+                                onValueChange={setCategoryId}
+                            >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a category (optional)" />
                                 </SelectTrigger>
@@ -346,4 +375,3 @@ export function EditAutomationRuleDialog({
         </Dialog>
     );
 }
-

@@ -1,7 +1,3 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { bankSyncService } from '@/services/bank-sync';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -16,7 +12,11 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { bankSyncService } from '@/services/bank-sync';
 import { type Bank } from '@/types/account';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface BankComboboxProps {
     value: number | null;
@@ -33,35 +33,40 @@ export function BankCombobox({
 }: BankComboboxProps) {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [banks, setBanks] = useState<Bank[]>(defaultBank ? [defaultBank] : []);
+    const [banks, setBanks] = useState<Bank[]>(
+        defaultBank ? [defaultBank] : [],
+    );
     const [isLoading, setIsLoading] = useState(false);
     const [selectedBank, setSelectedBank] = useState<Bank | null>(
         defaultBank || null,
     );
 
-    const searchBanks = useCallback(async (query: string) => {
-        if (query.length < 3) {
-            setBanks(defaultBank ? [defaultBank] : []);
-            return;
-        }
+    const searchBanks = useCallback(
+        async (query: string) => {
+            if (query.length < 3) {
+                setBanks(defaultBank ? [defaultBank] : []);
+                return;
+            }
 
-        if (bankCache.has(query)) {
-            setBanks(bankCache.get(query)!);
-            return;
-        }
+            if (bankCache.has(query)) {
+                setBanks(bankCache.get(query)!);
+                return;
+            }
 
-        setIsLoading(true);
-        try {
-            const results = await bankSyncService.search(query);
-            bankCache.set(query, results);
-            setBanks(results);
-        } catch (error) {
-            console.error('Failed to search banks:', error);
-            setBanks([]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [defaultBank]);
+            setIsLoading(true);
+            try {
+                const results = await bankSyncService.search(query);
+                bankCache.set(query, results);
+                setBanks(results);
+            } catch (error) {
+                console.error('Failed to search banks:', error);
+                setBanks([]);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [defaultBank],
+    );
 
     useEffect(() => {
         const debounceTimer = setTimeout(() => {
@@ -159,4 +164,3 @@ export function BankCombobox({
         </Popover>
     );
 }
-

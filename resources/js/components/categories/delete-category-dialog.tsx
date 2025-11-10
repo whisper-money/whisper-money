@@ -1,4 +1,5 @@
-import { Form } from '@inertiajs/react';
+import { destroy } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -7,20 +8,21 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { type Category } from '@/types/category';
-import { destroy } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { Form } from '@inertiajs/react';
 
 interface DeleteCategoryDialogProps {
     category: Category;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
 }
 
 export function DeleteCategoryDialog({
     category,
     open,
     onOpenChange,
+    onSuccess,
 }: DeleteCategoryDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -34,7 +36,10 @@ export function DeleteCategoryDialog({
                 </DialogHeader>
                 <Form
                     {...destroy.form.delete(category.id)}
-                    onSuccess={() => onOpenChange(false)}
+                    onSuccess={() => {
+                        onOpenChange(false);
+                        onSuccess?.();
+                    }}
                 >
                     {({ processing }) => (
                         <DialogFooter>
@@ -60,4 +65,3 @@ export function DeleteCategoryDialog({
         </Dialog>
     );
 }
-

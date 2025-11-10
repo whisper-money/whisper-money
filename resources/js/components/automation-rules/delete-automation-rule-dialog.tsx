@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -10,19 +9,22 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import type { AutomationRule } from '@/types/automation-rule';
+import { router } from '@inertiajs/react';
+import { useState } from 'react';
 
 interface DeleteAutomationRuleDialogProps {
     rule: AutomationRule;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
 }
 
 export function DeleteAutomationRuleDialog({
     rule,
     open,
     onOpenChange,
+    onSuccess,
 }: DeleteAutomationRuleDialogProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -31,6 +33,7 @@ export function DeleteAutomationRuleDialog({
         router.delete(destroy(rule.id).url, {
             onSuccess: () => {
                 onOpenChange(false);
+                onSuccess?.();
             },
             onFinish: () => {
                 setIsDeleting(false);
@@ -44,12 +47,14 @@ export function DeleteAutomationRuleDialog({
                 <AlertDialogHeader>
                     <AlertDialogTitle>Delete Automation Rule</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Are you sure you want to delete "{rule.title}"? This action cannot
-                        be undone.
+                        Are you sure you want to delete "{rule.title}"? This
+                        action cannot be undone.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={isDeleting}>
+                        Cancel
+                    </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleDelete}
                         disabled={isDeleting}
@@ -62,4 +67,3 @@ export function DeleteAutomationRuleDialog({
         </AlertDialog>
     );
 }
-

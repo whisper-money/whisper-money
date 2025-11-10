@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import {
     ColumnDef,
@@ -13,10 +12,23 @@ import {
     VisibilityState,
 } from '@tanstack/react-table';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-import AppLayout from '@/layouts/app-layout';
-import SettingsLayout from '@/layouts/settings/layout';
+import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
+import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
+import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
+import { EncryptedText } from '@/components/encrypted-text';
+import HeadingSmall from '@/components/heading-small';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
     Table,
@@ -26,27 +38,12 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import HeadingSmall from '@/components/heading-small';
-import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
-import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
-import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
-import { EncryptedText } from '@/components/encrypted-text';
-import {
-    type Account,
-    formatAccountType,
-} from '@/types/account';
-import { type BreadcrumbItem } from '@/types';
-import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
-import { accountSyncService } from '@/services/account-sync';
 import { useSyncContext } from '@/contexts/sync-context';
+import AppLayout from '@/layouts/app-layout';
+import SettingsLayout from '@/layouts/settings/layout';
+import { accountSyncService } from '@/services/account-sync';
+import { type BreadcrumbItem } from '@/types';
+import { type Account, formatAccountType } from '@/types/account';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -55,7 +52,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function AccountActions({ account }: { account: Account }) {
+function AccountActions({
+    account,
+    onSuccess,
+}: {
+    account: Account;
+    onSuccess: () => void;
+}) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -86,11 +89,13 @@ function AccountActions({ account }: { account: Account }) {
                 account={account}
                 open={editOpen}
                 onOpenChange={setEditOpen}
+                onSuccess={onSuccess}
             />
             <DeleteAccountDialog
                 account={account}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
+                onSuccess={onSuccess}
             />
         </>
     );
@@ -105,22 +110,19 @@ export default function Accounts() {
         {},
     );
 
-    useEffect(() => {
-        const loadAccounts = async () => {
-            const data = await accountSyncService.getAll();
-            setAccounts(data);
-        };
+    const loadAccounts = async () => {
+        await accountSyncService.sync();
+        const data = await accountSyncService.getAll();
+        setAccounts(data);
+    };
 
+    useEffect(() => {
         loadAccounts();
     }, []);
 
     useEffect(() => {
         if (syncStatus === 'success') {
-            const reloadAccounts = async () => {
-                const data = await accountSyncService.getAll();
-                setAccounts(data);
-            };
-            reloadAccounts();
+            loadAccounts();
         }
     }, [syncStatus]);
 
@@ -198,7 +200,12 @@ export default function Accounts() {
         {
             id: 'actions',
             enableHiding: false,
-            cell: ({ row }) => <AccountActions account={row.original} />,
+            cell: ({ row }) => (
+                <AccountActions
+                    account={row.original}
+                    onSuccess={loadAccounts}
+                />
+            ),
         },
     ];
 
@@ -246,30 +253,37 @@ export default function Accounts() {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateAccountDialog />
+                            <CreateAccountDialog onSuccess={loadAccounts} />
                         </div>
 
                         <div className="rounded-md border">
                             <Table>
                                 <TableHeader>
-                                    {table.getHeaderGroups().map((headerGroup) => (
-                                        <TableRow key={headerGroup.id}>
-                                            {headerGroup.headers.map((header) => {
-                                                return (
-                                                    <TableHead key={header.id}>
-                                                        {header.isPlaceholder
-                                                            ? null
-                                                            : flexRender(
-                                                                header.column
-                                                                    .columnDef
-                                                                    .header,
-                                                                header.getContext(),
-                                                            )}
-                                                    </TableHead>
-                                                );
-                                            })}
-                                        </TableRow>
-                                    ))}
+                                    {table
+                                        .getHeaderGroups()
+                                        .map((headerGroup) => (
+                                            <TableRow key={headerGroup.id}>
+                                                {headerGroup.headers.map(
+                                                    (header) => {
+                                                        return (
+                                                            <TableHead
+                                                                key={header.id}
+                                                            >
+                                                                {header.isPlaceholder
+                                                                    ? null
+                                                                    : flexRender(
+                                                                          header
+                                                                              .column
+                                                                              .columnDef
+                                                                              .header,
+                                                                          header.getContext(),
+                                                                      )}
+                                                            </TableHead>
+                                                        );
+                                                    },
+                                                )}
+                                            </TableRow>
+                                        ))}
                                 </TableHeader>
                                 <TableBody>
                                     {table.getRowModel().rows?.length ? (
@@ -277,17 +291,24 @@ export default function Accounts() {
                                             <TableRow
                                                 key={row.id}
                                                 data-state={
-                                                    row.getIsSelected() && 'selected'
+                                                    row.getIsSelected() &&
+                                                    'selected'
                                                 }
                                             >
-                                                {row.getVisibleCells().map((cell) => (
-                                                    <TableCell key={cell.id}>
-                                                        {flexRender(
-                                                            cell.column.columnDef.cell,
-                                                            cell.getContext(),
-                                                        )}
-                                                    </TableCell>
-                                                ))}
+                                                {row
+                                                    .getVisibleCells()
+                                                    .map((cell) => (
+                                                        <TableCell
+                                                            key={cell.id}
+                                                        >
+                                                            {flexRender(
+                                                                cell.column
+                                                                    .columnDef
+                                                                    .cell,
+                                                                cell.getContext(),
+                                                            )}
+                                                        </TableCell>
+                                                    ))}
                                             </TableRow>
                                         ))
                                     ) : (
@@ -309,4 +330,3 @@ export default function Accounts() {
         </AppLayout>
     );
 }
-

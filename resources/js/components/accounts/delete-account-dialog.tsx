@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Form } from '@inertiajs/react';
+import { destroy } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -8,22 +8,24 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type Account } from '@/types/account';
-import { destroy } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { Form } from '@inertiajs/react';
+import { useState } from 'react';
 
 interface DeleteAccountDialogProps {
     account: Account;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
 }
 
 export function DeleteAccountDialog({
     account,
     open,
     onOpenChange,
+    onSuccess,
 }: DeleteAccountDialogProps) {
     const [confirmText, setConfirmText] = useState('');
 
@@ -67,7 +69,10 @@ export function DeleteAccountDialog({
 
                     <Form
                         {...destroy.form.delete(account.id)}
-                        onSuccess={() => handleOpenChange(false)}
+                        onSuccess={() => {
+                            handleOpenChange(false);
+                            onSuccess?.();
+                        }}
                     >
                         {({ processing }) => (
                             <DialogFooter>
@@ -94,4 +99,3 @@ export function DeleteAccountDialog({
         </Dialog>
     );
 }
-

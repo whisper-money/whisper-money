@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { router } from '@inertiajs/react';
+import { update } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -7,7 +7,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -17,27 +16,30 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { decrypt, encrypt, importKey } from '@/lib/crypto';
+import { getStoredKey } from '@/lib/key-storage';
 import {
     ACCOUNT_TYPES,
     CURRENCY_OPTIONS,
     formatAccountType,
     type Account,
 } from '@/types/account';
-import { update } from '@/actions/App/Http/Controllers/Settings/AccountController';
-import { getStoredKey } from '@/lib/key-storage';
-import { importKey, encrypt, decrypt } from '@/lib/crypto';
+import { router } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import { BankCombobox } from './bank-combobox';
 
 interface EditAccountDialogProps {
     account: Account;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onSuccess?: () => void;
 }
 
 export function EditAccountDialog({
     account,
     open,
     onOpenChange,
+    onSuccess,
 }: EditAccountDialogProps) {
     const [decryptedName, setDecryptedName] = useState('');
     const [selectedBankId, setSelectedBankId] = useState<number | null>(
@@ -57,11 +59,7 @@ export function EditAccountDialog({
 
             try {
                 const key = await importKey(keyString);
-                const name = await decrypt(
-                    account.name,
-                    key,
-                    account.name_iv,
-                );
+                const name = await decrypt(account.name, key, account.name_iv);
                 setDecryptedName(name);
             } catch (err) {
                 console.error('Failed to decrypt account name:', err);
@@ -104,20 +102,25 @@ export function EditAccountDialog({
             const key = await importKey(keyString);
             const { encrypted, iv } = await encrypt(displayName, key);
 
-            router.patch(update.url(account.id), {
-                name: encrypted,
-                name_iv: iv,
-                bank_id: bankId,
-                type: type,
-                currency_code: currencyCode,
-            }, {
-                onSuccess: () => {
-                    onOpenChange(false);
+            router.patch(
+                update.url(account.id),
+                {
+                    name: encrypted,
+                    name_iv: iv,
+                    bank_id: bankId,
+                    type: type,
+                    currency_code: currencyCode,
                 },
-                onFinish: () => {
-                    setIsSubmitting(false);
+                {
+                    onSuccess: () => {
+                        onOpenChange(false);
+                        onSuccess?.();
+                    },
+                    onFinish: () => {
+                        setIsSubmitting(false);
+                    },
                 },
-            });
+            );
         } catch (err) {
             console.error('Encryption failed:', err);
             alert('Failed to encrypt account name. Please try again.');
@@ -134,10 +137,7 @@ export function EditAccountDialog({
                         Update the account information.
                     </DialogDescription>
                 </DialogHeader>
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-4"
-                >
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <>
                         <div className="space-y-2">
                             <Label htmlFor="display_name">Name</Label>
@@ -227,4 +227,3 @@ export function EditAccountDialog({
         </Dialog>
     );
 }
-

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { router } from '@inertiajs/react';
+import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -8,7 +8,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -24,17 +23,18 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { encrypt, importKey } from '@/lib/crypto';
+import { getStoredKey } from '@/lib/key-storage';
 import {
     ACCOUNT_TYPES,
     CURRENCY_OPTIONS,
     formatAccountType,
 } from '@/types/account';
-import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
-import { getStoredKey } from '@/lib/key-storage';
-import { importKey, encrypt } from '@/lib/crypto';
+import { router } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import { BankCombobox } from './bank-combobox';
 
-export function CreateAccountDialog() {
+export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
     const [open, setOpen] = useState(false);
     const [isKeyAvailable, setIsKeyAvailable] = useState(false);
     const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
@@ -73,20 +73,25 @@ export function CreateAccountDialog() {
             const key = await importKey(keyString);
             const { encrypted, iv } = await encrypt(displayName, key);
 
-            router.post(store.url(), {
-                name: encrypted,
-                name_iv: iv,
-                bank_id: bankId,
-                type: type,
-                currency_code: currencyCode,
-            }, {
-                onSuccess: () => {
-                    setOpen(false);
+            router.post(
+                store.url(),
+                {
+                    name: encrypted,
+                    name_iv: iv,
+                    bank_id: bankId,
+                    type: type,
+                    currency_code: currencyCode,
                 },
-                onFinish: () => {
-                    setIsSubmitting(false);
+                {
+                    onSuccess: () => {
+                        setOpen(false);
+                        onSuccess?.();
+                    },
+                    onFinish: () => {
+                        setIsSubmitting(false);
+                    },
                 },
-            });
+            );
         } catch (err) {
             console.error('Encryption failed:', err);
             alert('Failed to encrypt account name. Please try again.');
@@ -126,12 +131,8 @@ export function CreateAccountDialog() {
                         Add a new bank account to track your transactions.
                     </DialogDescription>
                 </DialogHeader>
-                <form
-                    onSubmit={handleSubmit}
-                    className="space-y-4"
-                >
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <>
-
                         <div className="space-y-2">
                             <Label htmlFor="display_name">Name</Label>
                             <Input
@@ -210,4 +211,3 @@ export function CreateAccountDialog() {
         </Dialog>
     );
 }
-
