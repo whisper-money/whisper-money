@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
+import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -67,6 +68,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
         account: false,
     });
+    const [rowSelection, setRowSelection] = useState({});
     const [filters, setFilters] = useState<Filters>({
         dateFrom: null,
         dateTo: null,
@@ -81,6 +83,8 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [isBulkUpdating, setIsBulkUpdating] = useState(false);
     const [displayedCount, setDisplayedCount] = useState(25);
     const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -376,10 +380,13 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
+        onRowSelectionChange: setRowSelection,
+        enableRowSelection: true,
         state: {
             sorting,
             columnFilters,
             columnVisibility,
+            rowSelection,
         },
     });
 
@@ -434,6 +441,85 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         } finally {
             setIsDeleting(false);
         }
+    }
+
+    async function handleBulkCategoryChange(categoryId: number | null) {
+        const selectedIds = Object.keys(rowSelection);
+        if (selectedIds.length === 0) {
+            return;
+        }
+
+        setIsBulkUpdating(true);
+        try {
+            await transactionSyncService.updateMany(selectedIds, {
+                category_id: categoryId,
+            });
+
+            const categoriesMap = new Map(
+                categories.map((category) => [category.id, category]),
+            );
+            const selectedCategory = categoryId
+                ? categoriesMap.get(categoryId) || null
+                : null;
+
+            setTransactions((previous) =>
+                previous.map((transaction) => {
+                    if (selectedIds.includes(transaction.id)) {
+                        return {
+                            ...transaction,
+                            category_id: categoryId,
+                            category: selectedCategory,
+                        };
+                    }
+                    return transaction;
+                }),
+            );
+
+            setRowSelection({});
+        } catch (error) {
+            console.error('Failed to update transactions:', error);
+        } finally {
+            setIsBulkUpdating(false);
+        }
+    }
+
+    function handleBulkDeleteClick() {
+        const selectedIds = Object.keys(rowSelection);
+        if (selectedIds.length === 0) {
+            return;
+        }
+
+        const firstSelectedTransaction = transactions.find(
+            (t) => t.id === selectedIds[0],
+        );
+        if (firstSelectedTransaction) {
+            setDeleteTransaction(firstSelectedTransaction);
+        }
+    }
+
+    async function handleBulkDelete() {
+        const selectedIds = Object.keys(rowSelection);
+        if (selectedIds.length === 0) {
+            return;
+        }
+
+        setIsBulkDeleting(true);
+        try {
+            await transactionSyncService.deleteMany(selectedIds);
+            setTransactions((previous) =>
+                previous.filter((transaction) => !selectedIds.includes(transaction.id)),
+            );
+            setDeleteTransaction(null);
+            setRowSelection({});
+        } catch (error) {
+            console.error('Failed to delete transactions:', error);
+        } finally {
+            setIsBulkDeleting(false);
+        }
+    }
+
+    function handleClearSelection() {
+        setRowSelection({});
     }
 
     return (
@@ -523,26 +609,42 @@ export default function Transactions({ categories, accounts, banks }: Props) {
             >
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+                        <AlertDialogTitle>
+                            Delete Transaction{Object.keys(rowSelection).length > 1 ? 's' : ''}
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete this transaction?
-                            This action cannot be undone.
+                            {Object.keys(rowSelection).length > 1
+                                ? `Are you sure you want to delete ${Object.keys(rowSelection).length} transactions? This action cannot be undone.`
+                                : 'Are you sure you want to delete this transaction? This action cannot be undone.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting}>
+                        <AlertDialogCancel disabled={isDeleting || isBulkDeleting}>
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={handleDelete}
-                            disabled={isDeleting}
+                            onClick={
+                                Object.keys(rowSelection).length > 1
+                                    ? handleBulkDelete
+                                    : handleDelete
+                            }
+                            disabled={isDeleting || isBulkDeleting}
                             className="bg-red-600 hover:bg-red-700"
                         >
-                            {isDeleting ? 'Deleting...' : 'Delete'}
+                            {isDeleting || isBulkDeleting ? 'Deleting...' : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <BulkActionsBar
+                selectedCount={Object.keys(rowSelection).length}
+                categories={categories}
+                onCategoryChange={handleBulkCategoryChange}
+                onDelete={handleBulkDeleteClick}
+                onClear={handleClearSelection}
+                isUpdating={isBulkUpdating}
+            />
         </AppSidebarLayout>
     );
 }

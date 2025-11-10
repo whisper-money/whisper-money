@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BulkUpdateTransactionsRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Account;
 use App\Models\Bank;
@@ -66,6 +67,50 @@ class TransactionController extends Controller
 
         return response()->json([
             'message' => 'Transaction deleted successfully',
+        ]);
+    }
+
+    public function bulkUpdate(BulkUpdateTransactionsRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $transactionIds = $request->input('transaction_ids');
+
+        $transactions = Transaction::query()
+            ->whereIn('id', $transactionIds)
+            ->where('user_id', $user->id)
+            ->get();
+
+        if ($transactions->count() !== count($transactionIds)) {
+            return response()->json([
+                'message' => 'Some transactions were not found or do not belong to you.',
+            ], 403);
+        }
+
+        $updateData = [];
+        if ($request->has('category_id')) {
+            $updateData['category_id'] = $request->input('category_id');
+        }
+        if ($request->has('notes')) {
+            $updateData['notes'] = $request->input('notes');
+        }
+        if ($request->has('notes_iv')) {
+            $updateData['notes_iv'] = $request->input('notes_iv');
+        }
+
+        if (empty($updateData)) {
+            return response()->json([
+                'message' => 'No update data provided.',
+            ], 400);
+        }
+
+        Transaction::query()
+            ->whereIn('id', $transactionIds)
+            ->where('user_id', $user->id)
+            ->update($updateData);
+
+        return response()->json([
+            'message' => 'Transactions updated successfully',
+            'count' => count($transactionIds),
         ]);
     }
 }
