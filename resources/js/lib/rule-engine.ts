@@ -1,0 +1,124 @@
+import { consoleDebug } from '@/lib/debug';
+import type { Account, Bank } from '@/types/account';
+import type { AutomationRule } from '@/types/automation-rule';
+import type { Category } from '@/types/category';
+import type { DecryptedTransaction } from '@/types/transaction';
+import jsonLogic from 'json-logic-js';
+
+export interface RuleEvaluationResult {
+    rule: AutomationRule;
+    categoryId: number | null;
+    note: string | null;
+    noteIv: string | null;
+}
+
+export interface TransactionData {
+    description: string;
+    amount: number;
+    transaction_date: string;
+    bank_name: string;
+    account_name: string;
+    category: string | null;
+}
+
+export function prepareTransactionData(
+    transaction: DecryptedTransaction,
+    accounts: Account[],
+    banks: Bank[],
+    categories: Category[],
+): TransactionData {
+    const account = accounts.find((a) => a.id === transaction.account_id);
+    const bank = account?.bank?.id
+        ? banks.find((b) => b.id === account.bank.id)
+        : undefined;
+    const category = transaction.category_id
+        ? categories.find((c) => c.id === transaction.category_id)
+        : null;
+
+    return {
+        description: transaction.decryptedDescription || '',
+        amount: parseFloat(transaction.amount),
+        transaction_date: transaction.transaction_date,
+        bank_name: bank?.name || '',
+        account_name: account?.name || '',
+        category: category?.name || null,
+    };
+}
+
+export function evaluateRules(
+    transaction: DecryptedTransaction,
+    rules: AutomationRule[],
+    categories: Category[],
+    accounts: Account[],
+    banks: Bank[],
+): RuleEvaluationResult | null {
+    const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
+
+    const transactionData = prepareTransactionData(
+        transaction,
+        accounts,
+        banks,
+        categories,
+    );
+
+    consoleDebug('[Rule Engine] Transaction data prepared:', transactionData);
+    consoleDebug(`[Rule Engine] Evaluating ${sortedRules.length} rules`);
+
+    for (const rule of sortedRules) {
+        try {
+            consoleDebug(
+                `[Rule Engine] Evaluating rule #${rule.id}: "${rule.title}"`,
+            );
+            consoleDebug('[Rule Engine] Rule JSON:', rule.rules_json);
+
+            const result = jsonLogic.apply(rule.rules_json, transactionData);
+
+            consoleDebug(`[Rule Engine] Rule #${rule.id} result:`, result);
+
+            if (result === true) {
+                consoleDebug(`[Rule Engine] ✓ Rule #${rule.id} matched!`);
+                return {
+                    rule,
+                    categoryId: rule.action_category_id,
+                    note: rule.action_note,
+                    noteIv: rule.action_note_iv,
+                };
+            }
+        } catch (error) {
+            consoleDebug(
+                `[Rule Engine] ❌ Error evaluating rule ${rule.id}:`,
+                error,
+            );
+            console.error(`Error evaluating rule ${rule.id}:`, error);
+        }
+    }
+
+    consoleDebug('[Rule Engine] No rules matched');
+    return null;
+}
+
+export function evaluateRulesForTransactions(
+    transactions: DecryptedTransaction[],
+    rules: AutomationRule[],
+    categories: Category[],
+    accounts: Account[],
+    banks: Bank[],
+): Map<string, RuleEvaluationResult> {
+    const results = new Map<string, RuleEvaluationResult>();
+
+    for (const transaction of transactions) {
+        const result = evaluateRules(
+            transaction,
+            rules,
+            categories,
+            accounts,
+            banks,
+        );
+
+        if (result) {
+            results.set(transaction.id, result);
+        }
+    }
+
+    return results;
+}

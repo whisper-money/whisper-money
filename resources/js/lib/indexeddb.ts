@@ -1,5 +1,5 @@
 const DB_NAME = 'whisper_money';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 // Force database recreation if needed
 export async function resetDatabase(): Promise<void> {
@@ -30,7 +30,7 @@ export interface IndexedDBRecord {
     [key: string]: any;
 }
 
-export type StoreName = 'categories' | 'accounts' | 'banks' | 'transactions';
+export type StoreName = 'categories' | 'accounts' | 'banks' | 'automation_rules' | 'transactions';
 
 class IndexedDBService {
     private db: IDBDatabase | null = null;
@@ -97,6 +97,21 @@ class IndexedDBService {
                         unique: false,
                     });
                     bankStore.createIndex('updated_at', 'updated_at', {
+                        unique: false,
+                    });
+                }
+
+                if (!db.objectStoreNames.contains('automation_rules')) {
+                    const automationRuleStore = db.createObjectStore('automation_rules', {
+                        keyPath: 'id',
+                    });
+                    automationRuleStore.createIndex('user_id', 'user_id', {
+                        unique: false,
+                    });
+                    automationRuleStore.createIndex('priority', 'priority', {
+                        unique: false,
+                    });
+                    automationRuleStore.createIndex('updated_at', 'updated_at', {
                         unique: false,
                     });
                 }

@@ -27,6 +27,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('api/sync/categories', [CategorySyncController::class, 'index']);
     Route::get('api/sync/accounts', [AccountSyncController::class, 'index']);
     Route::get('api/sync/banks', [BankSyncController::class, 'index']);
+    Route::get('api/sync/automation-rules', [\App\Http\Controllers\Sync\AutomationRuleSyncController::class, 'index']);
     Route::get('api/sync/transactions', [\App\Http\Controllers\Sync\TransactionSyncController::class, 'index']);
     Route::post('api/sync/transactions', [\App\Http\Controllers\Sync\TransactionSyncController::class, 'store']);
     Route::patch('api/sync/transactions/{transaction}', [\App\Http\Controllers\Sync\TransactionSyncController::class, 'update']);

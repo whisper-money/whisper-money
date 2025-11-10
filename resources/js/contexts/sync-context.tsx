@@ -13,6 +13,8 @@ import { categorySyncService } from '@/services/category-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { bankSyncService } from '@/services/bank-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { automationRuleSyncService } from '@/services/automation-rule-sync';
+import { checkDatabaseVersion } from '@/lib/db-migration-helper';
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
@@ -89,11 +91,12 @@ export function SyncProvider({
         setError(null);
 
         try {
-            const [categoriesResult, accountsResult, banksResult, transactionsResult] =
+            const [categoriesResult, accountsResult, banksResult, automationRulesResult, transactionsResult] =
                 await Promise.all([
                     categorySyncService.sync(),
                     accountSyncService.sync(),
                     bankSyncService.sync(),
+                    automationRuleSyncService.sync(),
                     transactionSyncService.sync(),
                 ]);
 
@@ -101,6 +104,7 @@ export function SyncProvider({
                 ...categoriesResult.errors,
                 ...accountsResult.errors,
                 ...banksResult.errors,
+                ...automationRulesResult.errors,
                 ...transactionsResult.errors,
             ];
 
@@ -151,6 +155,16 @@ export function SyncProvider({
         if (!isAuthenticated) {
             return;
         }
+
+        checkDatabaseVersion().then(({ needsRefresh, missingStores }) => {
+            if (needsRefresh) {
+                console.warn(
+                    'Database needs update. Missing stores:',
+                    missingStores,
+                    '\nPlease refresh the page with Ctrl+Shift+R (or Cmd+Shift+R on Mac)',
+                );
+            }
+        });
 
         sync();
         // eslint-disable-next-line react-hooks/exhaustive-deps

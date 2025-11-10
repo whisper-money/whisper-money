@@ -1,4 +1,3 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Head } from '@inertiajs/react';
 import {
     ColumnFiltersState,
@@ -9,18 +8,15 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { parseISO, isWithinInterval } from 'date-fns';
+import { isWithinInterval, parseISO } from 'date-fns';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import { DataTable } from '@/components/ui/data-table';
+import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import HeadingSmall from '@/components/heading-small';
-import { DataTablePagination } from '@/components/ui/data-table-pagination';
-import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
-import { Skeleton } from '@/components/ui/skeleton';
-import { TransactionFilters } from '@/components/transactions/transaction-filters';
+import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
-import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
+import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -31,18 +27,25 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { type Category } from '@/types/category';
+import { DataTable } from '@/components/ui/data-table';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import { decrypt, encrypt, importKey } from '@/lib/crypto';
+import { consoleDebug } from '@/lib/debug';
+import { getStoredKey } from '@/lib/key-storage';
+import { evaluateRules } from '@/lib/rule-engine';
+import { automationRuleSyncService } from '@/services/automation-rule-sync';
+import { transactionSyncService } from '@/services/transaction-sync';
+import { type BreadcrumbItem } from '@/types';
 import { type Account, type Bank } from '@/types/account';
+import { type Category } from '@/types/category';
 import {
     type DecryptedTransaction,
     type TransactionFilters as Filters,
 } from '@/types/transaction';
-import { type BreadcrumbItem } from '@/types';
-import { transactionSyncService } from '@/services/transaction-sync';
-import { decrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -57,17 +60,36 @@ interface Props {
     banks: Bank[];
 }
 
+const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
+
+function getInitialColumnVisibility(): VisibilityState {
+    try {
+        const stored = localStorage.getItem(COLUMN_VISIBILITY_KEY);
+        if (stored) {
+            return JSON.parse(stored);
+        }
+    } catch (error) {
+        console.error(
+            'Failed to load column visibility from localStorage:',
+            error,
+        );
+    }
+    return { account: false };
+}
+
 export default function Transactions({ categories, accounts, banks }: Props) {
     const { isKeySet } = useEncryptionKey();
-    const [transactions, setTransactions] = useState<DecryptedTransaction[]>([]);
+    const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
+        [],
+    );
     const [isLoading, setIsLoading] = useState(true);
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'transaction_date', desc: true },
     ]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-        account: false,
-    });
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+        getInitialColumnVisibility(),
+    );
     const [rowSelection, setRowSelection] = useState({});
     const [filters, setFilters] = useState<Filters>({
         dateFrom: null,
@@ -85,6 +107,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+    const [isReEvaluating, setIsReEvaluating] = useState(false);
     const [displayedCount, setDisplayedCount] = useState(25);
     const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -109,7 +132,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                 : updatedTransaction.bank,
                         category:
                             updatedTransaction.category === undefined
-                                ? transaction.category ?? null
+                                ? (transaction.category ?? null)
                                 : updatedTransaction.category,
                     };
                 }),
@@ -198,12 +221,89 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 }),
             );
 
-            setTransactions(
-                decrypted.filter(
-                    (transaction): transaction is DecryptedTransaction =>
-                        transaction !== null,
-                ),
+            const validTransactions = decrypted.filter(
+                (transaction): transaction is DecryptedTransaction =>
+                    transaction !== null,
             );
+
+            const rules = await automationRuleSyncService.getAll();
+
+            if (rules.length > 0 && key) {
+                const transactionsToUpdate: Array<{
+                    id: string;
+                    category_id: number | null;
+                    notes: string | null;
+                    notes_iv: string | null;
+                }> = [];
+
+                for (const transaction of validTransactions) {
+                    if (!transaction.category_id) {
+                        const result = evaluateRules(
+                            transaction,
+                            rules,
+                            categories,
+                            accounts,
+                            banks,
+                        );
+
+                        if (result) {
+                            let finalNotes = transaction.notes;
+                            let finalNotesIv = transaction.notes_iv;
+
+                            if (result.note && result.noteIv) {
+                                if (transaction.decryptedNotes) {
+                                    const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
+                                    const encrypted = await encrypt(
+                                        combinedNote,
+                                        key,
+                                    );
+                                    finalNotes = encrypted.encrypted;
+                                    finalNotesIv = encrypted.iv;
+                                } else {
+                                    finalNotes = result.note;
+                                    finalNotesIv = result.noteIv;
+                                }
+                            }
+
+                            transactionsToUpdate.push({
+                                id: transaction.id,
+                                category_id: result.categoryId,
+                                notes: finalNotes,
+                                notes_iv: finalNotesIv,
+                            });
+
+                            transaction.category_id = result.categoryId;
+                            if (result.categoryId) {
+                                transaction.category =
+                                    categories.find(
+                                        (c) => c.id === result.categoryId,
+                                    ) || null;
+                            }
+                            if (finalNotes && finalNotesIv) {
+                                transaction.notes = finalNotes;
+                                transaction.notes_iv = finalNotesIv;
+                                transaction.decryptedNotes = await decrypt(
+                                    finalNotes,
+                                    key,
+                                    finalNotesIv,
+                                );
+                            }
+                        }
+                    }
+                }
+
+                if (transactionsToUpdate.length > 0) {
+                    for (const update of transactionsToUpdate) {
+                        await transactionSyncService.update(update.id, {
+                            category_id: update.category_id,
+                            notes: update.notes,
+                            notes_iv: update.notes_iv,
+                        });
+                    }
+                }
+            }
+
+            setTransactions(validTransactions);
         } catch (error) {
             console.error('Failed to load transactions:', error);
         } finally {
@@ -214,6 +314,20 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     useEffect(() => {
         loadTransactions();
     }, [loadTransactions]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                COLUMN_VISIBILITY_KEY,
+                JSON.stringify(columnVisibility),
+            );
+        } catch (error) {
+            console.error(
+                'Failed to save column visibility to localStorage:',
+                error,
+            );
+        }
+    }, [columnVisibility]);
 
     useEffect(() => {
         async function reDecryptTransactions() {
@@ -335,10 +449,9 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
             if (filters.searchText && isKeySet) {
                 const searchLower = filters.searchText.toLowerCase();
-                const matchesDescription =
-                    transaction.decryptedDescription
-                        .toLowerCase()
-                        .includes(searchLower);
+                const matchesDescription = transaction.decryptedDescription
+                    .toLowerCase()
+                    .includes(searchLower);
                 const matchesNotes =
                     transaction.decryptedNotes
                         ?.toLowerCase()
@@ -357,6 +470,289 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         return filteredTransactions.slice(0, displayedCount);
     }, [filteredTransactions, displayedCount]);
 
+    async function handleReEvaluateRules(transaction: DecryptedTransaction) {
+        consoleDebug('=== Re-evaluating rules for single transaction ===');
+        consoleDebug('Transaction:', {
+            id: transaction.id,
+            description: transaction.decryptedDescription,
+            amount: transaction.amount,
+            currentCategory: transaction.category?.name || 'None',
+        });
+
+        setIsReEvaluating(true);
+        try {
+            const keyString = getStoredKey();
+            if (!keyString || !isKeySet) {
+                consoleDebug('❌ Encryption key not set');
+                console.error('Encryption key not set');
+                return;
+            }
+            consoleDebug('✓ Encryption key found');
+
+            const key = await importKey(keyString);
+            const rules = await automationRuleSyncService.getAll();
+            consoleDebug(`Found ${rules.length} automation rules`);
+
+            if (rules.length === 0) {
+                consoleDebug('❌ No rules to evaluate');
+                return;
+            }
+
+            consoleDebug('Evaluating rules against transaction...');
+            const result = evaluateRules(
+                transaction,
+                rules,
+                categories,
+                accounts,
+                banks,
+            );
+
+            consoleDebug('Rule evaluation result:', result);
+
+            if (result) {
+                consoleDebug('✓ Rule matched! Applying changes...');
+                let finalNotes = transaction.notes;
+                let finalNotesIv = transaction.notes_iv;
+
+                if (result.note && result.noteIv) {
+                    consoleDebug('Adding note from rule');
+                    if (transaction.decryptedNotes) {
+                        const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
+                        const encrypted = await encrypt(combinedNote, key);
+                        finalNotes = encrypted.encrypted;
+                        finalNotesIv = encrypted.iv;
+                        consoleDebug('Combined existing notes with rule note');
+                    } else {
+                        finalNotes = result.note;
+                        finalNotesIv = result.noteIv;
+                        consoleDebug('Set rule note as new note');
+                    }
+                }
+
+                const updateData = {
+                    category_id: result.categoryId,
+                    notes: finalNotes,
+                    notes_iv: finalNotesIv,
+                };
+                consoleDebug('Updating transaction with:', updateData);
+
+                await transactionSyncService.update(transaction.id, updateData);
+                consoleDebug('✓ Transaction updated in IndexedDB');
+
+                const selectedCategory = result.categoryId
+                    ? categories.find((c) => c.id === result.categoryId) || null
+                    : null;
+
+                let decryptedNotes = transaction.decryptedNotes;
+                if (finalNotes && finalNotesIv) {
+                    decryptedNotes = await decrypt(
+                        finalNotes,
+                        key,
+                        finalNotesIv,
+                    );
+                }
+
+                const updatedTransaction = {
+                    ...transaction,
+                    category_id: result.categoryId,
+                    category: selectedCategory,
+                    notes: finalNotes,
+                    notes_iv: finalNotesIv,
+                    decryptedNotes,
+                };
+                consoleDebug('Updating UI state with:', {
+                    id: updatedTransaction.id,
+                    newCategory: selectedCategory?.name || 'None',
+                    hasNotes: !!decryptedNotes,
+                });
+
+                updateTransaction(updatedTransaction);
+                consoleDebug('✓ UI state updated successfully');
+            } else {
+                consoleDebug('❌ No rules matched this transaction');
+            }
+        } catch (error) {
+            consoleDebug('❌ Error during re-evaluation:', error);
+            console.error('Failed to re-evaluate rules:', error);
+        } finally {
+            setIsReEvaluating(false);
+            consoleDebug('=== Re-evaluation complete ===');
+        }
+    }
+
+    async function handleBulkReEvaluateRules() {
+        const selectedIds = Object.keys(rowSelection);
+        consoleDebug('=== Re-evaluating rules for bulk transactions ===');
+        consoleDebug(`Selected ${selectedIds.length} transactions`);
+
+        if (selectedIds.length === 0) {
+            consoleDebug('❌ No transactions selected');
+            return;
+        }
+
+        setIsReEvaluating(true);
+        try {
+            const keyString = getStoredKey();
+            if (!keyString || !isKeySet) {
+                consoleDebug('❌ Encryption key not set');
+                console.error('Encryption key not set');
+                return;
+            }
+            consoleDebug('✓ Encryption key found');
+
+            const key = await importKey(keyString);
+            const rules = await automationRuleSyncService.getAll();
+            consoleDebug(`Found ${rules.length} automation rules`);
+
+            if (rules.length === 0) {
+                consoleDebug('❌ No rules to evaluate');
+                return;
+            }
+
+            const selectedTransactions = transactions.filter((t) =>
+                selectedIds.includes(t.id),
+            );
+            consoleDebug(
+                'Processing transactions:',
+                selectedTransactions.map((t) => ({
+                    id: t.id,
+                    description: t.decryptedDescription,
+                    currentCategory: t.category?.name || 'None',
+                })),
+            );
+
+            const updates: Array<{
+                transaction: DecryptedTransaction;
+                categoryId: number | null;
+                category: Category | null;
+                notes: string | null;
+                notesIv: string | null;
+                decryptedNotes: string | null;
+            }> = [];
+
+            for (const transaction of selectedTransactions) {
+                consoleDebug(`\nEvaluating transaction ${transaction.id}...`);
+                const result = evaluateRules(
+                    transaction,
+                    rules,
+                    categories,
+                    accounts,
+                    banks,
+                );
+
+                consoleDebug('Rule evaluation result:', result);
+
+                if (result) {
+                    consoleDebug('✓ Rule matched! Applying changes...');
+                    let finalNotes = transaction.notes;
+                    let finalNotesIv = transaction.notes_iv;
+
+                    if (result.note && result.noteIv) {
+                        consoleDebug('Adding note from rule');
+                        if (transaction.decryptedNotes) {
+                            const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
+                            const encrypted = await encrypt(combinedNote, key);
+                            finalNotes = encrypted.encrypted;
+                            finalNotesIv = encrypted.iv;
+                            consoleDebug(
+                                'Combined existing notes with rule note',
+                            );
+                        } else {
+                            finalNotes = result.note;
+                            finalNotesIv = result.noteIv;
+                            consoleDebug('Set rule note as new note');
+                        }
+                    }
+
+                    const updateData = {
+                        category_id: result.categoryId,
+                        notes: finalNotes,
+                        notes_iv: finalNotesIv,
+                    };
+                    consoleDebug('Updating transaction with:', updateData);
+
+                    await transactionSyncService.update(
+                        transaction.id,
+                        updateData,
+                    );
+                    consoleDebug('✓ Transaction updated in IndexedDB');
+
+                    const selectedCategory = result.categoryId
+                        ? categories.find((c) => c.id === result.categoryId) ||
+                          null
+                        : null;
+
+                    let decryptedNotes = transaction.decryptedNotes;
+                    if (finalNotes && finalNotesIv) {
+                        decryptedNotes = await decrypt(
+                            finalNotes,
+                            key,
+                            finalNotesIv,
+                        );
+                    }
+
+                    updates.push({
+                        transaction,
+                        categoryId: result.categoryId,
+                        category: selectedCategory,
+                        notes: finalNotes,
+                        notesIv: finalNotesIv,
+                        decryptedNotes,
+                    });
+                    consoleDebug(
+                        `✓ Queued update for transaction ${transaction.id}`,
+                    );
+                } else {
+                    consoleDebug(
+                        `❌ No rules matched transaction ${transaction.id}`,
+                    );
+                }
+            }
+
+            consoleDebug(`\nApplying ${updates.length} updates to UI state...`);
+            if (updates.length > 0) {
+                setTransactions((previous) =>
+                    previous.map((transaction) => {
+                        const update = updates.find(
+                            (u) => u.transaction.id === transaction.id,
+                        );
+                        if (update) {
+                            consoleDebug(
+                                `Updating UI for transaction ${transaction.id}:`,
+                                {
+                                    newCategory:
+                                        update.category?.name || 'None',
+                                    hasNotes: !!update.decryptedNotes,
+                                },
+                            );
+                            return {
+                                ...transaction,
+                                category_id: update.categoryId,
+                                category: update.category,
+                                notes: update.notes,
+                                notes_iv: update.notesIv,
+                                decryptedNotes: update.decryptedNotes,
+                            };
+                        }
+                        return transaction;
+                    }),
+                );
+                consoleDebug('✓ UI state updated successfully');
+            } else {
+                consoleDebug('❌ No updates to apply');
+            }
+
+            consoleDebug('Clearing selection...');
+            setRowSelection({});
+        } catch (error) {
+            consoleDebug('❌ Error during bulk re-evaluation:', error);
+            console.error('Failed to re-evaluate rules:', error);
+        } finally {
+            setIsReEvaluating(false);
+            consoleDebug('=== Bulk re-evaluation complete ===');
+        }
+    }
+
     const columns = useMemo(
         () =>
             createTransactionColumns({
@@ -366,6 +762,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 onEdit: setEditTransaction,
                 onDelete: setDeleteTransaction,
                 onUpdate: updateTransaction,
+                onReEvaluateRules: handleReEvaluateRules,
             }),
         [accounts, banks, categories, updateTransaction],
     );
@@ -392,7 +789,9 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
     const loadMore = useCallback(() => {
         if (displayedCount < filteredTransactions.length) {
-            setDisplayedCount((prev) => Math.min(prev + 25, filteredTransactions.length));
+            setDisplayedCount((prev) =>
+                Math.min(prev + 25, filteredTransactions.length),
+            );
         }
     }, [displayedCount, filteredTransactions.length]);
 
@@ -403,7 +802,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                     loadMore();
                 }
             },
-            { threshold: 0.1 }
+            { threshold: 0.1 },
         );
 
         const currentTarget = observerTarget.current;
@@ -507,7 +906,9 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         try {
             await transactionSyncService.deleteMany(selectedIds);
             setTransactions((previous) =>
-                previous.filter((transaction) => !selectedIds.includes(transaction.id)),
+                previous.filter(
+                    (transaction) => !selectedIds.includes(transaction.id),
+                ),
             );
             setDeleteTransaction(null);
             setRowSelection({});
@@ -554,19 +955,21 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                     <Skeleton className="h-5 w-16 justify-self-end" />
                                 </div>
                                 <div className="divide-y">
-                                    {Array.from({ length: 6 }).map((_, index) => (
-                                        <div
-                                            key={index}
-                                            className="grid grid-cols-6 gap-4 p-4"
-                                        >
-                                            <Skeleton className="h-4 w-32" />
-                                            <Skeleton className="h-4 w-36" />
-                                            <Skeleton className="h-4 w-full" />
-                                            <Skeleton className="h-4 w-32" />
-                                            <Skeleton className="h-4 w-40" />
-                                            <Skeleton className="h-4 w-20 justify-self-end" />
-                                        </div>
-                                    ))}
+                                    {Array.from({ length: 6 }).map(
+                                        (_, index) => (
+                                            <div
+                                                key={index}
+                                                className="grid grid-cols-6 gap-4 p-4"
+                                            >
+                                                <Skeleton className="h-4 w-32" />
+                                                <Skeleton className="h-4 w-36" />
+                                                <Skeleton className="h-4 w-full" />
+                                                <Skeleton className="h-4 w-32" />
+                                                <Skeleton className="h-4 w-40" />
+                                                <Skeleton className="h-4 w-20 justify-self-end" />
+                                            </div>
+                                        ),
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center justify-between">
@@ -610,7 +1013,8 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Delete Transaction{Object.keys(rowSelection).length > 1 ? 's' : ''}
+                            Delete Transaction
+                            {Object.keys(rowSelection).length > 1 ? 's' : ''}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             {Object.keys(rowSelection).length > 1
@@ -619,7 +1023,9 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting || isBulkDeleting}>
+                        <AlertDialogCancel
+                            disabled={isDeleting || isBulkDeleting}
+                        >
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
@@ -631,7 +1037,9 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                             disabled={isDeleting || isBulkDeleting}
                             className="bg-red-600 hover:bg-red-700"
                         >
-                            {isDeleting || isBulkDeleting ? 'Deleting...' : 'Delete'}
+                            {isDeleting || isBulkDeleting
+                                ? 'Deleting...'
+                                : 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -642,10 +1050,10 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 categories={categories}
                 onCategoryChange={handleBulkCategoryChange}
                 onDelete={handleBulkDeleteClick}
+                onReEvaluateRules={handleBulkReEvaluateRules}
                 onClear={handleClearSelection}
-                isUpdating={isBulkUpdating}
+                isUpdating={isBulkUpdating || isReEvaluating}
             />
         </AppSidebarLayout>
     );
 }
-
