@@ -5,6 +5,7 @@ import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { edit as editAccount } from '@/routes/account';
 import { edit as editDeleteAccount } from '@/routes/delete-account';
 import { type NavItem } from '@/types';
@@ -20,6 +21,11 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Bank accounts',
         href: accountsIndex(),
+        icon: null,
+    },
+    {
+        title: 'Automation rules',
+        href: automationRulesIndex(),
         icon: null,
     },
     {

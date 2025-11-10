@@ -1,7 +1,9 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { ArrowDown, MoreHorizontal } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
+import { EncryptedText } from '@/components/encrypted-text';
+import { CategoryCell } from '@/components/transactions/category-cell';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -11,11 +13,9 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CategoryCell } from '@/components/transactions/category-cell';
-import { EncryptedText } from '@/components/encrypted-text';
-import { type DecryptedTransaction } from '@/types/transaction';
-import { type Category } from '@/types/category';
 import { type Account, type Bank } from '@/types/account';
+import { type Category } from '@/types/category';
+import { type DecryptedTransaction } from '@/types/transaction';
 
 interface CreateColumnsOptions {
     categories: Category[];
@@ -24,6 +24,7 @@ interface CreateColumnsOptions {
     onEdit: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
     onUpdate: (transaction: DecryptedTransaction) => void;
+    onReEvaluateRules: (transaction: DecryptedTransaction) => void;
 }
 
 export function createTransactionColumns({
@@ -33,6 +34,7 @@ export function createTransactionColumns({
     onEdit,
     onDelete,
     onUpdate,
+    onReEvaluateRules,
 }: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
     return [
         {
@@ -43,7 +45,9 @@ export function createTransactionColumns({
                         table.getIsAllPageRowsSelected() ||
                         (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
-                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    onCheckedChange={(value) =>
+                        table.toggleAllPageRowsSelected(!!value)
+                    }
                     aria-label="Select all"
                 />
             ),
@@ -75,8 +79,11 @@ export function createTransactionColumns({
             },
             cell: ({ row }) => {
                 return (
-                    <div className="font-medium pl-3">
-                        {format(parseISO(row.getValue('transaction_date')), 'PP')}
+                    <div className="pl-3 font-medium">
+                        {format(
+                            parseISO(row.getValue('transaction_date')),
+                            'PP',
+                        )}
                     </div>
                 );
             },
@@ -105,7 +112,7 @@ export function createTransactionColumns({
             cell: ({ row }) => {
                 const transaction = row.original;
                 return (
-                    <div className="max-w-[150px] md:max-w-[250px]  lg:max-w-[500px] truncate">
+                    <div className="max-w-[150px] truncate md:max-w-[250px] lg:max-w-[500px]">
                         <EncryptedText
                             encryptedText={transaction.description}
                             iv={transaction.description_iv}
@@ -160,11 +167,7 @@ export function createTransactionColumns({
             accessorKey: 'amount',
             meta: { label: 'Amount' },
             header: () => {
-                return (
-                    <div className="w-full text-right">
-                        Amount
-                    </div>
-                );
+                return <div className="w-full text-right">Amount</div>;
             },
             cell: ({ row }) => {
                 const amount = parseFloat(row.getValue('amount'));
@@ -176,10 +179,12 @@ export function createTransactionColumns({
                 }).format(amount);
 
                 return (
-                    <div
-                        className={`text-right`}
-                    >
-                        <span className={`${amount < 0 ? '' : 'bg-green-100/70 dark:bg-green-900'}`}>{formatted}</span>
+                    <div className={`text-right`}>
+                        <span
+                            className={`${amount < 0 ? '' : 'bg-green-100/70 dark:bg-green-900'}`}
+                        >
+                            {formatted}
+                        </span>
                     </div>
                 );
             },
@@ -200,11 +205,18 @@ export function createTransactionColumns({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => onEdit(transaction)}>
+                            <DropdownMenuItem
+                                onClick={() => onEdit(transaction)}
+                            >
                                 Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                                variant='destructive'
+                                onClick={() => onReEvaluateRules(transaction)}
+                            >
+                                Re-evaluate Rules
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                variant="destructive"
                                 onClick={() => onDelete(transaction)}
                             >
                                 Delete
@@ -216,4 +228,3 @@ export function createTransactionColumns({
         },
     ];
 }
-
