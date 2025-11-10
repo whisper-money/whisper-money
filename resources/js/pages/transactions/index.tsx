@@ -986,7 +986,6 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                             />
 
                             <DataTablePagination
-                                table={table}
                                 displayedCount={displayedCount}
                                 total={filteredTransactions.length}
                                 rowCountLabel="transactions total"

@@ -1,26 +1,22 @@
-import { Table as TableType } from '@tanstack/react-table';
-
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
-interface DataTablePaginationProps<TData> {
-    table: TableType<TData>;
+interface DataTablePaginationProps {
     rowCountLabel?: string;
     displayedCount?: number;
     total?: number;
 }
 
-export function DataTablePagination<TData>({
-    table,
+export function DataTablePagination({
     displayedCount = undefined,
     total = undefined,
     rowCountLabel = 'row(s) total',
-}: DataTablePaginationProps<TData>) {
+}: DataTablePaginationProps) {
     return (
         <div className="flex px-5 items-center justify-end space-x-2">
             {displayedCount && total && (
                 <div className="text-muted-foreground flex-1 text-sm">
-                    {displayedCount} of {total} {rowCountLabel}
+                    {Math.min(total, displayedCount)} of {total} {rowCountLabel}
                 </div>
             )}
             {displayedCount && total === undefined && (
