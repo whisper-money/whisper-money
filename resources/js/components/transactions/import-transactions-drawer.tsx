@@ -1,33 +1,36 @@
-import { useState, useEffect } from 'react';
+import AlertError from '@/components/alert-error';
 import {
     Drawer,
     DrawerContent,
+    DrawerDescription,
     DrawerHeader,
     DrawerTitle,
-    DrawerDescription,
 } from '@/components/ui/drawer';
-import { ImportStepAccount } from './import-step-account';
-import { ImportStepUpload } from './import-step-upload';
-import { ImportStepMapping } from './import-step-mapping';
-import { ImportStepPreview } from './import-step-preview';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useSyncContext } from '@/contexts/sync-context';
 import {
-    ImportStep,
-    DateFormat,
-    type ImportState,
-    type ColumnMapping,
-} from '@/types/import';
-import { type Account } from '@/types/account';
-import {
-    parseFile,
     autoDetectColumns,
     convertRowsToTransactions,
+    parseFile,
 } from '@/lib/file-parser';
-import { transactionSyncService } from '@/services/transaction-sync';
+import {
+    loadImportConfig,
+    saveImportConfig,
+} from '@/lib/import-config-storage';
 import { accountSyncService } from '@/services/account-sync';
-import { useSyncContext } from '@/contexts/sync-context';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import AlertError from '@/components/alert-error';
-import { saveImportConfig, loadImportConfig } from '@/lib/import-config-storage';
+import { transactionSyncService } from '@/services/transaction-sync';
+import { type Account } from '@/types/account';
+import {
+    DateFormat,
+    ImportStep,
+    type ColumnMapping,
+    type ImportState,
+} from '@/types/import';
+import { useEffect, useState } from 'react';
+import { ImportStepAccount } from './import-step-account';
+import { ImportStepMapping } from './import-step-mapping';
+import { ImportStepPreview } from './import-step-preview';
+import { ImportStepUpload } from './import-step-upload';
 
 interface ImportTransactionsDrawerProps {
     open: boolean;
@@ -42,7 +45,9 @@ export function ImportTransactionsDrawer({
     const { isKeySet } = useEncryptionKey();
     const [isImporting, setIsImporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+    const [selectedAccount, setSelectedAccount] = useState<Account | null>(
+        null,
+    );
     const [state, setState] = useState<ImportState>({
         step: ImportStep.SelectAccount,
         selectedAccountId: null,
@@ -62,11 +67,13 @@ export function ImportTransactionsDrawer({
 
     useEffect(() => {
         if (state.selectedAccountId) {
-            accountSyncService.getById(state.selectedAccountId).then((account) => {
-                if (account) {
-                    setSelectedAccount(account);
-                }
-            });
+            accountSyncService
+                .getById(state.selectedAccountId)
+                .then((account) => {
+                    if (account) {
+                        setSelectedAccount(account);
+                    }
+                });
         }
     }, [state.selectedAccountId]);
 
@@ -111,16 +118,25 @@ export function ImportTransactionsDrawer({
         }
 
         try {
-            const { headers, data, columns, headerRowIndex } = await parseFile(file);
+            const { headers, data, columns, headerRowIndex } =
+                await parseFile(file);
             const autoMapping = autoDetectColumns(headers);
 
             const columnOptions = headers.map((header, index) => {
                 const columnData = columns[index] || [];
                 const middleIndex = Math.floor(columnData.length / 2);
                 const examples = columnData
-                    .slice(Math.max(headerRowIndex + 1, middleIndex), Math.max(headerRowIndex + 1, middleIndex) + 3)
-                    .filter(cell => cell !== null && cell !== undefined && String(cell).trim() !== '')
-                    .map(cell => String(cell))
+                    .slice(
+                        Math.max(headerRowIndex + 1, middleIndex),
+                        Math.max(headerRowIndex + 1, middleIndex) + 3,
+                    )
+                    .filter(
+                        (cell) =>
+                            cell !== null &&
+                            cell !== undefined &&
+                            String(cell).trim() !== '',
+                    )
+                    .map((cell) => String(cell))
                     .slice(0, 3);
 
                 return {
@@ -133,8 +149,13 @@ export function ImportTransactionsDrawer({
             let detectedFormat = DateFormat.YearMonthDay;
             let formatDetected = false;
             if (autoMapping.transaction_date) {
-                const { autoDetectDateFormat } = await import('@/lib/file-parser');
-                const detected = autoDetectDateFormat(data, autoMapping.transaction_date);
+                const { autoDetectDateFormat } = await import(
+                    '@/lib/file-parser'
+                );
+                const detected = autoDetectDateFormat(
+                    data,
+                    autoMapping.transaction_date,
+                );
                 if (detected) {
                     detectedFormat = detected;
                     formatDetected = true;
@@ -148,9 +169,15 @@ export function ImportTransactionsDrawer({
                 const savedConfig = loadImportConfig(state.selectedAccountId);
 
                 if (savedConfig) {
-                    const isValidMapping = (mapping: ColumnMapping): boolean => {
-                        const values = Object.values(mapping).filter(v => v !== null);
-                        return values.every(value => headers.includes(value as string));
+                    const isValidMapping = (
+                        mapping: ColumnMapping,
+                    ): boolean => {
+                        const values = Object.values(mapping).filter(
+                            (v) => v !== null,
+                        );
+                        return values.every((value) =>
+                            headers.includes(value as string),
+                        );
                     };
 
                     if (isValidMapping(savedConfig.columnMapping)) {
@@ -173,17 +200,12 @@ export function ImportTransactionsDrawer({
             }));
         } catch (err) {
             setError(
-                err instanceof Error
-                    ? err.message
-                    : 'Failed to parse file'
+                err instanceof Error ? err.message : 'Failed to parse file',
             );
         }
     };
 
-    const handleMappingChange = (
-        field: keyof ColumnMapping,
-        value: string
-    ) => {
+    const handleMappingChange = (field: keyof ColumnMapping, value: string) => {
         setState((prev) => ({
             ...prev,
             columnMapping: {
@@ -202,11 +224,11 @@ export function ImportTransactionsDrawer({
             const parsedTransactions = convertRowsToTransactions(
                 state.parsedData,
                 state.columnMapping,
-                state.dateFormat
+                state.dateFormat,
             );
 
             const account = await accountSyncService.getById(
-                state.selectedAccountId!
+                state.selectedAccountId!,
             );
 
             if (!account) {
@@ -214,20 +236,16 @@ export function ImportTransactionsDrawer({
                 return;
             }
 
-            const transactionsWithDuplicateCheck = await Promise.all(
-                parsedTransactions.map(async (transaction) => {
-                    const isDuplicate = await transactionSyncService.isDuplicate(
-                        account.id,
-                        transaction.transaction_date,
-                        transaction.amount,
-                        transaction.description
-                    );
+            const duplicateFlags = await transactionSyncService.checkDuplicates(
+                account.id,
+                parsedTransactions,
+            );
 
-                    return {
-                        ...transaction,
-                        isDuplicate,
-                    };
-                })
+            const transactionsWithDuplicateCheck = parsedTransactions.map(
+                (transaction, index) => ({
+                    ...transaction,
+                    isDuplicate: duplicateFlags[index],
+                }),
             );
 
             if (state.selectedAccountId) {
@@ -246,7 +264,7 @@ export function ImportTransactionsDrawer({
             setError(
                 err instanceof Error
                     ? err.message
-                    : 'Failed to process transactions'
+                    : 'Failed to process transactions',
             );
         }
     };
@@ -266,18 +284,20 @@ export function ImportTransactionsDrawer({
             }
 
             const newTransactions = state.transactions.filter(
-                (t) => !t.isDuplicate
+                (t) => !t.isDuplicate,
             );
 
             const transactionsToImport = await Promise.all(
                 newTransactions.map(async (transaction) => {
                     const { encrypted, iv } =
                         await transactionSyncService.encryptDescription(
-                            transaction.description
+                            transaction.description,
                         );
 
                     return {
-                        user_id: (selectedAccount as Account & { user_id?: number }).user_id || 0,
+                        user_id:
+                            (selectedAccount as Account & { user_id?: number })
+                                .user_id || 0,
                         account_id: selectedAccount.id,
                         category_id: null,
                         description: encrypted,
@@ -288,7 +308,7 @@ export function ImportTransactionsDrawer({
                         notes: null,
                         notes_iv: null,
                     };
-                })
+                }),
             );
 
             await transactionSyncService.createMany(transactionsToImport);
@@ -300,7 +320,7 @@ export function ImportTransactionsDrawer({
             setError(
                 err instanceof Error
                     ? err.message
-                    : 'Failed to import transactions'
+                    : 'Failed to import transactions',
             );
         } finally {
             setIsImporting(false);
@@ -316,17 +336,20 @@ export function ImportTransactionsDrawer({
             case ImportStep.SelectAccount:
                 return {
                     title: 'Select Account',
-                    description: 'Choose the account where transactions will be imported',
+                    description:
+                        'Choose the account where transactions will be imported',
                 };
             case ImportStep.UploadFile:
                 return {
                     title: 'Upload File',
-                    description: 'Drop your CSV or Excel file here, or click to browse',
+                    description:
+                        'Drop your CSV or Excel file here, or click to browse',
                 };
             case ImportStep.MapColumns:
                 return {
                     title: 'Map Columns',
-                    description: 'Match your file columns to transaction fields',
+                    description:
+                        'Match your file columns to transaction fields',
                 };
             case ImportStep.Preview:
                 return {
@@ -398,7 +421,9 @@ export function ImportTransactionsDrawer({
                 <div className="mx-auto w-full max-w-3xl overflow-y-auto p-6">
                     <DrawerHeader className="px-0">
                         <DrawerTitle>{stepInfo.title}</DrawerTitle>
-                        <DrawerDescription>{stepInfo.description}</DrawerDescription>
+                        <DrawerDescription>
+                            {stepInfo.description}
+                        </DrawerDescription>
                     </DrawerHeader>
                     {error && (
                         <div className="mt-4">
@@ -411,4 +436,3 @@ export function ImportTransactionsDrawer({
         </Drawer>
     );
 }
-
