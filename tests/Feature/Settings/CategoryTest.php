@@ -38,7 +38,7 @@ test('authenticated users can create a category', function () {
 
     $categoryData = [
         'name' => 'Shopping',
-        'icon' => 'ShoppingCart',
+        'icon' => 'ShoppingBag',
         'color' => 'blue',
     ];
 
@@ -49,7 +49,7 @@ test('authenticated users can create a category', function () {
     $this->assertDatabaseHas('categories', [
         'user_id' => $user->id,
         'name' => 'Shopping',
-        'icon' => 'ShoppingCart',
+        'icon' => 'ShoppingBag',
         'color' => 'blue',
     ]);
 });
@@ -58,7 +58,7 @@ test('category name is required', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->post(route('categories.store'), [
-        'icon' => 'ShoppingCart',
+        'icon' => 'ShoppingBag',
         'color' => 'blue',
     ]);
 
@@ -81,7 +81,7 @@ test('category color is required', function () {
 
     $response = $this->actingAs($user)->post(route('categories.store'), [
         'name' => 'Shopping',
-        'icon' => 'ShoppingCart',
+        'icon' => 'ShoppingBag',
     ]);
 
     $response->assertSessionHasErrors(['color']);
@@ -92,7 +92,7 @@ test('category color must be valid', function () {
 
     $response = $this->actingAs($user)->post(route('categories.store'), [
         'name' => 'Shopping',
-        'icon' => 'ShoppingCart',
+        'icon' => 'ShoppingBag',
         'color' => 'invalid-color',
     ]);
 
@@ -183,8 +183,8 @@ test('default categories are created when user registers', function () {
     $service = new \App\Actions\CreateDefaultCategories;
     $service->handle($user);
 
-    expect($user->categories()->count())->toBe(8);
+    expect($user->categories()->count())->toBe(49);
 
     $categoryNames = $user->categories->pluck('name')->toArray();
-    expect($categoryNames)->toContain('Groceries', 'Transportation', 'Entertainment');
+    expect($categoryNames)->toContain('Food', 'Transportation', 'Salary', 'Insurance');
 });

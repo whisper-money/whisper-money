@@ -19,8 +19,8 @@ class CategoryFactory extends Factory
     {
         return [
             'name' => fake()->randomElement(['Food', 'Transport', 'Entertainment', 'Shopping', 'Healthcare', 'Utilities', 'Travel', 'Education']),
-            'icon' => fake()->randomElement(['🍔', '🚗', '🎮', '🛒', '💊', '💡', '✈️', '📚']),
-            'color' => fake()->hexColor(),
+            'icon' => fake()->randomElement(['AlertCircle', 'AlertTriangle', 'ArrowDownCircle', 'ArrowLeftRight', 'ArrowUpCircle', 'Baby', 'Banknote', 'Briefcase', 'Building', 'Building2', 'Car', 'Clock', 'CreditCard', 'Dices', 'FileText', 'Gift', 'GraduationCap', 'HandHeart', 'Heart', 'HelpCircle', 'Home', 'Landmark', 'Mail', 'PiggyBank', 'Plane', 'Receipt', 'ReceiptText', 'Repeat', 'RotateCcw', 'Scale', 'Shield', 'ShieldCheck', 'ShoppingBag', 'TrendingUp', 'Undo2', 'Users', 'Users2', 'Utensils', 'Wallet']),
+            'color' => fake()->randomElement(['amber', 'blue', 'cyan', 'emerald', 'gray', 'green', 'indigo', 'orange', 'pink', 'purple', 'red', 'slate', 'teal', 'yellow']),
             'user_id' => User::factory(),
         ];
     }
