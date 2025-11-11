@@ -101,6 +101,7 @@ class TransactionSyncService {
 
     async update(id: string, data: Partial<Transaction>): Promise<void> {
         const existing = await this.getById(id);
+
         if (!existing) {
             throw new Error('Transaction not found');
         }
@@ -126,6 +127,7 @@ class TransactionSyncService {
 
         for (const id of ids) {
             const existing = await this.getById(id);
+
             if (!existing) {
                 console.warn(`Transaction ${id} not found, skipping`);
                 continue;
@@ -149,12 +151,13 @@ class TransactionSyncService {
 
     async delete(id: string): Promise<void> {
         const transaction = await this.getById(id);
+
         if (!transaction) {
             throw new Error('Transaction not found');
         }
 
         const timestamp = new Date().toISOString();
-        await db.transactions.delete(id);
+        await db.transactions.delete(transaction.id);
         await db.pending_changes.add({
             store: 'transactions',
             operation: 'delete',
@@ -168,12 +171,13 @@ class TransactionSyncService {
 
         for (const id of ids) {
             const transaction = await this.getById(id);
+
             if (!transaction) {
                 console.warn(`Transaction ${id} not found, skipping`);
                 continue;
             }
 
-            await db.transactions.delete(id);
+            await db.transactions.delete(transaction.id);
             await db.pending_changes.add({
                 store: 'transactions',
                 operation: 'delete',

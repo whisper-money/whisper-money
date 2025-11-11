@@ -73,7 +73,7 @@ export function BulkActionsBar({
 
                                     <DropdownMenuItem
                                         variant="destructive"
-                                        onClick={onDelete}
+                                        onSelect={onDelete}
                                     >
                                         <Trash2 />
                                         Delete
