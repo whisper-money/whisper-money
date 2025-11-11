@@ -17,7 +17,7 @@ import { index as transactionsIndex } from '@/actions/App/Http/Controllers/Trans
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
-import { ImportTransactionsButton } from '@/components/transactions/import-transactions-button';
+import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import {
@@ -109,6 +109,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     });
     const [editTransaction, setEditTransaction] =
         useState<DecryptedTransaction | null>(null);
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -907,10 +908,13 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         isKeySet={isKeySet}
                         actions={
                             <>
-                                <ImportTransactionsButton
+                                <TransactionActionsMenu
                                     categories={categories}
                                     accounts={accounts}
                                     banks={banks}
+                                    onAddTransaction={() =>
+                                        setCreateDialogOpen(true)
+                                    }
                                 />
                                 <DataTableViewOptions table={table} />
                             </>
@@ -974,9 +978,21 @@ export default function Transactions({ categories, accounts, banks }: Props) {
             <EditTransactionDialog
                 transaction={editTransaction}
                 categories={categories}
+                accounts={accounts}
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
+                mode="edit"
+            />
+
+            <EditTransactionDialog
+                transaction={null}
+                categories={categories}
+                accounts={accounts}
+                open={createDialogOpen}
+                onOpenChange={setCreateDialogOpen}
+                onSuccess={() => {}}
+                mode="create"
             />
 
             <AlertDialog
