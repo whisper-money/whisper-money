@@ -1,0 +1,41 @@
+import Dexie, { type EntityTable } from 'dexie';
+import type { Account, Bank } from '@/types/account';
+import type { Category } from '@/types/category';
+import type { AutomationRule } from '@/types/automation-rule';
+import type { Transaction } from '@/services/transaction-sync';
+
+export interface SyncMetadata {
+    key: string;
+    value: string;
+}
+
+export interface PendingChange {
+    id?: number;
+    store: string;
+    operation: 'create' | 'update' | 'delete';
+    data: any;
+    timestamp: string;
+}
+
+const db = new Dexie('whisper_money') as Dexie & {
+    transactions: EntityTable<Transaction, 'id'>;
+    accounts: EntityTable<Account, 'id'>;
+    categories: EntityTable<Category, 'id'>;
+    banks: EntityTable<Bank, 'id'>;
+    automation_rules: EntityTable<AutomationRule, 'id'>;
+    sync_metadata: EntityTable<SyncMetadata, 'key'>;
+    pending_changes: EntityTable<PendingChange, 'id'>;
+};
+
+db.version(3).stores({
+    transactions: 'id, user_id, account_id, updated_at',
+    accounts: 'id, user_id, bank_id, updated_at',
+    categories: 'id, user_id, updated_at',
+    banks: 'id, user_id, updated_at',
+    automation_rules: 'id, user_id, priority, updated_at',
+    sync_metadata: 'key',
+    pending_changes: '++id, store, timestamp',
+});
+
+export { db };
+

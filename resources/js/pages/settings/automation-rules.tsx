@@ -11,8 +11,9 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
@@ -38,10 +39,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { useSyncContext } from '@/contexts/sync-context';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
+import { db } from '@/lib/dexie-db';
 import { type BreadcrumbItem } from '@/types';
 import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
 import { getCategoryColorClasses } from '@/types/category';
@@ -53,13 +53,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function AutomationRuleActions({
-    rule,
-    onSuccess,
-}: {
-    rule: AutomationRule;
-    onSuccess: () => void;
-}) {
+function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -90,43 +84,33 @@ function AutomationRuleActions({
                 rule={rule}
                 open={editOpen}
                 onOpenChange={setEditOpen}
-                onSuccess={onSuccess}
+                onSuccess={() => {}}
             />
             <DeleteAutomationRuleDialog
                 rule={rule}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
-                onSuccess={onSuccess}
+                onSuccess={() => {}}
             />
         </>
     );
 }
 
 export default function AutomationRules() {
-    const { syncStatus } = useSyncContext();
     const { isKeySet } = useEncryptionKey();
-    const [rules, setRules] = useState<AutomationRule[]>([]);
+    const rawRules = useLiveQuery(() => db.automation_rules.toArray(), []) || [];
+    const rules = rawRules.map((rule) => ({
+        ...rule,
+        rules_json:
+            typeof rule.rules_json === 'string'
+                ? JSON.parse(rule.rules_json)
+                : rule.rules_json,
+    }));
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
-
-    const loadRules = async () => {
-        await automationRuleSyncService.sync();
-        const data = await automationRuleSyncService.getAll();
-        setRules(data);
-    };
-
-    useEffect(() => {
-        loadRules();
-    }, []);
-
-    useEffect(() => {
-        if (syncStatus === 'success') {
-            loadRules();
-        }
-    }, [syncStatus]);
 
     const columns: ColumnDef<AutomationRule>[] = [
         {

@@ -1,5 +1,5 @@
 import { encrypt, importKey } from '@/lib/crypto';
-import { indexedDBService } from '@/lib/indexeddb';
+import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { SyncManager } from '@/lib/sync-manager';
 import { uuidv7 } from 'uuidv7';
@@ -39,7 +39,7 @@ class TransactionSyncService {
     }
 
     async getById(id: string): Promise<Transaction | null> {
-        return await indexedDBService.get<Transaction>('transactions', id);
+        return (await db.transactions.get(id)) || null;
     }
 
     async getByAccountId(accountId: number): Promise<Transaction[]> {
@@ -79,12 +79,13 @@ class TransactionSyncService {
                     updated_at: timestamp,
                 } as Transaction;
 
-                await indexedDBService.put('transactions', record);
-                await indexedDBService.addPendingChange(
-                    'transactions',
-                    'create',
-                    record,
-                );
+                await db.transactions.put(record);
+                await db.pending_changes.add({
+                    store: 'transactions',
+                    operation: 'create',
+                    data: record,
+                    timestamp,
+                });
 
                 created.push(record);
             }
@@ -104,18 +105,20 @@ class TransactionSyncService {
             throw new Error('Transaction not found');
         }
 
+        const timestamp = new Date().toISOString();
         const updated = {
             ...existing,
             ...data,
-            updated_at: new Date().toISOString(),
+            updated_at: timestamp,
         };
 
-        await indexedDBService.put('transactions', updated);
-        await indexedDBService.addPendingChange(
-            'transactions',
-            'update',
-            updated,
-        );
+        await db.transactions.put(updated);
+        await db.pending_changes.add({
+            store: 'transactions',
+            operation: 'update',
+            data: updated,
+            timestamp,
+        });
     }
 
     async updateMany(ids: string[], data: Partial<Transaction>): Promise<void> {
@@ -134,12 +137,13 @@ class TransactionSyncService {
                 updated_at: timestamp,
             };
 
-            await indexedDBService.put('transactions', updated);
-            await indexedDBService.addPendingChange(
-                'transactions',
-                'update',
-                updated,
-            );
+            await db.transactions.put(updated);
+            await db.pending_changes.add({
+                store: 'transactions',
+                operation: 'update',
+                data: updated,
+                timestamp,
+            });
         }
     }
 
@@ -149,15 +153,19 @@ class TransactionSyncService {
             throw new Error('Transaction not found');
         }
 
-        await indexedDBService.delete('transactions', id);
-        await indexedDBService.addPendingChange(
-            'transactions',
-            'delete',
-            transaction,
-        );
+        const timestamp = new Date().toISOString();
+        await db.transactions.delete(id);
+        await db.pending_changes.add({
+            store: 'transactions',
+            operation: 'delete',
+            data: transaction,
+            timestamp,
+        });
     }
 
     async deleteMany(ids: string[]): Promise<void> {
+        const timestamp = new Date().toISOString();
+        
         for (const id of ids) {
             const transaction = await this.getById(id);
             if (!transaction) {
@@ -165,12 +173,13 @@ class TransactionSyncService {
                 continue;
             }
 
-            await indexedDBService.delete('transactions', id);
-            await indexedDBService.addPendingChange(
-                'transactions',
-                'delete',
-                transaction,
-            );
+            await db.transactions.delete(id);
+            await db.pending_changes.add({
+                store: 'transactions',
+                operation: 'delete',
+                data: transaction,
+                timestamp,
+            });
         }
     }
 

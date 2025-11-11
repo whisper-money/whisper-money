@@ -11,9 +11,10 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
+import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { CreateCategoryDialog } from '@/components/categories/create-category-dialog';
@@ -38,10 +39,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useSyncContext } from '@/contexts/sync-context';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { categorySyncService } from '@/services/category-sync';
+import { db } from '@/lib/dexie-db';
 import { type BreadcrumbItem } from '@/types';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 
@@ -52,13 +52,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function CategoryActions({
-    category,
-    onSuccess,
-}: {
-    category: Category;
-    onSuccess: () => void;
-}) {
+function CategoryActions({ category }: { category: Category }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -89,42 +83,25 @@ function CategoryActions({
                 category={category}
                 open={editOpen}
                 onOpenChange={setEditOpen}
-                onSuccess={onSuccess}
+                onSuccess={() => {}}
             />
             <DeleteCategoryDialog
                 category={category}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
-                onSuccess={onSuccess}
+                onSuccess={() => {}}
             />
         </>
     );
 }
 
 export default function Categories() {
-    const { syncStatus } = useSyncContext();
-    const [categories, setCategories] = useState<Category[]>([]);
+    const categories = useLiveQuery(() => db.categories.toArray(), []) || [];
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
-
-    const loadCategories = async () => {
-        await categorySyncService.sync();
-        const data = await categorySyncService.getAll();
-        setCategories(data);
-    };
-
-    useEffect(() => {
-        loadCategories();
-    }, []);
-
-    useEffect(() => {
-        if (syncStatus === 'success') {
-            loadCategories();
-        }
-    }, [syncStatus]);
 
     const columns: ColumnDef<Category>[] = [
         {
@@ -179,7 +156,6 @@ export default function Categories() {
             cell: ({ row }) => (
                 <CategoryActions
                     category={row.original}
-                    onSuccess={loadCategories}
                 />
             ),
         },
@@ -229,7 +205,7 @@ export default function Categories() {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateCategoryDialog onSuccess={loadCategories} />
+                            <CreateCategoryDialog onSuccess={() => {}} />
                         </div>
 
                         <div className="overflow-hidden rounded-md border">
