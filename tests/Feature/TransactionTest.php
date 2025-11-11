@@ -214,3 +214,190 @@ test('transactions index page passes user accounts', function () {
         ->has('accounts', 1)
     );
 });
+
+test('users can create a new transaction', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $transactionData = [
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'description' => 'encrypted_description',
+        'description_iv' => str_repeat('d', 16),
+        'transaction_date' => '2025-11-11',
+        'amount' => '150.50',
+        'currency_code' => 'USD',
+        'notes' => 'encrypted_notes',
+        'notes_iv' => str_repeat('n', 16),
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertCreated();
+    $response->assertJsonStructure([
+        'data' => [
+            'id',
+            'user_id',
+            'account_id',
+            'category_id',
+            'description',
+            'description_iv',
+            'transaction_date',
+            'amount',
+            'currency_code',
+            'notes',
+            'notes_iv',
+            'created_at',
+            'updated_at',
+        ],
+    ]);
+
+    $this->assertDatabaseHas('transactions', [
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'description' => 'encrypted_description',
+        'amount' => '150.50',
+        'currency_code' => 'USD',
+    ]);
+});
+
+test('users can create a transaction without category', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $transactionData = [
+        'account_id' => $account->id,
+        'category_id' => null,
+        'description' => 'encrypted_description',
+        'description_iv' => str_repeat('d', 16),
+        'transaction_date' => '2025-11-11',
+        'amount' => '75.25',
+        'currency_code' => 'EUR',
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertCreated();
+    $this->assertDatabaseHas('transactions', [
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'description' => 'encrypted_description',
+        'amount' => '75.25',
+    ]);
+});
+
+test('users can create a transaction without notes', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $transactionData = [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'description_iv' => str_repeat('d', 16),
+        'transaction_date' => '2025-11-11',
+        'amount' => '100.00',
+        'currency_code' => 'USD',
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertCreated();
+    $this->assertDatabaseHas('transactions', [
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'notes' => null,
+        'notes_iv' => null,
+    ]);
+});
+
+test('account_id is required when creating transaction', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+
+    $transactionData = [
+        'description' => 'encrypted_description',
+        'description_iv' => str_repeat('d', 16),
+        'transaction_date' => '2025-11-11',
+        'amount' => '100.00',
+        'currency_code' => 'USD',
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors(['account_id']);
+});
+
+test('description is required when creating transaction', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $transactionData = [
+        'account_id' => $account->id,
+        'description_iv' => str_repeat('d', 16),
+        'transaction_date' => '2025-11-11',
+        'amount' => '100.00',
+        'currency_code' => 'USD',
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors(['description']);
+});
+
+test('amount is required when creating transaction', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $transactionData = [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'description_iv' => str_repeat('d', 16),
+        'transaction_date' => '2025-11-11',
+        'currency_code' => 'USD',
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors(['amount']);
+});
+
+test('transaction_date is required when creating transaction', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $transactionData = [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'description_iv' => str_repeat('d', 16),
+        'amount' => '100.00',
+        'currency_code' => 'USD',
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors(['transaction_date']);
+});
+
+test('currency_code is required when creating transaction', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $transactionData = [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'description_iv' => str_repeat('d', 16),
+        'transaction_date' => '2025-11-11',
+        'amount' => '100.00',
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertUnprocessable();
+    $response->assertJsonValidationErrors(['currency_code']);
+});

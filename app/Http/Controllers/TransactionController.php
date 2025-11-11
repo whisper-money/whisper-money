@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\BulkUpdateTransactionsRequest;
+use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Account;
 use App\Models\Bank;
@@ -46,6 +47,27 @@ class TransactionController extends Controller
             'accounts' => $accounts,
             'banks' => $banks,
         ]);
+    }
+
+    public function store(StoreTransactionRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $transaction = new Transaction([
+            ...$data,
+            'user_id' => $request->user()->id,
+        ]);
+
+        if (isset($data['id'])) {
+            $transaction->id = $data['id'];
+            $transaction->exists = false;
+        }
+
+        $transaction->save();
+
+        return response()->json([
+            'data' => $transaction,
+        ], 201);
     }
 
     public function update(UpdateTransactionRequest $request, Transaction $transaction): JsonResponse

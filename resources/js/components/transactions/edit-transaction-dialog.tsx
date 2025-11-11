@@ -8,12 +8,21 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { encrypt, importKey } from '@/lib/crypto';
+import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type Account } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { format, parseISO } from 'date-fns';
@@ -23,45 +32,126 @@ import { toast } from 'sonner';
 interface EditTransactionDialogProps {
     transaction: DecryptedTransaction | null;
     categories: Category[];
+    accounts: Account[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
+    mode: 'create' | 'edit';
 }
 
 export function EditTransactionDialog({
     transaction,
     categories,
+    accounts,
     open,
     onOpenChange,
     onSuccess,
+    mode,
 }: EditTransactionDialogProps) {
     const { isKeySet } = useEncryptionKey();
+    const [transactionDate, setTransactionDate] = useState('');
+    const [description, setDescription] = useState('');
+    const [amount, setAmount] = useState('');
+    const [accountId, setAccountId] = useState<string>('');
     const [categoryId, setCategoryId] = useState<string>('null');
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [decryptedAccountNames, setDecryptedAccountNames] = useState<
+        Map<number, string>
+    >(new Map());
 
     useEffect(() => {
-        if (transaction) {
+        if (mode === 'edit' && transaction) {
+            setTransactionDate(transaction.transaction_date);
+            setDescription(transaction.decryptedDescription);
+            setAmount(transaction.amount);
+            setAccountId(String(transaction.account_id));
             setCategoryId(
                 transaction.category_id
                     ? String(transaction.category_id)
                     : 'null',
             );
             setNotes(transaction.decryptedNotes || '');
+        } else if (mode === 'create' && open) {
+            const today = new Date().toISOString().split('T')[0];
+            setTransactionDate(today);
+            setDescription('');
+            setAmount('');
+            setAccountId(accounts.length > 0 ? String(accounts[0].id) : '');
+            setCategoryId('null');
+            setNotes('');
         }
-    }, [transaction]);
+    }, [mode, transaction, open, accounts]);
+
+    useEffect(() => {
+        if (!open || mode !== 'create') return;
+
+        async function decryptAccountNames() {
+            const keyString = getStoredKey();
+            if (!keyString) {
+                return;
+            }
+
+            try {
+                const key = await importKey(keyString);
+                const decryptedNames = new Map<number, string>();
+
+                await Promise.all(
+                    accounts.map(async (account) => {
+                        try {
+                            const decryptedName = await decrypt(
+                                account.name,
+                                key,
+                                account.name_iv,
+                            );
+                            decryptedNames.set(account.id, decryptedName);
+                        } catch (error) {
+                            console.error(
+                                'Failed to decrypt account name:',
+                                account.id,
+                                error,
+                            );
+                            decryptedNames.set(account.id, '[Encrypted]');
+                        }
+                    }),
+                );
+
+                setDecryptedAccountNames(decryptedNames);
+            } catch (error) {
+                console.error('Failed to decrypt account names:', error);
+            }
+        }
+
+        decryptAccountNames();
+    }, [open, mode, accounts]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!transaction) {
-            return;
-        }
 
         if (!isKeySet) {
             toast.error(
-                'Please unlock your encryption key to update transactions',
+                'Please unlock your encryption key to save transactions',
             );
             return;
+        }
+
+        if (mode === 'create') {
+            if (!description.trim()) {
+                toast.error('Description is required');
+                return;
+            }
+            if (!amount || parseFloat(amount) === 0) {
+                toast.error('Amount is required');
+                return;
+            }
+            if (!accountId) {
+                toast.error('Account is required');
+                return;
+            }
+            if (!transactionDate) {
+                toast.error('Date is required');
+                return;
+            }
         }
 
         setIsSubmitting(true);
@@ -69,102 +159,252 @@ export function EditTransactionDialog({
             const selectedCategoryId =
                 categoryId === 'null' ? null : parseInt(categoryId, 10);
             const trimmedNotes = notes.trim();
+            const trimmedDescription = description.trim();
+
+            const keyString = getStoredKey();
+            if (!keyString) {
+                throw new Error('Encryption key not available');
+            }
+            const key = await importKey(keyString);
+
             let encryptedNotes: string | null = null;
             let notesIv: string | null = null;
 
             if (trimmedNotes) {
-                const keyString = getStoredKey();
-                if (!keyString) {
-                    throw new Error('Encryption key not available');
-                }
-                const key = await importKey(keyString);
                 const encrypted = await encrypt(trimmedNotes, key);
                 encryptedNotes = encrypted.encrypted;
                 notesIv = encrypted.iv;
             }
 
-            await transactionSyncService.update(transaction.id, {
-                category_id: selectedCategoryId,
-                notes: encryptedNotes,
-                notes_iv: notesIv,
-            });
+            if (mode === 'create') {
+                const encryptedDescription = await encrypt(
+                    trimmedDescription,
+                    key,
+                );
 
-            const updatedRecord = await transactionSyncService.getById(
-                transaction.id,
-            );
-            const updatedCategory = selectedCategoryId
-                ? categories.find(
-                      (category) => category.id === selectedCategoryId,
-                  ) || null
-                : null;
+                const selectedAccount = accounts.find(
+                    (acc) => acc.id === parseInt(accountId, 10),
+                );
+                if (!selectedAccount) {
+                    throw new Error('Selected account not found');
+                }
 
-            const updatedTransaction: DecryptedTransaction = {
-                ...transaction,
-                category_id: selectedCategoryId,
-                category: updatedCategory,
-                decryptedNotes: trimmedNotes || null,
-                notes: encryptedNotes,
-                notes_iv: notesIv,
-                updated_at: updatedRecord?.updated_at ?? transaction.updated_at,
-            };
+                await transactionSyncService.create({
+                    user_id: 0,
+                    account_id: parseInt(accountId, 10),
+                    category_id: selectedCategoryId,
+                    description: encryptedDescription.encrypted,
+                    description_iv: encryptedDescription.iv,
+                    transaction_date: transactionDate,
+                    amount: amount,
+                    currency_code: selectedAccount.currency_code,
+                    notes: encryptedNotes,
+                    notes_iv: notesIv,
+                });
 
-            onSuccess(updatedTransaction);
-            onOpenChange(false);
+                toast.success('Transaction created successfully');
+                onOpenChange(false);
+            } else {
+                if (!transaction) {
+                    return;
+                }
+
+                await transactionSyncService.update(transaction.id, {
+                    category_id: selectedCategoryId,
+                    notes: encryptedNotes,
+                    notes_iv: notesIv,
+                });
+
+                const updatedRecord = await transactionSyncService.getById(
+                    transaction.id,
+                );
+                const updatedCategory = selectedCategoryId
+                    ? categories.find(
+                          (category) => category.id === selectedCategoryId,
+                      ) || null
+                    : null;
+
+                const updatedTransaction: DecryptedTransaction = {
+                    ...transaction,
+                    category_id: selectedCategoryId,
+                    category: updatedCategory,
+                    decryptedNotes: trimmedNotes || null,
+                    notes: encryptedNotes,
+                    notes_iv: notesIv,
+                    updated_at:
+                        updatedRecord?.updated_at ?? transaction.updated_at,
+                };
+
+                toast.success('Transaction updated successfully');
+                onSuccess(updatedTransaction);
+                onOpenChange(false);
+            }
         } catch (error) {
-            console.error('Failed to update transaction:', error);
+            console.error('Failed to save transaction:', error);
+            toast.error(
+                `Failed to ${mode === 'create' ? 'create' : 'update'} transaction`,
+            );
         } finally {
             setIsSubmitting(false);
         }
     }
 
-    if (!transaction) {
-        return null;
-    }
+    const selectedAccount = accounts.find(
+        (acc) => acc.id === parseInt(accountId, 10),
+    );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[525px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Transaction</DialogTitle>
+                    <DialogTitle>
+                        {mode === 'create'
+                            ? 'Add Transaction'
+                            : 'Edit Transaction'}
+                    </DialogTitle>
                     <DialogDescription>
-                        Update the category and notes for this transaction.
+                        {mode === 'create'
+                            ? 'Create a new transaction.'
+                            : 'Update the category and notes for this transaction.'}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
+                            <Label
+                                htmlFor="date"
+                                className={
+                                    mode === 'edit'
+                                        ? 'text-sm text-muted-foreground'
+                                        : ''
+                                }
+                            >
                                 Date
                             </Label>
-                            <div className="text-sm">
-                                {format(
-                                    parseISO(transaction.transaction_date),
-                                    'PPP',
-                                )}
-                            </div>
+                            {mode === 'create' ? (
+                                <Input
+                                    id="date"
+                                    type="date"
+                                    value={transactionDate}
+                                    onChange={(e) =>
+                                        setTransactionDate(e.target.value)
+                                    }
+                                    disabled={isSubmitting}
+                                    required
+                                />
+                            ) : (
+                                <div className="text-sm">
+                                    {transaction &&
+                                        format(
+                                            parseISO(
+                                                transaction.transaction_date,
+                                            ),
+                                            'PPP',
+                                        )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
+                            <Label
+                                htmlFor="description"
+                                className={
+                                    mode === 'edit'
+                                        ? 'text-sm text-muted-foreground'
+                                        : ''
+                                }
+                            >
                                 Description
                             </Label>
-                            <div className="text-sm">
-                                {transaction.decryptedDescription}
-                            </div>
+                            {mode === 'create' ? (
+                                <Input
+                                    id="description"
+                                    type="text"
+                                    value={description}
+                                    onChange={(e) =>
+                                        setDescription(e.target.value)
+                                    }
+                                    placeholder="Transaction description"
+                                    disabled={isSubmitting}
+                                    required
+                                />
+                            ) : (
+                                <div className="text-sm">
+                                    {transaction?.decryptedDescription}
+                                </div>
+                            )}
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">
+                            <Label
+                                htmlFor="amount"
+                                className={
+                                    mode === 'edit'
+                                        ? 'text-sm text-muted-foreground'
+                                        : ''
+                                }
+                            >
                                 Amount
                             </Label>
-                            <div className="text-sm font-medium">
-                                {new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: transaction.currency_code,
-                                }).format(parseFloat(transaction.amount))}
-                            </div>
+                            {mode === 'create' ? (
+                                <>
+                                    <Input
+                                        id="amount"
+                                        type="number"
+                                        step="0.01"
+                                        value={amount}
+                                        onChange={(e) =>
+                                            setAmount(e.target.value)
+                                        }
+                                        placeholder="0.00"
+                                        disabled={isSubmitting}
+                                        required
+                                    />
+                                    {selectedAccount && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Currency:{' '}
+                                            {selectedAccount.currency_code}
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="text-sm font-medium">
+                                    {transaction &&
+                                        new Intl.NumberFormat('en-US', {
+                                            style: 'currency',
+                                            currency: transaction.currency_code,
+                                        }).format(parseFloat(transaction.amount))}
+                                </div>
+                            )}
                         </div>
+
+                        {mode === 'create' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="account">Account</Label>
+                                <Select
+                                    value={accountId}
+                                    onValueChange={setAccountId}
+                                    disabled={isSubmitting}
+                                >
+                                    <SelectTrigger id="account">
+                                        <SelectValue placeholder="Select account" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {accounts.map((account) => (
+                                            <SelectItem
+                                                key={account.id}
+                                                value={String(account.id)}
+                                            >
+                                                {decryptedAccountNames.get(
+                                                    account.id,
+                                                ) || '[Loading...]'}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <Label htmlFor="category">Category</Label>
@@ -187,6 +427,7 @@ export function EditTransactionDialog({
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 rows={3}
+                                disabled={isSubmitting}
                             />
                         </div>
                     </div>
@@ -201,7 +442,11 @@ export function EditTransactionDialog({
                             Cancel
                         </Button>
                         <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? 'Saving...' : 'Save Changes'}
+                            {isSubmitting
+                                ? 'Saving...'
+                                : mode === 'create'
+                                  ? 'Create Transaction'
+                                  : 'Save Changes'}
                         </Button>
                     </DialogFooter>
                 </form>
