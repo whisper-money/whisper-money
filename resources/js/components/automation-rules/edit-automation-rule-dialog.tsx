@@ -1,10 +1,6 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
+import { RuleBuilder } from '@/components/automation-rules/rule-builder';
 import { Button } from '@/components/ui/button';
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import {
     Dialog,
     DialogContent,
@@ -24,11 +20,17 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import {
+    buildJsonLogic,
+    createEmptyGroup,
+    isValidRuleStructure,
+    parseJsonLogic,
+    type RuleStructure,
+} from '@/lib/rule-builder-utils';
 import { categorySyncService } from '@/services/category-sync';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
 import { router } from '@inertiajs/react';
-import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface EditAutomationRuleDialogProps {
@@ -47,12 +49,14 @@ export function EditAutomationRuleDialog({
     const [categories, setCategories] = useState<Category[]>([]);
     const [title, setTitle] = useState('');
     const [priority, setPriority] = useState('0');
-    const [rulesJson, setRulesJson] = useState('');
+    const [ruleStructure, setRuleStructure] = useState<RuleStructure>({
+        groups: [createEmptyGroup()],
+        groupOperator: 'and',
+    });
     const [categoryId, setCategoryId] = useState<string>('');
     const [note, setNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [helpOpen, setHelpOpen] = useState(false);
 
     useEffect(() => {
         const loadCategories = async () => {
@@ -66,7 +70,7 @@ export function EditAutomationRuleDialog({
         if (rule && open) {
             setTitle(rule.title);
             setPriority(String(rule.priority));
-            setRulesJson(JSON.stringify(rule.rules_json, null, 2));
+            setRuleStructure(parseJsonLogic(rule.rules_json));
             setCategoryId(
                 rule.action_category_id ? String(rule.action_category_id) : '',
             );
@@ -96,22 +100,6 @@ export function EditAutomationRuleDialog({
         }
     }, [rule, open]);
 
-    const validateJsonLogic = (json: string): boolean => {
-        try {
-            const parsed = JSON.parse(json);
-            if (
-                typeof parsed !== 'object' ||
-                parsed === null ||
-                Array.isArray(parsed)
-            ) {
-                return false;
-            }
-            return Object.keys(parsed).length > 0;
-        } catch {
-            return false;
-        }
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrors({});
@@ -121,18 +109,10 @@ export function EditAutomationRuleDialog({
             return;
         }
 
-        if (!rulesJson.trim()) {
+        if (!isValidRuleStructure(ruleStructure)) {
             setErrors((prev) => ({
                 ...prev,
-                rules_json: 'Rules JSON is required',
-            }));
-            return;
-        }
-
-        if (!validateJsonLogic(rulesJson)) {
-            setErrors((prev) => ({
-                ...prev,
-                rules_json: 'Invalid JsonLogic format',
+                rules_json: 'At least one valid condition is required',
             }));
             return;
         }
@@ -162,12 +142,14 @@ export function EditAutomationRuleDialog({
                 noteIv = encrypted.iv;
             }
 
+            const jsonLogic = buildJsonLogic(ruleStructure);
+
             router.patch(
                 update(rule.id).url,
                 {
                     title: title.trim(),
                     priority: parseInt(priority, 10),
-                    rules_json: rulesJson.trim(),
+                    rules_json: JSON.stringify(jsonLogic),
                     action_category_id: categoryId
                         ? parseInt(categoryId, 10)
                         : null,
@@ -242,74 +224,11 @@ export function EditAutomationRuleDialog({
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="rules_json">Rules (JsonLogic)</Label>
-                        <Textarea
-                            id="rules_json"
-                            value={rulesJson}
-                            onChange={(e) => setRulesJson(e.target.value)}
-                            placeholder='{"in": ["grocery", {"var": "description"}]}'
-                            rows={4}
-                            className="font-mono text-sm"
-                            required
-                        />
-                        {errors.rules_json && (
-                            <p className="text-sm text-red-500">
-                                {errors.rules_json}
-                            </p>
-                        )}
-                    </div>
-
-                    <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
-                        <CollapsibleTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="flex w-full items-center justify-between"
-                            >
-                                <span>Available Fields & Examples</span>
-                                <ChevronDown
-                                    className={`h-4 w-4 transition-transform ${helpOpen ? 'rotate-180' : ''}`}
-                                />
-                            </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className="space-y-2 rounded-md border p-3 text-sm">
-                            <div>
-                                <strong>Available fields:</strong>
-                                <ul className="mt-1 ml-4 list-disc">
-                                    <li>
-                                        description (string, case-insensitive)
-                                    </li>
-                                    <li>
-                                        notes (string or null, case-insensitive)
-                                    </li>
-                                    <li>amount (number)</li>
-                                    <li>transaction_date (string)</li>
-                                    <li>bank_name (string)</li>
-                                    <li>account_name (string)</li>
-                                    <li>category (string or null)</li>
-                                </ul>
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    Note: Use any case for description and notes
-                                    - matching is automatic!
-                                </p>
-                            </div>
-                            <div>
-                                <strong>Example rules:</strong>
-                                <pre className="mt-1 overflow-x-auto rounded bg-muted p-2 text-xs">
-                                    {`{"in": ["grocery", {"var": "description"}]}
-{"in": ["M3 SPORT", {"var": "description"}]}
-{"in": ["important", {"var": "notes"}]}
-{"and": [
-  {">": [{"var": "amount"}, 100]},
-  {"==": [{"var": "bank_name"}, "Chase"]}
-]}
-{"==": [{"var": "category"}, null]}`}
-                                </pre>
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
+                    <RuleBuilder
+                        value={ruleStructure}
+                        onChange={setRuleStructure}
+                        error={errors.rules_json}
+                    />
 
                     <div className="space-y-4 rounded-md border p-4">
                         <h4 className="font-medium">Actions</h4>
