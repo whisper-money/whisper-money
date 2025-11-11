@@ -34,7 +34,6 @@ export function TransactionFilters({
     actions,
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const UncategorizedIcon = resolveIconComponent('CircleHelp');
     const isUncategorizedSelected = filters.categoryIds.includes(
         UNCATEGORIZED_CATEGORY_ID,
     );
@@ -202,7 +201,7 @@ export function TransactionFilters({
                                             handleCategoryToggle(UNCATEGORIZED_CATEGORY_ID)
                                         }
                                     >
-                                        <UncategorizedIcon className="h-4 w-4 opacity-80" />
+                                        <Icons.CircleHelp className="h-4 w-4 opacity-80" />
                                         <span
                                             className={
                                                 isUncategorizedSelected
