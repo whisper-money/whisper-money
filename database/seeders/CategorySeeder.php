@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Actions\CreateDefaultCategories;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -19,16 +20,7 @@ class CategorySeeder extends Seeder
             return;
         }
 
-        $categories = [
-            ['name' => 'Food & Dining', 'icon' => '🍔', 'color' => '#FF6B6B'],
-            ['name' => 'Transportation', 'icon' => '🚗', 'color' => '#4ECDC4'],
-            ['name' => 'Entertainment', 'icon' => '🎮', 'color' => '#95E1D3'],
-            ['name' => 'Shopping', 'icon' => '🛒', 'color' => '#F38181'],
-            ['name' => 'Healthcare', 'icon' => '💊', 'color' => '#AA96DA'],
-            ['name' => 'Utilities', 'icon' => '💡', 'color' => '#FCBAD3'],
-            ['name' => 'Travel', 'icon' => '✈️', 'color' => '#FFFFD2'],
-            ['name' => 'Education', 'icon' => '📚', 'color' => '#A8D8EA'],
-        ];
+        $categories = CreateDefaultCategories::getDefaultCategories();
 
         foreach ($users as $user) {
             foreach ($categories as $category) {

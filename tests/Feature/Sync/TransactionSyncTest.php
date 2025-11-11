@@ -216,7 +216,7 @@ it('can delete a transaction', function () {
 
     $response->assertSuccessful();
 
-    $this->assertDatabaseMissing('transactions', [
+    $this->assertSoftDeleted('transactions', [
         'id' => $transaction->id,
     ]);
 });
