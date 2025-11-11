@@ -1,4 +1,4 @@
-import { indexedDBService } from './indexeddb';
+import { db } from './dexie-db';
 
 export async function checkDatabaseVersion(): Promise<{
     needsRefresh: boolean;
@@ -15,8 +15,8 @@ export async function checkDatabaseVersion(): Promise<{
     ];
 
     try {
-        const db = await indexedDBService.init();
-        const existingStores = Array.from(db.objectStoreNames);
+        await db.open();
+        const existingStores = db.tables.map((table) => table.name);
         const missingStores = requiredStores.filter(
             (store) => !existingStores.includes(store),
         );

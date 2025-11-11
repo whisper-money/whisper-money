@@ -11,8 +11,9 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
@@ -38,10 +39,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useSyncContext } from '@/contexts/sync-context';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { accountSyncService } from '@/services/account-sync';
+import { db } from '@/lib/dexie-db';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, formatAccountType } from '@/types/account';
 
@@ -52,13 +52,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function AccountActions({
-    account,
-    onSuccess,
-}: {
-    account: Account;
-    onSuccess: () => void;
-}) {
+function AccountActions({ account }: { account: Account }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -89,42 +83,25 @@ function AccountActions({
                 account={account}
                 open={editOpen}
                 onOpenChange={setEditOpen}
-                onSuccess={onSuccess}
+                onSuccess={() => {}}
             />
             <DeleteAccountDialog
                 account={account}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
-                onSuccess={onSuccess}
+                onSuccess={() => {}}
             />
         </>
     );
 }
 
 export default function Accounts() {
-    const { syncStatus } = useSyncContext();
-    const [accounts, setAccounts] = useState<Account[]>([]);
+    const accounts = useLiveQuery(() => db.accounts.toArray(), []) || [];
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
-
-    const loadAccounts = async () => {
-        await accountSyncService.sync();
-        const data = await accountSyncService.getAll();
-        setAccounts(data);
-    };
-
-    useEffect(() => {
-        loadAccounts();
-    }, []);
-
-    useEffect(() => {
-        if (syncStatus === 'success') {
-            loadAccounts();
-        }
-    }, [syncStatus]);
 
     const columns: ColumnDef<Account>[] = [
         {

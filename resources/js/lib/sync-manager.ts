@@ -1,9 +1,15 @@
 import axios from 'axios';
-import {
-    indexedDBService,
-    type StoreName,
-    type IndexedDBRecord,
-} from './indexeddb';
+import { db } from './dexie-db';
+
+export type StoreName = 'categories' | 'accounts' | 'banks' | 'automation_rules' | 'transactions';
+
+export interface IndexedDBRecord {
+    id: number | string;
+    user_id?: number | null;
+    created_at: string;
+    updated_at: string;
+    [key: string]: any;
+}
 
 export interface SyncOptions {
     storeName: StoreName;
@@ -29,11 +35,15 @@ export class SyncManager {
     }
 
     async getLastSyncTime(): Promise<string | null> {
-        return await indexedDBService.getSyncMetadata(this.lastSyncKey);
+        const metadata = await db.sync_metadata.get(this.lastSyncKey);
+        return metadata?.value || null;
     }
 
     async setLastSyncTime(timestamp: string): Promise<void> {
-        await indexedDBService.setSyncMetadata(this.lastSyncKey, timestamp);
+        await db.sync_metadata.put({
+            key: this.lastSyncKey,
+            value: timestamp,
+        });
     }
 
     async sync(): Promise<SyncResult> {
@@ -61,9 +71,10 @@ export class SyncManager {
             await this.syncFromServer(result);
             await this.syncToServer(result);
 
-            await indexedDBService.clearPendingChanges(
-                this.options.storeName,
-            );
+            await db.pending_changes
+                .where('store')
+                .equals(this.options.storeName)
+                .delete();
 
             await this.setLastSyncTime(new Date().toISOString());
         } catch (error) {
@@ -94,10 +105,9 @@ export class SyncManager {
             throw new Error('Invalid server response format');
         }
 
-        const localRecords = await indexedDBService.getAll<IndexedDBRecord>(
-            this.options.storeName,
-        );
-        const localMap = new Map(localRecords.map((r) => [r.id, r]));
+        const table = db[this.options.storeName];
+        const localRecords = await table.toArray();
+        const localMap = new Map(localRecords.map((r: any) => [r.id, r]));
 
         for (const serverRecord of serverData) {
             const transformed = this.options.transformFromServer
@@ -107,20 +117,14 @@ export class SyncManager {
             const localRecord = localMap.get(transformed.id);
 
             if (!localRecord) {
-                await indexedDBService.put(
-                    this.options.storeName,
-                    transformed,
-                );
+                await table.put(transformed);
                 result.inserted++;
             } else {
                 const serverDate = new Date(transformed.updated_at);
                 const localDate = new Date(localRecord.updated_at);
 
                 if (serverDate > localDate) {
-                    await indexedDBService.put(
-                        this.options.storeName,
-                        transformed,
-                    );
+                    await table.put(transformed);
                     result.updated++;
                 }
             }
@@ -128,9 +132,10 @@ export class SyncManager {
     }
 
     private async syncToServer(result: SyncResult): Promise<void> {
-        const pendingChanges = await indexedDBService.getPendingChanges(
-            this.options.storeName,
-        );
+        const pendingChanges = await db.pending_changes
+            .where('store')
+            .equals(this.options.storeName)
+            .toArray();
 
         for (const change of pendingChanges) {
             try {
@@ -178,12 +183,14 @@ export class SyncManager {
             updated_at: timestamp,
         } as T;
 
-        await indexedDBService.put(this.options.storeName, record);
-        await indexedDBService.addPendingChange(
-            this.options.storeName,
-            'create',
-            record,
-        );
+        const table = db[this.options.storeName];
+        await table.put(record);
+        await db.pending_changes.add({
+            store: this.options.storeName,
+            operation: 'create',
+            data: record,
+            timestamp,
+        });
 
         return record;
     }
@@ -192,44 +199,49 @@ export class SyncManager {
         id: number,
         data: Partial<T>,
     ): Promise<void> {
-        const existing = await indexedDBService.getById<T>(
-            this.options.storeName,
-            id,
-        );
+        const table = db[this.options.storeName];
+        const existing = await table.get(id);
 
         if (!existing) {
             throw new Error(`Record ${id} not found in ${this.options.storeName}`);
         }
 
+        const timestamp = new Date().toISOString();
         const updated = {
             ...existing,
             ...data,
-            updated_at: new Date().toISOString(),
+            updated_at: timestamp,
         };
 
-        await indexedDBService.put(this.options.storeName, updated);
-        await indexedDBService.addPendingChange(
-            this.options.storeName,
-            'update',
-            updated,
-        );
+        await table.put(updated);
+        await db.pending_changes.add({
+            store: this.options.storeName,
+            operation: 'update',
+            data: updated,
+            timestamp,
+        });
     }
 
     async deleteLocal(id: number): Promise<void> {
-        await indexedDBService.delete(this.options.storeName, id);
-        await indexedDBService.addPendingChange(
-            this.options.storeName,
-            'delete',
-            { id },
-        );
+        const timestamp = new Date().toISOString();
+        const table = db[this.options.storeName];
+        await table.delete(id);
+        await db.pending_changes.add({
+            store: this.options.storeName,
+            operation: 'delete',
+            data: { id },
+            timestamp,
+        });
     }
 
     async getAll<T extends IndexedDBRecord>(): Promise<T[]> {
-        return await indexedDBService.getAll<T>(this.options.storeName);
+        const table = db[this.options.storeName];
+        return await table.toArray() as T[];
     }
 
     async getById<T extends IndexedDBRecord>(id: number): Promise<T | null> {
-        return await indexedDBService.getById<T>(this.options.storeName, id);
+        const table = db[this.options.storeName];
+        return (await table.get(id) as T) || null;
     }
 
     isSyncing(): boolean {
