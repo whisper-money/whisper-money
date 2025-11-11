@@ -112,6 +112,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
+    const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -569,7 +570,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
             }
 
             const selectedTransactions = transactions.filter((t) =>
-                selectedIds.includes(t.id),
+                selectedIds.includes(t.id.toString()),
             );
             consoleDebug(
                 'Processing transactions:',
@@ -794,6 +795,8 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 ),
             );
             setDeleteTransaction(null);
+            setIsBulkDeleteMode(false);
+            setRowSelection({});
         } catch (error) {
             console.error('Failed to delete transaction:', error);
         } finally {
@@ -829,7 +832,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
             setTransactions((previous) =>
                 previous.map((transaction) => {
-                    if (selectedIds.includes(transaction.id)) {
+                    if (selectedIds.includes(transaction.id.toString())) {
                         return {
                             ...transaction,
                             category_id: categoryId,
@@ -850,14 +853,17 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
     function handleBulkDeleteClick() {
         const selectedIds = Object.keys(rowSelection);
+
         if (selectedIds.length === 0) {
             return;
         }
 
-        const firstSelectedTransaction = transactions.find(
-            (t) => t.id === selectedIds[0],
+        const firstSelectedTransaction = filteredTransactions.find(
+            (t) => t.id.toString() === selectedIds[0],
         );
+
         if (firstSelectedTransaction) {
+            setIsBulkDeleteMode(true);
             setDeleteTransaction(firstSelectedTransaction);
         }
     }
@@ -877,6 +883,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 ),
             );
             setDeleteTransaction(null);
+            setIsBulkDeleteMode(false);
             setRowSelection({});
         } catch (error) {
             console.error('Failed to delete transactions:', error);
@@ -997,16 +1004,21 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
             <AlertDialog
                 open={!!deleteTransaction}
-                onOpenChange={(open) => !open && setDeleteTransaction(null)}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteTransaction(null);
+                        setIsBulkDeleteMode(false);
+                    }
+                }}
             >
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
                             Delete Transaction
-                            {Object.keys(rowSelection).length > 1 ? 's' : ''}
+                            {isBulkDeleteMode ? 's' : ''}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {Object.keys(rowSelection).length > 1
+                            {isBulkDeleteMode
                                 ? `Are you sure you want to delete ${Object.keys(rowSelection).length} transactions? This action cannot be undone.`
                                 : 'Are you sure you want to delete this transaction? This action cannot be undone.'}
                         </AlertDialogDescription>
@@ -1019,7 +1031,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={
-                                Object.keys(rowSelection).length > 1
+                                isBulkDeleteMode
                                     ? handleBulkDelete
                                     : handleDelete
                             }

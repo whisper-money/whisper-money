@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { uuidv7 } from 'uuidv7';
 import { db } from './dexie-db';
 
 export type StoreName =
@@ -179,11 +180,14 @@ export class SyncManager {
         data: Omit<T, 'id' | 'created_at' | 'updated_at'>,
     ): Promise<T> {
         const timestamp = new Date().toISOString();
-        const tempId = Date.now();
+
+        // Use UUID v7 for transactions, numeric IDs for other entities
+        const id =
+            this.options.storeName === 'transactions' ? uuidv7() : Date.now();
 
         const record = {
             ...data,
-            id: tempId,
+            id,
             created_at: timestamp,
             updated_at: timestamp,
         } as T;
