@@ -8,8 +8,20 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
+import { type Account, type Bank } from '@/types/account';
+import { type Category } from '@/types/category';
 
-export function ImportTransactionsButton() {
+interface ImportTransactionsButtonProps {
+    categories: Category[];
+    accounts: Account[];
+    banks: Bank[];
+}
+
+export function ImportTransactionsButton({
+    categories,
+    accounts,
+    banks,
+}: ImportTransactionsButtonProps) {
     const [drawerOpen, setDrawerOpen] = useState(false);
 
     return (
@@ -34,6 +46,9 @@ export function ImportTransactionsButton() {
             <ImportTransactionsDrawer
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
+                categories={categories}
+                accounts={accounts}
+                banks={banks}
             />
         </>
     );

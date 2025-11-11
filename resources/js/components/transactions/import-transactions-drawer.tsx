@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/drawer';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useSyncContext } from '@/contexts/sync-context';
+import { decrypt, importKey } from '@/lib/crypto';
 import {
     autoDetectColumns,
     convertRowsToTransactions,
@@ -17,7 +18,10 @@ import {
     loadImportConfig,
     saveImportConfig,
 } from '@/lib/import-config-storage';
+import { getStoredKey } from '@/lib/key-storage';
+import { evaluateRules } from '@/lib/rule-engine';
 import { accountSyncService } from '@/services/account-sync';
+import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account } from '@/types/account';
 import {
@@ -35,11 +39,17 @@ import { ImportStepUpload } from './import-step-upload';
 interface ImportTransactionsDrawerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    categories: import('@/types/category').Category[];
+    accounts: import('@/types/account').Account[];
+    banks: import('@/types/account').Bank[];
 }
 
 export function ImportTransactionsDrawer({
     open,
     onOpenChange,
+    categories,
+    accounts,
+    banks,
 }: ImportTransactionsDrawerProps) {
     const { sync } = useSyncContext();
     const { isKeySet } = useEncryptionKey();
@@ -311,7 +321,65 @@ export function ImportTransactionsDrawer({
                 }),
             );
 
-            await transactionSyncService.createMany(transactionsToImport);
+            const createdTransactions = await transactionSyncService.createMany(transactionsToImport);
+
+            const keyString = getStoredKey();
+            if (keyString) {
+                const key = await importKey(keyString);
+                const rules = await automationRuleSyncService.getAll();
+
+                if (rules.length > 0) {
+                    for (const transaction of createdTransactions) {
+                        const decryptedDescription = await decrypt(
+                            transaction.description,
+                            key,
+                            transaction.description_iv,
+                        );
+
+                        const account = accounts.find(
+                            (a) => a.id === transaction.account_id,
+                        );
+                        const category = transaction.category_id
+                            ? categories.find((c) => c.id === transaction.category_id)
+                            : null;
+
+                        const decryptedTransaction = {
+                            ...transaction,
+                            decryptedDescription,
+                            decryptedNotes: null,
+                            account,
+                            category: category || null,
+                            bank: account?.bank?.id
+                                ? banks.find((b) => b.id === account.bank.id)
+                                : undefined,
+                        };
+
+                        const result = evaluateRules(
+                            decryptedTransaction,
+                            rules,
+                            categories,
+                            accounts,
+                            banks,
+                        );
+
+                        if (result) {
+                            let finalNotes = transaction.notes;
+                            let finalNotesIv = transaction.notes_iv;
+
+                            if (result.note && result.noteIv) {
+                                finalNotes = result.note;
+                                finalNotesIv = result.noteIv;
+                            }
+
+                            await transactionSyncService.update(transaction.id, {
+                                category_id: result.categoryId,
+                                notes: finalNotes,
+                                notes_iv: finalNotesIv,
+                            });
+                        }
+                    }
+                }
+            }
 
             sync();
 

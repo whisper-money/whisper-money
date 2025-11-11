@@ -82,9 +82,9 @@ function getInitialColumnVisibility(): VisibilityState {
 
 export default function Transactions({ categories, accounts, banks }: Props) {
     const { isKeySet } = useEncryptionKey();
-    
+
     const rawTransactions = useLiveQuery(() => db.transactions.toArray(), []);
-    
+
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
     );
@@ -153,7 +153,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 setIsLoading(true);
                 return;
             }
-            
+
             setIsLoading(true);
             try {
                 const accountsMap = new Map(
@@ -237,83 +237,6 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         transaction !== null,
                 );
 
-                const rules = await automationRuleSyncService.getAll();
-
-                if (rules.length > 0 && key) {
-                    const transactionsToUpdate: Array<{
-                        id: string;
-                        category_id: number | null;
-                        notes: string | null;
-                        notes_iv: string | null;
-                    }> = [];
-
-                    for (const transaction of validTransactions) {
-                        if (!transaction.category_id) {
-                            const result = evaluateRules(
-                                transaction,
-                                rules,
-                                categories,
-                                accounts,
-                                banks,
-                            );
-
-                            if (result) {
-                                let finalNotes = transaction.notes;
-                                let finalNotesIv = transaction.notes_iv;
-
-                                if (result.note && result.noteIv) {
-                                    if (transaction.decryptedNotes) {
-                                        const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
-                                        const encrypted = await encrypt(
-                                            combinedNote,
-                                            key,
-                                        );
-                                        finalNotes = encrypted.encrypted;
-                                        finalNotesIv = encrypted.iv;
-                                    } else {
-                                        finalNotes = result.note;
-                                        finalNotesIv = result.noteIv;
-                                    }
-                                }
-
-                                transactionsToUpdate.push({
-                                    id: transaction.id,
-                                    category_id: result.categoryId,
-                                    notes: finalNotes,
-                                    notes_iv: finalNotesIv,
-                                });
-
-                                transaction.category_id = result.categoryId;
-                                if (result.categoryId) {
-                                    transaction.category =
-                                        categories.find(
-                                            (c) => c.id === result.categoryId,
-                                        ) || null;
-                                }
-                                if (finalNotes && finalNotesIv) {
-                                    transaction.notes = finalNotes;
-                                    transaction.notes_iv = finalNotesIv;
-                                    transaction.decryptedNotes = await decrypt(
-                                        finalNotes,
-                                        key,
-                                        finalNotesIv,
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    if (transactionsToUpdate.length > 0) {
-                        for (const update of transactionsToUpdate) {
-                            await transactionSyncService.update(update.id, {
-                                category_id: update.category_id,
-                                notes: update.notes,
-                                notes_iv: update.notes_iv,
-                            });
-                        }
-                    }
-                }
-
                 setTransactions(validTransactions);
             } catch (error) {
                 console.error('Failed to load transactions:', error);
@@ -321,7 +244,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 setIsLoading(false);
             }
         }
-        
+
         processTransactions();
     }, [rawTransactions, accounts, banks, categories, isKeySet]);
 
@@ -406,6 +329,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         }
 
         reDecryptTransactions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isKeySet]);
 
     const filteredTransactions = useMemo(() => {
@@ -480,7 +404,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         return filteredTransactions.slice(0, displayedCount);
     }, [filteredTransactions, displayedCount]);
 
-    async function handleReEvaluateRules(transaction: DecryptedTransaction) {
+    const handleReEvaluateRules = useCallback(async (transaction: DecryptedTransaction) => {
         consoleDebug('=== Re-evaluating rules for single transaction ===');
         consoleDebug('Transaction:', {
             id: transaction.id,
@@ -588,7 +512,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
             setIsReEvaluating(false);
             consoleDebug('=== Re-evaluation complete ===');
         }
-    }
+    }, [isKeySet, categories, accounts, banks, updateTransaction]);
 
     async function handleBulkReEvaluateRules() {
         const selectedIds = Object.keys(rowSelection);
@@ -774,7 +698,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 onUpdate: updateTransaction,
                 onReEvaluateRules: handleReEvaluateRules,
             }),
-        [accounts, banks, categories, updateTransaction],
+        [accounts, banks, categories, updateTransaction, handleReEvaluateRules],
     );
 
     const table = useReactTable({
@@ -952,7 +876,11 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         isKeySet={isKeySet}
                         actions={
                             <>
-                                <ImportTransactionsButton />
+                                <ImportTransactionsButton
+                                    categories={categories}
+                                    accounts={accounts}
+                                    banks={banks}
+                                />
                                 <DataTableViewOptions table={table} />
                             </>
                         }
