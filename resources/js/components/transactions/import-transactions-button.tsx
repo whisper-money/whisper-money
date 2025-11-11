@@ -44,7 +44,7 @@ export function ImportTransactionsButton({
                     <TooltipTrigger asChild>
                         <Button
                             variant="ghost"
-                            className="h-9"
+                            className={`h-9 ${!isKeySet ? 'cursor-not-allowed opacity-50' : ''}`}
                             onClick={handleOpenDrawer}
                             aria-label="Import transactions"
                         >
@@ -53,7 +53,7 @@ export function ImportTransactionsButton({
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                        Import transactions from CSV/Excel
+                        {!isKeySet ? `Unlock encryption to import transactions` : `Import transactions from CSV/Excel`}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
