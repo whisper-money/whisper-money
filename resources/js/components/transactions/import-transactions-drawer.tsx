@@ -293,13 +293,6 @@ export function ImportTransactionsDrawer({
         );
         const total = newTransactions.length;
 
-        const toastId = toast('Importing transactions...', {
-            icon: <Loader2 className="h-4 w-4 animate-spin" />,
-            duration: Infinity,
-        });
-
-        onOpenChange(false);
-
         try {
             if (!selectedAccount) {
                 throw new Error('Selected account not found');
@@ -398,16 +391,16 @@ export function ImportTransactionsDrawer({
             toast.success(
                 `${total} transaction${total !== 1 ? 's' : ''} imported`,
                 {
-                    id: toastId,
                     icon: <Check className="h-4 w-4" />,
                 },
             );
+
+            onOpenChange(false);
         } catch (err) {
             toast.error(
                 err instanceof Error
                     ? err.message
                     : 'Failed to import transactions',
-                { id: toastId },
             );
             setError(
                 err instanceof Error
