@@ -22,7 +22,7 @@ import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type Account } from '@/types/account';
+import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { format, parseISO } from 'date-fns';
@@ -33,6 +33,7 @@ interface EditTransactionDialogProps {
     transaction: DecryptedTransaction | null;
     categories: Category[];
     accounts: Account[];
+    banks: Bank[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
@@ -43,6 +44,7 @@ export function EditTransactionDialog({
     transaction,
     categories,
     accounts,
+    banks,
     open,
     onOpenChange,
     onSuccess,
@@ -189,7 +191,7 @@ export function EditTransactionDialog({
                     throw new Error('Selected account not found');
                 }
 
-                await transactionSyncService.create({
+                const createdTransaction = await transactionSyncService.create({
                     user_id: 0,
                     account_id: parseInt(accountId, 10),
                     category_id: selectedCategoryId,
@@ -202,7 +204,25 @@ export function EditTransactionDialog({
                     notes_iv: notesIv,
                 });
 
+                const updatedCategory = selectedCategoryId
+                    ? categories.find(
+                          (category) => category.id === selectedCategoryId,
+                      ) || null
+                    : null;
+
+                const newTransaction: DecryptedTransaction = {
+                    ...createdTransaction,
+                    decryptedDescription: trimmedDescription,
+                    decryptedNotes: trimmedNotes || null,
+                    category: updatedCategory,
+                    account: selectedAccount,
+                    bank: selectedAccount.bank?.id
+                        ? banks.find((b) => b.id === selectedAccount.bank?.id)
+                        : undefined,
+                };
+
                 toast.success('Transaction created successfully');
+                onSuccess(newTransaction);
                 onOpenChange(false);
             } else {
                 if (!transaction) {

@@ -7,7 +7,6 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { useSyncContext } from '@/contexts/sync-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import {
     autoDetectColumns,
@@ -53,7 +52,6 @@ export function ImportTransactionsDrawer({
     accounts,
     banks,
 }: ImportTransactionsDrawerProps) {
-    const { sync } = useSyncContext();
     const { isKeySet } = useEncryptionKey();
     const [isImporting, setIsImporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -396,8 +394,6 @@ export function ImportTransactionsDrawer({
                     }
                 }
             }
-
-            sync();
 
             toast.success(
                 `${total} transaction${total !== 1 ? 's' : ''} imported`,
