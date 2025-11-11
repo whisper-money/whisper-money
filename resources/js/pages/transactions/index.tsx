@@ -84,7 +84,14 @@ function getInitialColumnVisibility(): VisibilityState {
 export default function Transactions({ categories, accounts, banks }: Props) {
     const { isKeySet } = useEncryptionKey();
 
-    const rawTransactions = useLiveQuery(() => db.transactions.toArray(), []);
+    const transactionIds = useLiveQuery(
+        async () => {
+            const txs = await db.transactions.toArray();
+            return txs.map((t) => t.id).sort().join(',');
+        },
+        [],
+        '',
+    );
 
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
@@ -152,13 +159,15 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
     useEffect(() => {
         async function processTransactions() {
-            if (!rawTransactions) {
+            if (transactionIds === undefined) {
                 setIsLoading(true);
                 return;
             }
 
             setIsLoading(true);
             try {
+                const rawTransactions = await db.transactions.toArray();
+
                 const accountsMap = new Map(
                     accounts.map((account) => [account.id, account]),
                 );
@@ -257,7 +266,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         }
 
         processTransactions();
-    }, [rawTransactions, accounts, banks, categories, isKeySet]);
+    }, [transactionIds, accounts, banks, categories, isKeySet]);
 
     useEffect(() => {
         try {
@@ -986,6 +995,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 transaction={editTransaction}
                 categories={categories}
                 accounts={accounts}
+                banks={banks}
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
@@ -996,9 +1006,12 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 transaction={null}
                 categories={categories}
                 accounts={accounts}
+                banks={banks}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
-                onSuccess={() => {}}
+                onSuccess={(newTransaction) => {
+                    setTransactions((previous) => [newTransaction, ...previous]);
+                }}
                 mode="create"
             />
 
