@@ -4,6 +4,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Toaster } from 'sonner';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
@@ -20,15 +21,21 @@ createInertiaApp({
         ),
     setup({ el, App, props }) {
         const root = createRoot(el);
-        const initialPageProps = props.initialPage
-            ?.props as Partial<SharedData> | undefined;
+        const initialPageProps = props.initialPage?.props as
+            | Partial<SharedData>
+            | undefined;
         const initialIsAuthenticated = Boolean(initialPageProps?.auth?.user);
 
         root.render(
             <StrictMode>
                 <EncryptionKeyProvider>
-                    <SyncProvider initialIsAuthenticated={initialIsAuthenticated}>
+                    <SyncProvider
+                        initialIsAuthenticated={initialIsAuthenticated}
+                    >
                         <App {...props} />
+                        <div className="[&_[data-sonner-toaster]]:!top-4 [&_[data-sonner-toaster]]:!left-1/2 [&_[data-sonner-toaster]]:!-translate-x-1/2 [&_[data-sonner-toaster]]:md:!top-auto [&_[data-sonner-toaster]]:md:!right-4 [&_[data-sonner-toaster]]:md:!bottom-4 [&_[data-sonner-toaster]]:md:!left-auto [&_[data-sonner-toaster]]:md:!translate-x-0">
+                            <Toaster richColors />
+                        </div>
                     </SyncProvider>
                 </EncryptionKeyProvider>
             </StrictMode>,

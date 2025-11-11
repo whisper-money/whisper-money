@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, FileSpreadsheet, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FileSpreadsheet, Upload, X } from 'lucide-react';
+import { useCallback, useState } from 'react';
 
 interface ImportStepUploadProps {
     file: File | null;
@@ -28,18 +28,21 @@ export function ImportStepUpload({
         setIsDragging(false);
     }, []);
 
-    const isValidFile = useCallback((file: File | null | undefined): boolean => {
-        if (!file || !file.name) {
-            return false;
-        }
-        const validExtensions = ['.csv', '.xls', '.xlsx'];
-        const lastDotIndex = file.name.lastIndexOf('.');
-        if (lastDotIndex === -1) {
-            return false;
-        }
-        const extension = file.name.toLowerCase().slice(lastDotIndex);
-        return validExtensions.includes(extension);
-    }, []);
+    const isValidFile = useCallback(
+        (file: File | null | undefined): boolean => {
+            if (!file || !file.name) {
+                return false;
+            }
+            const validExtensions = ['.csv', '.xls', '.xlsx'];
+            const lastDotIndex = file.name.lastIndexOf('.');
+            if (lastDotIndex === -1) {
+                return false;
+            }
+            const extension = file.name.toLowerCase().slice(lastDotIndex);
+            return validExtensions.includes(extension);
+        },
+        [],
+    );
 
     const handleDrop = useCallback(
         (e: React.DragEvent) => {
@@ -51,7 +54,7 @@ export function ImportStepUpload({
                 onFileSelect(droppedFile);
             }
         },
-        [onFileSelect, isValidFile]
+        [onFileSelect, isValidFile],
     );
 
     const handleFileInput = useCallback(
@@ -61,7 +64,7 @@ export function ImportStepUpload({
                 onFileSelect(selectedFile);
             }
         },
-        [onFileSelect, isValidFile]
+        [onFileSelect, isValidFile],
     );
 
     const formatFileSize = (bytes: number): string => {
@@ -76,7 +79,7 @@ export function ImportStepUpload({
                 className={cn(
                     'flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors',
                     isDragging && 'border-primary bg-accent',
-                    !isDragging && 'border-border hover:border-primary/50'
+                    !isDragging && 'border-border hover:border-primary/50',
                 )}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -117,7 +120,9 @@ export function ImportStepUpload({
                             size="icon"
                             onClick={(e) => {
                                 e.preventDefault();
-                                const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+                                const input = document.querySelector(
+                                    'input[type="file"]',
+                                ) as HTMLInputElement;
                                 if (input) input.value = '';
                                 onFileSelect(undefined as unknown as File);
                             }}
@@ -139,4 +144,3 @@ export function ImportStepUpload({
         </div>
     );
 }
-

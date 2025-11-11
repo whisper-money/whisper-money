@@ -1,12 +1,12 @@
+import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
+import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
-import { edit as editAppearance } from '@/routes/appearance';
-import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
-import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
-import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { edit as editAccount } from '@/routes/account';
+import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editDeleteAccount } from '@/routes/delete-account';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';

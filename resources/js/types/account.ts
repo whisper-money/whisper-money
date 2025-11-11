@@ -48,4 +48,3 @@ export function formatAccountType(type: AccountType): string {
     };
     return typeMap[type] || type;
 }
-

@@ -1,4 +1,3 @@
-import { CloudAlert, CloudCheck, CloudOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -8,6 +7,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useSyncContext } from '@/contexts/sync-context';
 import { formatDistanceToNow } from 'date-fns';
+import { CloudAlert, CloudCheck, CloudOff, RefreshCw } from 'lucide-react';
 
 export function SyncStatusButton() {
     const { syncStatus, lastSyncTime, isOnline, sync, error } =
@@ -71,7 +71,6 @@ export function SyncStatusButton() {
                     <p>{getTooltipText()}</p>
                 </TooltipContent>
             </Tooltip>
-        </TooltipProvider >
+        </TooltipProvider>
     );
 }
-

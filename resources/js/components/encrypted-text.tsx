@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import { importKey, decrypt } from '@/lib/crypto';
+import { useEffect, useMemo, useState } from 'react';
 
 type Length = number | { min: number; max: number } | null;
 
@@ -14,8 +14,7 @@ interface EncryptedTextProps {
 
 type DisplayState = 'encrypted' | 'decrypted' | 'loading';
 
-const ENCRYPTED_CHARSET =
-    '0123456789$%&#@!ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const ENCRYPTED_CHARSET = '0123456789$%&#@!ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 function resolveTargetLength(length: Length, fallback: number): number {
     if (typeof length === 'number') {
@@ -126,7 +125,10 @@ export function EncryptedText(props: EncryptedTextProps) {
 
     if (displayState === 'loading') {
         const widthInCharacters = Math.max(targetLength, 3) / 2;
-        const loadingClassName = ['inline-block animate-pulse rounded bg-muted/60', className]
+        const loadingClassName = [
+            'inline-block animate-pulse rounded bg-muted/60',
+            className,
+        ]
             .filter(Boolean)
             .join(' ');
 

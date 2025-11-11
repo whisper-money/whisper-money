@@ -1,15 +1,17 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload } from 'lucide-react';
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ImportTransactionsDrawer } from './import-transactions-drawer';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
+import { Upload } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { ImportTransactionsDrawer } from './import-transactions-drawer';
 
 interface ImportTransactionsButtonProps {
     categories: Category[];
@@ -22,7 +24,18 @@ export function ImportTransactionsButton({
     accounts,
     banks,
 }: ImportTransactionsButtonProps) {
+    const { isKeySet } = useEncryptionKey();
     const [drawerOpen, setDrawerOpen] = useState(false);
+
+    const handleOpenDrawer = () => {
+        if (!isKeySet) {
+            toast.error(
+                'Please unlock your encryption key to import transactions',
+            );
+            return;
+        }
+        setDrawerOpen(true);
+    };
 
     return (
         <>
@@ -32,14 +45,16 @@ export function ImportTransactionsButton({
                         <Button
                             variant="ghost"
                             className="h-9"
-                            onClick={() => setDrawerOpen(true)}
+                            onClick={handleOpenDrawer}
                             aria-label="Import transactions"
                         >
                             <Upload className="h-5 w-5" />
                             Import
                         </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Import transactions from CSV/Excel</TooltipContent>
+                    <TooltipContent>
+                        Import transactions from CSV/Excel
+                    </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
 
@@ -53,4 +68,3 @@ export function ImportTransactionsButton({
         </>
     );
 }
-

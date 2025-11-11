@@ -1,5 +1,4 @@
 // Components
-import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
@@ -39,7 +38,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
                             href={logout()}
                             as="button"
                             onClick={handleLogout}
-                            className="mx-auto block text-sm text-blue-600 hover:text-blue-800 underline"
+                            className="mx-auto block text-sm text-blue-600 underline hover:text-blue-800"
                         >
                             Log out
                         </Link>

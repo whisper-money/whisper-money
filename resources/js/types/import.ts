@@ -47,5 +47,3 @@ export interface ImportState {
     dateFormatDetected: boolean;
     transactions: ParsedTransaction[];
 }
-
-

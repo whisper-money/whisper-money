@@ -30,7 +30,9 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
+import { Check, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
 import { ImportStepMapping } from './import-step-mapping';
 import { ImportStepPreview } from './import-step-preview';
@@ -288,14 +290,22 @@ export function ImportTransactionsDrawer({
         setIsImporting(true);
         setError(null);
 
+        const newTransactions = state.transactions.filter(
+            (t) => !t.isDuplicate,
+        );
+        const total = newTransactions.length;
+
+        const toastId = toast('Importing transactions...', {
+            icon: <Loader2 className="h-4 w-4 animate-spin" />,
+            duration: Infinity,
+        });
+
+        onOpenChange(false);
+
         try {
             if (!selectedAccount) {
                 throw new Error('Selected account not found');
             }
-
-            const newTransactions = state.transactions.filter(
-                (t) => !t.isDuplicate,
-            );
 
             const transactionsToImport = await Promise.all(
                 newTransactions.map(async (transaction) => {
@@ -321,7 +331,8 @@ export function ImportTransactionsDrawer({
                 }),
             );
 
-            const createdTransactions = await transactionSyncService.createMany(transactionsToImport);
+            const createdTransactions =
+                await transactionSyncService.createMany(transactionsToImport);
 
             const keyString = getStoredKey();
             if (keyString) {
@@ -340,7 +351,9 @@ export function ImportTransactionsDrawer({
                             (a) => a.id === transaction.account_id,
                         );
                         const category = transaction.category_id
-                            ? categories.find((c) => c.id === transaction.category_id)
+                            ? categories.find(
+                                  (c) => c.id === transaction.category_id,
+                              )
                             : null;
 
                         const decryptedTransaction = {
@@ -371,11 +384,14 @@ export function ImportTransactionsDrawer({
                                 finalNotesIv = result.noteIv;
                             }
 
-                            await transactionSyncService.update(transaction.id, {
-                                category_id: result.categoryId,
-                                notes: finalNotes,
-                                notes_iv: finalNotesIv,
-                            });
+                            await transactionSyncService.update(
+                                transaction.id,
+                                {
+                                    category_id: result.categoryId,
+                                    notes: finalNotes,
+                                    notes_iv: finalNotesIv,
+                                },
+                            );
                         }
                     }
                 }
@@ -383,8 +399,20 @@ export function ImportTransactionsDrawer({
 
             sync();
 
-            onOpenChange(false);
+            toast.success(
+                `${total} transaction${total !== 1 ? 's' : ''} imported`,
+                {
+                    id: toastId,
+                    icon: <Check className="h-4 w-4" />,
+                },
+            );
         } catch (err) {
+            toast.error(
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to import transactions',
+                { id: toastId },
+            );
             setError(
                 err instanceof Error
                     ? err.message

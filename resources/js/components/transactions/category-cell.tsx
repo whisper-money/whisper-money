@@ -1,4 +1,5 @@
 import { CategorySelect } from '@/components/transactions/category-select';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -6,6 +7,7 @@ import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface CategoryCellProps {
     transaction: DecryptedTransaction;
@@ -22,9 +24,17 @@ export function CategoryCell({
     banks,
     onUpdate,
 }: CategoryCellProps) {
+    const { isKeySet } = useEncryptionKey();
     const [isUpdating, setIsUpdating] = useState(false);
 
     async function handleCategoryChange(value: string) {
+        if (!isKeySet) {
+            toast.error(
+                'Please unlock your encryption key to update transactions',
+            );
+            return;
+        }
+
         const categoryId = value === 'null' ? null : parseInt(value);
 
         setIsUpdating(true);

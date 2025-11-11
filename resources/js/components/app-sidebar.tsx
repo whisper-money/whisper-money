@@ -1,3 +1,4 @@
+import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -11,7 +12,6 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid, Receipt } from 'lucide-react';

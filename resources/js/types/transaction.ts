@@ -34,4 +34,3 @@ export interface TransactionFilters {
     accountIds: number[];
     searchText: string;
 }
-

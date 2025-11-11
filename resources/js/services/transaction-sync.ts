@@ -165,7 +165,7 @@ class TransactionSyncService {
 
     async deleteMany(ids: string[]): Promise<void> {
         const timestamp = new Date().toISOString();
-        
+
         for (const id of ids) {
             const transaction = await this.getById(id);
             if (!transaction) {

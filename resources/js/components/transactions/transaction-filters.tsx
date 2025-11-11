@@ -1,7 +1,9 @@
-import { type ReactNode, useState } from 'react';
-import * as Icons from 'lucide-react';
 import { format } from 'date-fns';
+import * as Icons from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 
+import { EncryptedText } from '@/components/encrypted-text';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,10 +12,8 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { EncryptedText } from '@/components/encrypted-text';
-import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type Account } from '@/types/account';
+import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type TransactionFilters } from '@/types/transaction';
 
 interface TransactionFiltersProps {
@@ -116,12 +116,15 @@ export function TransactionFilters({
 
                             <div className="space-y-2">
                                 <Label>Date</Label>
-                                <div className="pt-2 grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-2 pt-2">
                                     <Input
                                         type="date"
                                         value={
                                             filters.dateFrom
-                                                ? format(filters.dateFrom, 'yyyy-MM-dd')
+                                                ? format(
+                                                      filters.dateFrom,
+                                                      'yyyy-MM-dd',
+                                                  )
                                                 : ''
                                         }
                                         onChange={(e) =>
@@ -138,7 +141,10 @@ export function TransactionFilters({
                                         type="date"
                                         value={
                                             filters.dateTo
-                                                ? format(filters.dateTo, 'yyyy-MM-dd')
+                                                ? format(
+                                                      filters.dateTo,
+                                                      'yyyy-MM-dd',
+                                                  )
                                                 : ''
                                         }
                                         onChange={(e) =>
@@ -156,7 +162,7 @@ export function TransactionFilters({
 
                             <div className="space-y-2">
                                 <Label>Amount</Label>
-                                <div className="pt-2 grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-2 pt-2">
                                     <Input
                                         type="number"
                                         step="0.01"
@@ -190,15 +196,22 @@ export function TransactionFilters({
 
                             <div className="space-y-2">
                                 <Label>Categories</Label>
-                                <div className="pt-2 flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-2 pt-2">
                                     <Badge
-                                        variant={isUncategorizedSelected ? 'default' : 'outline'}
-                                        className={`flex cursor-pointer items-center gap-1 py-1.5 ${isUncategorizedSelected
-                                            ? 'border-transparent bg-muted text-foreground dark:bg-muted/40'
-                                            : ''
-                                            }`}
+                                        variant={
+                                            isUncategorizedSelected
+                                                ? 'default'
+                                                : 'outline'
+                                        }
+                                        className={`flex cursor-pointer items-center gap-1 py-1.5 ${
+                                            isUncategorizedSelected
+                                                ? 'border-transparent bg-muted text-foreground dark:bg-muted/40'
+                                                : ''
+                                        }`}
                                         onClick={() =>
-                                            handleCategoryToggle(UNCATEGORIZED_CATEGORY_ID)
+                                            handleCategoryToggle(
+                                                UNCATEGORIZED_CATEGORY_ID,
+                                            )
                                         }
                                     >
                                         <Icons.CircleHelp className="h-4 w-4 opacity-80" />
@@ -214,21 +227,28 @@ export function TransactionFilters({
                                     </Badge>
                                     {categories.map((category) => {
                                         const isSelected =
-                                            filters.categoryIds.includes(category.id);
-                                        const IconComponent = resolveIconComponent(
-                                            category.icon,
-                                        );
+                                            filters.categoryIds.includes(
+                                                category.id,
+                                            );
+                                        const IconComponent =
+                                            resolveIconComponent(category.icon);
                                         const colorClasses =
-                                            getCategoryColorClasses(category.color);
+                                            getCategoryColorClasses(
+                                                category.color,
+                                            );
                                         return (
                                             <Badge
                                                 key={category.id}
                                                 variant={
-                                                    isSelected ? 'default' : 'outline'
+                                                    isSelected
+                                                        ? 'default'
+                                                        : 'outline'
                                                 }
-                                                className={`flex cursor-pointer items-center gap-1 py-1.5  ${isSelected ? `${colorClasses.bg} ${colorClasses.text} border-transparent` : ''}`}
+                                                className={`flex cursor-pointer items-center gap-1 py-1.5 ${isSelected ? `${colorClasses.bg} ${colorClasses.text} border-transparent` : ''}`}
                                                 onClick={() =>
-                                                    handleCategoryToggle(category.id)
+                                                    handleCategoryToggle(
+                                                        category.id,
+                                                    )
                                                 }
                                             >
                                                 <IconComponent
@@ -251,19 +271,25 @@ export function TransactionFilters({
 
                             <div className="space-y-2">
                                 <Label>Accounts</Label>
-                                <div className="pt-2 flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-2 pt-2">
                                     {accounts.map((account) => {
                                         const isSelected =
-                                            filters.accountIds.includes(account.id);
+                                            filters.accountIds.includes(
+                                                account.id,
+                                            );
                                         return (
                                             <Badge
                                                 key={account.id}
                                                 variant={
-                                                    isSelected ? 'default' : 'outline'
+                                                    isSelected
+                                                        ? 'default'
+                                                        : 'outline'
                                                 }
-                                                className="cursor-pointer py-1 px-2"
+                                                className="cursor-pointer px-2 py-1"
                                                 onClick={() =>
-                                                    handleAccountToggle(account.id)
+                                                    handleAccountToggle(
+                                                        account.id,
+                                                    )
                                                 }
                                             >
                                                 <EncryptedText
@@ -325,4 +351,3 @@ function resolveIconComponent(iconName?: string): Icons.LucideIcon {
 
     return Icons.Circle as Icons.LucideIcon;
 }
-

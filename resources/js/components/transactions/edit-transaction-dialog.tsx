@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -17,6 +18,7 @@ import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { format, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface EditTransactionDialogProps {
     transaction: DecryptedTransaction | null;
@@ -33,6 +35,7 @@ export function EditTransactionDialog({
     onOpenChange,
     onSuccess,
 }: EditTransactionDialogProps) {
+    const { isKeySet } = useEncryptionKey();
     const [categoryId, setCategoryId] = useState<string>('null');
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +54,13 @@ export function EditTransactionDialog({
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!transaction) {
+            return;
+        }
+
+        if (!isKeySet) {
+            toast.error(
+                'Please unlock your encryption key to update transactions',
+            );
             return;
         }
 

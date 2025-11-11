@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { accountSyncService } from '@/services/account-sync';
-import { type Account } from '@/types/account';
+import { EncryptedText } from '@/components/encrypted-text';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Button } from '@/components/ui/button';
-import { EncryptedText } from '@/components/encrypted-text';
+import { accountSyncService } from '@/services/account-sync';
+import { type Account } from '@/types/account';
 import { Building2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface ImportStepAccountProps {
     selectedAccountId: number | null;
@@ -39,7 +39,9 @@ export function ImportStepAccount({
     if (loading) {
         return (
             <div className="flex items-center justify-center py-8">
-                <p className="text-sm text-muted-foreground">Loading accounts...</p>
+                <p className="text-sm text-muted-foreground">
+                    Loading accounts...
+                </p>
             </div>
         );
     }
@@ -82,9 +84,7 @@ export function ImportStepAccount({
                                     <Building2 className="h-5 w-5 text-muted-foreground" />
                                 </div>
                             )}
-                            <div
-                                className="flex flex-1 flex-col gap-1"
-                            >
+                            <div className="flex flex-1 flex-col gap-1">
                                 <span className="font-medium">
                                     <EncryptedText
                                         encryptedText={account.name}
@@ -93,7 +93,8 @@ export function ImportStepAccount({
                                     />
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                    {account.bank.name} • {account.currency_code}
+                                    {account.bank.name} •{' '}
+                                    {account.currency_code}
                                 </span>
                             </div>
                         </Label>
@@ -102,14 +103,10 @@ export function ImportStepAccount({
             </RadioGroup>
 
             <div className="flex justify-end">
-                <Button
-                    onClick={onNext}
-                    disabled={!selectedAccountId}
-                >
+                <Button onClick={onNext} disabled={!selectedAccountId}>
                     Next
                 </Button>
             </div>
         </div>
     );
 }
-
