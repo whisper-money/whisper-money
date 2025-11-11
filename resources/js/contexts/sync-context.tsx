@@ -1,20 +1,20 @@
-import React, {
-    createContext,
-    useContext,
-    useState,
-    useEffect,
-    useCallback,
-    type ReactNode,
-} from 'react';
+import { useOnlineStatus } from '@/hooks/use-online-status';
+import { checkDatabaseVersion } from '@/lib/db-migration-helper';
+import { accountSyncService } from '@/services/account-sync';
+import { automationRuleSyncService } from '@/services/automation-rule-sync';
+import { bankSyncService } from '@/services/bank-sync';
+import { categorySyncService } from '@/services/category-sync';
+import { transactionSyncService } from '@/services/transaction-sync';
 import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
-import { useOnlineStatus } from '@/hooks/use-online-status';
-import { categorySyncService } from '@/services/category-sync';
-import { accountSyncService } from '@/services/account-sync';
-import { bankSyncService } from '@/services/bank-sync';
-import { transactionSyncService } from '@/services/transaction-sync';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
-import { checkDatabaseVersion } from '@/lib/db-migration-helper';
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useState,
+    type ReactNode,
+} from 'react';
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
@@ -91,14 +91,19 @@ export function SyncProvider({
         setError(null);
 
         try {
-            const [categoriesResult, accountsResult, banksResult, automationRulesResult, transactionsResult] =
-                await Promise.all([
-                    categorySyncService.sync(),
-                    accountSyncService.sync(),
-                    bankSyncService.sync(),
-                    automationRuleSyncService.sync(),
-                    transactionSyncService.sync(),
-                ]);
+            const [
+                categoriesResult,
+                accountsResult,
+                banksResult,
+                automationRulesResult,
+                transactionsResult,
+            ] = await Promise.all([
+                categorySyncService.sync(),
+                accountSyncService.sync(),
+                bankSyncService.sync(),
+                automationRuleSyncService.sync(),
+                transactionSyncService.sync(),
+            ]);
 
             const allErrors = [
                 ...categoriesResult.errors,
@@ -121,9 +126,7 @@ export function SyncProvider({
             }
         } catch (err) {
             console.error('Sync failed:', err);
-            setError(
-                err instanceof Error ? err.message : 'Unknown sync error',
-            );
+            setError(err instanceof Error ? err.message : 'Unknown sync error');
             setSyncStatus('error');
 
             setTimeout(() => {
@@ -193,4 +196,3 @@ export function useSyncContext() {
     }
     return context;
 }
-

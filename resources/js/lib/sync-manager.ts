@@ -1,7 +1,12 @@
 import axios from 'axios';
 import { db } from './dexie-db';
 
-export type StoreName = 'categories' | 'accounts' | 'banks' | 'automation_rules' | 'transactions';
+export type StoreName =
+    | 'categories'
+    | 'accounts'
+    | 'banks'
+    | 'automation_rules'
+    | 'transactions';
 
 export interface IndexedDBRecord {
     id: number | string;
@@ -203,7 +208,9 @@ export class SyncManager {
         const existing = await table.get(id);
 
         if (!existing) {
-            throw new Error(`Record ${id} not found in ${this.options.storeName}`);
+            throw new Error(
+                `Record ${id} not found in ${this.options.storeName}`,
+            );
         }
 
         const timestamp = new Date().toISOString();
@@ -236,16 +243,15 @@ export class SyncManager {
 
     async getAll<T extends IndexedDBRecord>(): Promise<T[]> {
         const table = db[this.options.storeName];
-        return await table.toArray() as T[];
+        return (await table.toArray()) as T[];
     }
 
     async getById<T extends IndexedDBRecord>(id: number): Promise<T | null> {
         const table = db[this.options.storeName];
-        return (await table.get(id) as T) || null;
+        return ((await table.get(id)) as T) || null;
     }
 
     isSyncing(): boolean {
         return this.syncInProgress;
     }
 }
-

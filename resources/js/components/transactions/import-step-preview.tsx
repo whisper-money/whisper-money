@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -72,7 +72,8 @@ export function ImportStepPreview({
             {stats.newCount === 0 && stats.duplicateCount > 0 && (
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
                     <p className="text-sm text-amber-700 dark:text-amber-300">
-                        All transactions appear to be duplicates. No new transactions will be imported.
+                        All transactions appear to be duplicates. No new
+                        transactions will be imported.
                     </p>
                 </div>
             )}
@@ -84,13 +85,18 @@ export function ImportStepPreview({
                             <TableHead>Date</TableHead>
                             <TableHead>Description</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
-                            <TableHead className="text-center">Status</TableHead>
+                            <TableHead className="text-center">
+                                Status
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {transactions.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                <TableCell
+                                    colSpan={4}
+                                    className="text-center text-muted-foreground"
+                                >
                                     No valid transactions found
                                 </TableCell>
                             </TableRow>
@@ -99,11 +105,15 @@ export function ImportStepPreview({
                                 <TableRow
                                     key={index}
                                     className={
-                                        transaction.isDuplicate ? 'opacity-60' : ''
+                                        transaction.isDuplicate
+                                            ? 'opacity-60'
+                                            : ''
                                     }
                                 >
                                     <TableCell className="whitespace-nowrap">
-                                        {formatDate(transaction.transaction_date)}
+                                        {formatDate(
+                                            transaction.transaction_date,
+                                        )}
                                     </TableCell>
                                     <TableCell className="max-w-[200px] truncate">
                                         {transaction.description}
@@ -113,7 +123,9 @@ export function ImportStepPreview({
                                     </TableCell>
                                     <TableCell className="text-center">
                                         {transaction.isDuplicate ? (
-                                            <Badge variant="secondary">Duplicate</Badge>
+                                            <Badge variant="secondary">
+                                                Duplicate
+                                            </Badge>
                                         ) : (
                                             <Badge variant="default">New</Badge>
                                         )}
@@ -126,7 +138,11 @@ export function ImportStepPreview({
             </div>
 
             <div className="flex justify-between">
-                <Button variant="outline" onClick={onBack} disabled={isImporting}>
+                <Button
+                    variant="outline"
+                    onClick={onBack}
+                    disabled={isImporting}
+                >
                     Back
                 </Button>
                 <Button
@@ -141,4 +157,3 @@ export function ImportStepPreview({
         </div>
     );
 }
-

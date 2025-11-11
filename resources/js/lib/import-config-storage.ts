@@ -7,7 +7,10 @@ interface ImportConfig {
 
 const STORAGE_KEY_PREFIX = 'import_config_account_';
 
-export function saveImportConfig(accountId: number, config: ImportConfig): void {
+export function saveImportConfig(
+    accountId: number,
+    config: ImportConfig,
+): void {
     try {
         const key = `${STORAGE_KEY_PREFIX}${accountId}`;
         localStorage.setItem(key, JSON.stringify(config));
@@ -46,4 +49,3 @@ export function clearImportConfig(accountId: number): void {
         console.error('Failed to clear import configuration:', error);
     }
 }
-

@@ -153,11 +153,7 @@ export default function Categories() {
         {
             id: 'actions',
             enableHiding: false,
-            cell: ({ row }) => (
-                <CategoryActions
-                    category={row.original}
-                />
-            ),
+            cell: ({ row }) => <CategoryActions category={row.original} />,
         },
     ];
 

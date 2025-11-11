@@ -1,8 +1,8 @@
-import Dexie, { type EntityTable } from 'dexie';
-import type { Account, Bank } from '@/types/account';
-import type { Category } from '@/types/category';
-import type { AutomationRule } from '@/types/automation-rule';
 import type { Transaction } from '@/services/transaction-sync';
+import type { Account, Bank } from '@/types/account';
+import type { AutomationRule } from '@/types/automation-rule';
+import type { Category } from '@/types/category';
+import Dexie, { type EntityTable } from 'dexie';
 
 export interface SyncMetadata {
     key: string;
@@ -38,4 +38,3 @@ db.version(3).stores({
 });
 
 export { db };
-

@@ -107,9 +107,15 @@ export function evaluateRules(
             consoleDebug('[Rule Engine] Rule JSON:', rule.rules_json);
 
             const normalizedRulesJson = normalizeRuleJson(rule.rules_json);
-            consoleDebug('[Rule Engine] Normalized Rule JSON:', normalizedRulesJson);
+            consoleDebug(
+                '[Rule Engine] Normalized Rule JSON:',
+                normalizedRulesJson,
+            );
 
-            const result = jsonLogic.apply(normalizedRulesJson, transactionData);
+            const result = jsonLogic.apply(
+                normalizedRulesJson,
+                transactionData,
+            );
 
             consoleDebug(`[Rule Engine] Rule #${rule.id} result:`, result);
 

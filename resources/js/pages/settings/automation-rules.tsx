@@ -98,7 +98,8 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
 
 export default function AutomationRules() {
     const { isKeySet } = useEncryptionKey();
-    const rawRules = useLiveQuery(() => db.automation_rules.toArray(), []) || [];
+    const rawRules =
+        useLiveQuery(() => db.automation_rules.toArray(), []) || [];
     const rules = rawRules.map((rule) => ({
         ...rule,
         rules_json:

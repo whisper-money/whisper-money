@@ -19,7 +19,10 @@ export function AppSidebarHeader({
             </div>
             <div className="flex items-center gap-2">
                 <ImportTransactionsButton />
-                <Separator orientation="vertical" className="data-[orientation=vertical]:h-6" />
+                <Separator
+                    orientation="vertical"
+                    className="data-[orientation=vertical]:h-6"
+                />
                 <SyncStatusButton />
                 <EncryptionKeyButton />
             </div>

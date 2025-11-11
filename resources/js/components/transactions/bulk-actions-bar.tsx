@@ -63,7 +63,6 @@ export function BulkActionsBar({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuGroup>
-
                                     <DropdownMenuItem
                                         onClick={onReEvaluateRules}
                                         disabled={isUpdating}

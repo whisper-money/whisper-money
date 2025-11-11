@@ -8,9 +8,10 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { isWithinInterval, parseISO } from 'date-fns';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import HeadingSmall from '@/components/heading-small';
@@ -171,7 +172,10 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                     try {
                         key = await importKey(keyString);
                     } catch (error) {
-                        console.error('Failed to import encryption key:', error);
+                        console.error(
+                            'Failed to import encryption key:',
+                            error,
+                        );
                     }
                 }
 
@@ -189,7 +193,10 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                         transaction.description_iv,
                                     );
 
-                                    if (transaction.notes && transaction.notes_iv) {
+                                    if (
+                                        transaction.notes &&
+                                        transaction.notes_iv
+                                    ) {
                                         decryptedNotes = await decrypt(
                                             transaction.notes,
                                             key,
@@ -205,7 +212,9 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                 }
                             }
 
-                            const account = accountsMap.get(transaction.account_id);
+                            const account = accountsMap.get(
+                                transaction.account_id,
+                            );
                             const category = transaction.category_id
                                 ? categoriesMap.get(transaction.category_id)
                                 : null;
@@ -404,115 +413,127 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         return filteredTransactions.slice(0, displayedCount);
     }, [filteredTransactions, displayedCount]);
 
-    const handleReEvaluateRules = useCallback(async (transaction: DecryptedTransaction) => {
-        consoleDebug('=== Re-evaluating rules for single transaction ===');
-        consoleDebug('Transaction:', {
-            id: transaction.id,
-            description: transaction.decryptedDescription,
-            amount: transaction.amount,
-            currentCategory: transaction.category?.name || 'None',
-        });
+    const handleReEvaluateRules = useCallback(
+        async (transaction: DecryptedTransaction) => {
+            consoleDebug('=== Re-evaluating rules for single transaction ===');
+            consoleDebug('Transaction:', {
+                id: transaction.id,
+                description: transaction.decryptedDescription,
+                amount: transaction.amount,
+                currentCategory: transaction.category?.name || 'None',
+            });
 
-        setIsReEvaluating(true);
-        try {
-            const keyString = getStoredKey();
-            if (!keyString || !isKeySet) {
-                consoleDebug('❌ Encryption key not set');
-                console.error('Encryption key not set');
-                return;
-            }
-            consoleDebug('✓ Encryption key found');
-
-            const key = await importKey(keyString);
-            const rules = await automationRuleSyncService.getAll();
-            consoleDebug(`Found ${rules.length} automation rules`);
-
-            if (rules.length === 0) {
-                consoleDebug('❌ No rules to evaluate');
-                return;
-            }
-
-            consoleDebug('Evaluating rules against transaction...');
-            const result = evaluateRules(
-                transaction,
-                rules,
-                categories,
-                accounts,
-                banks,
-            );
-
-            consoleDebug('Rule evaluation result:', result);
-
-            if (result) {
-                consoleDebug('✓ Rule matched! Applying changes...');
-                let finalNotes = transaction.notes;
-                let finalNotesIv = transaction.notes_iv;
-
-                if (result.note && result.noteIv) {
-                    consoleDebug('Adding note from rule');
-                    if (transaction.decryptedNotes) {
-                        const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
-                        const encrypted = await encrypt(combinedNote, key);
-                        finalNotes = encrypted.encrypted;
-                        finalNotesIv = encrypted.iv;
-                        consoleDebug('Combined existing notes with rule note');
-                    } else {
-                        finalNotes = result.note;
-                        finalNotesIv = result.noteIv;
-                        consoleDebug('Set rule note as new note');
-                    }
-                }
-
-                const updateData = {
-                    category_id: result.categoryId,
-                    notes: finalNotes,
-                    notes_iv: finalNotesIv,
-                };
-                consoleDebug('Updating transaction with:', updateData);
-
-                await transactionSyncService.update(transaction.id, updateData);
-                consoleDebug('✓ Transaction updated in IndexedDB');
-
-                const selectedCategory = result.categoryId
-                    ? categories.find((c) => c.id === result.categoryId) || null
-                    : null;
-
-                let decryptedNotes = transaction.decryptedNotes;
-                if (finalNotes && finalNotesIv) {
-                    decryptedNotes = await decrypt(
-                        finalNotes,
-                        key,
-                        finalNotesIv,
+            setIsReEvaluating(true);
+            try {
+                const keyString = getStoredKey();
+                if (!keyString || !isKeySet) {
+                    consoleDebug('❌ Encryption key not set');
+                    console.error('Encryption key not set');
+                    toast.error(
+                        'Please unlock your encryption key to re-evaluate rules',
                     );
+                    return;
+                }
+                consoleDebug('✓ Encryption key found');
+
+                const key = await importKey(keyString);
+                const rules = await automationRuleSyncService.getAll();
+                consoleDebug(`Found ${rules.length} automation rules`);
+
+                if (rules.length === 0) {
+                    consoleDebug('❌ No rules to evaluate');
+                    return;
                 }
 
-                const updatedTransaction = {
-                    ...transaction,
-                    category_id: result.categoryId,
-                    category: selectedCategory,
-                    notes: finalNotes,
-                    notes_iv: finalNotesIv,
-                    decryptedNotes,
-                };
-                consoleDebug('Updating UI state with:', {
-                    id: updatedTransaction.id,
-                    newCategory: selectedCategory?.name || 'None',
-                    hasNotes: !!decryptedNotes,
-                });
+                consoleDebug('Evaluating rules against transaction...');
+                const result = evaluateRules(
+                    transaction,
+                    rules,
+                    categories,
+                    accounts,
+                    banks,
+                );
 
-                updateTransaction(updatedTransaction);
-                consoleDebug('✓ UI state updated successfully');
-            } else {
-                consoleDebug('❌ No rules matched this transaction');
+                consoleDebug('Rule evaluation result:', result);
+
+                if (result) {
+                    consoleDebug('✓ Rule matched! Applying changes...');
+                    let finalNotes = transaction.notes;
+                    let finalNotesIv = transaction.notes_iv;
+
+                    if (result.note && result.noteIv) {
+                        consoleDebug('Adding note from rule');
+                        if (transaction.decryptedNotes) {
+                            const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
+                            const encrypted = await encrypt(combinedNote, key);
+                            finalNotes = encrypted.encrypted;
+                            finalNotesIv = encrypted.iv;
+                            consoleDebug(
+                                'Combined existing notes with rule note',
+                            );
+                        } else {
+                            finalNotes = result.note;
+                            finalNotesIv = result.noteIv;
+                            consoleDebug('Set rule note as new note');
+                        }
+                    }
+
+                    const updateData = {
+                        category_id: result.categoryId,
+                        notes: finalNotes,
+                        notes_iv: finalNotesIv,
+                    };
+                    consoleDebug('Updating transaction with:', updateData);
+
+                    await transactionSyncService.update(
+                        transaction.id,
+                        updateData,
+                    );
+                    consoleDebug('✓ Transaction updated in IndexedDB');
+
+                    const selectedCategory = result.categoryId
+                        ? categories.find((c) => c.id === result.categoryId) ||
+                          null
+                        : null;
+
+                    let decryptedNotes = transaction.decryptedNotes;
+                    if (finalNotes && finalNotesIv) {
+                        decryptedNotes = await decrypt(
+                            finalNotes,
+                            key,
+                            finalNotesIv,
+                        );
+                    }
+
+                    const updatedTransaction = {
+                        ...transaction,
+                        category_id: result.categoryId,
+                        category: selectedCategory,
+                        notes: finalNotes,
+                        notes_iv: finalNotesIv,
+                        decryptedNotes,
+                    };
+                    consoleDebug('Updating UI state with:', {
+                        id: updatedTransaction.id,
+                        newCategory: selectedCategory?.name || 'None',
+                        hasNotes: !!decryptedNotes,
+                    });
+
+                    updateTransaction(updatedTransaction);
+                    consoleDebug('✓ UI state updated successfully');
+                } else {
+                    consoleDebug('❌ No rules matched this transaction');
+                }
+            } catch (error) {
+                consoleDebug('❌ Error during re-evaluation:', error);
+                console.error('Failed to re-evaluate rules:', error);
+            } finally {
+                setIsReEvaluating(false);
+                consoleDebug('=== Re-evaluation complete ===');
             }
-        } catch (error) {
-            consoleDebug('❌ Error during re-evaluation:', error);
-            console.error('Failed to re-evaluate rules:', error);
-        } finally {
-            setIsReEvaluating(false);
-            consoleDebug('=== Re-evaluation complete ===');
-        }
-    }, [isKeySet, categories, accounts, banks, updateTransaction]);
+        },
+        [isKeySet, categories, accounts, banks, updateTransaction],
+    );
 
     async function handleBulkReEvaluateRules() {
         const selectedIds = Object.keys(rowSelection);
@@ -530,6 +551,9 @@ export default function Transactions({ categories, accounts, banks }: Props) {
             if (!keyString || !isKeySet) {
                 consoleDebug('❌ Encryption key not set');
                 console.error('Encryption key not set');
+                toast.error(
+                    'Please unlock your encryption key to re-evaluate rules',
+                );
                 return;
             }
             consoleDebug('✓ Encryption key found');
@@ -777,6 +801,13 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     }
 
     async function handleBulkCategoryChange(categoryId: number | null) {
+        if (!isKeySet) {
+            toast.error(
+                'Please unlock your encryption key to update transactions',
+            );
+            return;
+        }
+
         const selectedIds = Object.keys(rowSelection);
         if (selectedIds.length === 0) {
             return;

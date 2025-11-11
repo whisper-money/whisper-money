@@ -1,7 +1,7 @@
 function ensureCryptoAvailable(): void {
     if (!window.crypto || !window.crypto.subtle) {
         throw new Error(
-            'Web Crypto API is not available. Please ensure you are using HTTPS or localhost.'
+            'Web Crypto API is not available. Please ensure you are using HTTPS or localhost.',
         );
     }
 }
@@ -14,13 +14,13 @@ export async function getKeyFromPassword(password: string): Promise<CryptoKey> {
         encoder.encode(password),
         'PBKDF2',
         false,
-        ['deriveBits', 'deriveKey']
+        ['deriveBits', 'deriveKey'],
     );
 }
 
 export async function getAESKeyFromPBKDF(
     key: CryptoKey,
-    salt: Uint8Array
+    salt: Uint8Array,
 ): Promise<CryptoKey> {
     ensureCryptoAvailable();
     return await window.crypto.subtle.deriveKey(
@@ -33,13 +33,13 @@ export async function getAESKeyFromPBKDF(
         key,
         { name: 'AES-GCM', length: 256 },
         true,
-        ['encrypt', 'decrypt']
+        ['encrypt', 'decrypt'],
     );
 }
 
 export async function encrypt(
     plaintext: string,
-    key: CryptoKey
+    key: CryptoKey,
 ): Promise<{ encrypted: string; iv: string }> {
     ensureCryptoAvailable();
     const encoder = new TextEncoder();
@@ -53,7 +53,7 @@ export async function encrypt(
             iv,
         },
         key,
-        data
+        data,
     );
 
     return {
@@ -65,7 +65,7 @@ export async function encrypt(
 export async function decrypt(
     encrypted: string,
     key: CryptoKey,
-    iv: string
+    iv: string,
 ): Promise<string> {
     ensureCryptoAvailable();
     const encryptedBuffer = base64ToBuffer(encrypted);
@@ -77,7 +77,7 @@ export async function decrypt(
             iv: ivBuffer,
         },
         key,
-        encryptedBuffer
+        encryptedBuffer,
     );
 
     const decoder = new TextDecoder();
@@ -122,7 +122,6 @@ export async function importKey(keyString: string): Promise<CryptoKey> {
         keyBuffer,
         { name: 'AES-GCM', length: 256 },
         true,
-        ['encrypt', 'decrypt']
+        ['encrypt', 'decrypt'],
     );
 }
-

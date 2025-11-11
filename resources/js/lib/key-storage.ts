@@ -23,4 +23,3 @@ export function clearKey(): void {
 export function isKeyPersistent(): boolean {
     return localStorage.getItem(ENCRYPTION_KEY_NAME) !== null;
 }
-
