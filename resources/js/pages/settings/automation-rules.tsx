@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
@@ -84,13 +84,11 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
                 rule={rule}
                 open={editOpen}
                 onOpenChange={setEditOpen}
-                onSuccess={() => {}}
             />
             <DeleteAutomationRuleDialog
                 rule={rule}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
-                onSuccess={() => {}}
             />
         </>
     );
@@ -100,13 +98,17 @@ export default function AutomationRules() {
     const { isKeySet } = useEncryptionKey();
     const rawRules =
         useLiveQuery(() => db.automation_rules.toArray(), []) || [];
-    const rules = rawRules.map((rule) => ({
-        ...rule,
-        rules_json:
-            typeof rule.rules_json === 'string'
-                ? JSON.parse(rule.rules_json)
-                : rule.rules_json,
-    }));
+    const rules = useMemo(
+        () =>
+            rawRules.map((rule) => ({
+                ...rule,
+                rules_json:
+                    typeof rule.rules_json === 'string'
+                        ? JSON.parse(rule.rules_json)
+                        : rule.rules_json,
+            })),
+        [rawRules],
+    );
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
@@ -187,12 +189,7 @@ export default function AutomationRules() {
         {
             id: 'actions',
             enableHiding: false,
-            cell: ({ row }) => (
-                <AutomationRuleActions
-                    rule={row.original}
-                    onSuccess={loadRules}
-                />
-            ),
+            cell: ({ row }) => <AutomationRuleActions rule={row.original} />,
         },
     ];
 
@@ -242,7 +239,6 @@ export default function AutomationRules() {
                             />
                             <CreateAutomationRuleDialog
                                 disabled={!isKeySet}
-                                onSuccess={loadRules}
                             />
                         </div>
 
