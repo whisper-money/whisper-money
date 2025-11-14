@@ -11,8 +11,9 @@ import {
     VisibilityState,
 } from '@tanstack/react-table';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { MoreHorizontal } from 'lucide-react';
+import * as Icons from 'lucide-react';
 
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
@@ -151,12 +152,20 @@ export default function AutomationRules() {
                     const colorClasses = actions.category
                         ? getCategoryColorClasses(actions.category.color)
                         : null;
+                    const IconComponent = actions.category
+                        ? (Icons[
+                              actions.category.icon as keyof typeof Icons
+                          ] as Icons.LucideIcon)
+                        : null;
                     return (
                         <div className="flex items-center gap-2">
                             {colorClasses && (
                                 <Badge
-                                    className={`${colorClasses.bg} ${colorClasses.text}`}
+                                    className={`${colorClasses.bg} ${colorClasses.text} flex items-center gap-2`}
                                 >
+                                    {IconComponent && (
+                                        <IconComponent className="h-3 w-3 opacity-80" />
+                                    )}
                                     {actions.category?.name}
                                 </Badge>
                             )}
@@ -171,10 +180,14 @@ export default function AutomationRules() {
                     const colorClasses = getCategoryColorClasses(
                         actions.category.color,
                     );
+                    const IconComponent = Icons[
+                        actions.category.icon as keyof typeof Icons
+                    ] as Icons.LucideIcon;
                     return (
                         <Badge
-                            className={`${colorClasses.bg} ${colorClasses.text}`}
+                            className={`${colorClasses.bg} ${colorClasses.text} flex items-center gap-2`}
                         >
+                            <IconComponent className="h-3 w-3 opacity-80" />
                             {actions.category.name}
                         </Badge>
                     );

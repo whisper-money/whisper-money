@@ -1,5 +1,6 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { RuleBuilder } from '@/components/automation-rules/rule-builder';
+import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -11,13 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
@@ -213,24 +207,13 @@ export function CreateAutomationRuleDialog({
 
                         <div className="space-y-2">
                             <Label htmlFor="category">Set Category</Label>
-                            <Select
+                            <CategoryCombobox
                                 value={categoryId}
                                 onValueChange={setCategoryId}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a category (optional)" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.map((category) => (
-                                        <SelectItem
-                                            key={category.id}
-                                            value={String(category.id)}
-                                        >
-                                            {category.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                categories={categories}
+                                placeholder="Select a category (optional)"
+                                showUncategorized={false}
+                            />
                         </div>
 
                         <div className="space-y-2">
