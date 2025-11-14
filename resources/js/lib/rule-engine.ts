@@ -69,14 +69,18 @@ export function prepareTransactionData(
         ? categories.find((c) => c.id === transaction.category_id)
         : null;
 
+    const normalizeWhitespace = (str: string): string => {
+        return str.trim().replace(/\s+/g, ' ');
+    };
+
     return {
-        description: (transaction.decryptedDescription || '').toLowerCase(),
+        description: normalizeWhitespace((transaction.decryptedDescription || '').toLowerCase()),
         amount: parseFloat(transaction.amount),
         transaction_date: transaction.transaction_date,
         bank_name: bank?.name || '',
         account_name: account?.name || '',
         category: category?.name || null,
-        notes: transaction.decryptedNotes?.toLowerCase() || null,
+        notes: transaction.decryptedNotes ? normalizeWhitespace(transaction.decryptedNotes.toLowerCase()) : null,
     };
 }
 
