@@ -23,7 +23,7 @@ import { useRef, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Account settings',
+        title: 'Bank accounts',
         href: accountEdit().url,
     },
 ];
@@ -57,7 +57,7 @@ export default function Account({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Account settings" />
+            <Head title="Bank accounts" />
 
             <SettingsLayout>
                 <div className="space-y-6">
@@ -132,12 +132,12 @@ export default function Account({
 
                                             {status ===
                                                 'verification-link-sent' && (
-                                                <div className="mt-2 text-sm font-medium text-green-600">
-                                                    A new verification link has
-                                                    been sent to your email
-                                                    address.
-                                                </div>
-                                            )}
+                                                    <div className="mt-2 text-sm font-medium text-green-600">
+                                                        A new verification link has
+                                                        been sent to your email
+                                                        address.
+                                                    </div>
+                                                )}
                                         </div>
                                     )}
 
