@@ -3,8 +3,8 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
-import type { Category } from '@/types/category';
 import type { Account, Bank } from '@/types/account';
+import type { Category } from '@/types/category';
 import type { DecryptedTransaction } from '@/types/transaction';
 import { useCallback } from 'react';
 import { toast } from 'sonner';
@@ -79,7 +79,10 @@ export function useReEvaluateAllTransactions() {
                         if (result.note && result.noteIv) {
                             if (transaction.decryptedNotes) {
                                 const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
-                                const encrypted = await encrypt(combinedNote, key);
+                                const encrypted = await encrypt(
+                                    combinedNote,
+                                    key,
+                                );
                                 finalNotes = encrypted.encrypted;
                                 finalNotesIv = encrypted.iv;
                             } else {
@@ -103,9 +106,12 @@ export function useReEvaluateAllTransactions() {
                     );
                 }
 
+                toast.dismiss(toastId);
                 toast.success(
-                    `Re-evaluation complete! ${successCount} transaction(s) updated.`,
-                    { id: toastId },
+                    () => (<div>
+                        {`Re-evaluation complete!`}<br />
+                        {`${successCount} transaction(s) updated.`}
+                    </div >)
                 );
             } catch (error) {
                 console.error('Failed to re-evaluate transactions:', error);
@@ -121,4 +127,3 @@ export function useReEvaluateAllTransactions() {
 
     return { reEvaluateAll };
 }
-

@@ -241,7 +241,9 @@ export default function Accounts() {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateAccountDialog onSuccess={handleAccountCreated} />
+                            <CreateAccountDialog
+                                onSuccess={handleAccountCreated}
+                            />
                         </div>
 
                         <div className="rounded-md border">
@@ -260,12 +262,12 @@ export default function Accounts() {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                        header
-                                                                            .column
-                                                                            .columnDef
-                                                                            .header,
-                                                                        header.getContext(),
-                                                                    )}
+                                                                          header
+                                                                              .column
+                                                                              .columnDef
+                                                                              .header,
+                                                                          header.getContext(),
+                                                                      )}
                                                             </TableHead>
                                                         );
                                                     },

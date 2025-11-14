@@ -89,7 +89,10 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     const transactionIds = useLiveQuery(
         async () => {
             const txs = await db.transactions.toArray();
-            return txs.map((t) => t.id).sort().join(',');
+            return txs
+                .map((t) => t.id)
+                .sort()
+                .join(',');
         },
         [],
         '',
@@ -444,8 +447,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                     const dateB = parseISO(b.transaction_date).getTime();
                     comparison = dateA - dateB;
                 } else if (id === 'amount') {
-                    comparison =
-                        parseFloat(a.amount) - parseFloat(b.amount);
+                    comparison = parseFloat(a.amount) - parseFloat(b.amount);
                 } else if (id === 'description') {
                     comparison = a.decryptedDescription.localeCompare(
                         b.decryptedDescription,
@@ -554,7 +556,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
                     const selectedCategory = result.categoryId
                         ? categories.find((c) => c.id === result.categoryId) ||
-                        null
+                          null
                         : null;
 
                     let decryptedNotes = transaction.decryptedNotes;
@@ -698,7 +700,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
                     const selectedCategory = result.categoryId
                         ? categories.find((c) => c.id === result.categoryId) ||
-                        null
+                          null
                         : null;
 
                     let decryptedNotes = transaction.decryptedNotes;
@@ -1036,9 +1038,8 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                                 <Spinner />
                                                 Loading
                                             </>
-                                        ) : (<>
-                                            Load more
-                                        </>
+                                        ) : (
+                                            <>Load more</>
                                         )}
                                     </Button>
                                 )}
@@ -1067,7 +1068,10 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={(newTransaction) => {
-                    setTransactions((previous) => [newTransaction, ...previous]);
+                    setTransactions((previous) => [
+                        newTransaction,
+                        ...previous,
+                    ]);
                 }}
                 mode="create"
             />

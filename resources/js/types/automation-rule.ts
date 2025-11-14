@@ -60,6 +60,3 @@ export function formatRuleActions(rule: AutomationRule): string {
 
     return 'Add note';
 }
-
-
-
