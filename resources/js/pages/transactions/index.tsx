@@ -257,6 +257,12 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         transaction !== null,
                 );
 
+                validTransactions.sort((a, b) => {
+                    const dateA = parseISO(a.transaction_date).getTime();
+                    const dateB = parseISO(b.transaction_date).getTime();
+                    return dateB - dateA;
+                });
+
                 setTransactions(validTransactions);
             } catch (error) {
                 console.error('Failed to load transactions:', error);
@@ -420,9 +426,51 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         });
     }, [transactions, filters, isKeySet]);
 
+    const sortedTransactions = useMemo(() => {
+        if (sorting.length === 0) {
+            return filteredTransactions;
+        }
+
+        const sorted = [...filteredTransactions];
+        sorted.sort((a, b) => {
+            for (const sort of sorting) {
+                const { id, desc } = sort;
+                let comparison = 0;
+
+                if (id === 'transaction_date') {
+                    const dateA = parseISO(a.transaction_date).getTime();
+                    const dateB = parseISO(b.transaction_date).getTime();
+                    comparison = dateA - dateB;
+                } else if (id === 'amount') {
+                    comparison =
+                        parseFloat(a.amount) - parseFloat(b.amount);
+                } else if (id === 'description') {
+                    comparison = a.decryptedDescription.localeCompare(
+                        b.decryptedDescription,
+                    );
+                } else if (id === 'account') {
+                    const accountA = a.account?.name || '';
+                    const accountB = b.account?.name || '';
+                    comparison = accountA.localeCompare(accountB);
+                } else if (id === 'category') {
+                    const categoryA = a.category?.name || '';
+                    const categoryB = b.category?.name || '';
+                    comparison = categoryA.localeCompare(categoryB);
+                }
+
+                if (comparison !== 0) {
+                    return desc ? -comparison : comparison;
+                }
+            }
+            return 0;
+        });
+
+        return sorted;
+    }, [filteredTransactions, sorting]);
+
     const displayedTransactions = useMemo(() => {
-        return filteredTransactions.slice(0, displayedCount);
-    }, [filteredTransactions, displayedCount]);
+        return sortedTransactions.slice(0, displayedCount);
+    }, [sortedTransactions, displayedCount]);
 
     const handleReEvaluateRules = useCallback(
         async (transaction: DecryptedTransaction) => {
@@ -757,12 +805,12 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     });
 
     const loadMore = useCallback(() => {
-        if (displayedCount < filteredTransactions.length) {
+        if (displayedCount < sortedTransactions.length) {
             setDisplayedCount((prev) =>
-                Math.min(prev + 25, filteredTransactions.length),
+                Math.min(prev + 25, sortedTransactions.length),
             );
         }
-    }, [displayedCount, filteredTransactions.length]);
+    }, [displayedCount, sortedTransactions.length]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -788,7 +836,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
     useEffect(() => {
         setDisplayedCount(25);
-    }, [filters]);
+    }, [filters, sorting]);
 
     async function handleDelete() {
         if (!deleteTransaction) {
@@ -981,11 +1029,20 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
                             <DataTablePagination
                                 displayedCount={displayedCount}
-                                total={filteredTransactions.length}
+                                total={sortedTransactions.length}
                                 rowCountLabel="transactions total"
                             />
 
-                            <div ref={observerTarget} className="h-0" />
+                            {displayedCount < sortedTransactions.length && (
+                                <div
+                                    ref={observerTarget}
+                                    className="h-4 flex items-center justify-center"
+                                >
+                                    <div className="text-sm text-muted-foreground">
+                                        Loading more...
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
