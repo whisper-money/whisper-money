@@ -25,7 +25,7 @@ import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
-import { format, parseISO } from 'date-fns';
+import { format, getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -315,13 +315,18 @@ export function EditTransactionDialog({
                                 />
                             ) : (
                                 <div className="text-sm">
-                                    {transaction &&
-                                        format(
-                                            parseISO(
-                                                transaction.transaction_date,
-                                            ),
-                                            'PPP',
-                                        )}
+                                    {transaction && (() => {
+                                        const date = parseISO(
+                                            transaction.transaction_date,
+                                        );
+                                        const currentYear = getYear(new Date());
+                                        const transactionYear = getYear(date);
+                                        const formatString =
+                                            transactionYear === currentYear
+                                                ? 'MMMM d'
+                                                : 'MMMM d, yyyy';
+                                        return format(date, formatString);
+                                    })()}
                                 </div>
                             )}
                         </div>
