@@ -17,7 +17,7 @@ class CategorySyncController extends Controller
             $query->where('updated_at', '>', $request->input('since'));
         }
 
-        $categories = $query->orderBy('updated_at', 'asc')->get();
+        $categories = $query->orderBy('name', 'asc')->get();
 
         return response()->json([
             'data' => $categories,
