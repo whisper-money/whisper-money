@@ -11,7 +11,7 @@ import {
     VisibilityState,
 } from '@tanstack/react-table';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
@@ -136,9 +136,7 @@ export default function AutomationRules() {
             header: 'Title',
             cell: ({ row }) => {
                 return (
-                    <div className="font-medium">
-                        {row.getValue('title')}
-                    </div>
+                    <div className="font-medium">{row.getValue('title')}</div>
                 );
             },
         },
@@ -239,9 +237,7 @@ export default function AutomationRules() {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateAutomationRuleDialog
-                                disabled={!isKeySet}
-                            />
+                            <CreateAutomationRuleDialog disabled={!isKeySet} />
                         </div>
 
                         <div className="overflow-hidden rounded-md border">
@@ -260,12 +256,12 @@ export default function AutomationRules() {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                        header
-                                                                            .column
-                                                                            .columnDef
-                                                                            .header,
-                                                                        header.getContext(),
-                                                                    )}
+                                                                          header
+                                                                              .column
+                                                                              .columnDef
+                                                                              .header,
+                                                                          header.getContext(),
+                                                                      )}
                                                             </TableHead>
                                                         );
                                                     },

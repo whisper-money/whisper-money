@@ -211,9 +211,7 @@ function parseConditionFromJsonLogic(
     return null;
 }
 
-export function parseJsonLogic(
-    jsonLogic: Record<string, any>,
-): RuleStructure {
+export function parseJsonLogic(jsonLogic: Record<string, any>): RuleStructure {
     const defaultStructure: RuleStructure = {
         groups: [
             {
@@ -361,4 +359,3 @@ export function isValidRuleStructure(structure: RuleStructure): boolean {
         ),
     );
 }
-

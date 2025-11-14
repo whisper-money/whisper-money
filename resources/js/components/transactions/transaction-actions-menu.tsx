@@ -17,7 +17,7 @@ import { useReEvaluateAllTransactions } from '@/hooks/use-re-evaluate-all-transa
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
-import { ChevronDown, Plus, Upload, Zap } from 'lucide-react';
+import { ChevronDown, Plus, Upload, WandSparkles } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
@@ -148,7 +148,7 @@ export function TransactionActionsMenu({
                                 !transactions.length
                             }
                         >
-                            <Zap className="mr-2 h-4 w-4" />
+                            <WandSparkles className="mr-2 h-4 w-4" />
                             Re-evaluate All Expenses
                         </DropdownMenuItem>
                     </DropdownMenuContent>

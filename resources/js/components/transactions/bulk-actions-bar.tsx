@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { type Category } from '@/types/category';
-import { MoreHorizontal, RefreshCw, Trash2, X } from 'lucide-react';
+import { MoreHorizontal, Trash2, WandSparkles, X } from 'lucide-react';
 
 interface BulkActionsBarProps {
     selectedCount: number;
@@ -67,7 +67,7 @@ export function BulkActionsBar({
                                         onClick={onReEvaluateRules}
                                         disabled={isUpdating}
                                     >
-                                        <RefreshCw className="h-4 w-4" />
+                                        <WandSparkles className="h-4 w-4" />
                                         Re-evaluate rules
                                     </DropdownMenuItem>
 
