@@ -24,3 +24,4 @@ class CategorySyncController extends Controller
         ]);
     }
 }
+

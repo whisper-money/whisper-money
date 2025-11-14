@@ -74,3 +74,4 @@ export function SyncStatusButton() {
         </TooltipProvider>
     );
 }
+
