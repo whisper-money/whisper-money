@@ -27,6 +27,7 @@ import {
     isValidRuleStructure,
     type RuleStructure,
 } from '@/lib/rule-builder-utils';
+import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { categorySyncService } from '@/services/category-sync';
 import type { Category } from '@/types/category';
 import { router } from '@inertiajs/react';
@@ -119,7 +120,7 @@ export function CreateAutomationRuleDialog({
                     action_note_iv: noteIv,
                 },
                 {
-                    onSuccess: () => {
+                    onSuccess: async () => {
                         setOpen(false);
                         setTitle('');
                         setPriority('0');
@@ -130,6 +131,7 @@ export function CreateAutomationRuleDialog({
                         setCategoryId('');
                         setNote('');
                         setErrors({});
+                        await automationRuleSyncService.sync();
                         onSuccess?.();
                     },
                     onError: (errors) => {
