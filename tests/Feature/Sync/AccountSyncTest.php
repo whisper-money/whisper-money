@@ -78,5 +78,3 @@ it('requires authentication', function () {
 
     $response->assertUnauthorized();
 });
-
-

@@ -52,7 +52,6 @@ import {
     type DecryptedTransaction,
     type TransactionFilters as Filters,
 } from '@/types/transaction';
-import { ChevronDown } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -966,6 +965,13 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                     onAddTransaction={() =>
                                         setCreateDialogOpen(true)
                                     }
+                                    transactions={transactions}
+                                    onReEvaluateComplete={() => {
+                                        setRowSelection({});
+                                        setTimeout(() => {
+                                            window.location.reload();
+                                        }, 500);
+                                    }}
                                 />
                                 <DataTableViewOptions table={table} />
                             </>

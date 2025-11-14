@@ -83,12 +83,12 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                         variant="outline"
                         size="sm"
                         onClick={toggleGroupOperator}
-                        className='py-4 px-1.5'
+                        className="px-1.5 py-4"
                     >
                         Groups joined by:{' '}
                         <Badge variant="secondary" className="ml-2">
                             {structure.groupOperator.toUpperCase()}
-                            <ChevronDown className="inline-block h-3 w-3 -mr-1" />
+                            <ChevronDown className="-mr-1 inline-block h-3 w-3" />
                         </Badge>
                     </Button>
                 )}
@@ -97,32 +97,39 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
             <div className="space-y-4">
                 {structure.groups.map((group, groupIndex) => (
                     <div key={group.id}>
-                        <Card className="p-4 gap-2">
+                        <Card className="gap-2 p-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    {group.conditions.length > 1 && (<>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className='py-4 px-1.5'
-                                            size="sm"
-                                            onClick={() => {
-                                                updateGroup(group.id, {
-                                                    ...group,
-                                                    operator:
-                                                        group.operator === 'and'
-                                                            ? 'or'
-                                                            : 'and',
-                                                });
-                                            }}
-                                        >
-                                            <span className='text-sm'>Conditions joined by:{' '}</span>
-                                            <Badge variant="secondary" className="ml-2">
-                                                {group.operator.toUpperCase()}
-                                                <ChevronDown className="inline-block h-3 w-3 -mr-1" />
-                                            </Badge>
-                                        </Button>
-                                    </>
+                                    {group.conditions.length > 1 && (
+                                        <>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="px-1.5 py-4"
+                                                size="sm"
+                                                onClick={() => {
+                                                    updateGroup(group.id, {
+                                                        ...group,
+                                                        operator:
+                                                            group.operator ===
+                                                            'and'
+                                                                ? 'or'
+                                                                : 'and',
+                                                    });
+                                                }}
+                                            >
+                                                <span className="text-sm">
+                                                    Conditions joined by:{' '}
+                                                </span>
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="ml-2"
+                                                >
+                                                    {group.operator.toUpperCase()}
+                                                    <ChevronDown className="-mr-1 inline-block h-3 w-3" />
+                                                </Badge>
+                                            </Button>
+                                        </>
                                     )}
                                 </div>
                                 {structure.groups.length > 1 && (
@@ -143,14 +150,16 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                                         <div key={condition.id}>
                                             <ConditionRow
                                                 condition={condition}
-                                                onChange={(updatedCondition) => {
+                                                onChange={(
+                                                    updatedCondition,
+                                                ) => {
                                                     updateGroup(group.id, {
                                                         ...group,
                                                         conditions:
                                                             group.conditions.map(
                                                                 (c) =>
                                                                     c.id ===
-                                                                        condition.id
+                                                                    condition.id
                                                                         ? updatedCondition
                                                                         : c,
                                                             ),
@@ -186,7 +195,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="w-full mt-0"
+                                className="mt-0 w-full"
                                 onClick={() => {
                                     updateGroup(group.id, {
                                         ...group,
@@ -267,8 +276,8 @@ function ConditionRow({
         fieldConfig?.type === 'number'
             ? 'number'
             : fieldConfig?.type === 'date'
-                ? 'date'
-                : 'text';
+              ? 'date'
+              : 'text';
 
     return (
         <div className="flex items-center gap-2">
@@ -328,4 +337,3 @@ function ConditionRow({
         </div>
     );
 }
-

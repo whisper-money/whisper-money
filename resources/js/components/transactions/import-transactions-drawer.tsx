@@ -29,7 +29,7 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
-import { Check, Loader2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
