@@ -13,6 +13,7 @@ export const CATEGORY_ICONS = [
     'Clock',
     'CreditCard',
     'Dices',
+    'Dumbbell',
     'FileText',
     'Gift',
     'GraduationCap',
