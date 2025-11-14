@@ -1,0 +1,32 @@
+http:
+  routers:
+    whispermoney-http:
+      rule: Host(`whispermoney.test`)
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+      service: whispermoney
+    whispermoney-https:
+      rule: Host(`whispermoney.test`)
+      entryPoints:
+        - websecure
+      service: whispermoney
+      tls: {}
+
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  services:
+    whispermoney:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:8000
+
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/whispermoney.test.pem
+      keyFile: /etc/traefik/certs/whispermoney.test-key.pem

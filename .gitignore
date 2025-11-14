@@ -27,3 +27,4 @@ yarn-error.log
 /.vscode
 /.zed
 .php-cs-fixer.cache
+/traefik/certs/*.pem
