@@ -1,5 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { format, parseISO } from 'date-fns';
+import { format, getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
 import { EncryptedText } from '@/components/encrypted-text';
@@ -78,12 +78,15 @@ export function createTransactionColumns({
                 );
             },
             cell: ({ row }) => {
+                const date = parseISO(row.getValue('transaction_date'));
+                const currentYear = getYear(new Date());
+                const transactionYear = getYear(date);
+                const formatString =
+                    transactionYear === currentYear ? 'MMM d' : 'MMM d, yyyy';
+
                 return (
                     <div className="pl-3 font-medium">
-                        {format(
-                            parseISO(row.getValue('transaction_date')),
-                            'PP',
-                        )}
+                        {format(date, formatString)}
                     </div>
                 );
             },
