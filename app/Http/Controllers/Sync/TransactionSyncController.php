@@ -19,7 +19,10 @@ class TransactionSyncController extends Controller
             $query->where('updated_at', '>', $request->input('since'));
         }
 
-        $transactions = $query->orderBy('updated_at', 'asc')->get();
+        $transactions = $query
+            ->orderBy('transaction_date', 'desc')
+            ->orderBy('updated_at', 'desc')
+            ->get();
 
         return response()->json([
             'data' => $transactions,
