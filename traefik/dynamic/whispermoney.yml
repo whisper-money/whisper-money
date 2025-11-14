@@ -12,6 +12,8 @@ http:
       entryPoints:
         - websecure
       service: whispermoney
+      middlewares:
+        - headers-secure
       tls: {}
 
   middlewares:
@@ -19,12 +21,19 @@ http:
       redirectScheme:
         scheme: https
         permanent: true
+    headers-secure:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: https
+        customResponseHeaders:
+          X-Forwarded-Proto: https
 
   services:
     whispermoney:
       loadBalancer:
         servers:
           - url: http://host.docker.internal:8000
+        passHostHeader: true
 
 tls:
   certificates:
