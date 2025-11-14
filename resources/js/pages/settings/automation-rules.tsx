@@ -5,7 +5,6 @@ import {
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
-    getPaginationRowModel,
     getSortedRowModel,
     SortingState,
     useReactTable,
@@ -199,7 +198,6 @@ export default function AutomationRules() {
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
@@ -311,28 +309,10 @@ export default function AutomationRules() {
                             </Table>
                         </div>
 
-                        <div className="flex items-center justify-end space-x-2">
-                            <div className="flex-1 text-sm text-muted-foreground">
+                        <div className="flex items-center justify-end">
+                            <div className="text-sm text-muted-foreground">
                                 {table.getFilteredRowModel().rows.length}{' '}
                                 rule(s) total.
-                            </div>
-                            <div className="space-x-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => table.previousPage()}
-                                    disabled={!table.getCanPreviousPage()}
-                                >
-                                    Previous
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => table.nextPage()}
-                                    disabled={!table.getCanNextPage()}
-                                >
-                                    Next
-                                </Button>
                             </div>
                         </div>
                     </div>
