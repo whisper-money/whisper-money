@@ -33,6 +33,8 @@ export const CATEGORY_ICONS = [
     'Shield',
     'ShieldCheck',
     'ShoppingBag',
+    'ShoppingBasket',
+    'Globe',
     'TrendingUp',
     'Undo2',
     'Users',
