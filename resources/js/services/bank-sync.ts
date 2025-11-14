@@ -41,3 +41,4 @@ class BankSyncService {
 }
 
 export const bankSyncService = new BankSyncService();
+
