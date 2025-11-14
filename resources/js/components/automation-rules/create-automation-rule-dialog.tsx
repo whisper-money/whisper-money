@@ -45,7 +45,7 @@ export function CreateAutomationRuleDialog({
     const [open, setOpen] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
     const [title, setTitle] = useState('');
-    const [priority, setPriority] = useState('0');
+    const [priority, setPriority] = useState('10');
     const [ruleStructure, setRuleStructure] = useState<RuleStructure>({
         groups: [createEmptyGroup()],
         groupOperator: 'and',
@@ -123,7 +123,7 @@ export function CreateAutomationRuleDialog({
                     onSuccess: async () => {
                         setOpen(false);
                         setTitle('');
-                        setPriority('0');
+                        setPriority('10');
                         setRuleStructure({
                             groups: [createEmptyGroup()],
                             groupOperator: 'and',
@@ -186,7 +186,7 @@ export function CreateAutomationRuleDialog({
                             min="0"
                             value={priority}
                             onChange={(e) => setPriority(e.target.value)}
-                            placeholder="0"
+                            placeholder="10"
                             required
                         />
                         <p className="text-xs text-muted-foreground">

@@ -10,7 +10,7 @@ import {
 } from '@tanstack/react-table';
 import { isWithinInterval, parseISO } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
@@ -30,10 +30,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
@@ -50,6 +52,7 @@ import {
     type DecryptedTransaction,
     type TransactionFilters as Filters,
 } from '@/types/transaction';
+import { ChevronDown } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -125,7 +128,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
     const [displayedCount, setDisplayedCount] = useState(25);
-    const observerTarget = useRef<HTMLDivElement>(null);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     const updateTransaction = useCallback(
         (updatedTransaction: DecryptedTransaction) => {
@@ -552,7 +555,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
                     const selectedCategory = result.categoryId
                         ? categories.find((c) => c.id === result.categoryId) ||
-                          null
+                        null
                         : null;
 
                     let decryptedNotes = transaction.decryptedNotes;
@@ -696,7 +699,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
                     const selectedCategory = result.categoryId
                         ? categories.find((c) => c.id === result.categoryId) ||
-                          null
+                        null
                         : null;
 
                     let decryptedNotes = transaction.decryptedNotes;
@@ -805,34 +808,18 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     });
 
     const loadMore = useCallback(() => {
-        if (displayedCount < sortedTransactions.length) {
-            setDisplayedCount((prev) =>
-                Math.min(prev + 25, sortedTransactions.length),
-            );
+        if (displayedCount < sortedTransactions.length && !isLoadingMore) {
+            setIsLoadingMore(true);
+            requestAnimationFrame(() => {
+                setDisplayedCount((prev) =>
+                    Math.min(prev + 25, sortedTransactions.length),
+                );
+                requestAnimationFrame(() => {
+                    setIsLoadingMore(false);
+                });
+            });
         }
-    }, [displayedCount, sortedTransactions.length]);
-
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    loadMore();
-                }
-            },
-            { threshold: 0.1 },
-        );
-
-        const currentTarget = observerTarget.current;
-        if (currentTarget) {
-            observer.observe(currentTarget);
-        }
-
-        return () => {
-            if (currentTarget) {
-                observer.unobserve(currentTarget);
-            }
-        };
-    }, [loadMore]);
+    }, [displayedCount, sortedTransactions.length, isLoadingMore]);
 
     useEffect(() => {
         setDisplayedCount(25);
@@ -1031,18 +1018,25 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                 displayedCount={displayedCount}
                                 total={sortedTransactions.length}
                                 rowCountLabel="transactions total"
-                            />
-
-                            {displayedCount < sortedTransactions.length && (
-                                <div
-                                    ref={observerTarget}
-                                    className="h-4 flex items-center justify-center"
-                                >
-                                    <div className="text-sm text-muted-foreground">
-                                        Loading more...
-                                    </div>
-                                </div>
-                            )}
+                            >
+                                {displayedCount < sortedTransactions.length && (
+                                    <Button
+                                        onClick={loadMore}
+                                        disabled={isLoadingMore}
+                                        variant="outline"
+                                    >
+                                        {isLoadingMore ? (
+                                            <>
+                                                <Spinner />
+                                                Loading
+                                            </>
+                                        ) : (<>
+                                            Load more
+                                        </>
+                                        )}
+                                    </Button>
+                                )}
+                            </DataTablePagination>
                         </>
                     )}
                 </div>
