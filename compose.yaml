@@ -1,8 +1,31 @@
 services:
+    traefik:
+        image: 'traefik:v3.0'
+        command:
+            - '--api.insecure=true'
+            - '--providers.docker=true'
+            - '--providers.docker.exposedbydefault=false'
+            - '--providers.file.directory=/etc/traefik/dynamic'
+            - '--providers.file.watch=true'
+            - '--entrypoints.web.address=:80'
+            - '--entrypoints.websecure.address=:443'
+            - '--log.level=INFO'
+        ports:
+            - '80:80'
+            - '443:443'
+            - '8080:8080'
+        volumes:
+            - '/var/run/docker.sock:/var/run/docker.sock:ro'
+            - './traefik/dynamic:/etc/traefik/dynamic:ro'
+            - './traefik/certs:/etc/traefik/certs:ro'
+        networks:
+            - sail
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:
-            - '${FORWARD_DB_PORT:-3306}:3306'
+            - '${FORWARD_DB_PORT:-3307}:3306'
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ROOT_HOST: '%'
@@ -27,7 +50,7 @@ services:
     redis:
         image: 'redis:alpine'
         ports:
-            - '${FORWARD_REDIS_PORT:-6379}:6379'
+            - '${FORWARD_REDIS_PORT:-6380}:6379'
         volumes:
             - 'sail-redis:/data'
         networks:
