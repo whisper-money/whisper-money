@@ -42,17 +42,24 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { db } from '@/lib/dexie-db';
+import { accountSyncService } from '@/services/account-sync';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, formatAccountType } from '@/types/account';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Accounts settings',
+        title: 'Bank accounts',
         href: accountsIndex.url(),
     },
 ];
 
-function AccountActions({ account }: { account: Account }) {
+function AccountActions({
+    account,
+    onSuccess,
+}: {
+    account: Account;
+    onSuccess?: () => void;
+}) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -83,13 +90,13 @@ function AccountActions({ account }: { account: Account }) {
                 account={account}
                 open={editOpen}
                 onOpenChange={setEditOpen}
-                onSuccess={() => {}}
+                onSuccess={onSuccess}
             />
             <DeleteAccountDialog
                 account={account}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
-                onSuccess={() => {}}
+                onSuccess={onSuccess}
             />
         </>
     );
@@ -102,6 +109,10 @@ export default function Accounts() {
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
+
+    const handleAccountCreated = async () => {
+        await accountSyncService.sync();
+    };
 
     const columns: ColumnDef<Account>[] = [
         {
@@ -180,7 +191,7 @@ export default function Accounts() {
             cell: ({ row }) => (
                 <AccountActions
                     account={row.original}
-                    onSuccess={loadAccounts}
+                    onSuccess={handleAccountCreated}
                 />
             ),
         },
@@ -205,12 +216,12 @@ export default function Accounts() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Accounts settings" />
+            <Head title="Bank accounts" />
 
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Accounts settings"
+                        title="Bank accounts"
                         description="Manage your bank accounts"
                     />
 
@@ -230,7 +241,7 @@ export default function Accounts() {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateAccountDialog onSuccess={loadAccounts} />
+                            <CreateAccountDialog onSuccess={handleAccountCreated} />
                         </div>
 
                         <div className="rounded-md border">
@@ -249,12 +260,12 @@ export default function Accounts() {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
+                                                                        header
+                                                                            .column
+                                                                            .columnDef
+                                                                            .header,
+                                                                        header.getContext(),
+                                                                    )}
                                                             </TableHead>
                                                         );
                                                     },
