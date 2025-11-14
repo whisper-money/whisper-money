@@ -13,9 +13,11 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useReEvaluateAllTransactions } from '@/hooks/use-re-evaluate-all-transactions';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
-import { ChevronDown, Plus, Upload } from 'lucide-react';
+import { type DecryptedTransaction } from '@/types/transaction';
+import { ChevronDown, Plus, Upload, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
@@ -25,6 +27,8 @@ interface TransactionActionsMenuProps {
     accounts: Account[];
     banks: Bank[];
     onAddTransaction: () => void;
+    transactions: DecryptedTransaction[];
+    onReEvaluateComplete?: () => void;
 }
 
 export function TransactionActionsMenu({
@@ -32,9 +36,13 @@ export function TransactionActionsMenu({
     accounts,
     banks,
     onAddTransaction,
+    transactions,
+    onReEvaluateComplete,
 }: TransactionActionsMenuProps) {
     const { isKeySet } = useEncryptionKey();
     const [importDrawerOpen, setImportDrawerOpen] = useState(false);
+    const [isReEvaluating, setIsReEvaluating] = useState(false);
+    const { reEvaluateAll } = useReEvaluateAllTransactions();
 
     const handleAddTransaction = () => {
         if (!isKeySet) {
@@ -56,6 +64,28 @@ export function TransactionActionsMenu({
         setImportDrawerOpen(true);
     };
 
+    const handleReEvaluateAll = async () => {
+        if (!isKeySet) {
+            toast.error(
+                'Please unlock your encryption key to re-evaluate transactions',
+            );
+            return;
+        }
+
+        if (!transactions.length) {
+            toast.error('No transactions to re-evaluate');
+            return;
+        }
+
+        setIsReEvaluating(true);
+        try {
+            await reEvaluateAll(transactions, categories, accounts, banks);
+            onReEvaluateComplete?.();
+        } finally {
+            setIsReEvaluating(false);
+        }
+    };
+
     return (
         <>
             <ButtonGroup>
@@ -64,8 +94,12 @@ export function TransactionActionsMenu({
                         <TooltipTrigger asChild>
                             <Button
                                 variant="outline"
-                                size={"sm"}
-                                className={!isKeySet ? 'cursor-not-allowed opacity-50' : ''}
+                                size={'sm'}
+                                className={
+                                    !isKeySet
+                                        ? 'cursor-not-allowed opacity-50'
+                                        : ''
+                                }
                                 onClick={handleAddTransaction}
                                 aria-label="Add transaction"
                             >
@@ -106,6 +140,17 @@ export function TransactionActionsMenu({
                             <Upload className="mr-2 h-4 w-4" />
                             Import Transactions
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={handleReEvaluateAll}
+                            disabled={
+                                !isKeySet ||
+                                isReEvaluating ||
+                                !transactions.length
+                            }
+                        >
+                            <Zap className="mr-2 h-4 w-4" />
+                            Re-evaluate All Expenses
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </ButtonGroup>
@@ -120,5 +165,3 @@ export function TransactionActionsMenu({
         </>
     );
 }
-
-

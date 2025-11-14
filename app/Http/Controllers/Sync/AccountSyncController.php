@@ -26,5 +26,3 @@ class AccountSyncController extends Controller
         ]);
     }
 }
-
-

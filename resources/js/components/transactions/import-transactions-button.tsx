@@ -53,7 +53,9 @@ export function ImportTransactionsButton({
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                        {!isKeySet ? `Unlock encryption to import transactions` : `Import transactions from CSV/Excel`}
+                        {!isKeySet
+                            ? `Unlock encryption to import transactions`
+                            : `Import transactions from CSV/Excel`}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>

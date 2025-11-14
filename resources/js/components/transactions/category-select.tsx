@@ -104,5 +104,3 @@ export function CategorySelect({
         </Select>
     );
 }
-
-

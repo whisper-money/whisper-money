@@ -25,7 +25,7 @@ class CreateDefaultCategories
      */
     public static function getDefaultCategories(): array
     {
-        return
+        return [
             ['name' => 'Administrative violations', 'icon' => 'AlertTriangle', 'color' => 'red'],
             ['name' => 'Alimony and child support', 'icon' => 'Users', 'color' => 'teal'],
             ['name' => 'Association membership fees', 'icon' => 'Users2', 'color' => 'cyan'],

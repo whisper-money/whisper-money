@@ -315,18 +315,22 @@ export function EditTransactionDialog({
                                 />
                             ) : (
                                 <div className="text-sm">
-                                    {transaction && (() => {
-                                        const date = parseISO(
-                                            transaction.transaction_date,
-                                        );
-                                        const currentYear = getYear(new Date());
-                                        const transactionYear = getYear(date);
-                                        const formatString =
-                                            transactionYear === currentYear
-                                                ? 'MMMM d'
-                                                : 'MMMM d, yyyy';
-                                        return format(date, formatString);
-                                    })()}
+                                    {transaction &&
+                                        (() => {
+                                            const date = parseISO(
+                                                transaction.transaction_date,
+                                            );
+                                            const currentYear = getYear(
+                                                new Date(),
+                                            );
+                                            const transactionYear =
+                                                getYear(date);
+                                            const formatString =
+                                                transactionYear === currentYear
+                                                    ? 'MMMM d'
+                                                    : 'MMMM d, yyyy';
+                                            return format(date, formatString);
+                                        })()}
                                 </div>
                             )}
                         </div>
@@ -399,7 +403,9 @@ export function EditTransactionDialog({
                                         new Intl.NumberFormat('en-US', {
                                             style: 'currency',
                                             currency: transaction.currency_code,
-                                        }).format(parseFloat(transaction.amount))}
+                                        }).format(
+                                            parseFloat(transaction.amount),
+                                        )}
                                 </div>
                             )}
                         </div>
