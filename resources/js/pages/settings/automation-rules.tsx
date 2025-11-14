@@ -108,7 +108,12 @@ export default function AutomationRules() {
             })),
         [rawRules],
     );
-    const [sorting, setSorting] = useState<SortingState>([]);
+    const [sorting, setSorting] = useState<SortingState>([
+        {
+            id: 'priority',
+            desc: false,
+        },
+    ]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
@@ -116,23 +121,22 @@ export default function AutomationRules() {
 
     const columns: ColumnDef<AutomationRule>[] = [
         {
-            accessorKey: 'title',
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === 'asc')
-                        }
-                    >
-                        Title
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            },
+            accessorKey: 'priority',
+            header: 'Priority',
             cell: ({ row }) => {
                 return (
-                    <div className="pl-3 font-medium">
+                    <div className="font-medium">
+                        {row.getValue('priority')}
+                    </div>
+                );
+            },
+        },
+        {
+            accessorKey: 'title',
+            header: 'Title',
+            cell: ({ row }) => {
+                return (
+                    <div className="font-medium">
                         {row.getValue('title')}
                     </div>
                 );
@@ -256,12 +260,12 @@ export default function AutomationRules() {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
+                                                                        header
+                                                                            .column
+                                                                            .columnDef
+                                                                            .header,
+                                                                        header.getContext(),
+                                                                    )}
                                                             </TableHead>
                                                         );
                                                     },

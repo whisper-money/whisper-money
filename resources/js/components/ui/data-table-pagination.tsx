@@ -5,15 +5,17 @@ interface DataTablePaginationProps {
     rowCountLabel?: string;
     displayedCount?: number;
     total?: number;
+    children?: React.ReactNode;
 }
 
 export function DataTablePagination({
     displayedCount = undefined,
     total = undefined,
     rowCountLabel = 'row(s) total',
+    children,
 }: DataTablePaginationProps) {
     return (
-        <div className="flex px-5 items-center justify-end space-x-2">
+        <div className="flex items-center justify-end space-x-2">
             {displayedCount && total && (
                 <div className="text-muted-foreground flex-1 text-sm">
                     {Math.min(total, displayedCount)} of {total} {rowCountLabel}
@@ -24,15 +26,7 @@ export function DataTablePagination({
                     {displayedCount} {rowCountLabel}
                 </div>
             )}
-            {((displayedCount ?? 0) < (total ?? 0)) && <div className="space-x-2">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled
-                >
-                    Loading <RefreshCw className="ml-2 h-4 w-4 animate-spin" />
-                </Button>
-            </div>}
+            {children}
         </div>
     );
 }
