@@ -96,7 +96,9 @@ function CategoryActions({ category }: { category: Category }) {
 
 export default function Categories() {
     const categories = useLiveQuery(() => db.categories.toArray(), []) || [];
-    const [sorting, setSorting] = useState<SortingState>([]);
+    const [sorting, setSorting] = useState<SortingState>([
+        { id: 'name', desc: false },
+    ]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
@@ -122,11 +124,12 @@ export default function Categories() {
                 const iconName = row.original.icon;
                 const IconComponent = Icons[
                     iconName as keyof typeof Icons
-                ] as Icons.LucideIcon;
+                ] as Icons.LucideIcon | undefined;
+                const Icon = IconComponent || Icons.Tag;
 
                 return (
                     <div className="flex items-center gap-3 pl-3">
-                        <IconComponent className="h-4 w-4 opacity-80" />
+                        <Icon className="h-4 w-4 opacity-80" />
                         <div className="font-medium">
                             {row.getValue('name')}
                         </div>

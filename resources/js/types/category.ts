@@ -57,6 +57,12 @@ export const CATEGORY_COLORS = [
     'pink',
     'purple',
     'red',
+    'rose',
+    'violet',
+    'stone',
+    'nautral',
+    'lime',
+    'fuchsia',
     'slate',
     'teal',
     'yellow',
@@ -80,9 +86,17 @@ export function getCategoryColorClasses(color: CategoryColor): {
             bg: 'bg-amber-100 dark:bg-amber-700',
             text: 'text-amber-700 dark:text-amber-100',
         },
+        rose: {
+            bg: 'bg-rose-100 dark:bg-rose-700',
+            text: 'text-rose-700 dark:text-rose-100',
+        },
         blue: {
             bg: 'bg-blue-100 dark:bg-blue-700',
             text: 'text-blue-700 dark:text-blue-100',
+        },
+        violet: {
+            bg: 'bg-violet-100 dark:bg-violet-700',
+            text: 'text-violet-700 dark:text-violet-100',
         },
         cyan: {
             bg: 'bg-cyan-100 dark:bg-cyan-700',
@@ -99,6 +113,14 @@ export function getCategoryColorClasses(color: CategoryColor): {
         green: {
             bg: 'bg-green-100 dark:bg-green-700',
             text: 'text-green-700 dark:text-green-100',
+        },
+        lime: {
+            bg: 'bg-lime-100 dark:bg-lime-700',
+            text: 'text-lime-700 dark:text-lime-100',
+        },
+        fuchsia: {
+            bg: 'bg-fuchsia-100 dark:bg-fuchsia-700',
+            text: 'text-fuchsia-700 dark:text-fuchsia-100',
         },
         indigo: {
             bg: 'bg-indigo-100 dark:bg-indigo-700',
@@ -123,6 +145,14 @@ export function getCategoryColorClasses(color: CategoryColor): {
         slate: {
             bg: 'bg-slate-100 dark:bg-slate-700',
             text: 'text-slate-700 dark:text-slate-100',
+        },
+        stone: {
+            bg: 'bg-stone-100 dark:bg-stone-700',
+            text: 'text-stone-700 dark:text-stone-100',
+        },
+        neutral: {
+            bg: 'bg-neutral-100 dark:bg-neutral-700',
+            text: 'text-neutral-700 dark:text-neutral-100',
         },
         teal: {
             bg: 'bg-teal-100 dark:bg-teal-700',

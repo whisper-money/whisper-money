@@ -79,7 +79,7 @@ export function CategorySelect({
                         </Badge>
                     </SelectItem>
                 )}
-                {categories.map((category) => {
+                {[...categories].sort((a, b) => a.name.localeCompare(b.name)).map((category) => {
                     const IconComponent = Icons[
                         category.icon as keyof typeof Icons
                     ] as Icons.LucideIcon;
