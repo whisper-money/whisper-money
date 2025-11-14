@@ -27,6 +27,7 @@ import {
     parseJsonLogic,
     type RuleStructure,
 } from '@/lib/rule-builder-utils';
+import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { categorySyncService } from '@/services/category-sync';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
@@ -157,9 +158,10 @@ export function EditAutomationRuleDialog({
                     action_note_iv: noteIv,
                 },
                 {
-                    onSuccess: () => {
+                    onSuccess: async () => {
                         onOpenChange(false);
                         setErrors({});
+                        await automationRuleSyncService.sync();
                         onSuccess?.();
                     },
                     onError: (errors) => {
