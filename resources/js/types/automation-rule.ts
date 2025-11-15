@@ -1,12 +1,13 @@
 import type { Category } from './category';
+import { UUID } from './uuid';
 
 export interface AutomationRule {
-    id: number;
-    user_id: number;
+    id: UUID;
+    user_id: UUID;
     title: string;
     priority: number;
     rules_json: Record<string, any>;
-    action_category_id: number | null;
+    action_category_id: UUID | null;
     action_note: string | null;
     action_note_iv: string | null;
     category?: Category;

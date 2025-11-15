@@ -1,5 +1,6 @@
 import { SyncManager } from '@/lib/sync-manager';
 import type { Bank } from '@/types/account';
+import type { UUID } from '@/types/uuid';
 
 class BankSyncService {
     private syncManager: SyncManager;
@@ -19,7 +20,7 @@ class BankSyncService {
         return await this.syncManager.getAll<Bank>();
     }
 
-    async getById(id: number): Promise<Bank | null> {
+    async getById(id: UUID): Promise<Bank | null> {
         return await this.syncManager.getById<Bank>(id);
     }
 

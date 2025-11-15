@@ -35,12 +35,12 @@ export function CategoryCell({
             return;
         }
 
-        const categoryId = value === 'null' ? null : parseInt(value);
+        const categoryId = value === 'null' ? null : value;
 
         setIsUpdating(true);
         try {
             const updateData: {
-                category_id: number | null;
+                category_id: string | null;
                 notes?: string;
                 notes_iv?: string;
             } = {

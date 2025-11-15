@@ -1,11 +1,12 @@
 import { type Account, type Bank } from './account';
 import { type Category } from './category';
+import { UUID } from './uuid';
 
 export interface Transaction {
-    id: string;
-    user_id: number;
-    account_id: number;
-    category_id: number | null;
+    id: UUID;
+    user_id: UUID;
+    account_id: UUID;
+    category_id: UUID | null;
     description: string;
     description_iv: string;
     transaction_date: string;
@@ -30,7 +31,7 @@ export interface TransactionFilters {
     dateTo: Date | null;
     amountMin: number | null;
     amountMax: number | null;
-    categoryIds: number[];
-    accountIds: number[];
+    categoryIds: UUID[];
+    accountIds: UUID[];
     searchText: string;
 }

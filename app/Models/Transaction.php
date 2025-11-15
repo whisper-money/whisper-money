@@ -48,9 +48,4 @@ class Transaction extends Model
     {
         return $this->belongsTo(Category::class);
     }
-
-    public function newUniqueId(): string
-    {
-        return (string) \Illuminate\Support\Str::uuid7();
-    }
 }

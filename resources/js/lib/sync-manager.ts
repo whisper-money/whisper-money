@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { UUID } from '@/types/uuid';
 import { uuidv7 } from 'uuidv7';
 import { db } from './dexie-db';
 
@@ -10,8 +11,8 @@ export type StoreName =
     | 'transactions';
 
 export interface IndexedDBRecord {
-    id: number | string;
-    user_id?: number | null;
+    id: UUID;
+    user_id?: UUID | null;
     created_at: string;
     updated_at: string;
     [key: string]: any;
@@ -180,10 +181,7 @@ export class SyncManager {
         data: Omit<T, 'id' | 'created_at' | 'updated_at'>,
     ): Promise<T> {
         const timestamp = new Date().toISOString();
-
-        // Use UUID v7 for transactions, numeric IDs for other entities
-        const id =
-            this.options.storeName === 'transactions' ? uuidv7() : Date.now();
+        const id = uuidv7();
 
         const record = {
             ...data,
@@ -205,7 +203,7 @@ export class SyncManager {
     }
 
     async updateLocal<T extends IndexedDBRecord>(
-        id: number,
+        id: UUID,
         data: Partial<T>,
     ): Promise<void> {
         const table = db[this.options.storeName];
@@ -233,7 +231,7 @@ export class SyncManager {
         });
     }
 
-    async deleteLocal(id: number): Promise<void> {
+    async deleteLocal(id: UUID): Promise<void> {
         const timestamp = new Date().toISOString();
         const table = db[this.options.storeName];
         await table.delete(id);
@@ -250,7 +248,7 @@ export class SyncManager {
         return (await table.toArray()) as T[];
     }
 
-    async getById<T extends IndexedDBRecord>(id: number): Promise<T | null> {
+    async getById<T extends IndexedDBRecord>(id: UUID): Promise<T | null> {
         const table = db[this.options.storeName];
         return ((await table.get(id)) as T) || null;
     }

@@ -2,13 +2,14 @@ import { encrypt, importKey } from '@/lib/crypto';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { SyncManager } from '@/lib/sync-manager';
+import type { UUID } from '@/types/uuid';
 import { uuidv7 } from 'uuidv7';
 
 export interface Transaction {
-    id: string;
-    user_id: number;
-    account_id: number;
-    category_id: number | null;
+    id: UUID;
+    user_id: UUID;
+    account_id: UUID;
+    category_id: UUID | null;
     description: string;
     description_iv: string;
     transaction_date: string;
@@ -38,11 +39,11 @@ class TransactionSyncService {
         return await this.syncManager.getAll<Transaction>();
     }
 
-    async getById(id: string): Promise<Transaction | null> {
+    async getById(id: UUID): Promise<Transaction | null> {
         return (await db.transactions.get(id)) || null;
     }
 
-    async getByAccountId(accountId: number): Promise<Transaction[]> {
+    async getByAccountId(accountId: UUID): Promise<Transaction[]> {
         try {
             const allTransactions = await this.getAll();
             return allTransactions.filter((t) => t.account_id === accountId);

@@ -1,5 +1,6 @@
 import { SyncManager } from '@/lib/sync-manager';
 import type { Category } from '@/types/category';
+import type { UUID } from '@/types/uuid';
 
 class CategorySyncService {
     private syncManager: SyncManager;
@@ -19,7 +20,7 @@ class CategorySyncService {
         return await this.syncManager.getAll<Category>();
     }
 
-    async getById(id: number): Promise<Category | null> {
+    async getById(id: UUID): Promise<Category | null> {
         return await this.syncManager.getById<Category>(id);
     }
 
@@ -27,11 +28,11 @@ class CategorySyncService {
         return await this.syncManager.createLocal<Category>(data as any);
     }
 
-    async update(id: number, data: Partial<Category>): Promise<void> {
+    async update(id: UUID, data: Partial<Category>): Promise<void> {
         await this.syncManager.updateLocal<Category>(id, data);
     }
 
-    async delete(id: number): Promise<void> {
+    async delete(id: UUID): Promise<void> {
         await this.syncManager.deleteLocal(id);
     }
 

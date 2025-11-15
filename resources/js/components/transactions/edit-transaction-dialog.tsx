@@ -60,7 +60,7 @@ export function EditTransactionDialog({
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [decryptedAccountNames, setDecryptedAccountNames] = useState<
-        Map<number, string>
+        Map<string, string>
     >(new Map());
 
     useEffect(() => {
@@ -68,19 +68,15 @@ export function EditTransactionDialog({
             setTransactionDate(transaction.transaction_date);
             setDescription(transaction.decryptedDescription);
             setAmount(transaction.amount);
-            setAccountId(String(transaction.account_id));
-            setCategoryId(
-                transaction.category_id
-                    ? String(transaction.category_id)
-                    : 'null',
-            );
+            setAccountId(transaction.account_id);
+            setCategoryId(transaction.category_id || 'null');
             setNotes(transaction.decryptedNotes || '');
         } else if (mode === 'create' && open) {
             const today = new Date().toISOString().split('T')[0];
             setTransactionDate(today);
             setDescription('');
             setAmount(0);
-            setAccountId(accounts.length > 0 ? String(accounts[0].id) : '');
+            setAccountId(accounts.length > 0 ? accounts[0].id : '');
             setCategoryId('null');
             setNotes('');
         }
@@ -97,7 +93,7 @@ export function EditTransactionDialog({
 
             try {
                 const key = await importKey(keyString);
-                const decryptedNames = new Map<number, string>();
+                const decryptedNames = new Map<string, string>();
 
                 await Promise.all(
                     accounts.map(async (account) => {
@@ -160,7 +156,7 @@ export function EditTransactionDialog({
         setIsSubmitting(true);
         try {
             const selectedCategoryId =
-                categoryId === 'null' ? null : parseInt(categoryId, 10);
+                categoryId === 'null' ? null : categoryId;
             const trimmedNotes = notes.trim();
             const trimmedDescription = description.trim();
 
@@ -186,15 +182,15 @@ export function EditTransactionDialog({
                 );
 
                 const selectedAccount = accounts.find(
-                    (acc) => acc.id === parseInt(accountId, 10),
+                    (acc) => acc.id === accountId,
                 );
                 if (!selectedAccount) {
                     throw new Error('Selected account not found');
                 }
 
                 const createdTransaction = await transactionSyncService.create({
-                    user_id: 0,
-                    account_id: parseInt(accountId, 10),
+                    user_id: '00000000-0000-0000-0000-000000000000',
+                    account_id: accountId,
                     category_id: selectedCategoryId,
                     description: encryptedDescription.encrypted,
                     description_iv: encryptedDescription.iv,
@@ -271,7 +267,7 @@ export function EditTransactionDialog({
     }
 
     const selectedAccount = accounts.find(
-        (acc) => acc.id === parseInt(accountId, 10),
+        (acc) => acc.id === accountId,
     );
 
     return (

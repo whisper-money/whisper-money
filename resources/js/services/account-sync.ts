@@ -1,5 +1,6 @@
 import { SyncManager } from '@/lib/sync-manager';
 import type { Account } from '@/types/account';
+import type { UUID } from '@/types/uuid';
 
 class AccountSyncService {
     private syncManager: SyncManager;
@@ -19,7 +20,7 @@ class AccountSyncService {
         return await this.syncManager.getAll<Account>();
     }
 
-    async getById(id: number): Promise<Account | null> {
+    async getById(id: UUID): Promise<Account | null> {
         return await this.syncManager.getById<Account>(id);
     }
 
@@ -27,11 +28,11 @@ class AccountSyncService {
         return await this.syncManager.createLocal<Account>(data as any);
     }
 
-    async update(id: number, data: Partial<Account>): Promise<void> {
+    async update(id: UUID, data: Partial<Account>): Promise<void> {
         await this.syncManager.updateLocal<Account>(id, data);
     }
 
-    async delete(id: number): Promise<void> {
+    async delete(id: UUID): Promise<void> {
         await this.syncManager.deleteLocal(id);
     }
 

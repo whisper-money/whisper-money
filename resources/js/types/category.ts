@@ -1,3 +1,5 @@
+import { UUID } from './uuid';
+
 export const CATEGORY_ICONS = [
     'AlertCircle',
     'AlertTriangle',
@@ -71,7 +73,7 @@ export const CATEGORY_COLORS = [
 export type CategoryColor = (typeof CATEGORY_COLORS)[number];
 
 export interface Category {
-    id: number;
+    id: UUID;
     name: string;
     icon: CategoryIcon;
     color: CategoryColor;

@@ -107,9 +107,7 @@ export function CreateAutomationRuleDialog({
                     title: title.trim(),
                     priority: parseInt(priority, 10),
                     rules_json: JSON.stringify(jsonLogic),
-                    action_category_id: categoryId
-                        ? parseInt(categoryId, 10)
-                        : null,
+                    action_category_id: categoryId || null,
                     action_note: encryptedNote,
                     action_note_iv: noteIv,
                 },

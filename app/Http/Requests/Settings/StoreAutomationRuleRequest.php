@@ -34,7 +34,7 @@ class StoreAutomationRuleRequest extends FormRequest
             }],
             'action_category_id' => [
                 'nullable',
-                'integer',
+                'string',
                 Rule::exists('categories', 'id')->where(function ($query) {
                     $query->where('user_id', auth()->id());
                 }),

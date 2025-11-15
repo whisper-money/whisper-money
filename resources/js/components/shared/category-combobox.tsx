@@ -45,7 +45,7 @@ export function CategoryCombobox({
 
     const selectedCategory =
         value && value !== 'null'
-            ? categories.find((c) => c.id === parseInt(value))
+            ? categories.find((c) => c.id === value)
             : null;
 
     const sortedCategories = [...categories].sort((a, b) =>

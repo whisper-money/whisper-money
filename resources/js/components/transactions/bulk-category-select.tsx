@@ -17,7 +17,7 @@ export function BulkCategorySelect({
 
     function handleChange(newValue: string) {
         setValue(newValue);
-        const categoryId = newValue === 'null' ? null : parseInt(newValue);
+        const categoryId = newValue === 'null' ? null : newValue;
         onCategoryChange(categoryId);
     }
 
