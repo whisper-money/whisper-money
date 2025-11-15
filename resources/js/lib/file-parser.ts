@@ -230,6 +230,7 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         transaction_date: null,
         description: null,
         amount: null,
+        balance: null,
     };
 
     if (!headers || headers.length === 0) {
@@ -273,6 +274,14 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         'quantity',
         'cantidad',
     ];
+    const balancePatterns = [
+        'balance',
+        'saldo',
+        'current balance',
+        'available balance',
+        'saldo actual',
+        'saldo disponible',
+    ];
 
     for (let i = 0; i < lowerHeaders.length; i++) {
         const header = lowerHeaders[i];
@@ -298,6 +307,10 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
 
         if (!mapping.amount && amountPatterns.some((p) => header.includes(p))) {
             mapping.amount = originalHeader;
+        }
+
+        if (!mapping.balance && balancePatterns.some((p) => header.includes(p))) {
+            mapping.balance = originalHeader;
         }
     }
 
@@ -492,10 +505,19 @@ export function convertRowsToTransactions(
 
         const formattedDate = date.toISOString().split('T')[0];
 
+        let balance: number | null = null;
+        if (mapping.balance && row[mapping.balance]) {
+            const parsedBalance = parseAmount(row[mapping.balance] as string | number);
+            if (parsedBalance !== null) {
+                balance = Math.round(parsedBalance * 100);
+            }
+        }
+
         results.push({
             transaction_date: formattedDate,
             description,
             amount,
+            balance,
             validationErrors: [],
         });
     }

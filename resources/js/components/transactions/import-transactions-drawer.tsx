@@ -19,6 +19,7 @@ import {
 } from '@/lib/import-config-storage';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
+import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -29,7 +30,8 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
-import { Check } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Check, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
@@ -45,6 +47,16 @@ interface ImportTransactionsDrawerProps {
     banks: import('@/types/account').Bank[];
 }
 
+interface ImportError {
+    rowNumber: number;
+    transaction: {
+        date: string;
+        description: string;
+        amount: string;
+    };
+    error: string;
+}
+
 export function ImportTransactionsDrawer({
     open,
     onOpenChange,
@@ -54,6 +66,9 @@ export function ImportTransactionsDrawer({
 }: ImportTransactionsDrawerProps) {
     const { isKeySet } = useEncryptionKey();
     const [isImporting, setIsImporting] = useState(false);
+    const [importProgress, setImportProgress] = useState(0);
+    const [importTotal, setImportTotal] = useState(0);
+    const [importErrors, setImportErrors] = useState<ImportError[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(
         null,
@@ -287,129 +302,197 @@ export function ImportTransactionsDrawer({
 
         setIsImporting(true);
         setError(null);
+        setImportErrors([]);
 
         const newTransactions = state.transactions.filter(
             (t) => !t.isDuplicate,
         );
         const total = newTransactions.length;
+        setImportTotal(total);
+        setImportProgress(0);
 
-        try {
-            if (!selectedAccount) {
-                throw new Error('Selected account not found');
+        if (!selectedAccount) {
+            setError('Selected account not found');
+            setIsImporting(false);
+            return;
+        }
+
+        const createdTransactions: any[] = [];
+        const errors: ImportError[] = [];
+        const keyString = getStoredKey();
+        const key = keyString ? await importKey(keyString) : null;
+        const rules = key ? await automationRuleSyncService.getAll() : [];
+
+        for (let i = 0; i < newTransactions.length; i++) {
+            const transaction = newTransactions[i];
+            const rowNumber = i + 1;
+
+            try {
+                const { encrypted, iv } =
+                    await transactionSyncService.encryptDescription(
+                        transaction.description,
+                    );
+
+                const transactionData = {
+                    user_id:
+                        (selectedAccount as Account & { user_id?: number })
+                            .user_id || 0,
+                    account_id: selectedAccount.id,
+                    category_id: null,
+                    description: encrypted,
+                    description_iv: iv,
+                    transaction_date: transaction.transaction_date,
+                    amount: transaction.amount.toString(),
+                    currency_code: selectedAccount.currency_code,
+                    notes: null,
+                    notes_iv: null,
+                };
+
+                const createdTransaction =
+                    await transactionSyncService.create(transactionData);
+
+                createdTransactions.push(createdTransaction);
+            } catch (err) {
+                errors.push({
+                    rowNumber,
+                    transaction: {
+                        date: transaction.transaction_date,
+                        description: transaction.description,
+                        amount: transaction.amount.toString(),
+                    },
+                    error:
+                        err instanceof Error
+                            ? err.message
+                            : 'Unknown error',
+                });
             }
 
-            const transactionsToImport = await Promise.all(
-                newTransactions.map(async (transaction) => {
-                    const { encrypted, iv } =
-                        await transactionSyncService.encryptDescription(
-                            transaction.description,
-                        );
+            setImportProgress(i + 1);
+        }
 
-                    return {
-                        user_id:
-                            (selectedAccount as Account & { user_id?: number })
-                                .user_id || 0,
-                        account_id: selectedAccount.id,
-                        category_id: null,
-                        description: encrypted,
-                        description_iv: iv,
-                        transaction_date: transaction.transaction_date,
-                        amount: transaction.amount.toString(),
-                        currency_code: selectedAccount.currency_code,
-                        notes: null,
-                        notes_iv: null,
+        if (key && rules.length > 0 && createdTransactions.length > 0) {
+            for (const createdTransaction of createdTransactions) {
+                try {
+                    const decryptedDescription = await decrypt(
+                        createdTransaction.description,
+                        key,
+                        createdTransaction.description_iv,
+                    );
+
+                    const account = accounts.find(
+                        (a) => a.id === createdTransaction.account_id,
+                    );
+                    const category = createdTransaction.category_id
+                        ? categories.find(
+                            (c) => c.id === createdTransaction.category_id,
+                        )
+                        : null;
+
+                    const decryptedTransaction = {
+                        ...createdTransaction,
+                        decryptedDescription,
+                        decryptedNotes: null,
+                        account,
+                        category: category || null,
+                        bank: account?.bank?.id
+                            ? banks.find((b) => b.id === account.bank.id)
+                            : undefined,
                     };
-                }),
-            );
 
-            const createdTransactions =
-                await transactionSyncService.createMany(transactionsToImport);
+                    const result = evaluateRules(
+                        decryptedTransaction,
+                        rules,
+                        categories,
+                        accounts,
+                        banks,
+                    );
 
-            const keyString = getStoredKey();
-            if (keyString) {
-                const key = await importKey(keyString);
-                const rules = await automationRuleSyncService.getAll();
+                    if (result) {
+                        let finalNotes = createdTransaction.notes;
+                        let finalNotesIv = createdTransaction.notes_iv;
 
-                if (rules.length > 0) {
-                    for (const transaction of createdTransactions) {
-                        const decryptedDescription = await decrypt(
-                            transaction.description,
-                            key,
-                            transaction.description_iv,
-                        );
-
-                        const account = accounts.find(
-                            (a) => a.id === transaction.account_id,
-                        );
-                        const category = transaction.category_id
-                            ? categories.find(
-                                  (c) => c.id === transaction.category_id,
-                              )
-                            : null;
-
-                        const decryptedTransaction = {
-                            ...transaction,
-                            decryptedDescription,
-                            decryptedNotes: null,
-                            account,
-                            category: category || null,
-                            bank: account?.bank?.id
-                                ? banks.find((b) => b.id === account.bank.id)
-                                : undefined,
-                        };
-
-                        const result = evaluateRules(
-                            decryptedTransaction,
-                            rules,
-                            categories,
-                            accounts,
-                            banks,
-                        );
-
-                        if (result) {
-                            let finalNotes = transaction.notes;
-                            let finalNotesIv = transaction.notes_iv;
-
-                            if (result.note && result.noteIv) {
-                                finalNotes = result.note;
-                                finalNotesIv = result.noteIv;
-                            }
-
-                            await transactionSyncService.update(
-                                transaction.id,
-                                {
-                                    category_id: result.categoryId,
-                                    notes: finalNotes,
-                                    notes_iv: finalNotesIv,
-                                },
-                            );
+                        if (result.note && result.noteIv) {
+                            finalNotes = result.note;
+                            finalNotesIv = result.noteIv;
                         }
+
+                        await transactionSyncService.update(
+                            createdTransaction.id,
+                            {
+                                category_id: result.categoryId,
+                                notes: finalNotes,
+                                notes_iv: finalNotesIv,
+                            },
+                        );
                     }
+                } catch (ruleError) {
+                    console.warn('Failed to apply automation rules to transaction:', ruleError);
                 }
             }
+        }
 
+        const balancesToImport = new Map<string, number>();
+        for (const transaction of newTransactions) {
+            if (transaction.balance !== null && transaction.balance !== undefined) {
+                balancesToImport.set(transaction.transaction_date, transaction.balance);
+            }
+        }
+
+        if (balancesToImport.size > 0) {
+            try {
+                const balanceRecords = Array.from(balancesToImport.entries()).map(
+                    ([date, balance]) => ({
+                        account_id: selectedAccount.id,
+                        balance_date: date,
+                        balance,
+                    }),
+                );
+
+                await accountBalanceSyncService.createMany(balanceRecords);
+            } catch (err) {
+                console.error('Failed to import balances:', err);
+            }
+        }
+
+        setImportErrors(errors);
+        setIsImporting(false);
+
+        const successCount = createdTransactions.length;
+        const errorCount = errors.length;
+
+        console.log('Import complete:', { successCount, errorCount, total });
+
+        if (errorCount === 0 && successCount > 0) {
             toast.success(
-                `${total} transaction${total !== 1 ? 's' : ''} imported`,
+                `${successCount} transaction${successCount !== 1 ? 's' : ''} imported successfully`,
                 {
                     icon: <Check className="h-4 w-4" />,
                 },
             );
-
             onOpenChange(false);
-        } catch (err) {
-            toast.error(
-                err instanceof Error
-                    ? err.message
-                    : 'Failed to import transactions',
+        } else if (successCount > 0 && errorCount > 0) {
+            toast.warning(
+                `${successCount} transaction${successCount !== 1 ? 's' : ''} imported, ${errorCount} failed`,
             );
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : 'Failed to import transactions',
+        } else if (successCount > 0) {
+            toast.success(
+                `${successCount} transaction${successCount !== 1 ? 's' : ''} imported successfully`,
+                {
+                    icon: <Check className="h-4 w-4" />,
+                },
             );
-        } finally {
-            setIsImporting(false);
+            onOpenChange(false);
+        } else {
+            toast.error('All transactions failed to import');
         }
+
+        transactionSyncService.sync().catch((syncError) => {
+            console.error('Failed to sync transactions with backend:', syncError);
+        });
+
+        accountBalanceSyncService.sync().catch((syncError) => {
+            console.error('Failed to sync balances with backend:', syncError);
+        });
     };
 
     const moveToStep = (step: ImportStep) => {
@@ -442,6 +525,13 @@ export function ImportTransactionsDrawer({
                     description: 'Review transactions before importing',
                 };
             default:
+                if (isImporting) {
+                    return {
+                        title: 'Importing Transactions',
+                        description: 'Please wait while we import your transactions',
+                    };
+                }
+
                 return {
                     title: 'Import Transactions',
                     description: 'Import transactions from CSV or Excel files',
@@ -498,6 +588,78 @@ export function ImportTransactionsDrawer({
         }
     };
 
+    const renderImportProgress = () => {
+        const percentage = importTotal > 0 ? (importProgress / importTotal) * 100 : 0;
+
+        return (
+            <div className="flex flex-col gap-6">
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>
+                            {importProgress} of {importTotal} transactions imported
+                        </span>
+                        <span>{Math.round(percentage)}%</span>
+                    </div>
+                    <Progress value={percentage} className="h-4" />
+                </div>
+
+                {importErrors.length > 0 && (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-medium text-destructive">
+                                Errors ({importErrors.length})
+                            </h3>
+                        </div>
+                        <div className="max-h-[300px] overflow-y-auto rounded-lg border">
+                            <table className="w-full text-sm">
+                                <thead className="sticky top-0 bg-muted">
+                                    <tr className="border-b">
+                                        <th className="px-4 py-2 text-left font-medium">
+                                            Row
+                                        </th>
+                                        <th className="px-4 py-2 text-left font-medium">
+                                            Date
+                                        </th>
+                                        <th className="px-4 py-2 text-left font-medium">
+                                            Description
+                                        </th>
+                                        <th className="px-4 py-2 text-left font-medium">
+                                            Amount
+                                        </th>
+                                        <th className="px-4 py-2 text-left font-medium">
+                                            Error
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {importErrors.map((error, index) => (
+                                        <tr key={index} className="border-b">
+                                            <td className="px-4 py-2 font-mono text-xs">
+                                                {error.rowNumber}
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                {error.transaction.date}
+                                            </td>
+                                            <td className="px-4 py-2 max-w-[200px] truncate">
+                                                {error.transaction.description}
+                                            </td>
+                                            <td className="px-4 py-2 font-mono">
+                                                {error.transaction.amount}
+                                            </td>
+                                            <td className="px-4 py-2 text-destructive max-w-[200px] truncate">
+                                                {error.error}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const stepInfo = getStepInfo();
 
     return (
@@ -515,7 +677,9 @@ export function ImportTransactionsDrawer({
                             <AlertError errors={[error]} />
                         </div>
                     )}
-                    <div className="mt-4">{renderStep()}</div>
+                    <div className="mt-4">
+                        {isImporting ? renderImportProgress() : renderStep()}
+                    </div>
                 </div>
             </DrawerContent>
         </Drawer>

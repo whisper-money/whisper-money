@@ -15,6 +15,7 @@ export interface ColumnMapping {
     transaction_date: string | null;
     description: string | null;
     amount: string | null;
+    balance: string | null;
 }
 
 export interface ParsedRow {
@@ -25,6 +26,7 @@ export interface ParsedTransaction {
     transaction_date: string;
     description: string;
     amount: number;
+    balance?: number | null;
     isDuplicate?: boolean;
     validationErrors?: string[];
 }
