@@ -175,7 +175,8 @@ export function createTransactionColumns({
                 return <div className="w-full text-right">Amount</div>;
             },
             cell: ({ row }) => {
-                const amount = parseFloat(row.getValue('amount'));
+                const amountInCents = row.getValue('amount') as number;
+                const amount = amountInCents / 100;
                 const currencyCode = row.original.currency_code;
 
                 const formatted = new Intl.NumberFormat('en-US', {
@@ -200,7 +201,7 @@ export function createTransactionColumns({
             size: 35,
             maxSize: 35,
             minSize: 35,
-            meta: { 
+            meta: {
                 cellClassName: '!w-[35px] !max-w-[35px] !min-w-[35px] !p-0 whitespace-normal',
                 cellStyle: { width: '35px', maxWidth: '35px', minWidth: '35px', padding: 0 }
             },

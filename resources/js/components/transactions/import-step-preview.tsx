@@ -36,7 +36,7 @@ export function ImportStepPreview({
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: currencyCode,
-        }).format(amount);
+        }).format(amount / 100);
     };
 
     const formatDate = (dateStr: string): string => {

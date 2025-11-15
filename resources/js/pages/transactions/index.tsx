@@ -396,13 +396,13 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
             if (
                 filters.amountMin !== null &&
-                parseFloat(transaction.amount) < filters.amountMin
+                transaction.amount / 100 < filters.amountMin
             ) {
                 return false;
             }
             if (
                 filters.amountMax !== null &&
-                parseFloat(transaction.amount) > filters.amountMax
+                transaction.amount / 100 > filters.amountMax
             ) {
                 return false;
             }

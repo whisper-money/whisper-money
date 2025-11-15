@@ -75,7 +75,7 @@ export function prepareTransactionData(
 
     return {
         description: normalizeWhitespace((transaction.decryptedDescription || '').toLowerCase()),
-        amount: parseFloat(transaction.amount),
+        amount: transaction.amount / 100,
         transaction_date: transaction.transaction_date,
         bank_name: bank?.name || '',
         account_name: account?.name || '',

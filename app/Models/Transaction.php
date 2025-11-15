@@ -30,7 +30,7 @@ class Transaction extends Model
     {
         return [
             'transaction_date' => 'date',
-            'amount' => 'decimal:2',
+            'amount' => 'integer',
         ];
     }
 

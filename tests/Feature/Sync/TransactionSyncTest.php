@@ -79,7 +79,7 @@ it('can create a transaction', function () {
         'description' => 'encrypted_description',
         'description_iv' => '1234567890123456',
         'transaction_date' => now()->toDateString(),
-        'amount' => '100.50',
+        'amount' => 10050,
         'currency_code' => 'USD',
         'notes' => null,
         'notes_iv' => null,
@@ -109,7 +109,7 @@ it('can create a transaction', function () {
         'account_id' => $account->id,
         'category_id' => $category->id,
         'description' => 'encrypted_description',
-        'amount' => '100.50',
+        'amount' => 10050,
     ]);
 });
 
@@ -125,7 +125,7 @@ it('can create a transaction with a UUID', function () {
         'description' => 'encrypted_description',
         'description_iv' => '1234567890123456',
         'transaction_date' => now()->toDateString(),
-        'amount' => '100.50',
+        'amount' => 10050,
         'currency_code' => 'USD',
         'notes' => null,
         'notes_iv' => null,
@@ -155,7 +155,7 @@ it('can update a transaction', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();
     $transaction = Transaction::factory()->for($user)->for($account)->create([
-        'amount' => '100.00',
+        'amount' => 10000,
         'description' => 'old_description',
     ]);
 
@@ -165,7 +165,7 @@ it('can update a transaction', function () {
         'description' => 'new_description',
         'description_iv' => $transaction->description_iv,
         'transaction_date' => $transaction->transaction_date->toDateString(),
-        'amount' => '200.00',
+        'amount' => 20000,
         'currency_code' => $transaction->currency_code,
         'notes' => null,
         'notes_iv' => null,
@@ -174,12 +174,12 @@ it('can update a transaction', function () {
     $response = $this->actingAs($user)->patchJson("/api/sync/transactions/{$transaction->id}", $updateData);
 
     $response->assertSuccessful()
-        ->assertJsonPath('data.amount', '200.00')
+        ->assertJsonPath('data.amount', 20000)
         ->assertJsonPath('data.description', 'new_description');
 
     $this->assertDatabaseHas('transactions', [
         'id' => $transaction->id,
-        'amount' => '200.00',
+        'amount' => 20000,
         'description' => 'new_description',
     ]);
 });
@@ -196,7 +196,7 @@ it('cannot update another user transaction', function () {
         'description' => 'hacked',
         'description_iv' => $transaction->description_iv,
         'transaction_date' => $transaction->transaction_date->toDateString(),
-        'amount' => '999.99',
+        'amount' => 99999,
         'currency_code' => $transaction->currency_code,
         'notes' => null,
         'notes_iv' => null,

@@ -11,15 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop the existing id column and recreate it as UUID
-        Schema::table('transactions', function (Blueprint $table) {
-            // Drop the existing auto-increment id
-            $table->dropColumn('id');
-        });
+        Schema::dropIfExists('transactions');
 
-        Schema::table('transactions', function (Blueprint $table) {
-            // Add new UUID id as primary key
-            $table->uuid('id')->primary()->first();
+        Schema::create('transactions', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('account_id')->constrained()->onDelete('cascade');
+            $table->foreignId('category_id')->nullable()->constrained()->onDelete('cascade');
+            $table->text('description');
+            $table->string('description_iv', 16);
+            $table->date('transaction_date');
+            $table->decimal('amount', 15, 2);
+            $table->string('currency_code', 3);
+            $table->text('notes')->nullable();
+            $table->string('notes_iv', 16)->nullable();
+            $table->timestamps();
         });
     }
 

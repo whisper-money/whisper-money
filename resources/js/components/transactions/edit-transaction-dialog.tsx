@@ -1,4 +1,5 @@
 import { CategorySelect } from '@/components/transactions/category-select';
+import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -53,7 +54,7 @@ export function EditTransactionDialog({
     const { isKeySet } = useEncryptionKey();
     const [transactionDate, setTransactionDate] = useState('');
     const [description, setDescription] = useState('');
-    const [amount, setAmount] = useState('');
+    const [amount, setAmount] = useState<number>(0);
     const [accountId, setAccountId] = useState<string>('');
     const [categoryId, setCategoryId] = useState<string>('null');
     const [notes, setNotes] = useState('');
@@ -78,7 +79,7 @@ export function EditTransactionDialog({
             const today = new Date().toISOString().split('T')[0];
             setTransactionDate(today);
             setDescription('');
-            setAmount('');
+            setAmount(0);
             setAccountId(accounts.length > 0 ? String(accounts[0].id) : '');
             setCategoryId('null');
             setNotes('');
@@ -142,7 +143,7 @@ export function EditTransactionDialog({
                 toast.error('Description is required');
                 return;
             }
-            if (!amount || parseFloat(amount) === 0) {
+            if (amount === 0) {
                 toast.error('Amount is required');
                 return;
             }
@@ -377,35 +378,23 @@ export function EditTransactionDialog({
                                 Amount
                             </Label>
                             {mode === 'create' ? (
-                                <>
-                                    <Input
-                                        id="amount"
-                                        type="number"
-                                        step="0.01"
-                                        value={amount}
-                                        onChange={(e) =>
-                                            setAmount(e.target.value)
-                                        }
-                                        placeholder="0.00"
-                                        disabled={isSubmitting}
-                                        required
-                                    />
-                                    {selectedAccount && (
-                                        <p className="text-xs text-muted-foreground">
-                                            Currency:{' '}
-                                            {selectedAccount.currency_code}
-                                        </p>
-                                    )}
-                                </>
+                                <AmountInput
+                                    id="amount"
+                                    value={amount}
+                                    onChange={setAmount}
+                                    currencyCode={
+                                        selectedAccount?.currency_code || 'USD'
+                                    }
+                                    disabled={isSubmitting}
+                                    required
+                                />
                             ) : (
                                 <div className="text-sm font-medium">
                                     {transaction &&
                                         new Intl.NumberFormat('en-US', {
                                             style: 'currency',
                                             currency: transaction.currency_code,
-                                        }).format(
-                                            parseFloat(transaction.amount),
-                                        )}
+                                        }).format(transaction.amount / 100)}
                                 </div>
                             )}
                         </div>
