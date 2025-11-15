@@ -28,7 +28,7 @@ const db = new Dexie('whisper_money') as Dexie & {
     pending_changes: EntityTable<PendingChange, 'id'>;
 };
 
-db.version(4).stores({
+db.version(5).stores({
     transactions: 'id, user_id, account_id, updated_at',
     accounts: 'id, user_id, bank_id, updated_at',
     categories: 'id, user_id, updated_at',

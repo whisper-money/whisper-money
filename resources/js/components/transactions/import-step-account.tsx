@@ -4,12 +4,13 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { accountSyncService } from '@/services/account-sync';
 import { type Account } from '@/types/account';
+import type { UUID } from '@/types/uuid';
 import { Building2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface ImportStepAccountProps {
-    selectedAccountId: number | null;
-    onAccountSelect: (accountId: number) => void;
+    selectedAccountId: UUID | null;
+    onAccountSelect: (accountId: UUID) => void;
     onNext: () => void;
 }
 
@@ -59,8 +60,8 @@ export function ImportStepAccount({
     return (
         <div className="flex flex-col gap-6">
             <RadioGroup
-                value={selectedAccountId?.toString()}
-                onValueChange={(value) => onAccountSelect(Number(value))}
+                value={selectedAccountId}
+                onValueChange={(value) => onAccountSelect(value)}
             >
                 <div className="space-y-3">
                     {accounts.map((account) => (
@@ -70,7 +71,7 @@ export function ImportStepAccount({
                             className="flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent"
                         >
                             <RadioGroupItem
-                                value={account.id.toString()}
+                                value={account.id}
                                 id={`account-${account.id}`}
                             />
                             {account.bank.logo ? (

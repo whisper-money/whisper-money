@@ -29,9 +29,4 @@ class AccountBalance extends Model
     {
         return $this->belongsTo(Account::class);
     }
-
-    public function newUniqueId(): string
-    {
-        return (string) \Illuminate\Support\Str::uuid7();
-    }
 }

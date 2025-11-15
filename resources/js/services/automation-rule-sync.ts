@@ -1,5 +1,6 @@
 import { SyncManager } from '@/lib/sync-manager';
 import type { AutomationRule } from '@/types/automation-rule';
+import type { UUID } from '@/types/uuid';
 
 class AutomationRuleSyncService {
     private syncManager: SyncManager;
@@ -26,7 +27,7 @@ class AutomationRuleSyncService {
         }));
     }
 
-    async getById(id: number): Promise<AutomationRule | null> {
+    async getById(id: UUID): Promise<AutomationRule | null> {
         const rule = await this.syncManager.getById<AutomationRule>(id);
         if (!rule) {
             return null;
@@ -43,18 +44,18 @@ class AutomationRuleSyncService {
     async create(data: Omit<AutomationRule, 'id'>): Promise<AutomationRule> {
         return await this.syncManager.createLocal<AutomationRule>(
             data as Omit<AutomationRule, 'id'> & {
-                id?: number;
+                id?: UUID;
                 created_at?: string;
                 updated_at?: string;
             },
         );
     }
 
-    async update(id: number, data: Partial<AutomationRule>): Promise<void> {
+    async update(id: UUID, data: Partial<AutomationRule>): Promise<void> {
         await this.syncManager.updateLocal<AutomationRule>(id, data);
     }
 
-    async delete(id: number): Promise<void> {
+    async delete(id: UUID): Promise<void> {
         await this.syncManager.deleteLocal(id);
     }
 

@@ -1,3 +1,5 @@
+import { UUID } from './uuid';
+
 export const ACCOUNT_TYPES = [
     'checking',
     'credit_card',
@@ -24,13 +26,14 @@ export const CURRENCY_OPTIONS = [
 export type CurrencyCode = (typeof CURRENCY_OPTIONS)[number];
 
 export interface Bank {
-    id: number;
+    id: UUID;
+    user_id: UUID | null;
     name: string;
     logo: string | null;
 }
 
 export interface Account {
-    id: number;
+    id: UUID;
     name: string;
     name_iv: string;
     bank: Bank;
@@ -39,8 +42,8 @@ export interface Account {
 }
 
 export interface AccountBalance {
-    id: string;
-    account_id: number;
+    id: UUID;
+    account_id: UUID;
     balance_date: string;
     balance: number;
     created_at: string;
