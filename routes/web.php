@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\AccountBalanceController;
 use App\Http\Controllers\EncryptionController;
+use App\Http\Controllers\Sync\AccountBalanceSyncController;
 use App\Http\Controllers\Sync\AccountSyncController;
 use App\Http\Controllers\Sync\BankSyncController;
 use App\Http\Controllers\Sync\CategorySyncController;
@@ -32,6 +34,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('api/sync/transactions', [\App\Http\Controllers\Sync\TransactionSyncController::class, 'store']);
     Route::patch('api/sync/transactions/{transaction}', [\App\Http\Controllers\Sync\TransactionSyncController::class, 'update']);
     Route::delete('api/sync/transactions/{transaction}', [\App\Http\Controllers\Sync\TransactionSyncController::class, 'destroy']);
+    Route::get('api/sync/account-balances', [AccountBalanceSyncController::class, 'index']);
+    Route::post('api/sync/account-balances', [AccountBalanceSyncController::class, 'store']);
+    Route::patch('api/sync/account-balances/{accountBalance}', [AccountBalanceSyncController::class, 'update']);
+    Route::put('api/accounts/{account}/balance/current', [AccountBalanceController::class, 'updateCurrent'])->name('accounts.balance.update-current');
 });
 
 Route::middleware(['auth', 'verified', 'redirect.encryption'])->group(function () {

@@ -38,6 +38,15 @@ export interface Account {
     currency_code: CurrencyCode;
 }
 
+export interface AccountBalance {
+    id: string;
+    account_id: number;
+    balance_date: string;
+    balance: number;
+    created_at: string;
+    updated_at: string;
+}
+
 export function formatAccountType(type: AccountType): string {
     const typeMap: Record<AccountType, string> = {
         checking: 'Checking',

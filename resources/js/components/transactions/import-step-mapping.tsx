@@ -97,9 +97,9 @@ export function ImportStepMapping({
                             <SelectValue placeholder="Select date column" />
                         </SelectTrigger>
                         <SelectContent>
-                            {columnOptions.map((option) => (
+                            {columnOptions.map((option, index) => (
                                 <SelectItem
-                                    key={option.value}
+                                    key={`date-${option.value}-${index}`}
                                     value={option.value}
                                 >
                                     <div className="flex flex-col">
@@ -125,9 +125,9 @@ export function ImportStepMapping({
                             <SelectValue placeholder="Select description column" />
                         </SelectTrigger>
                         <SelectContent>
-                            {columnOptions.map((option) => (
+                            {columnOptions.map((option, index) => (
                                 <SelectItem
-                                    key={option.value}
+                                    key={`desc-${option.value}-${index}`}
                                     value={option.value}
                                 >
                                     <div className="flex flex-col">
@@ -153,9 +153,36 @@ export function ImportStepMapping({
                             <SelectValue placeholder="Select amount column" />
                         </SelectTrigger>
                         <SelectContent>
-                            {columnOptions.map((option) => (
+                            {columnOptions.map((option, index) => (
                                 <SelectItem
-                                    key={option.value}
+                                    key={`amount-${option.value}-${index}`}
+                                    value={option.value}
+                                >
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="balance-column">
+                        Balance (Optional)
+                    </Label>
+                    <Select
+                        value={columnMapping.balance || '__none__'}
+                        onValueChange={(value) =>
+                            onMappingChange('balance', value === '__none__' ? '' : value)
+                        }
+                    >
+                        <SelectTrigger id="balance-column">
+                            <SelectValue placeholder="Select balance column (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__none__">None</SelectItem>
+                            {columnOptions.map((option, index) => (
+                                <SelectItem
+                                    key={`balance-${option.value}-${index}`}
                                     value={option.value}
                                 >
                                     {option.label}
