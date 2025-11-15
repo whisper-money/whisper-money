@@ -98,13 +98,15 @@ export function createTransactionColumns({
             header: 'Category',
             cell: ({ row }) => {
                 return (
-                    <CategoryCell
-                        transaction={row.original}
-                        categories={categories}
-                        accounts={accounts}
-                        banks={banks}
-                        onUpdate={onUpdate}
-                    />
+                    <div className="max-w-[200px]">
+                        <CategoryCell
+                            transaction={row.original}
+                            categories={categories}
+                            accounts={accounts}
+                            banks={banks}
+                            onUpdate={onUpdate}
+                        />
+                    </div>
                 );
             },
         },
@@ -195,37 +197,46 @@ export function createTransactionColumns({
         {
             id: 'actions',
             enableHiding: false,
+            size: 35,
+            maxSize: 35,
+            minSize: 35,
+            meta: { 
+                cellClassName: '!w-[35px] !max-w-[35px] !min-w-[35px] !p-0 whitespace-normal',
+                cellStyle: { width: '35px', maxWidth: '35px', minWidth: '35px', padding: 0 }
+            },
             cell: ({ row }) => {
                 const transaction = row.original;
 
                 return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                                onClick={() => onEdit(transaction)}
-                            >
-                                Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => onReEvaluateRules(transaction)}
-                            >
-                                Re-evaluate rules
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => onDelete(transaction)}
-                            >
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-center w-[35px]">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                    onClick={() => onEdit(transaction)}
+                                >
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => onReEvaluateRules(transaction)}
+                                >
+                                    Re-evaluate rules
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={() => onDelete(transaction)}
+                                >
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 );
             },
         },
