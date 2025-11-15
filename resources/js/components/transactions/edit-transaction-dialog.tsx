@@ -22,8 +22,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
+import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { format, getYear, parseISO } from 'date-fns';
@@ -62,6 +65,7 @@ export function EditTransactionDialog({
     const [decryptedAccountNames, setDecryptedAccountNames] = useState<
         Map<string, string>
     >(new Map());
+    const [automationRules, setAutomationRules] = useState<AutomationRule[]>([]);
 
     useEffect(() => {
         if (mode === 'edit' && transaction) {
@@ -124,6 +128,73 @@ export function EditTransactionDialog({
         decryptAccountNames();
     }, [open, mode, accounts]);
 
+    useEffect(() => {
+        if (!open || mode !== 'create') return;
+
+        async function loadAutomationRules() {
+            try {
+                const rules = await automationRuleSyncService.getAll();
+                setAutomationRules(rules);
+            } catch (error) {
+                console.error('Failed to load automation rules:', error);
+            }
+        }
+
+        loadAutomationRules();
+    }, [open, mode]);
+
+    async function checkAndApplyAutomationRules() {
+        if (mode !== 'create' || automationRules.length === 0) {
+            return { categoryId: null, notes: null, notesIv: null, ruleName: null };
+        }
+
+        const result = evaluateRulesForNewTransaction(
+            {
+                description: description.trim(),
+                amount: amount / 100,
+                transaction_date: transactionDate,
+                account_id: accountId,
+                notes: notes.trim() || undefined,
+            },
+            automationRules,
+            categories,
+            accounts,
+            banks,
+        );
+
+        if (!result) {
+            return { categoryId: null, notes: null, notesIv: null, ruleName: null };
+        }
+
+        let finalNotes = notes.trim();
+        const finalNotesIv = null;
+
+        if (result.note && result.noteIv) {
+            const keyString = getStoredKey();
+            if (keyString) {
+                const key = await importKey(keyString);
+                const decryptedRuleNote = await decrypt(
+                    result.note,
+                    key,
+                    result.noteIv,
+                );
+
+                if (finalNotes) {
+                    finalNotes = `${finalNotes}\n${decryptedRuleNote}`;
+                } else {
+                    finalNotes = decryptedRuleNote;
+                }
+            }
+        }
+
+        return {
+            categoryId: result.categoryId,
+            notes: finalNotes || null,
+            notesIv: finalNotesIv,
+            ruleName: result.rule.title,
+        };
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
 
@@ -155,27 +226,35 @@ export function EditTransactionDialog({
 
         setIsSubmitting(true);
         try {
-            const selectedCategoryId =
-                categoryId === 'null' ? null : categoryId;
-            const trimmedNotes = notes.trim();
             const trimmedDescription = description.trim();
-
             const keyString = getStoredKey();
             if (!keyString) {
                 throw new Error('Encryption key not available');
             }
             const key = await importKey(keyString);
 
-            let encryptedNotes: string | null = null;
-            let notesIv: string | null = null;
-
-            if (trimmedNotes) {
-                const encrypted = await encrypt(trimmedNotes, key);
-                encryptedNotes = encrypted.encrypted;
-                notesIv = encrypted.iv;
-            }
-
             if (mode === 'create') {
+                const ruleResult = await checkAndApplyAutomationRules();
+
+                let finalCategoryId = categoryId === 'null' ? null : categoryId;
+                let finalNotes = notes.trim();
+
+                if (ruleResult.categoryId) {
+                    finalCategoryId = ruleResult.categoryId;
+                }
+                if (ruleResult.notes) {
+                    finalNotes = ruleResult.notes;
+                }
+
+                let encryptedNotes: string | null = null;
+                let notesIv: string | null = null;
+
+                if (finalNotes) {
+                    const encrypted = await encrypt(finalNotes, key);
+                    encryptedNotes = encrypted.encrypted;
+                    notesIv = encrypted.iv;
+                }
+
                 const encryptedDescription = await encrypt(
                     trimmedDescription,
                     key,
@@ -191,7 +270,7 @@ export function EditTransactionDialog({
                 const createdTransaction = await transactionSyncService.create({
                     user_id: '00000000-0000-0000-0000-000000000000',
                     account_id: accountId,
-                    category_id: selectedCategoryId,
+                    category_id: finalCategoryId,
                     description: encryptedDescription.encrypted,
                     description_iv: encryptedDescription.iv,
                     transaction_date: transactionDate,
@@ -201,16 +280,16 @@ export function EditTransactionDialog({
                     notes_iv: notesIv,
                 });
 
-                const updatedCategory = selectedCategoryId
+                const updatedCategory = finalCategoryId
                     ? categories.find(
-                          (category) => category.id === selectedCategoryId,
-                      ) || null
+                        (category) => category.id === finalCategoryId,
+                    ) || null
                     : null;
 
                 const newTransaction: DecryptedTransaction = {
                     ...createdTransaction,
                     decryptedDescription: trimmedDescription,
-                    decryptedNotes: trimmedNotes || null,
+                    decryptedNotes: finalNotes || null,
                     category: updatedCategory,
                     account: selectedAccount,
                     bank: selectedAccount.bank?.id
@@ -219,11 +298,27 @@ export function EditTransactionDialog({
                 };
 
                 toast.success('Transaction created successfully');
+                if (ruleResult.ruleName) {
+                    toast.success(`Rule "${ruleResult.ruleName}" applied`);
+                }
+
                 onSuccess(newTransaction);
                 onOpenChange(false);
             } else {
                 if (!transaction) {
                     return;
+                }
+
+                const selectedCategoryId = categoryId === 'null' ? null : categoryId;
+                const trimmedNotes = notes.trim();
+
+                let encryptedNotes: string | null = null;
+                let notesIv: string | null = null;
+
+                if (trimmedNotes) {
+                    const encrypted = await encrypt(trimmedNotes, key);
+                    encryptedNotes = encrypted.encrypted;
+                    notesIv = encrypted.iv;
                 }
 
                 await transactionSyncService.update(transaction.id, {
@@ -237,8 +332,8 @@ export function EditTransactionDialog({
                 );
                 const updatedCategory = selectedCategoryId
                     ? categories.find(
-                          (category) => category.id === selectedCategoryId,
-                      ) || null
+                        (category) => category.id === selectedCategoryId,
+                    ) || null
                     : null;
 
                 const updatedTransaction: DecryptedTransaction = {
@@ -461,8 +556,8 @@ export function EditTransactionDialog({
                             {isSubmitting
                                 ? 'Saving...'
                                 : mode === 'create'
-                                  ? 'Create Transaction'
-                                  : 'Save Changes'}
+                                    ? 'Create Transaction'
+                                    : 'Save Changes'}
                         </Button>
                     </DialogFooter>
                 </form>

@@ -1139,12 +1139,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 banks={banks}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
-                onSuccess={(newTransaction) => {
-                    setTransactions((previous) => [
-                        newTransaction,
-                        ...previous,
-                    ]);
-                }}
+                onSuccess={() => {}}
                 mode="create"
             />
 

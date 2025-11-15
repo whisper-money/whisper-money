@@ -170,3 +170,84 @@ export function evaluateRulesForTransactions(
 
     return results;
 }
+
+export interface NewTransactionData {
+    description: string;
+    amount: number;
+    transaction_date: string;
+    account_id: string;
+    notes?: string;
+}
+
+export function evaluateRulesForNewTransaction(
+    transactionData: NewTransactionData,
+    rules: AutomationRule[],
+    categories: Category[],
+    accounts: Account[],
+    banks: Bank[],
+): RuleEvaluationResult | null {
+    const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
+
+    const account = accounts.find((a) => a.id === transactionData.account_id);
+    const bank = account?.bank?.id
+        ? banks.find((b) => b.id === account.bank.id)
+        : undefined;
+
+    const normalizeWhitespace = (str: string): string => {
+        return str.trim().replace(/\s+/g, ' ');
+    };
+
+    const preparedData: TransactionData = {
+        description: normalizeWhitespace(transactionData.description.toLowerCase()),
+        amount: transactionData.amount,
+        transaction_date: transactionData.transaction_date,
+        bank_name: bank?.name || '',
+        account_name: account?.name || '',
+        category: null,
+        notes: transactionData.notes ? normalizeWhitespace(transactionData.notes.toLowerCase()) : null,
+    };
+
+    consoleDebug('[Rule Engine] Evaluating new transaction data:', preparedData);
+    consoleDebug(`[Rule Engine] Evaluating ${sortedRules.length} rules`);
+
+    for (const rule of sortedRules) {
+        try {
+            consoleDebug(
+                `[Rule Engine] Evaluating rule #${rule.id}: "${rule.title}"`,
+            );
+            consoleDebug('[Rule Engine] Rule JSON:', rule.rules_json);
+
+            const normalizedRulesJson = normalizeRuleJson(rule.rules_json);
+            consoleDebug(
+                '[Rule Engine] Normalized Rule JSON:',
+                normalizedRulesJson,
+            );
+
+            const result = jsonLogic.apply(
+                normalizedRulesJson,
+                preparedData,
+            );
+
+            consoleDebug(`[Rule Engine] Rule #${rule.id} result:`, result);
+
+            if (result === true) {
+                consoleDebug(`[Rule Engine] ✓ Rule #${rule.id} matched!`);
+                return {
+                    rule,
+                    categoryId: rule.action_category_id,
+                    note: rule.action_note,
+                    noteIv: rule.action_note_iv,
+                };
+            }
+        } catch (error) {
+            consoleDebug(
+                `[Rule Engine] ❌ Error evaluating rule ${rule.id}:`,
+                error,
+            );
+            console.error(`Error evaluating rule ${rule.id}:`, error);
+        }
+    }
+
+    consoleDebug('[Rule Engine] No rules matched');
+    return null;
+}

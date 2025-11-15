@@ -18,7 +18,10 @@ import {
     saveImportConfig,
 } from '@/lib/import-config-storage';
 import { getStoredKey } from '@/lib/key-storage';
-import { evaluateRules } from '@/lib/rule-engine';
+import {
+    evaluateRules,
+    evaluateRulesForNewTransaction,
+} from '@/lib/rule-engine';
 import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
@@ -323,112 +326,96 @@ export function ImportTransactionsDrawer({
         const key = keyString ? await importKey(keyString) : null;
         const rules = key ? await automationRuleSyncService.getAll() : [];
 
-        for (let i = 0; i < newTransactions.length; i++) {
-            const transaction = newTransactions[i];
-            const rowNumber = i + 1;
+        const BATCH_SIZE = 20;
+        let processedCount = 0;
 
-            try {
-                const { encrypted, iv } =
-                    await transactionSyncService.encryptDescription(
-                        transaction.description,
-                    );
+        for (let i = 0; i < newTransactions.length; i += BATCH_SIZE) {
+            const batch = newTransactions.slice(i, i + BATCH_SIZE);
 
-                const transactionData = {
-                    user_id:
-                        (selectedAccount as Account & { user_id?: number })
-                            .user_id || 0,
-                    account_id: selectedAccount.id,
-                    category_id: null,
-                    description: encrypted,
-                    description_iv: iv,
-                    transaction_date: transaction.transaction_date,
-                    amount: transaction.amount.toString(),
-                    currency_code: selectedAccount.currency_code,
-                    notes: null,
-                    notes_iv: null,
-                };
+            const batchResults = await Promise.allSettled(
+                batch.map(async (transaction, batchIndex) => {
+                    const rowNumber = i + batchIndex + 1;
 
-                const createdTransaction =
-                    await transactionSyncService.create(transactionData);
+                    const { encrypted, iv } =
+                        await transactionSyncService.encryptDescription(
+                            transaction.description,
+                        );
 
-                createdTransactions.push(createdTransaction);
-            } catch (err) {
-                errors.push({
-                    rowNumber,
-                    transaction: {
-                        date: transaction.transaction_date,
-                        description: transaction.description,
+                    let categoryId: string | null = null;
+                    let notes: string | null = null;
+                    let notesIv: string | null = null;
+
+                    if (key && rules.length > 0) {
+                        const ruleMatch = evaluateRulesForNewTransaction(
+                            {
+                                description: transaction.description,
+                                amount: transaction.amount / 100,
+                                transaction_date: transaction.transaction_date,
+                                account_id: selectedAccount.id,
+                            },
+                            rules,
+                            categories,
+                            accounts,
+                            banks,
+                        );
+
+                        if (ruleMatch) {
+                            if (ruleMatch.categoryId) {
+                                categoryId = ruleMatch.categoryId;
+                            }
+                            if (ruleMatch.note && ruleMatch.noteIv) {
+                                notes = ruleMatch.note;
+                                notesIv = ruleMatch.noteIv;
+                            }
+                        }
+                    }
+
+                    const transactionData = {
+                        user_id:
+                            (selectedAccount as Account & { user_id?: number })
+                                .user_id || 0,
+                        account_id: selectedAccount.id,
+                        category_id: categoryId,
+                        description: encrypted,
+                        description_iv: iv,
+                        transaction_date: transaction.transaction_date,
                         amount: transaction.amount.toString(),
-                    },
-                    error:
-                        err instanceof Error
-                            ? err.message
-                            : 'Unknown error',
-                });
-            }
-
-            setImportProgress(i + 1);
-        }
-
-        if (key && rules.length > 0 && createdTransactions.length > 0) {
-            for (const createdTransaction of createdTransactions) {
-                try {
-                    const decryptedDescription = await decrypt(
-                        createdTransaction.description,
-                        key,
-                        createdTransaction.description_iv,
-                    );
-
-                    const account = accounts.find(
-                        (a) => a.id === createdTransaction.account_id,
-                    );
-                    const category = createdTransaction.category_id
-                        ? categories.find(
-                            (c) => c.id === createdTransaction.category_id,
-                        )
-                        : null;
-
-                    const decryptedTransaction = {
-                        ...createdTransaction,
-                        decryptedDescription,
-                        decryptedNotes: null,
-                        account,
-                        category: category || null,
-                        bank: account?.bank?.id
-                            ? banks.find((b) => b.id === account.bank.id)
-                            : undefined,
+                        currency_code: selectedAccount.currency_code,
+                        notes: notes,
+                        notes_iv: notesIv,
                     };
 
-                    const result = evaluateRules(
-                        decryptedTransaction,
-                        rules,
-                        categories,
-                        accounts,
-                        banks,
-                    );
+                    const createdTransaction =
+                        await transactionSyncService.create(transactionData);
 
-                    if (result) {
-                        let finalNotes = createdTransaction.notes;
-                        let finalNotesIv = createdTransaction.notes_iv;
+                    return { success: true, transaction: createdTransaction, rowNumber };
+                }),
+            );
 
-                        if (result.note && result.noteIv) {
-                            finalNotes = result.note;
-                            finalNotesIv = result.noteIv;
-                        }
+            batchResults.forEach((result, batchIndex) => {
+                const transaction = batch[batchIndex];
+                const rowNumber = i + batchIndex + 1;
 
-                        await transactionSyncService.update(
-                            createdTransaction.id,
-                            {
-                                category_id: result.categoryId,
-                                notes: finalNotes,
-                                notes_iv: finalNotesIv,
-                            },
-                        );
-                    }
-                } catch (ruleError) {
-                    console.warn('Failed to apply automation rules to transaction:', ruleError);
+                if (result.status === 'fulfilled') {
+                    createdTransactions.push(result.value.transaction);
+                } else {
+                    errors.push({
+                        rowNumber,
+                        transaction: {
+                            date: transaction.transaction_date,
+                            description: transaction.description,
+                            amount: transaction.amount.toString(),
+                        },
+                        error:
+                            result.reason instanceof Error
+                                ? result.reason.message
+                                : 'Unknown error',
+                    });
                 }
-            }
+            });
+
+            processedCount += batch.length;
+            setImportProgress(processedCount);
         }
 
         const balancesToImport = new Map<string, number>();
