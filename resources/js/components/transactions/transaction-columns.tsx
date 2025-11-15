@@ -132,7 +132,7 @@ export function createTransactionColumns({
             cell: ({ row }) => {
                 const bank = row.original.bank;
                 return (
-                    <div className="flex items-center gap-2">
+                    <div className="flex px-1 items-center gap-2">
                         {bank?.logo && (
                             <img
                                 src={bank.logo}
@@ -152,7 +152,7 @@ export function createTransactionColumns({
             cell: ({ row }) => {
                 const account = row.original.account;
                 if (!account) {
-                    return <div>N/A</div>;
+                    return <div className='px-1'>N/A</div>;
                 }
 
                 return (
@@ -160,7 +160,7 @@ export function createTransactionColumns({
                         encryptedText={account.name}
                         iv={account.name_iv}
                         length={{ min: 5, max: 10 }}
-                        className="max-w-[100px] truncate"
+                        className="max-w-[100px] px-1 truncate"
                     />
                 );
             },
@@ -182,7 +182,7 @@ export function createTransactionColumns({
                 }).format(amount);
 
                 return (
-                    <div className={`text-right`}>
+                    <div className={`text-right pl-4`}>
                         <span
                             className={`${amount < 0 ? '' : 'bg-green-100/70 dark:bg-green-900'}`}
                         >
