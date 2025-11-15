@@ -226,7 +226,7 @@ test('users can create a new transaction', function () {
         'description' => 'encrypted_description',
         'description_iv' => str_repeat('d', 16),
         'transaction_date' => '2025-11-11',
-        'amount' => '150.50',
+        'amount' => 15050,
         'currency_code' => 'USD',
         'notes' => 'encrypted_notes',
         'notes_iv' => str_repeat('n', 16),
@@ -258,7 +258,7 @@ test('users can create a new transaction', function () {
         'account_id' => $account->id,
         'category_id' => $category->id,
         'description' => 'encrypted_description',
-        'amount' => '150.50',
+        'amount' => 15050,
         'currency_code' => 'USD',
     ]);
 });
@@ -273,7 +273,7 @@ test('users can create a transaction without category', function () {
         'description' => 'encrypted_description',
         'description_iv' => str_repeat('d', 16),
         'transaction_date' => '2025-11-11',
-        'amount' => '75.25',
+        'amount' => 7525,
         'currency_code' => 'EUR',
     ];
 
@@ -285,7 +285,7 @@ test('users can create a transaction without category', function () {
         'account_id' => $account->id,
         'category_id' => null,
         'description' => 'encrypted_description',
-        'amount' => '75.25',
+        'amount' => 7525,
     ]);
 });
 
@@ -298,7 +298,7 @@ test('users can create a transaction without notes', function () {
         'description' => 'encrypted_description',
         'description_iv' => str_repeat('d', 16),
         'transaction_date' => '2025-11-11',
-        'amount' => '100.00',
+        'amount' => 10000,
         'currency_code' => 'USD',
     ];
 
@@ -320,7 +320,7 @@ test('account_id is required when creating transaction', function () {
         'description' => 'encrypted_description',
         'description_iv' => str_repeat('d', 16),
         'transaction_date' => '2025-11-11',
-        'amount' => '100.00',
+        'amount' => 10000,
         'currency_code' => 'USD',
     ];
 
@@ -338,7 +338,7 @@ test('description is required when creating transaction', function () {
         'account_id' => $account->id,
         'description_iv' => str_repeat('d', 16),
         'transaction_date' => '2025-11-11',
-        'amount' => '100.00',
+        'amount' => 10000,
         'currency_code' => 'USD',
     ];
 
@@ -374,7 +374,7 @@ test('transaction_date is required when creating transaction', function () {
         'account_id' => $account->id,
         'description' => 'encrypted_description',
         'description_iv' => str_repeat('d', 16),
-        'amount' => '100.00',
+        'amount' => 10000,
         'currency_code' => 'USD',
     ];
 
@@ -393,7 +393,7 @@ test('currency_code is required when creating transaction', function () {
         'description' => 'encrypted_description',
         'description_iv' => str_repeat('d', 16),
         'transaction_date' => '2025-11-11',
-        'amount' => '100.00',
+        'amount' => 10000,
     ];
 
     $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);

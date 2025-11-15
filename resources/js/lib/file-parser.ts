@@ -516,7 +516,7 @@ export function convertRowsToTransactions(
         results.push({
             transaction_date: formattedDate,
             description,
-            amount,
+            amount: Math.round(amount * 100),
             balance,
             validationErrors: [],
         });

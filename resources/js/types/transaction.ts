@@ -9,7 +9,7 @@ export interface Transaction {
     description: string;
     description_iv: string;
     transaction_date: string;
-    amount: string;
+    amount: number;
     currency_code: string;
     notes: string | null;
     notes_iv: string | null;
