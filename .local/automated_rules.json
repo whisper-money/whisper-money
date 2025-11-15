@@ -1,0 +1,211 @@
+[
+    {
+        "title": "Padel / Sport",
+        "priority": 10,
+        "rules_json": "{\"or\":[{\"in\":[\"PLAYTOMIC\",{\"var\":\"description\"}]},{\"in\":[\"M3 SPORT\",{\"var\":\"description\"}]},{\"in\":[\"Padel\",{\"var\":\"description\"}]}]}",
+        "action_category_id": 99,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Sport and sports goods"
+        }
+    },
+    {
+        "title": "Gym / Sport",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"Wellhub\",{\"var\":\"description\"}]}",
+        "action_category_id": 99,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Sport and sports goods"
+        }
+    },
+    {
+        "title": "Rent income and expenses",
+        "priority": 10,
+        "rules_json": "{\"or\":[{\"in\":[\"MARIAM NAFEE\",{\"var\":\"description\"}]},{\"in\":[\"san pantaleon 3\",{\"var\":\"description\"}]},{\"in\":[\"bbva allianz seguros\",{\"var\":\"description\"}]},{\"in\":[\"Adeudo satec s.a.\",{\"var\":\"description\"}]}]}",
+        "action_category_id": 129,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Income from rent"
+        }
+    },
+    {
+        "title": "Fuel",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"REPSOL WAYLET\",{\"var\":\"description\"}]}",
+        "action_category_id": 91,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Fuel"
+        }
+    },
+    {
+        "title": "Groceries",
+        "priority": 10,
+        "rules_json": "{\"or\":[{\"in\":[\"WAYLET ALBOLOTE ES\",{\"var\":\"description\"}]},{\"in\":[\"SQRUPS\",{\"var\":\"description\"}]},{\"in\":[\"MERCADONA\",{\"var\":\"description\"}]}]}",
+        "action_category_id": 77,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Groceries"
+        }
+    },
+    {
+        "title": "Online expenses",
+        "priority": 10,
+        "rules_json": "{\"or\":[{\"or\":[{\"in\":[\"T3 CHAT\",{\"var\":\"description\"}]},{\"in\":[\"Google CLOUD\",{\"var\":\"description\"}]},{\"in\":[\"AWS\",{\"var\":\"description\"}]},{\"in\":[\"YouTubePremium\",{\"var\":\"description\"}]},{\"in\":[\"LARAVEL FORGE\",{\"var\":\"description\"}]},{\"in\":[\"CLAUDE.AI\",{\"var\":\"description\"}]},{\"in\":[\"DIGITALOCEAN.COM\",{\"var\":\"description\"}]},{\"in\":[\"REDDIT INC ADS\",{\"var\":\"description\"}]},{\"in\":[\"Amazon Prime\",{\"var\":\"description\"}]}]},{\"and\":[{\"in\":[\"Bizum\",{\"var\":\"description\"}]},{\"==\":[{\"var\":\"amount\"},13]}]}]}",
+        "action_category_id": 107,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Online services"
+        }
+    },
+    {
+        "title": "Traveling",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"IBERIAEXPR\",{\"var\":\"description\"}]}",
+        "action_category_id": 95,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Leisure activities, traveling"
+        }
+    },
+    {
+        "title": "Food delivery",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"UBER *EATS\",{\"var\":\"description\"}]}",
+        "action_category_id": 80,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Food delivery"
+        }
+    },
+    {
+        "title": "Own account movements",
+        "priority": 10,
+        "rules_json": "{\"and\":[{\"==\":[{\"var\":\"description\"},\"Transferencia recibida de VICTOR FALCON RUIZ\"]},{\"in\":[\"VICTOR FALCON RUIZ Own account\",{\"var\":\"description\"}]}]}",
+        "action_category_id": 133,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Own account"
+        }
+    },
+    {
+        "title": "Indexa / Investments",
+        "priority": 10,
+        "rules_json": "{\"and\":[{\"==\":[{\"var\":\"description\"},\"Transferencia realizada\"]},{\"or\":[{\"==\":[{\"var\":\"amount\"},-575]},{\"==\":[{\"var\":\"amount\"},-500]}]}]}",
+        "action_category_id": 109,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Investments"
+        }
+    },
+    {
+        "title": "Savings",
+        "priority": 10,
+        "rules_json": "{\"or\":[{\"in\":[\"VICTOR FALCON RUIZ Savings\",{\"var\":\"description\"}]},{\"and\":[{\"in\":[\"Transferencia realizada\",{\"var\":\"description\"}]},{\"==\":[{\"var\":\"amount\"},-750]}]}]}",
+        "action_category_id": 110,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Savings"
+        }
+    },
+    {
+        "title": "ISP / Utilities and internet",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"digi spain telecom\",{\"var\":\"description\"}]}",
+        "action_category_id": 85,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Telephone, internet, TV, computer"
+        }
+    },
+    {
+        "title": "Farmacia",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"Pago en FCIA.\",{\"var\":\"description\"}]}",
+        "action_category_id": 105,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Health and pharmaceuticals"
+        }
+    },
+    {
+        "title": "Taxes",
+        "priority": 10,
+        "rules_json": "{\"or\":[{\"in\":[\"internetmadrid es\",{\"var\":\"description\"}]},{\"==\":[{\"var\":\"description\"},\"Ay ciudad real ciudad real es\"]},{\"in\":[\"Pago de impuestos\",{\"var\":\"description\"}]},{\"in\":[\"PAGO TRIBUTOS BARCELONA\",{\"var\":\"description\"}]}]}",
+        "action_category_id": 119,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Taxes and government fees"
+        }
+    },
+    {
+        "title": "Payroll",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"nómina\",{\"var\":\"description\"}]}",
+        "action_category_id": 126,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Salary"
+        }
+    },
+    {
+        "title": "Restaurants",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"GRANIER PACIFICO\",{\"var\":\"description\"}]}",
+        "action_category_id": 76,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Cafes, restaurants, bars"
+        }
+    },
+    {
+        "title": "Mortage",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"amortizacion de prestamo/credito\",{\"var\":\"description\"}]}",
+        "action_category_id": 114,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Mortgage"
+        }
+    },
+    {
+        "title": "Credit Card",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"mensual de tarjeta\",{\"var\":\"description\"}]}",
+        "action_category_id": 115,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Credit card repayment"
+        }
+    },
+    {
+        "title": "Investments",
+        "priority": 10,
+        "rules_json": "{\"in\":[\"Adeudo indexa mas rentabilidad acciones f.p.\",{\"var\":\"description\"}]}",
+        "action_category_id": 109,
+        "action_note": null,
+        "action_note_iv": null,
+        "category": {
+            "name": "Investments"
+        }
+    }
+]
