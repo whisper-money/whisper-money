@@ -3,6 +3,7 @@ import {
     ColumnFiltersState,
     SortingState,
     VisibilityState,
+    flexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
@@ -31,11 +32,19 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuLabel,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { DataTable } from '@/components/ui/data-table';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { TableCell, TableRow } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
@@ -941,6 +950,68 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         setRowSelection({});
     }
 
+    const TransactionRow = useCallback(
+        ({ row, virtualRow, rowVirtualizer }: { row: any; virtualRow: any; rowVirtualizer: any }) => {
+            const transaction = row.original;
+            const [contextMenuOpen, setContextMenuOpen] = useState(false);
+
+            return (
+                <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
+                    <ContextMenuTrigger asChild>
+                        <TableRow
+                            ref={rowVirtualizer.measureElement}
+                            data-state={(row.getIsSelected() || contextMenuOpen) && 'selected'}
+                            data-index={virtualRow.index}
+                        >
+                            {row.getVisibleCells().map((cell: any) => (
+                                <TableCell key={cell.id}>
+                                    {flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext(),
+                                    )}
+                                </TableCell>
+                            ))}
+                        </TableRow>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                        <ContextMenuLabel>Actions</ContextMenuLabel>
+                        <ContextMenuItem
+                            onClick={() => setEditTransaction(transaction)}
+                        >
+                            Edit
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                            onClick={() => handleReEvaluateRules(transaction)}
+                        >
+                            Re-evaluate rules
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                            onClick={() => setDeleteTransaction(transaction)}
+                            variant="destructive"
+                        >
+                            Delete
+                        </ContextMenuItem>
+                    </ContextMenuContent>
+                </ContextMenu>
+            );
+        },
+        [handleReEvaluateRules],
+    );
+
+    const renderTransactionRow = useCallback(
+        (row: any, virtualRow: any, rowVirtualizer: any) => {
+            return (
+                <TransactionRow
+                    key={row.id}
+                    row={row}
+                    virtualRow={virtualRow}
+                    rowVirtualizer={rowVirtualizer}
+                />
+            );
+        },
+        [TransactionRow],
+    );
+
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title="Transactions" />
@@ -1020,6 +1091,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                 table={table}
                                 columns={columns}
                                 emptyMessage="No transactions found."
+                                renderRow={renderTransactionRow}
                             />
 
                             <DataTablePagination

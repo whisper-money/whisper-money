@@ -24,6 +24,13 @@ import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuLabel,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -85,6 +92,68 @@ function AccountActions({
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            <EditAccountDialog
+                account={account}
+                open={editOpen}
+                onOpenChange={setEditOpen}
+                onSuccess={onSuccess}
+            />
+            <DeleteAccountDialog
+                account={account}
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                onSuccess={onSuccess}
+            />
+        </>
+    );
+}
+
+function AccountRow({ row, onSuccess }: { row: any; onSuccess?: () => void }) {
+    const account = row.original;
+    const [editOpen, setEditOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [contextMenuOpen, setContextMenuOpen] = useState(false);
+
+    return (
+        <>
+            <ContextMenu onOpenChange={setContextMenuOpen}>
+                <ContextMenuTrigger asChild>
+                    <TableRow
+                        data-state={
+                            (row.getIsSelected() || contextMenuOpen) &&
+                            'selected'
+                        }
+                    >
+                        {row
+                            .getVisibleCells()
+                            .map((cell: any) => (
+                                <TableCell
+                                    key={cell.id}
+                                >
+                                    {flexRender(
+                                        cell.column
+                                            .columnDef
+                                            .cell,
+                                        cell.getContext(),
+                                    )}
+                                </TableCell>
+                            ))}
+                    </TableRow>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                    <ContextMenuLabel>Actions</ContextMenuLabel>
+                    <ContextMenuItem onClick={() => setEditOpen(true)}>
+                        Edit
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                        onClick={() => setDeleteOpen(true)}
+                        className="text-red-600"
+                    >
+                        Delete
+                    </ContextMenuItem>
+                </ContextMenuContent>
+            </ContextMenu>
 
             <EditAccountDialog
                 account={account}
@@ -278,28 +347,11 @@ export default function Accounts() {
                                 <TableBody>
                                     {table.getRowModel().rows?.length ? (
                                         table.getRowModel().rows.map((row) => (
-                                            <TableRow
+                                            <AccountRow
                                                 key={row.id}
-                                                data-state={
-                                                    row.getIsSelected() &&
-                                                    'selected'
-                                                }
-                                            >
-                                                {row
-                                                    .getVisibleCells()
-                                                    .map((cell) => (
-                                                        <TableCell
-                                                            key={cell.id}
-                                                        >
-                                                            {flexRender(
-                                                                cell.column
-                                                                    .columnDef
-                                                                    .cell,
-                                                                cell.getContext(),
-                                                            )}
-                                                        </TableCell>
-                                                    ))}
-                                            </TableRow>
+                                                row={row}
+                                                onSuccess={handleAccountCreated}
+                                            />
                                         ))
                                     ) : (
                                         <TableRow>

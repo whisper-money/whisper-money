@@ -23,6 +23,13 @@ import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuLabel,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -79,6 +86,66 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            <EditAutomationRuleDialog
+                rule={rule}
+                open={editOpen}
+                onOpenChange={setEditOpen}
+            />
+            <DeleteAutomationRuleDialog
+                rule={rule}
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+            />
+        </>
+    );
+}
+
+function AutomationRuleRow({ row }: { row: any }) {
+    const rule = row.original;
+    const [editOpen, setEditOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [contextMenuOpen, setContextMenuOpen] = useState(false);
+
+    return (
+        <>
+            <ContextMenu onOpenChange={setContextMenuOpen}>
+                <ContextMenuTrigger asChild>
+                    <TableRow
+                        data-state={
+                            (row.getIsSelected() || contextMenuOpen) &&
+                            'selected'
+                        }
+                    >
+                        {row
+                            .getVisibleCells()
+                            .map((cell: any) => (
+                                <TableCell
+                                    key={cell.id}
+                                >
+                                    {flexRender(
+                                        cell.column
+                                            .columnDef
+                                            .cell,
+                                        cell.getContext(),
+                                    )}
+                                </TableCell>
+                            ))}
+                    </TableRow>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                    <ContextMenuLabel>Actions</ContextMenuLabel>
+                    <ContextMenuItem onClick={() => setEditOpen(true)}>
+                        Edit
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                        onClick={() => setDeleteOpen(true)}
+                        variant="destructive"
+                    >
+                        Delete
+                    </ContextMenuItem>
+                </ContextMenuContent>
+            </ContextMenu>
 
             <EditAutomationRuleDialog
                 rule={rule}
@@ -285,28 +352,7 @@ export default function AutomationRules() {
                                 <TableBody>
                                     {table.getRowModel().rows?.length ? (
                                         table.getRowModel().rows.map((row) => (
-                                            <TableRow
-                                                key={row.id}
-                                                data-state={
-                                                    row.getIsSelected() &&
-                                                    'selected'
-                                                }
-                                            >
-                                                {row
-                                                    .getVisibleCells()
-                                                    .map((cell) => (
-                                                        <TableCell
-                                                            key={cell.id}
-                                                        >
-                                                            {flexRender(
-                                                                cell.column
-                                                                    .columnDef
-                                                                    .cell,
-                                                                cell.getContext(),
-                                                            )}
-                                                        </TableCell>
-                                                    ))}
-                                            </TableRow>
+                                            <AutomationRuleRow key={row.id} row={row} />
                                         ))
                                     ) : (
                                         <TableRow>

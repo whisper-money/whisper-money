@@ -19,12 +19,14 @@ interface DataTableProps<TData, TValue> {
     table: TableType<TData>;
     columns: ColumnDef<TData, TValue>[];
     emptyMessage?: string;
+    renderRow?: (row: any, virtualRow: any, rowVirtualizer: any) => React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
     table,
     columns,
     emptyMessage = 'No results found.',
+    renderRow,
 }: DataTableProps<TData, TValue>) {
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const rows = table.getRowModel().rows;
@@ -85,6 +87,11 @@ export function DataTable<TData, TValue>({
                                 )}
                                 {virtualRows.map((virtualRow) => {
                                     const row = rows[virtualRow.index];
+                                    
+                                    if (renderRow) {
+                                        return renderRow(row, virtualRow, rowVirtualizer);
+                                    }
+                                    
                                     return (
                                         <TableRow
                                             key={row.id}
