@@ -23,6 +23,13 @@ import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuLabel,
+    ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -77,6 +84,68 @@ function CategoryActions({ category }: { category: Category }) {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            <EditCategoryDialog
+                category={category}
+                open={editOpen}
+                onOpenChange={setEditOpen}
+                onSuccess={() => {}}
+            />
+            <DeleteCategoryDialog
+                category={category}
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                onSuccess={() => {}}
+            />
+        </>
+    );
+}
+
+function CategoryRow({ row }: { row: any }) {
+    const category = row.original;
+    const [editOpen, setEditOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [contextMenuOpen, setContextMenuOpen] = useState(false);
+
+    return (
+        <>
+            <ContextMenu onOpenChange={setContextMenuOpen}>
+                <ContextMenuTrigger asChild>
+                    <TableRow
+                        data-state={
+                            (row.getIsSelected() || contextMenuOpen) &&
+                            'selected'
+                        }
+                    >
+                        {row
+                            .getVisibleCells()
+                            .map((cell: any) => (
+                                <TableCell
+                                    key={cell.id}
+                                >
+                                    {flexRender(
+                                        cell.column
+                                            .columnDef
+                                            .cell,
+                                        cell.getContext(),
+                                    )}
+                                </TableCell>
+                            ))}
+                    </TableRow>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                    <ContextMenuLabel>Actions</ContextMenuLabel>
+                    <ContextMenuItem onClick={() => setEditOpen(true)}>
+                        Edit
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                        onClick={() => setDeleteOpen(true)}
+                        variant="destructive"
+                    >
+                        Delete
+                    </ContextMenuItem>
+                </ContextMenuContent>
+            </ContextMenu>
 
             <EditCategoryDialog
                 category={category}
@@ -243,28 +312,7 @@ export default function Categories() {
                                 <TableBody>
                                     {table.getRowModel().rows?.length ? (
                                         table.getRowModel().rows.map((row) => (
-                                            <TableRow
-                                                key={row.id}
-                                                data-state={
-                                                    row.getIsSelected() &&
-                                                    'selected'
-                                                }
-                                            >
-                                                {row
-                                                    .getVisibleCells()
-                                                    .map((cell) => (
-                                                        <TableCell
-                                                            key={cell.id}
-                                                        >
-                                                            {flexRender(
-                                                                cell.column
-                                                                    .columnDef
-                                                                    .cell,
-                                                                cell.getContext(),
-                                                            )}
-                                                        </TableCell>
-                                                    ))}
-                                            </TableRow>
+                                            <CategoryRow key={row.id} row={row} />
                                         ))
                                     ) : (
                                         <TableRow>

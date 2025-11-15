@@ -30,13 +30,13 @@ export function BulkActionsBar({
     onClear,
     isUpdating = false,
 }: BulkActionsBarProps) {
-    if (selectedCount === 0) {
+    if (selectedCount < 1) {
         return null;
     }
 
     return (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in duration-300 fade-in slide-in-from-bottom-4">
-            <div className="flex flex-row items-center justify-between gap-10 rounded-full border bg-background px-4 py-2 shadow-lg">
+        <div className="fixed bottom-6 w-full flex items-center justify-center animate-in duration-300 fade-in fade-out slide-in-from-bottom-5 slide-out-to-bottom-5">
+            <div className="flex flex-row max-w-[75%] items-center justify-between gap-10 rounded-full border bg-background px-4 py-2 shadow-lg">
                 <div className="pl-2 text-sm">
                     {selectedCount} transaction{selectedCount !== 1 ? 's' : ''}{' '}
                     selected
