@@ -145,7 +145,6 @@ export function CategoryCombobox({
 }
 
 function CategoryIcon({ category }: { category: Category }) {
-    console.log({ category })
     const colorClasses = getCategoryColorClasses(category.color);
     const IconComponent = resolveIconComponent(category.icon);
 
