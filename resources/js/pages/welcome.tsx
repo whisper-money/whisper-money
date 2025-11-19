@@ -5,6 +5,7 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import InputError from '@/components/input-error';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import {
     LockIcon,
     ShieldCheckIcon,
@@ -14,6 +15,8 @@ import {
     SmartphoneIcon,
     ZapIcon,
     EyeOffIcon,
+    BirdIcon,
+    CodeIcon,
 } from 'lucide-react';
 
 export default function Welcome({
@@ -55,11 +58,7 @@ export default function Welcome({
                 <header className="w-full fade-bottom bg-background/5 fixed top-0 z-50 h-16 backdrop-blur-lg">
                     <div className="mx-auto flex max-w-5xl items-center justify-between py-4">
                         <div className="flex items-center gap-2">
-                            <img
-                                src="/images/whisper_money_logo.png"
-                                alt="Whisper Money"
-                                className="h-8 w-auto"
-                            />
+                            <BirdIcon className="size-[1.4rem] text-[#1b1b18] dark:text-[#EDEDEC]" />
                             <span className='font-medium'>Whisper Money</span>
                         </div>
                         {!hideAuthButtons && (
@@ -320,22 +319,625 @@ export default function Welcome({
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
                                     <h3 className="flex items-center gap-2 text-sm font-semibold leading-none tracking-tight sm:text-base">
                                         <div className="flex items-center self-start">
-                                            <LockIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                                            <CodeIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        Privacy first
+                                        Open source
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-balance text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        Built from the ground up with privacy as
-                                        the core principle.
+                                        Fully transparent and open source. Review
+                                        the code yourself.
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="w-full overflow-hidden px-0 py-12 dark:border-[#3E3E3A] sm:py-24 md:py-32">
+                        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-1 text-center sm:gap-16">
+                            <div className="flex flex-col items-center gap-4 px-4 sm:gap-4">
+                                <h2 className="max-w-[720px] text-2xl font-semibold leading-tight sm:text-3xl sm:leading-tight">
+                                    Trusted by people who value their privacy
+                                </h2>
+                                <p className="text-md max-w-[600px] font-medium text-[#706f6c] dark:text-[#A1A09A] sm:text-xl">
+                                    Join thousands of users who have taken
+                                    control of their finances without
+                                    compromising their privacy.
+                                </p>
+                            </div>
+                            <div className="relative flex w-full flex-col items-center justify-center overflow-hidden">
+                                <div className="group flex flex-row overflow-hidden p-2 [--duration:20s] [--gap:1rem] [gap:var(--gap)]">
+                                    <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [gap:var(--gap)]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
+                                                        alt="Sarah M."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Sarah M.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @sarahm_finance
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Finally, a finance app that
+                                                respects my privacy. The
+                                                encryption gives me peace of
+                                                mind.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
+                                                        alt="Michael R."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Michael R.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @mike_tech
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                The budgeting features are
+                                                intuitive and the dark mode is
+                                                gorgeous. Best finance app I've
+                                                used.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emma"
+                                                        alt="Emma L."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Emma L.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @emmalou
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Love that my financial data is
+                                                encrypted. No more worrying about
+                                                data breaches!
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [gap:var(--gap)]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
+                                                        alt="Sarah M."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Sarah M.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @sarahm_finance
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Finally, a finance app that
+                                                respects my privacy. The
+                                                encryption gives me peace of
+                                                mind.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
+                                                        alt="Michael R."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Michael R.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @mike_tech
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                The budgeting features are
+                                                intuitive and the dark mode is
+                                                gorgeous. Best finance app I've
+                                                used.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emma"
+                                                        alt="Emma L."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Emma L.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @emmalou
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Love that my financial data is
+                                                encrypted. No more worrying about
+                                                data breaches!
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [gap:var(--gap)]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
+                                                        alt="Sarah M."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Sarah M.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @sarahm_finance
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Finally, a finance app that
+                                                respects my privacy. The
+                                                encryption gives me peace of
+                                                mind.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
+                                                        alt="Michael R."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Michael R.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @mike_tech
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                The budgeting features are
+                                                intuitive and the dark mode is
+                                                gorgeous. Best finance app I've
+                                                used.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emma"
+                                                        alt="Emma L."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Emma L.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @emmalou
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Love that my financial data is
+                                                encrypted. No more worrying about
+                                                data breaches!
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [gap:var(--gap)]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
+                                                        alt="Sarah M."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Sarah M.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @sarahm_finance
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Finally, a finance app that
+                                                respects my privacy. The
+                                                encryption gives me peace of
+                                                mind.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
+                                                        alt="Michael R."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Michael R.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @mike_tech
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                The budgeting features are
+                                                intuitive and the dark mode is
+                                                gorgeous. Best finance app I've
+                                                used.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emma"
+                                                        alt="Emma L."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Emma L.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @emmalou
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Love that my financial data is
+                                                encrypted. No more worrying about
+                                                data breaches!
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="group flex flex-row overflow-hidden p-2 [--duration:20s] [--gap:1rem] [gap:var(--gap)]">
+                                    <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [animation-direction:reverse] [gap:var(--gap)]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=David"
+                                                        alt="David K."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        David K.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @davidk_dev
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                As a developer, I appreciate the
+                                                security architecture. This is
+                                                how finance apps should be built.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica"
+                                                        alt="Jessica P."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Jessica P.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @jessicap
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                The automation rules save me so
+                                                much time. And knowing my data is
+                                                private? Priceless.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
+                                                        alt="Alex T."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Alex T.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @alext_money
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Clean interface, powerful
+                                                features, and zero compromise on
+                                                privacy. What more could you
+                                                want?
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [animation-direction:reverse] [gap:var(--gap)]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=David"
+                                                        alt="David K."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        David K.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @davidk_dev
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                As a developer, I appreciate the
+                                                security architecture. This is
+                                                how finance apps should be built.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica"
+                                                        alt="Jessica P."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Jessica P.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @jessicap
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                The automation rules save me so
+                                                much time. And knowing my data is
+                                                private? Priceless.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
+                                                        alt="Alex T."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Alex T.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @alext_money
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Clean interface, powerful
+                                                features, and zero compromise on
+                                                privacy. What more could you
+                                                want?
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [animation-direction:reverse] [gap:var(--gap)]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=David"
+                                                        alt="David K."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        David K.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @davidk_dev
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                As a developer, I appreciate the
+                                                security architecture. This is
+                                                how finance apps should be built.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica"
+                                                        alt="Jessica P."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Jessica P.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @jessicap
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                The automation rules save me so
+                                                much time. And knowing my data is
+                                                private? Priceless.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
+                                                        alt="Alex T."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Alex T.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @alext_money
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Clean interface, powerful
+                                                features, and zero compromise on
+                                                privacy. What more could you
+                                                want?
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [animation-direction:reverse] [gap:var(--gap)]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=David"
+                                                        alt="David K."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        David K.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @davidk_dev
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                As a developer, I appreciate the
+                                                security architecture. This is
+                                                how finance apps should be built.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica"
+                                                        alt="Jessica P."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Jessica P.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @jessicap
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                The automation rules save me so
+                                                much time. And knowing my data is
+                                                private? Priceless.
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="size-12">
+                                                    <AvatarImage
+                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
+                                                        alt="Alex T."
+                                                    />
+                                                </Avatar>
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md font-semibold leading-none">
+                                                        Alex T.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @alext_money
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                Clean interface, powerful
+                                                features, and zero compromise on
+                                                privacy. What more could you
+                                                want?
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="from-background pointer-events-none absolute inset-y-0 left-0 hidden w-1/3 bg-linear-to-r sm:block"></div>
+                                <div className="from-background pointer-events-none absolute inset-y-0 right-0 hidden w-1/3 bg-linear-to-l sm:block"></div>
                             </div>
                         </div>
                     </section>
                 </main>
 
                 <footer className="py-8 dark:border-[#3E3E3A]">
-                    <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#706f6c] dark:text-[#A1A09A] sm:flex-row lg:px-8">
+                    <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#706f6c] dark:text-[#A1A09A] sm:flex-row lg:px-8">
                         <p>
                             © {new Date().getFullYear()} Whisper Money. All
                             rights reserved.

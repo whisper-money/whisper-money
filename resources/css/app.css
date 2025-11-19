@@ -149,4 +149,44 @@
     .bg-radial {
         background-image: radial-gradient(ellipse, var(--tw-gradient-stops));
     }
+
+    .glass-3 {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.1),
+            rgba(255, 255, 255, 0.05)
+        );
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .dark .glass-3 {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.05),
+            rgba(255, 255, 255, 0.02)
+        );
+    }
+
+    @keyframes marquee {
+        from {
+            transform: translateX(0);
+        }
+        to {
+            transform: translateX(calc(-100% - var(--gap)));
+        }
+    }
+
+    .animate-marquee {
+        animation: marquee var(--duration) linear infinite;
+    }
+
+    .bg-linear-to-r {
+        background: linear-gradient(to right, var(--tw-gradient-stops));
+    }
+
+    .bg-linear-to-l {
+        background: linear-gradient(to left, var(--tw-gradient-stops));
+    }
 }
