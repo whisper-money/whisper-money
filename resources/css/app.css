@@ -140,4 +140,13 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    .fade-bottom {
+        -webkit-mask-image: linear-gradient(#000 65%, #0000);
+        mask-image: linear-gradient(#000 65%, #0000);
+    }
+
+    .bg-radial {
+        background-image: radial-gradient(ellipse, var(--tw-gradient-stops));
+    }
 }
