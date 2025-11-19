@@ -37,6 +37,10 @@ export default function Welcome({
                 />
                 <link rel="canonical" href={window.location.origin} />
 
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+                <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&family=Stack+Sans+Text:wght@200..700&display=swap" rel="stylesheet" />
+
                 <meta property="og:title" content="Whisper Money - The Most Secure Personal Finance App" />
                 <meta
                     property="og:description"
@@ -56,9 +60,9 @@ export default function Welcome({
             </Head>
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 <header className="w-full fade-bottom bg-background/5 fixed top-0 z-50 h-16 backdrop-blur-lg">
-                    <div className="mx-auto flex max-w-5xl items-center justify-between py-4">
-                        <div className="flex items-center gap-2">
-                            <BirdIcon className="size-[1.4rem] text-[#1b1b18] dark:text-[#EDEDEC]" />
+                    <div className="mx-auto flex max-w-5xl items-center justify-between px-2 py-4 lg:py-6">
+                        <div className="flex items-center gap-4 font-mono">
+                            <BirdIcon className="size-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
                             <span className='font-medium'>Whisper Money</span>
                         </div>
                         {!hideAuthButtons && (
@@ -97,13 +101,13 @@ export default function Welcome({
                     <section className="relative w-full overflow-hidden px-6 py-24 sm:py-32 md:py-40">
                         <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-12">
                             <div className="max-w-5xl w-full mx-auto relative z-10 flex flex-col items-start gap-2 sm:gap-8">
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e3e3e0] py-1 px-2.5 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
+                                <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e3e0] py-1 px-2.5 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
                                     <LockIcon className='size-3.5 opacity-75' />
                                     <span className="text-[#706f6c] dark:text-[#A1A09A]">
                                         Military Grade Encryption
                                     </span>
                                 </span>
-                                <h1 className="max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl font-semibold leading-tight text-transparent drop-shadow-2xl dark:from-[#EDEDEC] dark:to-[#A1A09A] sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight">
+                                <h1 className="max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl font-semibold leading-tight text-transparent drop-shadow-2xl dark:from-[#EDEDEC] dark:to-[#A1A09A] sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight font-heading">
                                     The most secure way to manage your money
                                 </h1>
                                 <p className="max-w-[840px] mb-4 text-lg leading-8 font-medium text-[#706f6c] dark:text-[#A1A09A] lg:text-xl lg:leading-8">
@@ -113,7 +117,7 @@ export default function Welcome({
                                     while keeping your information completely
                                     secure.
                                 </p>
-                                <div className="flex w-full max-w-md flex-col gap-4">
+                                <div className="flex w-full max-w-lg flex-col gap-4">
                                     <Form
                                         {...store.form()}
                                         className="flex sm:items-center justify-center flex-col gap-2 sm:flex-row"
@@ -131,7 +135,7 @@ export default function Welcome({
                                                 <Button
                                                     type="submit"
                                                     disabled={processing}
-                                                    className="h-12 bg-gradient-to-t from-zinc-700 to-zinc-900 text-shadow text-white shadow-sm hover:bg-black dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:bg-white"
+                                                    className="h-12 bg-gradient-to-t px-6 from-zinc-700 to-zinc-900 text-shadow cursor-pointer disabled:cursor-default text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:bg-white dark:hover:shadow-md"
                                                 >
                                                     {processing
                                                         ? 'Submitting...'

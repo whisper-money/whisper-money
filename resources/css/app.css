@@ -13,6 +13,8 @@
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
+    --font-mono: "Google Sans Code", monospace;
+
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
@@ -176,6 +178,11 @@
         to {
             transform: translateX(calc(-100% - var(--gap)));
         }
+    }
+
+
+    .font-heading {
+        font-family: 'Stack Sans Text', ui-sans-serif, system-ui, sans-serif;
     }
 
     .animate-marquee {
