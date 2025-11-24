@@ -26,9 +26,11 @@ RUN pecl install memcached redis \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Install Node.js and Bun
+# Install Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
+
+# Install Bun
 RUN curl -fsSL https://bun.com/install | bash
 
 # Install memcached and redis servers
@@ -47,8 +49,8 @@ RUN mkdir -p /var/log/nginx && mkdir -p /var/cache/nginx
 RUN composer install --no-dev --optimize-autoloader
 
 # Install Node.js dependencies and build assets
-RUN bun install --frozen-lockfile \
-    bun run build || echo "Build step failed, continuing..."
+RUN bun install --frozen-lockfile
+RUN bun run build
 
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
