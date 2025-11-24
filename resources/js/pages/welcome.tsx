@@ -18,6 +18,8 @@ import {
     BirdIcon,
     CodeIcon,
 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { trackEvent } from '@/lib/track-event';
 
 export default function Welcome({
     canRegister = true,
@@ -27,6 +29,13 @@ export default function Welcome({
     hideAuthButtons?: boolean;
 }) {
     const { auth } = usePage<SharedData>().props;
+    const emailInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        trackEvent('9668a06c-dee9-47a8-9bee-eaaa2a3a5915', {
+            step: 'Visit',
+        });
+    }, []);
 
     return (
         <>
@@ -124,10 +133,18 @@ export default function Welcome({
                                     <Form
                                         {...store.form()}
                                         className="flex sm:items-center justify-center flex-col gap-2 sm:flex-row"
+                                        onSuccess={async () => {
+                                            const emailValue = emailInputRef.current?.value || '';
+                                            await trackEvent('9668a06c-dee9-47a8-9bee-eaaa2a3a5915', {
+                                                step: 'Lead Created',
+                                                email: emailValue,
+                                            });
+                                        }}
                                     >
                                         {({ processing, errors }) => (
                                             <>
                                                 <Input
+                                                    ref={emailInputRef}
                                                     type="email"
                                                     name="email"
                                                     placeholder="Enter your email"
@@ -167,18 +184,8 @@ export default function Welcome({
                                 <div className="relative left-[-24%] z-10 h-[24px] rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:left-[-32%] group-hover:rotate-[-12deg] group-hover:skew-y-6">
                                     <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
                                         <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] p-8 dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <div className="flex h-full items-center justify-center">
-                                                    <div className="text-center">
-                                                        <div className="mb-2 text-4xl font-bold text-[#e3e3e0] dark:text-[#3E3E3A]">
-                                                            1
-                                                        </div>
-                                                        <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                            Screenshot
-                                                            placeholder
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+                                                <img src="/images/landing/bank-accounts.png" alt="App screenshot showing transactions" className="h-full w-auto rounded-lg" />
                                             </div>
                                         </div>
                                     </div>
@@ -186,18 +193,8 @@ export default function Welcome({
                                 <div className="relative z-10 h-[24px] rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:rotate-[-12deg] group-hover:skew-y-6">
                                     <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
                                         <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] p-8 dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <div className="flex h-full items-center justify-center">
-                                                    <div className="text-center">
-                                                        <div className="mb-2 text-4xl font-bold text-[#e3e3e0] dark:text-[#3E3E3A]">
-                                                            2
-                                                        </div>
-                                                        <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                            Screenshot
-                                                            placeholder
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+                                                <img src="/images/landing/unlock-key.png" alt="App screenshot showing transactions" className="h-full w-auto rounded-lg" />
                                             </div>
                                         </div>
                                     </div>
@@ -205,18 +202,8 @@ export default function Welcome({
                                 <div className="relative left-[32%] z-10 rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:left-[48%] group-hover:rotate-[-12deg] group-hover:skew-y-6">
                                     <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
                                         <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] p-8 dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <div className="flex h-full items-center justify-center">
-                                                    <div className="text-center">
-                                                        <div className="mb-2 text-4xl font-bold text-[#e3e3e0] dark:text-[#3E3E3A]">
-                                                            3
-                                                        </div>
-                                                        <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                            Screenshot
-                                                            placeholder
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+                                                <img src="/images/landing/transactions.png" alt="App screenshot showing transactions" className="h-full w-auto rounded-lg" />
                                             </div>
                                         </div>
                                     </div>
