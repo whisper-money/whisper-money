@@ -13,6 +13,8 @@
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
+    --font-mono: "Google Sans Code", monospace;
+
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
@@ -139,5 +141,59 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+
+    .fade-bottom {
+        -webkit-mask-image: linear-gradient(#000 65%, #0000);
+        mask-image: linear-gradient(#000 65%, #0000);
+    }
+
+    .bg-radial {
+        background-image: radial-gradient(ellipse, var(--tw-gradient-stops));
+    }
+
+    .glass-3 {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.1),
+            rgba(255, 255, 255, 0.05)
+        );
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .dark .glass-3 {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.05),
+            rgba(255, 255, 255, 0.02)
+        );
+    }
+
+    @keyframes marquee {
+        from {
+            transform: translateX(0);
+        }
+        to {
+            transform: translateX(calc(-100% - var(--gap)));
+        }
+    }
+
+
+    .font-heading {
+        font-family: 'Stack Sans Text', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    .animate-marquee {
+        animation: marquee var(--duration) linear infinite;
+    }
+
+    .bg-linear-to-r {
+        background: linear-gradient(to right, var(--tw-gradient-stops));
+    }
+
+    .bg-linear-to-l {
+        background: linear-gradient(to left, var(--tw-gradient-stops));
     }
 }

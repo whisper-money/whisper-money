@@ -45,5 +45,10 @@
     </head>
     <body class="font-sans antialiased">
         @inertia
+
+        <script defer
+            event-uuid="696e6c66-33e0-482c-aa4a-a21410ec38c8"
+            src="https://tracker.metricswave.com/js/visits.js"
+        ></script>
     </body>
 </html>

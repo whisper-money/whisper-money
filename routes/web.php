@@ -7,6 +7,7 @@ use App\Http\Controllers\Sync\AccountSyncController;
 use App\Http\Controllers\Sync\BankSyncController;
 use App\Http\Controllers\Sync\CategorySyncController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\UserLeadController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -14,8 +15,29 @@ use Laravel\Fortify\Features;
 Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
+        'hideAuthButtons' => config('landing.hide_auth_buttons', false),
     ]);
 })->name('home');
+
+Route::post('user-leads', [UserLeadController::class, 'store'])->name('user-leads.store');
+
+Route::get('privacy', function () {
+    return Inertia::render('privacy');
+})->name('privacy');
+
+Route::get('terms', function () {
+    return Inertia::render('terms');
+})->name('terms');
+
+if (config('landing.hide_auth_buttons')) {
+    Route::match(['GET', 'POST'], 'login', fn () => abort(404));
+    Route::match(['GET', 'POST'], 'register', fn () => abort(404));
+    Route::post('logout', fn () => abort(404));
+    Route::get('forgot-password', fn () => abort(404));
+    Route::post('forgot-password', fn () => abort(404));
+    Route::get('reset-password/{token}', fn () => abort(404));
+    Route::post('reset-password', fn () => abort(404));
+}
 
 Route::middleware(['auth'])->group(function () {
     Route::get('setup-encryption', function () {
