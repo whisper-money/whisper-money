@@ -49,9 +49,14 @@ RUN mkdir -p /var/log/nginx && mkdir -p /var/cache/nginx
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Install Node.js dependencies and build assets
+# Install Node.js dependencies
 RUN bun install --frozen-lockfile
-RUN bun run build
+
+# Generate Wayfinder routes before building
+RUN php artisan wayfinder:generate
+
+# Build assets
+RUN bun run build:ssr
 
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
