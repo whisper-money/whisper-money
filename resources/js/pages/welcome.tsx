@@ -59,7 +59,7 @@ export default function Welcome({
                 <meta name="twitter:image" content={`${window.location.origin}/og-image.png`} />
             </Head>
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
-                <header className="w-full fade-bottom bg-background/5 fixed top-0 z-50 h-16 backdrop-blur-lg">
+                <header className="w-full fade-bottom bg-background/5 fixed top-0 z-50 backdrop-blur-lg">
                     <div className="mx-auto flex max-w-5xl items-center justify-between px-2 py-4 lg:py-6">
                         <div className="flex items-center gap-4 font-mono">
                             <BirdIcon className="size-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
@@ -70,24 +70,27 @@ export default function Welcome({
                                 {auth.user ? (
                                     <Link
                                         href={dashboard()}
-                                        className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                                     >
-                                        Dashboard
+                                        <Button className='cursor-pointer'>
+                                            Dashboard
+                                        </Button>
                                     </Link>
                                 ) : (
                                     <>
                                         <Link
                                             href="/login"
-                                            className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#19140035] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
                                         >
-                                            Log in
+                                            <Button variant={'ghost'} className='cursor-pointer'>
+                                                Log in
+                                            </Button>
                                         </Link>
                                         {canRegister && (
                                             <Link
                                                 href="/register"
-                                                className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                                             >
-                                                Register
+                                                <Button variant='default' className='cursor-pointer'>
+                                                    Register
+                                                </Button>
                                             </Link>
                                         )}
                                     </>
