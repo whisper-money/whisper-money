@@ -52,11 +52,9 @@ RUN composer install --no-dev --optimize-autoloader
 # Install Node.js dependencies
 RUN bun install --frozen-lockfile
 
-# Generate Wayfinder routes before building
-RUN php artisan wayfinder:generate
-
-# Build assets
-RUN bun run build:ssr
+# Build assets with HIDE_AUTH_BUTTONS=false so Wayfinder generates all routes
+# (HIDE_AUTH_BUTTONS will be set to true at runtime via .env)
+RUN HIDE_AUTH_BUTTONS=false bun run build:ssr
 
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
