@@ -32,6 +32,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 
 # Install Bun
 RUN curl -fsSL https://bun.com/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
 
 # Install memcached and redis servers
 RUN apt-get update && apt-get install -y memcached redis-server && rm -rf /var/lib/apt/lists/*
