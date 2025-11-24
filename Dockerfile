@@ -47,8 +47,8 @@ RUN mkdir -p /var/log/nginx && mkdir -p /var/cache/nginx
 RUN composer install --no-dev --optimize-autoloader
 
 # Install Node.js dependencies and build assets
-RUN pnpm i --frozen-lockfile
-RUN pnpm run build || echo "Build step failed, continuing..."
+RUN bun i --frozen-lockfile
+RUN bun run build || echo "Build step failed, continuing..."
 
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
