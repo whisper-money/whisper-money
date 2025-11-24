@@ -353,12 +353,6 @@ export default function Welcome({
                                     <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [gap:var(--gap)]">
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
-                                                        alt="Sarah M."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Sarah M.
@@ -377,12 +371,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
-                                                        alt="Michael R."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Michael R.
@@ -401,12 +389,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emma"
-                                                        alt="Emma L."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Emma L.
@@ -426,12 +408,6 @@ export default function Welcome({
                                     <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [gap:var(--gap)]">
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
-                                                        alt="Sarah M."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Sarah M.
@@ -450,12 +426,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
-                                                        alt="Michael R."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Michael R.
@@ -474,12 +444,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emma"
-                                                        alt="Emma L."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Emma L.
@@ -499,12 +463,6 @@ export default function Welcome({
                                     <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [gap:var(--gap)]">
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
-                                                        alt="Sarah M."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Sarah M.
@@ -523,12 +481,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
-                                                        alt="Michael R."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Michael R.
@@ -547,12 +499,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emma"
-                                                        alt="Emma L."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Emma L.
@@ -572,12 +518,6 @@ export default function Welcome({
                                     <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [gap:var(--gap)]">
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
-                                                        alt="Sarah M."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Sarah M.
@@ -596,12 +536,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael"
-                                                        alt="Michael R."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Michael R.
@@ -620,12 +554,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Emma"
-                                                        alt="Emma L."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Emma L.
@@ -647,12 +575,6 @@ export default function Welcome({
                                     <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [animation-direction:reverse] [gap:var(--gap)]">
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=David"
-                                                        alt="David K."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         David K.
@@ -670,12 +592,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica"
-                                                        alt="Jessica P."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Jessica P.
@@ -693,12 +609,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
-                                                        alt="Alex T."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Alex T.
@@ -719,12 +629,6 @@ export default function Welcome({
                                     <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [animation-direction:reverse] [gap:var(--gap)]">
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=David"
-                                                        alt="David K."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         David K.
@@ -742,12 +646,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica"
-                                                        alt="Jessica P."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Jessica P.
@@ -765,12 +663,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
-                                                        alt="Alex T."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Alex T.
@@ -791,12 +683,6 @@ export default function Welcome({
                                     <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [animation-direction:reverse] [gap:var(--gap)]">
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=David"
-                                                        alt="David K."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         David K.
@@ -814,12 +700,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica"
-                                                        alt="Jessica P."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Jessica P.
@@ -837,12 +717,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
-                                                        alt="Alex T."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Alex T.
@@ -863,12 +737,6 @@ export default function Welcome({
                                     <div className="flex shrink-0 animate-marquee flex-row justify-around group-hover:[animation-play-state:paused] [animation-direction:reverse] [gap:var(--gap)]">
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=David"
-                                                        alt="David K."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         David K.
@@ -886,12 +754,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica"
-                                                        alt="Jessica P."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Jessica P.
@@ -909,12 +771,6 @@ export default function Welcome({
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="size-12">
-                                                    <AvatarImage
-                                                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex"
-                                                        alt="Alex T."
-                                                    />
-                                                </Avatar>
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md font-semibold leading-none">
                                                         Alex T.
