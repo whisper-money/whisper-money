@@ -30,8 +30,13 @@ export default function Welcome({
 }) {
     const { auth } = usePage<SharedData>().props;
     const emailInputRef = useRef<HTMLInputElement>(null);
+    const visitTrackedRef = useRef(false);
 
     useEffect(() => {
+        if (visitTrackedRef.current) {
+            return;
+        }
+        visitTrackedRef.current = true;
         trackEvent('9668a06c-dee9-47a8-9bee-eaaa2a3a5915', {
             step: 'Visit',
         });
