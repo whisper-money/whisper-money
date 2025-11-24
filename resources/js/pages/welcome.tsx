@@ -160,7 +160,7 @@ export default function Welcome({
                                                 <Button
                                                     type="submit"
                                                     disabled={processing}
-                                                    className="h-12 bg-gradient-to-t px-6 from-zinc-700 to-zinc-900 text-shadow cursor-pointer disabled:cursor-default text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:bg-white dark:hover:shadow-md"
+                                                    className="h-12 bg-gradient-to-t px-6 from-zinc-700 to-zinc-900 dark:from-zinc-200 dark:to-zinc-300 text-shadow cursor-pointer disabled:cursor-default text-white shadow-sm transition-all duration hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:bg-white dark:hover:shadow-md hover:dark:from-zinc-50"
                                                 >
                                                     {processing
                                                         ? 'Submitting...'
@@ -189,8 +189,9 @@ export default function Welcome({
                                 <div className="relative left-[-24%] z-10 h-[24px] rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:left-[-32%] group-hover:rotate-[-12deg] group-hover:skew-y-6">
                                     <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
                                         <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <img src="/images/landing/bank-accounts.png" alt="App screenshot showing transactions" className="h-full w-auto rounded-lg" />
+                                            <div className="aspect-[16/10] rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+                                                <img src="/images/landing/bank-accounts.png" alt="Bank accounts securely stored" className="dark:hidden h-full w-auto rounded-lg" />
+                                                <img src="/images/landing/dark_bank-accounts.png" alt="Bank accounts securely stored" className="hidden dark:block h-full w-auto rounded-lg" />
                                             </div>
                                         </div>
                                     </div>
@@ -198,8 +199,9 @@ export default function Welcome({
                                 <div className="relative z-10 h-[24px] rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:rotate-[-12deg] group-hover:skew-y-6">
                                     <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
                                         <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <img src="/images/landing/unlock-key.png" alt="App screenshot showing transactions" className="h-full w-auto rounded-lg" />
+                                            <div className="aspect-[16/10] rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+                                                <img src="/images/landing/unlock-key.png" alt="Everything is encrypted with a private & local key you only have" className="dark:hidden h-full w-auto rounded-lg" />
+                                                <img src="/images/landing/dark_unlock-key.png" alt="Everything is encrypted with a private & local key you only have" className="hidden dark:block h-full w-auto rounded-lg" />
                                             </div>
                                         </div>
                                     </div>
@@ -207,8 +209,9 @@ export default function Welcome({
                                 <div className="relative left-[32%] z-10 rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:left-[48%] group-hover:rotate-[-12deg] group-hover:skew-y-6">
                                     <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
                                         <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <img src="/images/landing/transactions.png" alt="App screenshot showing transactions" className="h-full w-auto rounded-lg" />
+                                            <div className="aspect-[16/10] rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+                                                <img src="/images/landing/transactions.png" alt="You're transactions with a military grade encryption" className="dark:hidden h-full w-auto rounded-lg" />
+                                                <img src="/images/landing/dark_transactions.png" alt="You're transactions with a military grade encryption" className="hidden dark:block h-full w-auto rounded-lg" />
                                             </div>
                                         </div>
                                     </div>
