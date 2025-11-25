@@ -14,12 +14,15 @@ class UserLeadController extends Controller
      */
     public function store(StoreUserLeadRequest $request): RedirectResponse|Response
     {
-        UserLead::create($request->validated());
+        $validated = $request->validated();
+        UserLead::create($validated);
 
         $redirectUrl = config('landing.lead_redirect_url');
 
         if ($redirectUrl) {
-            return response('', 409)->header('X-Inertia-Location', $redirectUrl);
+            $urlWithEmail = $redirectUrl.'?email='.urlencode($validated['email']);
+
+            return response('', 409)->header('X-Inertia-Location', $urlWithEmail);
         }
 
         return to_route('home')->with('success', 'Thank you for your interest!');
