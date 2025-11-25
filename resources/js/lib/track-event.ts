@@ -41,7 +41,9 @@ export async function trackEvent(
                 queryParams.append(key, String(value));
             }
         });
-        await fetch(`${url}?${queryParams.toString()}`);
+        await fetch(`${url}?${queryParams.toString()}`, {
+            keepalive: true,
+        });
     } else {
         await fetch(url, {
             method: 'POST',
@@ -49,6 +51,7 @@ export async function trackEvent(
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload),
+            keepalive: true,
         });
     }
 }
