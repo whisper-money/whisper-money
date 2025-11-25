@@ -26,4 +26,15 @@ return [
 
     'lead_redirect_url' => env('LEAD_REDIRECT_URL', null),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Lead Funnel Event UUID
+    |--------------------------------------------------------------------------
+    |
+    | The MetricsWave event UUID for tracking lead funnel events.
+    |
+    */
+
+    'lead_funnel_event_uuid' => env('LEAD_FUNNEL_EVENT_UUID', '9668a06c-dee9-47a8-9bee-eaaa2a3a5915'),
+
 ];

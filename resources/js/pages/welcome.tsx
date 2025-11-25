@@ -173,13 +173,6 @@ export default function Welcome({
                                     <Form
                                         {...store.form()}
                                         className="flex sm:items-center justify-center flex-col gap-2 sm:flex-row"
-                                        onSuccess={async () => {
-                                            const emailValue = emailInputRef.current?.value || '';
-                                            await trackEvent(LEAD_FUNNEL_EVENT_UUID, {
-                                                step: 'Lead Created',
-                                                email: emailValue,
-                                            });
-                                        }}
                                     >
                                         {({ processing, errors }) => (
                                             <>
