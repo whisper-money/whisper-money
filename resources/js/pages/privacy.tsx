@@ -1,13 +1,26 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { type SharedData } from '@/types';
 
 export default function Privacy() {
+    const { appUrl } = usePage<SharedData>().props;
+
     return (
         <>
-            <Head title="Privacy Policy">
+            <Head title="Privacy Policy - Whisper Money">
                 <meta
                     name="description"
-                    content="Our privacy policy outlines how we collect, use, and protect your personal information."
+                    content="Privacy policy for Whisper Money. Learn how we collect, use, and protect your personal information with end-to-end encryption."
                 />
+                <link rel="canonical" href={`${appUrl}/privacy`} />
+                <meta name="robots" content="index, follow" />
+
+                <meta property="og:title" content="Privacy Policy - Whisper Money" />
+                <meta
+                    property="og:description"
+                    content="Privacy policy for Whisper Money. Learn how we collect, use, and protect your personal information."
+                />
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content={`${appUrl}/privacy`} />
             </Head>
             <div className="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 <div className="mx-auto max-w-4xl px-6 py-12 lg:px-8 lg:py-16">
