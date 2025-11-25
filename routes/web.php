@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AccountBalanceController;
 use App\Http\Controllers\EncryptionController;
+use App\Http\Controllers\RobotsController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Sync\AccountBalanceSyncController;
 use App\Http\Controllers\Sync\AccountSyncController;
 use App\Http\Controllers\Sync\BankSyncController;
@@ -18,6 +20,9 @@ Route::get('/', function () {
         'hideAuthButtons' => config('landing.hide_auth_buttons', false),
     ]);
 })->name('home');
+
+Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('robots.txt', [RobotsController::class, 'index'])->name('robots');
 
 Route::post('user-leads', [UserLeadController::class, 'store'])->name('user-leads.store');
 

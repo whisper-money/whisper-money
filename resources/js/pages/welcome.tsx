@@ -28,7 +28,7 @@ export default function Welcome({
     canRegister?: boolean;
     hideAuthButtons?: boolean;
 }) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, appUrl } = usePage<SharedData>().props;
     const emailInputRef = useRef<HTMLInputElement>(null);
     const visitTrackedRef = useRef(false);
 
@@ -44,25 +44,34 @@ export default function Welcome({
 
     return (
         <>
-            <Head title="Welcome">
+            <Head title="Whisper Money - The Most Secure Personal Finance App">
                 <meta
                     name="description"
                     content="The most secure personal finance app with end-to-end encryption. Track expenses, create budgets, and manage your money privately."
                 />
-                <link rel="canonical" href={window.location.origin} />
+                <meta
+                    name="keywords"
+                    content="finance app, budgeting, expense tracking, end-to-end encryption, secure finance, personal finance, money management, privacy, encrypted finance app"
+                />
+                <link rel="canonical" href={appUrl} />
 
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&family=Stack+Sans+Text:wght@200..700&display=swap" rel="stylesheet" />
 
+                <meta property="og:site_name" content="Whisper Money" />
                 <meta property="og:title" content="Whisper Money - The Most Secure Personal Finance App" />
                 <meta
                     property="og:description"
                     content="Your financial data stays private with end-to-end encryption. The most secure way to manage your personal finances."
                 />
                 <meta property="og:type" content="website" />
-                <meta property="og:url" content={window.location.origin} />
-                <meta property="og:image" content={`${window.location.origin}/og-image.png`} />
+                <meta property="og:url" content={appUrl} />
+                <meta property="og:image" content={`${appUrl}/images/og_whisper_money.png`} />
+                <meta property="og:image:width" content="1200" />
+                <meta property="og:image:height" content="630" />
+                <meta property="og:image:alt" content="Whisper Money - Secure Personal Finance App" />
+                <meta property="og:locale" content="en_US" />
 
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content="Whisper Money - The Most Secure Personal Finance App" />
@@ -70,7 +79,32 @@ export default function Welcome({
                     name="twitter:description"
                     content="Your financial data stays private with end-to-end encryption. The most secure way to manage your personal finances."
                 />
-                <meta name="twitter:image" content={`${window.location.origin}/og-image.png`} />
+                <meta name="twitter:image" content={`${appUrl}/images/og_whisper_money.png`} />
+                <meta name="twitter:image:alt" content="Whisper Money - Secure Personal Finance App" />
+
+                <script type="application/ld+json">
+                    {JSON.stringify({
+                        '@context': 'https://schema.org',
+                        '@type': 'WebApplication',
+                        name: 'Whisper Money',
+                        description: 'The most secure personal finance app with end-to-end encryption. Track expenses, create budgets, and manage your money privately.',
+                        url: appUrl,
+                        applicationCategory: 'FinanceApplication',
+                        offers: {
+                            '@type': 'Offer',
+                            price: '0',
+                            priceCurrency: 'USD',
+                        },
+                        featureList: [
+                            'End-to-end encryption',
+                            'Smart budgeting',
+                            'Expense tracking',
+                            'Visual insights',
+                            'Zero tracking',
+                            'Open source',
+                        ],
+                    })}
+                </script>
             </Head>
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 <header className="w-full fade-bottom bg-background/5 fixed top-0 z-50 backdrop-blur-lg">

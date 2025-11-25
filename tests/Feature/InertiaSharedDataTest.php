@@ -23,3 +23,11 @@ test('authenticated users receive auth user in shared props', function () {
         ->where('auth.user.email', $user->email)
     );
 });
+
+test('all pages receive app url in shared props', function () {
+    $response = $this->get(route('home'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('appUrl', config('app.url'))
+    );
+});
