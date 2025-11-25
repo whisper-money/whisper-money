@@ -125,7 +125,7 @@ export default function Welcome({
                                     </span>
                                 </span>
                                 <h1 className="max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl font-semibold leading-tight text-transparent drop-shadow-2xl dark:from-[#EDEDEC] dark:to-[#A1A09A] sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight font-heading">
-                                    The most secure way to manage your money
+                                    The most secure way to understand your finances
                                 </h1>
                                 <p className="max-w-[840px] mb-4 text-lg leading-8 font-medium text-[#706f6c] dark:text-[#A1A09A] lg:text-xl lg:leading-8">
                                     Your financial data stays private with
