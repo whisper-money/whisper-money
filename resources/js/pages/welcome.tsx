@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { trackEvent } from '@/lib/track-event';
+import { LEAD_FUNNEL_EVENT_UUID } from '@/lib/constants';
 
 export default function Welcome({
     canRegister = true,
@@ -37,7 +38,7 @@ export default function Welcome({
             return;
         }
         visitTrackedRef.current = true;
-        trackEvent('9668a06c-dee9-47a8-9bee-eaaa2a3a5915', {
+        trackEvent(LEAD_FUNNEL_EVENT_UUID, {
             step: 'Visit',
         });
     }, []);
@@ -174,7 +175,7 @@ export default function Welcome({
                                         className="flex sm:items-center justify-center flex-col gap-2 sm:flex-row"
                                         onSuccess={async () => {
                                             const emailValue = emailInputRef.current?.value || '';
-                                            await trackEvent('9668a06c-dee9-47a8-9bee-eaaa2a3a5915', {
+                                            await trackEvent(LEAD_FUNNEL_EVENT_UUID, {
                                                 step: 'Lead Created',
                                                 email: emailValue,
                                             });
