@@ -13,7 +13,7 @@ export interface PendingChange {
     id?: number;
     store: string;
     operation: 'create' | 'update' | 'delete';
-    data: any;
+    data: Record<string, unknown>;
     timestamp: string;
 }
 

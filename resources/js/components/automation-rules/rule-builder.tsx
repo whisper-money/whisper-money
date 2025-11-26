@@ -95,7 +95,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
             </div>
 
             <div className="space-y-4">
-                {structure.groups.map((group, groupIndex) => (
+                {structure.groups.map((group) => (
                     <div key={group.id}>
                         <Card className="gap-2 p-4">
                             <div className="flex items-center justify-between">
@@ -145,8 +145,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                             </div>
 
                             <div className="space-y-2">
-                                {group.conditions.map(
-                                    (condition, conditionIndex) => (
+                                {group.conditions.map((condition) => (
                                         <div key={condition.id}>
                                             <ConditionRow
                                                 condition={condition}

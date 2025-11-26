@@ -76,7 +76,9 @@ export const OPERATOR_LABELS: Record<Operator, string> = {
     is_not_empty: 'is not empty',
 };
 
-function buildConditionJsonLogic(condition: Condition): Record<string, any> {
+type JsonLogicRule = Record<string, unknown>;
+
+function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
     const { field, operator, value } = condition;
 
     switch (operator) {
@@ -100,7 +102,7 @@ function buildConditionJsonLogic(condition: Condition): Record<string, any> {
     }
 }
 
-function buildGroupJsonLogic(group: ConditionGroup): Record<string, any> {
+function buildGroupJsonLogic(group: ConditionGroup): JsonLogicRule {
     if (group.conditions.length === 0) {
         return {};
     }
@@ -113,7 +115,7 @@ function buildGroupJsonLogic(group: ConditionGroup): Record<string, any> {
     return { [group.operator]: conditions };
 }
 
-export function buildJsonLogic(structure: RuleStructure): Record<string, any> {
+export function buildJsonLogic(structure: RuleStructure): JsonLogicRule {
     const validGroups = structure.groups.filter(
         (group) => group.conditions.length > 0,
     );
@@ -131,7 +133,7 @@ export function buildJsonLogic(structure: RuleStructure): Record<string, any> {
 }
 
 function parseConditionFromJsonLogic(
-    jsonLogic: Record<string, any>,
+    jsonLogic: JsonLogicRule,
 ): Condition | null {
     const id = crypto.randomUUID();
 
@@ -211,7 +213,7 @@ function parseConditionFromJsonLogic(
     return null;
 }
 
-export function parseJsonLogic(jsonLogic: Record<string, any>): RuleStructure {
+export function parseJsonLogic(jsonLogic: JsonLogicRule): RuleStructure {
     const defaultStructure: RuleStructure = {
         groups: [
             {

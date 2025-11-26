@@ -25,7 +25,7 @@ class AccountSyncService {
     }
 
     async create(data: Omit<Account, 'id'>): Promise<Account> {
-        return await this.syncManager.createLocal<Account>(data as any);
+        return await this.syncManager.createLocal<Account>(data as Omit<Account, 'id' | 'created_at' | 'updated_at'>);
     }
 
     async update(id: UUID, data: Partial<Account>): Promise<void> {

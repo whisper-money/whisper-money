@@ -6,7 +6,7 @@ export interface AutomationRule {
     user_id: UUID;
     title: string;
     priority: number;
-    rules_json: Record<string, any>;
+    rules_json: Record<string, unknown>;
     action_category_id: UUID | null;
     action_note: string | null;
     action_note_iv: string | null;

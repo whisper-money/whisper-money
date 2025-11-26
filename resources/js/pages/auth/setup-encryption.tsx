@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,21 @@ import {
 import { storeKey } from '@/lib/key-storage';
 import { dashboard } from '@/routes';
 
+function isCryptoAvailable(): boolean {
+    if (typeof window === 'undefined') return true;
+    return !!(window.crypto && window.crypto.subtle);
+}
+
+function getInitialErrors(): { password?: string; confirmPassword?: string; general?: string } {
+    if (typeof window === 'undefined') return {};
+    if (!window.crypto || !window.crypto.subtle) {
+        return {
+            general: 'Web Crypto API is not available. Please ensure you are accessing this page via HTTPS or localhost.',
+        };
+    }
+    return {};
+}
+
 export default function SetupEncryption() {
     const { refreshKeyState } = useEncryptionKey();
     const [password, setPassword] = useState('');
@@ -35,22 +50,12 @@ export default function SetupEncryption() {
         'session' | 'persistent'
     >('session');
     const [processing, setProcessing] = useState(false);
-    const [cryptoAvailable, setCryptoAvailable] = useState(true);
+    const [cryptoAvailable] = useState(isCryptoAvailable);
     const [errors, setErrors] = useState<{
         password?: string;
         confirmPassword?: string;
         general?: string;
-    }>({});
-
-    useEffect(() => {
-        if (!window.crypto || !window.crypto.subtle) {
-            setCryptoAvailable(false);
-            setErrors({
-                general:
-                    'Web Crypto API is not available. Please ensure you are accessing this page via HTTPS or localhost.',
-            });
-        }
-    }, []);
+    }>(getInitialErrors);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
