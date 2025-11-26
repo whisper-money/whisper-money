@@ -16,10 +16,14 @@ import {
     EyeOffIcon,
     BirdIcon,
     CodeIcon,
+    Github,
+    GithubIcon,
+    LucideGithub,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { trackEvent } from '@/lib/track-event';
 import { LEAD_FUNNEL_EVENT_UUID } from '@/lib/constants';
+import { Separator } from '@radix-ui/react-separator';
 
 export default function Welcome({
     canRegister = true,
@@ -113,38 +117,53 @@ export default function Welcome({
                             <BirdIcon className="size-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
                             <span className='font-medium'>Whisper Money</span>
                         </div>
-                        {!hideAuthButtons && (
-                            <nav className="flex items-center gap-4">
-                                {auth.user ? (
-                                    <Link
-                                        href={dashboard()}
-                                    >
-                                        <Button className='cursor-pointer'>
-                                            Dashboard
-                                        </Button>
-                                    </Link>
-                                ) : (
-                                    <>
+                        <nav className="flex items-center gap-4">
+                            <a
+                                href="https://github.com/whisper-money/whisper-money"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <Button variant={'ghost'} className='cursor-pointer opacity-70 hover:opacity-100 transition-all duration-200'>
+                                    <Github className="size-5" />
+                                    Github
+                                </Button>
+                            </a>
+                            {!hideAuthButtons && (
+                                <>
+                                    <Separator orientation="vertical"
+                                        className="data-[orientation=vertical]:bg-border data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:h-6"
+                                    />
+                                    {auth.user ? (
                                         <Link
-                                            href="/login"
+                                            href={dashboard()}
                                         >
-                                            <Button variant={'ghost'} className='cursor-pointer'>
-                                                Log in
+                                            <Button className='cursor-pointer'>
+                                                Dashboard
                                             </Button>
                                         </Link>
-                                        {canRegister && (
+                                    ) : (
+                                        <>
                                             <Link
-                                                href="/register"
+                                                href="/login"
                                             >
-                                                <Button variant='default' className='cursor-pointer'>
-                                                    Register
+                                                <Button variant={'ghost'} className='cursor-pointer'>
+                                                    Log in
                                                 </Button>
                                             </Link>
-                                        )}
-                                    </>
-                                )}
-                            </nav>
-                        )}
+                                            {canRegister && (
+                                                <Link
+                                                    href="/register"
+                                                >
+                                                    <Button variant='default' className='cursor-pointer'>
+                                                        Register
+                                                    </Button>
+                                                </Link>
+                                            )}
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </nav>
                     </div>
                 </header>
 
