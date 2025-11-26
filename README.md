@@ -4,6 +4,8 @@
 
 # Whisper Money
 
+<img src="https://github.com/whisper-money/whisper-money/actions/workflows/ci.yml/badge.svg" />
+
 **The most secure way to understand your finances.**
 
 Whisper Money is a privacy-first personal finance application that helps you track, categorize, and understand your spending—all while keeping your financial data encrypted and secure.
