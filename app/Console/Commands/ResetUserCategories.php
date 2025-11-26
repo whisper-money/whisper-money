@@ -29,9 +29,9 @@ class ResetUserCategories extends Command
     {
         $userIdentifier = $this->argument('user');
 
-        $user = is_numeric($userIdentifier)
-            ? User::find($userIdentifier)
-            : User::where('email', $userIdentifier)->first();
+        $user = filter_var($userIdentifier, FILTER_VALIDATE_EMAIL)
+            ? User::where('email', $userIdentifier)->first()
+            : User::find($userIdentifier);
 
         if (! $user) {
             $this->error("User not found: {$userIdentifier}");

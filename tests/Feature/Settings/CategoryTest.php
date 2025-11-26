@@ -183,7 +183,7 @@ test('default categories are created when user registers', function () {
     $service = new \App\Actions\CreateDefaultCategories;
     $service->handle($user);
 
-    expect($user->categories()->count())->toBe(49);
+    expect($user->categories()->count())->toBe(63);
 
     $categoryNames = $user->categories->pluck('name')->toArray();
     expect($categoryNames)->toContain('Food', 'Transportation', 'Salary', 'Insurance');
