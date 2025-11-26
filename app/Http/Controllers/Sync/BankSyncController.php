@@ -27,4 +27,3 @@ class BankSyncController extends Controller
         ]);
     }
 }
-
