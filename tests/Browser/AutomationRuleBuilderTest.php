@@ -11,7 +11,7 @@ beforeEach(function () {
 });
 
 it('can create an automation rule with visual builder', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
