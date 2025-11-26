@@ -1,11 +1,13 @@
 import { Head } from '@inertiajs/react';
 import {
+    Cell,
     ColumnDef,
     ColumnFiltersState,
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
+    Row,
     SortingState,
     useReactTable,
     VisibilityState,
@@ -101,7 +103,7 @@ function CategoryActions({ category }: { category: Category }) {
     );
 }
 
-function CategoryRow({ row }: { row: any }) {
+function CategoryRow({ row }: { row: Row<Category> }) {
     const category = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -119,7 +121,7 @@ function CategoryRow({ row }: { row: any }) {
                     >
                         {row
                             .getVisibleCells()
-                            .map((cell: any) => (
+                            .map((cell: Cell<Category, unknown>) => (
                                 <TableCell
                                     key={cell.id}
                                 >

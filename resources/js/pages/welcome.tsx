@@ -5,7 +5,6 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import InputError from '@/components/input-error';
-import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import {
     LockIcon,
     ShieldCheckIcon,

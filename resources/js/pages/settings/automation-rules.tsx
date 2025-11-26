@@ -1,11 +1,13 @@
 import { Head } from '@inertiajs/react';
 import {
+    Cell,
     ColumnDef,
     ColumnFiltersState,
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
+    Row,
     SortingState,
     useReactTable,
     VisibilityState,
@@ -101,7 +103,7 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
     );
 }
 
-function AutomationRuleRow({ row }: { row: any }) {
+function AutomationRuleRow({ row }: { row: Row<AutomationRule> }) {
     const rule = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -119,7 +121,7 @@ function AutomationRuleRow({ row }: { row: any }) {
                     >
                         {row
                             .getVisibleCells()
-                            .map((cell: any) => (
+                            .map((cell: Cell<AutomationRule, unknown>) => (
                                 <TableCell
                                     key={cell.id}
                                 >

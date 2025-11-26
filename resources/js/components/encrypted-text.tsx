@@ -1,7 +1,7 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type Length = number | { min: number; max: number } | null;
 
@@ -48,6 +48,14 @@ function generateMaskedText(targetLength: number): string {
     return result;
 }
 
+function getInitialDisplayState(isKeySet: boolean): DisplayState {
+    if (!isKeySet) {
+        return 'encrypted';
+    }
+    const keyString = getStoredKey();
+    return keyString ? 'loading' : 'encrypted';
+}
+
 export function EncryptedText(props: EncryptedTextProps) {
     const { encryptedText, iv, className = '', length = null } = props;
     const { isKeySet } = useEncryptionKey();
@@ -57,49 +65,42 @@ export function EncryptedText(props: EncryptedTextProps) {
     );
     const maskedValue = useMemo(
         () => generateMaskedText(targetLength),
-        [targetLength, encryptedText, iv],
+        [targetLength],
     );
     const [cachedDecryption, setCachedDecryption] = useState<{
         encryptedText: string;
         iv: string;
         value: string;
     } | null>(null);
-    const [displayState, setDisplayState] = useState<DisplayState>(() => {
-        if (!isKeySet) {
-            return 'encrypted';
-        }
-
-        const keyString = getStoredKey();
-        return keyString ? 'loading' : 'encrypted';
-    });
+    const [displayState, setDisplayState] = useState<DisplayState>(() => getInitialDisplayState(isKeySet));
+    const prevIsKeySetRef = useRef(isKeySet);
 
     useEffect(() => {
-        if (!isKeySet) {
-            setCachedDecryption(null);
-            setDisplayState('encrypted');
-            return;
-        }
+        const wasKeySet = prevIsKeySetRef.current;
+        prevIsKeySetRef.current = isKeySet;
 
-        if (
-            cachedDecryption &&
-            cachedDecryption.encryptedText === encryptedText &&
-            cachedDecryption.iv === iv
-        ) {
-            setDisplayState((current) =>
-                current === 'decrypted' ? current : 'decrypted',
-            );
+        if (!isKeySet) {
+            if (wasKeySet) {
+                setCachedDecryption(null);
+                setDisplayState('encrypted');
+            }
             return;
         }
 
         const keyString = getStoredKey();
         if (!keyString) {
-            setCachedDecryption(null);
-            setDisplayState('encrypted');
+            if (wasKeySet !== isKeySet) {
+                setCachedDecryption(null);
+                setDisplayState('encrypted');
+            }
             return;
         }
 
+        if (!wasKeySet && isKeySet) {
+            setDisplayState('loading');
+        }
+
         let cancelled = false;
-        setDisplayState('loading');
 
         importKey(keyString)
             .then((key) => decrypt(encryptedText, key, iv))

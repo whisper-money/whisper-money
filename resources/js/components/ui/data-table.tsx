@@ -2,9 +2,10 @@ import { useRef } from 'react';
 import {
     ColumnDef,
     flexRender,
+    Row,
     Table as TableType,
 } from '@tanstack/react-table';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer, VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 
 import {
     Table,
@@ -19,7 +20,7 @@ interface DataTableProps<TData, TValue> {
     table: TableType<TData>;
     columns: ColumnDef<TData, TValue>[];
     emptyMessage?: string;
-    renderRow?: (row: any, virtualRow: any, rowVirtualizer: any) => React.ReactNode;
+    renderRow?: (row: Row<TData>, virtualRow: VirtualItem, rowVirtualizer: Virtualizer<HTMLDivElement, Element>) => React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({

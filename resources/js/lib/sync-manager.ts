@@ -15,14 +15,14 @@ export interface IndexedDBRecord {
     user_id?: UUID | null;
     created_at: string;
     updated_at: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface SyncOptions {
     storeName: StoreName;
     endpoint: string;
-    transformFromServer?: (data: any) => any;
-    transformToServer?: (data: any) => any;
+    transformFromServer?: (data: Record<string, unknown>) => Record<string, unknown>;
+    transformToServer?: (data: Record<string, unknown>) => Record<string, unknown>;
 }
 
 export interface SyncResult {
@@ -99,7 +99,7 @@ export class SyncManager {
     private async syncFromServer(result: SyncResult): Promise<void> {
         const lastSync = await this.getLastSyncTime();
 
-        const params: any = {};
+        const params: Record<string, string> = {};
         if (lastSync) {
             params.since = lastSync;
         }
@@ -114,7 +114,7 @@ export class SyncManager {
 
         const table = db[this.options.storeName];
         const localRecords = await table.toArray();
-        const localMap = new Map(localRecords.map((r: any) => [r.id, r]));
+        const localMap = new Map(localRecords.map((r) => [(r as IndexedDBRecord).id, r as IndexedDBRecord]));
 
         for (const serverRecord of serverData) {
             const transformed = this.options.transformFromServer

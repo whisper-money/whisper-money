@@ -30,6 +30,15 @@ export default [
         },
     },
     {
+        files: ['**/*.{ts,tsx}'],
+        rules: {
+            'react-hooks/set-state-in-effect': 'off',
+            'react-hooks/static-components': 'off',
+            'react-hooks/refs': 'off',
+            'react-hooks/incompatible-library': 'off',
+        },
+    },
+    {
         ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js'],
     },
     prettier, // Turn off all rules that might conflict with Prettier

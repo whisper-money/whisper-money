@@ -7,7 +7,7 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { decrypt, importKey } from '@/lib/crypto';
+import { importKey } from '@/lib/crypto';
 import {
     autoDetectColumns,
     convertRowsToTransactions,
@@ -18,10 +18,7 @@ import {
     saveImportConfig,
 } from '@/lib/import-config-storage';
 import { getStoredKey } from '@/lib/key-storage';
-import {
-    evaluateRules,
-    evaluateRulesForNewTransaction,
-} from '@/lib/rule-engine';
+import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
@@ -34,7 +31,7 @@ import {
     type ImportState,
 } from '@/types/import';
 import { Progress } from '@/components/ui/progress';
-import { Check, Loader2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
@@ -320,7 +317,7 @@ export function ImportTransactionsDrawer({
             return;
         }
 
-        const createdTransactions: any[] = [];
+        const createdTransactions: unknown[] = [];
         const errors: ImportError[] = [];
         const keyString = getStoredKey();
         const key = keyString ? await importKey(keyString) : null;

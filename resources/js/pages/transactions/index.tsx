@@ -1,6 +1,8 @@
 import { Head } from '@inertiajs/react';
 import {
+    Cell,
     ColumnFiltersState,
+    Row,
     SortingState,
     VisibilityState,
     flexRender,
@@ -9,6 +11,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
+import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import { isWithinInterval, parseISO } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -76,6 +79,64 @@ interface Props {
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
+
+interface TransactionRowProps {
+    row: Row<DecryptedTransaction>;
+    virtualRow: VirtualItem;
+    rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
+    onEdit: (transaction: DecryptedTransaction) => void;
+    onReEvaluateRules: (transaction: DecryptedTransaction) => void;
+    onDelete: (transaction: DecryptedTransaction) => void;
+}
+
+function TransactionRowComponent({
+    row,
+    virtualRow,
+    rowVirtualizer,
+    onEdit,
+    onReEvaluateRules,
+    onDelete,
+}: TransactionRowProps) {
+    const transaction = row.original;
+    const [contextMenuOpen, setContextMenuOpen] = useState(false);
+
+    return (
+        <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
+            <ContextMenuTrigger asChild>
+                { }
+                <TableRow
+                    ref={rowVirtualizer.measureElement}
+                    data-state={(row.getIsSelected() || contextMenuOpen) && 'selected'}
+                    data-index={virtualRow.index}
+                >
+                    {row.getVisibleCells().map((cell: Cell<DecryptedTransaction, unknown>) => (
+                        <TableCell key={cell.id}>
+                            {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                            )}
+                        </TableCell>
+                    ))}
+                </TableRow>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+                <ContextMenuLabel>Actions</ContextMenuLabel>
+                <ContextMenuItem onClick={() => onEdit(transaction)}>
+                    Edit
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => onReEvaluateRules(transaction)}>
+                    Re-evaluate rules
+                </ContextMenuItem>
+                <ContextMenuItem
+                    onClick={() => onDelete(transaction)}
+                    variant="destructive"
+                >
+                    Delete
+                </ContextMenuItem>
+            </ContextMenuContent>
+        </ContextMenu>
+    );
+}
 
 function getInitialColumnVisibility(): VisibilityState {
     try {
@@ -950,66 +1011,21 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         setRowSelection({});
     }
 
-    const TransactionRow = useCallback(
-        ({ row, virtualRow, rowVirtualizer }: { row: any; virtualRow: any; rowVirtualizer: any }) => {
-            const transaction = row.original;
-            const [contextMenuOpen, setContextMenuOpen] = useState(false);
-
-            return (
-                <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
-                    <ContextMenuTrigger asChild>
-                        <TableRow
-                            ref={rowVirtualizer.measureElement}
-                            data-state={(row.getIsSelected() || contextMenuOpen) && 'selected'}
-                            data-index={virtualRow.index}
-                        >
-                            {row.getVisibleCells().map((cell: any) => (
-                                <TableCell key={cell.id}>
-                                    {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext(),
-                                    )}
-                                </TableCell>
-                            ))}
-                        </TableRow>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                        <ContextMenuLabel>Actions</ContextMenuLabel>
-                        <ContextMenuItem
-                            onClick={() => setEditTransaction(transaction)}
-                        >
-                            Edit
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                            onClick={() => handleReEvaluateRules(transaction)}
-                        >
-                            Re-evaluate rules
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                            onClick={() => setDeleteTransaction(transaction)}
-                            variant="destructive"
-                        >
-                            Delete
-                        </ContextMenuItem>
-                    </ContextMenuContent>
-                </ContextMenu>
-            );
-        },
-        [handleReEvaluateRules],
-    );
-
     const renderTransactionRow = useCallback(
-        (row: any, virtualRow: any, rowVirtualizer: any) => {
+        (row: Row<DecryptedTransaction>, virtualRow: VirtualItem, rowVirtualizer: Virtualizer<HTMLDivElement, Element>) => {
             return (
-                <TransactionRow
+                <TransactionRowComponent
                     key={row.id}
                     row={row}
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
+                    onEdit={setEditTransaction}
+                    onReEvaluateRules={handleReEvaluateRules}
+                    onDelete={setDeleteTransaction}
                 />
             );
         },
-        [TransactionRow],
+        [handleReEvaluateRules],
     );
 
     return (

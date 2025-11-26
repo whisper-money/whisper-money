@@ -13,13 +13,22 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
-import { Check, ChevronsUpDown, HelpCircle } from 'lucide-react';
+import { Check, ChevronsUpDown, HelpCircle, type LucideIcon } from 'lucide-react';
 import * as Icons from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
-function resolveIconComponent(iconName?: string): Icons.LucideIcon {
-    const icon = Icons[iconName as keyof typeof Icons];
-    return icon as Icons.LucideIcon;
+const iconCache = new Map<string, LucideIcon>();
+
+function getIconComponent(iconName?: string): LucideIcon | null {
+    if (!iconName) return null;
+    if (iconCache.has(iconName)) {
+        return iconCache.get(iconName)!;
+    }
+    const icon = Icons[iconName as keyof typeof Icons] as LucideIcon | undefined;
+    if (icon) {
+        iconCache.set(iconName, icon);
+    }
+    return icon ?? null;
 }
 
 interface CategoryComboboxProps {
@@ -144,9 +153,9 @@ export function CategoryCombobox({
     );
 }
 
-function CategoryIcon({ category }: { category: Category }) {
+const CategoryIcon = memo(function CategoryIcon({ category }: { category: Category }) {
     const colorClasses = getCategoryColorClasses(category.color);
-    const IconComponent = resolveIconComponent(category.icon);
+    const iconName = category.icon;
 
     return (
         <div
@@ -155,8 +164,14 @@ function CategoryIcon({ category }: { category: Category }) {
                 colorClasses.bg,
             )}
         >
-            <IconComponent className={cn('h-3 w-3', colorClasses.text)} />
+            <DynamicIcon name={iconName} className={cn('h-3 w-3', colorClasses.text)} />
         </div>
     );
-}
+});
+
+const DynamicIcon = memo(function DynamicIcon({ name, className }: { name?: string; className?: string }) {
+    const Icon = getIconComponent(name);
+    if (!Icon) return null;
+    return <Icon className={className} />;
+});
 

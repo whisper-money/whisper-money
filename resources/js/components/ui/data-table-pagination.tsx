@@ -1,6 +1,3 @@
-import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
-
 interface DataTablePaginationProps {
     rowCountLabel?: string;
     displayedCount?: number;
