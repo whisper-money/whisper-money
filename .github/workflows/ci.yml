@@ -96,6 +96,11 @@ jobs:
       - name: Trigger deployment
         run: |
           response=$(curl -s -w "\n%{http_code}" \
+            --connect-timeout 30 \
+            --max-time 120 \
+            --retry 3 \
+            --retry-delay 5 \
+            --retry-connrefused \
             -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_TOKEN }}" \
             "http://147.93.126.54:8000/api/v1/deploy?uuid=ww00sswosco8w80k08c0occ8&force=false")
 
