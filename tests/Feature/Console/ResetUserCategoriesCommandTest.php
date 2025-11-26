@@ -12,11 +12,11 @@ test('command resets categories for a user by ID', function () {
     $this->artisan('categories:reset', ['user' => $user->id])
         ->expectsOutput("Resetting categories for user: {$user->name} ({$user->email})")
         ->expectsOutput('Deleted 5 existing categories.')
-        ->expectsOutput('Created 49 default categories.')
+        ->expectsOutput('Created 63 default categories.')
         ->expectsOutput('✓ Categories reset successfully!')
         ->assertSuccessful();
 
-    expect($user->fresh()->categories()->count())->toBe(49);
+    expect($user->fresh()->categories()->count())->toBe(63);
 
     $categoryNames = $user->categories->pluck('name')->toArray();
     expect($categoryNames)->toContain('Food', 'Transportation', 'Salary', 'Insurance');
@@ -31,11 +31,11 @@ test('command resets categories for a user by email', function () {
     $this->artisan('categories:reset', ['user' => 'test@example.com'])
         ->expectsOutput("Resetting categories for user: {$user->name} (test@example.com)")
         ->expectsOutput('Deleted 3 existing categories.')
-        ->expectsOutput('Created 49 default categories.')
+        ->expectsOutput('Created 63 default categories.')
         ->expectsOutput('✓ Categories reset successfully!')
         ->assertSuccessful();
 
-    expect($user->fresh()->categories()->count())->toBe(49);
+    expect($user->fresh()->categories()->count())->toBe(63);
 });
 
 test('command works when user has no existing categories', function () {
@@ -46,11 +46,11 @@ test('command works when user has no existing categories', function () {
     $this->artisan('categories:reset', ['user' => $user->id])
         ->expectsOutput("Resetting categories for user: {$user->name} ({$user->email})")
         ->expectsOutput('No existing categories found.')
-        ->expectsOutput('Created 49 default categories.')
+        ->expectsOutput('Created 63 default categories.')
         ->expectsOutput('✓ Categories reset successfully!')
         ->assertSuccessful();
 
-    expect($user->fresh()->categories()->count())->toBe(49);
+    expect($user->fresh()->categories()->count())->toBe(63);
 });
 
 test('command fails when user is not found by ID', function () {
