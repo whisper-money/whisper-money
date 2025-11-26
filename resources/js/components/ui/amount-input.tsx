@@ -1,11 +1,6 @@
 import * as React from 'react';
 
-import {
-    InputGroup,
-    InputGroupAddon,
-    InputGroupInput,
-    InputGroupText,
-} from '@/components/ui/input-group';
+import { Input } from '@/components/ui/input';
 
 interface AmountInputProps {
     value: number;
@@ -27,6 +22,26 @@ const getCurrencySymbol = (currencyCode: string): string => {
     return symbols[currencyCode] || currencyCode;
 };
 
+const formatCurrency = (value: number): string => {
+    const amount = value / 100;
+    return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(amount);
+};
+
+const parseInputValue = (input: string): number => {
+    const cleaned = input.replace(/[^\d.,]/g, '');
+    const normalized = cleaned.replace(',', '.');
+    const parsed = parseFloat(normalized);
+    
+    if (isNaN(parsed)) {
+        return 0;
+    }
+    
+    return Math.round(parsed * 100);
+};
+
 export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
     (
         {
@@ -41,80 +56,60 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
         ref,
     ) => {
         const [displayValue, setDisplayValue] = React.useState<string>('');
+        const [isFocused, setIsFocused] = React.useState<boolean>(false);
 
         React.useEffect(() => {
-            if (value === 0) {
-                setDisplayValue('');
+            if (!isFocused) {
+                if (value === 0) {
+                    setDisplayValue('');
+                } else {
+                    setDisplayValue(formatCurrency(value));
+                }
+            }
+        }, [value, isFocused]);
+
+        const handleFocus = () => {
+            setIsFocused(true);
+            if (value > 0) {
+                const amount = (value / 100).toFixed(2);
+                setDisplayValue(amount);
             } else {
-                setDisplayValue((value / 100).toFixed(2));
+                setDisplayValue('');
             }
-        }, [value]);
-
-        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const inputValue = e.target.value;
-
-            if (inputValue === '' || inputValue === '-') {
-                setDisplayValue(inputValue);
-                onChange(0);
-                return;
-            }
-
-            const numericValue = inputValue.replace(/[^\d.-]/g, '');
-
-            if (numericValue === '' || numericValue === '-') {
-                setDisplayValue(numericValue);
-                onChange(0);
-                return;
-            }
-
-            const parsedValue = parseFloat(numericValue);
-
-            if (isNaN(parsedValue)) {
-                return;
-            }
-
-            setDisplayValue(numericValue);
-
-            const valueInCents = Math.round(parsedValue * 100);
-            onChange(valueInCents);
         };
 
         const handleBlur = () => {
-            if (displayValue === '' || displayValue === '-') {
-                setDisplayValue('');
-                onChange(0);
-                return;
-            }
-
-            const parsedValue = parseFloat(displayValue);
-            if (!isNaN(parsedValue)) {
-                setDisplayValue(parsedValue.toFixed(2));
-            }
+            setIsFocused(false);
+            const valueInCents = parseInputValue(displayValue);
+            onChange(valueInCents);
         };
 
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            setDisplayValue(e.target.value);
+        };
+
+        const currencySymbol = getCurrencySymbol(currencyCode);
+
         return (
-            <InputGroup>
-                <InputGroupAddon>
-                    <InputGroupText>
-                        {getCurrencySymbol(currencyCode)}
-                    </InputGroupText>
-                </InputGroupAddon>
-                <InputGroupInput
+            <div className="relative">
+                <span className="-translate-y-1/2 absolute top-1/2 left-3 text-muted-foreground text-sm">
+                    {currencySymbol}
+                </span>
+                <Input
                     ref={ref}
                     id={id}
                     type="text"
                     inputMode="decimal"
                     value={displayValue}
                     onChange={handleChange}
+                    onFocus={handleFocus}
                     onBlur={handleBlur}
                     placeholder={placeholder}
                     disabled={disabled}
                     required={required}
+                    className="bg-background pl-9"
                 />
-                <InputGroupAddon align="inline-end">
-                    <InputGroupText>{currencyCode}</InputGroupText>
-                </InputGroupAddon>
-            </InputGroup>
+            </div>
         );
     },
 );
