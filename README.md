@@ -1,3 +1,5 @@
+<p align="center"><a href="https://www.producthunt.com/products/whisper-money?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-whisper&#0045;money" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1042250&theme=light&t=1764232132380" alt="Whisper&#0032;Money - The&#0032;most&#0032;secure&#0032;way&#0032;to&#0032;understand&#0032;your&#0032;finances | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a></p>
+
 <p align="center">
   <img src="https://whisper.money/images/og_whisper_money.png" alt="Whisper Money" width="100%">
 </p>
