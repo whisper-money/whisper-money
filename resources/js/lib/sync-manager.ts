@@ -116,6 +116,9 @@ export class SyncManager {
         const localRecords = await table.toArray();
         const localMap = new Map(localRecords.map((r) => [(r as IndexedDBRecord).id, r as IndexedDBRecord]));
 
+        const toInsert: Record<string, unknown>[] = [];
+        const toUpdate: Record<string, unknown>[] = [];
+
         for (const serverRecord of serverData) {
             const transformed = this.options.transformFromServer
                 ? this.options.transformFromServer(serverRecord)
@@ -124,17 +127,25 @@ export class SyncManager {
             const localRecord = localMap.get(transformed.id);
 
             if (!localRecord) {
-                await table.put(transformed);
-                result.inserted++;
+                toInsert.push(transformed);
             } else {
                 const serverDate = new Date(transformed.updated_at);
                 const localDate = new Date(localRecord.updated_at);
 
                 if (serverDate > localDate) {
-                    await table.put(transformed);
-                    result.updated++;
+                    toUpdate.push(transformed);
                 }
             }
+        }
+
+        if (toInsert.length > 0) {
+            await table.bulkPut(toInsert);
+            result.inserted += toInsert.length;
+        }
+
+        if (toUpdate.length > 0) {
+            await table.bulkPut(toUpdate);
+            result.updated += toUpdate.length;
         }
     }
 
@@ -257,3 +268,4 @@ export class SyncManager {
         return this.syncInProgress;
     }
 }
+

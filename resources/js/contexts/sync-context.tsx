@@ -12,6 +12,7 @@ import {
     useCallback,
     useContext,
     useEffect,
+    useRef,
     useState,
     type ReactNode,
 } from 'react';
@@ -48,6 +49,7 @@ export function SyncProvider({
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [wasOffline, setWasOffline] = useState(!isOnline);
+    const syncInProgressRef = useRef(false);
 
     useEffect(() => {
         const unsubscribe = router.on('navigate', (event) => {
@@ -83,10 +85,11 @@ export function SyncProvider({
             return;
         }
 
-        if (syncStatus === 'syncing') {
+        if (syncInProgressRef.current) {
             return;
         }
 
+        syncInProgressRef.current = true;
         setSyncStatus('syncing');
         setError(null);
 
@@ -132,8 +135,10 @@ export function SyncProvider({
             setTimeout(() => {
                 setSyncStatus('idle');
             }, 5000);
+        } finally {
+            syncInProgressRef.current = false;
         }
-    }, [isAuthenticated, isOnline, syncStatus]);
+    }, [isAuthenticated, isOnline]);
 
     useEffect(() => {
         if (isAuthenticated && isOnline && wasOffline) {
