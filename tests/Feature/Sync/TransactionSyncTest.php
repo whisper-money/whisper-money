@@ -83,6 +83,7 @@ it('can create a transaction', function () {
         'currency_code' => 'USD',
         'notes' => null,
         'notes_iv' => null,
+        'source' => 'manually_created',
     ];
 
     $response = $this->actingAs($user)->postJson('/api/sync/transactions', $transactionData);
@@ -99,6 +100,7 @@ it('can create a transaction', function () {
                 'transaction_date',
                 'amount',
                 'currency_code',
+                'source',
                 'created_at',
                 'updated_at',
             ],
@@ -110,6 +112,7 @@ it('can create a transaction', function () {
         'category_id' => $category->id,
         'description' => 'encrypted_description',
         'amount' => 10050,
+        'source' => 'manually_created',
     ]);
 });
 
@@ -129,6 +132,7 @@ it('can create a transaction with a UUID', function () {
         'currency_code' => 'USD',
         'notes' => null,
         'notes_iv' => null,
+        'source' => 'imported',
     ];
 
     $response = $this->actingAs($user)->postJson('/api/sync/transactions', $transactionData);
@@ -139,6 +143,7 @@ it('can create a transaction with a UUID', function () {
     $this->assertDatabaseHas('transactions', [
         'id' => $uuid,
         'user_id' => $user->id,
+        'source' => 'imported',
     ]);
 });
 
@@ -148,7 +153,7 @@ it('validates required fields when creating a transaction', function () {
     $response = $this->actingAs($user)->postJson('/api/sync/transactions', []);
 
     $response->assertUnprocessable()
-        ->assertJsonValidationErrors(['account_id', 'description', 'description_iv', 'transaction_date', 'amount', 'currency_code']);
+        ->assertJsonValidationErrors(['account_id', 'description', 'description_iv', 'transaction_date', 'amount', 'currency_code', 'source']);
 });
 
 it('can update a transaction', function () {
@@ -169,6 +174,7 @@ it('can update a transaction', function () {
         'currency_code' => $transaction->currency_code,
         'notes' => null,
         'notes_iv' => null,
+        'source' => 'manually_created',
     ];
 
     $response = $this->actingAs($user)->patchJson("/api/sync/transactions/{$transaction->id}", $updateData);
@@ -200,6 +206,7 @@ it('cannot update another user transaction', function () {
         'currency_code' => $transaction->currency_code,
         'notes' => null,
         'notes_iv' => null,
+        'source' => 'manually_created',
     ];
 
     $response = $this->actingAs($user)->patchJson("/api/sync/transactions/{$transaction->id}", $updateData);

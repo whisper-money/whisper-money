@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\TransactionSource;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreTransactionRequest extends FormRequest
 {
@@ -24,6 +26,7 @@ class StoreTransactionRequest extends FormRequest
             'currency_code' => ['required', 'string', 'size:3'],
             'notes' => ['nullable', 'string'],
             'notes_iv' => ['nullable', 'string', 'size:16'],
+            'source' => ['required', Rule::enum(TransactionSource::class)],
         ];
     }
 
@@ -43,6 +46,7 @@ class StoreTransactionRequest extends FormRequest
             'currency_code.required' => 'The currency code is required.',
             'currency_code.size' => 'The currency code must be exactly 3 characters.',
             'notes_iv.size' => 'The notes IV must be exactly 16 characters.',
+            'source.required' => 'The transaction source is required.',
         ];
     }
 }

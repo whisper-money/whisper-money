@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TransactionSource;
 use App\Models\Account;
 use App\Models\Category;
 use App\Models\User;
@@ -30,6 +31,14 @@ class TransactionFactory extends Factory
             'currency_code' => fake()->randomElement(['USD', 'EUR', 'GBP', 'JPY']),
             'notes' => fake()->optional()->paragraph(),
             'notes_iv' => fake()->optional()->regexify('[A-Za-z0-9]{16}'),
+            'source' => TransactionSource::ManuallyCreated,
         ];
+    }
+
+    public function imported(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'source' => TransactionSource::Imported,
+        ]);
     }
 }

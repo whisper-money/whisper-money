@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TransactionSource;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,7 @@ class Transaction extends Model
         'currency_code',
         'notes',
         'notes_iv',
+        'source',
     ];
 
     protected function casts(): array
@@ -31,6 +33,7 @@ class Transaction extends Model
         return [
             'transaction_date' => 'date',
             'amount' => 'integer',
+            'source' => TransactionSource::class,
         ];
     }
 

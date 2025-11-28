@@ -230,6 +230,7 @@ test('users can create a new transaction', function () {
         'currency_code' => 'USD',
         'notes' => 'encrypted_notes',
         'notes_iv' => str_repeat('n', 16),
+        'source' => 'manually_created',
     ];
 
     $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
@@ -248,6 +249,7 @@ test('users can create a new transaction', function () {
             'currency_code',
             'notes',
             'notes_iv',
+            'source',
             'created_at',
             'updated_at',
         ],
@@ -260,6 +262,7 @@ test('users can create a new transaction', function () {
         'description' => 'encrypted_description',
         'amount' => 15050,
         'currency_code' => 'USD',
+        'source' => 'manually_created',
     ]);
 });
 
@@ -275,6 +278,7 @@ test('users can create a transaction without category', function () {
         'transaction_date' => '2025-11-11',
         'amount' => 7525,
         'currency_code' => 'EUR',
+        'source' => 'manually_created',
     ];
 
     $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
@@ -300,6 +304,7 @@ test('users can create a transaction without notes', function () {
         'transaction_date' => '2025-11-11',
         'amount' => 10000,
         'currency_code' => 'USD',
+        'source' => 'imported',
     ];
 
     $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
