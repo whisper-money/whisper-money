@@ -222,6 +222,11 @@ export function EditTransactionDialog({
                 toast.error('Date is required');
                 return;
             }
+        } else if (mode === 'edit' && transaction?.source === 'manually_created') {
+            if (!description.trim()) {
+                toast.error('Description is required');
+                return;
+            }
         }
 
         setIsSubmitting(true);
@@ -278,6 +283,7 @@ export function EditTransactionDialog({
                     currency_code: selectedAccount.currency_code,
                     notes: encryptedNotes,
                     notes_iv: notesIv,
+                    source: 'manually_created' as const,
                 });
 
                 const updatedCategory = finalCategoryId
@@ -311,6 +317,7 @@ export function EditTransactionDialog({
 
                 const selectedCategoryId = categoryId === 'null' ? null : categoryId;
                 const trimmedNotes = notes.trim();
+                const trimmedDescription = description.trim();
 
                 let encryptedNotes: string | null = null;
                 let notesIv: string | null = null;
@@ -321,11 +328,28 @@ export function EditTransactionDialog({
                     notesIv = encrypted.iv;
                 }
 
-                await transactionSyncService.update(transaction.id, {
+                const updateData: {
+                    category_id: string | null;
+                    notes: string | null;
+                    notes_iv: string | null;
+                    description?: string;
+                    description_iv?: string;
+                } = {
                     category_id: selectedCategoryId,
                     notes: encryptedNotes,
                     notes_iv: notesIv,
-                });
+                };
+
+                let finalDecryptedDescription = transaction.decryptedDescription;
+
+                if (transaction.source === 'manually_created' && trimmedDescription) {
+                    const encryptedDescription = await encrypt(trimmedDescription, key);
+                    updateData.description = encryptedDescription.encrypted;
+                    updateData.description_iv = encryptedDescription.iv;
+                    finalDecryptedDescription = trimmedDescription;
+                }
+
+                await transactionSyncService.update(transaction.id, updateData);
 
                 const updatedRecord = await transactionSyncService.getById(
                     transaction.id,
@@ -340,6 +364,9 @@ export function EditTransactionDialog({
                     ...transaction,
                     category_id: selectedCategoryId,
                     category: updatedCategory,
+                    decryptedDescription: finalDecryptedDescription,
+                    description: updateData.description ?? transaction.description,
+                    description_iv: updateData.description_iv ?? transaction.description_iv,
                     decryptedNotes: trimmedNotes || null,
                     notes: encryptedNotes,
                     notes_iv: notesIv,
@@ -431,14 +458,14 @@ export function EditTransactionDialog({
                             <Label
                                 htmlFor="description"
                                 className={
-                                    mode === 'edit'
+                                    mode === 'edit' && transaction?.source === 'imported'
                                         ? 'text-sm text-muted-foreground'
                                         : ''
                                 }
                             >
                                 Description
                             </Label>
-                            {mode === 'create' ? (
+                            {mode === 'create' || (mode === 'edit' && transaction?.source === 'manually_created') ? (
                                 <Input
                                     id="description"
                                     type="text"
@@ -451,8 +478,17 @@ export function EditTransactionDialog({
                                     required
                                 />
                             ) : (
-                                <div className="text-sm">
-                                    {transaction?.decryptedDescription}
+                                <div className="space-y-1.5">
+                                    <Input
+                                        id="description"
+                                        type="text"
+                                        value={transaction?.decryptedDescription ?? ''}
+                                        disabled
+                                        className="bg-muted"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        This transaction was imported from a file. The description cannot be modified.
+                                    </p>
                                 </div>
                             )}
                         </div>

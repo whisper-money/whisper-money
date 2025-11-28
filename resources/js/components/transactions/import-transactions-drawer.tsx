@@ -380,6 +380,7 @@ export function ImportTransactionsDrawer({
                         currency_code: selectedAccount.currency_code,
                         notes: notes,
                         notes_iv: notesIv,
+                        source: 'imported' as const,
                     };
 
                     const createdTransaction =

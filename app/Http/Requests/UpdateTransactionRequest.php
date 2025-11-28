@@ -15,6 +15,8 @@ class UpdateTransactionRequest extends FormRequest
     {
         return [
             'category_id' => ['nullable', 'exists:categories,id'],
+            'description' => ['sometimes', 'string'],
+            'description_iv' => ['sometimes', 'string', 'size:16'],
             'notes' => ['nullable', 'string'],
             'notes_iv' => ['nullable', 'string', 'size:16'],
         ];
@@ -24,6 +26,7 @@ class UpdateTransactionRequest extends FormRequest
     {
         return [
             'category_id.exists' => 'The selected category does not exist.',
+            'description_iv.size' => 'The description IV must be exactly 16 characters.',
             'notes_iv.size' => 'The notes IV must be exactly 16 characters.',
         ];
     }
