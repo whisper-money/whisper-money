@@ -23,7 +23,7 @@ import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
-import { TransactionFilters } from '@/components/transactions/transaction-filters';
+import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -1039,7 +1039,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 />
 
                 <div className="space-y-4">
-                    <TransactionFilters
+                    <TransactionFiltersComponent
                         filters={filters}
                         onFiltersChange={setFilters}
                         categories={categories}
