@@ -130,6 +130,7 @@ class SetupMainUser extends Command
                 'name' => $categoryData['name'],
                 'icon' => $categoryData['icon'],
                 'color' => $categoryData['color'],
+                'type' => $categoryData['type'] ?? 'expense',
                 'created_at' => $categoryData['created_at'] ?? now(),
                 'updated_at' => $categoryData['updated_at'] ?? now(),
             ]);

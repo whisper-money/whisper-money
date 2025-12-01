@@ -40,6 +40,7 @@ test('authenticated users can create a category', function () {
         'name' => 'Shopping',
         'icon' => 'ShoppingBag',
         'color' => 'blue',
+        'type' => 'expense',
     ];
 
     $response = $this->actingAs($user)->post(route('categories.store'), $categoryData);
@@ -51,6 +52,7 @@ test('authenticated users can create a category', function () {
         'name' => 'Shopping',
         'icon' => 'ShoppingBag',
         'color' => 'blue',
+        'type' => 'expense',
     ]);
 });
 
@@ -60,6 +62,7 @@ test('category name is required', function () {
     $response = $this->actingAs($user)->post(route('categories.store'), [
         'icon' => 'ShoppingBag',
         'color' => 'blue',
+        'type' => 'expense',
     ]);
 
     $response->assertSessionHasErrors(['name']);
@@ -71,6 +74,7 @@ test('category icon is required', function () {
     $response = $this->actingAs($user)->post(route('categories.store'), [
         'name' => 'Shopping',
         'color' => 'blue',
+        'type' => 'expense',
     ]);
 
     $response->assertSessionHasErrors(['icon']);
@@ -82,6 +86,7 @@ test('category color is required', function () {
     $response = $this->actingAs($user)->post(route('categories.store'), [
         'name' => 'Shopping',
         'icon' => 'ShoppingBag',
+        'type' => 'expense',
     ]);
 
     $response->assertSessionHasErrors(['color']);
@@ -94,9 +99,35 @@ test('category color must be valid', function () {
         'name' => 'Shopping',
         'icon' => 'ShoppingBag',
         'color' => 'invalid-color',
+        'type' => 'expense',
     ]);
 
     $response->assertSessionHasErrors(['color']);
+});
+
+test('category type is required', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => 'Shopping',
+        'icon' => 'ShoppingBag',
+        'color' => 'blue',
+    ]);
+
+    $response->assertSessionHasErrors(['type']);
+});
+
+test('category type must be valid', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => 'Shopping',
+        'icon' => 'ShoppingBag',
+        'color' => 'blue',
+        'type' => 'invalid-type',
+    ]);
+
+    $response->assertSessionHasErrors(['type']);
 });
 
 test('authenticated users can update their own category', function () {
@@ -107,6 +138,7 @@ test('authenticated users can update their own category', function () {
         'name' => 'Updated Name',
         'icon' => 'Home',
         'color' => 'green',
+        'type' => 'income',
     ];
 
     $response = $this->actingAs($user)->patch(
@@ -121,6 +153,7 @@ test('authenticated users can update their own category', function () {
         'name' => 'Updated Name',
         'icon' => 'Home',
         'color' => 'green',
+        'type' => 'income',
     ]);
 });
 
@@ -135,6 +168,7 @@ test('users cannot update categories they do not own', function () {
             'name' => 'Updated Name',
             'icon' => 'Home',
             'color' => 'green',
+            'type' => 'expense',
         ]
     );
 
@@ -209,6 +243,7 @@ test('category names are unique per user', function () {
         'name' => 'Test Category',
         'icon' => 'Tag',
         'color' => 'red',
+        'type' => 'expense',
     ]);
 
     expect($category)->toBeInstanceOf(\App\Models\Category::class);
@@ -219,5 +254,6 @@ test('category names are unique per user', function () {
         'name' => 'Test Category',
         'icon' => 'Tag',
         'color' => 'blue',
+        'type' => 'expense',
     ]);
 });
