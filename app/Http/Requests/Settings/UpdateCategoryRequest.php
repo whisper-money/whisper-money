@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Enums\CategoryColor;
+use App\Enums\CategoryType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,22 +31,12 @@ class UpdateCategoryRequest extends FormRequest
             'color' => [
                 'required',
                 'string',
-                Rule::in([
-                    'amber',
-                    'blue',
-                    'cyan',
-                    'emerald',
-                    'gray',
-                    'green',
-                    'indigo',
-                    'orange',
-                    'pink',
-                    'purple',
-                    'red',
-                    'slate',
-                    'teal',
-                    'yellow',
-                ]),
+                Rule::enum(CategoryColor::class),
+            ],
+            'type' => [
+                'required',
+                'string',
+                Rule::enum(CategoryType::class),
             ],
         ];
     }

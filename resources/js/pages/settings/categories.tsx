@@ -226,6 +226,38 @@ export default function Categories() {
             },
         },
         {
+            accessorKey: 'type',
+            header: 'Type',
+            cell: ({ row }) => {
+                const type = row.getValue('type') as Category['type'];
+                const typeConfig = {
+                    income: {
+                        label: 'Income',
+                        className:
+                            'bg-green-50 text-green-700 dark:bg-green-700 dark:text-green-100',
+                    },
+                    expense: {
+                        label: 'Expense',
+                        className:
+                            'bg-red-50 text-red-700 dark:bg-red-700 dark:text-red-100',
+                    },
+                    transfer: {
+                        label: 'Transfer',
+                        className:
+                            'bg-zinc-50 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100',
+                    },
+                };
+                const config = typeConfig[type];
+                return (
+                    <Badge
+                        className={`${config.className} text-[10px] tracking-widest`}
+                    >
+                        {config.label.toLocaleUpperCase()}
+                    </Badge>
+                );
+            },
+        },
+        {
             id: 'actions',
             enableHiding: false,
             cell: ({ row }) => <CategoryActions category={row.original} />,

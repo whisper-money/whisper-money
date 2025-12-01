@@ -103,11 +103,16 @@ export const CATEGORY_COLORS = [
 
 export type CategoryColor = (typeof CATEGORY_COLORS)[number];
 
+export const CATEGORY_TYPES = ['income', 'expense', 'transfer'] as const;
+
+export type CategoryType = (typeof CATEGORY_TYPES)[number];
+
 export interface Category {
     id: UUID;
     name: string;
     icon: CategoryIcon;
     color: CategoryColor;
+    type: CategoryType;
 }
 
 export function getCategoryColorClasses(color: CategoryColor): {
