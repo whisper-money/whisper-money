@@ -107,12 +107,13 @@ export function useReEvaluateAllTransactions() {
                 }
 
                 toast.dismiss(toastId);
-                toast.success(
-                    () => (<div>
-                        {`Re-evaluation complete!`}<br />
+                toast.success(() => (
+                    <div>
+                        {`Re-evaluation complete!`}
+                        <br />
                         {`${successCount} transaction(s) updated.`}
-                    </div >)
-                );
+                    </div>
+                ));
             } catch (error) {
                 console.error('Failed to re-evaluate transactions:', error);
                 toast.error(

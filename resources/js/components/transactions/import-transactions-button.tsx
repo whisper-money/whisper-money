@@ -6,24 +6,12 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { type Account, type Bank } from '@/types/account';
-import { type Category } from '@/types/category';
 import { Upload } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
 
-interface ImportTransactionsButtonProps {
-    categories: Category[];
-    accounts: Account[];
-    banks: Bank[];
-}
-
-export function ImportTransactionsButton({
-    categories,
-    accounts,
-    banks,
-}: ImportTransactionsButtonProps) {
+export function ImportTransactionsButton() {
     const { isKeySet } = useEncryptionKey();
     const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -63,9 +51,6 @@ export function ImportTransactionsButton({
             <ImportTransactionsDrawer
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
-                categories={categories}
-                accounts={accounts}
-                banks={banks}
             />
         </>
     );

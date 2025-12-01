@@ -146,48 +146,45 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
 
                             <div className="space-y-2">
                                 {group.conditions.map((condition) => (
-                                        <div key={condition.id}>
-                                            <ConditionRow
-                                                condition={condition}
-                                                onChange={(
-                                                    updatedCondition,
-                                                ) => {
-                                                    updateGroup(group.id, {
-                                                        ...group,
-                                                        conditions:
-                                                            group.conditions.map(
-                                                                (c) =>
-                                                                    c.id ===
-                                                                    condition.id
-                                                                        ? updatedCondition
-                                                                        : c,
-                                                            ),
-                                                    });
-                                                }}
-                                                onRemove={() => {
-                                                    if (
-                                                        group.conditions
-                                                            .length === 1
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    updateGroup(group.id, {
-                                                        ...group,
-                                                        conditions:
-                                                            group.conditions.filter(
-                                                                (c) =>
-                                                                    c.id !==
-                                                                    condition.id,
-                                                            ),
-                                                    });
-                                                }}
-                                                canRemove={
-                                                    group.conditions.length > 1
+                                    <div key={condition.id}>
+                                        <ConditionRow
+                                            condition={condition}
+                                            onChange={(updatedCondition) => {
+                                                updateGroup(group.id, {
+                                                    ...group,
+                                                    conditions:
+                                                        group.conditions.map(
+                                                            (c) =>
+                                                                c.id ===
+                                                                condition.id
+                                                                    ? updatedCondition
+                                                                    : c,
+                                                        ),
+                                                });
+                                            }}
+                                            onRemove={() => {
+                                                if (
+                                                    group.conditions.length ===
+                                                    1
+                                                ) {
+                                                    return;
                                                 }
-                                            />
-                                        </div>
-                                    ),
-                                )}
+                                                updateGroup(group.id, {
+                                                    ...group,
+                                                    conditions:
+                                                        group.conditions.filter(
+                                                            (c) =>
+                                                                c.id !==
+                                                                condition.id,
+                                                        ),
+                                                });
+                                            }}
+                                            canRemove={
+                                                group.conditions.length > 1
+                                            }
+                                        />
+                                    </div>
+                                ))}
                             </div>
 
                             <Button

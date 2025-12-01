@@ -75,13 +75,17 @@ export function prepareTransactionData(
     };
 
     return {
-        description: normalizeWhitespace((transaction.decryptedDescription || '').toLowerCase()),
+        description: normalizeWhitespace(
+            (transaction.decryptedDescription || '').toLowerCase(),
+        ),
         amount: transaction.amount / 100,
         transaction_date: transaction.transaction_date,
         bank_name: bank?.name || '',
         account_name: account?.name || '',
         category: category?.name || null,
-        notes: transaction.decryptedNotes ? normalizeWhitespace(transaction.decryptedNotes.toLowerCase()) : null,
+        notes: transaction.decryptedNotes
+            ? normalizeWhitespace(transaction.decryptedNotes.toLowerCase())
+            : null,
     };
 }
 
@@ -188,16 +192,19 @@ export function evaluateRulesForNewTransaction(
     banks: Bank[],
 ): RuleEvaluationResult | null {
     if (!rules || !categories || !accounts || !banks) {
-        consoleDebug('[Rule Engine] Missing required data for rule evaluation', {
-            hasRules: !!rules,
-            rulesLength: rules?.length,
-            hasCategories: !!categories,
-            categoriesLength: categories?.length,
-            hasAccounts: !!accounts,
-            accountsLength: accounts?.length,
-            hasBanks: !!banks,
-            banksLength: banks?.length,
-        });
+        consoleDebug(
+            '[Rule Engine] Missing required data for rule evaluation',
+            {
+                hasRules: !!rules,
+                rulesLength: rules?.length,
+                hasCategories: !!categories,
+                categoriesLength: categories?.length,
+                hasAccounts: !!accounts,
+                accountsLength: accounts?.length,
+                hasBanks: !!banks,
+                banksLength: banks?.length,
+            },
+        );
         return null;
     }
 
@@ -213,16 +220,23 @@ export function evaluateRulesForNewTransaction(
     };
 
     const preparedData: TransactionData = {
-        description: normalizeWhitespace(transactionData.description.toLowerCase()),
+        description: normalizeWhitespace(
+            transactionData.description.toLowerCase(),
+        ),
         amount: transactionData.amount,
         transaction_date: transactionData.transaction_date,
         bank_name: bank?.name || '',
         account_name: account?.name || '',
         category: null,
-        notes: transactionData.notes ? normalizeWhitespace(transactionData.notes.toLowerCase()) : null,
+        notes: transactionData.notes
+            ? normalizeWhitespace(transactionData.notes.toLowerCase())
+            : null,
     };
 
-    consoleDebug('[Rule Engine] Evaluating new transaction data:', preparedData);
+    consoleDebug(
+        '[Rule Engine] Evaluating new transaction data:',
+        preparedData,
+    );
     consoleDebug(`[Rule Engine] Evaluating ${sortedRules.length} rules`);
 
     for (const rule of sortedRules) {
@@ -238,10 +252,7 @@ export function evaluateRulesForNewTransaction(
                 normalizedRulesJson,
             );
 
-            const result = jsonLogic.apply(
-                normalizedRulesJson,
-                preparedData,
-            );
+            const result = jsonLogic.apply(normalizedRulesJson, preparedData);
 
             consoleDebug(`[Rule Engine] Rule #${rule.id} result:`, result);
 

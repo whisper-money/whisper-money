@@ -25,7 +25,9 @@ class CategorySyncService {
     }
 
     async create(data: Omit<Category, 'id'>): Promise<Category> {
-        return await this.syncManager.createLocal<Category>(data as Omit<Category, 'id' | 'created_at' | 'updated_at'>);
+        return await this.syncManager.createLocal<Category>(
+            data as Omit<Category, 'id' | 'created_at' | 'updated_at'>,
+        );
     }
 
     async update(id: UUID, data: Partial<Category>): Promise<void> {

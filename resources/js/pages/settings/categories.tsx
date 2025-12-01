@@ -122,13 +122,9 @@ function CategoryRow({ row }: { row: Row<Category> }) {
                         {row
                             .getVisibleCells()
                             .map((cell: Cell<Category, unknown>) => (
-                                <TableCell
-                                    key={cell.id}
-                                >
+                                <TableCell key={cell.id}>
                                     {flexRender(
-                                        cell.column
-                                            .columnDef
-                                            .cell,
+                                        cell.column.columnDef.cell,
                                         cell.getContext(),
                                     )}
                                 </TableCell>
@@ -193,9 +189,9 @@ export default function Categories() {
             },
             cell: ({ row }) => {
                 const iconName = row.original.icon;
-                const IconComponent = Icons[
-                    iconName as keyof typeof Icons
-                ] as Icons.LucideIcon | undefined;
+                const IconComponent = Icons[iconName as keyof typeof Icons] as
+                    | Icons.LucideIcon
+                    | undefined;
                 const Icon = IconComponent || Icons.Tag;
 
                 return (
@@ -313,9 +309,14 @@ export default function Categories() {
                                 </TableHeader>
                                 <TableBody>
                                     {table.getRowModel().rows?.length ? (
-                                        table.getRowModel().rows.map((row) => (
-                                            <CategoryRow key={row.id} row={row} />
-                                        ))
+                                        table
+                                            .getRowModel()
+                                            .rows.map((row) => (
+                                                <CategoryRow
+                                                    key={row.id}
+                                                    row={row}
+                                                />
+                                            ))
                                     ) : (
                                         <TableRow>
                                             <TableCell

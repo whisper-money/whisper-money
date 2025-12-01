@@ -103,20 +103,24 @@ function TransactionRowComponent({
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
             <ContextMenuTrigger asChild>
-                { }
+                {}
                 <TableRow
                     ref={rowVirtualizer.measureElement}
-                    data-state={(row.getIsSelected() || contextMenuOpen) && 'selected'}
+                    data-state={
+                        (row.getIsSelected() || contextMenuOpen) && 'selected'
+                    }
                     data-index={virtualRow.index}
                 >
-                    {row.getVisibleCells().map((cell: Cell<DecryptedTransaction, unknown>) => (
-                        <TableCell key={cell.id}>
-                            {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext(),
-                            )}
-                        </TableCell>
-                    ))}
+                    {row
+                        .getVisibleCells()
+                        .map((cell: Cell<DecryptedTransaction, unknown>) => (
+                            <TableCell key={cell.id}>
+                                {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext(),
+                                )}
+                            </TableCell>
+                        ))}
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>
@@ -1012,7 +1016,11 @@ export default function Transactions({ categories, accounts, banks }: Props) {
     }
 
     const renderTransactionRow = useCallback(
-        (row: Row<DecryptedTransaction>, virtualRow: VirtualItem, rowVirtualizer: Virtualizer<HTMLDivElement, Element>) => {
+        (
+            row: Row<DecryptedTransaction>,
+            virtualRow: VirtualItem,
+            rowVirtualizer: Virtualizer<HTMLDivElement, Element>,
+        ) => {
             return (
                 <TransactionRowComponent
                     key={row.id}

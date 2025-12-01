@@ -72,7 +72,9 @@ export function EncryptedText(props: EncryptedTextProps) {
         iv: string;
         value: string;
     } | null>(null);
-    const [displayState, setDisplayState] = useState<DisplayState>(() => getInitialDisplayState(isKeySet));
+    const [displayState, setDisplayState] = useState<DisplayState>(() =>
+        getInitialDisplayState(isKeySet),
+    );
     const prevIsKeySetRef = useRef(isKeySet);
 
     useEffect(() => {

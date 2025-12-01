@@ -23,7 +23,10 @@ interface ImportStepMappingProps {
     dateFormatDetected: boolean;
     parsedData: ParsedRow[];
     currencyCode: string;
-    onMappingChange: (field: keyof ColumnMapping, value: string | string[]) => void;
+    onMappingChange: (
+        field: keyof ColumnMapping,
+        value: string | string[],
+    ) => void;
     onDateFormatChange: (format: DateFormat) => void;
     onNext: () => void;
     onBack: () => void;
@@ -69,7 +72,7 @@ export function ImportStepMapping({
 
     const handleDescriptionChange = (index: number, value: string) => {
         const newColumns = [...descriptionColumns];
-        
+
         if (value === '__none__') {
             newColumns.splice(index, 1);
         } else {
@@ -166,7 +169,9 @@ export function ImportStepMapping({
                     {descriptionColumns.length === 0 ? (
                         <Select
                             value=""
-                            onValueChange={(value) => handleDescriptionChange(0, value)}
+                            onValueChange={(value) =>
+                                handleDescriptionChange(0, value)
+                            }
                         >
                             <SelectTrigger id="description-column-0">
                                 <SelectValue placeholder="Select description column" />
@@ -194,7 +199,10 @@ export function ImportStepMapping({
                                     <Select
                                         value={column || ''}
                                         onValueChange={(value) =>
-                                            handleDescriptionChange(columnIndex, value)
+                                            handleDescriptionChange(
+                                                columnIndex,
+                                                value,
+                                            )
                                         }
                                     >
                                         <SelectTrigger
@@ -214,23 +222,29 @@ export function ImportStepMapping({
                                                     None (Remove)
                                                 </SelectItem>
                                             )}
-                                            {columnOptions.map((option, index) => (
-                                                <SelectItem
-                                                    key={`desc-${columnIndex}-${option.value}-${index}`}
-                                                    value={option.value}
-                                                >
-                                                    <div className="flex flex-col">
-                                                        <span>{option.label}</span>
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
+                                            {columnOptions.map(
+                                                (option, index) => (
+                                                    <SelectItem
+                                                        key={`desc-${columnIndex}-${option.value}-${index}`}
+                                                        value={option.value}
+                                                    >
+                                                        <div className="flex flex-col">
+                                                            <span>
+                                                                {option.label}
+                                                            </span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ),
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
                             ))}
                             {descriptionColumns.length > 0 &&
                                 descriptionColumns.length < 3 &&
-                                descriptionColumns[descriptionColumns.length - 1] !== '' && (
+                                descriptionColumns[
+                                    descriptionColumns.length - 1
+                                ] !== '' && (
                                     <Button
                                         type="button"
                                         variant="outline"
@@ -272,13 +286,14 @@ export function ImportStepMapping({
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="balance-column">
-                        Balance (Optional)
-                    </Label>
+                    <Label htmlFor="balance-column">Balance (Optional)</Label>
                     <Select
                         value={columnMapping.balance || '__none__'}
                         onValueChange={(value) =>
-                            onMappingChange('balance', value === '__none__' ? '' : value)
+                            onMappingChange(
+                                'balance',
+                                value === '__none__' ? '' : value,
+                            )
                         }
                     >
                         <SelectTrigger id="balance-column">
@@ -307,10 +322,10 @@ export function ImportStepMapping({
                             {previewTransactions.map((transaction, index) => (
                                 <div
                                     key={index}
-                                    className="flex items-start justify-between rounded-md bg-background p-3 text-sm gap-3"
+                                    className="flex items-start justify-between gap-3 rounded-md bg-background p-3 text-sm"
                                 >
                                     <div className="flex flex-1 items-start gap-3">
-                                        <span className="text-muted-foreground whitespace-nowrap">
+                                        <span className="whitespace-nowrap text-muted-foreground">
                                             {transaction.date}
                                         </span>
                                         <span className="flex-1 whitespace-pre-line">

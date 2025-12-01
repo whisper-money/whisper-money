@@ -134,7 +134,7 @@ export function createTransactionColumns({
             cell: ({ row }) => {
                 const bank = row.original.bank;
                 return (
-                    <div className="flex px-1 items-center gap-2">
+                    <div className="flex items-center gap-2 px-1">
                         {bank?.logo && (
                             <img
                                 src={bank.logo}
@@ -154,7 +154,7 @@ export function createTransactionColumns({
             cell: ({ row }) => {
                 const account = row.original.account;
                 if (!account) {
-                    return <div className='px-1'>N/A</div>;
+                    return <div className="px-1">N/A</div>;
                 }
 
                 return (
@@ -162,7 +162,7 @@ export function createTransactionColumns({
                         encryptedText={account.name}
                         iv={account.name_iv}
                         length={{ min: 5, max: 10 }}
-                        className="max-w-[100px] px-1 truncate"
+                        className="max-w-[100px] truncate px-1"
                     />
                 );
             },
@@ -185,7 +185,7 @@ export function createTransactionColumns({
                 }).format(amount);
 
                 return (
-                    <div className={`text-right pl-4`}>
+                    <div className={`pl-4 text-right`}>
                         <span
                             className={`${amount < 0 ? '' : 'bg-green-100/70 dark:bg-green-900'}`}
                         >
@@ -202,14 +202,20 @@ export function createTransactionColumns({
             maxSize: 35,
             minSize: 35,
             meta: {
-                cellClassName: '!w-[35px] !max-w-[35px] !min-w-[35px] !p-0 whitespace-normal',
-                cellStyle: { width: '35px', maxWidth: '35px', minWidth: '35px', padding: 0 }
+                cellClassName:
+                    '!w-[35px] !max-w-[35px] !min-w-[35px] !p-0 whitespace-normal',
+                cellStyle: {
+                    width: '35px',
+                    maxWidth: '35px',
+                    minWidth: '35px',
+                    padding: 0,
+                },
             },
             cell: ({ row }) => {
                 const transaction = row.original;
 
                 return (
-                    <div className="flex items-center justify-center w-[35px]">
+                    <div className="flex w-[35px] items-center justify-center">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -225,7 +231,9 @@ export function createTransactionColumns({
                                     Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    onClick={() => onReEvaluateRules(transaction)}
+                                    onClick={() =>
+                                        onReEvaluateRules(transaction)
+                                    }
                                 >
                                     Re-evaluate rules
                                 </DropdownMenuItem>

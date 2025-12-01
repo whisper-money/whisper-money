@@ -111,7 +111,13 @@ function AccountActions({
     );
 }
 
-function AccountRow({ row, onSuccess }: { row: Row<Account>; onSuccess?: () => void }) {
+function AccountRow({
+    row,
+    onSuccess,
+}: {
+    row: Row<Account>;
+    onSuccess?: () => void;
+}) {
     const account = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -130,13 +136,9 @@ function AccountRow({ row, onSuccess }: { row: Row<Account>; onSuccess?: () => v
                         {row
                             .getVisibleCells()
                             .map((cell: Cell<Account, unknown>) => (
-                                <TableCell
-                                    key={cell.id}
-                                >
+                                <TableCell key={cell.id}>
                                     {flexRender(
-                                        cell.column
-                                            .columnDef
-                                            .cell,
+                                        cell.column.columnDef.cell,
                                         cell.getContext(),
                                     )}
                                 </TableCell>
@@ -348,13 +350,17 @@ export default function Accounts() {
                                 </TableHeader>
                                 <TableBody>
                                     {table.getRowModel().rows?.length ? (
-                                        table.getRowModel().rows.map((row) => (
-                                            <AccountRow
-                                                key={row.id}
-                                                row={row}
-                                                onSuccess={handleAccountCreated}
-                                            />
-                                        ))
+                                        table
+                                            .getRowModel()
+                                            .rows.map((row) => (
+                                                <AccountRow
+                                                    key={row.id}
+                                                    row={row}
+                                                    onSuccess={
+                                                        handleAccountCreated
+                                                    }
+                                                />
+                                            ))
                                     ) : (
                                         <TableRow>
                                             <TableCell

@@ -65,7 +65,9 @@ export function EditTransactionDialog({
     const [decryptedAccountNames, setDecryptedAccountNames] = useState<
         Map<string, string>
     >(new Map());
-    const [automationRules, setAutomationRules] = useState<AutomationRule[]>([]);
+    const [automationRules, setAutomationRules] = useState<AutomationRule[]>(
+        [],
+    );
 
     useEffect(() => {
         if (mode === 'edit' && transaction) {
@@ -145,7 +147,12 @@ export function EditTransactionDialog({
 
     async function checkAndApplyAutomationRules() {
         if (mode !== 'create' || automationRules.length === 0) {
-            return { categoryId: null, notes: null, notesIv: null, ruleName: null };
+            return {
+                categoryId: null,
+                notes: null,
+                notesIv: null,
+                ruleName: null,
+            };
         }
 
         const result = evaluateRulesForNewTransaction(
@@ -163,7 +170,12 @@ export function EditTransactionDialog({
         );
 
         if (!result) {
-            return { categoryId: null, notes: null, notesIv: null, ruleName: null };
+            return {
+                categoryId: null,
+                notes: null,
+                notesIv: null,
+                ruleName: null,
+            };
         }
 
         let finalNotes = notes.trim();
@@ -222,7 +234,10 @@ export function EditTransactionDialog({
                 toast.error('Date is required');
                 return;
             }
-        } else if (mode === 'edit' && transaction?.source === 'manually_created') {
+        } else if (
+            mode === 'edit' &&
+            transaction?.source === 'manually_created'
+        ) {
             if (!description.trim()) {
                 toast.error('Description is required');
                 return;
@@ -288,8 +303,8 @@ export function EditTransactionDialog({
 
                 const updatedCategory = finalCategoryId
                     ? categories.find(
-                        (category) => category.id === finalCategoryId,
-                    ) || null
+                          (category) => category.id === finalCategoryId,
+                      ) || null
                     : null;
 
                 const newTransaction: DecryptedTransaction = {
@@ -315,7 +330,8 @@ export function EditTransactionDialog({
                     return;
                 }
 
-                const selectedCategoryId = categoryId === 'null' ? null : categoryId;
+                const selectedCategoryId =
+                    categoryId === 'null' ? null : categoryId;
                 const trimmedNotes = notes.trim();
                 const trimmedDescription = description.trim();
 
@@ -340,10 +356,17 @@ export function EditTransactionDialog({
                     notes_iv: notesIv,
                 };
 
-                let finalDecryptedDescription = transaction.decryptedDescription;
+                let finalDecryptedDescription =
+                    transaction.decryptedDescription;
 
-                if (transaction.source === 'manually_created' && trimmedDescription) {
-                    const encryptedDescription = await encrypt(trimmedDescription, key);
+                if (
+                    transaction.source === 'manually_created' &&
+                    trimmedDescription
+                ) {
+                    const encryptedDescription = await encrypt(
+                        trimmedDescription,
+                        key,
+                    );
                     updateData.description = encryptedDescription.encrypted;
                     updateData.description_iv = encryptedDescription.iv;
                     finalDecryptedDescription = trimmedDescription;
@@ -356,8 +379,8 @@ export function EditTransactionDialog({
                 );
                 const updatedCategory = selectedCategoryId
                     ? categories.find(
-                        (category) => category.id === selectedCategoryId,
-                    ) || null
+                          (category) => category.id === selectedCategoryId,
+                      ) || null
                     : null;
 
                 const updatedTransaction: DecryptedTransaction = {
@@ -365,8 +388,10 @@ export function EditTransactionDialog({
                     category_id: selectedCategoryId,
                     category: updatedCategory,
                     decryptedDescription: finalDecryptedDescription,
-                    description: updateData.description ?? transaction.description,
-                    description_iv: updateData.description_iv ?? transaction.description_iv,
+                    description:
+                        updateData.description ?? transaction.description,
+                    description_iv:
+                        updateData.description_iv ?? transaction.description_iv,
                     decryptedNotes: trimmedNotes || null,
                     notes: encryptedNotes,
                     notes_iv: notesIv,
@@ -388,9 +413,7 @@ export function EditTransactionDialog({
         }
     }
 
-    const selectedAccount = accounts.find(
-        (acc) => acc.id === accountId,
-    );
+    const selectedAccount = accounts.find((acc) => acc.id === accountId);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -458,14 +481,17 @@ export function EditTransactionDialog({
                             <Label
                                 htmlFor="description"
                                 className={
-                                    mode === 'edit' && transaction?.source === 'imported'
+                                    mode === 'edit' &&
+                                    transaction?.source === 'imported'
                                         ? 'text-sm text-muted-foreground'
                                         : ''
                                 }
                             >
                                 Description
                             </Label>
-                            {mode === 'create' || (mode === 'edit' && transaction?.source === 'manually_created') ? (
+                            {mode === 'create' ||
+                            (mode === 'edit' &&
+                                transaction?.source === 'manually_created') ? (
                                 <Textarea
                                     id="description"
                                     value={description}
@@ -481,13 +507,18 @@ export function EditTransactionDialog({
                                 <div className="space-y-1.5">
                                     <Textarea
                                         id="description"
-                                        value={transaction?.decryptedDescription ?? ''}
+                                        value={
+                                            transaction?.decryptedDescription ??
+                                            ''
+                                        }
                                         disabled
                                         className="bg-muted"
                                         rows={3}
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        This transaction was imported from a file. The description cannot be modified.
+                                        This transaction was imported from a
+                                        file. The description cannot be
+                                        modified.
                                     </p>
                                 </div>
                             )}
@@ -592,8 +623,8 @@ export function EditTransactionDialog({
                             {isSubmitting
                                 ? 'Saving...'
                                 : mode === 'create'
-                                    ? 'Create Transaction'
-                                    : 'Save Changes'}
+                                  ? 'Create Transaction'
+                                  : 'Save Changes'}
                         </Button>
                     </DialogFooter>
                 </form>

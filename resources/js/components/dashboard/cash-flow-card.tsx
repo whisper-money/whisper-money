@@ -25,12 +25,12 @@ export function CashFlowCard({
     });
 
     const currentNet = income - expense;
-    
+
     const calculateTrend = () => {
         if (!previous) return undefined;
         const previousNet = previous.income - previous.expense;
         if (previousNet === 0) return undefined;
-        
+
         const diff = currentNet - previousNet;
         const percentage = (diff / Math.abs(previousNet)) * 100;
 

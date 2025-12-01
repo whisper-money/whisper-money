@@ -1,7 +1,6 @@
 import { db } from '@/lib/dexie-db';
 import { SyncManager } from '@/lib/sync-manager';
 import type { AccountBalance } from '@/types/account';
-import { uuidv7 } from 'uuidv7';
 
 class AccountBalanceSyncService {
     private syncManager: SyncManager;
@@ -71,7 +70,10 @@ class AccountBalanceSyncService {
             throw new Error('Balance not found');
         }
 
-        return await this.syncManager.update<AccountBalance>(id.toString(), data);
+        return await this.syncManager.update<AccountBalance>(
+            id.toString(),
+            data,
+        );
     }
 
     async updateOrCreate(
@@ -120,4 +122,3 @@ class AccountBalanceSyncService {
 }
 
 export const accountBalanceSyncService = new AccountBalanceSyncService();
-
