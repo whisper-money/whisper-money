@@ -143,3 +143,52 @@ it('can edit an existing category via context menu', function () {
         'name' => 'Updated Category',
     ]);
 });
+
+it('shows transfer type description when transfer type is selected in create dialog', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    $page->assertSee('Categories settings')
+        ->click('Create Category')
+        ->wait(0.5)
+        ->assertSee('Add a new category to organize your transactions')
+        ->click('Select a type')
+        ->wait(0.3)
+        ->click('Transfer')
+        ->wait(0.3)
+        ->assertSee('Transactions in this category will not be counted in top expenses or income')
+        ->assertSee('Transfer categories are mainly used for transactions between accounts')
+        ->assertNoJavascriptErrors();
+});
+
+it('shows transfer type description when transfer type is selected in edit dialog', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $category = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Test Category',
+        'icon' => 'Tag',
+        'color' => 'blue',
+        'type' => 'expense',
+    ]);
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    $page->assertSee('Test Category')
+        ->click('//button[@aria-label="Open menu"][1]')
+        ->wait(0.5)
+        ->click('Edit')
+        ->wait(0.5)
+        ->assertSee('Edit Category')
+        ->click('Select a type')
+        ->wait(0.3)
+        ->click('Transfer')
+        ->wait(0.3)
+        ->assertSee('Transactions in this category will not be counted in top expenses or income')
+        ->assertSee('Transfer categories are mainly used for transactions between accounts')
+        ->assertNoJavascriptErrors();
+});

@@ -1,4 +1,5 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +28,8 @@ import {
 } from '@/types/category';
 import { Form } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
+import { Info } from 'lucide-react';
+import { useState } from 'react';
 
 interface EditCategoryDialogProps {
     category: Category;
@@ -41,6 +44,8 @@ export function EditCategoryDialog({
     onOpenChange,
     onSuccess,
 }: EditCategoryDialogProps) {
+    const [selectedType, setSelectedType] = useState<string>(category.type);
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
@@ -157,6 +162,7 @@ export function EditCategoryDialog({
                                     name="type"
                                     defaultValue={category.type}
                                     required
+                                    onValueChange={setSelectedType}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select a type" />
@@ -174,6 +180,18 @@ export function EditCategoryDialog({
                                     <p className="text-sm text-red-500">
                                         {errors.type}
                                     </p>
+                                )}
+                                {selectedType === 'transfer' && (
+                                    <Alert>
+                                        <Info className="h-4 w-4 opacity-50" />
+                                        <AlertDescription className='text-sm'>
+                                            Transactions in this category will
+                                            not be counted in top expenses or
+                                            income. Transfer categories are
+                                            mainly used for transactions between
+                                            accounts.
+                                        </AlertDescription>
+                                    </Alert>
                                 )}
                             </div>
 
