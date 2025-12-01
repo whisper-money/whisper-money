@@ -11,14 +11,13 @@ class CreateDefaultCategories
      */
     public function handle(User $user): void
     {
-        if ($user->categories()->exists()) {
-            return;
-        }
-
         $defaultCategories = self::getDefaultCategories();
 
         foreach ($defaultCategories as $category) {
-            $user->categories()->create($category);
+            $user->categories()->firstOrCreate(
+                ['name' => $category['name']],
+                $category
+            );
         }
     }
 
