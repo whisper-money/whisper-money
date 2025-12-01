@@ -3,11 +3,12 @@ import type { Account, Bank } from '@/types/account';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
 import type { DecryptedTransaction } from '@/types/transaction';
+import type { UUID } from '@/types/uuid';
 import jsonLogic from 'json-logic-js';
 
 export interface RuleEvaluationResult {
     rule: AutomationRule;
-    categoryId: number | null;
+    categoryId: UUID | null;
     note: string | null;
     noteIv: string | null;
 }
@@ -175,7 +176,7 @@ export interface NewTransactionData {
     description: string;
     amount: number;
     transaction_date: string;
-    account_id: string;
+    account_id: UUID;
     notes?: string;
 }
 
@@ -186,6 +187,11 @@ export function evaluateRulesForNewTransaction(
     accounts: Account[],
     banks: Bank[],
 ): RuleEvaluationResult | null {
+    if (!rules || !categories || !accounts || !banks) {
+        consoleDebug('[Rule Engine] Missing required data for rule evaluation');
+        return null;
+    }
+
     const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
 
     const account = accounts.find((a) => a.id === transactionData.account_id);
