@@ -69,15 +69,15 @@ export function CategoryCombobox({
                     role="combobox"
                     aria-expanded={open}
                     className={cn(
-                        'w-full justify-between !pl-2',
+                        'max-w-full w-full justify-between !pl-2',
                         triggerClassName,
                     )}
                     disabled={disabled}
                 >
                     {selectedCategory ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 overflow-x-hidden">
                             <CategoryIcon category={selectedCategory} />
-                            <span>{selectedCategory.name}</span>
+                            <span className='truncate'>{selectedCategory.name}</span>
                         </div>
                     ) : value === 'null' ? (
                         <div className="flex items-center gap-2">
