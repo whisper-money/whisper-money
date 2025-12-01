@@ -184,7 +184,7 @@ export function EditCategoryDialog({
                                 {selectedType === 'transfer' && (
                                     <Alert>
                                         <Info className="h-4 w-4 opacity-50" />
-                                        <AlertDescription className='text-sm'>
+                                        <AlertDescription className="text-sm">
                                             Transactions in this category will
                                             not be counted in top expenses or
                                             income. Transfer categories are

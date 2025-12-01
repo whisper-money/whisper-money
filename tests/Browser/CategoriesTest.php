@@ -61,11 +61,17 @@ it('can create a new category', function () {
         ->wait(0.5)
         ->fill('name', 'Entertainment')
         ->click('Select an icon')
+        ->wait(0.5)
+        ->click('//div[@role="option"][1]')
         ->wait(0.3)
-        ->click('Film')
         ->click('Select a color')
+        ->wait(0.5)
+        ->click('//div[@role="option"][contains(., "purple")]')
         ->wait(0.3)
-        ->click('purple')
+        ->click('Select a type')
+        ->wait(0.5)
+        ->click('//div[@role="option"][contains(., "Expense")]')
+        ->wait(0.3)
         ->click('button[type="submit"]')
         ->wait(2)
         ->assertSee('Entertainment')
@@ -74,8 +80,8 @@ it('can create a new category', function () {
     $this->assertDatabaseHas('categories', [
         'user_id' => $user->id,
         'name' => 'Entertainment',
-        'icon' => 'Film',
         'color' => 'purple',
+        'type' => 'expense',
     ]);
 });
 
@@ -133,7 +139,7 @@ it('can edit an existing category via context menu', function () {
         ->wait(0.5)
         ->assertSee('Edit Category')
         ->fill('name', 'Updated Category')
-        ->click('Save')
+        ->click('//button[contains(., "Update")]')
         ->wait(2)
         ->assertSee('Updated Category')
         ->assertNoJavascriptErrors();
