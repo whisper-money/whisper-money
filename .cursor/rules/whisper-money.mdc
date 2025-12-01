@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+# After each change
+- Make sure that CI steps are passing (`.github/workflows/ci.yml`).
+  - bun install --frozen-lockfile
+  - composer install --no-interaction --prefer-dist --optimize-autoloader
+  - bun run build
+  - ./vendor/bin/pest
+  - vendor/bin/pint --test
+  - bun run format
+  - bun run lint
