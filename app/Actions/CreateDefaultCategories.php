@@ -399,7 +399,7 @@ class CreateDefaultCategories
                 'name' => 'Credit cards',
                 'icon' => 'CreditCard',
                 'color' => 'green',
-                'type' => 'income',
+                'type' => 'expense',
             ],
             [
                 'name' => 'Other incoming payments',
