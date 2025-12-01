@@ -466,9 +466,8 @@ export function EditTransactionDialog({
                                 Description
                             </Label>
                             {mode === 'create' || (mode === 'edit' && transaction?.source === 'manually_created') ? (
-                                <Input
+                                <Textarea
                                     id="description"
-                                    type="text"
                                     value={description}
                                     onChange={(e) =>
                                         setDescription(e.target.value)
@@ -476,15 +475,16 @@ export function EditTransactionDialog({
                                     placeholder="Transaction description"
                                     disabled={isSubmitting}
                                     required
+                                    rows={3}
                                 />
                             ) : (
                                 <div className="space-y-1.5">
-                                    <Input
+                                    <Textarea
                                         id="description"
-                                        type="text"
                                         value={transaction?.decryptedDescription ?? ''}
                                         disabled
                                         className="bg-muted"
+                                        rows={3}
                                     />
                                     <p className="text-xs text-muted-foreground">
                                         This transaction was imported from a file. The description cannot be modified.
