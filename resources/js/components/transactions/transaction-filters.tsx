@@ -1,10 +1,18 @@
 import { format } from 'date-fns';
+import { Check, ChevronsUpDown, CircleHelp, X } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
 import { EncryptedText } from '@/components/encrypted-text';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Command,
+    CommandEmpty,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -12,13 +20,15 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { type Account } from '@/types/account';
 import { type Category, getCategoryColorClasses } from '@/types/category';
-import { type TransactionFilters } from '@/types/transaction';
+import { type TransactionFilters as FiltersType } from '@/types/transaction';
+import { CategoryIcon } from '../shared/category-combobox';
 
 interface TransactionFiltersProps {
-    filters: TransactionFilters;
-    onFiltersChange: (filters: TransactionFilters) => void;
+    filters: FiltersType;
+    onFiltersChange: (filters: FiltersType) => void;
     categories: Category[];
     accounts: Account[];
     isKeySet: boolean;
@@ -34,6 +44,7 @@ export function TransactionFilters({
     actions,
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
     const isUncategorizedSelected = filters.categoryIds.includes(
         UNCATEGORIZED_CATEGORY_ID,
     );
@@ -108,7 +119,7 @@ export function TransactionFilters({
                             )}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-96" align="start">
+                    <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="start">
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <h4 className="font-medium">Filters</h4>
@@ -122,9 +133,9 @@ export function TransactionFilters({
                                         value={
                                             filters.dateFrom
                                                 ? format(
-                                                      filters.dateFrom,
-                                                      'yyyy-MM-dd',
-                                                  )
+                                                    filters.dateFrom,
+                                                    'yyyy-MM-dd',
+                                                )
                                                 : ''
                                         }
                                         onChange={(e) =>
@@ -142,9 +153,9 @@ export function TransactionFilters({
                                         value={
                                             filters.dateTo
                                                 ? format(
-                                                      filters.dateTo,
-                                                      'yyyy-MM-dd',
-                                                  )
+                                                    filters.dateTo,
+                                                    'yyyy-MM-dd',
+                                                )
                                                 : ''
                                         }
                                         onChange={(e) =>
@@ -196,76 +207,109 @@ export function TransactionFilters({
 
                             <div className="space-y-2">
                                 <Label>Categories</Label>
-                                <div className="flex flex-wrap gap-2 pt-2">
-                                    <Badge
-                                        variant={
-                                            isUncategorizedSelected
-                                                ? 'default'
-                                                : 'outline'
-                                        }
-                                        className={`flex cursor-pointer items-center gap-1 py-1.5 ${
-                                            isUncategorizedSelected
-                                                ? 'border-transparent bg-muted text-foreground dark:bg-muted/40'
-                                                : ''
-                                        }`}
-                                        onClick={() =>
-                                            handleCategoryToggle(
-                                                UNCATEGORIZED_CATEGORY_ID,
-                                            )
-                                        }
+                                <div className="pt-2">
+                                    <Popover
+                                        open={categoryDropdownOpen}
+                                        onOpenChange={setCategoryDropdownOpen}
                                     >
-                                        <Icons.CircleHelp className="h-4 w-4 opacity-80" />
-                                        <span
-                                            className={
-                                                isUncategorizedSelected
-                                                    ? ''
-                                                    : 'text-muted-foreground'
-                                            }
-                                        >
-                                            Uncategorized
-                                        </span>
-                                    </Badge>
-                                    {categories.map((category) => {
-                                        const isSelected =
-                                            filters.categoryIds.includes(
-                                                category.id,
-                                            );
-                                        const IconComponent =
-                                            resolveIconComponent(category.icon);
-                                        const colorClasses =
-                                            getCategoryColorClasses(
-                                                category.color,
-                                            );
-                                        return (
-                                            <Badge
-                                                key={category.id}
-                                                variant={
-                                                    isSelected
-                                                        ? 'default'
-                                                        : 'outline'
-                                                }
-                                                className={`flex cursor-pointer items-center gap-1 py-1.5 ${isSelected ? `${colorClasses.bg} ${colorClasses.text} border-transparent` : ''}`}
-                                                onClick={() =>
-                                                    handleCategoryToggle(
-                                                        category.id,
-                                                    )
-                                                }
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className="w-full justify-between"
                                             >
-                                                <IconComponent
-                                                    className={`h-4 w-4 ${isSelected ? colorClasses.text : 'text-muted-foreground'}`}
-                                                />
-                                                <span
-                                                    className={
-                                                        isSelected
-                                                            ? colorClasses.text
-                                                            : 'text-muted-foreground'
-                                                    }
-                                                >
-                                                    {category.name}
-                                                </span>
-                                            </Badge>
-                                        );
-                                    })}
+                                                {filters.categoryIds.length > 0 ? (
+                                                    <span className="truncate">
+                                                        {filters.categoryIds.length}{' '}
+                                                        selected
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">
+                                                        Select categories...
+                                                    </span>
+                                                )}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-full p-0" align="start">
+                                            <Command>
+                                                <CommandInput placeholder="Search categories..." />
+                                                <CommandList>
+                                                    <CommandEmpty>
+                                                        No category found.
+                                                    </CommandEmpty>
+                                                    <CommandItem
+                                                        onSelect={() =>
+                                                            handleCategoryToggle(
+                                                                UNCATEGORIZED_CATEGORY_ID,
+                                                            )
+                                                        }
+                                                    >
+                                                        <div
+                                                            className={cn(
+                                                                'mr-1 flex p-1 size-4 items-center justify-center rounded-sm border border-primary',
+                                                                isUncategorizedSelected
+                                                                    ? 'bg-primary/10 text-primary-foreground'
+                                                                    : 'opacity-50 [&_svg]:invisible',
+                                                            )}
+                                                        >
+                                                            <Check className="size-3" />
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                                                <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
+                                                            </div>
+                                                            Uncategorized
+                                                        </div>
+                                                    </CommandItem>
+                                                    {categories.map((category) => {
+                                                        const isSelected =
+                                                            filters.categoryIds.includes(
+                                                                category.id,
+                                                            );
+                                                        const colorClasses =
+                                                            getCategoryColorClasses(
+                                                                category.color,
+                                                            );
+                                                        return (
+                                                            <CommandItem
+                                                                key={category.id}
+                                                                onSelect={() =>
+                                                                    handleCategoryToggle(
+                                                                        category.id,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <div
+                                                                    className={cn(
+                                                                        'mr-1 flex p-1 size-4 items-center justify-center rounded-sm border border-primary',
+                                                                        isSelected
+                                                                            ? 'bg-primary/10 text-primary-foreground'
+                                                                            : 'opacity-50 [&_svg]:invisible',
+                                                                    )}
+                                                                >
+                                                                    <Check className="size-3" />
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <div
+                                                                        className={cn(
+                                                                            'flex h-5 w-5 items-center justify-center rounded-full',
+                                                                            colorClasses.bg,
+                                                                        )}
+                                                                    >
+                                                                        <CategoryIcon category={category} size={4} />
+                                                                    </div>
+                                                                    <span>
+                                                                        {category.name}
+                                                                    </span>
+                                                                </div>
+                                                            </CommandItem>
+                                                        );
+                                                    })}
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                             </div>
 
@@ -313,7 +357,7 @@ export function TransactionFilters({
                         onClick={clearFilters}
                         className="h-9"
                     >
-                        <Icons.X className="mr-1 h-4 w-4" />
+                        <X className="mr-1 h-4 w-4" />
                         Clear
                     </Button>
                 )}
@@ -328,26 +372,12 @@ export function TransactionFilters({
 }
 
 const UNCATEGORIZED_CATEGORY_ID = -1;
-const FALLBACK_ICON_NAMES = [
-    'CircleHelp',
-    'HelpCircle',
-    'CircleQuestion',
-    'CircleQuestionMark',
-    'Circle',
-];
 
-function resolveIconComponent(iconName?: string): Icons.LucideIcon {
-    if (iconName) {
-        const icon = Icons[iconName as keyof typeof Icons];
-        return icon as Icons.LucideIcon;
+function getIconComponent(iconName?: string): Icons.LucideIcon | null {
+    if (!iconName) return null;
+    const icon = Icons[iconName as keyof typeof Icons] as Icons.LucideIcon | undefined;
+    if (icon && typeof icon === 'function') {
+        return icon;
     }
-
-    for (const fallbackName of FALLBACK_ICON_NAMES) {
-        const fallback = Icons[fallbackName as keyof typeof Icons];
-        if (typeof fallback === 'function') {
-            return fallback as Icons.LucideIcon;
-        }
-    }
-
-    return Icons.Circle as Icons.LucideIcon;
+    return null;
 }

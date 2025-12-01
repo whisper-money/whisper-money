@@ -153,14 +153,15 @@ export function CategoryCombobox({
     );
 }
 
-const CategoryIcon = memo(function CategoryIcon({ category }: { category: Category }) {
+export const CategoryIcon = memo(function CategoryIcon({ category, size = 5 }: { category: Category, size?: number }) {
     const colorClasses = getCategoryColorClasses(category.color);
     const iconName = category.icon;
 
     return (
         <div
             className={cn(
-                'flex h-5 w-5 items-center justify-center rounded-full',
+                'flex items-center justify-center rounded-full',
+                `h-${size} w-${size}`,
                 colorClasses.bg,
             )}
         >
