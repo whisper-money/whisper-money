@@ -13,7 +13,7 @@ export enum DateFormat {
 
 export interface ColumnMapping {
     transaction_date: string | null;
-    description: string | null;
+    description: string | string[] | null;
     amount: string | null;
     balance: string | null;
 }
