@@ -188,7 +188,16 @@ export function evaluateRulesForNewTransaction(
     banks: Bank[],
 ): RuleEvaluationResult | null {
     if (!rules || !categories || !accounts || !banks) {
-        consoleDebug('[Rule Engine] Missing required data for rule evaluation');
+        consoleDebug('[Rule Engine] Missing required data for rule evaluation', {
+            hasRules: !!rules,
+            rulesLength: rules?.length,
+            hasCategories: !!categories,
+            categoriesLength: categories?.length,
+            hasAccounts: !!accounts,
+            accountsLength: accounts?.length,
+            hasBanks: !!banks,
+            banksLength: banks?.length,
+        });
         return null;
     }
 

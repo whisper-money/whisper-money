@@ -35,22 +35,33 @@ class AccountBalanceSyncController extends Controller
     {
         $data = $request->validated();
 
-        $balance = new AccountBalance([
-            'account_id' => $data['account_id'],
-            'balance_date' => $data['balance_date'],
-            'balance' => $data['balance'],
-        ]);
+        $existing = AccountBalance::where('account_id', $data['account_id'])
+            ->where('balance_date', $data['balance_date'])
+            ->first();
 
-        if (isset($data['id'])) {
-            $balance->id = $data['id'];
-            $balance->exists = false;
+        if ($existing) {
+            $existing->update(['balance' => $data['balance']]);
+            $balance = $existing;
+            $wasRecentlyCreated = false;
+        } else {
+            $balance = new AccountBalance([
+                'account_id' => $data['account_id'],
+                'balance_date' => $data['balance_date'],
+                'balance' => $data['balance'],
+            ]);
+
+            if (isset($data['id'])) {
+                $balance->id = $data['id'];
+                $balance->exists = false;
+            }
+
+            $balance->save();
+            $wasRecentlyCreated = true;
         }
 
-        $balance->save();
-
         return response()->json([
-            'data' => $balance,
-        ], 201);
+            'data' => $balance->fresh(),
+        ], $wasRecentlyCreated ? 201 : 200);
     }
 
     public function update(StoreAccountBalanceRequest $request, AccountBalance $accountBalance): JsonResponse

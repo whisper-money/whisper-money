@@ -22,6 +22,8 @@ import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
+import { bankSyncService } from '@/services/bank-sync';
+import { categorySyncService } from '@/services/category-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account } from '@/types/account';
 import {
@@ -331,6 +333,10 @@ export function ImportTransactionsDrawer({
         const key = keyString ? await importKey(keyString) : null;
         const rules = key ? await automationRuleSyncService.getAll() : [];
 
+        const freshAccounts = await accountSyncService.getAll();
+        const freshBanks = await bankSyncService.getAll();
+        const freshCategories = await categorySyncService.getAll();
+
         const BATCH_SIZE = 20;
         let processedCount = 0;
 
@@ -359,9 +365,9 @@ export function ImportTransactionsDrawer({
                                 account_id: selectedAccount.id,
                             },
                             rules,
-                            categories,
-                            accounts,
-                            banks,
+                            freshCategories,
+                            freshAccounts,
+                            freshBanks,
                         );
 
                         if (ruleMatch) {
