@@ -188,3 +188,36 @@ test('default categories are created when user registers', function () {
     $categoryNames = $user->categories->pluck('name')->toArray();
     expect($categoryNames)->toContain('Food', 'Transportation', 'Salary', 'Insurance');
 });
+
+test('default categories are not created twice for the same user', function () {
+    $user = User::factory()->create();
+
+    $service = new \App\Actions\CreateDefaultCategories;
+    $service->handle($user);
+
+    expect($user->categories()->count())->toBe(63);
+
+    $service->handle($user);
+
+    expect($user->categories()->count())->toBe(63);
+});
+
+test('category names are unique per user', function () {
+    $user = User::factory()->create();
+
+    $category = $user->categories()->create([
+        'name' => 'Test Category',
+        'icon' => 'Tag',
+        'color' => 'red',
+    ]);
+
+    expect($category)->toBeInstanceOf(\App\Models\Category::class);
+
+    $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+
+    $user->categories()->create([
+        'name' => 'Test Category',
+        'icon' => 'Tag',
+        'color' => 'blue',
+    ]);
+});
