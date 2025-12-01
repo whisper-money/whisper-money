@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountBalanceController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
@@ -65,12 +66,20 @@ Route::middleware(['auth'])->group(function () {
     Route::post('api/sync/account-balances', [AccountBalanceSyncController::class, 'store']);
     Route::patch('api/sync/account-balances/{accountBalance}', [AccountBalanceSyncController::class, 'update']);
     Route::put('api/accounts/{account}/balance/current', [AccountBalanceController::class, 'updateCurrent'])->name('accounts.balance.update-current');
+
+    // Dashboard Analytics
+    Route::prefix('api/dashboard')->group(function () {
+        Route::get('net-worth', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'netWorth']);
+        Route::get('monthly-spending', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'monthlySpending']);
+        Route::get('cash-flow', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'cashFlow']);
+        Route::get('net-worth-evolution', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'netWorthEvolution']);
+        Route::get('account-balances', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'accountBalances']);
+        Route::get('top-categories', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'topCategories']);
+    });
 });
 
 Route::middleware(['auth', 'verified', 'redirect.encryption'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
