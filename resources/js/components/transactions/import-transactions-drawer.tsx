@@ -200,9 +200,14 @@ export function ImportTransactionsDrawer({
                         const values = Object.values(mapping).filter(
                             (v) => v !== null,
                         );
-                        return values.every((value) =>
-                            headers.includes(value as string),
-                        );
+                        return values.every((value) => {
+                            if (Array.isArray(value)) {
+                                return value.every((v) =>
+                                    headers.includes(v as string),
+                                );
+                            }
+                            return headers.includes(value as string);
+                        });
                     };
 
                     if (isValidMapping(savedConfig.columnMapping)) {
@@ -230,7 +235,10 @@ export function ImportTransactionsDrawer({
         }
     };
 
-    const handleMappingChange = (field: keyof ColumnMapping, value: string) => {
+    const handleMappingChange = (
+        field: keyof ColumnMapping,
+        value: string | string[],
+    ) => {
         setState((prev) => ({
             ...prev,
             columnMapping: {
@@ -397,6 +405,18 @@ export function ImportTransactionsDrawer({
                 if (result.status === 'fulfilled') {
                     createdTransactions.push(result.value.transaction);
                 } else {
+                    const errorMessage =
+                        result.reason instanceof Error
+                            ? result.reason.message
+                            : 'Unknown error';
+                    
+                    console.error(`Transaction ${rowNumber} failed:`, {
+                        transaction,
+                        error: result.reason,
+                        errorMessage,
+                        stack: result.reason instanceof Error ? result.reason.stack : undefined,
+                    });
+                    
                     errors.push({
                         rowNumber,
                         transaction: {
@@ -404,10 +424,7 @@ export function ImportTransactionsDrawer({
                             description: transaction.description,
                             amount: transaction.amount.toString(),
                         },
-                        error:
-                            result.reason instanceof Error
-                                ? result.reason.message
-                                : 'Unknown error',
+                        error: errorMessage,
                     });
                 }
             });

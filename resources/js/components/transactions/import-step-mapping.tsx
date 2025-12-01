@@ -23,7 +23,7 @@ interface ImportStepMappingProps {
     dateFormatDetected: boolean;
     parsedData: ParsedRow[];
     currencyCode: string;
-    onMappingChange: (field: keyof ColumnMapping, value: string) => void;
+    onMappingChange: (field: keyof ColumnMapping, value: string | string[]) => void;
     onDateFormatChange: (format: DateFormat) => void;
     onNext: () => void;
     onBack: () => void;
@@ -41,10 +41,60 @@ export function ImportStepMapping({
     onNext,
     onBack,
 }: ImportStepMappingProps) {
+    const descriptionColumns = Array.isArray(columnMapping.description)
+        ? columnMapping.description
+        : columnMapping.description
+          ? [columnMapping.description]
+          : [];
+
     const isValid =
         columnMapping.transaction_date &&
         columnMapping.description &&
         columnMapping.amount;
+
+    const getDescriptionFromRow = (row: ParsedRow): string => {
+        if (!columnMapping.description) {
+            return '';
+        }
+
+        const columns = Array.isArray(columnMapping.description)
+            ? columnMapping.description
+            : [columnMapping.description];
+
+        return columns
+            .map((col) => String(row[col] || '').trim())
+            .filter((val) => val.length > 0)
+            .join('\n');
+    };
+
+    const handleDescriptionChange = (index: number, value: string) => {
+        const newColumns = [...descriptionColumns];
+        
+        if (value === '__none__') {
+            newColumns.splice(index, 1);
+        } else {
+            newColumns[index] = value;
+        }
+
+        if (newColumns.length === 0) {
+            onMappingChange('description', '');
+        } else if (newColumns.length === 1) {
+            onMappingChange('description', newColumns[0]);
+        } else {
+            onMappingChange('description', newColumns);
+        }
+    };
+
+    const addDescriptionColumn = () => {
+        if (descriptionColumns.length < 3) {
+            const newColumns = [...descriptionColumns, ''];
+            if (newColumns.length === 1) {
+                onMappingChange('description', '');
+            } else {
+                onMappingChange('description', newColumns);
+            }
+        }
+    };
 
     const previewTransactions = parsedData.slice(0, 3).map((row) => {
         const date = columnMapping.transaction_date
@@ -53,9 +103,7 @@ export function ImportStepMapping({
                   dateFormat,
               )
             : null;
-        const description = columnMapping.description
-            ? String(row[columnMapping.description] || '')
-            : '';
+        const description = getDescriptionFromRow(row);
         const amount = columnMapping.amount
             ? parseAmount(row[columnMapping.amount] as string | number)
             : null;
@@ -112,31 +160,89 @@ export function ImportStepMapping({
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="description-column">
+                    <Label htmlFor="description-column-0">
                         Description <span className="text-destructive">*</span>
                     </Label>
-                    <Select
-                        value={columnMapping.description || ''}
-                        onValueChange={(value) =>
-                            onMappingChange('description', value)
-                        }
-                    >
-                        <SelectTrigger id="description-column">
-                            <SelectValue placeholder="Select description column" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {columnOptions.map((option, index) => (
-                                <SelectItem
-                                    key={`desc-${option.value}-${index}`}
-                                    value={option.value}
+                    {descriptionColumns.length === 0 ? (
+                        <Select
+                            value=""
+                            onValueChange={(value) => handleDescriptionChange(0, value)}
+                        >
+                            <SelectTrigger id="description-column-0">
+                                <SelectValue placeholder="Select description column" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {columnOptions.map((option, index) => (
+                                    <SelectItem
+                                        key={`desc-0-${option.value}-${index}`}
+                                        value={option.value}
+                                    >
+                                        <div className="flex flex-col">
+                                            <span>{option.label}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                        <div className="space-y-3">
+                            {descriptionColumns.map((column, columnIndex) => (
+                                <div
+                                    key={columnIndex}
+                                    className={columnIndex > 0 ? 'pl-4' : ''}
                                 >
-                                    <div className="flex flex-col">
-                                        <span>{option.label}</span>
-                                    </div>
-                                </SelectItem>
+                                    <Select
+                                        value={column || ''}
+                                        onValueChange={(value) =>
+                                            handleDescriptionChange(columnIndex, value)
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id={`description-column-${columnIndex}`}
+                                        >
+                                            <SelectValue
+                                                placeholder={
+                                                    columnIndex === 0
+                                                        ? 'Select description column'
+                                                        : 'Select additional column'
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {columnIndex > 0 && (
+                                                <SelectItem value="__none__">
+                                                    None (Remove)
+                                                </SelectItem>
+                                            )}
+                                            {columnOptions.map((option, index) => (
+                                                <SelectItem
+                                                    key={`desc-${columnIndex}-${option.value}-${index}`}
+                                                    value={option.value}
+                                                >
+                                                    <div className="flex flex-col">
+                                                        <span>{option.label}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             ))}
-                        </SelectContent>
-                    </Select>
+                            {descriptionColumns.length > 0 &&
+                                descriptionColumns.length < 3 &&
+                                descriptionColumns[descriptionColumns.length - 1] !== '' && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={addDescriptionColumn}
+                                        className="ml-4"
+                                    >
+                                        + Add another column
+                                    </Button>
+                                )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-2">
@@ -201,17 +307,17 @@ export function ImportStepMapping({
                             {previewTransactions.map((transaction, index) => (
                                 <div
                                     key={index}
-                                    className="flex items-center justify-between rounded-md bg-background p-3 text-sm"
+                                    className="flex items-start justify-between rounded-md bg-background p-3 text-sm gap-3"
                                 >
-                                    <div className="flex flex-1 items-center gap-3">
-                                        <span className="text-muted-foreground">
+                                    <div className="flex flex-1 items-start gap-3">
+                                        <span className="text-muted-foreground whitespace-nowrap">
                                             {transaction.date}
                                         </span>
-                                        <span className="flex-1 truncate">
+                                        <span className="flex-1 whitespace-pre-line">
                                             {transaction.description}
                                         </span>
                                     </div>
-                                    <span className="font-mono font-medium">
+                                    <span className="font-mono font-medium whitespace-nowrap">
                                         {transaction.amount}
                                     </span>
                                 </div>

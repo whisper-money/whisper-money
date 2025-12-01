@@ -436,6 +436,21 @@ export function parseAmount(amountStr: string | number): number | null {
     return amount;
 }
 
+function getDescriptionFromRow(row: ParsedRow, mapping: ColumnMapping): string {
+    if (!mapping.description) {
+        return '';
+    }
+
+    const columns = Array.isArray(mapping.description)
+        ? mapping.description
+        : [mapping.description];
+
+    return columns
+        .map((col) => String(row[col] || '').trim())
+        .filter((val) => val.length > 0)
+        .join('\n');
+}
+
 export function validateTransaction(
     row: ParsedRow,
     mapping: ColumnMapping,
@@ -455,8 +470,13 @@ export function validateTransaction(
         }
     }
 
-    if (!mapping.description || !row[mapping.description]) {
+    if (!mapping.description) {
         errors.push('Missing description');
+    } else {
+        const description = getDescriptionFromRow(row, mapping);
+        if (!description) {
+            errors.push('Missing description');
+        }
     }
 
     if (
@@ -497,7 +517,7 @@ export function convertRowsToTransactions(
             dateFormat,
         );
         const amount = parseAmount(row[mapping.amount!] as string | number);
-        const description = String(row[mapping.description!] || '').trim();
+        const description = getDescriptionFromRow(row, mapping);
 
         if (!date || amount === null || !description) {
             continue;
