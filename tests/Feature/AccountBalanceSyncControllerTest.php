@@ -165,12 +165,12 @@ it('cannot update another user account balance', function () {
     $response->assertForbidden();
 });
 
-it('enforces unique constraint on account_id and balance_date', function () {
+it('updates existing balance when creating with duplicate account_id and balance_date', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();
-    $date = now()->toDateString();
+    $date = '2025-01-15';
 
-    AccountBalance::factory()->for($account)->create([
+    $initialBalance = AccountBalance::factory()->for($account)->create([
         'balance_date' => $date,
         'balance' => 100000,
     ]);
@@ -178,10 +178,16 @@ it('enforces unique constraint on account_id and balance_date', function () {
     $balanceData = [
         'account_id' => $account->id,
         'balance_date' => $date,
-        'balance' => 200000,
+        'balance' => 250000,
     ];
 
     $response = $this->actingAs($user)->postJson('/api/sync/account-balances', $balanceData);
 
-    $response->assertStatus(500);
+    $response->assertOk()
+        ->assertJsonPath('data.id', $initialBalance->id)
+        ->assertJsonPath('data.balance', 250000);
+
+    expect(AccountBalance::where('account_id', $account->id)
+        ->where('balance_date', $date)
+        ->count())->toBe(1);
 });

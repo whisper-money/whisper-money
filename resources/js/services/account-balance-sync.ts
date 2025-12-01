@@ -38,45 +38,27 @@ class AccountBalanceSyncService {
     async create(
         data: Omit<AccountBalance, 'id' | 'created_at' | 'updated_at'>,
     ): Promise<AccountBalance> {
-        return await this.syncManager.create<
-            AccountBalance,
-            Omit<AccountBalance, 'id' | 'created_at' | 'updated_at'> & {
-                id?: number;
-                created_at?: string;
-                updated_at?: string;
-            }
-        >(data);
+        return await this.syncManager.createLocal<AccountBalance>(data);
     }
 
     async createMany(
         balances: Omit<AccountBalance, 'id' | 'created_at' | 'updated_at'>[],
     ): Promise<AccountBalance[]> {
         try {
-            const timestamp = new Date().toISOString();
             const created: AccountBalance[] = [];
 
             for (const data of balances) {
-                const record = {
-                    ...data,
-                    id: uuidv7(),
-                    created_at: timestamp,
-                    updated_at: timestamp,
-                } as AccountBalance;
-
-                await db.account_balances.put(record);
-                await db.pending_changes.add({
-                    store: 'account_balances',
-                    operation: 'create',
-                    data: record,
-                    timestamp,
-                });
-
-                created.push(record);
+                const result = await this.updateOrCreate(
+                    data.account_id,
+                    data.balance_date,
+                    data.balance,
+                );
+                created.push(result);
             }
 
             return created;
         } catch (error) {
-            console.error('Failed to create balances in IndexedDB:', error);
+            console.error('Failed to create balances:', error);
             throw new Error(
                 'Failed to save balances locally. Please refresh the page and try again.',
             );
@@ -103,8 +85,22 @@ class AccountBalanceSyncService {
                 .first();
 
             if (existing) {
-                await this.update(existing.id, { balance });
-                return (await this.getById(existing.id))!;
+                const timestamp = new Date().toISOString();
+                const updated = {
+                    ...existing,
+                    balance,
+                    updated_at: timestamp,
+                };
+
+                await db.account_balances.put(updated);
+                await db.pending_changes.add({
+                    store: 'account_balances',
+                    operation: 'update',
+                    data: { id: existing.id, balance },
+                    timestamp,
+                });
+
+                return updated;
             } else {
                 return await this.create({
                     account_id: accountId,
