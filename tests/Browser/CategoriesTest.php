@@ -44,7 +44,7 @@ it('can open create category dialog', function () {
 
     $page->assertSee('Categories settings')
         ->click('Create Category')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->assertSee('Add a new category to organize your transactions')
         ->assertNoJavascriptErrors();
 });
@@ -58,7 +58,7 @@ it('can create a new category', function () {
 
     $page->assertSee('Categories settings')
         ->click('Create Category')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('name', 'Entertainment')
         ->click('Select an icon')
         ->wait(0.3)
@@ -127,10 +127,10 @@ it('can edit an existing category via context menu', function () {
     $page = visit('/settings/categories');
 
     $page->assertSee('Old Category')
-        ->click('button[aria-label="Open menu"]')
-        ->wait(0.3)
+        ->rightClick('Old Category')
+        ->wait(0.5)
         ->click('Edit')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->assertSee('Edit Category')
         ->fill('name', 'Updated Category')
         ->click('Save')
@@ -153,12 +153,13 @@ it('shows transfer type description when transfer type is selected in create dia
 
     $page->assertSee('Categories settings')
         ->click('Create Category')
-        ->wait(0.5)
+        ->wait(1)
         ->assertSee('Add a new category to organize your transactions')
-        ->click('Select a type')
-        ->wait(0.3)
-        ->click('Transfer')
-        ->wait(0.3)
+        ->assertSee('Select a type')
+        ->click('//button[contains(., "Select a type")]')
+        ->wait(0.5)
+        ->click('//div[@role="option"][contains(., "Transfer")]')
+        ->wait(0.5)
         ->assertSee('Transactions in this category will not be counted in top expenses or income')
         ->assertSee('Transfer categories are mainly used for transactions between accounts')
         ->assertNoJavascriptErrors();
@@ -179,15 +180,15 @@ it('shows transfer type description when transfer type is selected in edit dialo
     $page = visit('/settings/categories');
 
     $page->assertSee('Test Category')
-        ->click('//button[@aria-label="Open menu"][1]')
+        ->rightClick('Test Category')
         ->wait(0.5)
         ->click('Edit')
-        ->wait(0.5)
+        ->wait(1)
         ->assertSee('Edit Category')
-        ->click('Select a type')
-        ->wait(0.3)
-        ->click('Transfer')
-        ->wait(0.3)
+        ->click('//button[contains(., "Expense")]')
+        ->wait(0.5)
+        ->click('//div[@role="option"][contains(., "Transfer")]')
+        ->wait(0.5)
         ->assertSee('Transactions in this category will not be counted in top expenses or income')
         ->assertSee('Transfer categories are mainly used for transactions between accounts')
         ->assertNoJavascriptErrors();
