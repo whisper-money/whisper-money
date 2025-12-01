@@ -21,6 +21,7 @@ import { categorySyncService } from '@/services/category-sync';
 import {
     CATEGORY_COLORS,
     CATEGORY_ICONS,
+    CATEGORY_TYPES,
     getCategoryColorClasses,
     type Category,
 } from '@/types/category';
@@ -146,6 +147,32 @@ export function EditCategoryDialog({
                                 {errors.color && (
                                     <p className="text-sm text-red-500">
                                         {errors.color}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="type">Type</Label>
+                                <Select
+                                    name="type"
+                                    defaultValue={category.type}
+                                    required
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {CATEGORY_TYPES.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {type.charAt(0).toUpperCase() +
+                                                    type.slice(1)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.type && (
+                                    <p className="text-sm text-red-500">
+                                        {errors.type}
                                     </p>
                                 )}
                             </div>
