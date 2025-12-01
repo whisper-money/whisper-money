@@ -231,3 +231,84 @@ it('can navigate back through import steps', function () {
         ->assertSee('Select the account to import transactions into')
         ->assertNoJavascriptErrors();
 });
+
+it('applies automation rules when importing transactions', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+
+    $groceriesCategory = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Groceries',
+    ]);
+
+    $bank = Bank::factory()->create(['name' => 'My Bank']);
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'name' => 'My Checking',
+        'name_iv' => str_repeat('b', 16),
+        'currency_code' => 'USD',
+    ]);
+
+    \App\Models\AutomationRule::factory()->create([
+        'user_id' => $user->id,
+        'title' => 'Auto Categorize Groceries',
+        'priority' => 1,
+        'rules_json' => [
+            'in' => [
+                'walmart',
+                ['var' => 'description'],
+            ],
+        ],
+        'action_category_id' => $groceriesCategory->id,
+        'action_note' => null,
+        'action_note_iv' => null,
+    ]);
+
+    actingAs($user);
+
+    $page = visit('/transactions');
+
+    $testFile = __DIR__.'/assets/test-transactions.csv';
+
+    $page->assertSee('Transactions')
+        ->click('button[aria-label="More actions"]')
+        ->wait(1)
+        ->press('ArrowDown')
+        ->wait(0.2)
+        ->press('Enter')
+        ->wait(1)
+        ->click('label')
+        ->wait(0.5)
+        ->click('Next')
+        ->waitFor('Drop your file here')
+        ->attach('input[type="file"]', $testFile)
+        ->wait(1)
+        ->click('Next')
+        ->wait(1)
+        ->click('#date-column')
+        ->wait(0.3)
+        ->click('Date')
+        ->click('#description-column')
+        ->wait(0.3)
+        ->click('Description')
+        ->click('#amount-column')
+        ->wait(0.3)
+        ->click('Amount')
+        ->wait(0.5)
+        ->click('Preview Transactions')
+        ->wait(2)
+        ->click('Import')
+        ->wait(3)
+        ->assertSee('imported successfully');
+
+    $page->wait(2);
+
+    expect(\App\Models\Transaction::where('user_id', $user->id)->count())->toBeGreaterThan(0);
+
+    $walmartTransaction = \App\Models\Transaction::where('user_id', $user->id)
+        ->whereRaw('LOWER(description) LIKE ?', ['%walmart%'])
+        ->first();
+
+    expect($walmartTransaction)->not->toBeNull();
+    expect($walmartTransaction->category_id)->toBe($groceriesCategory->id);
+});

@@ -30,6 +30,28 @@ interface SyncContextType {
 
 const SyncContext = createContext<SyncContextType | undefined>(undefined);
 
+function formatErrorMessage(error: string): string {
+    if (error.includes('status code 5')) {
+        return 'Server is temporarily unavailable. Please try again later.';
+    }
+    if (error.includes('status code 401') || error.includes('status code 403')) {
+        return 'Your session has expired. Please refresh the page.';
+    }
+    if (error.includes('status code 4')) {
+        return 'Something went wrong. Please try again.';
+    }
+    if (error.includes('Network Error') || error.includes('network')) {
+        return 'Unable to connect. Check your internet connection.';
+    }
+    if (error.includes('timeout') || error.includes('Timeout')) {
+        return 'The request took too long. Please try again.';
+    }
+    if (error === 'Sync already in progress') {
+        return 'Sync is already running. Please wait.';
+    }
+    return 'Sync failed. Please try again.';
+}
+
 const SYNC_INTERVAL = 5 * 60 * 1000;
 
 interface SyncProviderProps {
@@ -81,7 +103,7 @@ export function SyncProvider({
         }
 
         if (!isOnline) {
-            setError('Cannot sync while offline');
+            setError('Unable to sync while offline. Connect to the internet and try again.');
             return;
         }
 
@@ -117,7 +139,10 @@ export function SyncProvider({
             ];
 
             if (allErrors.length > 0) {
-                setError(allErrors.join(', '));
+                const uniqueFormattedErrors = [
+                    ...new Set(allErrors.map(formatErrorMessage)),
+                ];
+                setError(uniqueFormattedErrors.join(' '));
                 setSyncStatus('error');
             } else {
                 setSyncStatus('success');
@@ -129,7 +154,9 @@ export function SyncProvider({
             }
         } catch (err) {
             console.error('Sync failed:', err);
-            setError(err instanceof Error ? err.message : 'Unknown sync error');
+            const errorMessage =
+                err instanceof Error ? err.message : 'Unknown sync error';
+            setError(formatErrorMessage(errorMessage));
             setSyncStatus('error');
 
             setTimeout(() => {
