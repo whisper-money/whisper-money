@@ -44,7 +44,7 @@ class ResetUserCategories extends Command
         $categoriesCount = $user->categories()->count();
 
         if ($categoriesCount > 0) {
-            $user->categories()->delete();
+            $user->categories()->forceDelete();
             $this->info("Deleted {$categoriesCount} existing categories.");
         } else {
             $this->info('No existing categories found.');

@@ -19,10 +19,10 @@ class PeriodComparator
         if ($this->isFullMonthRange()) {
             $months = $this->from->diffInMonths($this->to->copy()->addDay());
 
-            return new self(
-                $this->from->copy()->subMonths($months),
-                $this->to->copy()->subMonths($months)->endOfMonth()
-            );
+            $previousFrom = $this->from->copy()->subMonths($months);
+            $previousTo = $previousFrom->copy()->endOfMonth();
+
+            return new self($previousFrom, $previousTo);
         }
 
         return new self(
