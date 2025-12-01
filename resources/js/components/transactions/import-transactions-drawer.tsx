@@ -6,6 +6,7 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer';
+import { Progress } from '@/components/ui/progress';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { importKey } from '@/lib/crypto';
 import {
@@ -32,7 +33,6 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
-import { Progress } from '@/components/ui/progress';
 import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -44,9 +44,6 @@ import { ImportStepUpload } from './import-step-upload';
 interface ImportTransactionsDrawerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    categories: import('@/types/category').Category[];
-    accounts: import('@/types/account').Account[];
-    banks: import('@/types/account').Bank[];
 }
 
 interface ImportError {
@@ -62,9 +59,6 @@ interface ImportError {
 export function ImportTransactionsDrawer({
     open,
     onOpenChange,
-    categories,
-    accounts,
-    banks,
 }: ImportTransactionsDrawerProps) {
     const { isKeySet } = useEncryptionKey();
     const [isImporting, setIsImporting] = useState(false);
@@ -400,7 +394,11 @@ export function ImportTransactionsDrawer({
                     const createdTransaction =
                         await transactionSyncService.create(transactionData);
 
-                    return { success: true, transaction: createdTransaction, rowNumber };
+                    return {
+                        success: true,
+                        transaction: createdTransaction,
+                        rowNumber,
+                    };
                 }),
             );
 
@@ -415,14 +413,17 @@ export function ImportTransactionsDrawer({
                         result.reason instanceof Error
                             ? result.reason.message
                             : 'Unknown error';
-                    
+
                     console.error(`Transaction ${rowNumber} failed:`, {
                         transaction,
                         error: result.reason,
                         errorMessage,
-                        stack: result.reason instanceof Error ? result.reason.stack : undefined,
+                        stack:
+                            result.reason instanceof Error
+                                ? result.reason.stack
+                                : undefined,
                     });
-                    
+
                     errors.push({
                         rowNumber,
                         transaction: {
@@ -441,20 +442,26 @@ export function ImportTransactionsDrawer({
 
         const balancesToImport = new Map<string, number>();
         for (const transaction of newTransactions) {
-            if (transaction.balance !== null && transaction.balance !== undefined) {
-                balancesToImport.set(transaction.transaction_date, transaction.balance);
+            if (
+                transaction.balance !== null &&
+                transaction.balance !== undefined
+            ) {
+                balancesToImport.set(
+                    transaction.transaction_date,
+                    transaction.balance,
+                );
             }
         }
 
         if (balancesToImport.size > 0) {
             try {
-                const balanceRecords = Array.from(balancesToImport.entries()).map(
-                    ([date, balance]) => ({
-                        account_id: selectedAccount.id,
-                        balance_date: date,
-                        balance,
-                    }),
-                );
+                const balanceRecords = Array.from(
+                    balancesToImport.entries(),
+                ).map(([date, balance]) => ({
+                    account_id: selectedAccount.id,
+                    balance_date: date,
+                    balance,
+                }));
 
                 await accountBalanceSyncService.createMany(balanceRecords);
             } catch (err) {
@@ -495,7 +502,10 @@ export function ImportTransactionsDrawer({
         }
 
         transactionSyncService.sync().catch((syncError) => {
-            console.error('Failed to sync transactions with backend:', syncError);
+            console.error(
+                'Failed to sync transactions with backend:',
+                syncError,
+            );
         });
 
         accountBalanceSyncService.sync().catch((syncError) => {
@@ -536,7 +546,8 @@ export function ImportTransactionsDrawer({
                 if (isImporting) {
                     return {
                         title: 'Importing Transactions',
-                        description: 'Please wait while we import your transactions',
+                        description:
+                            'Please wait while we import your transactions',
                     };
                 }
 
@@ -597,14 +608,16 @@ export function ImportTransactionsDrawer({
     };
 
     const renderImportProgress = () => {
-        const percentage = importTotal > 0 ? (importProgress / importTotal) * 100 : 0;
+        const percentage =
+            importTotal > 0 ? (importProgress / importTotal) * 100 : 0;
 
         return (
             <div className="flex flex-col gap-6">
                 <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
-                            {importProgress} of {importTotal} transactions imported
+                            {importProgress} of {importTotal} transactions
+                            imported
                         </span>
                         <span>{Math.round(percentage)}%</span>
                     </div>
@@ -648,13 +661,13 @@ export function ImportTransactionsDrawer({
                                             <td className="px-4 py-2">
                                                 {error.transaction.date}
                                             </td>
-                                            <td className="px-4 py-2 max-w-[200px] truncate">
+                                            <td className="max-w-[200px] truncate px-4 py-2">
                                                 {error.transaction.description}
                                             </td>
                                             <td className="px-4 py-2 font-mono">
                                                 {error.transaction.amount}
                                             </td>
-                                            <td className="px-4 py-2 text-destructive max-w-[200px] truncate">
+                                            <td className="max-w-[200px] truncate px-4 py-2 text-destructive">
                                                 {error.error}
                                             </td>
                                         </tr>

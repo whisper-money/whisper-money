@@ -31,7 +31,7 @@ export function StatCard({
                     <CardTitle className="text-sm font-medium">
                         {title}
                     </CardTitle>
-                    {Icon && <Icon className="text-muted-foreground size-4" />}
+                    {Icon && <Icon className="size-4 text-muted-foreground" />}
                 </CardHeader>
                 <CardContent>
                     <div className="h-8 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
@@ -45,12 +45,12 @@ export function StatCard({
         <Card className={className}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                {Icon && <Icon className="text-muted-foreground size-4" />}
+                {Icon && <Icon className="size-4 text-muted-foreground" />}
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{value}</div>
                 {(description || trend) && (
-                    <div className="text-muted-foreground flex items-center text-xs">
+                    <div className="flex items-center text-xs text-muted-foreground">
                         {trend && (
                             <span
                                 className={cn(
@@ -77,5 +77,3 @@ export function StatCard({
         </Card>
     );
 }
-
-

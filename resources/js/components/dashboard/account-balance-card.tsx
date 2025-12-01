@@ -48,7 +48,7 @@ export function AccountBalanceCard({
                         iv={account.name_iv}
                     />
                 </CardTitle>
-                <div className="text-muted-foreground text-xs font-medium">
+                <div className="text-xs font-medium text-muted-foreground">
                     {account.type}
                 </div>
             </CardHeader>
@@ -58,7 +58,7 @@ export function AccountBalanceCard({
                         <div className="text-2xl font-bold">
                             {formatter.format(account.currentBalance / 100)}
                         </div>
-                        <p className="text-muted-foreground flex items-center text-xs">
+                        <p className="flex items-center text-xs text-muted-foreground">
                             <span
                                 className={
                                     isPositive

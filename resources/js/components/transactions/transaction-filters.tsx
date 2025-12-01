@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
-import { Check, ChevronsUpDown, CircleHelp, X } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
 import { EncryptedText } from '@/components/encrypted-text';
@@ -119,7 +119,10 @@ export function TransactionFilters({
                             )}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-96 max-h-[600px] overflow-y-auto" align="start">
+                    <PopoverContent
+                        className="max-h-[600px] w-96 overflow-y-auto"
+                        align="start"
+                    >
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <h4 className="font-medium">Filters</h4>
@@ -133,9 +136,9 @@ export function TransactionFilters({
                                         value={
                                             filters.dateFrom
                                                 ? format(
-                                                    filters.dateFrom,
-                                                    'yyyy-MM-dd',
-                                                )
+                                                      filters.dateFrom,
+                                                      'yyyy-MM-dd',
+                                                  )
                                                 : ''
                                         }
                                         onChange={(e) =>
@@ -153,9 +156,9 @@ export function TransactionFilters({
                                         value={
                                             filters.dateTo
                                                 ? format(
-                                                    filters.dateTo,
-                                                    'yyyy-MM-dd',
-                                                )
+                                                      filters.dateTo,
+                                                      'yyyy-MM-dd',
+                                                  )
                                                 : ''
                                         }
                                         onChange={(e) =>
@@ -218,9 +221,13 @@ export function TransactionFilters({
                                                 role="combobox"
                                                 className="w-full justify-between"
                                             >
-                                                {filters.categoryIds.length > 0 ? (
+                                                {filters.categoryIds.length >
+                                                0 ? (
                                                     <span className="truncate">
-                                                        {filters.categoryIds.length}{' '}
+                                                        {
+                                                            filters.categoryIds
+                                                                .length
+                                                        }{' '}
                                                         selected
                                                     </span>
                                                 ) : (
@@ -231,7 +238,10 @@ export function TransactionFilters({
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-full p-0" align="start">
+                                        <PopoverContent
+                                            className="w-full p-0"
+                                            align="start"
+                                        >
                                             <Command>
                                                 <CommandInput placeholder="Search categories..." />
                                                 <CommandList>
@@ -247,7 +257,7 @@ export function TransactionFilters({
                                                     >
                                                         <div
                                                             className={cn(
-                                                                'mr-1 flex p-1 size-4 items-center justify-center rounded-sm border border-primary',
+                                                                'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
                                                                 isUncategorizedSelected
                                                                     ? 'bg-primary/10 text-primary-foreground'
                                                                     : 'opacity-50 [&_svg]:invisible',
@@ -262,50 +272,63 @@ export function TransactionFilters({
                                                             Uncategorized
                                                         </div>
                                                     </CommandItem>
-                                                    {categories.map((category) => {
-                                                        const isSelected =
-                                                            filters.categoryIds.includes(
-                                                                category.id,
-                                                            );
-                                                        const colorClasses =
-                                                            getCategoryColorClasses(
-                                                                category.color,
-                                                            );
-                                                        return (
-                                                            <CommandItem
-                                                                key={category.id}
-                                                                onSelect={() =>
-                                                                    handleCategoryToggle(
-                                                                        category.id,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <div
-                                                                    className={cn(
-                                                                        'mr-1 flex p-1 size-4 items-center justify-center rounded-sm border border-primary',
-                                                                        isSelected
-                                                                            ? 'bg-primary/10 text-primary-foreground'
-                                                                            : 'opacity-50 [&_svg]:invisible',
-                                                                    )}
+                                                    {categories.map(
+                                                        (category) => {
+                                                            const isSelected =
+                                                                filters.categoryIds.includes(
+                                                                    category.id,
+                                                                );
+                                                            const colorClasses =
+                                                                getCategoryColorClasses(
+                                                                    category.color,
+                                                                );
+                                                            return (
+                                                                <CommandItem
+                                                                    key={
+                                                                        category.id
+                                                                    }
+                                                                    onSelect={() =>
+                                                                        handleCategoryToggle(
+                                                                            category.id,
+                                                                        )
+                                                                    }
                                                                 >
-                                                                    <Check className="size-3" />
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
                                                                     <div
                                                                         className={cn(
-                                                                            'flex h-5 w-5 items-center justify-center rounded-full',
-                                                                            colorClasses.bg,
+                                                                            'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
+                                                                            isSelected
+                                                                                ? 'bg-primary/10 text-primary-foreground'
+                                                                                : 'opacity-50 [&_svg]:invisible',
                                                                         )}
                                                                     >
-                                                                        <CategoryIcon category={category} size={4} />
+                                                                        <Check className="size-3" />
                                                                     </div>
-                                                                    <span>
-                                                                        {category.name}
-                                                                    </span>
-                                                                </div>
-                                                            </CommandItem>
-                                                        );
-                                                    })}
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div
+                                                                            className={cn(
+                                                                                'flex h-5 w-5 items-center justify-center rounded-full',
+                                                                                colorClasses.bg,
+                                                                            )}
+                                                                        >
+                                                                            <CategoryIcon
+                                                                                category={
+                                                                                    category
+                                                                                }
+                                                                                size={
+                                                                                    4
+                                                                                }
+                                                                            />
+                                                                        </div>
+                                                                        <span>
+                                                                            {
+                                                                                category.name
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                </CommandItem>
+                                                            );
+                                                        },
+                                                    )}
                                                 </CommandList>
                                             </Command>
                                         </PopoverContent>
@@ -372,12 +395,3 @@ export function TransactionFilters({
 }
 
 const UNCATEGORIZED_CATEGORY_ID = -1;
-
-function getIconComponent(iconName?: string): Icons.LucideIcon | null {
-    if (!iconName) return null;
-    const icon = Icons[iconName as keyof typeof Icons] as Icons.LucideIcon | undefined;
-    if (icon && typeof icon === 'function') {
-        return icon;
-    }
-    return null;
-}

@@ -309,7 +309,10 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
             mapping.amount = originalHeader;
         }
 
-        if (!mapping.balance && balancePatterns.some((p) => header.includes(p))) {
+        if (
+            !mapping.balance &&
+            balancePatterns.some((p) => header.includes(p))
+        ) {
             mapping.balance = originalHeader;
         }
     }
@@ -527,7 +530,9 @@ export function convertRowsToTransactions(
 
         let balance: number | null = null;
         if (mapping.balance && row[mapping.balance]) {
-            const parsedBalance = parseAmount(row[mapping.balance] as string | number);
+            const parsedBalance = parseAmount(
+                row[mapping.balance] as string | number,
+            );
             if (parsedBalance !== null) {
                 balance = Math.round(parsedBalance * 100);
             }

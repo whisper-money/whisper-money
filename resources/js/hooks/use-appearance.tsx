@@ -70,7 +70,6 @@ export function useAppearance() {
             'appearance',
         ) as Appearance | null;
 
-         
         updateAppearance(savedAppearance || 'system');
 
         return () =>

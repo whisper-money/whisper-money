@@ -1,6 +1,6 @@
 import { Account } from '@/types/account';
 import { Category } from '@/types/category';
-import { endOfMonth, format, startOfMonth, subDays, subMonths } from 'date-fns';
+import { format, subDays, subMonths } from 'date-fns';
 import { useEffect, useState } from 'react';
 
 export interface DashboardData {
@@ -37,14 +37,15 @@ export interface DashboardData {
     isLoading: boolean;
 }
 
-export function useDashboardData(
-    categories: Category[],
-    accounts: Account[],
-): DashboardData {
+export function useDashboardData(): DashboardData {
     const [data, setData] = useState<Omit<DashboardData, 'isLoading'>>({
         netWorth: { current: 0, previous: 0, diff: 0 },
         monthlySpending: { current: 0, limit: null, previous: 0 },
-        cashFlow: { income: 0, expense: 0, previous: { income: 0, expense: 0 } },
+        cashFlow: {
+            income: 0,
+            expense: 0,
+            previous: { income: 0, expense: 0 },
+        },
         netWorthHistory: [],
         accounts: [],
         topCategories: [],
@@ -57,15 +58,21 @@ export function useDashboardData(
             try {
                 const now = new Date();
                 const to = format(now, 'yyyy-MM-dd');
-                
+
                 // Last 12 months for evolution charts
                 const from12Months = format(subMonths(now, 12), 'yyyy-MM-dd');
-                const params12Months = new URLSearchParams({ from: from12Months, to });
+                const params12Months = new URLSearchParams({
+                    from: from12Months,
+                    to,
+                });
                 const query12Months = `?${params12Months.toString()}`;
 
                 // Last 30 days for top blocks and categories
                 const from30Days = format(subDays(now, 30), 'yyyy-MM-dd');
-                const params30Days = new URLSearchParams({ from: from30Days, to });
+                const params30Days = new URLSearchParams({
+                    from: from30Days,
+                    to,
+                });
                 const query30Days = `?${params30Days.toString()}`;
 
                 const [
@@ -74,14 +81,26 @@ export function useDashboardData(
                     cashFlow,
                     netWorthEvolution,
                     accountBalances,
-                    topCategories
+                    topCategories,
                 ] = await Promise.all([
-                    fetch(`/api/dashboard/net-worth${query30Days}`).then(r => r.json()),
-                    fetch(`/api/dashboard/monthly-spending${query30Days}`).then(r => r.json()),
-                    fetch(`/api/dashboard/cash-flow${query30Days}`).then(r => r.json()),
-                    fetch(`/api/dashboard/net-worth-evolution${query12Months}`).then(r => r.json()),
-                    fetch(`/api/dashboard/account-balances${query12Months}`).then(r => r.json()),
-                    fetch(`/api/dashboard/top-categories${query30Days}`).then(r => r.json()),
+                    fetch(`/api/dashboard/net-worth${query30Days}`).then((r) =>
+                        r.json(),
+                    ),
+                    fetch(`/api/dashboard/monthly-spending${query30Days}`).then(
+                        (r) => r.json(),
+                    ),
+                    fetch(`/api/dashboard/cash-flow${query30Days}`).then((r) =>
+                        r.json(),
+                    ),
+                    fetch(
+                        `/api/dashboard/net-worth-evolution${query12Months}`,
+                    ).then((r) => r.json()),
+                    fetch(
+                        `/api/dashboard/account-balances${query12Months}`,
+                    ).then((r) => r.json()),
+                    fetch(`/api/dashboard/top-categories${query30Days}`).then(
+                        (r) => r.json(),
+                    ),
                 ]);
 
                 setData({
@@ -101,12 +120,19 @@ export function useDashboardData(
                         previous: cashFlow.previous,
                     },
                     netWorthHistory: netWorthEvolution,
-                    accounts: accountBalances.map((acc: any) => ({
-                        ...acc,
-                        currentBalance: acc.current_balance,
-                        previousBalance: acc.previous_balance,
-                        diff: acc.current_balance - acc.previous_balance,
-                    })),
+                    accounts: accountBalances.map(
+                        (acc: {
+                            id: string;
+                            name: string;
+                            current_balance: number;
+                            previous_balance: number;
+                        }) => ({
+                            ...acc,
+                            currentBalance: acc.current_balance,
+                            previousBalance: acc.previous_balance,
+                            diff: acc.current_balance - acc.previous_balance,
+                        }),
+                    ),
                     topCategories,
                 });
             } catch (error) {

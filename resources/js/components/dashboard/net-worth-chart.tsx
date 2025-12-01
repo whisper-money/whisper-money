@@ -65,7 +65,10 @@ export function NetWorthChart({ data, loading }: NetWorthChartProps) {
                                     />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                vertical={false}
+                            />
                             <XAxis
                                 dataKey="date"
                                 axisLine={false}
@@ -100,5 +103,3 @@ export function NetWorthChart({ data, loading }: NetWorthChartProps) {
         </Card>
     );
 }
-
-

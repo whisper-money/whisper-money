@@ -1,5 +1,5 @@
-import axios from 'axios';
 import type { UUID } from '@/types/uuid';
+import axios from 'axios';
 import { uuidv7 } from 'uuidv7';
 import { db } from './dexie-db';
 
@@ -21,8 +21,12 @@ export interface IndexedDBRecord {
 export interface SyncOptions {
     storeName: StoreName;
     endpoint: string;
-    transformFromServer?: (data: Record<string, unknown>) => Record<string, unknown>;
-    transformToServer?: (data: Record<string, unknown>) => Record<string, unknown>;
+    transformFromServer?: (
+        data: Record<string, unknown>,
+    ) => Record<string, unknown>;
+    transformToServer?: (
+        data: Record<string, unknown>,
+    ) => Record<string, unknown>;
 }
 
 export interface SyncResult {
@@ -114,7 +118,12 @@ export class SyncManager {
 
         const table = db[this.options.storeName];
         const localRecords = await table.toArray();
-        const localMap = new Map(localRecords.map((r) => [(r as IndexedDBRecord).id, r as IndexedDBRecord]));
+        const localMap = new Map(
+            localRecords.map((r) => [
+                (r as IndexedDBRecord).id,
+                r as IndexedDBRecord,
+            ]),
+        );
 
         const toInsert: Record<string, unknown>[] = [];
         const toUpdate: Record<string, unknown>[] = [];
@@ -268,4 +277,3 @@ export class SyncManager {
         return this.syncInProgress;
     }
 }
-

@@ -23,7 +23,7 @@ export function SpendingSummaryCard({
         if (!previous) return undefined;
         const diff = current - previous;
         const percentage = (diff / previous) * 100;
-        
+
         return {
             value: percentage,
             label: 'from previous period',

@@ -1,5 +1,5 @@
-import { usePage } from '@inertiajs/react';
 import type { SharedData } from '@/types';
+import { usePage } from '@inertiajs/react';
 
 export interface TrackEventPayload {
     step: string;
@@ -59,7 +59,11 @@ export async function trackEvent(
 export function useTrackEvent() {
     const { auth } = usePage<SharedData>().props;
 
-    return (eventUuid: string, payload: Omit<TrackEventPayload, 'user_id'>, options?: TrackEventOptions) => {
+    return (
+        eventUuid: string,
+        payload: Omit<TrackEventPayload, 'user_id'>,
+        options?: TrackEventOptions,
+    ) => {
         const finalPayload: TrackEventPayload = {
             ...payload,
             user_id: auth?.user?.id,

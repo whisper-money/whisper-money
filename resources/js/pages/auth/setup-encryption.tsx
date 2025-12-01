@@ -32,11 +32,16 @@ function isCryptoAvailable(): boolean {
     return !!(window.crypto && window.crypto.subtle);
 }
 
-function getInitialErrors(): { password?: string; confirmPassword?: string; general?: string } {
+function getInitialErrors(): {
+    password?: string;
+    confirmPassword?: string;
+    general?: string;
+} {
     if (typeof window === 'undefined') return {};
     if (!window.crypto || !window.crypto.subtle) {
         return {
-            general: 'Web Crypto API is not available. Please ensure you are accessing this page via HTTPS or localhost.',
+            general:
+                'Web Crypto API is not available. Please ensure you are accessing this page via HTTPS or localhost.',
         };
     }
     return {};

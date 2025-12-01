@@ -9,15 +9,7 @@ import { useDashboardData } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { dashboard } from '@/routes';
 import { BreadcrumbItem } from '@/types';
-import { Account, Bank } from '@/types/account';
-import { Category } from '@/types/category';
 import { Head } from '@inertiajs/react';
-
-interface Props {
-    categories: Category[];
-    accounts: Account[];
-    banks: Bank[];
-}
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -26,7 +18,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function Dashboard({ categories, accounts }: Props) {
+export default function Dashboard() {
     const {
         netWorth,
         monthlySpending,
@@ -35,7 +27,7 @@ export default function Dashboard({ categories, accounts }: Props) {
         accounts: accountMetrics,
         topCategories,
         isLoading,
-    } = useDashboardData(categories, accounts);
+    } = useDashboardData();
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>

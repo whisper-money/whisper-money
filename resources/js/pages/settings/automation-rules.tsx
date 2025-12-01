@@ -13,9 +13,9 @@ import {
     VisibilityState,
 } from '@tanstack/react-table';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
@@ -122,13 +122,9 @@ function AutomationRuleRow({ row }: { row: Row<AutomationRule> }) {
                         {row
                             .getVisibleCells()
                             .map((cell: Cell<AutomationRule, unknown>) => (
-                                <TableCell
-                                    key={cell.id}
-                                >
+                                <TableCell key={cell.id}>
                                     {flexRender(
-                                        cell.column
-                                            .columnDef
-                                            .cell,
+                                        cell.column.columnDef.cell,
                                         cell.getContext(),
                                     )}
                                 </TableCell>
@@ -353,9 +349,14 @@ export default function AutomationRules() {
                                 </TableHeader>
                                 <TableBody>
                                     {table.getRowModel().rows?.length ? (
-                                        table.getRowModel().rows.map((row) => (
-                                            <AutomationRuleRow key={row.id} row={row} />
-                                        ))
+                                        table
+                                            .getRowModel()
+                                            .rows.map((row) => (
+                                                <AutomationRuleRow
+                                                    key={row.id}
+                                                    row={row}
+                                                />
+                                            ))
                                     ) : (
                                         <TableRow>
                                             <TableCell

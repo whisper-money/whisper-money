@@ -13,8 +13,13 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
-import { Check, ChevronsUpDown, HelpCircle, type LucideIcon } from 'lucide-react';
 import * as Icons from 'lucide-react';
+import {
+    Check,
+    ChevronsUpDown,
+    HelpCircle,
+    type LucideIcon,
+} from 'lucide-react';
 import { memo, useState } from 'react';
 
 const iconCache = new Map<string, LucideIcon>();
@@ -24,7 +29,9 @@ function getIconComponent(iconName?: string): LucideIcon | null {
     if (iconCache.has(iconName)) {
         return iconCache.get(iconName)!;
     }
-    const icon = Icons[iconName as keyof typeof Icons] as LucideIcon | undefined;
+    const icon = Icons[iconName as keyof typeof Icons] as
+        | LucideIcon
+        | undefined;
     if (icon) {
         iconCache.set(iconName, icon);
     }
@@ -69,7 +76,7 @@ export function CategoryCombobox({
                     role="combobox"
                     aria-expanded={open}
                     className={cn(
-                        'max-w-full w-full justify-between !pl-2',
+                        'w-full max-w-full justify-between !pl-2',
                         triggerClassName,
                     )}
                     disabled={disabled}
@@ -77,7 +84,9 @@ export function CategoryCombobox({
                     {selectedCategory ? (
                         <div className="flex items-center gap-2 overflow-x-hidden">
                             <CategoryIcon category={selectedCategory} />
-                            <span className='truncate'>{selectedCategory.name}</span>
+                            <span className="truncate">
+                                {selectedCategory.name}
+                            </span>
                         </div>
                     ) : value === 'null' ? (
                         <div className="flex items-center gap-2">
@@ -134,7 +143,9 @@ export function CategoryCombobox({
                             >
                                 <div className="flex items-center gap-2">
                                     <CategoryIcon category={category} />
-                                    <span className='truncate'>{category.name}</span>
+                                    <span className="truncate">
+                                        {category.name}
+                                    </span>
                                 </div>
                                 <Check
                                     className={cn(
@@ -153,7 +164,13 @@ export function CategoryCombobox({
     );
 }
 
-export const CategoryIcon = memo(function CategoryIcon({ category, size = 5 }: { category: Category, size?: number }) {
+export const CategoryIcon = memo(function CategoryIcon({
+    category,
+    size = 5,
+}: {
+    category: Category;
+    size?: number;
+}) {
     const colorClasses = getCategoryColorClasses(category.color);
     const iconName = category.icon;
 
@@ -165,14 +182,22 @@ export const CategoryIcon = memo(function CategoryIcon({ category, size = 5 }: {
                 colorClasses.bg,
             )}
         >
-            <DynamicIcon name={iconName} className={cn('h-3 w-3', colorClasses.text)} />
+            <DynamicIcon
+                name={iconName}
+                className={cn('h-3 w-3', colorClasses.text)}
+            />
         </div>
     );
 });
 
-const DynamicIcon = memo(function DynamicIcon({ name, className }: { name?: string; className?: string }) {
+const DynamicIcon = memo(function DynamicIcon({
+    name,
+    className,
+}: {
+    name?: string;
+    className?: string;
+}) {
     const Icon = getIconComponent(name);
     if (!Icon) return null;
     return <Icon className={className} />;
 });
-

@@ -34,7 +34,10 @@ function formatErrorMessage(error: string): string {
     if (error.includes('status code 5')) {
         return 'Server is temporarily unavailable. Please try again later.';
     }
-    if (error.includes('status code 401') || error.includes('status code 403')) {
+    if (
+        error.includes('status code 401') ||
+        error.includes('status code 403')
+    ) {
         return 'Your session has expired. Please refresh the page.';
     }
     if (error.includes('status code 4')) {
@@ -103,7 +106,9 @@ export function SyncProvider({
         }
 
         if (!isOnline) {
-            setError('Unable to sync while offline. Connect to the internet and try again.');
+            setError(
+                'Unable to sync while offline. Connect to the internet and try again.',
+            );
             return;
         }
 
