@@ -176,8 +176,38 @@ test('top categories returns highest spending categories', function () {
     expect($data[1]['amount'])->toBe(3000);
 });
 
-test('net worth evolution returns monthly data points', function () {
-    Account::factory()->create(['user_id' => $this->user->id]);
+test('net worth evolution returns monthly data points with per-account balances', function () {
+    $account1 = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'name' => 'Checking Account',
+    ]);
+    $account2 = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Savings,
+        'name' => 'Savings Account',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account1->id,
+        'balance_date' => now()->subMonth()->endOfMonth(),
+        'balance' => 100000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account2->id,
+        'balance_date' => now()->subMonth()->endOfMonth(),
+        'balance' => 200000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account1->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 150000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account2->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 250000,
+    ]);
 
     $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
         'from' => now()->subMonths(2)->startOfMonth()->toDateString(),
@@ -187,10 +217,70 @@ test('net worth evolution returns monthly data points', function () {
     $response->assertOk();
     $data = $response->json();
 
-    // Debug output
-    // dump($data);
+    expect($data)->toHaveKeys(['data', 'accounts']);
+    expect($data['data'])->toHaveCount(3);
+    expect($data['data'][0])->toHaveKeys(['month', 'timestamp', $account1->id, $account2->id]);
+    expect($data['accounts'])->toHaveKey($account1->id);
+    expect($data['accounts'])->toHaveKey($account2->id);
+    expect($data['accounts'][$account1->id]['name'])->toBe('Checking Account');
+    expect($data['accounts'][$account2->id]['name'])->toBe('Savings Account');
+});
 
-    // Should have points for current month + 2 previous months = 3 points
-    expect($data)->toHaveCount(3);
-    expect($data[0])->toHaveKeys(['date', 'value', 'timestamp']);
+test('net worth evolution uses last balance of each month per account', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    $lastMonth = now()->subMonth();
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => $lastMonth->copy()->startOfMonth()->addDays(5),
+        'balance' => 100000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => $lastMonth->copy()->endOfMonth()->subDays(5),
+        'balance' => 150000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => $lastMonth->copy()->endOfMonth(),
+        'balance' => 200000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
+        'from' => $lastMonth->copy()->startOfMonth()->toDateString(),
+        'to' => $lastMonth->copy()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0][$account->id])->toBe(200000);
+});
+
+test('net worth evolution returns account metadata', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::CreditCard,
+        'name' => 'My Credit Card',
+        'name_iv' => 'test_iv_1234567',
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['accounts'][$account->id])->toMatchArray([
+        'id' => $account->id,
+        'name' => 'My Credit Card',
+        'name_iv' => 'test_iv_1234567',
+        'type' => 'credit_card',
+    ]);
 });

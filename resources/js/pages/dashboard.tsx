@@ -23,7 +23,7 @@ export default function Dashboard() {
         netWorth,
         monthlySpending,
         cashFlow,
-        netWorthHistory,
+        netWorthEvolution,
         accounts: accountMetrics,
         topCategories,
         isLoading,
@@ -60,7 +60,7 @@ export default function Dashboard() {
 
                 <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
                     <NetWorthChartComponent
-                        data={netWorthHistory}
+                        data={netWorthEvolution}
                         loading={isLoading}
                     />
                 </div>

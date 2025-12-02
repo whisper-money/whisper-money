@@ -73,21 +73,44 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
+        $accounts = Account::query()
+            ->where('user_id', $request->user()->id)
+            ->get();
+
         $points = [];
         $current = $start->copy()->startOfMonth();
         $endMonth = $end->copy()->startOfMonth();
 
         while ($current->lte($endMonth)) {
             $date = $current->copy()->endOfMonth();
-            $points[] = [
-                'date' => $date->format('M Y'),
-                'value' => $this->calculateNetWorthAt($date),
+            $point = [
+                'month' => $date->format('Y-m'),
                 'timestamp' => $date->timestamp,
             ];
+
+            foreach ($accounts as $account) {
+                $point[$account->id] = $this->getBalanceAt($account->id, $date);
+            }
+
+            $points[] = $point;
             $current->addMonth();
         }
 
-        return response()->json($points);
+        $accountsConfig = $accounts->mapWithKeys(function ($account) {
+            return [
+                $account->id => [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'name_iv' => $account->name_iv,
+                    'type' => $account->type,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'data' => $points,
+            'accounts' => $accountsConfig,
+        ]);
     }
 
     public function accountBalances(Request $request)

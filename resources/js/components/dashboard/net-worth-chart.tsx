@@ -1,28 +1,180 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EncryptedText } from '@/components/encrypted-text';
 import {
-    Area,
-    AreaChart,
-    CartesianGrid,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from 'recharts';
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { ChartConfig } from '@/components/ui/chart';
+import {
+    ColorPalette,
+    StackedBarChart,
+} from '@/components/ui/stacked-bar-chart';
+import { NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
+import { TrendingDown, TrendingUp } from 'lucide-react';
+import { useMemo } from 'react';
 
 interface NetWorthChartProps {
-    data: Array<{ date: string; value: number }>;
+    data: NetWorthEvolutionData;
     loading?: boolean;
+    color?: ColorPalette;
+    showLegend?: boolean;
 }
 
-export function NetWorthChart({ data, loading }: NetWorthChartProps) {
+function formatXAxisLabel(value: string): string {
+    const [year, month] = value.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1);
+    const monthName = date.toLocaleString('en-US', { month: 'short' });
+    const currentYear = new Date().getFullYear();
+
+    if (parseInt(year) === currentYear) {
+        return monthName;
+    }
+
+    return `${monthName} ${year.slice(-2)}`;
+}
+
+function formatCurrency(value: number): string {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value / 100);
+}
+
+function calculateTrend(
+    data: Array<Record<string, string | number>>,
+    accountIds: string[],
+    monthsBack: number,
+): number | null {
+    if (data.length < 2) return null;
+
+    const currentIndex = data.length - 1;
+    const previousIndex = Math.max(0, data.length - 1 - monthsBack);
+
+    if (currentIndex === previousIndex) return null;
+
+    const currentTotal = accountIds.reduce((sum, id) => {
+        const value = data[currentIndex][id];
+        return sum + (typeof value === 'number' ? value : 0);
+    }, 0);
+
+    const previousTotal = accountIds.reduce((sum, id) => {
+        const value = data[previousIndex][id];
+        return sum + (typeof value === 'number' ? value : 0);
+    }, 0);
+
+    if (previousTotal === 0) return null;
+
+    return ((currentTotal - previousTotal) / Math.abs(previousTotal)) * 100;
+}
+
+function TrendIndicator({
+    trend,
+    label,
+}: {
+    trend: number | null;
+    label: string;
+}) {
+    if (trend === null) return null;
+
+    const isPositive = trend >= 0;
+    const Icon = isPositive ? TrendingUp : TrendingDown;
+    const iconColorClass = isPositive
+        ? 'text-green-600/70 dark:text-green-400/70'
+        : 'text-red-600/70 dark:text-red-400/70';
+
+    return (
+        <div className="flex items-center gap-1">
+            <span
+                className={
+                    isPositive ? 'bg-green-100/25 dark:bg-green-900/25' : ''
+                }
+            >
+                {isPositive ? '+' : ''}
+                {trend.toFixed(1)}%
+            </span>
+            <span className="text-muted-foreground">{label}</span>
+            <Icon className={`h-4 w-4 ${iconColorClass}`} />
+        </div>
+    );
+}
+
+interface EncryptedLabelProps {
+    account: { name: string; name_iv: string };
+}
+
+function EncryptedLabel({ account }: EncryptedLabelProps) {
+    return (
+        <EncryptedText
+            encryptedText={account.name}
+            iv={account.name_iv}
+            length={{ min: 5, max: 20 }}
+        />
+    );
+}
+
+export function NetWorthChart({
+    data,
+    loading,
+    color = 'zinc',
+    showLegend = false,
+}: NetWorthChartProps) {
+    const { chartData, dataKeys, chartConfig, monthlyTrend, yearlyTrend } =
+        useMemo(() => {
+            const accounts = data.accounts || {};
+            const accountIds = Object.keys(accounts);
+            const chartDataArray = data.data || [];
+
+            const config: ChartConfig = {};
+            accountIds.forEach((id) => {
+                const account = accounts[id];
+                config[id] = {
+                    label: account ? <EncryptedLabel account={account} /> : id,
+                };
+            });
+
+            return {
+                chartData: chartDataArray,
+                dataKeys: accountIds,
+                chartConfig: config,
+                monthlyTrend: calculateTrend(chartDataArray, accountIds, 1),
+                yearlyTrend: calculateTrend(
+                    chartDataArray,
+                    accountIds,
+                    chartDataArray.length - 1,
+                ),
+            };
+        }, [data]);
+
     if (loading) {
+        return (
+            <Card className="col-span-3">
+                <CardHeader>
+                    <CardTitle>Net Worth Evolution</CardTitle>
+                    <CardDescription>
+                        <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="h-[300px] w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (dataKeys.length === 0) {
         return (
             <Card className="col-span-3">
                 <CardHeader>
                     <CardTitle>Net Worth Evolution</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-[300px] w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                    <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                        No account data available
+                    </div>
                 </CardContent>
             </Card>
         );
@@ -32,73 +184,26 @@ export function NetWorthChart({ data, loading }: NetWorthChartProps) {
         <Card className="col-span-3">
             <CardHeader>
                 <CardTitle>Net Worth Evolution</CardTitle>
+                <CardDescription className="flex flex-col gap-1 text-sm">
+                    <TrendIndicator trend={monthlyTrend} label="this month" />
+                    <TrendIndicator
+                        trend={yearlyTrend}
+                        label="for the last 12 months"
+                    />
+                </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                            data={data}
-                            margin={{
-                                top: 10,
-                                right: 30,
-                                left: 0,
-                                bottom: 0,
-                            }}
-                        >
-                            <defs>
-                                <linearGradient
-                                    id="colorValue"
-                                    x1="0"
-                                    y1="0"
-                                    x2="0"
-                                    y2="1"
-                                >
-                                    <stop
-                                        offset="5%"
-                                        stopColor="#2563eb"
-                                        stopOpacity={0.3}
-                                    />
-                                    <stop
-                                        offset="95%"
-                                        stopColor="#2563eb"
-                                        stopOpacity={0}
-                                    />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid
-                                strokeDasharray="3 3"
-                                vertical={false}
-                            />
-                            <XAxis
-                                dataKey="date"
-                                axisLine={false}
-                                tickLine={false}
-                                tickMargin={10}
-                            />
-                            <YAxis
-                                axisLine={false}
-                                tickLine={false}
-                                tickFormatter={(value) => `$${value}`}
-                            />
-                            <Tooltip
-                                formatter={(value: number) => [
-                                    new Intl.NumberFormat('en-US', {
-                                        style: 'currency',
-                                        currency: 'USD',
-                                    }).format(value),
-                                    'Net Worth',
-                                ]}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="value"
-                                stroke="#2563eb"
-                                fillOpacity={1}
-                                fill="url(#colorValue)"
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
+                <StackedBarChart
+                    data={chartData}
+                    dataKeys={dataKeys}
+                    config={chartConfig}
+                    color={color}
+                    xAxisKey="month"
+                    xAxisFormatter={formatXAxisLabel}
+                    valueFormatter={formatCurrency}
+                    className="h-[300px] w-full"
+                    showLegend={showLegend}
+                />
             </CardContent>
         </Card>
     );

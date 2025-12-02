@@ -1,7 +1,19 @@
-import { Account } from '@/types/account';
+import { Account, AccountType } from '@/types/account';
 import { Category } from '@/types/category';
 import { format, subDays, subMonths } from 'date-fns';
 import { useEffect, useState } from 'react';
+
+export interface NetWorthEvolutionAccount {
+    id: string;
+    name: string;
+    name_iv: string;
+    type: AccountType;
+}
+
+export interface NetWorthEvolutionData {
+    data: Array<Record<string, string | number>>;
+    accounts: Record<string, NetWorthEvolutionAccount>;
+}
 
 export interface DashboardData {
     netWorth: {
@@ -22,7 +34,7 @@ export interface DashboardData {
             expense: number;
         };
     };
-    netWorthHistory: Array<{ date: string; value: number }>;
+    netWorthEvolution: NetWorthEvolutionData;
     accounts: Array<
         Account & {
             current_balance: number;
@@ -46,7 +58,7 @@ export function useDashboardData(): DashboardData {
             expense: 0,
             previous: { income: 0, expense: 0 },
         },
-        netWorthHistory: [],
+        netWorthEvolution: { data: [], accounts: {} },
         accounts: [],
         topCategories: [],
     });
@@ -119,7 +131,8 @@ export function useDashboardData(): DashboardData {
                         expense: cashFlow.current.expense,
                         previous: cashFlow.previous,
                     },
-                    netWorthHistory: netWorthEvolution,
+                    netWorthEvolution:
+                        netWorthEvolution as NetWorthEvolutionData,
                     accounts: accountBalances.map(
                         (acc: {
                             id: string;
