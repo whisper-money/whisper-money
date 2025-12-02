@@ -80,7 +80,9 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 ${prefix} [data-chart=${id}] {
 ${colorConfig
                                 .map(([key, itemConfig]) => {
-                                    return itemConfig.color ? `  --color-${key}: ${itemConfig.color};` : null;
+                                    return itemConfig.color
+                                        ? `  --color-${key}: ${itemConfig.color};`
+                                        : null;
                                 })
                                 .filter(Boolean)
                                 .join('\n')}
@@ -110,7 +112,10 @@ interface ChartTooltipContentProps {
     indicator?: 'line' | 'dot' | 'dashed';
     hideLabel?: boolean;
     label?: string;
-    labelFormatter?: (value: unknown, payload: TooltipPayloadItem[]) => React.ReactNode;
+    labelFormatter?: (
+        value: unknown,
+        payload: TooltipPayloadItem[],
+    ) => React.ReactNode;
     labelClassName?: string;
     formatter?: (
         value: unknown,
@@ -121,10 +126,23 @@ interface ChartTooltipContentProps {
     ) => React.ReactNode;
     nameKey?: string;
     labelKey?: string;
-    valueFormatter?: (value: number) => string;
+    valueFormatter?: (value: number, accountId?: string) => string;
+    accountCurrencies?: Record<string, string>;
 }
 
-const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContentProps>(
+function formatCurrencyWithCode(value: number, currencyCode: string): string {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyCode,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value / 100);
+}
+
+const ChartTooltipContent = React.forwardRef<
+    HTMLDivElement,
+    ChartTooltipContentProps
+>(
     (
         {
             active,
@@ -139,6 +157,7 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
             nameKey,
             labelKey,
             valueFormatter,
+            accountCurrencies,
         },
         ref,
     ) => {
@@ -169,19 +188,43 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
                 return null;
             }
 
-            return <div className={cn('font-medium', labelClassName)}>{value}</div>;
-        }, [label, labelFormatter, payload, hideLabel, labelClassName, config, labelKey]);
+            return (
+                <div className={cn('font-medium', labelClassName)}>{value}</div>
+            );
+        }, [
+            label,
+            labelFormatter,
+            payload,
+            hideLabel,
+            labelClassName,
+            config,
+            labelKey,
+        ]);
+
+        const currencyTotals = React.useMemo(() => {
+            if (!payload?.length || !accountCurrencies) {
+                return null;
+            }
+
+            const totals: Record<string, number> = {};
+            payload.forEach((item) => {
+                const accountId = String(item.dataKey || item.name || '');
+                const currency = accountCurrencies[accountId] || 'USD';
+                const value =
+                    typeof item.value === 'number' ? item.value : 0;
+                totals[currency] = (totals[currency] || 0) + value;
+            });
+
+            return Object.entries(totals).sort((a, b) => b[1] - a[1]);
+        }, [payload, accountCurrencies]);
 
         if (!active || !payload?.length) {
             return null;
         }
 
         const nestLabel = payload.length === 1 && indicator !== 'dot';
-
-        const total = payload.reduce((sum: number, item: TooltipPayloadItem) => {
-            const value = item.value;
-            return sum + (typeof value === 'number' ? value : 0);
-        }, 0);
+        const hasMultipleCurrencies =
+            currencyTotals && currencyTotals.length > 1;
 
         return (
             <div
@@ -193,78 +236,128 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
             >
                 {!nestLabel ? tooltipLabel : null}
                 <div className="grid gap-1.5">
-                    {payload.map((item: TooltipPayloadItem, index: number) => {
-                        const key = `${nameKey || item.name || item.dataKey || 'value'}`;
-                        const itemConfig = getPayloadConfigFromPayload(config, item, key);
+                    {payload.map(
+                        (item: TooltipPayloadItem, index: number) => {
+                            const key = `${nameKey || item.name || item.dataKey || 'value'}`;
+                            const itemConfig = getPayloadConfigFromPayload(
+                                config,
+                                item,
+                                key,
+                            );
+                            const accountId = String(
+                                item.dataKey || item.name || '',
+                            );
 
-                        return (
-                            <div
-                                key={String(item.dataKey)}
-                                className={cn(
-                                    'flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground',
-                                    indicator === 'dot' && 'items-center',
-                                )}
-                            >
-                                {formatter &&
+                            return (
+                                <div
+                                    key={String(item.dataKey)}
+                                    className={cn(
+                                        'flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground',
+                                        indicator === 'dot' && 'items-center',
+                                    )}
+                                >
+                                    {formatter &&
                                     item?.value !== undefined &&
                                     item.name ? (
-                                    formatter(
-                                        item.value,
-                                        item.name,
-                                        item,
-                                        index,
-                                        item.payload || {},
-                                    )
-                                ) : (
-                                    <>
-                                        {itemConfig?.icon ? (
-                                            <itemConfig.icon />
-                                        ) : (
-                                            null
-                                        )}
-                                        <div
-                                            className={cn(
-                                                'flex flex-1 justify-between leading-none',
-                                                nestLabel
-                                                    ? 'items-end'
-                                                    : '',
-                                            )}
-                                        >
-                                            <div className="grid gap-1.5">
-                                                {nestLabel ? tooltipLabel : null}
-                                                <span className="text-muted-foreground ml-0">
-                                                    {itemConfig?.label ||
-                                                        item.name}
-                                                </span>
+                                        formatter(
+                                            item.value,
+                                            item.name,
+                                            item,
+                                            index,
+                                            item.payload || {},
+                                        )
+                                    ) : (
+                                        <>
+                                            {itemConfig?.icon ? (
+                                                <itemConfig.icon />
+                                            ) : null}
+                                            <div
+                                                className={cn(
+                                                    'flex flex-1 justify-between leading-none',
+                                                    nestLabel ? 'items-end' : '',
+                                                )}
+                                            >
+                                                <div className="grid gap-1.5">
+                                                    {nestLabel
+                                                        ? tooltipLabel
+                                                        : null}
+                                                    <span className="text-muted-foreground ml-0">
+                                                        {itemConfig?.label ||
+                                                            item.name}
+                                                    </span>
+                                                </div>
+                                                {item.value !== undefined && (
+                                                    <span className="text-foreground font-mono font-medium tabular-nums">
+                                                        {valueFormatter
+                                                            ? valueFormatter(
+                                                                  item.value as number,
+                                                                  accountId,
+                                                              )
+                                                            : typeof item.value ===
+                                                                'number'
+                                                              ? item.value.toLocaleString()
+                                                              : item.value}
+                                                    </span>
+                                                )}
                                             </div>
-                                            {item.value !== undefined && (
-                                                <span className="text-foreground font-mono font-medium tabular-nums">
-                                                    {valueFormatter
-                                                        ? valueFormatter(
-                                                            item.value as number,
-                                                        )
-                                                        : typeof item.value ===
-                                                            'number'
-                                                            ? item.value.toLocaleString()
-                                                            : item.value}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        );
-                    })}
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        },
+                    )}
                     {payload.length > 1 && (
-                        <div className="border-border/50 flex justify-between border-t pt-1.5">
-                            <span className="text-muted-foreground font-medium">
-                                Total
-                            </span>
-                            <span className="text-foreground font-mono font-medium tabular-nums">
-                                {valueFormatter
-                                    ? valueFormatter(total)
-                                    : total.toLocaleString()}
-                            </span>
+                        <div className="border-border/50 flex flex-col gap-1 border-t pt-1.5">
+                            {hasMultipleCurrencies ? (
+                                currencyTotals.map(([currency, total]) => (
+                                    <div
+                                        key={currency}
+                                        className="flex justify-between"
+                                    >
+                                        <span className="text-muted-foreground font-medium">
+                                            Total {currency}
+                                        </span>
+                                        <span className="text-foreground font-mono font-medium tabular-nums">
+                                            {formatCurrencyWithCode(
+                                                total,
+                                                currency,
+                                            )}
+                                        </span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground font-medium">
+                                        Total
+                                    </span>
+                                    <span className="text-foreground font-mono font-medium tabular-nums">
+                                        {currencyTotals && currencyTotals[0]
+                                            ? formatCurrencyWithCode(
+                                                  currencyTotals[0][1],
+                                                  currencyTotals[0][0],
+                                              )
+                                            : payload
+                                                  .reduce(
+                                                      (
+                                                          sum: number,
+                                                          item: TooltipPayloadItem,
+                                                      ) => {
+                                                          const value =
+                                                              item.value;
+                                                          return (
+                                                              sum +
+                                                              (typeof value ===
+                                                              'number'
+                                                                  ? value
+                                                                  : 0)
+                                                          );
+                                                      },
+                                                      0,
+                                                  )
+                                                  .toLocaleString()}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -290,7 +383,10 @@ interface ChartLegendContentProps {
     nameKey?: string;
 }
 
-const ChartLegendContent = React.forwardRef<HTMLDivElement, ChartLegendContentProps>(
+const ChartLegendContent = React.forwardRef<
+    HTMLDivElement,
+    ChartLegendContentProps
+>(
     (
         {
             className,
@@ -362,8 +458,8 @@ function getPayloadConfigFromPayload(
 
     const payloadPayload =
         'payload' in payload &&
-            typeof payload.payload === 'object' &&
-            payload.payload !== null
+        typeof payload.payload === 'object' &&
+        payload.payload !== null
             ? payload.payload
             : undefined;
 

@@ -181,11 +181,13 @@ test('net worth evolution returns monthly data points with per-account balances'
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
         'name' => 'Checking Account',
+        'currency_code' => 'USD',
     ]);
     $account2 = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Savings,
         'name' => 'Savings Account',
+        'currency_code' => 'EUR',
     ]);
 
     AccountBalance::factory()->create([
@@ -223,7 +225,9 @@ test('net worth evolution returns monthly data points with per-account balances'
     expect($data['accounts'])->toHaveKey($account1->id);
     expect($data['accounts'])->toHaveKey($account2->id);
     expect($data['accounts'][$account1->id]['name'])->toBe('Checking Account');
+    expect($data['accounts'][$account1->id]['currency_code'])->toBe('USD');
     expect($data['accounts'][$account2->id]['name'])->toBe('Savings Account');
+    expect($data['accounts'][$account2->id]['currency_code'])->toBe('EUR');
 });
 
 test('net worth evolution uses last balance of each month per account', function () {

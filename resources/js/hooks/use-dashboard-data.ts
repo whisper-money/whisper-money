@@ -8,6 +8,7 @@ export interface NetWorthEvolutionAccount {
     name: string;
     name_iv: string;
     type: AccountType;
+    currency_code: string;
 }
 
 export interface NetWorthEvolutionData {

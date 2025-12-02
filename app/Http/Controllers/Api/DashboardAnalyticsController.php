@@ -103,6 +103,7 @@ class DashboardAnalyticsController extends Controller
                     'name' => $account->name,
                     'name_iv' => $account->name_iv,
                     'type' => $account->type,
+                    'currency_code' => $account->currency_code,
                 ],
             ];
         });

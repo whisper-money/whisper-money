@@ -41,7 +41,8 @@ export interface StackedBarChartProps<T extends Record<string, unknown>> {
     color?: ColorPalette;
     xAxisKey: string;
     xAxisFormatter?: (value: string) => string;
-    valueFormatter?: (value: number) => string;
+    valueFormatter?: (value: number, accountId?: string) => string;
+    accountCurrencies?: Record<string, string>;
     className?: string;
     showLegend?: boolean;
 }
@@ -54,10 +55,13 @@ export function StackedBarChart<T extends Record<string, unknown>>({
     xAxisKey,
     xAxisFormatter,
     valueFormatter,
+    accountCurrencies,
     className,
     showLegend = true,
 }: StackedBarChartProps<T>) {
-    const shades = COLOR_SHADES.map((shade) => `var(--color-${color}-${shade})`);
+    const shades = COLOR_SHADES.map(
+        (shade) => `var(--color-${color}-${shade})`,
+    );
 
     const configWithColors: ChartConfig = Object.fromEntries(
         Object.entries(config).map(([key, value], index) => [
@@ -84,13 +88,12 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                         <ChartTooltipContent
                             hideLabel
                             valueFormatter={valueFormatter}
+                            accountCurrencies={accountCurrencies}
                         />
                     }
                 />
                 {showLegend && (
-                    <ChartLegend
-                        content={<ChartLegendContent />}
-                    />
+                    <ChartLegend content={<ChartLegendContent />} />
                 )}
                 {dataKeys.map((key, index) => {
                     const isFirst = index === 0;

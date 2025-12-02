@@ -35,10 +35,10 @@ function formatXAxisLabel(value: string): string {
     return `${monthName} ${year.slice(-2)}`;
 }
 
-function formatCurrency(value: number): string {
+function formatCurrencyWithCode(value: number, currencyCode: string): string {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD',
+        currency: currencyCode,
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(value / 100);
@@ -116,6 +116,38 @@ function EncryptedLabel({ account }: EncryptedLabelProps) {
     );
 }
 
+interface CurrencyTotal {
+    currency: string;
+    total: number;
+}
+
+function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
+    if (totals.length === 0) return null;
+
+    if (totals.length === 1) {
+        return (
+            <span className="text-4xl font-semibold tabular-nums">
+                {formatCurrencyWithCode(totals[0].total, totals[0].currency)}
+            </span>
+        );
+    }
+
+    return (
+        <div className="flex items-baseline gap-1">
+            {totals.map((item, index) => (
+                <span key={item.currency} className="flex items-baseline">
+                    {index > 0 && (
+                        <span className="mx-1 text-2xl opacity-50">+</span>
+                    )}
+                    <span className="text-4xl font-semibold tabular-nums">
+                        {formatCurrencyWithCode(item.total, item.currency)}
+                    </span>
+                </span>
+            ))}
+        </div>
+    );
+}
+
 export function NetWorthChart({
     data,
     loading,
@@ -128,28 +160,41 @@ export function NetWorthChart({
         chartConfig,
         monthlyTrend,
         yearlyTrend,
-        currentNetWorth,
+        currencyTotals,
+        accountCurrencies,
     } = useMemo(() => {
         const accounts = data.accounts || {};
         const accountIds = Object.keys(accounts);
         const chartDataArray = data.data || [];
 
         const config: ChartConfig = {};
+        const currencies: Record<string, string> = {};
+
         accountIds.forEach((id) => {
             const account = accounts[id];
             config[id] = {
                 label: account ? <EncryptedLabel account={account} /> : id,
             };
+            if (account?.currency_code) {
+                currencies[id] = account.currency_code;
+            }
         });
 
-        const currentTotal =
-            chartDataArray.length > 0
-                ? accountIds.reduce((sum, id) => {
-                    const value =
-                        chartDataArray[chartDataArray.length - 1][id];
-                    return sum + (typeof value === 'number' ? value : 0);
-                }, 0)
-                : 0;
+        const totals: Record<string, number> = {};
+        if (chartDataArray.length > 0) {
+            const lastDataPoint = chartDataArray[chartDataArray.length - 1];
+            accountIds.forEach((id) => {
+                const value = lastDataPoint[id];
+                const currency = currencies[id] || 'USD';
+                if (typeof value === 'number') {
+                    totals[currency] = (totals[currency] || 0) + value;
+                }
+            });
+        }
+
+        const currencyTotalsList: CurrencyTotal[] = Object.entries(totals)
+            .map(([currency, total]) => ({ currency, total }))
+            .sort((a, b) => b.total - a.total);
 
         return {
             chartData: chartDataArray,
@@ -161,9 +206,20 @@ export function NetWorthChart({
                 accountIds,
                 chartDataArray.length - 1,
             ),
-            currentNetWorth: currentTotal,
+            currencyTotals: currencyTotalsList,
+            accountCurrencies: currencies,
         };
     }, [data]);
+
+    const valueFormatter = useMemo(() => {
+        return (value: number, accountId?: string): string => {
+            const currency =
+                accountId && accountCurrencies[accountId]
+                    ? accountCurrencies[accountId]
+                    : 'USD';
+            return formatCurrencyWithCode(value, currency);
+        };
+    }, [accountCurrencies]);
 
     if (loading) {
         return (
@@ -205,7 +261,10 @@ export function NetWorthChart({
                             <CardTitle>Net Worth Evolution</CardTitle>
                         </div>
                         <CardDescription className="flex flex-col gap-1 text-sm">
-                            <TrendIndicator trend={monthlyTrend} label="this month" />
+                            <TrendIndicator
+                                trend={monthlyTrend}
+                                label="this month"
+                            />
                             <TrendIndicator
                                 trend={yearlyTrend}
                                 label="for the last 12 months"
@@ -214,9 +273,7 @@ export function NetWorthChart({
                     </div>
 
                     <div>
-                        <span className="text-4xl font-semibold tabular-nums">
-                            {formatCurrency(currentNetWorth)}
-                        </span>
+                        <TotalDisplay totals={currencyTotals} />
                     </div>
                 </div>
             </CardHeader>
@@ -228,7 +285,8 @@ export function NetWorthChart({
                     color={color}
                     xAxisKey="month"
                     xAxisFormatter={formatXAxisLabel}
-                    valueFormatter={formatCurrency}
+                    valueFormatter={valueFormatter}
+                    accountCurrencies={accountCurrencies}
                     className="h-[300px] w-full"
                     showLegend={showLegend}
                 />
