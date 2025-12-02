@@ -127,7 +127,12 @@ export function ImportStepPreview({
                                                 Duplicate
                                             </Badge>
                                         ) : (
-                                            <Badge variant="default">New</Badge>
+                                            <Badge
+                                                variant="secondary"
+                                                className="bg-green-50 text-green-600 dark:bg-green-900 dark:text-green-600"
+                                            >
+                                                New
+                                            </Badge>
                                         )}
                                     </TableCell>
                                 </TableRow>

@@ -28,6 +28,10 @@ class TransactionSyncService {
         this.syncManager = new SyncManager({
             storeName: 'transactions',
             endpoint: '/api/sync/transactions',
+            transformFromServer: (data) => ({
+                ...data,
+                transaction_date: String(data.transaction_date).slice(0, 10),
+            }),
         });
     }
 
@@ -189,7 +193,7 @@ class TransactionSyncService {
     }
 
     async checkDuplicates(
-        accountId: number,
+        accountId: string,
         transactions: Array<{
             transaction_date: string;
             amount: number;
@@ -205,12 +209,14 @@ class TransactionSyncService {
             const minDate = dates.reduce((a, b) => (a < b ? a : b));
             const maxDate = dates.reduce((a, b) => (a > b ? a : b));
 
+            const normalizeDate = (dateStr: string): string =>
+                dateStr.slice(0, 10);
+
             const allTransactions = await this.getByAccountId(accountId);
-            const transactionsInRange = allTransactions.filter(
-                (t) =>
-                    t.transaction_date >= minDate &&
-                    t.transaction_date <= maxDate,
-            );
+            const transactionsInRange = allTransactions.filter((t) => {
+                const txDate = normalizeDate(t.transaction_date);
+                return txDate >= minDate && txDate <= maxDate;
+            });
 
             console.log(
                 `Checking duplicates for ${transactions.length} transactions. Found ${transactionsInRange.length} existing transactions between ${minDate} and ${maxDate}`,
@@ -234,7 +240,7 @@ class TransactionSyncService {
                             t.description_iv,
                         );
                         return {
-                            transaction_date: t.transaction_date,
+                            transaction_date: normalizeDate(t.transaction_date),
                             amount: parseFloat(t.amount),
                             description: decryptedDescription
                                 .toLowerCase()
@@ -266,7 +272,7 @@ class TransactionSyncService {
                     .trim()
                     .replace(/\s+/g, ' ');
 
-                const isDuplicate = validDecryptedTransactions.some(
+                return validDecryptedTransactions.some(
                     (existing) =>
                         existing.transaction_date ===
                             importingTx.transaction_date &&
@@ -274,8 +280,6 @@ class TransactionSyncService {
                             0.001 &&
                         existing.description === normalizedDescription,
                 );
-
-                return isDuplicate;
             });
 
             const duplicateCount = results.filter((r) => r).length;
@@ -291,18 +295,6 @@ class TransactionSyncService {
             );
             return transactions.map(() => false);
         }
-    }
-
-    async isDuplicate(
-        accountId: number,
-        transactionDate: string,
-        amount: number,
-        description: string,
-    ): Promise<boolean> {
-        const results = await this.checkDuplicates(accountId, [
-            { transaction_date: transactionDate, amount, description },
-        ]);
-        return results[0] || false;
     }
 
     async encryptDescription(
