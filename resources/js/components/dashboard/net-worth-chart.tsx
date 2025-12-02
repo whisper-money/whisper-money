@@ -122,32 +122,48 @@ export function NetWorthChart({
     color = 'zinc',
     showLegend = false,
 }: NetWorthChartProps) {
-    const { chartData, dataKeys, chartConfig, monthlyTrend, yearlyTrend } =
-        useMemo(() => {
-            const accounts = data.accounts || {};
-            const accountIds = Object.keys(accounts);
-            const chartDataArray = data.data || [];
+    const {
+        chartData,
+        dataKeys,
+        chartConfig,
+        monthlyTrend,
+        yearlyTrend,
+        currentNetWorth,
+    } = useMemo(() => {
+        const accounts = data.accounts || {};
+        const accountIds = Object.keys(accounts);
+        const chartDataArray = data.data || [];
 
-            const config: ChartConfig = {};
-            accountIds.forEach((id) => {
-                const account = accounts[id];
-                config[id] = {
-                    label: account ? <EncryptedLabel account={account} /> : id,
-                };
-            });
-
-            return {
-                chartData: chartDataArray,
-                dataKeys: accountIds,
-                chartConfig: config,
-                monthlyTrend: calculateTrend(chartDataArray, accountIds, 1),
-                yearlyTrend: calculateTrend(
-                    chartDataArray,
-                    accountIds,
-                    chartDataArray.length - 1,
-                ),
+        const config: ChartConfig = {};
+        accountIds.forEach((id) => {
+            const account = accounts[id];
+            config[id] = {
+                label: account ? <EncryptedLabel account={account} /> : id,
             };
-        }, [data]);
+        });
+
+        const currentTotal =
+            chartDataArray.length > 0
+                ? accountIds.reduce((sum, id) => {
+                    const value =
+                        chartDataArray[chartDataArray.length - 1][id];
+                    return sum + (typeof value === 'number' ? value : 0);
+                }, 0)
+                : 0;
+
+        return {
+            chartData: chartDataArray,
+            dataKeys: accountIds,
+            chartConfig: config,
+            monthlyTrend: calculateTrend(chartDataArray, accountIds, 1),
+            yearlyTrend: calculateTrend(
+                chartDataArray,
+                accountIds,
+                chartDataArray.length - 1,
+            ),
+            currentNetWorth: currentTotal,
+        };
+    }, [data]);
 
     if (loading) {
         return (
@@ -183,14 +199,26 @@ export function NetWorthChart({
     return (
         <Card className="col-span-3">
             <CardHeader>
-                <CardTitle>Net Worth Evolution</CardTitle>
-                <CardDescription className="flex flex-col gap-1 text-sm">
-                    <TrendIndicator trend={monthlyTrend} label="this month" />
-                    <TrendIndicator
-                        trend={yearlyTrend}
-                        label="for the last 12 months"
-                    />
-                </CardDescription>
+                <div className="flex items-start justify-between">
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-start justify-between">
+                            <CardTitle>Net Worth Evolution</CardTitle>
+                        </div>
+                        <CardDescription className="flex flex-col gap-1 text-sm">
+                            <TrendIndicator trend={monthlyTrend} label="this month" />
+                            <TrendIndicator
+                                trend={yearlyTrend}
+                                label="for the last 12 months"
+                            />
+                        </CardDescription>
+                    </div>
+
+                    <div>
+                        <span className="text-4xl font-semibold tabular-nums">
+                            {formatCurrency(currentNetWorth)}
+                        </span>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent>
                 <StackedBarChart
