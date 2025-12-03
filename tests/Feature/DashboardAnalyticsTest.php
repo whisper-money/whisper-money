@@ -172,6 +172,8 @@ test('top categories returns highest spending categories', function () {
     expect($data)->toHaveCount(2);
     expect($data[0]['category']['id'])->toBe($cat2->id); // Highest spending first
     expect($data[0]['amount'])->toBe(5000);
+    expect($data[0])->toHaveKeys(['previous_amount', 'total_amount']);
+    expect($data[0]['total_amount'])->toBe(8000); // 5000 + 3000
     expect($data[1]['category']['id'])->toBe($cat1->id);
     expect($data[1]['amount'])->toBe(3000);
 });

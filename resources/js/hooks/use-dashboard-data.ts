@@ -28,6 +28,8 @@ export interface DashboardData {
     topCategories: Array<{
         category: Category;
         amount: number;
+        previous_amount: number;
+        total_amount: number;
     }>;
     isLoading: boolean;
 }

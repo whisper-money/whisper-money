@@ -108,7 +108,7 @@ export function AccountBalanceCard({
                                 <Line
                                     type="monotone"
                                     dataKey="value"
-                                    stroke={'var(--color-zinc-700)'}
+                                    stroke={'var(--color-chart-2)'}
                                     strokeWidth={2}
                                     dot={false}
                                 />

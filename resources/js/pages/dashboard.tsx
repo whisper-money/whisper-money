@@ -43,19 +43,19 @@ export default function Dashboard() {
                 <div className="grid gap-4 md:grid-cols-2">
                     {isLoading
                         ? Array.from({ length: 4 }).map((_, i) => (
-                              <AccountBalanceCard
-                                  key={i}
-                                  // @ts-expect-error - mock data for loading state
-                                  account={{}}
-                                  loading={true}
-                              />
-                          ))
+                            <AccountBalanceCard
+                                key={i}
+                                // @ts-expect-error - mock data for loading state
+                                account={{}}
+                                loading={true}
+                            />
+                        ))
                         : accountMetrics.map((account) => (
-                              <AccountBalanceCard
-                                  key={account.id}
-                                  account={account}
-                              />
-                          ))}
+                            <AccountBalanceCard
+                                key={account.id}
+                                account={account}
+                            />
+                        ))}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">

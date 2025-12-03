@@ -7,10 +7,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { ChartConfig } from '@/components/ui/chart';
-import {
-    ColorPalette,
-    StackedBarChart,
-} from '@/components/ui/stacked-bar-chart';
+import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
 import { useMemo } from 'react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
@@ -18,7 +15,6 @@ import { PercentageTrendIndicator } from './percentage-trend-indicator';
 interface NetWorthChartProps {
     data: NetWorthEvolutionData;
     loading?: boolean;
-    color?: ColorPalette;
     showLegend?: boolean;
 }
 
@@ -120,7 +116,6 @@ function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
 export function NetWorthChart({
     data,
     loading,
-    color = 'zinc',
     showLegend = false,
 }: NetWorthChartProps) {
     const {
@@ -251,7 +246,6 @@ export function NetWorthChart({
                     data={chartData}
                     dataKeys={dataKeys}
                     config={chartConfig}
-                    color={color}
                     xAxisKey="month"
                     xAxisFormatter={formatXAxisLabel}
                     valueFormatter={valueFormatter}
