@@ -1,5 +1,6 @@
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { checkDatabaseVersion } from '@/lib/db-migration-helper';
+import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { bankSyncService } from '@/services/bank-sync';
@@ -124,12 +125,14 @@ export function SyncProvider({
             const [
                 categoriesResult,
                 accountsResult,
+                accountBalancesResult,
                 banksResult,
                 automationRulesResult,
                 transactionsResult,
             ] = await Promise.all([
                 categorySyncService.sync(),
                 accountSyncService.sync(),
+                accountBalanceSyncService.sync(),
                 bankSyncService.sync(),
                 automationRuleSyncService.sync(),
                 transactionSyncService.sync(),
@@ -138,6 +141,7 @@ export function SyncProvider({
             const allErrors = [
                 ...categoriesResult.errors,
                 ...accountsResult.errors,
+                ...accountBalancesResult.errors,
                 ...banksResult.errors,
                 ...automationRulesResult.errors,
                 ...transactionsResult.errors,
