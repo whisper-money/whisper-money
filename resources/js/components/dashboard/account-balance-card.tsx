@@ -1,9 +1,9 @@
 import { EncryptedText } from '@/components/encrypted-text';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Account } from '@/types/account';
-import { AmountTrendIndicator } from './amount-trend-indicator';
-import { AccountTypeIcon } from './account-type-icon';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { AccountTypeIcon } from './account-type-icon';
+import { AmountTrendIndicator } from './amount-trend-indicator';
 
 interface AccountBalanceCardProps {
     account: Account & {
@@ -43,8 +43,14 @@ export function AccountBalanceCard({
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium flex items-center">
-                    {account.bank.logo && <img src={account.bank.logo} alt={account.bank.name} className="inline-block size-5 mr-2 rounded-full object-contain" />}
+                <CardTitle className="flex items-center text-sm font-medium">
+                    {account.bank.logo && (
+                        <img
+                            src={account.bank.logo}
+                            alt={account.bank.name}
+                            className="mr-2 inline-block size-5 rounded-full object-contain"
+                        />
+                    )}
 
                     <EncryptedText
                         encryptedText={account.name}
@@ -53,23 +59,28 @@ export function AccountBalanceCard({
                     />
                 </CardTitle>
                 <div className="text-xs font-medium text-muted-foreground">
-                    <AccountTypeIcon type={account.type} className="inline-block mr-1" />
+                    <AccountTypeIcon
+                        type={account.type}
+                        className="mr-1 inline-block"
+                    />
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="flex gap-6 items-center justify-between">
-                    <div className='flex flex-col gap-1'>
+                <div className="flex items-center justify-between gap-6">
+                    <div className="flex flex-col gap-1">
                         <div className="text-2xl font-medium">
                             {formatter.format(account.currentBalance / 100)}
                         </div>
                         <AmountTrendIndicator
                             isPositive={isPositive}
-                            trend={formatter.format(Math.abs(account.diff) / 100)}
+                            trend={formatter.format(
+                                Math.abs(account.diff) / 100,
+                            )}
                             label="vs last month"
-                            className='text-sm'
+                            className="text-sm"
                         />
                     </div>
-                    <div className="h-[70px] max-w-[250px] w-full flex-1">
+                    <div className="h-[70px] w-full max-w-[250px] flex-1">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={account.history}>
                                 <Tooltip
