@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { cn } from '@/lib/utils';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 
 export function AmountTrendIndicator({
     trend,
@@ -20,10 +20,7 @@ export function AmountTrendIndicator({
         : 'text-red-600/70 dark:text-red-400/70';
 
     return (
-        <div className={cn([
-            "flex items-center gap-1",
-            className
-        ])}>
+        <div className={cn(['flex items-center gap-1', className])}>
             <span
                 className={
                     isPositive ? 'bg-green-100/25 dark:bg-green-900/25' : ''

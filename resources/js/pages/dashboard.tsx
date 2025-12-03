@@ -1,8 +1,5 @@
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
-import { CashFlowCard } from '@/components/dashboard/cash-flow-card';
-import { NetWorthCard } from '@/components/dashboard/net-worth-card';
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
-import { SpendingSummaryCard } from '@/components/dashboard/spending-summary-card';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
 import HeadingSmall from '@/components/heading-small';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
@@ -20,9 +17,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function Dashboard() {
     const {
-        netWorth,
-        monthlySpending,
-        cashFlow,
         netWorthEvolution,
         accounts: accountMetrics,
         topCategories,
@@ -38,25 +32,6 @@ export default function Dashboard() {
                     title="Dashboard"
                     description="Overview of your financial health"
                 />
-
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <NetWorthCard
-                        current={netWorth.current}
-                        previous={netWorth.previous}
-                        loading={isLoading}
-                    />
-                    <SpendingSummaryCard
-                        current={monthlySpending.current}
-                        previous={monthlySpending.previous}
-                        loading={isLoading}
-                    />
-                    <CashFlowCard
-                        income={cashFlow.income}
-                        expense={cashFlow.expense}
-                        previous={cashFlow.previous}
-                        loading={isLoading}
-                    />
-                </div>
 
                 <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
                     <NetWorthChartComponent
