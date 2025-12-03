@@ -52,7 +52,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('api/encryption/setup', [EncryptionController::class, 'setup']);
     Route::get('api/encryption/message', [EncryptionController::class, 'getMessage']);
-    Route::put('api/encryption/message', [EncryptionController::class, 'updateMessage']);
 
     Route::get('api/sync/categories', [CategorySyncController::class, 'index']);
     Route::get('api/sync/accounts', [AccountSyncController::class, 'index']);
