@@ -43,7 +43,9 @@ export function AccountBalanceCard({
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-sm font-medium flex items-center">
+                    {account.bank.logo && <img src={account.bank.logo} alt={account.bank.name} className="inline-block size-5 mr-2 rounded-full object-contain" />}
+
                     <EncryptedText
                         encryptedText={account.name}
                         iv={account.name_iv}
