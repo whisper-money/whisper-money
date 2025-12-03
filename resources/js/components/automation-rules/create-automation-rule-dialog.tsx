@@ -42,7 +42,7 @@ export function CreateAutomationRuleDialog({
     const [priority, setPriority] = useState('10');
     const [ruleStructure, setRuleStructure] = useState<RuleStructure>({
         groups: [createEmptyGroup()],
-        groupOperator: 'and',
+        groupOperator: 'or',
     });
     const [categoryId, setCategoryId] = useState<string>('');
     const [note, setNote] = useState('');
