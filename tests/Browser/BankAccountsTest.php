@@ -123,6 +123,7 @@ it('can filter accounts by name', function () {
     $page = visit('/settings/accounts');
 
     $page->assertSee('Bank accounts')
+        ->assertSee('Test Bank')
         ->fill('input[placeholder="Filter accounts..."]', 'Checking')
         ->wait(0.5)
         ->assertNoJavascriptErrors();
