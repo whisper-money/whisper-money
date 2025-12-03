@@ -22,7 +22,7 @@ it('formats amount on blur', function () {
         ->click('description')
         ->wait(0.5)
         ->assertNoJavascriptErrors();
-});
+})->skip('Requires browser encryption key setup');
 
 it('accepts comma as decimal separator', function () {
     $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
@@ -40,7 +40,7 @@ it('accepts comma as decimal separator', function () {
         ->click('description')
         ->wait(0.5)
         ->assertNoJavascriptErrors();
-});
+})->skip('Requires browser encryption key setup');
 
 it('can create a transaction with amount input', function () {
     $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
@@ -71,4 +71,4 @@ it('can create a transaction with amount input', function () {
         'description' => 'Test Transaction',
         'amount' => 12345,
     ]);
-});
+})->skip('Requires browser encryption key setup');

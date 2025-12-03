@@ -11,8 +11,9 @@ it('can register a new user', function () {
         ->fill('password', 'password123')
         ->fill('password_confirmation', 'password123')
         ->click('@register-user-button')
-        ->waitFor('Setup your encryption')
-        ->assertUrlIs('/setup-encryption')
+        ->wait(2)
+        ->assertSee('Setup Encryption')
+        ->assertPathIs('/setup-encryption')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('users', [
@@ -39,6 +40,8 @@ it('can login with valid credentials', function () {
         'email' => 'test@example.com',
         'password' => bcrypt('password123'),
         'encryption_salt' => str_repeat('a', 24),
+        'two_factor_secret' => null,
+        'two_factor_confirmed_at' => null,
     ]);
 
     $page = visit('/login');
@@ -47,8 +50,9 @@ it('can login with valid credentials', function () {
         ->fill('email', 'test@example.com')
         ->fill('password', 'password123')
         ->click('@login-button')
-        ->waitFor('Dashboard')
-        ->assertUrlIs('/dashboard')
+        ->wait(2)
+        ->assertSee('Dashboard')
+        ->assertPathIs('/dashboard')
         ->assertNoJavascriptErrors();
 
     $this->assertAuthenticated();
@@ -76,8 +80,9 @@ it('can navigate from login to register', function () {
 
     $page->assertSee('Log in to your account')
         ->click('Sign up')
-        ->waitFor('Create an account')
-        ->assertUrlIs('/register')
+        ->wait(1)
+        ->assertSee('Create an account')
+        ->assertPathIs('/register')
         ->assertNoJavascriptErrors();
 });
 
@@ -86,7 +91,8 @@ it('can navigate from register to login', function () {
 
     $page->assertSee('Create an account')
         ->click('Log in')
-        ->waitFor('Log in to your account')
-        ->assertUrlIs('/login')
+        ->wait(1)
+        ->assertSee('Log in to your account')
+        ->assertPathIs('/login')
         ->assertNoJavascriptErrors();
 });
