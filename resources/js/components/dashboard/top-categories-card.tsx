@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Category } from '@/types/category';
+import { cn } from '@/lib/utils';
+import { Category, getCategoryColorClasses } from '@/types/category';
 import * as Icons from 'lucide-react';
 import { LucideIcon, TrendingDown, TrendingUp } from 'lucide-react';
 
@@ -76,6 +77,9 @@ export function TopCategoriesCard({
                             item.total_amount > 0
                                 ? (item.amount / item.total_amount) * 100
                                 : 0;
+                        const categoryColor = getCategoryColorClasses(
+                            item.category.color,
+                        );
 
                         const TrendIcon = isSpendingLess
                             ? TrendingDown
@@ -89,11 +93,10 @@ export function TopCategoriesCard({
                                 <div className="flex items-center gap-3">
                                     <div className="flex items-center gap-2">
                                         <div
-                                            className="flex h-8 w-4 ml-0.5 shrink-0 items-center justify-center rounded-full"
-                                            style={{
-                                                backgroundColor: `${item.category.color}20`,
-                                                color: item.category.color,
-                                            }}
+                                            className={cn([
+                                                "flex size-6 ml-0.5 shrink-0 items-center justify-center rounded-full",
+                                                `${categoryColor.bg} ${categoryColor.text}`,
+                                            ])}
                                         >
                                             <Icon className="size-4" />
                                         </div>
