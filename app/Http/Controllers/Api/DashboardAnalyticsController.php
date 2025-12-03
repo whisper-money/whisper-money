@@ -180,7 +180,7 @@ class DashboardAnalyticsController extends Controller
             ->groupBy('category_id')
             ->orderByRaw('total_amount asc')
             ->with('category')
-            ->limit(5)
+            ->limit(10)
             ->get()
             ->map(function ($item) {
                 return [
