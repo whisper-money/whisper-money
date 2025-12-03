@@ -167,31 +167,51 @@ class DashboardAnalyticsController extends Controller
             'to' => 'required|date',
         ]);
 
-        $from = Carbon::parse($validated['from']);
-        $to = Carbon::parse($validated['to']);
+        $period = PeriodComparator::fromRequest($validated);
+        $previousPeriod = $period->previous();
 
-        $top = Transaction::query()
-            ->where('user_id', $request->user()->id)
+        $currentSpending = $this->getCategorySpending($request->user()->id, $period->from, $period->to);
+        $previousSpending = $this->getCategorySpending($request->user()->id, $previousPeriod->from, $previousPeriod->to);
+
+        $totalAmount = $currentSpending->sum('amount');
+
+        $top = $currentSpending
+            ->sortByDesc('amount')
+            ->take(10)
+            ->map(function ($item) use ($previousSpending, $totalAmount) {
+                $previousAmount = $previousSpending->firstWhere('category_id', $item['category_id'])['amount'] ?? 0;
+
+                return [
+                    'category' => $item['category'],
+                    'amount' => $item['amount'],
+                    'previous_amount' => $previousAmount,
+                    'total_amount' => $totalAmount,
+                ];
+            })
+            ->values();
+
+        return response()->json($top);
+    }
+
+    private function getCategorySpending(string $userId, Carbon $from, Carbon $to)
+    {
+        return Transaction::query()
+            ->where('user_id', $userId)
             ->whereBetween('transaction_date', [$from, $to])
             ->whereHas('category', function ($q) {
                 $q->where('type', CategoryType::Expense);
             })
             ->select('category_id', DB::raw('sum(amount) as total_amount'))
             ->groupBy('category_id')
-            ->orderByRaw('total_amount asc')
             ->with('category')
-            ->limit(5)
             ->get()
             ->map(function ($item) {
                 return [
+                    'category_id' => $item->category_id,
                     'category' => $item->category,
                     'amount' => abs($item->total_amount),
                 ];
-            })
-            ->sortByDesc('amount') // Re-sort because DB sort on negative numbers gives least spending first
-            ->values();
-
-        return response()->json($top);
+            });
     }
 
     private function calculateNetWorthAt(Carbon $date): int

@@ -1,12 +1,40 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Category } from '@/types/category';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
+import { Category, getCategoryColorClasses } from '@/types/category';
 import * as Icons from 'lucide-react';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, TrendingDown, TrendingUp } from 'lucide-react';
+
+interface CategoryData {
+    category: Category;
+    amount: number;
+    previous_amount: number;
+    total_amount: number;
+}
 
 interface TopCategoriesCardProps {
-    categories: Array<{ category: Category; amount: number }>;
+    categories: CategoryData[];
     loading?: boolean;
 }
+
+const CHART_COLORS = [
+    'var(--chart-1)',
+    'var(--chart-2)',
+    'var(--chart-3)',
+    'var(--chart-4)',
+    'var(--chart-5)',
+    'var(--chart-6)',
+    'var(--chart-7)',
+    'var(--chart-7)',
+    'var(--chart-8)',
+    'var(--chart-8)',
+];
 
 export function TopCategoriesCard({
     categories,
@@ -26,7 +54,18 @@ export function TopCategoriesCard({
                     <CardTitle>Top Spending Categories</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-[200px] w-full animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                    <div className="space-y-4">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-8 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+                                    <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                                    <div className="ml-auto h-4 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                                </div>
+                                <div className="h-2 w-full animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+                            </div>
+                        ))}
+                    </div>
                 </CardContent>
             </Card>
         );
@@ -34,42 +73,98 @@ export function TopCategoriesCard({
 
     return (
         <Card className="col-span-3">
-            <CardHeader>
-                <CardTitle>Top Spending Categories</CardTitle>
+            <CardHeader className="gap-2">
+                <CardTitle>Top spending categories</CardTitle>
+                <CardDescription>on the last 30 days</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                    {categories.map((item) => {
+                <div className="space-y-4">
+                    {categories.map((item, index) => {
                         const Icon = (Icons[
                             item.category.icon as keyof typeof Icons
                         ] || Icons.HelpCircle) as LucideIcon;
+
+                        const percentageChange =
+                            item.previous_amount > 0
+                                ? ((item.amount - item.previous_amount) /
+                                    item.previous_amount) *
+                                100
+                                : null;
+                        const isSpendingLess =
+                            percentageChange !== null && percentageChange < 0;
+                        const percentage =
+                            item.total_amount > 0
+                                ? (item.amount / item.total_amount) * 100
+                                : 0;
+                        const categoryColor = getCategoryColorClasses(
+                            item.category.color,
+                        );
+                        const chartColor =
+                            CHART_COLORS[index % CHART_COLORS.length];
+
+                        const TrendIcon = isSpendingLess
+                            ? TrendingDown
+                            : TrendingUp;
+                        const trendColorClass = isSpendingLess
+                            ? 'text-green-600/70 dark:text-green-400/70'
+                            : 'text-red-600/70 dark:text-red-400/70';
+
                         return (
-                            <div
-                                key={item.category.id}
-                                className="flex items-center space-x-4 rounded-md border p-4"
-                            >
-                                <div
-                                    className="flex size-10 items-center justify-center rounded-full"
-                                    style={{
-                                        backgroundColor: `${item.category.color}20`,
-                                        color: item.category.color,
-                                    }}
-                                >
-                                    <Icon className="size-5" />
+                            <div key={item.category.id} className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <div
+                                            className={cn([
+                                                'ml-0.5 flex size-6 shrink-0 items-center justify-center rounded-full',
+                                                `${categoryColor.bg} ${categoryColor.text}`,
+                                            ])}
+                                        >
+                                            <Icon className="size-4" />
+                                        </div>
+                                        <span className="text-sm font-medium">
+                                            {item.category.name}
+                                        </span>
+                                    </div>
+                                    <div className="ml-auto flex items-center gap-3">
+                                        {percentageChange !== null && (
+                                            <div className="flex items-center gap-1 text-xs">
+                                                <span
+                                                    className={
+                                                        isSpendingLess
+                                                            ? 'bg-green-100/25 dark:bg-green-900/25'
+                                                            : ''
+                                                    }
+                                                >
+                                                    {percentageChange >= 0
+                                                        ? '+'
+                                                        : ''}
+                                                    {percentageChange.toFixed(
+                                                        0,
+                                                    )}
+                                                    %
+                                                </span>
+                                                <TrendIcon
+                                                    className={`h-4 w-4 ${trendColorClass}`}
+                                                />
+                                            </div>
+                                        )}
+                                        <span className="text-sm font-semibold">
+                                            {formatter.format(
+                                                item.amount / 100,
+                                            )}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm leading-none font-medium">
-                                        {item.category.name}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {formatter.format(item.amount / 100)}
-                                    </p>
-                                </div>
+                                <Progress
+                                    value={percentage}
+                                    className="h-2"
+                                    indicatorColor={chartColor}
+                                />
                             </div>
                         );
                     })}
                     {categories.length === 0 && (
-                        <div className="col-span-full py-8 text-center text-muted-foreground">
+                        <div className="py-8 text-center text-muted-foreground">
                             No spending data this month
                         </div>
                     )}

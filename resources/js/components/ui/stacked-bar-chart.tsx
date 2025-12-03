@@ -9,36 +9,23 @@ import {
     ChartTooltipContent,
 } from '@/components/ui/chart';
 
-export type ColorPalette =
-    | 'amber'
-    | 'blue'
-    | 'cyan'
-    | 'emerald'
-    | 'fuchsia'
-    | 'gray'
-    | 'green'
-    | 'indigo'
-    | 'lime'
-    | 'neutral'
-    | 'orange'
-    | 'pink'
-    | 'purple'
-    | 'red'
-    | 'rose'
-    | 'slate'
-    | 'stone'
-    | 'teal'
-    | 'violet'
-    | 'yellow'
-    | 'zinc';
-
-const COLOR_SHADES: number[] = [700, 500, 300, 100, 600, 400, 800, 200, 900, 50];
+const COLOR_SHADES: string[] = [
+    'var(--color-chart-2)',
+    'var(--color-chart-3)',
+    'var(--color-chart-4)',
+    'var(--color-chart-5)',
+    'var(--color-chart-6)',
+    'var(--color-chart-7)',
+    'var(--color-chart-8)',
+    'var(--color-chart-9)',
+    'var(--color-chart-10)',
+    'var(--color-chart-1)',
+];
 
 export interface StackedBarChartProps<T extends Record<string, unknown>> {
     data: T[];
     dataKeys: string[];
     config: ChartConfig;
-    color?: ColorPalette;
     xAxisKey: string;
     xAxisFormatter?: (value: string) => string;
     valueFormatter?: (value: number, accountId?: string) => string;
@@ -51,7 +38,6 @@ export function StackedBarChart<T extends Record<string, unknown>>({
     data,
     dataKeys,
     config,
-    color = 'zinc',
     xAxisKey,
     xAxisFormatter,
     valueFormatter,
@@ -59,16 +45,12 @@ export function StackedBarChart<T extends Record<string, unknown>>({
     className,
     showLegend = true,
 }: StackedBarChartProps<T>) {
-    const shades = COLOR_SHADES.map(
-        (shade) => `var(--color-${color}-${shade})`,
-    );
-
     const configWithColors: ChartConfig = Object.fromEntries(
         Object.entries(config).map(([key, value], index) => [
             key,
             {
                 ...value,
-                color: shades[index % shades.length],
+                color: COLOR_SHADES[index % COLOR_SHADES.length],
             },
         ]),
     );
@@ -110,7 +92,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                             key={key}
                             dataKey={key}
                             stackId="stack"
-                            fill={shades[index % shades.length]}
+                            fill={COLOR_SHADES[index % COLOR_SHADES.length]}
                             radius={radius}
                         />
                     );
