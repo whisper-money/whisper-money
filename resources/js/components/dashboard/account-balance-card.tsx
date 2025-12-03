@@ -1,8 +1,9 @@
 import { EncryptedText } from '@/components/encrypted-text';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Account } from '@/types/account';
-import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react';
-import { Line, LineChart, ResponsiveContainer } from 'recharts';
+import { AmountTrendIndicator } from './amount-trend-indicator';
+import { AccountTypeIcon } from './account-type-icon';
+import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface AccountBalanceCardProps {
     account: Account & {
@@ -46,43 +47,55 @@ export function AccountBalanceCard({
                     <EncryptedText
                         encryptedText={account.name}
                         iv={account.name_iv}
+                        length={{ min: 5, max: 15 }}
                     />
                 </CardTitle>
                 <div className="text-xs font-medium text-muted-foreground">
-                    {account.type}
+                    <AccountTypeIcon type={account.type} className="inline-block mr-1" />
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <div className="text-2xl font-bold">
+                <div className="flex gap-6 items-center justify-between">
+                    <div className='flex flex-col gap-1'>
+                        <div className="text-2xl font-medium">
                             {formatter.format(account.currentBalance / 100)}
                         </div>
-                        <p className="flex items-center text-xs text-muted-foreground">
-                            <span
-                                className={
-                                    isPositive
-                                        ? 'text-green-600'
-                                        : 'text-red-600'
-                                }
-                            >
-                                {isPositive ? (
-                                    <ArrowUpIcon className="mr-1 inline size-3" />
-                                ) : (
-                                    <ArrowDownIcon className="mr-1 inline size-3" />
-                                )}
-                                {formatter.format(Math.abs(account.diff) / 100)}
-                            </span>
-                            <span className="ml-1">vs last month</span>
-                        </p>
+                        <AmountTrendIndicator
+                            isPositive={isPositive}
+                            trend={formatter.format(Math.abs(account.diff) / 100)}
+                            label="vs last month"
+                            className='text-sm'
+                        />
                     </div>
-                    <div className="h-[60px] w-[100px]">
+                    <div className="h-[70px] max-w-[250px] w-full flex-1">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={account.history}>
+                                <Tooltip
+                                    content={({ active, payload }) => {
+                                        if (!active || !payload?.length)
+                                            return null;
+                                        const data = payload[0].payload as {
+                                            date: string;
+                                            value: number;
+                                        };
+                                        return (
+                                            <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                                                <p className="mb-0.5 text-muted-foreground">
+                                                    {data.date}
+                                                </p>
+                                                <p className="font-mono font-medium text-foreground tabular-nums">
+                                                    {formatter.format(
+                                                        data.value / 100,
+                                                    )}
+                                                </p>
+                                            </div>
+                                        );
+                                    }}
+                                />
                                 <Line
                                     type="monotone"
                                     dataKey="value"
-                                    stroke={isPositive ? '#16a34a' : '#dc2626'}
+                                    stroke={'var(--color-zinc-700)'}
                                     strokeWidth={2}
                                     dot={false}
                                 />
