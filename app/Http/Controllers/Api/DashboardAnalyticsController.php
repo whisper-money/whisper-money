@@ -259,8 +259,6 @@ class DashboardAnalyticsController extends Controller
         $spending = Transaction::query()
             ->where('user_id', request()->user()->id)
             ->whereBetween('transaction_date', [$from, $to])
-            ->where('amount', '<', 0) // Expenses are negative
-             // Optional: exclude transfers?
             ->whereHas('category', function ($q) {
                 $q->where('type', CategoryType::Expense);
             })
@@ -274,7 +272,6 @@ class DashboardAnalyticsController extends Controller
         $income = Transaction::query()
             ->where('user_id', request()->user()->id)
             ->whereBetween('transaction_date', [$from, $to])
-            ->where('amount', '>', 0)
             ->whereHas('category', function ($q) {
                 $q->where('type', CategoryType::Income);
             })
@@ -283,7 +280,6 @@ class DashboardAnalyticsController extends Controller
         $expense = Transaction::query()
             ->where('user_id', request()->user()->id)
             ->whereBetween('transaction_date', [$from, $to])
-            ->where('amount', '<', 0)
             ->whereHas('category', function ($q) {
                 $q->where('type', CategoryType::Expense);
             })
