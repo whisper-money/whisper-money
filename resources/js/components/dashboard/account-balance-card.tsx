@@ -1,10 +1,9 @@
 import { EncryptedText } from '@/components/encrypted-text';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Account } from '@/types/account';
-import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react';
-import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import { AmountTrendIndicator } from './amount-trend-indicator';
 import { AccountTypeIcon } from './account-type-icon';
+import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface AccountBalanceCardProps {
     account: Account & {
@@ -71,6 +70,28 @@ export function AccountBalanceCard({
                     <div className="h-[70px] max-w-[250px] w-full flex-1">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={account.history}>
+                                <Tooltip
+                                    content={({ active, payload }) => {
+                                        if (!active || !payload?.length)
+                                            return null;
+                                        const data = payload[0].payload as {
+                                            date: string;
+                                            value: number;
+                                        };
+                                        return (
+                                            <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                                                <p className="mb-0.5 text-muted-foreground">
+                                                    {data.date}
+                                                </p>
+                                                <p className="font-mono font-medium text-foreground tabular-nums">
+                                                    {formatter.format(
+                                                        data.value / 100,
+                                                    )}
+                                                </p>
+                                            </div>
+                                        );
+                                    }}
+                                />
                                 <Line
                                     type="monotone"
                                     dataKey="value"
