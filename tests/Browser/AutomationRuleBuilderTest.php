@@ -20,7 +20,7 @@ it('can create an automation rule with visual builder', function () {
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('title', 'Test Rule')
         ->fill('priority', '10')
         ->assertSee('Conditions')
@@ -29,7 +29,7 @@ it('can create an automation rule with visual builder', function () {
         ->click('Set Category')
         ->click($category->name)
         ->click('Create')
-        ->waitFor('Test Rule')
+        ->wait(2)
         ->assertSee('Test Rule')
         ->assertNoJavascriptErrors();
 
@@ -41,7 +41,7 @@ it('can create an automation rule with visual builder', function () {
 });
 
 it('can add multiple conditions to a group', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -50,7 +50,7 @@ it('can add multiple conditions to a group', function () {
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('title', 'Multi-Condition Rule')
         ->fill('priority', '5')
         ->click('Add Condition')
@@ -58,7 +58,7 @@ it('can add multiple conditions to a group', function () {
         ->click('Set Category')
         ->click($category->name)
         ->click('Create')
-        ->waitFor('Multi-Condition Rule')
+        ->wait(2)
         ->assertSee('Multi-Condition Rule')
         ->assertNoJavascriptErrors();
 
@@ -69,7 +69,7 @@ it('can add multiple conditions to a group', function () {
 });
 
 it('can add multiple groups', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -78,7 +78,7 @@ it('can add multiple groups', function () {
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('title', 'Multi-Group Rule')
         ->fill('priority', '3')
         ->click('Add Group')
@@ -87,7 +87,7 @@ it('can add multiple groups', function () {
         ->click('Set Category')
         ->click($category->name)
         ->click('Create')
-        ->waitFor('Multi-Group Rule')
+        ->wait(2)
         ->assertSee('Multi-Group Rule')
         ->assertNoJavascriptErrors();
 
@@ -98,7 +98,7 @@ it('can add multiple groups', function () {
 });
 
 it('can select different field types and operators', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -107,7 +107,7 @@ it('can select different field types and operators', function () {
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('title', 'Amount Rule')
         ->fill('priority', '1')
         ->click('Description')
@@ -119,7 +119,7 @@ it('can select different field types and operators', function () {
         ->click('Set Category')
         ->click($category->name)
         ->click('Create')
-        ->waitFor('Amount Rule')
+        ->wait(2)
         ->assertSee('Amount Rule')
         ->assertNoJavascriptErrors();
 
@@ -130,7 +130,7 @@ it('can select different field types and operators', function () {
 });
 
 it('can edit an existing rule with visual builder', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     $rule = $user->automationRules()->create([
@@ -147,12 +147,12 @@ it('can edit an existing rule with visual builder', function () {
     $page->assertSee('Original Rule')
         ->click('button[aria-label="Actions"]')
         ->click('Edit')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->assertSee('Edit Automation Rule')
         ->assertSee('grocery')
         ->fill('title', 'Updated Rule')
         ->click('Save Changes')
-        ->waitFor('Updated Rule')
+        ->wait(2)
         ->assertSee('Updated Rule')
         ->assertNoJavascriptErrors();
 
@@ -163,7 +163,7 @@ it('can edit an existing rule with visual builder', function () {
 });
 
 it('validates that at least one condition is required', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -172,7 +172,7 @@ it('validates that at least one condition is required', function () {
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('title', 'Invalid Rule')
         ->fill('priority', '1')
         ->click('Set Category')
@@ -188,7 +188,7 @@ it('validates that at least one condition is required', function () {
 });
 
 it('can toggle group operators between AND and OR', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -197,7 +197,7 @@ it('can toggle group operators between AND and OR', function () {
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('title', 'OR Rule')
         ->fill('priority', '1')
         ->click('Add Condition')
@@ -208,7 +208,7 @@ it('can toggle group operators between AND and OR', function () {
         ->click('Set Category')
         ->click($category->name)
         ->click('Create')
-        ->waitFor('OR Rule')
+        ->wait(2)
         ->assertSee('OR Rule')
         ->assertNoJavascriptErrors();
 
@@ -219,7 +219,7 @@ it('can toggle group operators between AND and OR', function () {
 });
 
 it('can use is empty operator for nullable fields', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -228,7 +228,7 @@ it('can use is empty operator for nullable fields', function () {
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('title', 'Empty Category Rule')
         ->fill('priority', '1')
         ->click('Description')
@@ -238,7 +238,7 @@ it('can use is empty operator for nullable fields', function () {
         ->click('Set Category')
         ->click($category->name)
         ->click('Create')
-        ->waitFor('Empty Category Rule')
+        ->wait(2)
         ->assertSee('Empty Category Rule')
         ->assertNoJavascriptErrors();
 

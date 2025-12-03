@@ -31,7 +31,7 @@ it('can open add transaction dialog', function () {
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->assertSee('Create Transaction')
         ->assertNoJavascriptErrors();
 });
@@ -47,7 +47,7 @@ it('can create a transaction', function () {
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('description', 'Test Transaction')
         ->click('Select Account')
         ->wait(0.5)

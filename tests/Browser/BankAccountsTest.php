@@ -50,7 +50,7 @@ it('can open create account dialog', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->assertSee('Add a new bank account to track your transactions')
         ->assertNoJavascriptErrors();
 });
@@ -65,7 +65,7 @@ it('can create a new bank account', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->fill('#display_name', 'My Savings Account')
         ->click('Select a bank...')
         ->wait(0.5)
@@ -148,7 +148,7 @@ it('can edit an existing account via dropdown menu', function () {
         ->click('button[aria-label="Open menu"]')
         ->wait(0.3)
         ->click('Edit')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->assertSee('Edit Account')
         ->fill('#display_name', 'Updated Account Name')
         ->click('Save')
@@ -174,7 +174,7 @@ it('can delete an account via dropdown menu', function () {
         ->click('button[aria-label="Open menu"]')
         ->wait(0.3)
         ->click('Delete')
-        ->waitFor('dialog')
+        ->wait(0.5)
         ->assertSee('Delete Account')
         ->click('Delete')
         ->wait(2)
