@@ -1,4 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Category, getCategoryColorClasses } from '@/types/category';
@@ -16,6 +22,19 @@ interface TopCategoriesCardProps {
     categories: CategoryData[];
     loading?: boolean;
 }
+
+const CHART_COLORS = [
+    'var(--chart-1)',
+    'var(--chart-2)',
+    'var(--chart-3)',
+    'var(--chart-4)',
+    'var(--chart-5)',
+    'var(--chart-6)',
+    'var(--chart-7)',
+    'var(--chart-7)',
+    'var(--chart-8)',
+    'var(--chart-8)',
+];
 
 export function TopCategoriesCard({
     categories,
@@ -54,13 +73,13 @@ export function TopCategoriesCard({
 
     return (
         <Card className="col-span-3">
-            <CardHeader className='gap-2'>
+            <CardHeader className="gap-2">
                 <CardTitle>Top spending categories</CardTitle>
                 <CardDescription>on the last 30 days</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {categories.map((item) => {
+                    {categories.map((item, index) => {
                         const Icon = (Icons[
                             item.category.icon as keyof typeof Icons
                         ] || Icons.HelpCircle) as LucideIcon;
@@ -80,6 +99,8 @@ export function TopCategoriesCard({
                         const categoryColor = getCategoryColorClasses(
                             item.category.color,
                         );
+                        const chartColor =
+                            CHART_COLORS[index % CHART_COLORS.length];
 
                         const TrendIcon = isSpendingLess
                             ? TrendingDown
@@ -94,7 +115,7 @@ export function TopCategoriesCard({
                                     <div className="flex items-center gap-2">
                                         <div
                                             className={cn([
-                                                "flex size-6 ml-0.5 shrink-0 items-center justify-center rounded-full",
+                                                'ml-0.5 flex size-6 shrink-0 items-center justify-center rounded-full',
                                                 `${categoryColor.bg} ${categoryColor.text}`,
                                             ])}
                                         >
@@ -137,7 +158,7 @@ export function TopCategoriesCard({
                                 <Progress
                                     value={percentage}
                                     className="h-2"
-                                    indicatorColor={item.category.color}
+                                    indicatorColor={chartColor}
                                 />
                             </div>
                         );
