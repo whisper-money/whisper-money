@@ -218,11 +218,11 @@ export function parseJsonLogic(jsonLogic: JsonLogicRule): RuleStructure {
         groups: [
             {
                 id: crypto.randomUUID(),
-                operator: 'and',
+                operator: 'or',
                 conditions: [],
             },
         ],
-        groupOperator: 'and',
+        groupOperator: 'or',
     };
 
     if (!jsonLogic || Object.keys(jsonLogic).length === 0) {
@@ -310,7 +310,7 @@ export function parseJsonLogic(jsonLogic: JsonLogicRule): RuleStructure {
                                 : defaultStructure.groups[0].conditions,
                     },
                 ],
-                groupOperator: 'and',
+                groupOperator: 'or',
             };
         }
     }
@@ -321,11 +321,11 @@ export function parseJsonLogic(jsonLogic: JsonLogicRule): RuleStructure {
             groups: [
                 {
                     id: crypto.randomUUID(),
-                    operator: 'and',
+                    operator: 'or',
                     conditions: [parsed],
                 },
             ],
-            groupOperator: 'and',
+            groupOperator: 'or',
         };
     }
 
@@ -344,7 +344,7 @@ export function createEmptyCondition(): Condition {
 export function createEmptyGroup(): ConditionGroup {
     return {
         id: crypto.randomUUID(),
-        operator: 'and',
+        operator: 'or',
         conditions: [createEmptyCondition()],
     };
 }
