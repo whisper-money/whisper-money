@@ -12,7 +12,7 @@ class AccountBalanceSyncService {
         });
     }
 
-    async sync(): Promise<void> {
+    async sync() {
         return await this.syncManager.sync();
     }
 
