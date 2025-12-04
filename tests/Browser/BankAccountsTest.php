@@ -35,7 +35,7 @@ it('shows existing accounts in list', function () {
     $page = visit('/settings/accounts');
 
     $page->assertSee('Bank accounts')
-        ->assertSee('Test Bank')
+        ->waitForText('Test Bank')
         ->assertSee('Checking')
         ->assertSee('USD')
         ->assertNoJavascriptErrors();
@@ -98,7 +98,7 @@ it('shows empty state when no accounts exist', function () {
     $page = visit('/settings/accounts');
 
     $page->assertSee('Bank accounts')
-        ->assertSee('No accounts found')
+        ->waitForText('No accounts found')
         ->assertNoJavascriptErrors();
 });
 
@@ -123,7 +123,7 @@ it('can filter accounts by name', function () {
     $page = visit('/settings/accounts');
 
     $page->assertSee('Bank accounts')
-        ->assertSee('Test Bank')
+        ->waitForText('Test Bank')
         ->fill('input[placeholder="Filter accounts..."]', 'Checking')
         ->wait(0.5)
         ->assertNoJavascriptErrors();

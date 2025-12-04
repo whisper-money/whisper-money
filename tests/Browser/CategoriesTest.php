@@ -31,7 +31,7 @@ it('shows existing categories in list', function () {
     $page = visit('/settings/categories');
 
     $page->assertSee('Categories settings')
-        ->assertSee('Groceries')
+        ->waitForText('Groceries')
         ->assertNoJavascriptErrors();
 });
 
@@ -101,6 +101,7 @@ it('can filter categories by name', function () {
     $page = visit('/settings/categories');
 
     $page->assertSee('Categories settings')
+        ->waitForText('Groceries')
         ->fill('input[placeholder="Filter categories..."]', 'Groceries')
         ->wait(0.5)
         ->assertSee('Groceries')
@@ -115,7 +116,7 @@ it('shows empty state when no categories exist', function () {
     $page = visit('/settings/categories');
 
     $page->assertSee('Categories settings')
-        ->assertSee('No categories found')
+        ->waitForText('No categories found')
         ->assertNoJavascriptErrors();
 });
 
@@ -132,7 +133,7 @@ it('can edit an existing category via context menu', function () {
 
     $page = visit('/settings/categories');
 
-    $page->assertSee('Old Category')
+    $page->waitForText('Old Category')
         ->rightClick('Old Category')
         ->wait(0.5)
         ->click('Edit')
@@ -185,7 +186,7 @@ it('shows transfer type description when transfer type is selected in edit dialo
 
     $page = visit('/settings/categories');
 
-    $page->assertSee('Test Category')
+    $page->waitForText('Test Category')
         ->rightClick('Test Category')
         ->wait(0.5)
         ->click('Edit')
