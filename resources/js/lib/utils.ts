@@ -16,3 +16,18 @@ export function isSameUrl(
 export function resolveUrl(url: NonNullable<InertiaLinkProps['href']>): string {
     return typeof url === 'string' ? url : url.url;
 }
+
+export function appendNoteIfNotPresent(
+    existingNotes: string | undefined,
+    newNote: string,
+): string {
+    if (!existingNotes) {
+        return newNote;
+    }
+
+    if (existingNotes.includes(newNote)) {
+        return existingNotes;
+    }
+
+    return `${existingNotes}\n${newNote}`;
+}
