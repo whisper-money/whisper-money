@@ -8,7 +8,7 @@ import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
-import { edit } from '@/routes/account';
+import accounts from '@/routes/accounts';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
 import { LogOut, Settings } from 'lucide-react';
@@ -38,7 +38,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full"
-                        href={edit()}
+                        href={accounts.index()}
                         as="button"
                         prefetch
                         onClick={cleanup}

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Settings\AccountController;
+use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware('auth')->group(function () {
-    Route::redirect('settings', '/settings/account');
+    Route::redirect('settings', '/settings/accounts');
 
     Route::get('settings/account', [ProfileController::class, 'account'])->name('account.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -26,6 +27,8 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/accounts', [AccountController::class, 'store'])->name('accounts.store');
     Route::patch('settings/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
     Route::delete('settings/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy');
+
+    Route::post('settings/banks', [BankController::class, 'store'])->name('banks.store');
 
     Route::get('settings/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::post('settings/categories', [CategoryController::class, 'store'])->name('categories.store');

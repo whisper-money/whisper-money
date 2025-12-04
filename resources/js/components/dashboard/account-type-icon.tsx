@@ -8,6 +8,8 @@ import {
     Landmark,
     LucideIcon,
     PiggyBank,
+    TrendingUp,
+    Umbrella,
 } from 'lucide-react';
 
 export function AccountTypeIcon({
@@ -20,7 +22,9 @@ export function AccountTypeIcon({
     const typeMap: Record<AccountType, LucideIcon> = {
         checking: Building2, // 🏦 - bank / institution
         credit_card: CreditCard, // 💳 - card
+        investment: TrendingUp, // 📈 - growth / investment
         loan: Landmark, // 🏠 - "institution/loan", or use Home if it's a mortgage
+        retirement: Umbrella, // 🏖️ - retirement / pension
         savings: PiggyBank, // 💰 - savings
         others: FolderKanban, // 📁 - miscellaneous/other
     };

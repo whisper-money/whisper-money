@@ -6,6 +6,7 @@ import {
     CommandInput,
     CommandItem,
     CommandList,
+    CommandSeparator,
 } from '@/components/ui/command';
 import {
     Popover,
@@ -15,13 +16,14 @@ import {
 import { cn } from '@/lib/utils';
 import { bankSyncService } from '@/services/bank-sync';
 import { type Bank } from '@/types/account';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface BankComboboxProps {
     value: number | null;
     onValueChange: (value: number | null) => void;
     defaultBank?: Bank;
+    onCreateCustomBank?: (searchQuery: string) => void;
 }
 
 const bankCache = new Map<string, Bank[]>();
@@ -30,6 +32,7 @@ export function BankCombobox({
     value,
     onValueChange,
     defaultBank,
+    onCreateCustomBank,
 }: BankComboboxProps) {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -158,6 +161,28 @@ export function BankCombobox({
                                 </CommandItem>
                             ))}
                         </CommandGroup>
+                        {onCreateCustomBank &&
+                            searchQuery.length >= 3 &&
+                            !isLoading &&
+                            banks.length < 3 && (
+                                <>
+                                    <CommandSeparator />
+                                    <CommandGroup>
+                                        <CommandItem
+                                            value="create-custom-bank"
+                                            onSelect={() => {
+                                                onCreateCustomBank(searchQuery);
+                                                setOpen(false);
+                                            }}
+                                        >
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            <span>
+                                                Create &quot;{searchQuery}&quot;
+                                            </span>
+                                        </CommandItem>
+                                    </CommandGroup>
+                                </>
+                            )}
                     </CommandList>
                 </Command>
             </PopoverContent>
