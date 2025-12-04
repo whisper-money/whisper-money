@@ -75,6 +75,7 @@ class DashboardAnalyticsController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $request->user()->id)
+            ->with(['bank:id,name,logo'])
             ->get();
 
         $points = [];
@@ -104,6 +105,7 @@ class DashboardAnalyticsController extends Controller
                     'name_iv' => $account->name_iv,
                     'type' => $account->type,
                     'currency_code' => $account->currency_code,
+                    'bank' => $account->bank,
                 ],
             ];
         });
@@ -112,52 +114,6 @@ class DashboardAnalyticsController extends Controller
             'data' => $points,
             'accounts' => $accountsConfig,
         ]);
-    }
-
-    public function accountBalances(Request $request)
-    {
-        $validated = $request->validate([
-            'from' => 'required|date',
-            'to' => 'required|date',
-        ]);
-
-        $period = PeriodComparator::fromRequest($validated);
-        $previousPeriod = $period->previous();
-
-        $accounts = Account::query()
-            ->where('user_id', $request->user()->id)
-            ->with(['bank:id,name,logo'])
-            ->get();
-
-        $data = $accounts->map(function ($account) use ($period, $previousPeriod) {
-            $currentBalance = $this->getBalanceAt($account->id, $period->to);
-            $previousBalance = $this->getBalanceAt($account->id, $previousPeriod->to);
-
-            // Evolution history (monthly for the requested period)
-            $history = [];
-            $current = $period->from->copy()->endOfMonth();
-            while ($current->lte($period->to)) {
-                $history[] = [
-                    'date' => $current->format('M'),
-                    'value' => $this->getBalanceAt($account->id, $current),
-                ];
-                $current->addMonth()->endOfMonth();
-            }
-
-            return [
-                'id' => $account->id,
-                'name' => $account->name,
-                'name_iv' => $account->name_iv,
-                'type' => $account->type,
-                'bank' => $account->bank,
-                'current_balance' => $currentBalance,
-                'previous_balance' => $previousBalance,
-                'currency_code' => $account->currency_code,
-                'history' => $history,
-            ];
-        });
-
-        return response()->json($data);
     }
 
     public function topCategories(Request $request)

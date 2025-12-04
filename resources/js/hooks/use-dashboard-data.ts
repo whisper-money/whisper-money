@@ -1,4 +1,4 @@
-import { Account, AccountType } from '@/types/account';
+import { Account, AccountType, Bank } from '@/types/account';
 import { Category } from '@/types/category';
 import { format, subDays, subMonths } from 'date-fns';
 import { useEffect, useState } from 'react';
@@ -9,6 +9,7 @@ export interface NetWorthEvolutionAccount {
     name_iv: string;
     type: AccountType;
     currency_code: string;
+    bank: Bank;
 }
 
 export interface NetWorthEvolutionData {
@@ -16,15 +17,16 @@ export interface NetWorthEvolutionData {
     accounts: Record<string, NetWorthEvolutionAccount>;
 }
 
+export interface AccountWithMetrics extends Account {
+    currentBalance: number;
+    previousBalance: number;
+    diff: number;
+    history: Array<{ date: string; value: number }>;
+}
+
 export interface DashboardData {
     netWorthEvolution: NetWorthEvolutionData;
-    accounts: Array<
-        Account & {
-            current_balance: number;
-            previous_balance: number;
-            history: Array<{ date: string; value: number }>;
-        }
-    >;
+    accounts: AccountWithMetrics[];
     topCategories: Array<{
         category: Category;
         amount: number;
@@ -32,6 +34,46 @@ export interface DashboardData {
         total_amount: number;
     }>;
     isLoading: boolean;
+}
+
+function deriveAccountMetrics(
+    netWorthEvolution: NetWorthEvolutionData,
+): AccountWithMetrics[] {
+    const { data, accounts } = netWorthEvolution;
+
+    if (data.length === 0 || Object.keys(accounts).length === 0) {
+        return [];
+    }
+
+    return Object.values(accounts).map((account) => {
+        const history = data.map((point) => ({
+            date: formatMonth(point.month as string),
+            value: (point[account.id] as number) ?? 0,
+        }));
+
+        const currentBalance = history[history.length - 1]?.value ?? 0;
+        const previousBalance =
+            history.length > 1 ? (history[history.length - 2]?.value ?? 0) : 0;
+
+        return {
+            id: account.id,
+            name: account.name,
+            name_iv: account.name_iv,
+            type: account.type,
+            currency_code: account.currency_code,
+            bank: account.bank,
+            currentBalance,
+            previousBalance,
+            diff: currentBalance - previousBalance,
+            history,
+        } as AccountWithMetrics;
+    });
+}
+
+function formatMonth(yearMonth: string): string {
+    const [year, month] = yearMonth.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1);
+    return date.toLocaleDateString('en-US', { month: 'short' });
 }
 
 export function useDashboardData(): DashboardData {
@@ -63,35 +105,20 @@ export function useDashboardData(): DashboardData {
                 });
                 const query30Days = `?${params30Days.toString()}`;
 
-                const [netWorthEvolution, accountBalances, topCategories] =
-                    await Promise.all([
-                        fetch(
-                            `/api/dashboard/net-worth-evolution${query12Months}`,
-                        ).then((r) => r.json()),
-                        fetch(
-                            `/api/dashboard/account-balances${query12Months}`,
-                        ).then((r) => r.json()),
-                        fetch(
-                            `/api/dashboard/top-categories${query30Days}`,
-                        ).then((r) => r.json()),
-                    ]);
+                const [netWorthEvolution, topCategories] = await Promise.all([
+                    fetch(
+                        `/api/dashboard/net-worth-evolution${query12Months}`,
+                    ).then((r) => r.json()),
+                    fetch(`/api/dashboard/top-categories${query30Days}`).then(
+                        (r) => r.json(),
+                    ),
+                ]);
+
+                const netWorthData = netWorthEvolution as NetWorthEvolutionData;
 
                 setData({
-                    netWorthEvolution:
-                        netWorthEvolution as NetWorthEvolutionData,
-                    accounts: accountBalances.map(
-                        (acc: {
-                            id: string;
-                            name: string;
-                            current_balance: number;
-                            previous_balance: number;
-                        }) => ({
-                            ...acc,
-                            currentBalance: acc.current_balance,
-                            previousBalance: acc.previous_balance,
-                            diff: acc.current_balance - acc.previous_balance,
-                        }),
-                    ),
+                    netWorthEvolution: netWorthData,
+                    accounts: deriveAccountMetrics(netWorthData),
                     topCategories,
                 });
             } catch (error) {

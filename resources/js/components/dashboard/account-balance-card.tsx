@@ -1,16 +1,12 @@
 import { EncryptedText } from '@/components/encrypted-text';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Account } from '@/types/account';
+import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { AccountTypeIcon } from './account-type-icon';
 import { AmountTrendIndicator } from './amount-trend-indicator';
 
 interface AccountBalanceCardProps {
-    account: Account & {
-        currentBalance: number;
-        diff: number;
-        history: Array<{ date: string; value: number }>;
-    };
+    account: AccountWithMetrics;
     loading?: boolean;
 }
 

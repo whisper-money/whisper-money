@@ -267,7 +267,7 @@ test('net worth evolution uses last balance of each month per account', function
     expect($data['data'][0][$account->id])->toBe(200000);
 });
 
-test('net worth evolution returns account metadata', function () {
+test('net worth evolution returns account metadata including bank', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::CreditCard,
@@ -289,4 +289,6 @@ test('net worth evolution returns account metadata', function () {
         'name_iv' => 'test_iv_1234567',
         'type' => 'credit_card',
     ]);
+    expect($data['accounts'][$account->id])->toHaveKey('bank');
+    expect($data['accounts'][$account->id]['bank'])->toHaveKeys(['id', 'name', 'logo']);
 });
