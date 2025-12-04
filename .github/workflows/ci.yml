@@ -62,6 +62,7 @@ jobs:
           DB_PASSWORD: password
 
   browser-tests:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     services:
       mysql:
