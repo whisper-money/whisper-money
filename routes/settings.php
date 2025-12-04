@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware('auth')->group(function () {
-    Route::redirect('settings', '/settings/account');
+    Route::redirect('settings', '/settings/accounts');
 
     Route::get('settings/account', [ProfileController::class, 'account'])->name('account.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
