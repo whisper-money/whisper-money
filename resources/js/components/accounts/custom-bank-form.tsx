@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ImagePlus, Landmark, X } from 'lucide-react';
+import { ImagePlus, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
 const MAX_FILE_SIZE = 500 * 1024; // 500KB
@@ -90,16 +90,6 @@ export function CustomBankForm({
         },
         [onChange, validateImage, value],
     );
-
-    const handleRemoveLogo = useCallback(() => {
-        if (value.logoPreview) {
-            URL.revokeObjectURL(value.logoPreview);
-        }
-        onChange({ ...value, logo: null, logoPreview: null });
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
-    }, [onChange, value]);
 
     const handleNameChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
