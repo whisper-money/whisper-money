@@ -232,6 +232,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                             <Input
                                 id="display_name"
                                 name="display_name"
+                                className='mt-1'
                                 placeholder="Account name"
                                 required
                             />
@@ -267,37 +268,45 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
 
                         <div className="space-y-2">
                             <Label htmlFor="type">Account Type</Label>
-                            <Select name="type" required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select account type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ACCOUNT_TYPES.map((type) => (
-                                        <SelectItem key={type} value={type}>
-                                            {formatAccountType(type)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div
+                                className='mt-1'
+                            >
+                                <Select name="type" required>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select account type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {ACCOUNT_TYPES.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {formatAccountType(type)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div className="space-y-2">
                             <Label htmlFor="currency_code">Currency</Label>
-                            <Select name="currency_code" required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select currency" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CURRENCY_OPTIONS.map((currency) => (
-                                        <SelectItem
-                                            key={currency}
-                                            value={currency}
-                                        >
-                                            {currency}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div
+                                className='mt-1'
+                            >
+                                <Select name="currency_code" required>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select currency" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {CURRENCY_OPTIONS.map((currency) => (
+                                            <SelectItem
+                                                key={currency}
+                                                value={currency}
+                                            >
+                                                {currency}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div className="flex justify-end gap-2">

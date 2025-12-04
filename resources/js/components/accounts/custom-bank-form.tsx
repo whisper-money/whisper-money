@@ -119,7 +119,7 @@ export function CustomBankForm({
             <X className="size-4" />
         </Button>
 
-        <div className="border border-border p-3 mt-2 rounded-sm space-y-2">
+        <div className="border border-border p-3 mt-1 rounded-sm space-y-2">
             <div className="space-y-2">
                 <Label htmlFor="bank_name">Bank name</Label>
                 <Input
@@ -127,7 +127,7 @@ export function CustomBankForm({
                     placeholder="Bank name"
                     defaultValue={defaultName}
                     value={value.name}
-                    className='mt-2'
+                    className='mt-1'
                     onChange={handleNameChange}
                     required
                 />
@@ -135,7 +135,7 @@ export function CustomBankForm({
 
             <div className="space-y-2">
                 <Label htmlFor="bank_logo">Logo</Label>
-                <div className="flex items-center mt-2 gap-2">
+                <div className="flex items-center mt-1 gap-2">
                     <Input
                         ref={fileInputRef}
                         type="file"
