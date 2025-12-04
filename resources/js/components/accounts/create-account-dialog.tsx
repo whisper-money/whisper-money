@@ -28,6 +28,7 @@ import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import {
     ACCOUNT_TYPES,
+    AccountType,
     CURRENCY_OPTIONS,
     formatAccountType,
 } from '@/types/account';
@@ -51,6 +52,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
     const [customBankData, setCustomBankData] = useState<CustomBankData>(
         initialCustomBankData,
     );
+    const [selectedType, setSelectedType] = useState<AccountType | null>(null);
 
     useEffect(() => {
         const checkKey = () => {
@@ -83,6 +85,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         setSelectedBankId(null);
         setIsCreatingCustomBank(false);
         setCustomBankData(initialCustomBankData);
+        setSelectedType(null);
     }, []);
 
     async function createBankAndGetId(): Promise<string | null> {
@@ -269,7 +272,14 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                         <div className="space-y-2">
                             <Label htmlFor="type">Account Type</Label>
                             <div className="mt-1">
-                                <Select name="type" required>
+                                <Select
+                                    name="type"
+                                    value={selectedType ?? undefined}
+                                    onValueChange={(value) =>
+                                        setSelectedType(value as AccountType)
+                                    }
+                                    required
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select account type" />
                                     </SelectTrigger>
@@ -281,6 +291,14 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {(selectedType === 'investment' ||
+                                    selectedType === 'retirement') && (
+                                        <p className="pl-1 text-xs text-muted-foreground">
+                                            This account type is for balance
+                                            tracking only and doesn't support
+                                            transactions.
+                                        </p>
+                                    )}
                             </div>
                         </div>
 

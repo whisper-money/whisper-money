@@ -23,6 +23,7 @@ import {
     CURRENCY_OPTIONS,
     formatAccountType,
     type Account,
+    type AccountType,
 } from '@/types/account';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -45,6 +46,7 @@ export function EditAccountDialog({
     const [selectedBankId, setSelectedBankId] = useState<number | null>(
         account.bank.id,
     );
+    const [selectedType, setSelectedType] = useState<AccountType>(account.type);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -73,13 +75,19 @@ export function EditAccountDialog({
     // Update selected bank when dialog opens with a new account
     useEffect(() => {
         if (open && selectedBankId !== account.bank.id) {
-            // Schedule state update to avoid cascading renders
             const timer = setTimeout(() => {
                 setSelectedBankId(account.bank.id);
             }, 0);
             return () => clearTimeout(timer);
         }
     }, [open, account.bank.id, selectedBankId]);
+
+    // Update selected type when dialog opens with a new account
+    useEffect(() => {
+        if (open) {
+            setSelectedType(account.type);
+        }
+    }, [open, account.id, account.type]);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -169,7 +177,10 @@ export function EditAccountDialog({
                             <Label htmlFor="type">Account Type</Label>
                             <Select
                                 name="type"
-                                defaultValue={account.type}
+                                value={selectedType}
+                                onValueChange={(value) =>
+                                    setSelectedType(value as AccountType)
+                                }
                                 required
                             >
                                 <SelectTrigger>
@@ -183,6 +194,13 @@ export function EditAccountDialog({
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {(selectedType === 'investment' ||
+                                selectedType === 'retirement') && (
+                                <p className="pl-1 text-xs text-muted-foreground">
+                                    This account type is for balance tracking
+                                    only and doesn't support transactions.
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
