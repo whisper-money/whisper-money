@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { db } from '@/lib/dexie-db';
 import { type Account } from '@/types/account';
 import { Form } from '@inertiajs/react';
 import { useState } from 'react';
@@ -69,7 +70,8 @@ export function DeleteAccountDialog({
 
                     <Form
                         {...destroy.form.delete(account.id)}
-                        onSuccess={() => {
+                        onSuccess={async () => {
+                            await db.accounts.delete(account.id);
                             handleOpenChange(false);
                             onSuccess?.();
                         }}

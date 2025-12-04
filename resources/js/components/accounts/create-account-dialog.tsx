@@ -1,4 +1,5 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -8,15 +9,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import {
     Tooltip,
     TooltipContent,
@@ -25,20 +17,21 @@ import {
 } from '@/components/ui/tooltip';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import {
-    ACCOUNT_TYPES,
-    CURRENCY_OPTIONS,
-    formatAccountType,
-} from '@/types/account';
 import { router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
-import { BankCombobox } from './bank-combobox';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AccountForm, AccountFormData } from './account-form';
 
 export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
     const [open, setOpen] = useState(false);
     const [isKeyAvailable, setIsKeyAvailable] = useState(false);
-    const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const formDataRef = useRef<AccountFormData>({
+        displayName: '',
+        bankId: null,
+        type: null,
+        currencyCode: null,
+        customBank: null,
+    });
 
     useEffect(() => {
         const checkKey = () => {
@@ -52,14 +45,53 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         return () => clearInterval(interval);
     }, []);
 
+    const handleFormChange = useCallback((data: AccountFormData) => {
+        formDataRef.current = data;
+    }, []);
+
+    async function createBankAndGetId(): Promise<string | null> {
+        const customBank = formDataRef.current.customBank;
+        if (!customBank) return null;
+
+        const formData = new FormData();
+        formData.append('name', customBank.name);
+        if (customBank.logo) {
+            formData.append('logo', customBank.logo);
+        }
+
+        try {
+            const response = await fetch(storeBank.url(), {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-XSRF-TOKEN': decodeURIComponent(
+                        document.cookie
+                            .split('; ')
+                            .find((row) => row.startsWith('XSRF-TOKEN='))
+                            ?.split('=')[1] || '',
+                    ),
+                    Accept: 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to create bank');
+            }
+
+            const data = await response.json();
+            return data.id;
+        } catch (err) {
+            console.error('Failed to create bank:', err);
+            throw err;
+        }
+    }
+
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        const formData = new FormData(event.currentTarget);
-        const displayName = formData.get('display_name') as string;
-        const bankId = formData.get('bank_id') as string;
-        const type = formData.get('type') as string;
-        const currencyCode = formData.get('currency_code') as string;
+        const { displayName, bankId, type, currencyCode, customBank } =
+            formDataRef.current;
 
         const keyString = getStoredKey();
         if (!keyString) {
@@ -67,9 +99,36 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
             return;
         }
 
+        if (!type || !currencyCode) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
+            let finalBankId: string;
+
+            if (customBank) {
+                if (!customBank.name.trim()) {
+                    alert('Please enter a bank name.');
+                    setIsSubmitting(false);
+                    return;
+                }
+                const createdBankId = await createBankAndGetId();
+                if (!createdBankId) {
+                    throw new Error('Failed to create bank');
+                }
+                finalBankId = createdBankId;
+            } else {
+                if (!bankId) {
+                    alert('Please select a bank.');
+                    setIsSubmitting(false);
+                    return;
+                }
+                finalBankId = String(bankId);
+            }
+
             const key = await importKey(keyString);
             const { encrypted, iv } = await encrypt(displayName, key);
 
@@ -78,7 +137,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                 {
                     name: encrypted,
                     name_iv: iv,
-                    bank_id: bankId,
+                    bank_id: finalBankId,
                     type: type,
                     currency_code: currencyCode,
                 },
@@ -93,8 +152,12 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                 },
             );
         } catch (err) {
-            console.error('Encryption failed:', err);
-            alert('Failed to encrypt account name. Please try again.');
+            console.error('Submission failed:', err);
+            alert(
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to create account. Please try again.',
+            );
             setIsSubmitting(false);
         }
     }
@@ -131,81 +194,22 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                         Add a new bank account to track your transactions.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <>
-                        <div className="space-y-2">
-                            <Label htmlFor="display_name">Name</Label>
-                            <Input
-                                id="display_name"
-                                name="display_name"
-                                placeholder="Account name"
-                                required
-                            />
-                        </div>
+                <form onSubmit={handleSubmit} className="space-y-2">
+                    <AccountForm onChange={handleFormChange} />
 
-                        <div className="space-y-2">
-                            <Label htmlFor="bank_id">Bank</Label>
-                            <input
-                                type="hidden"
-                                name="bank_id"
-                                value={selectedBankId || ''}
-                                required
-                            />
-                            <BankCombobox
-                                value={selectedBankId}
-                                onValueChange={setSelectedBankId}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="type">Account Type</Label>
-                            <Select name="type" required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select account type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ACCOUNT_TYPES.map((type) => (
-                                        <SelectItem key={type} value={type}>
-                                            {formatAccountType(type)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="currency_code">Currency</Label>
-                            <Select name="currency_code" required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select currency" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CURRENCY_OPTIONS.map((currency) => (
-                                        <SelectItem
-                                            key={currency}
-                                            value={currency}
-                                        >
-                                            {currency}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="flex justify-end gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setOpen(false)}
-                                disabled={isSubmitting}
-                            >
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? 'Creating...' : 'Create'}
-                            </Button>
-                        </div>
-                    </>
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                            disabled={isSubmitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? 'Creating...' : 'Create'}
+                        </Button>
+                    </div>
                 </form>
             </DialogContent>
         </Dialog>

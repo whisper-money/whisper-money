@@ -25,7 +25,11 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type Account, type Bank } from '@/types/account';
+import {
+    filterTransactionalAccounts,
+    type Account,
+    type Bank,
+} from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
@@ -82,7 +86,10 @@ export function EditTransactionDialog({
             setTransactionDate(today);
             setDescription('');
             setAmount(0);
-            setAccountId(accounts.length > 0 ? accounts[0].id : '');
+            const availableAccounts = filterTransactionalAccounts(accounts);
+            setAccountId(
+                availableAccounts.length > 0 ? availableAccounts[0].id : '',
+            );
             setCategoryId('null');
             setNotes('');
         }
@@ -414,6 +421,7 @@ export function EditTransactionDialog({
     }
 
     const selectedAccount = accounts.find((acc) => acc.id === accountId);
+    const transactionalAccounts = filterTransactionalAccounts(accounts);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -569,16 +577,18 @@ export function EditTransactionDialog({
                                         <SelectValue placeholder="Select account" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {accounts.map((account) => (
-                                            <SelectItem
-                                                key={account.id}
-                                                value={String(account.id)}
-                                            >
-                                                {decryptedAccountNames.get(
-                                                    account.id,
-                                                ) || '[Loading...]'}
-                                            </SelectItem>
-                                        ))}
+                                        {transactionalAccounts.map(
+                                            (account) => (
+                                                <SelectItem
+                                                    key={account.id}
+                                                    value={String(account.id)}
+                                                >
+                                                    {decryptedAccountNames.get(
+                                                        account.id,
+                                                    ) || '[Loading...]'}
+                                                </SelectItem>
+                                            ),
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
