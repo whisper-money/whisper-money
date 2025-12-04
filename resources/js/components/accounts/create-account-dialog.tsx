@@ -232,7 +232,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                             <Input
                                 id="display_name"
                                 name="display_name"
-                                className='mt-1'
+                                className="mt-1"
                                 placeholder="Account name"
                                 required
                             />
@@ -268,9 +268,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
 
                         <div className="space-y-2">
                             <Label htmlFor="type">Account Type</Label>
-                            <div
-                                className='mt-1'
-                            >
+                            <div className="mt-1">
                                 <Select name="type" required>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select account type" />
@@ -288,9 +286,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
 
                         <div className="space-y-2">
                             <Label htmlFor="currency_code">Currency</Label>
-                            <div
-                                className='mt-1'
-                            >
+                            <div className="mt-1">
                                 <Select name="currency_code" required>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select currency" />

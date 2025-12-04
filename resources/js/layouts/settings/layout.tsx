@@ -77,38 +77,47 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                     <nav className="flex flex-col space-y-1 space-x-0">
                         {sidebarNavItems.map((item, index) => {
                             if ('type' in item && item.type === 'divider') {
-                                return <Separator
-                                    key={`divider-${index}`}
-                                    className="my-2 ml-0 opacity-0"
-                                />
-                            } else if ('type' in item && item.type === 'section-header') {
-                                return <h2
-                                    key={`section-header-${index}`}
-                                    className="px-3 pt-2 pb-1.5 text-sm font-medium text-muted-foreground"
-                                >
-                                    {item.title}
-                                </h2>
+                                return (
+                                    <Separator
+                                        key={`divider-${index}`}
+                                        className="my-2 ml-0 opacity-0"
+                                    />
+                                );
+                            } else if (
+                                'type' in item &&
+                                item.type === 'section-header'
+                            ) {
+                                return (
+                                    <h2
+                                        key={`section-header-${index}`}
+                                        className="px-3 pt-2 pb-1.5 text-sm font-medium text-muted-foreground"
+                                    >
+                                        {item.title}
+                                    </h2>
+                                );
                             }
 
-                            return <Button
-                                key={`${resolveUrl(item.href)}-${index}`}
-                                size="sm"
-                                variant="ghost"
-                                asChild
-                                className={cn('w-full justify-start', {
-                                    'bg-muted': isSameUrl(
-                                        currentPath,
-                                        item.href,
-                                    ),
-                                })}
-                            >
-                                <Link href={item.href}>
-                                    {item.icon && (
-                                        <item.icon className="h-4 w-4" />
-                                    )}
-                                    {item.title}
-                                </Link>
-                            </Button>
+                            return (
+                                <Button
+                                    key={`${resolveUrl(item.href)}-${index}`}
+                                    size="sm"
+                                    variant="ghost"
+                                    asChild
+                                    className={cn('w-full justify-start', {
+                                        'bg-muted': isSameUrl(
+                                            currentPath,
+                                            item.href,
+                                        ),
+                                    })}
+                                >
+                                    <Link href={item.href}>
+                                        {item.icon && (
+                                            <item.icon className="h-4 w-4" />
+                                        )}
+                                        {item.title}
+                                    </Link>
+                                </Button>
+                            );
                         })}
                     </nav>
                 </aside>

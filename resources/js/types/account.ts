@@ -3,7 +3,9 @@ import { UUID } from './uuid';
 export const ACCOUNT_TYPES = [
     'checking',
     'credit_card',
+    'investment',
     'loan',
+    'retirement',
     'savings',
     'others',
 ] as const;
@@ -54,7 +56,9 @@ export function formatAccountType(type: AccountType): string {
     const typeMap: Record<AccountType, string> = {
         checking: 'Checking',
         credit_card: 'Credit Card',
+        investment: 'Investment',
         loan: 'Loan',
+        retirement: 'Retirement / Pension',
         savings: 'Savings',
         others: 'Others',
     };

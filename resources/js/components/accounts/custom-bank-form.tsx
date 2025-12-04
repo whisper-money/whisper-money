@@ -98,62 +98,69 @@ export function CustomBankForm({
         [onChange, value],
     );
 
-    return (<>
-        <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={onCancel}
-            className='cursor-pointer -mr-2 ml-auto float-right'
-        >
-            <X className="size-4" />
-        </Button>
+    return (
+        <>
+            <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={onCancel}
+                className="float-right -mr-2 ml-auto cursor-pointer"
+            >
+                <X className="size-4" />
+            </Button>
 
-        <div className="border border-border p-3 mt-1 rounded-sm space-y-2">
-            <div className="space-y-2">
-                <Label htmlFor="bank_name">Bank name</Label>
-                <Input
-                    id="bank_name"
-                    placeholder="Bank name"
-                    defaultValue={defaultName}
-                    value={value.name}
-                    className='mt-1'
-                    onChange={handleNameChange}
-                    required
-                />
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="bank_logo">Logo</Label>
-                <div className="flex items-center mt-1 gap-2">
+            <div className="mt-1 space-y-2 rounded-sm border border-border p-3">
+                <div className="space-y-2">
+                    <Label htmlFor="bank_name">Bank name</Label>
                     <Input
-                        ref={fileInputRef}
-                        type="file"
-                        id="bank_logo"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={handleFileChange}
+                        id="bank_name"
+                        placeholder="Bank name"
+                        defaultValue={defaultName}
+                        value={value.name}
+                        className="mt-1"
+                        onChange={handleNameChange}
+                        required
                     />
-                    <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border aspect-square border-muted-foreground/25 transition-colors hover:border-muted-foreground/50"
-                    >
-                        {value.logoPreview ? (
-                            <img
-                                src={value.logoPreview}
-                                alt="Bank logo preview"
-                                className="size-5 object-contain"
-                            />
-                        ) : (
-                            <ImagePlus className="size-4 text-muted-foreground" />
-                        )}
-                    </button>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                    <p>Square images only (max {MAX_DIMENSIONS}x{MAX_DIMENSIONS}px) / {MAX_FILE_SIZE / 1024}KB max.</p>
+
+                <div className="space-y-2">
+                    <Label htmlFor="bank_logo">Logo</Label>
+                    <div className="mt-1 flex items-center gap-2">
+                        <Input
+                            ref={fileInputRef}
+                            type="file"
+                            id="bank_logo"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={handleFileChange}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex aspect-square h-9 w-9 items-center justify-center rounded-lg border border-muted-foreground/25 transition-colors hover:border-muted-foreground/50"
+                        >
+                            {value.logoPreview ? (
+                                <img
+                                    src={value.logoPreview}
+                                    alt="Bank logo preview"
+                                    className="size-5 object-contain"
+                                />
+                            ) : (
+                                <ImagePlus className="size-4 text-muted-foreground" />
+                            )}
+                        </button>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                        <p>
+                            Square images only (max {MAX_DIMENSIONS}x
+                            {MAX_DIMENSIONS}px) / {MAX_FILE_SIZE / 1024}KB max.
+                        </p>
+                    </div>
+                    {error && (
+                        <p className="text-sm text-destructive">{error}</p>
+                    )}
                 </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
-        </div >
-    </>);
+        </>
+    );
 }
