@@ -257,8 +257,8 @@ const ChartTooltipContent = React.forwardRef<
                                     )}
                                 >
                                     {formatter &&
-                                    item?.value !== undefined &&
-                                    item.name ? (
+                                        item?.value !== undefined &&
+                                        item.name ? (
                                         formatter(
                                             item.value,
                                             item.name,
@@ -273,14 +273,16 @@ const ChartTooltipContent = React.forwardRef<
                                             ) : null}
                                             <div
                                                 className={cn(
-                                                    'flex flex-1 justify-between leading-none',
+                                                    'flex flex-1 gap-4 justify-between leading-none',
                                                     nestLabel ? 'items-end' : '',
                                                 )}
                                             >
-                                                <div className="grid gap-1.5">
+                                                <div className="flex items-center gap-2">
                                                     {nestLabel
                                                         ? tooltipLabel
-                                                        : null}
+                                                        : <div style={{ backgroundColor: item.color }} className={cn([
+                                                            'size-2.5 rounded-xs'
+                                                        ])}></div>}
                                                     <span className="text-muted-foreground ml-0">
                                                         {itemConfig?.label ||
                                                             item.name}
@@ -290,13 +292,13 @@ const ChartTooltipContent = React.forwardRef<
                                                     <span className="text-foreground font-mono font-medium tabular-nums">
                                                         {valueFormatter
                                                             ? valueFormatter(
-                                                                  item.value as number,
-                                                                  accountId,
-                                                              )
+                                                                item.value as number,
+                                                                accountId,
+                                                            )
                                                             : typeof item.value ===
                                                                 'number'
-                                                              ? item.value.toLocaleString()
-                                                              : item.value}
+                                                                ? item.value.toLocaleString()
+                                                                : item.value}
                                                     </span>
                                                 )}
                                             </div>
@@ -333,28 +335,28 @@ const ChartTooltipContent = React.forwardRef<
                                     <span className="text-foreground font-mono font-medium tabular-nums">
                                         {currencyTotals && currencyTotals[0]
                                             ? formatCurrencyWithCode(
-                                                  currencyTotals[0][1],
-                                                  currencyTotals[0][0],
-                                              )
+                                                currencyTotals[0][1],
+                                                currencyTotals[0][0],
+                                            )
                                             : payload
-                                                  .reduce(
-                                                      (
-                                                          sum: number,
-                                                          item: TooltipPayloadItem,
-                                                      ) => {
-                                                          const value =
-                                                              item.value;
-                                                          return (
-                                                              sum +
-                                                              (typeof value ===
-                                                              'number'
-                                                                  ? value
-                                                                  : 0)
-                                                          );
-                                                      },
-                                                      0,
-                                                  )
-                                                  .toLocaleString()}
+                                                .reduce(
+                                                    (
+                                                        sum: number,
+                                                        item: TooltipPayloadItem,
+                                                    ) => {
+                                                        const value =
+                                                            item.value;
+                                                        return (
+                                                            sum +
+                                                            (typeof value ===
+                                                                'number'
+                                                                ? value
+                                                                : 0)
+                                                        );
+                                                    },
+                                                    0,
+                                                )
+                                                .toLocaleString()}
                                     </span>
                                 </div>
                             )}
@@ -458,8 +460,8 @@ function getPayloadConfigFromPayload(
 
     const payloadPayload =
         'payload' in payload &&
-        typeof payload.payload === 'object' &&
-        payload.payload !== null
+            typeof payload.payload === 'object' &&
+            payload.payload !== null
             ? payload.payload
             : undefined;
 
