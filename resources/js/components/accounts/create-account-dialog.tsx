@@ -1,4 +1,5 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -31,14 +32,25 @@ import {
     formatAccountType,
 } from '@/types/account';
 import { router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BankCombobox } from './bank-combobox';
+import { CustomBankData, CustomBankForm } from './custom-bank-form';
+
+const initialCustomBankData: CustomBankData = {
+    name: '',
+    logo: null,
+    logoPreview: null,
+};
 
 export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
     const [open, setOpen] = useState(false);
     const [isKeyAvailable, setIsKeyAvailable] = useState(false);
     const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isCreatingCustomBank, setIsCreatingCustomBank] = useState(false);
+    const [customBankData, setCustomBankData] = useState<CustomBankData>(
+        initialCustomBankData,
+    );
 
     useEffect(() => {
         const checkKey = () => {
@@ -52,12 +64,67 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         return () => clearInterval(interval);
     }, []);
 
+    const handleCreateCustomBank = useCallback((searchQuery: string) => {
+        setIsCreatingCustomBank(true);
+        setCustomBankData({
+            name: searchQuery,
+            logo: null,
+            logoPreview: null,
+        });
+        setSelectedBankId(null);
+    }, []);
+
+    const handleCancelCustomBank = useCallback(() => {
+        setIsCreatingCustomBank(false);
+        setCustomBankData(initialCustomBankData);
+    }, []);
+
+    const resetForm = useCallback(() => {
+        setSelectedBankId(null);
+        setIsCreatingCustomBank(false);
+        setCustomBankData(initialCustomBankData);
+    }, []);
+
+    async function createBankAndGetId(): Promise<string | null> {
+        const formData = new FormData();
+        formData.append('name', customBankData.name);
+        if (customBankData.logo) {
+            formData.append('logo', customBankData.logo);
+        }
+
+        try {
+            const response = await fetch(storeBank.url(), {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-XSRF-TOKEN': decodeURIComponent(
+                        document.cookie
+                            .split('; ')
+                            .find((row) => row.startsWith('XSRF-TOKEN='))
+                            ?.split('=')[1] || '',
+                    ),
+                    Accept: 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to create bank');
+            }
+
+            const data = await response.json();
+            return data.id;
+        } catch (err) {
+            console.error('Failed to create bank:', err);
+            throw err;
+        }
+    }
+
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
         const formData = new FormData(event.currentTarget);
         const displayName = formData.get('display_name') as string;
-        const bankId = formData.get('bank_id') as string;
         const type = formData.get('type') as string;
         const currencyCode = formData.get('currency_code') as string;
 
@@ -70,6 +137,28 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         setIsSubmitting(true);
 
         try {
+            let bankId: string;
+
+            if (isCreatingCustomBank) {
+                if (!customBankData.name.trim()) {
+                    alert('Please enter a bank name.');
+                    setIsSubmitting(false);
+                    return;
+                }
+                const createdBankId = await createBankAndGetId();
+                if (!createdBankId) {
+                    throw new Error('Failed to create bank');
+                }
+                bankId = createdBankId;
+            } else {
+                bankId = formData.get('bank_id') as string;
+                if (!bankId) {
+                    alert('Please select a bank.');
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             const key = await importKey(keyString);
             const { encrypted, iv } = await encrypt(displayName, key);
 
@@ -85,6 +174,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                 {
                     onSuccess: () => {
                         setOpen(false);
+                        resetForm();
                         onSuccess?.();
                     },
                     onFinish: () => {
@@ -93,8 +183,12 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                 },
             );
         } catch (err) {
-            console.error('Encryption failed:', err);
-            alert('Failed to encrypt account name. Please try again.');
+            console.error('Submission failed:', err);
+            alert(
+                err instanceof Error
+                    ? err.message
+                    : 'Failed to create account. Please try again.',
+            );
             setIsSubmitting(false);
         }
     }
@@ -145,16 +239,30 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
 
                         <div className="space-y-2">
                             <Label htmlFor="bank_id">Bank</Label>
-                            <input
-                                type="hidden"
-                                name="bank_id"
-                                value={selectedBankId || ''}
-                                required
-                            />
-                            <BankCombobox
-                                value={selectedBankId}
-                                onValueChange={setSelectedBankId}
-                            />
+                            {isCreatingCustomBank ? (
+                                <CustomBankForm
+                                    defaultName={customBankData.name}
+                                    value={customBankData}
+                                    onChange={setCustomBankData}
+                                    onCancel={handleCancelCustomBank}
+                                />
+                            ) : (
+                                <>
+                                    <input
+                                        type="hidden"
+                                        name="bank_id"
+                                        value={selectedBankId || ''}
+                                        required
+                                    />
+                                    <BankCombobox
+                                        value={selectedBankId}
+                                        onValueChange={setSelectedBankId}
+                                        onCreateCustomBank={
+                                            handleCreateCustomBank
+                                        }
+                                    />
+                                </>
+                            )}
                         </div>
 
                         <div className="space-y-2">
