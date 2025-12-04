@@ -72,7 +72,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('monthly-spending', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'monthlySpending']);
         Route::get('cash-flow', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'cashFlow']);
         Route::get('net-worth-evolution', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'netWorthEvolution']);
-        Route::get('account-balances', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'accountBalances']);
         Route::get('top-categories', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'topCategories']);
     });
 });
