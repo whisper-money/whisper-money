@@ -65,12 +65,13 @@ export function useReEvaluateAllTransactions() {
                         description: transaction.decryptedDescription,
                     });
 
-                    const result = evaluateRules(
+                    const result = await evaluateRules(
                         transaction,
                         rules,
                         categories,
                         accounts,
                         banks,
+                        key,
                     );
 
                     if (result) {

@@ -584,12 +584,13 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 }
 
                 consoleDebug('Evaluating rules against transaction...');
-                const result = evaluateRules(
+                const result = await evaluateRules(
                     transaction,
                     rules,
                     categories,
                     accounts,
                     banks,
+                    key,
                 );
 
                 consoleDebug('Rule evaluation result:', result);
@@ -733,12 +734,13 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
             for (const transaction of selectedTransactions) {
                 consoleDebug(`\nEvaluating transaction ${transaction.id}...`);
-                const result = evaluateRules(
+                const result = await evaluateRules(
                     transaction,
                     rules,
                     categories,
                     accounts,
                     banks,
+                    key,
                 );
 
                 consoleDebug('Rule evaluation result:', result);

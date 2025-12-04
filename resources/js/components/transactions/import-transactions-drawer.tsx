@@ -351,7 +351,7 @@ export function ImportTransactionsDrawer({
                     let notesIv: string | null = null;
 
                     if (key && rules.length > 0) {
-                        const ruleMatch = evaluateRulesForNewTransaction(
+                        const ruleMatch = await evaluateRulesForNewTransaction(
                             {
                                 description: transaction.description,
                                 amount: transaction.amount / 100,
@@ -362,6 +362,7 @@ export function ImportTransactionsDrawer({
                             freshCategories,
                             freshAccounts,
                             freshBanks,
+                            key,
                         );
 
                         if (ruleMatch) {
