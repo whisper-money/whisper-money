@@ -1,3 +1,4 @@
+import { decrypt } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
 import type { Account, Bank } from '@/types/account';
 import type { AutomationRule } from '@/types/automation-rule';
@@ -56,12 +57,29 @@ function normalizeRuleJson(rulesJson: unknown): unknown {
     return rulesJson;
 }
 
-export function prepareTransactionData(
+async function decryptAccountName(
+    account: Account,
+    key: CryptoKey,
+): Promise<string> {
+    try {
+        return await decrypt(account.name, key, account.name_iv);
+    } catch (error) {
+        console.error('Failed to decrypt account name:', account.id, error);
+        return '';
+    }
+}
+
+const normalizeWhitespace = (str: string): string => {
+    return str.trim().replace(/\s+/g, ' ');
+};
+
+export async function prepareTransactionData(
     transaction: DecryptedTransaction,
     accounts: Account[],
     banks: Bank[],
     categories: Category[],
-): TransactionData {
+    encryptionKey: CryptoKey,
+): Promise<TransactionData> {
     const account = accounts.find((a) => a.id === transaction.account_id);
     const bank = account?.bank?.id
         ? banks.find((b) => b.id === account.bank.id)
@@ -70,9 +88,9 @@ export function prepareTransactionData(
         ? categories.find((c) => c.id === transaction.category_id)
         : null;
 
-    const normalizeWhitespace = (str: string): string => {
-        return str.trim().replace(/\s+/g, ' ');
-    };
+    const accountName = account
+        ? await decryptAccountName(account, encryptionKey)
+        : '';
 
     return {
         description: normalizeWhitespace(
@@ -81,7 +99,7 @@ export function prepareTransactionData(
         amount: transaction.amount / 100,
         transaction_date: transaction.transaction_date,
         bank_name: bank?.name || '',
-        account_name: account?.name || '',
+        account_name: accountName.toLowerCase(),
         category: category?.name || null,
         notes: transaction.decryptedNotes
             ? normalizeWhitespace(transaction.decryptedNotes.toLowerCase())
@@ -89,20 +107,22 @@ export function prepareTransactionData(
     };
 }
 
-export function evaluateRules(
+export async function evaluateRules(
     transaction: DecryptedTransaction,
     rules: AutomationRule[],
     categories: Category[],
     accounts: Account[],
     banks: Bank[],
-): RuleEvaluationResult | null {
+    encryptionKey: CryptoKey,
+): Promise<RuleEvaluationResult | null> {
     const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
 
-    const transactionData = prepareTransactionData(
+    const transactionData = await prepareTransactionData(
         transaction,
         accounts,
         banks,
         categories,
+        encryptionKey,
     );
 
     consoleDebug('[Rule Engine] Transaction data prepared:', transactionData);
@@ -150,22 +170,24 @@ export function evaluateRules(
     return null;
 }
 
-export function evaluateRulesForTransactions(
+export async function evaluateRulesForTransactions(
     transactions: DecryptedTransaction[],
     rules: AutomationRule[],
     categories: Category[],
     accounts: Account[],
     banks: Bank[],
-): Map<string, RuleEvaluationResult> {
+    encryptionKey: CryptoKey,
+): Promise<Map<string, RuleEvaluationResult>> {
     const results = new Map<string, RuleEvaluationResult>();
 
     for (const transaction of transactions) {
-        const result = evaluateRules(
+        const result = await evaluateRules(
             transaction,
             rules,
             categories,
             accounts,
             banks,
+            encryptionKey,
         );
 
         if (result) {
@@ -184,13 +206,14 @@ export interface NewTransactionData {
     notes?: string;
 }
 
-export function evaluateRulesForNewTransaction(
+export async function evaluateRulesForNewTransaction(
     transactionData: NewTransactionData,
     rules: AutomationRule[],
     categories: Category[],
     accounts: Account[],
     banks: Bank[],
-): RuleEvaluationResult | null {
+    encryptionKey: CryptoKey,
+): Promise<RuleEvaluationResult | null> {
     if (!rules || !categories || !accounts || !banks) {
         consoleDebug(
             '[Rule Engine] Missing required data for rule evaluation',
@@ -215,9 +238,9 @@ export function evaluateRulesForNewTransaction(
         ? banks.find((b) => b.id === account.bank.id)
         : undefined;
 
-    const normalizeWhitespace = (str: string): string => {
-        return str.trim().replace(/\s+/g, ' ');
-    };
+    const accountName = account
+        ? await decryptAccountName(account, encryptionKey)
+        : '';
 
     const preparedData: TransactionData = {
         description: normalizeWhitespace(
@@ -226,7 +249,7 @@ export function evaluateRulesForNewTransaction(
         amount: transactionData.amount,
         transaction_date: transactionData.transaction_date,
         bank_name: bank?.name || '',
-        account_name: account?.name || '',
+        account_name: accountName.toLowerCase(),
         category: null,
         notes: transactionData.notes
             ? normalizeWhitespace(transactionData.notes.toLowerCase())

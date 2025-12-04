@@ -163,7 +163,19 @@ export function EditTransactionDialog({
             };
         }
 
-        const result = evaluateRulesForNewTransaction(
+        const keyString = getStoredKey();
+        if (!keyString) {
+            return {
+                categoryId: null,
+                notes: null,
+                notesIv: null,
+                ruleName: null,
+            };
+        }
+
+        const key = await importKey(keyString);
+
+        const result = await evaluateRulesForNewTransaction(
             {
                 description: description.trim(),
                 amount: amount / 100,
@@ -175,6 +187,7 @@ export function EditTransactionDialog({
             categories,
             accounts,
             banks,
+            key,
         );
 
         if (!result) {
@@ -190,20 +203,16 @@ export function EditTransactionDialog({
         const finalNotesIv = null;
 
         if (result.note && result.noteIv) {
-            const keyString = getStoredKey();
-            if (keyString) {
-                const key = await importKey(keyString);
-                const decryptedRuleNote = await decrypt(
-                    result.note,
-                    key,
-                    result.noteIv,
-                );
+            const decryptedRuleNote = await decrypt(
+                result.note,
+                key,
+                result.noteIv,
+            );
 
-                finalNotes = appendNoteIfNotPresent(
-                    finalNotes || undefined,
-                    decryptedRuleNote,
-                );
-            }
+            finalNotes = appendNoteIfNotPresent(
+                finalNotes || undefined,
+                decryptedRuleNote,
+            );
         }
 
         return {
