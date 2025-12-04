@@ -87,10 +87,10 @@ it('validates logo dimensions must be square', function () {
     $response->assertJsonValidationErrors(['logo']);
 });
 
-it('validates logo dimensions must not exceed 220px', function () {
+it('validates logo dimensions must not exceed 500px', function () {
     actingAs($this->user);
 
-    $logo = UploadedFile::fake()->image('logo.png', 300, 300);
+    $logo = UploadedFile::fake()->image('logo.png', 600, 600);
 
     $response = $this->postJson(route('banks.store'), [
         'name' => 'Test Bank',
