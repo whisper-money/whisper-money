@@ -55,6 +55,7 @@ import { consoleDebug } from '@/lib/debug';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
+import { appendNoteIfNotPresent } from '@/lib/utils';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem } from '@/types';
@@ -600,18 +601,23 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
                     if (result.note && result.noteIv) {
                         consoleDebug('Adding note from rule');
-                        if (transaction.decryptedNotes) {
-                            const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
+                        const decryptedRuleNote = await decrypt(
+                            result.note,
+                            key,
+                            result.noteIv,
+                        );
+                        const combinedNote = appendNoteIfNotPresent(
+                            transaction.decryptedNotes,
+                            decryptedRuleNote,
+                        );
+
+                        if (combinedNote !== transaction.decryptedNotes) {
                             const encrypted = await encrypt(combinedNote, key);
                             finalNotes = encrypted.encrypted;
                             finalNotesIv = encrypted.iv;
-                            consoleDebug(
-                                'Combined existing notes with rule note',
-                            );
+                            consoleDebug('Combined notes with rule note');
                         } else {
-                            finalNotes = result.note;
-                            finalNotesIv = result.noteIv;
-                            consoleDebug('Set rule note as new note');
+                            consoleDebug('Rule note already present, skipping');
                         }
                     }
 
@@ -744,18 +750,23 @@ export default function Transactions({ categories, accounts, banks }: Props) {
 
                     if (result.note && result.noteIv) {
                         consoleDebug('Adding note from rule');
-                        if (transaction.decryptedNotes) {
-                            const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
+                        const decryptedRuleNote = await decrypt(
+                            result.note,
+                            key,
+                            result.noteIv,
+                        );
+                        const combinedNote = appendNoteIfNotPresent(
+                            transaction.decryptedNotes,
+                            decryptedRuleNote,
+                        );
+
+                        if (combinedNote !== transaction.decryptedNotes) {
                             const encrypted = await encrypt(combinedNote, key);
                             finalNotes = encrypted.encrypted;
                             finalNotesIv = encrypted.iv;
-                            consoleDebug(
-                                'Combined existing notes with rule note',
-                            );
+                            consoleDebug('Combined notes with rule note');
                         } else {
-                            finalNotes = result.note;
-                            finalNotesIv = result.noteIv;
-                            consoleDebug('Set rule note as new note');
+                            consoleDebug('Rule note already present, skipping');
                         }
                     }
 

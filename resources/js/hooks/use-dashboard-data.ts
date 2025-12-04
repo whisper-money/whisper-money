@@ -76,7 +76,12 @@ function formatMonth(yearMonth: string): string {
 
     const isCurrentYear = date.getFullYear() === new Date().getFullYear();
 
-    return date.toLocaleDateString('en-US', isCurrentYear ? { month: 'short' } : { year: '2-digit', month: 'short' });
+    return date.toLocaleDateString(
+        'en-US',
+        isCurrentYear
+            ? { month: 'short' }
+            : { year: '2-digit', month: 'short' },
+    );
 }
 
 export function useDashboardData(): DashboardData {

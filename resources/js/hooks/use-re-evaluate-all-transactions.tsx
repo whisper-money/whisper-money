@@ -1,6 +1,7 @@
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
+import { appendNoteIfNotPresent } from '@/lib/utils';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { Account, Bank } from '@/types/account';
@@ -77,17 +78,23 @@ export function useReEvaluateAllTransactions() {
                         let finalNotesIv = transaction.notes_iv;
 
                         if (result.note && result.noteIv) {
-                            if (transaction.decryptedNotes) {
-                                const combinedNote = `${transaction.decryptedNotes}\n${await decrypt(result.note, key, result.noteIv)}`;
+                            const decryptedRuleNote = await decrypt(
+                                result.note,
+                                key,
+                                result.noteIv,
+                            );
+                            const combinedNote = appendNoteIfNotPresent(
+                                transaction.decryptedNotes,
+                                decryptedRuleNote,
+                            );
+
+                            if (combinedNote !== transaction.decryptedNotes) {
                                 const encrypted = await encrypt(
                                     combinedNote,
                                     key,
                                 );
                                 finalNotes = encrypted.encrypted;
                                 finalNotesIv = encrypted.iv;
-                            } else {
-                                finalNotes = result.note;
-                                finalNotesIv = result.noteIv;
                             }
                         }
 

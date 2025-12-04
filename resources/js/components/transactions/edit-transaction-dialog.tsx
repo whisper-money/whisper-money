@@ -23,6 +23,7 @@ import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
+import { appendNoteIfNotPresent } from '@/lib/utils';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
@@ -198,11 +199,10 @@ export function EditTransactionDialog({
                     result.noteIv,
                 );
 
-                if (finalNotes) {
-                    finalNotes = `${finalNotes}\n${decryptedRuleNote}`;
-                } else {
-                    finalNotes = decryptedRuleNote;
-                }
+                finalNotes = appendNoteIfNotPresent(
+                    finalNotes || undefined,
+                    decryptedRuleNote,
+                );
             }
         }
 
