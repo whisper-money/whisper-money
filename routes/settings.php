@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Settings\AccountController;
-use App\Http\Controllers\Settings\BankSearchController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -27,7 +26,6 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/accounts', [AccountController::class, 'store'])->name('accounts.store');
     Route::patch('settings/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
     Route::delete('settings/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy');
-    Route::get('settings/banks/search', BankSearchController::class)->name('banks.search');
 
     Route::get('settings/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::post('settings/categories', [CategoryController::class, 'store'])->name('categories.store');
