@@ -76,7 +76,7 @@ it('shows empty state when no transactions exist', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->assertSee('No transactions found')
+        ->waitForText('No transactions found')
         ->assertNoJavascriptErrors();
 });
 
