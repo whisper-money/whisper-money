@@ -64,3 +64,20 @@ export function formatAccountType(type: AccountType): string {
     };
     return typeMap[type] || type;
 }
+
+const NON_TRANSACTIONAL_ACCOUNT_TYPES: AccountType[] = [
+    'investment',
+    'retirement',
+];
+
+export function isTransactionalAccount(account: Account): boolean {
+    return !NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type);
+}
+
+export function filterTransactionalAccounts<T extends { type: AccountType }>(
+    accounts: T[],
+): T[] {
+    return accounts.filter(
+        (account) => !NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type),
+    );
+}
