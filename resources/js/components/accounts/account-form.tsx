@@ -110,7 +110,7 @@ export function AccountForm({ initialValues, onChange }: AccountFormProps) {
                 <Label htmlFor="display_name">Name</Label>
                 <Input
                     id="display_name"
-                    className='mt-1'
+                    className="mt-1"
                     name="display_name"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
@@ -121,7 +121,7 @@ export function AccountForm({ initialValues, onChange }: AccountFormProps) {
 
             <div className="space-y-2">
                 <Label htmlFor="bank_id">Bank</Label>
-                <div className='mt-1' >
+                <div className="mt-1">
                     {isCreatingCustomBank ? (
                         <CustomBankForm
                             defaultName={customBankData.name}
@@ -150,7 +150,7 @@ export function AccountForm({ initialValues, onChange }: AccountFormProps) {
 
             <div className="space-y-2">
                 <Label htmlFor="type">Account Type</Label>
-                <div className='mt-1'>
+                <div className="mt-1">
                     <Select
                         name="type"
                         value={selectedType ?? undefined}
@@ -173,16 +173,16 @@ export function AccountForm({ initialValues, onChange }: AccountFormProps) {
                 </div>
                 {(selectedType === 'investment' ||
                     selectedType === 'retirement') && (
-                        <p className="pl-1 text-xs text-muted-foreground">
-                            This account type is for balance tracking only and
-                            doesn't support transactions.
-                        </p>
-                    )}
+                    <p className="pl-1 text-xs text-muted-foreground">
+                        This account type is for balance tracking only and
+                        doesn't support transactions.
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">
                 <Label htmlFor="currency_code">Currency</Label>
-                <div className='mt-1'>
+                <div className="mt-1">
                     <Select
                         name="currency_code"
                         value={selectedCurrency ?? undefined}
@@ -207,4 +207,3 @@ export function AccountForm({ initialValues, onChange }: AccountFormProps) {
         </>
     );
 }
-

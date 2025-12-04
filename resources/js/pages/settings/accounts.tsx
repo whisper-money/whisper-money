@@ -226,7 +226,7 @@ export default function Accounts() {
                             <img
                                 src={bank.logo}
                                 alt={bank.name}
-                                className="h-6 w-6 rounded object-contain"
+                                className="h-6 w-6 rounded-full bg-red object-contain"
                             />
                         ) : (
                             <div className="h-6 w-6 rounded bg-muted" />
@@ -335,12 +335,12 @@ export default function Accounts() {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
+                                                                        header
+                                                                            .column
+                                                                            .columnDef
+                                                                            .header,
+                                                                        header.getContext(),
+                                                                    )}
                                                             </TableHead>
                                                         );
                                                     },

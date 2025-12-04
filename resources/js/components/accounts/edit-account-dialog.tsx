@@ -65,18 +65,13 @@ export function EditAccountDialog({
         () =>
             decryptedName && decryptedName !== '[Encrypted]'
                 ? {
-                    displayName: decryptedName,
-                    bank: account.bank,
-                    type: account.type,
-                    currencyCode: account.currency_code,
-                }
+                      displayName: decryptedName,
+                      bank: account.bank,
+                      type: account.type,
+                      currencyCode: account.currency_code,
+                  }
                 : undefined,
-        [
-            decryptedName,
-            account.bank,
-            account.type,
-            account.currency_code,
-        ],
+        [decryptedName, account.bank, account.type, account.currency_code],
     );
 
     const handleFormChange = useCallback((data: AccountFormData) => {
