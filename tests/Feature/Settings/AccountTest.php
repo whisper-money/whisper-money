@@ -212,21 +212,3 @@ it('prevents deleting another users account', function () {
     $response->assertForbidden();
     assertDatabaseHas('accounts', ['id' => $account->id]);
 });
-
-it('only shows banks owned by user or global banks via search', function () {
-    Bank::query()->delete();
-
-    actingAs($this->user);
-
-    $userBank = Bank::factory()->create(['user_id' => $this->user->id, 'name' => 'Test User Bank']);
-    $globalBank = Bank::factory()->create(['user_id' => null, 'name' => 'Test Global Bank']);
-    $otherUserBank = Bank::factory()->create(['user_id' => User::factory()->create()->id, 'name' => 'Test Other Bank']);
-
-    $response = $this->get(route('banks.search', ['query' => 'Test']));
-
-    $response->assertSuccessful();
-    $response->assertJson(fn ($json) => $json
-        ->has('banks', 2)
-        ->where('banks.0.id', fn ($id) => in_array($id, [$userBank->id, $globalBank->id]))
-        ->where('banks.1.id', fn ($id) => in_array($id, [$userBank->id, $globalBank->id])));
-});

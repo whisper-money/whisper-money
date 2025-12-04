@@ -93,30 +93,6 @@ test('user without encrypted message receives 404', function () {
     $response->assertNotFound();
 });
 
-test('user can update encrypted message', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
-
-    $message = EncryptedMessage::query()->create([
-        'user_id' => $user->id,
-        'encrypted_content' => 'old_encrypted_content',
-        'iv' => str_repeat('b', 16),
-    ]);
-
-    $response = actingAs($user)->putJson('/api/encryption/message', [
-        'encrypted_content' => 'new_encrypted_content',
-        'iv' => str_repeat('c', 16),
-    ]);
-
-    $response->assertSuccessful();
-
-    $message->refresh();
-
-    expect($message->encrypted_content)->toBe('new_encrypted_content');
-    expect($message->iv)->toBe(str_repeat('c', 16));
-});
-
 test('user without encryption salt is redirected to setup', function () {
     $user = User::factory()->create(['encryption_salt' => null]);
 

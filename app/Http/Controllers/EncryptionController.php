@@ -48,28 +48,4 @@ class EncryptionController extends Controller
             'salt' => $user->encryption_salt,
         ]);
     }
-
-    public function updateMessage(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'encrypted_content' => ['required', 'string'],
-            'iv' => ['required', 'string', 'size:16'],
-        ]);
-
-        $user = $request->user();
-
-        $message = $user->encryptedMessage;
-
-        if (! $message) {
-            return response()->json([
-                'message' => 'No encrypted message found',
-            ], 404);
-        }
-
-        $message->update($validated);
-
-        return response()->json([
-            'message' => 'Encrypted message updated successfully',
-        ]);
-    }
 }
