@@ -62,7 +62,8 @@ async function decryptAccountName(
     key: CryptoKey,
 ): Promise<string> {
     try {
-        return await decrypt(account.name, key, account.name_iv);
+        const decryptedAccountName = await decrypt(account.name, key, account.name_iv);
+        return decryptedAccountName.trim();
     } catch (error) {
         console.error('Failed to decrypt account name:', account.id, error);
         return '';
@@ -87,7 +88,6 @@ export async function prepareTransactionData(
     const category = transaction.category_id
         ? categories.find((c) => c.id === transaction.category_id)
         : null;
-
     const accountName = account
         ? await decryptAccountName(account, encryptionKey)
         : '';
