@@ -157,6 +157,7 @@ export interface TransactionListProps {
     showActionsMenu?: boolean;
     headerActions?: ReactNode;
     maxHeight?: number;
+    hideColumns?: string[];
 }
 
 export function TransactionList({
@@ -169,6 +170,7 @@ export function TransactionList({
     showActionsMenu = true,
     headerActions,
     maxHeight,
+    hideColumns = [],
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
 
@@ -879,19 +881,34 @@ export function TransactionList({
         }
     }
 
-    const columns = useMemo(
-        () =>
-            createTransactionColumns({
-                categories,
-                accounts,
-                banks,
-                onEdit: setEditTransaction,
-                onDelete: setDeleteTransaction,
-                onUpdate: updateTransaction,
-                onReEvaluateRules: handleReEvaluateRules,
-            }),
-        [accounts, banks, categories, updateTransaction, handleReEvaluateRules],
-    );
+    const columns = useMemo(() => {
+        const allColumns = createTransactionColumns({
+            categories,
+            accounts,
+            banks,
+            onEdit: setEditTransaction,
+            onDelete: setDeleteTransaction,
+            onUpdate: updateTransaction,
+            onReEvaluateRules: handleReEvaluateRules,
+        });
+
+        if (hideColumns.length === 0) {
+            return allColumns;
+        }
+
+        return allColumns.filter((column) => {
+            const columnId =
+                'accessorKey' in column ? column.accessorKey : column.id;
+            return !hideColumns.includes(columnId as string);
+        });
+    }, [
+        accounts,
+        banks,
+        categories,
+        updateTransaction,
+        handleReEvaluateRules,
+        hideColumns,
+    ]);
 
     const table = useReactTable({
         data: displayedTransactions,

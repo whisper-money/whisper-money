@@ -141,25 +141,22 @@ export default function AccountShow({
                     </ButtonGroup>
                 </div>
 
-                <div className="space-y-4">
-                    <AccountBalanceChart
-                        account={account}
-                        refreshKey={chartRefreshKey}
-                    />
-                </div>
+                <AccountBalanceChart
+                    account={account}
+                    refreshKey={chartRefreshKey}
+                />
 
-                <div className="space-y-4">
-                    <TransactionList
-                        categories={categories}
-                        accounts={accounts}
-                        banks={banks}
-                        accountId={account.id}
-                        pageSize={10}
-                        hideAccountFilter={true}
-                        showActionsMenu={false}
-                        maxHeight={600}
-                    />
-                </div>
+                <TransactionList
+                    categories={categories}
+                    accounts={accounts}
+                    banks={banks}
+                    accountId={account.id}
+                    pageSize={10}
+                    hideAccountFilter={true}
+                    showActionsMenu={false}
+                    maxHeight={600}
+                    hideColumns={['bank', 'account']}
+                />
             </div>
 
             <EditAccountDialog
