@@ -1,5 +1,6 @@
 import { index } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountListCard } from '@/components/accounts/account-list-card';
+import { AccountTypeIcon } from '@/components/dashboard/account-type-icon';
 import HeadingSmall from '@/components/heading-small';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
@@ -78,34 +79,31 @@ export default function AccountsIndex({ accounts }: Props) {
                     description="View and manage your bank accounts"
                 />
 
-                {ACCOUNT_TYPE_ORDER.map((type) => {
-                    const accountsInGroup = groupedAccounts[type];
-                    if (accountsInGroup.length === 0) return null;
+                <div className="grid md:grid-cols-2 gap-4">
+                    {ACCOUNT_TYPE_ORDER.map((type) => {
+                        const accountsInGroup = groupedAccounts[type];
+                        if (accountsInGroup.length === 0) return null;
 
-                    return (
-                        <div key={type} className="space-y-4">
-                            <h2 className="text-lg font-semibold text-foreground">
-                                {formatAccountType(type)}
-                            </h2>
-                            <div className="grid gap-4">
+                        return (
+                            <>
                                 {isLoading
                                     ? accountsInGroup.map((account) => (
-                                          <AccountListCard
-                                              key={account.id}
-                                              account={account}
-                                              loading={true}
-                                          />
-                                      ))
+                                        <AccountListCard
+                                            key={account.id}
+                                            account={account}
+                                            loading={true}
+                                        />
+                                    ))
                                     : accountsInGroup.map((account) => (
-                                          <AccountListCard
-                                              key={account.id}
-                                              account={account}
-                                          />
-                                      ))}
-                            </div>
-                        </div>
-                    );
-                })}
+                                        <AccountListCard
+                                            key={account.id}
+                                            account={account}
+                                        />
+                                    ))}
+                            </>
+                        );
+                    })}
+                </div>
 
                 {accounts.length === 0 && !isLoading && (
                     <div className="flex h-[300px] items-center justify-center text-muted-foreground">

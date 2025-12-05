@@ -5,6 +5,7 @@ import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { Link } from '@inertiajs/react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Button } from '../ui/button';
 
 interface AccountListCardProps {
     account: AccountWithMetrics;
@@ -49,98 +50,101 @@ export function AccountListCard({ account, loading }: AccountListCardProps) {
         : 'text-red-600 dark:text-red-400';
 
     return (
-        <Link href={show.url(account.id)} className="block">
-            <Card className="w-full cursor-pointer transition-all hover:border-primary/50 hover:shadow-md">
-                <CardContent className="p-6">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                {account.bank?.logo ? (
-                                    <img
-                                        src={account.bank.logo}
-                                        alt={account.bank.name}
-                                        className="size-10 rounded-full object-contain"
-                                    />
-                                ) : (
-                                    <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-                                        <span className="text-sm font-medium text-muted-foreground">
-                                            {account.bank?.name?.charAt(0) ||
-                                                '?'}
-                                        </span>
-                                    </div>
-                                )}
-                                <div className="flex flex-col">
-                                    <span className="text-sm text-muted-foreground">
-                                        {account.bank?.name || 'Unknown Bank'}
-                                    </span>
-                                    <h3 className="text-lg font-semibold">
-                                        <EncryptedText
-                                            encryptedText={account.name}
-                                            iv={account.name_iv}
-                                            length={{ min: 8, max: 25 }}
+        <Card className="w-full py-0">
+            <CardContent className="p-4">
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="flex flex-col gap-1">
+                                <h3 className="font-semibold flex items-center gap-2">
+                                    {account.bank?.logo ? (
+                                        <img
+                                            src={account.bank.logo}
+                                            alt={account.bank.name}
+                                            className="size-4 rounded-full object-contain"
                                         />
-                                    </h3>
+                                    ) : (
+                                        <div className="flex size-4 items-center justify-center rounded-full bg-muted">
+                                            <span className="text-sm font-medium text-muted-foreground">
+                                                {account.bank?.name?.charAt(0) ||
+                                                    '?'}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <EncryptedText
+                                        encryptedText={account.name}
+                                        iv={account.name_iv}
+                                        length={{ min: 8, max: 25 }}
+                                    />
+                                </h3>
+                                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                    <span>{account.bank?.name || 'Unknown Bank'}</span>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end">
-                                <span className="text-2xl font-bold tabular-nums">
+                        </div>
+                        <div className="flex flex-col items-end">
+                            <span className="text-2xl font-bold tabular-nums">
+                                {formatter.format(
+                                    account.currentBalance / 100,
+                                )}
+                            </span>
+                            <div
+                                className={`flex items-center gap-1 text-sm ${trendColorClass}`}
+                            >
+                                <TrendIcon className="h-4 w-4" />
+                                <span className="tabular-nums">
                                     {formatter.format(
-                                        account.currentBalance / 100,
+                                        Math.abs(account.diff) / 100,
                                     )}
                                 </span>
-                                <div
-                                    className={`flex items-center gap-1 text-sm ${trendColorClass}`}
-                                >
-                                    <TrendIcon className="h-4 w-4" />
-                                    <span className="tabular-nums">
-                                        {formatter.format(
-                                            Math.abs(account.diff) / 100,
-                                        )}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                        vs last month
-                                    </span>
-                                </div>
+                                <span className="text-muted-foreground">
+                                    vs last month
+                                </span>
                             </div>
                         </div>
-                        <div className="h-[100px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={account.history}>
-                                    <Tooltip
-                                        content={({ active, payload }) => {
-                                            if (!active || !payload?.length)
-                                                return null;
-                                            const data = payload[0].payload as {
-                                                date: string;
-                                                value: number;
-                                            };
-                                            return (
-                                                <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-sm shadow-xl">
-                                                    <p className="mb-0.5 text-muted-foreground">
-                                                        {data.date}
-                                                    </p>
-                                                    <p className="font-mono font-medium text-foreground tabular-nums">
-                                                        {formatter.format(
-                                                            data.value / 100,
-                                                        )}
-                                                    </p>
-                                                </div>
-                                            );
-                                        }}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="value"
-                                        stroke="var(--color-chart-2)"
-                                        strokeWidth={2}
-                                        dot={false}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
                     </div>
-                </CardContent>
-            </Card>
-        </Link>
+                    <div className="h-[100px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={account.history}>
+                                <Tooltip
+                                    content={({ active, payload }) => {
+                                        if (!active || !payload?.length)
+                                            return null;
+                                        const data = payload[0].payload as {
+                                            date: string;
+                                            value: number;
+                                        };
+                                        return (
+                                            <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-sm shadow-xl">
+                                                <p className="mb-0.5 text-muted-foreground">
+                                                    {data.date}
+                                                </p>
+                                                <p className="font-mono font-medium text-foreground tabular-nums">
+                                                    {formatter.format(
+                                                        data.value / 100,
+                                                    )}
+                                                </p>
+                                            </div>
+                                        );
+                                    }}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke="var(--color-chart-2)"
+                                    strokeWidth={2}
+                                    dot={false}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex justify-end">
+                        <Link href={show.url(account.id)}>
+                            <Button className="cursor-pointer" variant='ghost'>Go to details</Button>
+                        </Link>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
