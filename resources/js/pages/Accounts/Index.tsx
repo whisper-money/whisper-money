@@ -1,11 +1,10 @@
 import { index } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountListCard } from '@/components/accounts/account-list-card';
-import { AccountTypeIcon } from '@/components/dashboard/account-type-icon';
 import HeadingSmall from '@/components/heading-small';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
-import { Account, AccountType, formatAccountType } from '@/types/account';
+import { Account, AccountType } from '@/types/account';
 import { Head } from '@inertiajs/react';
 import { useMemo } from 'react';
 
@@ -79,7 +78,7 @@ export default function AccountsIndex({ accounts }: Props) {
                     description="View and manage your bank accounts"
                 />
 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                     {ACCOUNT_TYPE_ORDER.map((type) => {
                         const accountsInGroup = groupedAccounts[type];
                         if (accountsInGroup.length === 0) return null;
@@ -88,18 +87,18 @@ export default function AccountsIndex({ accounts }: Props) {
                             <>
                                 {isLoading
                                     ? accountsInGroup.map((account) => (
-                                        <AccountListCard
-                                            key={account.id}
-                                            account={account}
-                                            loading={true}
-                                        />
-                                    ))
+                                          <AccountListCard
+                                              key={account.id}
+                                              account={account}
+                                              loading={true}
+                                          />
+                                      ))
                                     : accountsInGroup.map((account) => (
-                                        <AccountListCard
-                                            key={account.id}
-                                            account={account}
-                                        />
-                                    ))}
+                                          <AccountListCard
+                                              key={account.id}
+                                              account={account}
+                                          />
+                                      ))}
                             </>
                         );
                     })}

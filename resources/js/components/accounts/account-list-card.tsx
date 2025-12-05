@@ -56,7 +56,7 @@ export function AccountListCard({ account, loading }: AccountListCardProps) {
                     <div className="flex items-center justify-between">
                         <div className="flex items-start gap-3">
                             <div className="flex flex-col gap-1">
-                                <h3 className="font-semibold flex items-center gap-2">
+                                <h3 className="flex items-center gap-2 font-semibold">
                                     {account.bank?.logo ? (
                                         <img
                                             src={account.bank.logo}
@@ -66,8 +66,9 @@ export function AccountListCard({ account, loading }: AccountListCardProps) {
                                     ) : (
                                         <div className="flex size-4 items-center justify-center rounded-full bg-muted">
                                             <span className="text-sm font-medium text-muted-foreground">
-                                                {account.bank?.name?.charAt(0) ||
-                                                    '?'}
+                                                {account.bank?.name?.charAt(
+                                                    0,
+                                                ) || '?'}
                                             </span>
                                         </div>
                                     )}
@@ -77,16 +78,16 @@ export function AccountListCard({ account, loading }: AccountListCardProps) {
                                         length={{ min: 8, max: 25 }}
                                     />
                                 </h3>
-                                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                    <span>{account.bank?.name || 'Unknown Bank'}</span>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span>
+                                        {account.bank?.name || 'Unknown Bank'}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                         <div className="flex flex-col items-end">
                             <span className="text-2xl font-bold tabular-nums">
-                                {formatter.format(
-                                    account.currentBalance / 100,
-                                )}
+                                {formatter.format(account.currentBalance / 100)}
                             </span>
                             <div
                                 className={`flex items-center gap-1 text-sm ${trendColorClass}`}
@@ -140,7 +141,9 @@ export function AccountListCard({ account, loading }: AccountListCardProps) {
                     </div>
                     <div className="flex justify-end">
                         <Link href={show.url(account.id)}>
-                            <Button className="cursor-pointer" variant='ghost'>Go to details</Button>
+                            <Button className="cursor-pointer" variant="ghost">
+                                Go to details
+                            </Button>
                         </Link>
                     </div>
                 </div>

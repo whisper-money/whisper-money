@@ -44,7 +44,7 @@ export default function AccountShow({
             <Head title="Account Details" />
 
             <div className="space-y-6 p-6">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 pl-1">
                     {account.bank?.logo ? (
                         <img
                             src={account.bank.logo}

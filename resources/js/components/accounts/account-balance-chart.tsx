@@ -16,7 +16,7 @@ import { Account } from '@/types/account';
 import { format, subMonths } from 'date-fns';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Area, AreaChart, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, XAxis } from 'recharts';
 
 interface BalanceDataPoint {
     month: string;
@@ -247,25 +247,13 @@ export function AccountBalanceChart({
                     config={chartConfig}
                     className="h-[300px] w-full"
                 >
-                    <AreaChart
-                        accessibilityLayer
-                        data={chartData}
-                        margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                    >
+                    <BarChart accessibilityLayer data={chartData}>
                         <XAxis
                             dataKey="month"
                             tickLine={false}
                             tickMargin={10}
                             axisLine={false}
                             tickFormatter={formatXAxisLabel}
-                        />
-                        <YAxis
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(value) =>
-                                formatCurrency(value, account.currency_code)
-                            }
-                            width={80}
                         />
                         <ChartTooltip
                             content={
@@ -275,34 +263,12 @@ export function AccountBalanceChart({
                                 />
                             }
                         />
-                        <defs>
-                            <linearGradient
-                                id="fillValue"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                            >
-                                <stop
-                                    offset="5%"
-                                    stopColor="var(--color-chart-2)"
-                                    stopOpacity={0.8}
-                                />
-                                <stop
-                                    offset="95%"
-                                    stopColor="var(--color-chart-2)"
-                                    stopOpacity={0.1}
-                                />
-                            </linearGradient>
-                        </defs>
-                        <Area
-                            type="monotone"
+                        <Bar
                             dataKey="value"
-                            stroke="var(--color-chart-2)"
-                            strokeWidth={2}
-                            fill="url(#fillValue)"
+                            fill="var(--color-chart-2)"
+                            radius={[4, 4, 0, 0]}
                         />
-                    </AreaChart>
+                    </BarChart>
                 </ChartContainer>
             </CardContent>
         </Card>
