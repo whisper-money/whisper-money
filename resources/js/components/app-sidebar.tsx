@@ -1,3 +1,4 @@
+import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -14,7 +15,13 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Receipt } from 'lucide-react';
+import {
+    BookOpen,
+    CreditCard,
+    Folder,
+    LayoutGrid,
+    Receipt,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -22,6 +29,11 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Accounts',
+        href: accountsIndex(),
+        icon: CreditCard,
     },
     {
         title: 'Transactions',

@@ -21,6 +21,7 @@ interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     emptyMessage?: string;
     renderRow?: (row: Row<TData>, virtualRow: VirtualItem, rowVirtualizer: Virtualizer<HTMLDivElement, Element>) => React.ReactNode;
+    maxHeight?: number;
 }
 
 export function DataTable<TData, TValue>({
@@ -28,6 +29,7 @@ export function DataTable<TData, TValue>({
     columns,
     emptyMessage = 'No results found.',
     renderRow,
+    maxHeight,
 }: DataTableProps<TData, TValue>) {
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const rows = table.getRowModel().rows;
@@ -54,9 +56,10 @@ export function DataTable<TData, TValue>({
         <div className="overflow-hidden rounded-md border">
             <div
                 ref={tableContainerRef}
+                style={maxHeight ? { maxHeight, overflowY: 'auto' } : undefined}
             >
                 <Table>
-                    <TableHeader>
+                    <TableHeader className={maxHeight ? 'sticky top-0 z-10 bg-background' : undefined}>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {

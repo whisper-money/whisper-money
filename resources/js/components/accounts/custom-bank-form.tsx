@@ -143,7 +143,7 @@ export function CustomBankForm({
                                 <img
                                     src={value.logoPreview}
                                     alt="Bank logo preview"
-                                    className="rounded-full size-5 object-contain"
+                                    className="size-5 rounded-full object-contain"
                                 />
                             ) : (
                                 <ImagePlus className="size-4 text-muted-foreground" />
