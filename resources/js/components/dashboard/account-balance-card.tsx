@@ -1,6 +1,8 @@
+import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { EncryptedText } from '@/components/encrypted-text';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { AccountTypeIcon } from './account-type-icon';
 import { AmountTrendIndicator } from './amount-trend-indicator';
@@ -8,12 +10,15 @@ import { AmountTrendIndicator } from './amount-trend-indicator';
 interface AccountBalanceCardProps {
     account: AccountWithMetrics;
     loading?: boolean;
+    onBalanceUpdated?: () => void;
 }
 
 export function AccountBalanceCard({
     account,
     loading,
+    onBalanceUpdated,
 }: AccountBalanceCardProps) {
+    const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
     if (loading) {
         return (
             <Card>
@@ -64,9 +69,13 @@ export function AccountBalanceCard({
             <CardContent>
                 <div className="flex items-center justify-between gap-6">
                     <div className="flex flex-col gap-1">
-                        <div className="text-2xl font-medium">
+                        <button
+                            type="button"
+                            onClick={() => setUpdateBalanceOpen(true)}
+                            className="cursor-pointer rounded-md px-2 py-1 -ml-2 text-left text-2xl font-medium transition-colors hover:bg-muted"
+                        >
                             {formatter.format(account.currentBalance / 100)}
-                        </div>
+                        </button>
                         <AmountTrendIndicator
                             isPositive={isPositive}
                             trend={formatter.format(
@@ -113,6 +122,13 @@ export function AccountBalanceCard({
                     </div>
                 </div>
             </CardContent>
+
+            <UpdateBalanceDialog
+                account={account}
+                open={updateBalanceOpen}
+                onOpenChange={setUpdateBalanceOpen}
+                onSuccess={onBalanceUpdated}
+            />
         </Card>
     );
 }
