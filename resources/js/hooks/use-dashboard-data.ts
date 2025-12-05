@@ -84,7 +84,7 @@ function formatMonth(yearMonth: string): string {
     );
 }
 
-export function useDashboardData(): DashboardData {
+export function useDashboardData(): DashboardData & { refetch: () => void } {
     const [data, setData] = useState<Omit<DashboardData, 'isLoading'>>({
         netWorthEvolution: { data: [], accounts: {} },
         accounts: [],
@@ -92,52 +92,52 @@ export function useDashboardData(): DashboardData {
     });
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const now = new Date();
+            const to = format(now, 'yyyy-MM-dd');
+
+            const from12Months = format(subMonths(now, 12), 'yyyy-MM-dd');
+            const params12Months = new URLSearchParams({
+                from: from12Months,
+                to,
+            });
+            const query12Months = `?${params12Months.toString()}`;
+
+            const from30Days = format(subDays(now, 30), 'yyyy-MM-dd');
+            const params30Days = new URLSearchParams({
+                from: from30Days,
+                to,
+            });
+            const query30Days = `?${params30Days.toString()}`;
+
+            const [netWorthEvolution, topCategories] = await Promise.all([
+                fetch(
+                    `/api/dashboard/net-worth-evolution${query12Months}`,
+                ).then((r) => r.json()),
+                fetch(`/api/dashboard/top-categories${query30Days}`).then((r) =>
+                    r.json(),
+                ),
+            ]);
+
+            const netWorthData = netWorthEvolution as NetWorthEvolutionData;
+
+            setData({
+                netWorthEvolution: netWorthData,
+                accounts: deriveAccountMetrics(netWorthData),
+                topCategories,
+            });
+        } catch (error) {
+            console.error('Failed to fetch dashboard data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            try {
-                const now = new Date();
-                const to = format(now, 'yyyy-MM-dd');
-
-                const from12Months = format(subMonths(now, 12), 'yyyy-MM-dd');
-                const params12Months = new URLSearchParams({
-                    from: from12Months,
-                    to,
-                });
-                const query12Months = `?${params12Months.toString()}`;
-
-                const from30Days = format(subDays(now, 30), 'yyyy-MM-dd');
-                const params30Days = new URLSearchParams({
-                    from: from30Days,
-                    to,
-                });
-                const query30Days = `?${params30Days.toString()}`;
-
-                const [netWorthEvolution, topCategories] = await Promise.all([
-                    fetch(
-                        `/api/dashboard/net-worth-evolution${query12Months}`,
-                    ).then((r) => r.json()),
-                    fetch(`/api/dashboard/top-categories${query30Days}`).then(
-                        (r) => r.json(),
-                    ),
-                ]);
-
-                const netWorthData = netWorthEvolution as NetWorthEvolutionData;
-
-                setData({
-                    netWorthEvolution: netWorthData,
-                    accounts: deriveAccountMetrics(netWorthData),
-                    topCategories,
-                });
-            } catch (error) {
-                console.error('Failed to fetch dashboard data:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         fetchData();
     }, []);
 
-    return { ...data, isLoading };
+    return { ...data, isLoading, refetch: fetchData };
 }
