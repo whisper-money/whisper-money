@@ -98,7 +98,12 @@ class AccountBalanceSyncService {
                 await db.pending_changes.add({
                     store: 'account_balances',
                     operation: 'update',
-                    data: { id: existing.id, balance },
+                    data: {
+                        id: existing.id,
+                        account_id: accountId,
+                        balance_date: balanceDate,
+                        balance,
+                    },
                     timestamp,
                 });
 

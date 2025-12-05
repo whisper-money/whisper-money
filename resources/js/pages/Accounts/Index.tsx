@@ -30,7 +30,7 @@ interface Props {
 }
 
 export default function AccountsIndex({ accounts }: Props) {
-    const { accounts: accountMetrics, isLoading } = useDashboardData();
+    const { accounts: accountMetrics, isLoading, refetch } = useDashboardData();
 
     const accountsWithMetrics = useMemo(() => {
         return accounts.map((account) => {
@@ -97,6 +97,7 @@ export default function AccountsIndex({ accounts }: Props) {
                                           <AccountListCard
                                               key={account.id}
                                               account={account}
+                                              onBalanceUpdated={refetch}
                                           />
                                       ))}
                             </>

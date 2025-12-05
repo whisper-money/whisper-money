@@ -4,15 +4,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { Link } from '@inertiajs/react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
+import { UpdateBalanceDialog } from './update-balance-dialog';
 
 interface AccountListCardProps {
     account: AccountWithMetrics;
     loading?: boolean;
+    onBalanceUpdated?: () => void;
 }
 
-export function AccountListCard({ account, loading }: AccountListCardProps) {
+export function AccountListCard({
+    account,
+    loading,
+    onBalanceUpdated,
+}: AccountListCardProps) {
+    const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
+
     if (loading) {
         return (
             <Card className="w-full">
@@ -139,15 +148,30 @@ export function AccountListCard({ account, loading }: AccountListCardProps) {
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="flex justify-end">
+                    <div className="flex justify-between">
+                        <Button
+                            className="cursor-pointer"
+                            variant="secondary"
+                            onClick={() => setUpdateBalanceOpen(true)}
+                        >
+                            Update balance
+                        </Button>
+
                         <Link href={show.url(account.id)}>
                             <Button className="cursor-pointer" variant="ghost">
-                                Go to details
+                                Details &rarr;
                             </Button>
                         </Link>
                     </div>
                 </div>
             </CardContent>
+
+            <UpdateBalanceDialog
+                account={account}
+                open={updateBalanceOpen}
+                onOpenChange={setUpdateBalanceOpen}
+                onSuccess={onBalanceUpdated}
+            />
         </Card>
     );
 }

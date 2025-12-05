@@ -3,6 +3,7 @@ import { AccountBalanceChart } from '@/components/accounts/account-balance-chart
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
+import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { EncryptedText } from '@/components/encrypted-text';
 import HeadingSmall from '@/components/heading-small';
@@ -18,7 +19,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
-import { Account, Bank, formatAccountType, isTransactionalAccount } from '@/types/account';
+import {
+    Account,
+    Bank,
+    formatAccountType,
+    isTransactionalAccount,
+} from '@/types/account';
 import { Category } from '@/types/category';
 import { Head } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
@@ -40,6 +46,7 @@ export default function AccountShow({
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
+    const [importBalancesOpen, setImportBalancesOpen] = useState(false);
     const [balancesOpen, setBalancesOpen] = useState(false);
     const [chartRefreshKey, setChartRefreshKey] = useState(0);
 
@@ -108,7 +115,7 @@ export default function AccountShow({
                         <ButtonGroup>
                             <Button
                                 variant="outline"
-                                onClick={() => alert("Work in progress!")}
+                                onClick={() => setImportBalancesOpen(true)}
                             >
                                 Import balances
                             </Button>
@@ -151,17 +158,19 @@ export default function AccountShow({
                     refreshKey={chartRefreshKey}
                 />
 
-                {isTransactionalAccount(account) && <TransactionList
-                    categories={categories}
-                    accounts={accounts}
-                    banks={banks}
-                    accountId={account.id}
-                    pageSize={10}
-                    hideAccountFilter={true}
-                    showActionsMenu={false}
-                    maxHeight={600}
-                    hideColumns={['bank', 'account']}
-                />}
+                {isTransactionalAccount(account) && (
+                    <TransactionList
+                        categories={categories}
+                        accounts={accounts}
+                        banks={banks}
+                        accountId={account.id}
+                        pageSize={10}
+                        hideAccountFilter={true}
+                        showActionsMenu={false}
+                        maxHeight={600}
+                        hideColumns={['bank', 'account']}
+                    />
+                )}
             </div>
 
             <EditAccountDialog
@@ -190,6 +199,13 @@ export default function AccountShow({
                 open={balancesOpen}
                 onOpenChange={setBalancesOpen}
                 onBalanceChange={handleBalanceUpdated}
+            />
+
+            <ImportBalancesDrawer
+                open={importBalancesOpen}
+                onOpenChange={setImportBalancesOpen}
+                accountId={account.id}
+                onSuccess={handleBalanceUpdated}
             />
         </AppSidebarLayout>
     );

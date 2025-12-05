@@ -21,6 +21,7 @@ export default function Dashboard() {
         accounts: accountMetrics,
         topCategories,
         isLoading,
+        refetch,
     } = useDashboardData();
 
     return (
@@ -54,6 +55,7 @@ export default function Dashboard() {
                               <AccountBalanceCard
                                   key={account.id}
                                   account={account}
+                                  onBalanceUpdated={refetch}
                               />
                           ))}
                 </div>
