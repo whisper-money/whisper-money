@@ -20,6 +20,7 @@ interface EditAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
+    redirectTo?: string;
 }
 
 export function EditAccountDialog({
@@ -27,6 +28,7 @@ export function EditAccountDialog({
     open,
     onOpenChange,
     onSuccess,
+    redirectTo,
 }: EditAccountDialogProps) {
     const [decryptedName, setDecryptedName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -171,9 +173,14 @@ export function EditAccountDialog({
                     currency_code: currencyCode,
                 },
                 {
+                    preserveScroll: true,
                     onSuccess: () => {
                         onOpenChange(false);
-                        onSuccess?.();
+                        if (redirectTo) {
+                            router.visit(redirectTo);
+                        } else {
+                            onSuccess?.();
+                        }
                     },
                     onFinish: () => {
                         setIsSubmitting(false);

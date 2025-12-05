@@ -156,6 +156,7 @@ export interface TransactionListProps {
     hideAccountFilter?: boolean;
     showActionsMenu?: boolean;
     headerActions?: ReactNode;
+    maxHeight?: number;
 }
 
 export function TransactionList({
@@ -167,6 +168,7 @@ export function TransactionList({
     hideAccountFilter = false,
     showActionsMenu = true,
     headerActions,
+    maxHeight,
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
 
@@ -1139,6 +1141,7 @@ export function TransactionList({
                             columns={columns}
                             emptyMessage="No transactions found."
                             renderRow={renderTransactionRow}
+                            maxHeight={maxHeight}
                         />
 
                         <DataTablePagination
