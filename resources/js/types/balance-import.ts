@@ -16,7 +16,6 @@ export interface BalanceColumnMapping {
 export interface ParsedBalance {
     balance_date: string;
     balance: number;
-    isExisting?: boolean;
 }
 
 export interface ColumnOption {

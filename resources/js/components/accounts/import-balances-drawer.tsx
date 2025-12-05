@@ -307,7 +307,7 @@ export function ImportBalancesDrawer({
         setState((prev) => ({ ...prev, dateFormat: format }));
     };
 
-    const handlePreviewBalances = async () => {
+    const handlePreviewBalances = () => {
         try {
             const parsedBalances: ParsedBalance[] = [];
 
@@ -339,20 +339,6 @@ export function ImportBalancesDrawer({
                 });
             }
 
-            const existingBalances =
-                await accountBalanceSyncService.getByAccountId(
-                    state.selectedAccountId!,
-                );
-
-            const existingDates = new Set(
-                existingBalances.map((b) => b.balance_date),
-            );
-
-            const balancesWithStatus = parsedBalances.map((balance) => ({
-                ...balance,
-                isExisting: existingDates.has(balance.balance_date),
-            }));
-
             if (state.selectedAccountId) {
                 saveBalanceImportConfig(state.selectedAccountId, {
                     columnMapping: state.columnMapping,
@@ -362,7 +348,7 @@ export function ImportBalancesDrawer({
 
             setState((prev) => ({
                 ...prev,
-                balances: balancesWithStatus,
+                balances: parsedBalances,
                 step: BalanceImportStep.Preview,
             }));
         } catch (err) {
@@ -392,7 +378,7 @@ export function ImportBalancesDrawer({
         const createdBalances: unknown[] = [];
         const errors: ImportError[] = [];
 
-        const BATCH_SIZE = 20;
+        const BATCH_SIZE = 50;
         let processedCount = 0;
 
         for (let i = 0; i < state.balances.length; i += BATCH_SIZE) {
