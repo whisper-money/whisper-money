@@ -1,7 +1,9 @@
+import { show } from '@/actions/App/Http/Controllers/AccountController';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { EncryptedText } from '@/components/encrypted-text';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { AccountTypeIcon } from './account-type-icon';
@@ -44,20 +46,25 @@ export function AccountBalanceCard({
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="flex items-center text-sm font-medium">
-                    {account.bank.logo && (
-                        <img
-                            src={account.bank.logo}
-                            alt={account.bank.name}
-                            className="mr-2 inline-block size-5 rounded-full object-contain"
-                        />
-                    )}
+                <CardTitle className="text-sm font-medium">
+                    <Link
+                        href={show.url(account.id)}
+                        className="-ml-1.5 -my-1 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                    >
+                        {account.bank.logo && (
+                            <img
+                                src={account.bank.logo}
+                                alt={account.bank.name}
+                                className="mr-2 inline-block size-5 rounded-full object-contain"
+                            />
+                        )}
 
-                    <EncryptedText
-                        encryptedText={account.name}
-                        iv={account.name_iv}
-                        length={{ min: 5, max: 15 }}
-                    />
+                        <EncryptedText
+                            encryptedText={account.name}
+                            iv={account.name_iv}
+                            length={{ min: 5, max: 15 }}
+                        />
+                    </Link>
                 </CardTitle>
                 <div className="text-xs font-medium text-muted-foreground">
                     <AccountTypeIcon
@@ -72,7 +79,7 @@ export function AccountBalanceCard({
                         <button
                             type="button"
                             onClick={() => setUpdateBalanceOpen(true)}
-                            className="cursor-pointer rounded-md px-2 py-1 -ml-2 text-left text-2xl font-medium transition-colors hover:bg-muted"
+                            className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left text-2xl font-medium transition-colors hover:bg-muted"
                         >
                             {formatter.format(account.currentBalance / 100)}
                         </button>
