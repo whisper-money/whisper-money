@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountBalanceController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\RobotsController;
@@ -73,11 +74,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('cash-flow', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'cashFlow']);
         Route::get('net-worth-evolution', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'netWorthEvolution']);
         Route::get('top-categories', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'topCategories']);
+        Route::get('account/{account}/balance-evolution', [\App\Http\Controllers\Api\DashboardAnalyticsController::class, 'accountBalanceEvolution']);
     });
 });
 
 Route::middleware(['auth', 'verified', 'redirect.encryption'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
+    Route::get('accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
