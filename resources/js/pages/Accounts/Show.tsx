@@ -18,7 +18,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
-import { Account, Bank, formatAccountType, isTransactionalAccount } from '@/types/account';
+import {
+    Account,
+    Bank,
+    formatAccountType,
+    isTransactionalAccount,
+} from '@/types/account';
 import { Category } from '@/types/category';
 import { Head } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
@@ -108,7 +113,7 @@ export default function AccountShow({
                         <ButtonGroup>
                             <Button
                                 variant="outline"
-                                onClick={() => alert("Work in progress!")}
+                                onClick={() => alert('Work in progress!')}
                             >
                                 Import balances
                             </Button>
@@ -151,17 +156,19 @@ export default function AccountShow({
                     refreshKey={chartRefreshKey}
                 />
 
-                {isTransactionalAccount(account) && <TransactionList
-                    categories={categories}
-                    accounts={accounts}
-                    banks={banks}
-                    accountId={account.id}
-                    pageSize={10}
-                    hideAccountFilter={true}
-                    showActionsMenu={false}
-                    maxHeight={600}
-                    hideColumns={['bank', 'account']}
-                />}
+                {isTransactionalAccount(account) && (
+                    <TransactionList
+                        categories={categories}
+                        accounts={accounts}
+                        banks={banks}
+                        accountId={account.id}
+                        pageSize={10}
+                        hideAccountFilter={true}
+                        showActionsMenu={false}
+                        maxHeight={600}
+                        hideColumns={['bank', 'account']}
+                    />
+                )}
             </div>
 
             <EditAccountDialog
