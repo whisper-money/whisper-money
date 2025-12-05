@@ -3,6 +3,7 @@ import { AccountBalanceChart } from '@/components/accounts/account-balance-chart
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
+import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { EncryptedText } from '@/components/encrypted-text';
 import HeadingSmall from '@/components/heading-small';
@@ -45,6 +46,7 @@ export default function AccountShow({
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
+    const [importBalancesOpen, setImportBalancesOpen] = useState(false);
     const [balancesOpen, setBalancesOpen] = useState(false);
     const [chartRefreshKey, setChartRefreshKey] = useState(0);
 
@@ -113,7 +115,7 @@ export default function AccountShow({
                         <ButtonGroup>
                             <Button
                                 variant="outline"
-                                onClick={() => alert('Work in progress!')}
+                                onClick={() => setImportBalancesOpen(true)}
                             >
                                 Import balances
                             </Button>
@@ -197,6 +199,13 @@ export default function AccountShow({
                 open={balancesOpen}
                 onOpenChange={setBalancesOpen}
                 onBalanceChange={handleBalanceUpdated}
+            />
+
+            <ImportBalancesDrawer
+                open={importBalancesOpen}
+                onOpenChange={setImportBalancesOpen}
+                accountId={account.id}
+                onSuccess={handleBalanceUpdated}
             />
         </AppSidebarLayout>
     );
