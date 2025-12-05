@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
-import { Account, Bank, formatAccountType } from '@/types/account';
+import { Account, Bank, formatAccountType, isTransactionalAccount } from '@/types/account';
 import { Category } from '@/types/category';
 import { Head } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
@@ -108,9 +108,9 @@ export default function AccountShow({
                         <ButtonGroup>
                             <Button
                                 variant="outline"
-                                onClick={() => setEditOpen(true)}
+                                onClick={() => alert("Work in progress!")}
                             >
-                                Edit
+                                Import balances
                             </Button>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -126,7 +126,12 @@ export default function AccountShow({
                                     <DropdownMenuItem
                                         onClick={() => setBalancesOpen(true)}
                                     >
-                                        Balances
+                                        See balances
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => setEditOpen(true)}
+                                    >
+                                        Edit account
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
@@ -146,7 +151,7 @@ export default function AccountShow({
                     refreshKey={chartRefreshKey}
                 />
 
-                <TransactionList
+                {isTransactionalAccount(account) && <TransactionList
                     categories={categories}
                     accounts={accounts}
                     banks={banks}
@@ -156,7 +161,7 @@ export default function AccountShow({
                     showActionsMenu={false}
                     maxHeight={600}
                     hideColumns={['bank', 'account']}
-                />
+                />}
             </div>
 
             <EditAccountDialog
