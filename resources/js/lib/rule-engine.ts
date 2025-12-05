@@ -62,7 +62,11 @@ async function decryptAccountName(
     key: CryptoKey,
 ): Promise<string> {
     try {
-        const decryptedAccountName = await decrypt(account.name, key, account.name_iv);
+        const decryptedAccountName = await decrypt(
+            account.name,
+            key,
+            account.name_iv,
+        );
         return decryptedAccountName.trim();
     } catch (error) {
         console.error('Failed to decrypt account name:', account.id, error);

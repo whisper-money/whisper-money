@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 interface AmountInputProps {
     value: number;
@@ -10,6 +11,7 @@ interface AmountInputProps {
     required?: boolean;
     placeholder?: string;
     id?: string;
+    className?: string;
 }
 
 const getCurrencySymbol = (currencyCode: string): string => {
@@ -32,13 +34,30 @@ const formatCurrency = (value: number): string => {
 
 const parseInputValue = (input: string): number => {
     const cleaned = input.replace(/[^\d.,]/g, '');
-    const normalized = cleaned.replace(',', '.');
+
+    if (!cleaned) {
+        return 0;
+    }
+
+    const lastComma = cleaned.lastIndexOf(',');
+    const lastDot = cleaned.lastIndexOf('.');
+
+    let normalized: string;
+
+    if (lastComma > lastDot) {
+        normalized = cleaned.replace(/\./g, '').replace(',', '.');
+    } else if (lastDot > lastComma) {
+        normalized = cleaned.replace(/,/g, '');
+    } else {
+        normalized = cleaned.replace(',', '.');
+    }
+
     const parsed = parseFloat(normalized);
-    
+
     if (isNaN(parsed)) {
         return 0;
     }
-    
+
     return Math.round(parsed * 100);
 };
 
@@ -52,6 +71,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             required = false,
             placeholder = '0.00',
             id,
+            className = '',
         },
         ref,
     ) => {
@@ -107,7 +127,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     placeholder={placeholder}
                     disabled={disabled}
                     required={required}
-                    className="bg-background pl-9"
+                    className={cn(["bg-background pl-9", className])}
                 />
             </div>
         );

@@ -116,6 +116,46 @@ class DashboardAnalyticsController extends Controller
         ]);
     }
 
+    public function accountBalanceEvolution(Request $request, Account $account)
+    {
+        if ($account->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'from' => 'required|date',
+            'to' => 'required|date',
+        ]);
+
+        $start = Carbon::parse($validated['from']);
+        $end = Carbon::parse($validated['to']);
+
+        $points = [];
+        $current = $start->copy()->startOfMonth();
+        $endMonth = $end->copy()->startOfMonth();
+
+        while ($current->lte($endMonth)) {
+            $date = $current->copy()->endOfMonth();
+            $points[] = [
+                'month' => $date->format('Y-m'),
+                'timestamp' => $date->timestamp,
+                'value' => $this->getBalanceAt($account->id, $date),
+            ];
+            $current->addMonth();
+        }
+
+        return response()->json([
+            'data' => $points,
+            'account' => [
+                'id' => $account->id,
+                'name' => $account->name,
+                'name_iv' => $account->name_iv,
+                'type' => $account->type,
+                'currency_code' => $account->currency_code,
+            ],
+        ]);
+    }
+
     public function topCategories(Request $request)
     {
         $validated = $request->validate([

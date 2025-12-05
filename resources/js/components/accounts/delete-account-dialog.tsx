@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { db } from '@/lib/dexie-db';
 import { type Account } from '@/types/account';
-import { Form } from '@inertiajs/react';
+import { Form, router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface DeleteAccountDialogProps {
@@ -20,6 +20,7 @@ interface DeleteAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
+    redirectTo?: string;
 }
 
 export function DeleteAccountDialog({
@@ -27,6 +28,7 @@ export function DeleteAccountDialog({
     open,
     onOpenChange,
     onSuccess,
+    redirectTo,
 }: DeleteAccountDialogProps) {
     const [confirmText, setConfirmText] = useState('');
 
@@ -61,6 +63,7 @@ export function DeleteAccountDialog({
                         <Label htmlFor="confirm">Confirmation</Label>
                         <Input
                             id="confirm"
+                            className="mt-1"
                             value={confirmText}
                             onChange={(e) => setConfirmText(e.target.value)}
                             placeholder="Type DELETE"
@@ -73,7 +76,11 @@ export function DeleteAccountDialog({
                         onSuccess={async () => {
                             await db.accounts.delete(account.id);
                             handleOpenChange(false);
-                            onSuccess?.();
+                            if (redirectTo) {
+                                router.visit(redirectTo);
+                            } else {
+                                onSuccess?.();
+                            }
                         }}
                     >
                         {({ processing }) => (

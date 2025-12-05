@@ -33,6 +33,7 @@ interface TransactionFiltersProps {
     accounts: Account[];
     isKeySet: boolean;
     actions?: ReactNode;
+    hideAccountFilter?: boolean;
 }
 
 export function TransactionFilters({
@@ -42,6 +43,7 @@ export function TransactionFilters({
     accounts,
     isKeySet,
     actions,
+    hideAccountFilter = false,
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
@@ -83,7 +85,7 @@ export function TransactionFilters({
         (filters.amountMin !== null ? 1 : 0) +
         (filters.amountMax !== null ? 1 : 0) +
         filters.categoryIds.length +
-        filters.accountIds.length;
+        (hideAccountFilter ? 0 : filters.accountIds.length);
 
     return (
         <div className="space-y-4">
@@ -336,39 +338,46 @@ export function TransactionFilters({
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Accounts</Label>
-                                <div className="flex flex-wrap gap-2 pt-2">
-                                    {accounts.map((account) => {
-                                        const isSelected =
-                                            filters.accountIds.includes(
-                                                account.id,
+                            {!hideAccountFilter && (
+                                <div className="space-y-2">
+                                    <Label>Accounts</Label>
+                                    <div className="flex flex-wrap gap-2 pt-2">
+                                        {accounts.map((account) => {
+                                            const isSelected =
+                                                filters.accountIds.includes(
+                                                    account.id,
+                                                );
+                                            return (
+                                                <Badge
+                                                    key={account.id}
+                                                    variant={
+                                                        isSelected
+                                                            ? 'default'
+                                                            : 'outline'
+                                                    }
+                                                    className="cursor-pointer px-2 py-1"
+                                                    onClick={() =>
+                                                        handleAccountToggle(
+                                                            account.id,
+                                                        )
+                                                    }
+                                                >
+                                                    <EncryptedText
+                                                        encryptedText={
+                                                            account.name
+                                                        }
+                                                        iv={account.name_iv}
+                                                        length={{
+                                                            min: 6,
+                                                            max: 28,
+                                                        }}
+                                                    />
+                                                </Badge>
                                             );
-                                        return (
-                                            <Badge
-                                                key={account.id}
-                                                variant={
-                                                    isSelected
-                                                        ? 'default'
-                                                        : 'outline'
-                                                }
-                                                className="cursor-pointer px-2 py-1"
-                                                onClick={() =>
-                                                    handleAccountToggle(
-                                                        account.id,
-                                                    )
-                                                }
-                                            >
-                                                <EncryptedText
-                                                    encryptedText={account.name}
-                                                    iv={account.name_iv}
-                                                    length={{ min: 6, max: 28 }}
-                                                />
-                                            </Badge>
-                                        );
-                                    })}
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </PopoverContent>
                 </Popover>
