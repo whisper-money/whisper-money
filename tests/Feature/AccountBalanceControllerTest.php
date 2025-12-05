@@ -103,3 +103,88 @@ it('validates balance is an integer', function () {
     $response->assertUnprocessable()
         ->assertJsonValidationErrors(['balance']);
 });
+
+it('can list balances for an account', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    AccountBalance::factory()->for($account)->count(3)->create();
+
+    $response = $this->actingAs($user)->getJson("/api/accounts/{$account->id}/balances");
+
+    $response->assertSuccessful()
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'id',
+                    'account_id',
+                    'balance_date',
+                    'balance',
+                    'created_at',
+                    'updated_at',
+                ],
+            ],
+            'current_page',
+            'last_page',
+            'per_page',
+            'total',
+        ])
+        ->assertJsonPath('total', 3)
+        ->assertJsonPath('per_page', 50);
+});
+
+it('cannot list balances for another user account', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $account = Account::factory()->for($otherUser)->create();
+
+    AccountBalance::factory()->for($account)->count(3)->create();
+
+    $response = $this->actingAs($user)->getJson("/api/accounts/{$account->id}/balances");
+
+    $response->assertForbidden();
+});
+
+it('can delete a balance record', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+    $balance = AccountBalance::factory()->for($account)->create();
+
+    $response = $this->actingAs($user)->deleteJson("/api/accounts/{$account->id}/balances/{$balance->id}");
+
+    $response->assertNoContent();
+
+    $this->assertDatabaseMissing('account_balances', [
+        'id' => $balance->id,
+    ]);
+});
+
+it('cannot delete a balance for another user account', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $account = Account::factory()->for($otherUser)->create();
+    $balance = AccountBalance::factory()->for($account)->create();
+
+    $response = $this->actingAs($user)->deleteJson("/api/accounts/{$account->id}/balances/{$balance->id}");
+
+    $response->assertForbidden();
+
+    $this->assertDatabaseHas('account_balances', [
+        'id' => $balance->id,
+    ]);
+});
+
+it('returns 404 when deleting balance from wrong account', function () {
+    $user = User::factory()->create();
+    $account1 = Account::factory()->for($user)->create();
+    $account2 = Account::factory()->for($user)->create();
+    $balance = AccountBalance::factory()->for($account1)->create();
+
+    $response = $this->actingAs($user)->deleteJson("/api/accounts/{$account2->id}/balances/{$balance->id}");
+
+    $response->assertNotFound();
+
+    $this->assertDatabaseHas('account_balances', [
+        'id' => $balance->id,
+    ]);
+});

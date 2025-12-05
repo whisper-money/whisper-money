@@ -1,7 +1,9 @@
 import { index, show } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceChart } from '@/components/accounts/account-balance-chart';
+import { BalancesModal } from '@/components/accounts/balances-modal';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
+import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { EncryptedText } from '@/components/encrypted-text';
 import HeadingSmall from '@/components/heading-small';
 import { TransactionList } from '@/components/transactions/transaction-list';
@@ -37,6 +39,13 @@ export default function AccountShow({
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
+    const [balancesOpen, setBalancesOpen] = useState(false);
+    const [chartRefreshKey, setChartRefreshKey] = useState(0);
+
+    function handleBalanceUpdated() {
+        setChartRefreshKey((prev) => prev + 1);
+    }
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -89,7 +98,12 @@ export default function AccountShow({
 
                     <ButtonGroup>
                         <ButtonGroup>
-                            <Button variant="outline">Update Balance</Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setUpdateBalanceOpen(true)}
+                            >
+                                Update balance
+                            </Button>
                         </ButtonGroup>
                         <ButtonGroup>
                             <Button
@@ -109,7 +123,9 @@ export default function AccountShow({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={() => setBalancesOpen(true)}
+                                    >
                                         Balances
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
@@ -125,10 +141,14 @@ export default function AccountShow({
                     </ButtonGroup>
                 </div>
 
-                <AccountBalanceChart account={account} />
+                <div className="space-y-4">
+                    <AccountBalanceChart
+                        account={account}
+                        refreshKey={chartRefreshKey}
+                    />
+                </div>
 
                 <div className="space-y-4">
-                    <h2 className="text-lg font-semibold">Transactions</h2>
                     <TransactionList
                         categories={categories}
                         accounts={accounts}
@@ -137,7 +157,7 @@ export default function AccountShow({
                         pageSize={10}
                         hideAccountFilter={true}
                         showActionsMenu={false}
-                        maxHeight={500}
+                        maxHeight={600}
                     />
                 </div>
             </div>
@@ -154,6 +174,20 @@ export default function AccountShow({
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
                 redirectTo={index().url}
+            />
+
+            <UpdateBalanceDialog
+                account={account}
+                open={updateBalanceOpen}
+                onOpenChange={setUpdateBalanceOpen}
+                onSuccess={handleBalanceUpdated}
+            />
+
+            <BalancesModal
+                account={account}
+                open={balancesOpen}
+                onOpenChange={setBalancesOpen}
+                onBalanceChange={handleBalanceUpdated}
             />
         </AppSidebarLayout>
     );

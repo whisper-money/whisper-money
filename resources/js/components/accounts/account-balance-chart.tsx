@@ -38,6 +38,7 @@ interface AccountBalanceData {
 interface AccountBalanceChartProps {
     account: Account;
     loading?: boolean;
+    refreshKey?: number;
 }
 
 function formatXAxisLabel(value: string): string {
@@ -115,6 +116,7 @@ function TrendIndicator({
 export function AccountBalanceChart({
     account,
     loading: initialLoading,
+    refreshKey,
 }: AccountBalanceChartProps) {
     const [balanceData, setBalanceData] = useState<AccountBalanceData | null>(
         null,
@@ -143,7 +145,7 @@ export function AccountBalanceChart({
         }
 
         fetchBalanceData();
-    }, [account.id]);
+    }, [account.id, refreshKey]);
 
     const { chartData, currentBalance, monthlyTrend, yearlyTrend } =
         useMemo(() => {
@@ -188,7 +190,7 @@ export function AccountBalanceChart({
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Balance Evolution</CardTitle>
+                    <CardTitle>Balance evolution</CardTitle>
                     <CardDescription>
                         <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                     </CardDescription>
@@ -204,7 +206,7 @@ export function AccountBalanceChart({
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Balance Evolution</CardTitle>
+                    <CardTitle>Balance evolution</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="flex h-[300px] items-center justify-center text-muted-foreground">
@@ -220,7 +222,7 @@ export function AccountBalanceChart({
             <CardHeader>
                 <div className="flex items-start justify-between">
                     <div className="flex flex-col gap-2">
-                        <CardTitle>Balance Evolution</CardTitle>
+                        <CardTitle>Balance evolution</CardTitle>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <TrendIndicator
                                 trend={monthlyTrend}

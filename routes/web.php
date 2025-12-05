@@ -66,6 +66,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('api/sync/account-balances', [AccountBalanceSyncController::class, 'store']);
     Route::patch('api/sync/account-balances/{accountBalance}', [AccountBalanceSyncController::class, 'update']);
     Route::put('api/accounts/{account}/balance/current', [AccountBalanceController::class, 'updateCurrent'])->name('accounts.balance.update-current');
+    Route::get('api/accounts/{account}/balances', [AccountBalanceController::class, 'index'])->name('accounts.balances.index');
+    Route::delete('api/accounts/{account}/balances/{accountBalance}', [AccountBalanceController::class, 'destroy'])->name('accounts.balances.destroy');
 
     // Dashboard Analytics
     Route::prefix('api/dashboard')->group(function () {
