@@ -117,7 +117,7 @@ export function createTransactionColumns({
             cell: ({ row }) => {
                 const transaction = row.original;
                 return (
-                    <div className="max-w-[150px] truncate md:max-w-[250px] lg:max-w-[500px]">
+                    <div className="max-w-[150px] truncate md:max-w-[250px] lg:max-w-[400px]">
                         <EncryptedText
                             encryptedText={transaction.description}
                             iv={transaction.description_iv}
@@ -135,38 +135,41 @@ export function createTransactionColumns({
                 const bank = row.original.bank;
                 return (
                     <div className="flex items-center gap-2 px-1">
-                        {bank?.logo && (
-                            <img
-                                src={bank.logo}
-                                alt={bank.name}
-                                className="h-6 w-6 rounded"
-                            />
-                        )}
                         <span>{bank?.name || 'N/A'}</span>
                     </div>
                 );
             },
+            enableHiding: true,
         },
         {
             accessorKey: 'account',
             meta: { label: 'Account' },
             header: 'Account',
             cell: ({ row }) => {
+                const bank = row.original.bank;
                 const account = row.original.account;
                 if (!account) {
                     return <div className="px-1">N/A</div>;
                 }
 
                 return (
-                    <EncryptedText
-                        encryptedText={account.name}
-                        iv={account.name_iv}
-                        length={{ min: 5, max: 10 }}
-                        className="max-w-[100px] truncate px-1"
-                    />
+                    <div className="flex min-w-[140px] items-center gap-2 px-1">
+                        {bank?.logo && (
+                            <img
+                                src={bank.logo}
+                                alt={bank.name}
+                                className="h-6 w-6 rounded-full"
+                            />
+                        )}
+                        <EncryptedText
+                            encryptedText={account.name}
+                            iv={account.name_iv}
+                            length={{ min: 5, max: 10 }}
+                            className="w-full truncate px-1"
+                        />
+                    </div>
                 );
             },
-            enableHiding: true,
         },
         {
             accessorKey: 'amount',
