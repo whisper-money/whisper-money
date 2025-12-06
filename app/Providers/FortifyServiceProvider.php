@@ -53,7 +53,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'canRegister' => Features::enabled(Features::registration()),
+            'canRegister' => Features::enabled(Features::registration()) && ! config('landing.hide_auth_buttons', false),
             'status' => $request->session()->get('status'),
         ]));
 
@@ -70,7 +70,9 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn () => Inertia::render('auth/register'));
+        Fortify::registerView(fn () => Inertia::render('auth/register', [
+            'hideAuthButtons' => config('landing.hide_auth_buttons', false),
+        ]));
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 

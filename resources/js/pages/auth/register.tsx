@@ -1,6 +1,7 @@
 import { login } from '@/routes';
 import { store } from '@/routes/register';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, router } from '@inertiajs/react';
+import { useEffect } from 'react';
 
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
@@ -10,7 +11,21 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 
-export default function Register() {
+interface RegisterProps {
+    hideAuthButtons?: boolean;
+}
+
+export default function Register({ hideAuthButtons = false }: RegisterProps) {
+    useEffect(() => {
+        if (hideAuthButtons) {
+            router.visit(login());
+        }
+    }, [hideAuthButtons]);
+
+    if (hideAuthButtons) {
+        return null;
+    }
+
     return (
         <AuthLayout
             title="Create an account"
