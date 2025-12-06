@@ -367,7 +367,7 @@ export default function Welcome({
                         </div>
                     </section>
 
-                    {subscriptionsEnabled && (
+                    {subscriptionsEnabled && !hideAuthButtons && (
                         <section
                             id="pricing"
                             className="px-4 py-12 sm:py-24 md:py-32"
@@ -387,12 +387,12 @@ export default function Welcome({
                                         <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 blur-3xl" />
 
                                         <div className="relative">
-                                            <div className='mb-6 flex gap-4 items-center'>
+                                            <div className="mb-6 flex items-center gap-4">
                                                 <h3 className="text-xl font-semibold">
                                                     Pro Plan
                                                 </h3>
 
-                                                <div className="uppercase inline-block rounded-lg bg-emerald-100 px-2 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                                <div className="inline-block rounded-lg bg-emerald-100 px-2 py-1.5 text-xs font-semibold text-emerald-700 uppercase dark:bg-emerald-900/30 dark:text-emerald-400">
                                                     Founder Promotion
                                                 </div>
                                             </div>
