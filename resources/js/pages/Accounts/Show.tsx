@@ -156,6 +156,7 @@ export default function AccountShow({
                 <AccountBalanceChart
                     account={account}
                     refreshKey={chartRefreshKey}
+                    onBalanceClick={() => setUpdateBalanceOpen(true)}
                 />
 
                 {isTransactionalAccount(account) && (

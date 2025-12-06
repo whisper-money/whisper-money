@@ -95,9 +95,13 @@ export function AccountListCard({
                             </div>
                         </div>
                         <div className="flex flex-col items-end">
-                            <span className="text-2xl font-bold tabular-nums">
+                            <button
+                                type="button"
+                                onClick={() => setUpdateBalanceOpen(true)}
+                                className="-mr-2 cursor-pointer rounded-md px-2 py-1 text-2xl font-bold tabular-nums transition-colors hover:bg-muted"
+                            >
                                 {formatter.format(account.currentBalance / 100)}
-                            </span>
+                            </button>
                             <div
                                 className={`flex items-center gap-1 text-sm ${trendColorClass}`}
                             >
