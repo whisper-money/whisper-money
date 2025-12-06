@@ -49,7 +49,7 @@ export function AccountBalanceCard({
                 <CardTitle className="text-sm font-medium">
                     <Link
                         href={show.url(account.id)}
-                        className="-ml-1.5 -my-1 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                        className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                     >
                         {account.bank.logo && (
                             <img

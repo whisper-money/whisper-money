@@ -1,9 +1,11 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
+import { ReactNode } from 'react';
 import { UUID } from './uuid';
 
 export interface Auth {
     user: User;
+    hasProPlan: boolean;
 }
 
 export interface BreadcrumbItem {
@@ -20,7 +22,7 @@ export interface NavItem {
     type: 'nav-item';
     title: string;
     href: NonNullable<InertiaLinkProps['href']>;
-    icon?: LucideIcon | null;
+    icon?: LucideIcon | ReactNode | null;
     isActive?: boolean;
 }
 
@@ -38,6 +40,7 @@ export interface SharedData {
     appUrl: string;
     quote: { message: string; author: string };
     auth: Auth;
+    subscriptionsEnabled: boolean;
     sidebarOpen: boolean;
     [key: string]: unknown;
 }
