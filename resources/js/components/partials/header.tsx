@@ -2,9 +2,9 @@ import { dashboard } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { BirdIcon, Github } from 'lucide-react';
+import DiscordIcon from '../icons/DiscordIcon';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
-import DiscordIcon from '../icons/DiscordIcon';
 
 type Props = {
     canRegister?: boolean;

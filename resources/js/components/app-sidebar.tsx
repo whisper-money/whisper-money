@@ -45,14 +45,14 @@ const footerNavItems: NavItem[] = [
         type: 'nav-item',
         title: 'Github',
         href: 'https://github.com/whisper-money/whisper-money',
-        icon: Github
+        icon: Github,
     },
     {
         type: 'nav-item',
         title: 'Community',
         href: 'https://discord.gg/zqfrynthvb',
-        icon: <DiscordIcon className="size-5" />
-    }
+        icon: <DiscordIcon className="size-5" />,
+    },
 ];
 
 export function AppSidebar() {

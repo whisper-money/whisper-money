@@ -1,7 +1,7 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
-import { UUID } from './uuid';
 import { ReactNode } from 'react';
+import { UUID } from './uuid';
 
 export interface Auth {
     user: User;
