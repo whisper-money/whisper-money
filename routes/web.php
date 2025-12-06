@@ -39,13 +39,7 @@ Route::get('terms', function () {
 })->name('terms');
 
 if (config('landing.hide_auth_buttons')) {
-    Route::match(['GET', 'POST'], 'login', fn () => abort(404));
-    Route::match(['GET', 'POST'], 'register', fn () => abort(404));
-    Route::post('logout', fn () => abort(404));
-    Route::get('forgot-password', fn () => abort(404));
-    Route::post('forgot-password', fn () => abort(404));
-    Route::get('reset-password/{token}', fn () => abort(404));
-    Route::post('reset-password', fn () => abort(404));
+    Route::match(['GET', 'POST'], 'register', fn() => abort(404));
 }
 
 Route::middleware(['auth'])->group(function () {
@@ -102,4 +96,4 @@ Route::middleware(['auth', 'verified', 'redirect.encryption', 'subscribed'])->gr
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';
