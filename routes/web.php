@@ -38,10 +38,6 @@ Route::get('terms', function () {
     return Inertia::render('terms');
 })->name('terms');
 
-if (config('landing.hide_auth_buttons')) {
-    Route::match(['GET', 'POST'], 'register', fn () => abort(404));
-}
-
 Route::middleware(['auth'])->group(function () {
     Route::get('setup-encryption', function () {
         return Inertia::render('auth/setup-encryption');
