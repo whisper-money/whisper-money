@@ -1,5 +1,6 @@
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { checkDatabaseVersion } from '@/lib/db-migration-helper';
+import { db, type PendingChange } from '@/lib/dexie-db';
 import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
@@ -27,6 +28,9 @@ interface SyncContextType {
     isAuthenticated: boolean;
     sync: () => Promise<void>;
     error: string | null;
+    pendingOperationsCount: number;
+    pendingOperations: PendingChange[];
+    refreshPendingOperations: () => Promise<void>;
 }
 
 const SyncContext = createContext<SyncContextType | undefined>(undefined);
@@ -75,7 +79,21 @@ export function SyncProvider({
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [wasOffline, setWasOffline] = useState(!isOnline);
+    const [pendingOperationsCount, setPendingOperationsCount] = useState(0);
+    const [pendingOperations, setPendingOperations] = useState<PendingChange[]>(
+        [],
+    );
     const syncInProgressRef = useRef(false);
+
+    const refreshPendingOperations = useCallback(async () => {
+        try {
+            const operations = await db.pending_changes.toArray();
+            setPendingOperations(operations);
+            setPendingOperationsCount(operations.length);
+        } catch (err) {
+            console.error('Failed to fetch pending operations:', err);
+        }
+    }, []);
 
     useEffect(() => {
         const unsubscribe = router.on('navigate', (event) => {
@@ -173,8 +191,9 @@ export function SyncProvider({
             }, 5000);
         } finally {
             syncInProgressRef.current = false;
+            await refreshPendingOperations();
         }
-    }, [isAuthenticated, isOnline]);
+    }, [isAuthenticated, isOnline, refreshPendingOperations]);
 
     useEffect(() => {
         if (isAuthenticated && isOnline && wasOffline) {
@@ -210,6 +229,7 @@ export function SyncProvider({
             }
         });
 
+        refreshPendingOperations();
         sync();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated]);
@@ -223,6 +243,9 @@ export function SyncProvider({
                 isAuthenticated,
                 sync,
                 error,
+                pendingOperationsCount,
+                pendingOperations,
+                refreshPendingOperations,
             }}
         >
             {children}
