@@ -1,5 +1,5 @@
 import type { UUID } from '@/types/uuid';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { uuidv7 } from 'uuidv7';
 import { db } from './dexie-db';
 
@@ -80,12 +80,11 @@ export class SyncManager {
 
         try {
             await this.syncFromServer(result);
-            await this.syncToServer(result);
+            const successfulChangeIds = await this.syncToServer(result);
 
-            await db.pending_changes
-                .where('store')
-                .equals(this.options.storeName)
-                .delete();
+            if (successfulChangeIds.length > 0) {
+                await db.pending_changes.bulkDelete(successfulChangeIds);
+            }
 
             await this.setLastSyncTime(new Date().toISOString());
         } catch (error) {
@@ -158,11 +157,13 @@ export class SyncManager {
         }
     }
 
-    private async syncToServer(result: SyncResult): Promise<void> {
+    private async syncToServer(result: SyncResult): Promise<number[]> {
         const pendingChanges = await db.pending_changes
             .where('store')
             .equals(this.options.storeName)
             .toArray();
+
+        const successfulChangeIds: number[] = [];
 
         for (const change of pendingChanges) {
             try {
@@ -176,18 +177,45 @@ export class SyncManager {
                         result.inserted++;
                         break;
                     case 'update':
-                        await axios.patch(
-                            `${this.options.endpoint}/${change.data.id}`,
-                            data,
-                        );
-                        result.updated++;
+                        try {
+                            await axios.patch(
+                                `${this.options.endpoint}/${change.data.id}`,
+                                data,
+                            );
+                            result.updated++;
+                        } catch (updateError) {
+                            if (
+                                updateError instanceof AxiosError &&
+                                updateError.response?.status === 404
+                            ) {
+                                await axios.post(this.options.endpoint, data);
+                                result.inserted++;
+                            } else {
+                                throw updateError;
+                            }
+                        }
                         break;
                     case 'delete':
-                        await axios.delete(
-                            `${this.options.endpoint}/${change.data.id}`,
-                        );
-                        result.deleted++;
+                        try {
+                            await axios.delete(
+                                `${this.options.endpoint}/${change.data.id}`,
+                            );
+                            result.deleted++;
+                        } catch (deleteError) {
+                            if (
+                                deleteError instanceof AxiosError &&
+                                deleteError.response?.status === 404
+                            ) {
+                                result.deleted++;
+                            } else {
+                                throw deleteError;
+                            }
+                        }
                         break;
+                }
+
+                if (change.id !== undefined) {
+                    successfulChangeIds.push(change.id);
                 }
             } catch (error) {
                 result.errors.push(
@@ -195,6 +223,8 @@ export class SyncManager {
                 );
             }
         }
+
+        return successfulChangeIds;
     }
 
     async createLocal<T extends IndexedDBRecord>(
