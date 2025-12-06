@@ -6,20 +6,6 @@ import { Head, usePage } from '@inertiajs/react';
 import { CheckIcon } from 'lucide-react';
 
 export default function Paywall() {
-    const { auth } = usePage<SharedData>().props;
-
-    const isUserCreatedTwoDaysAgoOrBefore = (() => {
-        if (!auth.user || !auth.user.created_at) {
-            return false;
-        }
-
-        const createdAt = new Date(auth.user.created_at);
-        const twoDaysAgo = new Date();
-        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-        return createdAt <= twoDaysAgo;
-    })();
-
     return (
         <AuthLayout
             title="Upgrade to Pro"
@@ -62,13 +48,13 @@ export default function Paywall() {
                     </div>
                 </div>
 
-                {isUserCreatedTwoDaysAgoOrBefore && <p className="text-center text-xs text-muted-foreground">
+                <p className="text-center text-xs text-muted-foreground">
                     Use code{' '}
                     <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
                         FOUNDER
                     </span>{' '}
                     for $8 off your first month
-                </p>}
+                </p>
 
                 <a href={checkout.url()}>
                     <Button className="w-full">Subscribe Now</Button>
