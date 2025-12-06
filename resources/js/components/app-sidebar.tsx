@@ -16,9 +16,7 @@ import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import {
-    BookOpen,
     CreditCard,
-    Folder,
     LayoutGrid,
     Receipt,
 } from 'lucide-react';
@@ -26,16 +24,19 @@ import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
     {
+        type: 'nav-item',
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
     },
     {
+        type: 'nav-item',
         title: 'Accounts',
         href: accountsIndex(),
         icon: CreditCard,
     },
     {
+        type: 'nav-item',
         title: 'Transactions',
         href: transactionsIndex(),
         icon: Receipt,
@@ -43,16 +44,6 @@ const mainNavItems: NavItem[] = [
 ];
 
 const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
 ];
 
 export function AppSidebar() {
