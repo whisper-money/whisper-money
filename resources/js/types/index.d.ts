@@ -1,6 +1,7 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 import { UUID } from './uuid';
+import { ReactNode } from 'react';
 
 export interface Auth {
     user: User;
@@ -21,7 +22,7 @@ export interface NavItem {
     type: 'nav-item';
     title: string;
     href: NonNullable<InertiaLinkProps['href']>;
-    icon?: LucideIcon | null;
+    icon?: LucideIcon | ReactNode | null;
     isActive?: boolean;
 }
 

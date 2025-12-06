@@ -15,8 +15,9 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { CreditCard, LayoutGrid, Receipt } from 'lucide-react';
+import { CreditCard, Github, LayoutGrid, Receipt } from 'lucide-react';
 import AppLogo from './app-logo';
+import DiscordIcon from './icons/DiscordIcon';
 
 const mainNavItems: NavItem[] = [
     {
@@ -39,7 +40,20 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [];
+const footerNavItems: NavItem[] = [
+    {
+        type: 'nav-item',
+        title: 'Github',
+        href: 'https://github.com/whisper-money/whisper-money',
+        icon: Github
+    },
+    {
+        type: 'nav-item',
+        title: 'Community',
+        href: 'https://discord.gg/zqfrynthvb',
+        icon: <DiscordIcon className="size-5" />
+    }
+];
 
 export function AppSidebar() {
     return (
