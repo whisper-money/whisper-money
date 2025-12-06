@@ -124,7 +124,10 @@ export default function Welcome({
                 </script>
             </Head>
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
-                <Header canRegister={canRegister} hideAuthButtons={hideAuthButtons} />
+                <Header
+                    canRegister={canRegister}
+                    hideAuthButtons={hideAuthButtons}
+                />
 
                 <main className="flex flex-1 flex-col">
                     <section className="relative w-full overflow-hidden px-6 py-24 sm:py-32 md:py-40">
@@ -371,7 +374,7 @@ export default function Welcome({
                         >
                             <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 sm:gap-12">
                                 <div className="flex flex-col items-center gap-4 text-center">
-                                    <p className="uppercase tracking-wider max-w-[600px] text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                    <p className="max-w-[600px] text-sm tracking-wider text-[#706f6c] uppercase dark:text-[#A1A09A]">
                                         One plan, all features. No hidden fees.
                                     </p>
                                     <h2 className="text-2xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
