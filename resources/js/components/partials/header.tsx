@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
@@ -36,7 +37,10 @@ export default function Header({
                             >
                                 <Button
                                     variant={'ghost'}
-                                    className="cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100"
+                                    className={cn([
+                                        'cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100',
+                                        { 'hidden sm:flex': !hideAuthButtons },
+                                    ])}
                                 >
                                     <Github className="size-5" />
                                     <span className="hidden sm:inline">
@@ -51,7 +55,10 @@ export default function Header({
                             >
                                 <Button
                                     variant={'ghost'}
-                                    className="cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100"
+                                    className={cn([
+                                        'cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100',
+                                        { 'hidden sm:flex': !hideAuthButtons },
+                                    ])}
                                 >
                                     <DiscordIcon className="size-5" />
                                     <span className="hidden sm:inline">
@@ -61,12 +68,17 @@ export default function Header({
                             </a>
                         </>
                     )}
+                    {!hideAuthButtons && !hideExternalButtons && (
+                        <Separator
+                            orientation="vertical"
+                            className={cn([
+                                'data-[orientation=vertical]:h-6 data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:bg-border',
+                                { 'hidden sm:block': !hideAuthButtons },
+                            ])}
+                        />
+                    )}
                     {!hideAuthButtons && (
                         <>
-                            <Separator
-                                orientation="vertical"
-                                className="data-[orientation=vertical]:h-6 data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:bg-border"
-                            />
                             {auth.user ? (
                                 <Link href={dashboard()}>
                                     <Button className="cursor-pointer">
