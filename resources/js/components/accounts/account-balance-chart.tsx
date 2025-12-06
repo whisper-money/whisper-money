@@ -39,6 +39,7 @@ interface AccountBalanceChartProps {
     account: Account;
     loading?: boolean;
     refreshKey?: number;
+    onBalanceClick?: () => void;
 }
 
 function formatXAxisLabel(value: string): string {
@@ -117,6 +118,7 @@ export function AccountBalanceChart({
     account,
     loading: initialLoading,
     refreshKey,
+    onBalanceClick,
 }: AccountBalanceChartProps) {
     const [balanceData, setBalanceData] = useState<AccountBalanceData | null>(
         null,
@@ -235,12 +237,16 @@ export function AccountBalanceChart({
                         </CardDescription>
                     </div>
                     <div>
-                        <span className="text-4xl font-semibold tabular-nums">
+                        <button
+                            type="button"
+                            onClick={onBalanceClick}
+                            className="-mr-2 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
+                        >
                             {formatCurrency(
                                 currentBalance,
                                 account.currency_code,
                             )}
-                        </span>
+                        </button>
                     </div>
                 </div>
             </CardHeader>
