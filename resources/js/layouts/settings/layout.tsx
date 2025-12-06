@@ -8,11 +8,19 @@ import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAccount } from '@/routes/account';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editDeleteAccount } from '@/routes/delete-account';
-import { NavDivider, NavSectionHeader, type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { billing } from '@/routes/settings';
+import {
+    NavDivider,
+    NavSectionHeader,
+    SharedData,
+    type NavItem,
+} from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
-const sidebarNavItems: (NavItem | NavSectionHeader | NavDivider)[] = [
+const getNavItems = (
+    subscriptionsEnabled: boolean,
+): (NavItem | NavSectionHeader | NavDivider)[] => [
     {
         type: 'nav-item',
         title: 'Bank accounts',
@@ -42,6 +50,16 @@ const sidebarNavItems: (NavItem | NavSectionHeader | NavDivider)[] = [
         href: editAccount(),
         icon: null,
     },
+    ...(subscriptionsEnabled
+        ? [
+              {
+                  type: 'nav-item' as const,
+                  title: 'Manage Plan',
+                  href: billing(),
+                  icon: null,
+              },
+          ]
+        : []),
     {
         type: 'nav-item',
         title: 'Appearance',
@@ -58,12 +76,15 @@ const sidebarNavItems: (NavItem | NavSectionHeader | NavDivider)[] = [
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
+    const { subscriptionsEnabled } = usePage<SharedData>().props;
+
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
         return null;
     }
 
     const currentPath = window.location.pathname;
+    const sidebarNavItems = getNavItems(subscriptionsEnabled);
 
     return (
         <div className="px-4 py-6">

@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/sidebar';
 import { resolveUrl } from '@/lib/utils';
 import { type NavItem } from '@/types';
-import { type ComponentPropsWithoutRef } from 'react';
+import { LucideIcon } from 'lucide-react';
+import { isValidElement, type ComponentPropsWithoutRef } from 'react';
 
 export function NavFooter({
     items,
@@ -35,12 +36,7 @@ export function NavFooter({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
-                                    {item.icon && (
-                                        <Icon
-                                            iconNode={item.icon}
-                                            className="h-5 w-5"
-                                        />
-                                    )}
+                                    <IconOrComponent icon={item.icon} />
                                     <span>{item.title}</span>
                                 </a>
                             </SidebarMenuButton>
@@ -50,4 +46,12 @@ export function NavFooter({
             </SidebarGroupContent>
         </SidebarGroup>
     );
+}
+
+function IconOrComponent({ icon }: { icon: React.ReactNode | LucideIcon }) {
+    if (isValidElement(icon)) {
+        return icon;
+    }
+
+    return <Icon iconNode={icon as LucideIcon} />;
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\Sync\AccountBalanceSyncController;
 use App\Http\Controllers\Sync\AccountSyncController;
 use App\Http\Controllers\Sync\BankSyncController;
@@ -20,6 +21,7 @@ Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
         'hideAuthButtons' => config('landing.hide_auth_buttons', false),
+        'subscriptionsEnabled' => config('subscriptions.enabled', false),
     ]);
 })->name('home');
 
@@ -37,13 +39,7 @@ Route::get('terms', function () {
 })->name('terms');
 
 if (config('landing.hide_auth_buttons')) {
-    Route::match(['GET', 'POST'], 'login', fn () => abort(404));
     Route::match(['GET', 'POST'], 'register', fn () => abort(404));
-    Route::post('logout', fn () => abort(404));
-    Route::get('forgot-password', fn () => abort(404));
-    Route::post('forgot-password', fn () => abort(404));
-    Route::get('reset-password/{token}', fn () => abort(404));
-    Route::post('reset-password', fn () => abort(404));
 }
 
 Route::middleware(['auth'])->group(function () {
@@ -80,7 +76,14 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-Route::middleware(['auth', 'verified', 'redirect.encryption'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('subscribe', [SubscriptionController::class, 'index'])->name('subscribe');
+    Route::get('subscribe/checkout', [SubscriptionController::class, 'checkout'])->name('subscribe.checkout');
+    Route::get('subscribe/success', [SubscriptionController::class, 'success'])->name('subscribe.success');
+    Route::get('subscribe/cancel', [SubscriptionController::class, 'cancel'])->name('subscribe.cancel');
+});
+
+Route::middleware(['auth', 'verified', 'redirect.encryption', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
