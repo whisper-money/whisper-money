@@ -4,6 +4,7 @@ import { UUID } from './uuid';
 
 export interface Auth {
     user: User;
+    hasProPlan: boolean;
 }
 
 export interface BreadcrumbItem {
@@ -38,6 +39,7 @@ export interface SharedData {
     appUrl: string;
     quote: { message: string; author: string };
     auth: Auth;
+    subscriptionsEnabled: boolean;
     sidebarOpen: boolean;
     [key: string]: unknown;
 }

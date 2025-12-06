@@ -1,19 +1,17 @@
 import InputError from '@/components/input-error';
+import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LEAD_FUNNEL_EVENT_UUID } from '@/lib/constants';
 import { trackEvent } from '@/lib/track-event';
-import { dashboard } from '@/routes';
 import { store } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { Separator } from '@radix-ui/react-separator';
 import {
     BellIcon,
-    BirdIcon,
+    CheckIcon,
     CodeIcon,
     EyeOffIcon,
-    Github,
     LockIcon,
     PieChartIcon,
     ShieldCheckIcon,
@@ -26,11 +24,13 @@ import { useEffect, useRef } from 'react';
 export default function Welcome({
     canRegister = true,
     hideAuthButtons = false,
+    subscriptionsEnabled = false,
 }: {
     canRegister?: boolean;
     hideAuthButtons?: boolean;
+    subscriptionsEnabled?: boolean;
 }) {
-    const { auth, appUrl } = usePage<SharedData>().props;
+    const { appUrl } = usePage<SharedData>().props;
     const emailInputRef = useRef<HTMLInputElement>(null);
     const visitTrackedRef = useRef(false);
 
@@ -56,17 +56,6 @@ export default function Welcome({
                     content="finance app, budgeting, expense tracking, end-to-end encryption, secure finance, personal finance, money management, privacy, encrypted finance app"
                 />
                 <link rel="canonical" href={appUrl} />
-
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link
-                    rel="preconnect"
-                    href="https://fonts.gstatic.com"
-                    crossOrigin="anonymous"
-                />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght@0,300..800;1,300..800&family=Stack+Sans+Text:wght@200..700&display=swap"
-                    rel="stylesheet"
-                />
 
                 <meta property="og:site_name" content="Whisper Money" />
                 <meta
@@ -135,84 +124,7 @@ export default function Welcome({
                 </script>
             </Head>
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
-                <header className="fade-bottom fixed top-0 z-50 w-full bg-background/5 backdrop-blur-lg">
-                    <div className="mx-auto flex max-w-5xl items-center justify-between px-2 py-4 lg:py-6">
-                        <div className="flex items-center gap-4 font-mono">
-                            <BirdIcon className="size-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
-                            <span className="font-medium">Whisper Money</span>
-                        </div>
-                        <nav className="flex items-center gap-4">
-                            <a
-                                href="https://github.com/whisper-money/whisper-money"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                <Button
-                                    variant={'ghost'}
-                                    className="cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100"
-                                >
-                                    <Github className="size-5" />
-                                    Github
-                                </Button>
-                            </a>
-                            <a
-                                href="https://discord.gg/9UQWZECDDv"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                <Button
-                                    variant={'ghost'}
-                                    className="cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100"
-                                >
-                                    <svg
-                                        className="size-5"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                    >
-                                        <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z" />
-                                    </svg>
-                                    Discord
-                                </Button>
-                            </a>
-                            {!hideAuthButtons && (
-                                <>
-                                    <Separator
-                                        orientation="vertical"
-                                        className="data-[orientation=vertical]:h-6 data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:bg-border"
-                                    />
-                                    {auth.user ? (
-                                        <Link href={dashboard()}>
-                                            <Button className="cursor-pointer">
-                                                Dashboard
-                                            </Button>
-                                        </Link>
-                                    ) : (
-                                        <>
-                                            <Link href="/login">
-                                                <Button
-                                                    variant={'ghost'}
-                                                    className="cursor-pointer"
-                                                >
-                                                    Log in
-                                                </Button>
-                                            </Link>
-                                            {canRegister && (
-                                                <Link href="/register">
-                                                    <Button
-                                                        variant="default"
-                                                        className="cursor-pointer"
-                                                    >
-                                                        Register
-                                                    </Button>
-                                                </Link>
-                                            )}
-                                        </>
-                                    )}
-                                </>
-                            )}
-                        </nav>
-                    </div>
-                </header>
+                <Header canRegister={canRegister} hideAuthButtons={hideAuthButtons} />
 
                 <main className="flex flex-1 flex-col">
                     <section className="relative w-full overflow-hidden px-6 py-24 sm:py-32 md:py-40">
@@ -451,6 +363,85 @@ export default function Welcome({
                             </div>
                         </div>
                     </section>
+
+                    {subscriptionsEnabled && (
+                        <section
+                            id="pricing"
+                            className="px-4 py-12 sm:py-24 md:py-32"
+                        >
+                            <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 sm:gap-12">
+                                <div className="flex flex-col items-center gap-4 text-center">
+                                    <p className="uppercase tracking-wider max-w-[600px] text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        One plan, all features. No hidden fees.
+                                    </p>
+                                    <h2 className="text-2xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
+                                        Simple, transparent pricing
+                                    </h2>
+                                </div>
+
+                                <div className="w-full max-w-md">
+                                    <div className="relative overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 shadow-lg dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                        <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 blur-3xl" />
+
+                                        <div className="relative">
+                                            <div className="mb-6 flex items-baseline gap-2">
+                                                <span className="text-5xl font-bold tracking-tight">
+                                                    $9
+                                                </span>
+                                                <span className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
+                                                    /month
+                                                </span>
+                                            </div>
+
+                                            <h3 className="mb-2 text-xl font-semibold">
+                                                Pro Plan
+                                            </h3>
+                                            <p className="mb-6 text-[#706f6c] dark:text-[#A1A09A]">
+                                                Everything you need to manage
+                                                your finances securely.
+                                            </p>
+
+                                            <ul className="mb-8 space-y-3">
+                                                {[
+                                                    'Unlimited accounts',
+                                                    'Unlimited transactions',
+                                                    'End-to-end encryption',
+                                                    'Smart categorization',
+                                                    'Automation rules',
+                                                    'Visual insights & reports',
+                                                    'Priority support',
+                                                ].map((feature) => (
+                                                    <li
+                                                        key={feature}
+                                                        className="flex items-center gap-3"
+                                                    >
+                                                        <CheckIcon className="size-5 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {feature}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+
+                                            <Link href="/register">
+                                                <Button className="w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 py-6 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50">
+                                                    Get Started
+                                                </Button>
+                                            </Link>
+
+                                            <p className="mt-4 text-center text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                                                Use code{' '}
+                                                <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                                    FOUNDER
+                                                </span>{' '}
+                                                for $8 off your first month
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    )}
 
                     <section className="w-full overflow-hidden px-0 py-12 sm:py-24 md:py-32 dark:border-[#3E3E3A]">
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-1 text-center sm:gap-16">
