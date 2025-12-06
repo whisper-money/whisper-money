@@ -39,7 +39,9 @@ export default function Header({
                                     className="cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100"
                                 >
                                     <Github className="size-5" />
-                                    Github
+                                    <span className="hidden sm:inline">
+                                        Github
+                                    </span>
                                 </Button>
                             </a>
                             <a
@@ -52,7 +54,9 @@ export default function Header({
                                     className="cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100"
                                 >
                                     <DiscordIcon className="size-5" />
-                                    Discord
+                                    <span className="hidden sm:inline">
+                                        Discord
+                                    </span>
                                 </Button>
                             </a>
                         </>
