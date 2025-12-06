@@ -43,4 +43,18 @@ class SubscriptionController extends Controller
     {
         return redirect()->route('subscribe');
     }
+
+    public function billing(Request $request): Response|RedirectResponse
+    {
+        if (! config('subscriptions.enabled')) {
+            return redirect()->route('dashboard');
+        }
+
+        return Inertia::render('settings/billing');
+    }
+
+    public function billingPortal(Request $request): RedirectResponse
+    {
+        return $request->user()->redirectToBillingPortal(route('settings.billing'));
+    }
 }

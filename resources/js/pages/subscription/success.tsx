@@ -15,21 +15,32 @@ export default function Success() {
 
     return (
         <AuthLayout
-            title={loading ? "Creating subscripiton..." : "Welcome to Pro!"}
-            description={loading ? "We are proccessing your payment..." : "Your subscription is now active"}
+            title={loading ? 'Creating subscripiton...' : 'Welcome to Pro!'}
+            description={
+                loading
+                    ? 'We are proccessing your payment...'
+                    : 'Your subscription is now active'
+            }
         >
             <Head title="Welcome to Pro!" />
 
             <div className="flex flex-col items-center gap-6">
-                {!loading && <p className="text-center text-muted-foreground">
-                    You now have full access to all Whisper Money features. Thank you for supporting us!
-                </p>}
+                {!loading && (
+                    <p className="text-center text-muted-foreground">
+                        You now have full access to all Whisper Money features.
+                        Thank you for supporting us!
+                    </p>
+                )}
 
                 <Link href={dashboard()} className="w-full">
                     <Button size="lg" disabled={loading} className="w-full">
-                        {loading ? <>
-                            <Spinner /> Setting things up...
-                        </> : 'Go to Dashboard'}
+                        {loading ? (
+                            <>
+                                <Spinner /> Setting things up...
+                            </>
+                        ) : (
+                            'Go to Dashboard'
+                        )}
                     </Button>
                 </Link>
             </div>

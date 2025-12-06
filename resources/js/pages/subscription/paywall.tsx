@@ -1,8 +1,7 @@
 import { Button } from '@/components/ui/button';
 import AuthLayout from '@/layouts/auth-layout';
 import { checkout } from '@/routes/subscribe';
-import { SharedData } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { CheckIcon } from 'lucide-react';
 
 export default function Paywall() {
@@ -18,7 +17,9 @@ export default function Paywall() {
                     <div className="bg-gradient-to-br from-emerald-50 to-teal-50 px-5 py-4 dark:from-emerald-900/20 dark:to-teal-900/20">
                         <div className="flex items-baseline gap-2">
                             <span className="text-3xl font-bold">$9</span>
-                            <span className="text-muted-foreground">/month</span>
+                            <span className="text-muted-foreground">
+                                /month
+                            </span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                             Billed monthly. Cancel anytime.
