@@ -387,18 +387,28 @@ export default function Welcome({
                                         <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 blur-3xl" />
 
                                         <div className="relative">
-                                            <div className="mb-6 flex items-baseline gap-2">
-                                                <span className="text-5xl font-bold tracking-tight">
+                                            <div className='mb-6 flex gap-4 items-center'>
+                                                <h3 className="text-xl font-semibold">
+                                                    Pro Plan
+                                                </h3>
+
+                                                <div className="uppercase inline-block rounded-lg bg-emerald-100 px-2 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                                    Founder Promotion
+                                                </div>
+                                            </div>
+
+                                            <div className="mb-6 flex items-baseline gap-3">
+                                                <span className="text-2xl font-medium text-[#706f6c] line-through decoration-2 dark:text-[#A1A09A]">
                                                     $9
                                                 </span>
+                                                <span className="text-5xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+                                                    $1
+                                                </span>
                                                 <span className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
-                                                    /month
+                                                    /first month
                                                 </span>
                                             </div>
 
-                                            <h3 className="mb-2 text-xl font-semibold">
-                                                Pro Plan
-                                            </h3>
                                             <p className="mb-6 text-[#706f6c] dark:text-[#A1A09A]">
                                                 Everything you need to manage
                                                 your finances securely.
@@ -426,19 +436,19 @@ export default function Welcome({
                                                 ))}
                                             </ul>
 
+                                            <p className="mb-4 text-center text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                                                Use code{' '}
+                                                <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                                    FOUNDER
+                                                </span>{' '}
+                                                at checkout • Then $9/month
+                                            </p>
+
                                             <Link href="/register">
                                                 <Button className="w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 py-6 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50">
                                                     Get Started
                                                 </Button>
                                             </Link>
-
-                                            <p className="mt-4 text-center text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                                Use code{' '}
-                                                <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                                                    FOUNDER
-                                                </span>{' '}
-                                                for $8 off your first month
-                                            </p>
                                         </div>
                                     </div>
                                 </div>
