@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable;
+    use Billable, HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -77,5 +78,14 @@ class User extends Authenticatable
     public function automationRules(): HasMany
     {
         return $this->hasMany(AutomationRule::class);
+    }
+
+    public function hasProPlan(): bool
+    {
+        if (! config('subscriptions.enabled')) {
+            return true;
+        }
+
+        return $this->subscribed('default');
     }
 }

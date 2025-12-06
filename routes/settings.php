@@ -6,6 +6,7 @@ use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
+use App\Http\Controllers\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -43,6 +44,9 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');
     })->name('appearance.edit');
+
+    Route::get('settings/billing', [SubscriptionController::class, 'billing'])->name('settings.billing');
+    Route::get('settings/billing/portal', [SubscriptionController::class, 'billingPortal'])->name('settings.billing.portal');
 
     Route::get('settings/delete-account', function () {
         return Inertia::render('settings/delete-account');
