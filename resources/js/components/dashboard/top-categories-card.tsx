@@ -87,8 +87,8 @@ export function TopCategoriesCard({
                         const percentageChange =
                             item.previous_amount > 0
                                 ? ((item.amount - item.previous_amount) /
-                                      item.previous_amount) *
-                                  100
+                                    item.previous_amount) *
+                                100
                                 : null;
                         const isSpendingLess =
                             percentageChange !== null && percentageChange < 0;
@@ -111,49 +111,40 @@ export function TopCategoriesCard({
 
                         return (
                             <div key={item.category.id} className="space-y-2">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <div
-                                            className={cn([
-                                                'ml-0.5 flex size-6 shrink-0 items-center justify-center rounded-full',
-                                                `${categoryColor.bg} ${categoryColor.text}`,
-                                            ])}
-                                        >
-                                            <Icon className="size-4" />
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <div
+                                        className={cn([
+                                            'flex size-6 shrink-0 items-center justify-center rounded-full',
+                                            `${categoryColor.bg} ${categoryColor.text}`,
+                                        ])}
+                                    >
+                                        <Icon className="size-4" />
+                                    </div>
+                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                                        {item.category.name}
+                                    </span>
+                                    {percentageChange !== null && (
+                                        <div className="flex shrink-0 items-center gap-0.5 text-xs">
+                                            <span
+                                                className={
+                                                    isSpendingLess
+                                                        ? 'bg-green-100/25 dark:bg-green-900/25'
+                                                        : ''
+                                                }
+                                            >
+                                                {percentageChange >= 0
+                                                    ? '+'
+                                                    : ''}
+                                                {percentageChange.toFixed(0)}%
+                                            </span>
+                                            <TrendIcon
+                                                className={`size-3.5 ${trendColorClass}`}
+                                            />
                                         </div>
-                                        <span className="text-sm font-medium">
-                                            {item.category.name}
-                                        </span>
-                                    </div>
-                                    <div className="ml-auto flex items-center gap-3">
-                                        {percentageChange !== null && (
-                                            <div className="flex items-center gap-1 text-xs">
-                                                <span
-                                                    className={
-                                                        isSpendingLess
-                                                            ? 'bg-green-100/25 dark:bg-green-900/25'
-                                                            : ''
-                                                    }
-                                                >
-                                                    {percentageChange >= 0
-                                                        ? '+'
-                                                        : ''}
-                                                    {percentageChange.toFixed(
-                                                        0,
-                                                    )}
-                                                    %
-                                                </span>
-                                                <TrendIcon
-                                                    className={`h-4 w-4 ${trendColorClass}`}
-                                                />
-                                            </div>
-                                        )}
-                                        <span className="text-sm font-semibold">
-                                            {formatter.format(
-                                                item.amount / 100,
-                                            )}
-                                        </span>
-                                    </div>
+                                    )}
+                                    <span className="shrink-0 text-sm font-semibold tabular-nums">
+                                        {formatter.format(item.amount / 100)}
+                                    </span>
                                 </div>
                                 <Progress
                                     value={percentage}

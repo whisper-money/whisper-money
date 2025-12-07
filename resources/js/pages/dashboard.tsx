@@ -34,7 +34,7 @@ export default function Dashboard() {
                     description="Overview of your financial health"
                 />
 
-                <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+                <div className="">
                     <NetWorthChartComponent
                         data={netWorthEvolution}
                         loading={isLoading}
@@ -44,23 +44,23 @@ export default function Dashboard() {
                 <div className="grid gap-4 md:grid-cols-2">
                     {isLoading
                         ? Array.from({ length: 4 }).map((_, i) => (
-                              <AccountBalanceCard
-                                  key={i}
-                                  // @ts-expect-error - mock data for loading state
-                                  account={{}}
-                                  loading={true}
-                              />
-                          ))
+                            <AccountBalanceCard
+                                key={i}
+                                // @ts-expect-error - mock data for loading state
+                                account={{}}
+                                loading={true}
+                            />
+                        ))
                         : accountMetrics.map((account) => (
-                              <AccountBalanceCard
-                                  key={account.id}
-                                  account={account}
-                                  onBalanceUpdated={refetch}
-                              />
-                          ))}
+                            <AccountBalanceCard
+                                key={account.id}
+                                account={account}
+                                onBalanceUpdated={refetch}
+                            />
+                        ))}
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+                <div className="">
                     <TopCategoriesCard
                         categories={topCategories}
                         loading={isLoading}
