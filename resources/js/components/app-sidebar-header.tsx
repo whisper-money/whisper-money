@@ -5,6 +5,8 @@ import { ImportTransactionsButton } from '@/components/transactions/import-trans
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { type BreadcrumbItem as BreadcrumbItemType } from '@/types';
+import AppLogo from './app-logo';
+import { NavUser } from './nav-user';
 
 export function AppSidebarHeader({
     breadcrumbs = [],
@@ -12,8 +14,11 @@ export function AppSidebarHeader({
     breadcrumbs?: BreadcrumbItemType[];
 }) {
     return (
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/50 px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4">
-            <div className="flex items-center gap-2">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/50 px-5 sm:px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4">
+            <div className="flex sm:hidden items-center gap-2">
+                <AppLogo mobile />
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
                 <SidebarTrigger className="-ml-1" />
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
@@ -25,6 +30,11 @@ export function AppSidebarHeader({
                 />
                 <SyncStatusButton />
                 <EncryptionKeyButton />
+                <Separator
+                    orientation="vertical"
+                    className="data-[orientation=vertical]:h-6 sm:hidden"
+                />
+                <NavUser className="sm:hidden" />
             </div>
         </header>
     );

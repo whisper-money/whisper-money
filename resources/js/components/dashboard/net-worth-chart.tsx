@@ -91,20 +91,22 @@ function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
 
     if (totals.length === 1) {
         return (
-            <span className="text-4xl font-semibold tabular-nums">
+            <span className="text-2xl font-semibold tabular-nums sm:text-4xl">
                 {formatCurrencyWithCode(totals[0].total, totals[0].currency)}
             </span>
         );
     }
 
     return (
-        <div className="flex items-baseline gap-1">
+        <div className="flex flex-wrap items-baseline justify-end gap-1">
             {totals.map((item, index) => (
                 <span key={item.currency} className="flex items-baseline">
                     {index > 0 && (
-                        <span className="mx-1 text-2xl opacity-50">+</span>
+                        <span className="mx-1 text-lg opacity-50 sm:text-2xl">
+                            +
+                        </span>
                     )}
-                    <span className="text-4xl font-semibold tabular-nums">
+                    <span className="text-2xl font-semibold tabular-nums sm:text-4xl">
                         {formatCurrencyWithCode(item.total, item.currency)}
                     </span>
                 </span>
@@ -217,13 +219,11 @@ export function NetWorthChart({
     }
 
     return (
-        <Card className="col-span-3">
+        <Card className="col-span-3 overflow-hidden">
             <CardHeader>
-                <div className="flex items-start justify-between">
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-start justify-between">
-                            <CardTitle>Net Worth Evolution</CardTitle>
-                        </div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 flex-col gap-2">
+                        <CardTitle>Net Worth Evolution</CardTitle>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
                                 trend={monthlyTrend}
@@ -236,12 +236,12 @@ export function NetWorthChart({
                         </CardDescription>
                     </div>
 
-                    <div>
+                    <div className="shrink-0">
                         <TotalDisplay totals={currencyTotals} />
                     </div>
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-w-0">
                 <StackedBarChart
                     data={chartData}
                     dataKeys={dataKeys}
