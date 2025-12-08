@@ -90,6 +90,8 @@ export function AccountBalanceCard({
                             )}
                             label="vs last month"
                             className="text-sm"
+                            previousAmount={account.previousBalance}
+                            currentAmount={account.currentBalance}
                         />
                     </div>
                     <div className="h-[70px] w-full max-w-[250px] flex-1">

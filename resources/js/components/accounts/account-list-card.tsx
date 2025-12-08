@@ -1,9 +1,9 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
+import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import { EncryptedText } from '@/components/encrypted-text';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { Link } from '@inertiajs/react';
-import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
@@ -53,10 +53,6 @@ export function AccountListCard({
     });
 
     const isPositive = account.diff >= 0;
-    const TrendIcon = isPositive ? TrendingUp : TrendingDown;
-    const trendColorClass = isPositive
-        ? 'text-green-600 dark:text-green-400'
-        : 'text-red-600 dark:text-red-400';
 
     return (
         <Card className="w-full py-0">
@@ -108,19 +104,16 @@ export function AccountListCard({
                             >
                                 {formatter.format(account.currentBalance / 100)}
                             </button>
-                            <div
-                                className={`flex items-center gap-1 text-sm ${trendColorClass}`}
-                            >
-                                <TrendIcon className="h-4 w-4" />
-                                <span className="tabular-nums">
-                                    {formatter.format(
-                                        Math.abs(account.diff) / 100,
-                                    )}
-                                </span>
-                                <span className="text-muted-foreground">
-                                    vs last month
-                                </span>
-                            </div>
+                            <AmountTrendIndicator
+                                isPositive={isPositive}
+                                trend={formatter.format(
+                                    Math.abs(account.diff) / 100,
+                                )}
+                                label="vs last month"
+                                className="text-sm"
+                                previousAmount={account.previousBalance}
+                                currentAmount={account.currentBalance}
+                            />
                         </div>
                     </div>
                     <div className="h-[100px] w-full">

@@ -18,6 +18,12 @@ interface NetWorthChartProps {
     showLegend?: boolean;
 }
 
+interface TrendData {
+    percentage: number;
+    previousAmount: number;
+    currentAmount: number;
+}
+
 function formatXAxisLabel(value: string): string {
     const [year, month] = value.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1);
@@ -44,7 +50,7 @@ function calculateTrend(
     data: Array<Record<string, string | number>>,
     accountIds: string[],
     monthsBack: number,
-): number | null {
+): TrendData | null {
     if (data.length < 2) return null;
 
     const currentIndex = data.length - 1;
@@ -64,7 +70,12 @@ function calculateTrend(
 
     if (previousTotal === 0) return null;
 
-    return ((currentTotal - previousTotal) / Math.abs(previousTotal)) * 100;
+    return {
+        percentage:
+            ((currentTotal - previousTotal) / Math.abs(previousTotal)) * 100,
+        previousAmount: previousTotal,
+        currentAmount: currentTotal,
+    };
 }
 
 interface EncryptedLabelProps {
@@ -128,6 +139,7 @@ export function NetWorthChart({
         yearlyTrend,
         currencyTotals,
         accountCurrencies,
+        primaryCurrency,
     } = useMemo(() => {
         const accounts = data.accounts || {};
         const accountIds = Object.keys(accounts);
@@ -162,6 +174,11 @@ export function NetWorthChart({
             .map(([currency, total]) => ({ currency, total }))
             .sort((a, b) => b.total - a.total);
 
+        const primary =
+            currencyTotalsList.length > 0
+                ? currencyTotalsList[0].currency
+                : 'USD';
+
         return {
             chartData: chartDataArray,
             dataKeys: accountIds,
@@ -174,6 +191,7 @@ export function NetWorthChart({
             ),
             currencyTotals: currencyTotalsList,
             accountCurrencies: currencies,
+            primaryCurrency: primary,
         };
     }, [data]);
 
@@ -226,12 +244,18 @@ export function NetWorthChart({
                         <CardTitle>Net Worth Evolution</CardTitle>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
-                                trend={monthlyTrend}
+                                trend={monthlyTrend?.percentage ?? null}
                                 label="this month"
+                                previousAmount={monthlyTrend?.previousAmount}
+                                currentAmount={monthlyTrend?.currentAmount}
+                                currencyCode={primaryCurrency}
                             />
                             <PercentageTrendIndicator
-                                trend={yearlyTrend}
+                                trend={yearlyTrend?.percentage ?? null}
                                 label="for the last 12 months"
+                                previousAmount={yearlyTrend?.previousAmount}
+                                currentAmount={yearlyTrend?.currentAmount}
+                                currencyCode={primaryCurrency}
                             />
                         </CardDescription>
                     </div>
