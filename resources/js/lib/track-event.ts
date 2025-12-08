@@ -12,6 +12,7 @@ export interface TrackEventOptions {
 }
 
 function isLocalEnvironment(): boolean {
+    if (typeof window === 'undefined') return true;
     const hostname = window.location.hostname;
     return hostname === 'localhost' || hostname.endsWith('.test');
 }
