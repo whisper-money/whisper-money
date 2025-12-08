@@ -27,10 +27,7 @@ const EncryptionKeyContext = createContext<
 >(undefined);
 
 export function EncryptionKeyProvider({ children }: { children: ReactNode }) {
-    const [isKeySet, setIsKeySet] = useState(() => {
-        const key = getStoredKey();
-        return !!key;
-    });
+    const [isKeySet, setIsKeySet] = useState(false);
     const [encryptedMessageData, setEncryptedMessageData] =
         useState<EncryptedMessageData | null>(null);
 
@@ -56,6 +53,8 @@ export function EncryptionKeyProvider({ children }: { children: ReactNode }) {
     }
 
     useEffect(() => {
+        refreshKeyState();
+
         const interval = setInterval(() => {
             const key = getStoredKey();
             setIsKeySet(!!key);

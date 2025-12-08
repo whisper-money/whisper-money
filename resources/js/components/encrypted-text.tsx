@@ -52,6 +52,9 @@ function getInitialDisplayState(isKeySet: boolean): DisplayState {
     if (!isKeySet) {
         return 'encrypted';
     }
+    if (typeof window === 'undefined') {
+        return 'encrypted';
+    }
     const keyString = getStoredKey();
     return keyString ? 'loading' : 'encrypted';
 }
