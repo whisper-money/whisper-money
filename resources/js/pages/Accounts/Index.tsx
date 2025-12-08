@@ -78,7 +78,7 @@ export default function AccountsIndex({ accounts }: Props) {
                     description="View and manage your bank accounts"
                 />
 
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                     {ACCOUNT_TYPE_ORDER.map((type) => {
                         const accountsInGroup = groupedAccounts[type];
                         if (accountsInGroup.length === 0) return null;
@@ -87,19 +87,19 @@ export default function AccountsIndex({ accounts }: Props) {
                             <>
                                 {isLoading
                                     ? accountsInGroup.map((account) => (
-                                        <AccountListCard
-                                            key={account.id}
-                                            account={account}
-                                            loading={true}
-                                        />
-                                    ))
+                                          <AccountListCard
+                                              key={account.id}
+                                              account={account}
+                                              loading={true}
+                                          />
+                                      ))
                                     : accountsInGroup.map((account) => (
-                                        <AccountListCard
-                                            key={account.id}
-                                            account={account}
-                                            onBalanceUpdated={refetch}
-                                        />
-                                    ))}
+                                          <AccountListCard
+                                              key={account.id}
+                                              account={account}
+                                              onBalanceUpdated={refetch}
+                                          />
+                                      ))}
                             </>
                         );
                     })}
