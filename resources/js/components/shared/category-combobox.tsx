@@ -80,6 +80,7 @@ export function CategoryCombobox({
                         triggerClassName,
                     )}
                     disabled={disabled}
+                    onClick={(e) => e.stopPropagation()}
                 >
                     {selectedCategory ? (
                         <div className="flex items-center gap-2 overflow-x-hidden">

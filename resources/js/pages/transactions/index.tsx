@@ -104,7 +104,7 @@ function TransactionRowComponent({
     const handleRowClick = (event: React.MouseEvent<HTMLTableRowElement>) => {
         const target = event.target as HTMLElement;
         const isInteractive = target.closest(
-            'button, [role="checkbox"], [role="combobox"], [role="menuitem"], a, input, select, textarea',
+            'button, [role="checkbox"], [role="combobox"], [role="menuitem"], [role="option"], [cmdk-item], a, input, select, textarea, [data-radix-popper-content-wrapper]',
         );
         if (isInteractive) {
             return;
