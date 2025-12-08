@@ -22,7 +22,12 @@ export function UserInfo({
                     {getInitials(user.name)}
                 </AvatarFallback>
             </Avatar>
-            <div className={cn(["grid flex-1 text-left text-sm leading-tight", { "hidden sm:grid": hideNameOnMobile }])}>
+            <div
+                className={cn([
+                    'grid flex-1 text-left text-sm leading-tight',
+                    { 'hidden sm:grid': hideNameOnMobile },
+                ])}
+            >
                 <span className="truncate font-medium">{user.name}</span>
                 {showEmail && (
                     <span className="truncate text-xs text-muted-foreground">

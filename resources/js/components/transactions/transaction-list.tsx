@@ -90,6 +90,17 @@ function TransactionRowComponent({
     const transaction = row.original;
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
 
+    const handleRowClick = (event: React.MouseEvent<HTMLTableRowElement>) => {
+        const target = event.target as HTMLElement;
+        const isInteractive = target.closest(
+            'button, [role="checkbox"], [role="combobox"], [role="menuitem"], a, input, select, textarea',
+        );
+        if (isInteractive) {
+            return;
+        }
+        onEdit(transaction);
+    };
+
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
             <ContextMenuTrigger asChild>
@@ -100,6 +111,8 @@ function TransactionRowComponent({
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
+                    className="cursor-pointer"
+                    onClick={handleRowClick}
                 >
                     {row
                         .getVisibleCells()

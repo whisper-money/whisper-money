@@ -89,8 +89,8 @@ export function TransactionFilters({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3">
-                <div className="flex flex-row w-full sm:w-auto items-center gap-2">
+            <div className="flex flex-col flex-wrap items-center gap-3 sm:flex-row">
+                <div className="flex w-full flex-row items-center gap-2 sm:w-auto">
                     <Input
                         placeholder={
                             isKeySet
@@ -139,16 +139,18 @@ export function TransactionFilters({
                                             value={
                                                 filters.dateFrom
                                                     ? format(
-                                                        filters.dateFrom,
-                                                        'yyyy-MM-dd',
-                                                    )
+                                                          filters.dateFrom,
+                                                          'yyyy-MM-dd',
+                                                      )
                                                     : ''
                                             }
                                             onChange={(e) =>
                                                 onFiltersChange({
                                                     ...filters,
                                                     dateFrom: e.target.value
-                                                        ? new Date(e.target.value)
+                                                        ? new Date(
+                                                              e.target.value,
+                                                          )
                                                         : null,
                                                 })
                                             }
@@ -159,16 +161,18 @@ export function TransactionFilters({
                                             value={
                                                 filters.dateTo
                                                     ? format(
-                                                        filters.dateTo,
-                                                        'yyyy-MM-dd',
-                                                    )
+                                                          filters.dateTo,
+                                                          'yyyy-MM-dd',
+                                                      )
                                                     : ''
                                             }
                                             onChange={(e) =>
                                                 onFiltersChange({
                                                     ...filters,
                                                     dateTo: e.target.value
-                                                        ? new Date(e.target.value)
+                                                        ? new Date(
+                                                              e.target.value,
+                                                          )
                                                         : null,
                                                 })
                                             }
@@ -188,7 +192,9 @@ export function TransactionFilters({
                                                 onFiltersChange({
                                                     ...filters,
                                                     amountMin: e.target.value
-                                                        ? parseFloat(e.target.value)
+                                                        ? parseFloat(
+                                                              e.target.value,
+                                                          )
                                                         : null,
                                                 })
                                             }
@@ -202,7 +208,9 @@ export function TransactionFilters({
                                                 onFiltersChange({
                                                     ...filters,
                                                     amountMax: e.target.value
-                                                        ? parseFloat(e.target.value)
+                                                        ? parseFloat(
+                                                              e.target.value,
+                                                          )
                                                         : null,
                                                 })
                                             }
@@ -216,7 +224,9 @@ export function TransactionFilters({
                                     <div className="pt-2">
                                         <Popover
                                             open={categoryDropdownOpen}
-                                            onOpenChange={setCategoryDropdownOpen}
+                                            onOpenChange={
+                                                setCategoryDropdownOpen
+                                            }
                                         >
                                             <PopoverTrigger asChild>
                                                 <Button
@@ -224,11 +234,12 @@ export function TransactionFilters({
                                                     role="combobox"
                                                     className="w-full justify-between"
                                                 >
-                                                    {filters.categoryIds.length >
-                                                        0 ? (
+                                                    {filters.categoryIds
+                                                        .length > 0 ? (
                                                         <span className="truncate">
                                                             {
-                                                                filters.categoryIds
+                                                                filters
+                                                                    .categoryIds
                                                                     .length
                                                             }{' '}
                                                             selected

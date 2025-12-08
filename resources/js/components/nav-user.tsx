@@ -28,11 +28,11 @@ export function NavUser({ className }: { className?: string }) {
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
-                            className="p-0 sm:p-2 group text-sidebar-accent-foreground sm:data-[state=open]:bg-sidebar-accent"
+                            className="group p-0 text-sidebar-accent-foreground sm:p-2 sm:data-[state=open]:bg-sidebar-accent"
                             data-test="sidebar-menu-button"
                         >
                             <UserInfo user={auth.user} hideNameOnMobile />
-                            <ChevronsUpDown className="ml-auto size-4 hidden sm:block" />
+                            <ChevronsUpDown className="ml-auto hidden size-4 sm:block" />
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
@@ -42,8 +42,8 @@ export function NavUser({ className }: { className?: string }) {
                             isMobile
                                 ? 'bottom'
                                 : state === 'collapsed'
-                                    ? 'left'
-                                    : 'bottom'
+                                  ? 'left'
+                                  : 'bottom'
                         }
                     >
                         <UserMenuContent user={auth.user} />

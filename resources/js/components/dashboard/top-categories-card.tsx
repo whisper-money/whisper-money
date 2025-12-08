@@ -87,8 +87,8 @@ export function TopCategoriesCard({
                         const percentageChange =
                             item.previous_amount > 0
                                 ? ((item.amount - item.previous_amount) /
-                                    item.previous_amount) *
-                                100
+                                      item.previous_amount) *
+                                  100
                                 : null;
                         const isSpendingLess =
                             percentageChange !== null && percentageChange < 0;
