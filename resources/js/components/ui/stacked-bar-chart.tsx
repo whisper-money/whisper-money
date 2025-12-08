@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
 
 import {
@@ -23,6 +23,90 @@ const COLOR_SHADES: string[] = [
     'var(--color-chart-10)',
     'var(--color-chart-1)',
 ];
+
+const BORDER_RADIUS = 4;
+
+interface StackedBarShapeProps {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    fill: string;
+    payload: Record<string, unknown>;
+    dataKey: string;
+    dataKeys: string[];
+}
+
+function StackedBarShape({
+    x,
+    y,
+    width,
+    height,
+    fill,
+    payload,
+    dataKey,
+    dataKeys,
+}: StackedBarShapeProps) {
+    if (height <= 0) return null;
+
+    const visibleKeys = dataKeys.filter((key) => {
+        const value = payload[key];
+        return typeof value === 'number' && value > 0;
+    });
+
+    const isFirstVisible = visibleKeys[0] === dataKey;
+    const isLastVisible = visibleKeys[visibleKeys.length - 1] === dataKey;
+
+    let path: string;
+
+    if (isFirstVisible && isLastVisible) {
+        path = `
+            M ${x + BORDER_RADIUS} ${y}
+            H ${x + width - BORDER_RADIUS}
+            Q ${x + width} ${y} ${x + width} ${y + BORDER_RADIUS}
+            V ${y + height - BORDER_RADIUS}
+            Q ${x + width} ${y + height} ${x + width - BORDER_RADIUS} ${y + height}
+            H ${x + BORDER_RADIUS}
+            Q ${x} ${y + height} ${x} ${y + height - BORDER_RADIUS}
+            V ${y + BORDER_RADIUS}
+            Q ${x} ${y} ${x + BORDER_RADIUS} ${y}
+            Z
+        `;
+    } else if (isLastVisible) {
+        path = `
+            M ${x + BORDER_RADIUS} ${y}
+            H ${x + width - BORDER_RADIUS}
+            Q ${x + width} ${y} ${x + width} ${y + BORDER_RADIUS}
+            V ${y + height}
+            H ${x}
+            V ${y + BORDER_RADIUS}
+            Q ${x} ${y} ${x + BORDER_RADIUS} ${y}
+            Z
+        `;
+    } else if (isFirstVisible) {
+        path = `
+            M ${x} ${y}
+            H ${x + width}
+            V ${y + height - BORDER_RADIUS}
+            Q ${x + width} ${y + height} ${x + width - BORDER_RADIUS} ${y + height}
+            H ${x + BORDER_RADIUS}
+            Q ${x} ${y + height} ${x} ${y + height - BORDER_RADIUS}
+            V ${y}
+            Z
+        `;
+    } else {
+        path = `
+            M ${x} ${y}
+            H ${x + width}
+            V ${y + height}
+            H ${x}
+            V ${y}
+            Z
+        `;
+    }
+
+    return <path d={path} fill={fill} />;
+}
 
 export interface StackedBarChartProps<T extends Record<string, unknown>> {
     data: T[];
@@ -70,6 +154,22 @@ export function StackedBarChart<T extends Record<string, unknown>>({
         }
     }, [data]);
 
+    const shapeRenderers = useMemo(() => {
+        return dataKeys.reduce(
+            (acc, key) => {
+                acc[key] = (props: Record<string, unknown>) => (
+                    <StackedBarShape
+                        {...(props as Omit<StackedBarShapeProps, 'dataKey' | 'dataKeys'>)}
+                        dataKey={key}
+                        dataKeys={dataKeys}
+                    />
+                );
+                return acc;
+            },
+            {} as Record<string, (props: Record<string, unknown>) => React.ReactNode>,
+        );
+    }, [dataKeys]);
+
     return (
         <div
             ref={scrollContainerRef}
@@ -100,26 +200,15 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                     {showLegend && (
                         <ChartLegend content={<ChartLegendContent />} />
                     )}
-                    {dataKeys.map((key, index) => {
-                        const isFirst = index === 0;
-                        const isLast = index === dataKeys.length - 1;
-                        const radius: [number, number, number, number] = [
-                            isLast ? 4 : 0,
-                            isLast ? 4 : 0,
-                            isFirst ? 4 : 0,
-                            isFirst ? 4 : 0,
-                        ];
-
-                        return (
-                            <Bar
-                                key={key}
-                                dataKey={key}
-                                stackId="stack"
-                                fill={COLOR_SHADES[index % COLOR_SHADES.length]}
-                                radius={radius}
-                            />
-                        );
-                    })}
+                    {dataKeys.map((key, index) => (
+                        <Bar
+                            key={key}
+                            dataKey={key}
+                            stackId="stack"
+                            fill={COLOR_SHADES[index % COLOR_SHADES.length]}
+                            shape={shapeRenderers[key]}
+                        />
+                    ))}
                 </BarChart>
             </ChartContainer>
         </div>
