@@ -159,7 +159,7 @@ jobs:
             --max-time 60 \
             -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_TOKEN }}" \
             "http://147.93.126.54:8000/api/v1/deployments" \
-            | jq 'map(select(.application_id == "${{ secrets.APPLICATION_ID }}" and .commit == "HEAD")) | length')
+            | jq --arg app_id "${{ secrets.APPLICATION_ID }}" '[.[] | select((.application_id | tostring) == $app_id and .commit == "HEAD")] | length')
 
           echo "Deployments in progress: $in_progress"
 
