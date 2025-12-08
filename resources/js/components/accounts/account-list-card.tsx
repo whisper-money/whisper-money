@@ -65,29 +65,34 @@ export function AccountListCard({
                     <div className="flex max-w-full flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-start gap-3">
                             <div className="flex flex-col gap-1">
-                                <h3 className="flex items-center gap-2 font-semibold">
-                                    {account.bank?.logo ? (
-                                        <img
-                                            src={account.bank.logo}
-                                            alt={account.bank.name}
-                                            className="size-4 rounded-full object-contain"
+                                <Link
+                                    href={show.url(account.id)}
+                                    className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                                >
+                                    <h3 className="flex items-center gap-2 font-semibold">
+                                        {account.bank?.logo ? (
+                                            <img
+                                                src={account.bank.logo}
+                                                alt={account.bank.name}
+                                                className="size-4 rounded-full object-contain"
+                                            />
+                                        ) : (
+                                            <div className="flex size-4 items-center justify-center rounded-full bg-muted">
+                                                <span className="text-sm font-medium text-muted-foreground">
+                                                    {account.bank?.name?.charAt(
+                                                        0,
+                                                    ) || '?'}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <EncryptedText
+                                            encryptedText={account.name}
+                                            iv={account.name_iv}
+                                            length={{ min: 8, max: 25 }}
+                                            className="truncate"
                                         />
-                                    ) : (
-                                        <div className="flex size-4 items-center justify-center rounded-full bg-muted">
-                                            <span className="text-sm font-medium text-muted-foreground">
-                                                {account.bank?.name?.charAt(
-                                                    0,
-                                                ) || '?'}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <EncryptedText
-                                        encryptedText={account.name}
-                                        iv={account.name_iv}
-                                        length={{ min: 8, max: 25 }}
-                                        className="truncate"
-                                    />
-                                </h3>
+                                    </h3>
+                                </Link>
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <span>
                                         {account.bank?.name || 'Unknown Bank'}
