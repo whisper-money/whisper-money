@@ -83,25 +83,14 @@ export default function AccountsIndex({ accounts }: Props) {
                         const accountsInGroup = groupedAccounts[type];
                         if (accountsInGroup.length === 0) return null;
 
-                        return (
-                            <>
-                                {isLoading
-                                    ? accountsInGroup.map((account) => (
-                                          <AccountListCard
-                                              key={account.id}
-                                              account={account}
-                                              loading={true}
-                                          />
-                                      ))
-                                    : accountsInGroup.map((account) => (
-                                          <AccountListCard
-                                              key={account.id}
-                                              account={account}
-                                              onBalanceUpdated={refetch}
-                                          />
-                                      ))}
-                            </>
-                        );
+                        return accountsInGroup.map((account) => (
+                            <AccountListCard
+                                key={account.id}
+                                account={account}
+                                loading={isLoading}
+                                onBalanceUpdated={refetch}
+                            />
+                        ));
                     })}
                 </div>
 
