@@ -20,6 +20,8 @@ const setCookie = (name: string, value: string, days = 365) => {
 };
 
 const applyTheme = (appearance: Appearance) => {
+    if (typeof document === 'undefined') return;
+
     const isDark =
         appearance === 'dark' || (appearance === 'system' && prefersDark());
 
@@ -36,11 +38,15 @@ const mediaQuery = () => {
 };
 
 const handleSystemThemeChange = () => {
+    if (typeof window === 'undefined') return;
+
     const currentAppearance = localStorage.getItem('appearance') as Appearance;
     applyTheme(currentAppearance || 'system');
 };
 
 export function initializeTheme() {
+    if (typeof window === 'undefined') return;
+
     const savedAppearance =
         (localStorage.getItem('appearance') as Appearance) || 'system';
 

@@ -13,6 +13,8 @@ export function saveBalanceImportConfig(
     accountId: UUID,
     config: BalanceImportConfig,
 ): void {
+    if (typeof window === 'undefined') return;
+
     try {
         const key = `${STORAGE_KEY_PREFIX}${accountId}`;
         localStorage.setItem(key, JSON.stringify(config));
@@ -24,6 +26,8 @@ export function saveBalanceImportConfig(
 export function loadBalanceImportConfig(
     accountId: UUID,
 ): BalanceImportConfig | null {
+    if (typeof window === 'undefined') return null;
+
     try {
         const key = `${STORAGE_KEY_PREFIX}${accountId}`;
         const stored = localStorage.getItem(key);
@@ -46,6 +50,8 @@ export function loadBalanceImportConfig(
 }
 
 export function clearBalanceImportConfig(accountId: UUID): void {
+    if (typeof window === 'undefined') return;
+
     try {
         const key = `${STORAGE_KEY_PREFIX}${accountId}`;
         localStorage.removeItem(key);

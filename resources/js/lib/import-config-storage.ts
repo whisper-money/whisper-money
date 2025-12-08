@@ -11,6 +11,8 @@ export function saveImportConfig(
     accountId: number,
     config: ImportConfig,
 ): void {
+    if (typeof window === 'undefined') return;
+
     try {
         const key = `${STORAGE_KEY_PREFIX}${accountId}`;
         localStorage.setItem(key, JSON.stringify(config));
@@ -20,6 +22,8 @@ export function saveImportConfig(
 }
 
 export function loadImportConfig(accountId: number): ImportConfig | null {
+    if (typeof window === 'undefined') return null;
+
     try {
         const key = `${STORAGE_KEY_PREFIX}${accountId}`;
         const stored = localStorage.getItem(key);
@@ -42,6 +46,8 @@ export function loadImportConfig(accountId: number): ImportConfig | null {
 }
 
 export function clearImportConfig(accountId: number): void {
+    if (typeof window === 'undefined') return;
+
     try {
         const key = `${STORAGE_KEY_PREFIX}${accountId}`;
         localStorage.removeItem(key);
