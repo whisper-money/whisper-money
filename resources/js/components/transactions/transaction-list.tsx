@@ -146,6 +146,10 @@ function TransactionRowComponent({
 }
 
 function getInitialColumnVisibility(): VisibilityState {
+    if (typeof window === 'undefined') {
+        return { account: false };
+    }
+
     try {
         const stored = localStorage.getItem(COLUMN_VISIBILITY_KEY);
         if (stored) {
