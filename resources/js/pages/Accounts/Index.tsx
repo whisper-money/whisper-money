@@ -87,19 +87,19 @@ export default function AccountsIndex({ accounts }: Props) {
                             <>
                                 {isLoading
                                     ? accountsInGroup.map((account) => (
-                                        <AccountListCard
-                                            key={account.id}
-                                            account={account}
-                                            loading={true}
-                                        />
-                                    ))
+                                          <AccountListCard
+                                              key={account.id}
+                                              account={account}
+                                              loading={true}
+                                          />
+                                      ))
                                     : accountsInGroup.map((account) => (
-                                        <AccountListCard
-                                            key={account.id}
-                                            account={account}
-                                            onBalanceUpdated={refetch}
-                                        />
-                                    ))}
+                                          <AccountListCard
+                                              key={account.id}
+                                              account={account}
+                                              onBalanceUpdated={refetch}
+                                          />
+                                      ))}
                             </>
                         );
                     })}

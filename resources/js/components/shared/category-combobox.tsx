@@ -175,7 +175,7 @@ export const CategoryIcon = memo(function CategoryIcon({
     return (
         <div
             className={cn(
-                'flex p-1 aspect-square items-center justify-center rounded-full',
+                'flex aspect-square items-center justify-center rounded-full p-1',
                 colorClasses.bg,
             )}
         >

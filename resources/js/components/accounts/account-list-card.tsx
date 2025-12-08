@@ -62,7 +62,7 @@ export function AccountListCard({
         <Card className="w-full py-0">
             <CardContent className="p-4">
                 <div className="flex flex-col gap-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between max-w-full">
+                    <div className="flex max-w-full flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-start gap-3">
                             <div className="flex flex-col gap-1">
                                 <h3 className="flex items-center gap-2 font-semibold">
@@ -85,7 +85,7 @@ export function AccountListCard({
                                         encryptedText={account.name}
                                         iv={account.name_iv}
                                         length={{ min: 8, max: 25 }}
-                                        className='truncate'
+                                        className="truncate"
                                     />
                                 </h3>
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

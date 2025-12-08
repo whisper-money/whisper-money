@@ -1,9 +1,9 @@
-import DiscordIcon from "@/components/icons/DiscordIcon";
-import { dashboard } from "@/routes";
-import { NavItem } from "@/types";
-import { LayoutGrid, CreditCard, Receipt, Github } from "lucide-react";
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
+import DiscordIcon from '@/components/icons/DiscordIcon';
+import { dashboard } from '@/routes';
+import { NavItem } from '@/types';
+import { CreditCard, Github, LayoutGrid, Receipt } from 'lucide-react';
 
 export const mainNavItems: NavItem[] = [
     {
