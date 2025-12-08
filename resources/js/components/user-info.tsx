@@ -1,13 +1,16 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/hooks/use-initials';
+import { cn } from '@/lib/utils';
 import { type User } from '@/types';
 
 export function UserInfo({
     user,
     showEmail = false,
+    hideNameOnMobile = false,
 }: {
     user: User;
     showEmail?: boolean;
+    hideNameOnMobile?: boolean;
 }) {
     const getInitials = useInitials();
 
@@ -19,7 +22,7 @@ export function UserInfo({
                     {getInitials(user.name)}
                 </AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
+            <div className={cn(["grid flex-1 text-left text-sm leading-tight", { "hidden sm:grid": hideNameOnMobile }])}>
                 <span className="truncate font-medium">{user.name}</span>
                 {showEmail && (
                     <span className="truncate text-xs text-muted-foreground">

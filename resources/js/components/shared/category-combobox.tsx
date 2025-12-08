@@ -166,10 +166,8 @@ export function CategoryCombobox({
 
 export const CategoryIcon = memo(function CategoryIcon({
     category,
-    size = 5,
 }: {
     category: Category;
-    size?: number;
 }) {
     const colorClasses = getCategoryColorClasses(category.color);
     const iconName = category.icon;
@@ -177,14 +175,13 @@ export const CategoryIcon = memo(function CategoryIcon({
     return (
         <div
             className={cn(
-                'flex items-center justify-center rounded-full',
-                `h-${size} w-${size}`,
+                'flex p-1 aspect-square items-center justify-center rounded-full',
                 colorClasses.bg,
             )}
         >
             <DynamicIcon
                 name={iconName}
-                className={cn('h-3 w-3', colorClasses.text)}
+                className={cn(`size-4 sm:size-3.5`, colorClasses.text)}
             />
         </div>
     );
