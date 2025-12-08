@@ -3,6 +3,7 @@ import createServer from '@inertiajs/react/server';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import ReactDOMServer from 'react-dom/server';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
+import { SyncProvider } from './contexts/sync-context';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -19,7 +20,9 @@ createServer((page) =>
         setup: ({ App, props }) => {
             return (
                 <EncryptionKeyProvider>
-                    <App {...props} />
+                    <SyncProvider initialIsAuthenticated={false}>
+                        <App {...props} />
+                    </SyncProvider>
                 </EncryptionKeyProvider>
             );
         },
