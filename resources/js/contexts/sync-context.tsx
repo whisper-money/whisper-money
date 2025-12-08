@@ -9,6 +9,7 @@ import { categorySyncService } from '@/services/category-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
     createContext,
     useCallback,
@@ -79,20 +80,14 @@ export function SyncProvider({
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [wasOffline, setWasOffline] = useState(!isOnline);
-    const [pendingOperationsCount, setPendingOperationsCount] = useState(0);
-    const [pendingOperations, setPendingOperations] = useState<PendingChange[]>(
-        [],
-    );
     const syncInProgressRef = useRef(false);
 
+    const pendingOperations =
+        useLiveQuery(() => db.pending_changes.toArray(), []) || [];
+    const pendingOperationsCount = pendingOperations.length;
+
     const refreshPendingOperations = useCallback(async () => {
-        try {
-            const operations = await db.pending_changes.toArray();
-            setPendingOperations(operations);
-            setPendingOperationsCount(operations.length);
-        } catch (err) {
-            console.error('Failed to fetch pending operations:', err);
-        }
+        // No-op: useLiveQuery handles reactivity automatically
     }, []);
 
     useEffect(() => {
@@ -191,9 +186,8 @@ export function SyncProvider({
             }, 5000);
         } finally {
             syncInProgressRef.current = false;
-            await refreshPendingOperations();
         }
-    }, [isAuthenticated, isOnline, refreshPendingOperations]);
+    }, [isAuthenticated, isOnline]);
 
     useEffect(() => {
         if (isAuthenticated && isOnline && wasOffline) {
@@ -229,7 +223,6 @@ export function SyncProvider({
             }
         });
 
-        refreshPendingOperations();
         sync();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated]);
