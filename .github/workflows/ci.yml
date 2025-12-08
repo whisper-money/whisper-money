@@ -151,7 +151,28 @@ jobs:
     needs: [tests, linter]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
+      - name: Check for existing deployment
+        id: check-deployment
+        run: |
+          in_progress=$(curl -s \
+            --connect-timeout 30 \
+            --max-time 60 \
+            -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_TOKEN }}" \
+            "http://147.93.126.54:8000/api/v1/deployments" \
+            | jq 'map(select(.application_id == "${{ secrets.APPLICATION_ID }}" and .commit == "HEAD")) | length')
+
+          echo "Deployments in progress: $in_progress"
+
+          if [ "$in_progress" -gt 0 ]; then
+            echo "Deployment already in progress, skipping..."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "No deployment in progress, proceeding..."
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Trigger deployment
+        if: steps.check-deployment.outputs.skip != 'true'
         run: |
           response=$(curl -s -w "\n%{http_code}" \
             --connect-timeout 30 \
