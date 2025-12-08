@@ -1,5 +1,3 @@
-import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountController';
-import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -13,48 +11,10 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { CreditCard, Github, LayoutGrid, Receipt } from 'lucide-react';
 import AppLogo from './app-logo';
-import DiscordIcon from './icons/DiscordIcon';
 import { cn, resolveUrl } from '@/lib/utils';
-
-const mainNavItems: NavItem[] = [
-    {
-        type: 'nav-item',
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        type: 'nav-item',
-        title: 'Accounts',
-        href: accountsIndex(),
-        icon: CreditCard,
-    },
-    {
-        type: 'nav-item',
-        title: 'Transactions',
-        href: transactionsIndex(),
-        icon: Receipt,
-    },
-];
-
-const footerNavItems: NavItem[] = [
-    {
-        type: 'nav-item',
-        title: 'Github',
-        href: 'https://github.com/whisper-money/whisper-money',
-        icon: Github,
-    },
-    {
-        type: 'nav-item',
-        title: 'Community',
-        href: 'https://discord.gg/zqfrynthvb',
-        icon: <DiscordIcon className="size-5" />,
-    },
-];
+import { footerNavItems, mainNavItems } from '@/providers/menu-item-provider';
 
 export function AppSidebar() {
     const page = usePage();
