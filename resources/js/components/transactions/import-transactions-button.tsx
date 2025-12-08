@@ -37,7 +37,7 @@ export function ImportTransactionsButton() {
                             aria-label="Import transactions"
                         >
                             <Upload className="h-5 w-5" />
-                            <span className='hidden sm:inline'>Import</span>
+                            <span className=''>Import</span>
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
