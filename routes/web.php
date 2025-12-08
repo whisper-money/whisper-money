@@ -7,7 +7,6 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserLeadController;
-use App\Http\Middleware\WithoutSsr;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -46,7 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe/cancel', [SubscriptionController::class, 'cancel'])->name('subscribe.cancel');
 });
 
-Route::middleware(['auth', 'verified', 'redirect.encryption', 'subscribed', WithoutSsr::class])->group(function () {
+Route::middleware(['auth', 'verified', 'redirect.encryption', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
