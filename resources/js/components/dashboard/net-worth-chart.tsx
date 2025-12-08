@@ -219,7 +219,7 @@ export function NetWorthChart({
     }
 
     return (
-        <Card className="col-span-3 overflow-hidden">
+        <Card className="overflow-hidden">
             <CardHeader>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 flex-col gap-2">
