@@ -6,14 +6,14 @@ export default function AppLogo({ mobile }: { mobile?: boolean }) {
         <>
             <div
                 className={cn([
-                    'flex aspect-square size-6 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground',
-                    { 'size-6 bg-sidebar-primary/95': mobile },
+                    'flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground',
+                    { 'size-7 bg-sidebar-primary/95': mobile },
                 ])}
             >
                 <AppLogoIcon
                     className={cn([
-                        'size-4 fill-current text-white dark:text-black',
-                        { 'size-4': mobile },
+                        'size-5 fill-current text-white dark:text-black',
+                        { 'size-5': mobile },
                     ])}
                 />
             </div>
