@@ -1,3 +1,4 @@
+import { PercentageTrendIndicator } from '@/components/dashboard/percentage-trend-indicator';
 import { EncryptedText } from '@/components/encrypted-text';
 import {
     Card,
@@ -14,7 +15,6 @@ import {
 } from '@/components/ui/chart';
 import { Account } from '@/types/account';
 import { format, subMonths } from 'date-fns';
-import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
 
@@ -67,7 +67,7 @@ function formatCurrency(value: number, currencyCode: string): string {
 function calculateTrend(
     data: BalanceDataPoint[],
     monthsBack: number,
-): number | null {
+): { percentage: number; previousValue: number; currentValue: number } | null {
     if (data.length < 2) return null;
 
     const currentIndex = data.length - 1;
@@ -80,38 +80,12 @@ function calculateTrend(
 
     if (previousValue === 0) return null;
 
-    return ((currentValue - previousValue) / Math.abs(previousValue)) * 100;
-}
-
-function TrendIndicator({
-    trend,
-    label,
-}: {
-    trend: number | null;
-    label: string;
-}) {
-    if (trend === null) return null;
-
-    const isPositive = trend >= 0;
-    const Icon = isPositive ? TrendingUp : TrendingDown;
-    const iconColorClass = isPositive
-        ? 'text-green-600/70 dark:text-green-400/70'
-        : 'text-red-600/70 dark:text-red-400/70';
-
-    return (
-        <div className="flex items-center gap-1">
-            <span
-                className={
-                    isPositive ? 'bg-green-100/25 dark:bg-green-900/25' : ''
-                }
-            >
-                {isPositive ? '+' : ''}
-                {trend.toFixed(1)}%
-            </span>
-            <span className="text-muted-foreground">{label}</span>
-            <Icon className={`h-4 w-4 ${iconColorClass}`} />
-        </div>
-    );
+    return {
+        percentage:
+            ((currentValue - previousValue) / Math.abs(previousValue)) * 100,
+        previousValue,
+        currentValue,
+    };
 }
 
 export function AccountBalanceChart({
@@ -226,13 +200,19 @@ export function AccountBalanceChart({
                     <div className="flex flex-col gap-2">
                         <CardTitle>Balance evolution</CardTitle>
                         <CardDescription className="flex flex-col gap-1 text-sm">
-                            <TrendIndicator
-                                trend={monthlyTrend}
+                            <PercentageTrendIndicator
+                                trend={monthlyTrend?.percentage ?? null}
                                 label="this month"
+                                previousAmount={monthlyTrend?.previousValue}
+                                currentAmount={monthlyTrend?.currentValue}
+                                currencyCode={account.currency_code}
                             />
-                            <TrendIndicator
-                                trend={yearlyTrend}
+                            <PercentageTrendIndicator
+                                trend={yearlyTrend?.percentage ?? null}
                                 label="for the last 12 months"
+                                previousAmount={yearlyTrend?.previousValue}
+                                currentAmount={yearlyTrend?.currentValue}
+                                currencyCode={account.currency_code}
                             />
                         </CardDescription>
                     </div>

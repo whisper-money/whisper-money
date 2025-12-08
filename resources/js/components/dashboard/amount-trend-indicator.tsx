@@ -1,17 +1,36 @@
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { TrendingDown, TrendingUp } from 'lucide-react';
+
+interface AmountTrendIndicatorProps {
+    trend: string | null;
+    isPositive: boolean;
+    label: string;
+    className?: string;
+    previousAmount?: number;
+    currentAmount?: number;
+}
+
+function calculatePercentageChange(
+    previousAmount: number,
+    currentAmount: number,
+): number | null {
+    if (previousAmount === 0) return null;
+    return ((currentAmount - previousAmount) / Math.abs(previousAmount)) * 100;
+}
 
 export function AmountTrendIndicator({
     trend,
     isPositive,
     label,
     className = '',
-}: {
-    trend: string | null;
-    isPositive: boolean;
-    label: string;
-    className?: string;
-}) {
+    previousAmount,
+    currentAmount,
+}: AmountTrendIndicatorProps) {
     if (trend === null) return null;
 
     const Icon = isPositive ? TrendingUp : TrendingDown;
@@ -19,7 +38,12 @@ export function AmountTrendIndicator({
         ? 'text-green-600/70 dark:text-green-400/70'
         : 'text-red-600/70 dark:text-red-400/70';
 
-    return (
+    const percentageChange =
+        previousAmount !== undefined && currentAmount !== undefined
+            ? calculatePercentageChange(previousAmount, currentAmount)
+            : null;
+
+    const content = (
         <div className={cn(['flex items-center gap-1', className])}>
             <span
                 className={
@@ -32,4 +56,20 @@ export function AmountTrendIndicator({
             <Icon className={`h-4 w-4 ${iconColorClass}`} />
         </div>
     );
+
+    if (percentageChange !== null) {
+        return (
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="cursor-default">{content}</div>
+                </TooltipTrigger>
+                <TooltipContent>
+                    {percentageChange >= 0 ? '+' : ''}
+                    {percentageChange.toFixed(1)}% {label}
+                </TooltipContent>
+            </Tooltip>
+        );
+    }
+
+    return content;
 }

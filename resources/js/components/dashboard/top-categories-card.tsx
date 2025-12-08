@@ -9,7 +9,8 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Category, getCategoryColorClasses } from '@/types/category';
 import * as Icons from 'lucide-react';
-import { LucideIcon, TrendingDown, TrendingUp } from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
+import { PercentageTrendIndicator } from './percentage-trend-indicator';
 
 interface CategoryData {
     category: Category;
@@ -90,8 +91,6 @@ export function TopCategoriesCard({
                                       item.previous_amount) *
                                   100
                                 : null;
-                        const isSpendingLess =
-                            percentageChange !== null && percentageChange < 0;
                         const percentage =
                             item.total_amount > 0
                                 ? (item.amount / item.total_amount) * 100
@@ -101,13 +100,6 @@ export function TopCategoriesCard({
                         );
                         const chartColor =
                             CHART_COLORS[index % CHART_COLORS.length];
-
-                        const TrendIcon = isSpendingLess
-                            ? TrendingDown
-                            : TrendingUp;
-                        const trendColorClass = isSpendingLess
-                            ? 'text-green-600/70 dark:text-green-400/70'
-                            : 'text-red-600/70 dark:text-red-400/70';
 
                         return (
                             <div key={item.category.id} className="space-y-2">
@@ -124,23 +116,17 @@ export function TopCategoriesCard({
                                         {item.category.name}
                                     </span>
                                     {percentageChange !== null && (
-                                        <div className="flex shrink-0 items-center gap-0.5 text-xs">
-                                            <span
-                                                className={
-                                                    isSpendingLess
-                                                        ? 'bg-green-100/25 dark:bg-green-900/25'
-                                                        : ''
-                                                }
-                                            >
-                                                {percentageChange >= 0
-                                                    ? '+'
-                                                    : ''}
-                                                {percentageChange.toFixed(0)}%
-                                            </span>
-                                            <TrendIcon
-                                                className={`size-3.5 ${trendColorClass}`}
-                                            />
-                                        </div>
+                                        <PercentageTrendIndicator
+                                            trend={percentageChange}
+                                            label=""
+                                            previousAmount={
+                                                item.previous_amount
+                                            }
+                                            currentAmount={item.amount}
+                                            currencyCode="USD"
+                                            invertColors
+                                            className="shrink-0 text-xs"
+                                        />
                                     )}
                                     <span className="shrink-0 text-sm font-semibold tabular-nums">
                                         {formatter.format(item.amount / 100)}
