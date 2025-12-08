@@ -34,12 +34,10 @@ export default function Dashboard() {
                     description="Overview of your financial health"
                 />
 
-                <div className="">
-                    <NetWorthChartComponent
-                        data={netWorthEvolution}
-                        loading={isLoading}
-                    />
-                </div>
+                <NetWorthChartComponent
+                    data={netWorthEvolution}
+                    loading={isLoading}
+                />
 
                 <div className="grid gap-4 md:grid-cols-2">
                     {isLoading

@@ -77,7 +77,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
         >
             <ChartContainer
                 config={configWithColors}
-                className="h-full"
+                className="w-full h-full"
                 style={{ minWidth: `${minChartWidth}px` }}
             >
                 <BarChart accessibilityLayer data={data}>
