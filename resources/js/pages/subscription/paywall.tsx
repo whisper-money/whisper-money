@@ -1,66 +1,141 @@
 import { Button } from '@/components/ui/button';
-import AuthLayout from '@/layouts/auth-layout';
+import { cn } from '@/lib/utils';
 import { checkout } from '@/routes/subscribe';
-import { Head } from '@inertiajs/react';
+import { type SharedData } from '@/types';
+import { Plan } from '@/types/pricing';
+import { Head, usePage } from '@inertiajs/react';
 import { CheckIcon } from 'lucide-react';
 
-export default function Paywall() {
+function getBillingLabel(billingPeriod: string | null): string {
+    if (!billingPeriod) {
+        return 'one-time';
+    }
+    return `/${billingPeriod}`;
+}
+
+function PlanCard({
+    planKey,
+    plan,
+    isDefault,
+    isBestValue,
+}: {
+    planKey: string;
+    plan: Plan;
+    isDefault: boolean;
+    isBestValue: boolean;
+}) {
     return (
-        <AuthLayout
-            title="Upgrade to Pro"
-            description="Unlock all features and take control of your finances"
+        <div
+            className={cn(
+                'relative flex flex-col overflow-hidden rounded-xl border bg-card',
+                isDefault && 'ring-2 ring-emerald-500 border-emerald-500',
+                isBestValue && 'ring-1 ring-blue-500 border-blue-500 shadow-xl',
+            )}
         >
+            {isDefault && (
+                <div className="bg-emerald-500 p-2 text-center text-xs font-medium text-white">
+                    Most Popular
+                </div>
+            )}
+            {isBestValue && (
+                <div className="text-blue-500 bg-blue-50 p-2 text-center text-xs font-medium">
+                    Best Value
+                </div>
+            )}
+            <div className="flex flex-1 flex-col p-5">
+                <h3 className="text-lg font-semibold">{plan.name}</h3>
+                <div className="mt-2 flex items-baseline gap-1">
+                    {plan.original_price && (
+                        <span className="text-sm text-muted-foreground line-through">
+                            ${plan.original_price}
+                        </span>
+                    )}
+                    <span className="text-3xl font-bold">${plan.price}</span>
+                    <span className="text-sm text-muted-foreground">
+                        {getBillingLabel(plan.billing_period)}
+                    </span>
+                </div>
+
+                <ul className="mt-4 flex-1 space-y-2">
+                    {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2">
+                            <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                            <span className="text-sm">{feature}</span>
+                        </li>
+                    ))}
+                </ul>
+
+                <a href={checkout.url({ plan: planKey })} className="mt-6">
+                    <Button
+                        className={cn(
+                            'w-full cursor-pointer',
+                            isDefault &&
+                            'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700',
+                        )}
+                        variant={isDefault ? 'default' : 'outline'}
+                    >
+                        {plan.billing_period ? 'Subscribe' : 'Buy Now'}
+                    </Button>
+                </a>
+            </div>
+        </div>
+    );
+}
+
+export default function Paywall() {
+    const { pricing } = usePage<SharedData>().props;
+    const planEntries = Object.entries(pricing.plans);
+
+    if (planEntries.length === 0) {
+        return null;
+    }
+
+    return (
+        <>
             <Head title="Upgrade to Pro" />
 
-            <div className="flex flex-col gap-6">
-                <div className="overflow-hidden rounded-xl border bg-card">
-                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 px-5 py-4 dark:from-emerald-900/20 dark:to-teal-900/20">
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold">$9</span>
-                            <span className="text-muted-foreground">
-                                /month
-                            </span>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            Billed monthly. Cancel anytime.
+            <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
+                <div className="w-full max-w-4xl">
+                    <div className="mb-8 text-center">
+                        <h1 className="text-3xl font-bold">Upgrade to Pro</h1>
+                        <p className="mt-2 text-muted-foreground">
+                            Unlock all features and take control of your
+                            finances
                         </p>
                     </div>
 
-                    <div className="p-5">
-                        <ul className="space-y-2.5">
-                            {[
-                                'Unlimited bank accounts',
-                                'Unlimited transactions',
-                                'End-to-end encryption',
-                                'Smart categorization',
-                                'Automation rules',
-                                'Visual insights & reports',
-                                'Priority support',
-                            ].map((feature) => (
-                                <li
-                                    key={feature}
-                                    className="flex items-center gap-2.5"
-                                >
-                                    <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                    <span className="text-sm">{feature}</span>
-                                </li>
-                            ))}
-                        </ul>
+                    <div
+                        className={cn(
+                            'grid gap-4',
+                            planEntries.length === 1 && 'mx-auto max-w-sm',
+                            planEntries.length === 2 &&
+                            'mx-auto max-w-2xl grid-cols-1 sm:grid-cols-2',
+                            planEntries.length >= 3 &&
+                            'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+                        )}
+                    >
+                        {planEntries.map(([key, plan]) => (
+                            <PlanCard
+                                key={key}
+                                planKey={key}
+                                plan={plan}
+                                isDefault={key === pricing.defaultPlan}
+                                isBestValue={key === pricing.bestValuePlan}
+                            />
+                        ))}
                     </div>
+
+                    {pricing.promo.enabled && (
+                        <p className="mt-6 text-center text-sm text-muted-foreground">
+                            Use code{' '}
+                            <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                {pricing.promo.code}
+                            </span>{' '}
+                            at checkout • {pricing.promo.description}
+                        </p>
+                    )}
                 </div>
-
-                <p className="text-center text-xs text-muted-foreground">
-                    Use code{' '}
-                    <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                        FOUNDER
-                    </span>{' '}
-                    for $8 off your first month
-                </p>
-
-                <a href={checkout.url()}>
-                    <Button className="w-full">Subscribe Now</Button>
-                </a>
             </div>
-        </AuthLayout>
+        </>
     );
 }
