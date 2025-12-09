@@ -2,6 +2,12 @@ import InputError from '@/components/input-error';
 import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { LEAD_FUNNEL_EVENT_UUID } from '@/lib/constants';
 import { trackEvent } from '@/lib/track-event';
 import { cn } from '@/lib/utils';
@@ -47,8 +53,9 @@ function LandingPlanCard({
         <div
             className={cn(
                 'relative flex flex-col overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#161615]',
-                isDefault && 'ring-2 ring-emerald-500 border-emerald-500 shadow-xl',
-                isBestValue && 'ring-1 ring-blue-500 border-blue-500 shadow-xl',
+                isDefault &&
+                    'border-emerald-500 shadow-xl ring-2 ring-emerald-500',
+                isBestValue && 'border-blue-500 shadow-xl ring-1 ring-blue-500',
             )}
         >
             {isDefault && (
@@ -57,7 +64,7 @@ function LandingPlanCard({
                 </div>
             )}
             {isBestValue && (
-                <div className="text-blue-500 bg-blue-50 p-3 text-center text-xs font-semibold uppercase">
+                <div className="bg-blue-50 p-3 text-center text-xs font-semibold text-blue-500 uppercase">
                     Best Value
                 </div>
             )}
@@ -464,61 +471,80 @@ export default function Welcome({
                         </div>
                     </section>
 
-                    {subscriptionsEnabled && !hideAuthButtons && planEntries.length > 0 && (
-                        <section
-                            id="pricing"
-                            className="px-4 py-12 sm:py-24 md:py-32"
-                        >
-                            <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 sm:gap-12">
-                                <div className="flex flex-col items-center gap-4 text-center">
-                                    <p className="max-w-[600px] text-sm tracking-wider text-[#706f6c] uppercase dark:text-[#A1A09A]">
-                                        Choose the plan that works for you
-                                    </p>
-                                    <h2 className="text-2xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
-                                        Simple, transparent pricing
-                                    </h2>
-                                </div>
+                    {subscriptionsEnabled &&
+                        !hideAuthButtons &&
+                        planEntries.length > 0 && (
+                            <section
+                                id="pricing"
+                                className="px-4 py-12 sm:py-24 md:py-32"
+                            >
+                                <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 sm:gap-12">
+                                    <div className="flex flex-col items-center gap-4 text-center">
+                                        <p className="max-w-[600px] text-sm tracking-wider text-[#706f6c] uppercase dark:text-[#A1A09A]">
+                                            Choose the plan that works for you
+                                        </p>
+                                        <h2 className="text-2xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
+                                            Simple, transparent pricing
+                                        </h2>
+                                    </div>
 
-                                <div
-                                    className={cn(
-                                        'grid w-full gap-6',
-                                        planEntries.length === 1 &&
-                                        'mx-auto max-w-md',
-                                        planEntries.length === 2 &&
-                                        'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
-                                        planEntries.length >= 3 &&
-                                        'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+                                    <div
+                                        className={cn(
+                                            'grid w-full gap-6',
+                                            planEntries.length === 1 &&
+                                                'mx-auto max-w-md',
+                                            planEntries.length === 2 &&
+                                                'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
+                                            planEntries.length >= 3 &&
+                                                'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+                                        )}
+                                    >
+                                        {planEntries.map(([key, plan]) => (
+                                            <LandingPlanCard
+                                                key={key}
+                                                plan={plan}
+                                                isDefault={
+                                                    key === pricing.defaultPlan
+                                                }
+                                                isBestValue={
+                                                    key ===
+                                                    pricing.bestValuePlan
+                                                }
+                                                promoEnabled={
+                                                    pricing.promo.enabled
+                                                }
+                                                promoBadge={pricing.promo.badge}
+                                            />
+                                        ))}
+                                    </div>
+
+                                    {pricing.promo.enabled && (
+                                        <p className="-mt-6 text-center text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                            🎉 Get a founder discount •{' '}
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <a
+                                                            href="https://discord.gg/9UQWZECDDv"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="font-semibold text-[#5865F2] underline-offset-2 hover:underline"
+                                                        >
+                                                            Join our Discord
+                                                        </a>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        You'll receive an
+                                                        exclusive promo code via
+                                                        DM!
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </p>
                                     )}
-                                >
-                                    {planEntries.map(([key, plan]) => (
-                                        <LandingPlanCard
-                                            key={key}
-                                            plan={plan}
-                                            isDefault={
-                                                key === pricing.defaultPlan
-                                            }
-                                            isBestValue={
-                                                key === pricing.bestValuePlan
-                                            }
-                                            promoEnabled={pricing.promo.enabled}
-                                            promoBadge={pricing.promo.badge}
-                                        />
-                                    ))}
                                 </div>
-
-                                {pricing.promo.enabled && (
-                                    <p className="-mt-6 text-center text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        Use code{' '}
-                                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                                            {pricing.promo.code}
-                                        </span>{' '}
-                                        at checkout •{' '}
-                                        {pricing.promo.description}
-                                    </p>
-                                )}
-                            </div>
-                        </section>
-                    )}
+                            </section>
+                        )}
 
                     <section className="w-full overflow-hidden px-0 py-12 sm:py-24 md:py-32 dark:border-[#3E3E3A]">
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-1 text-center sm:gap-16">
