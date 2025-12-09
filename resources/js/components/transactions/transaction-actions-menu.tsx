@@ -19,13 +19,7 @@ import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { Link } from '@inertiajs/react';
-import {
-    ChevronDown,
-    Plus,
-    Sparkles,
-    Upload,
-    WandSparkles,
-} from 'lucide-react';
+import { ChevronDown, Plus, Upload, WandSparkles } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
@@ -125,9 +119,7 @@ export function TransactionActionsMenu({
                                         )}
                                     </Link>
                                 ) : (
-                                    <>
-                                        Categorize
-                                    </>
+                                    <>Categorize</>
                                 )}
                             </Button>
                         </TooltipTrigger>
@@ -135,8 +127,8 @@ export function TransactionActionsMenu({
                             {!isKeySet
                                 ? 'Unlock encryption to categorize'
                                 : uncategorizedCount === 0
-                                    ? 'All transactions are categorized'
-                                    : `Categorize ${uncategorizedCount} transactions`}
+                                  ? 'All transactions are categorized'
+                                  : `Categorize ${uncategorizedCount} transactions`}
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>

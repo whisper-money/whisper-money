@@ -1,4 +1,5 @@
 import { categorize as categorizeRoute } from '@/actions/App/Http/Controllers/TransactionController';
+import { AutomationRulesDialog } from '@/components/automation-rules/automation-rules-dialog';
 import { EncryptedText } from '@/components/encrypted-text';
 import { CategoryIcon } from '@/components/shared/category-combobox';
 import { Button } from '@/components/ui/button';
@@ -15,9 +16,11 @@ import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
+import { evaluateRules } from '@/lib/rule-engine';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { Head, Link } from '@inertiajs/react';
@@ -29,6 +32,7 @@ import {
     ArrowUp,
     CheckCircle2,
     PartyPopper,
+    Settings2,
     SkipForward,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -114,7 +118,24 @@ export default function CategorizeTransactions({
     const [lastSelectedCategory, setLastSelectedCategory] =
         useState<Category | null>(null);
     const [searchValue, setSearchValue] = useState('');
+    const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
+    const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
     const commandInputRef = useRef<HTMLInputElement>(null);
+
+    const automationRules = useLiveQuery(
+        async () => {
+            const rules = await db.automation_rules.toArray();
+            return rules.map((rule) => ({
+                ...rule,
+                rules_json:
+                    typeof rule.rules_json === 'string'
+                        ? JSON.parse(rule.rules_json)
+                        : rule.rules_json,
+            })) as AutomationRule[];
+        },
+        [],
+        [],
+    );
 
     useEffect(() => {
         setCategoryUsageOrder(getCategoryUsageOrder());
@@ -152,6 +173,7 @@ export default function CategorizeTransactions({
                 if (keyString && isKeySet) {
                     try {
                         key = await importKey(keyString);
+                        setEncryptionKey(key);
                     } catch (error) {
                         console.error(
                             'Failed to import encryption key:',
@@ -251,6 +273,88 @@ export default function CategorizeTransactions({
     const sortedCategories = useMemo(() => {
         return sortCategoriesByUsage(categories, categoryUsageOrder);
     }, [categories, categoryUsageOrder]);
+
+    const applyAutomationRulesToQueue = useCallback(async () => {
+        if (
+            !encryptionKey ||
+            !automationRules.length ||
+            uncategorizedTransactions.length === 0
+        ) {
+            return;
+        }
+
+        const remainingTransactions =
+            uncategorizedTransactions.slice(currentIndex);
+        let categorizedCount = 0;
+        const newUncategorizedList: DecryptedTransaction[] = [
+            ...uncategorizedTransactions.slice(0, currentIndex),
+        ];
+
+        for (const transaction of remainingTransactions) {
+            const result = await evaluateRules(
+                transaction,
+                automationRules,
+                categories,
+                accounts,
+                banks,
+                encryptionKey,
+            );
+
+            if (result?.categoryId) {
+                try {
+                    await transactionSyncService.update(transaction.id, {
+                        category_id: result.categoryId,
+                    });
+                    categorizedCount++;
+
+                    const matchedCategory = categories.find(
+                        (c) => c.id === result.categoryId,
+                    );
+                    if (matchedCategory) {
+                        updateCategoryUsageOrder(matchedCategory.id);
+                    }
+                } catch (error) {
+                    console.error(
+                        'Failed to apply automation rule to transaction:',
+                        error,
+                    );
+                    newUncategorizedList.push(transaction);
+                }
+            } else {
+                newUncategorizedList.push(transaction);
+            }
+        }
+
+        if (categorizedCount > 0) {
+            setCategoryUsageOrder(getCategoryUsageOrder());
+            setUncategorizedTransactions(newUncategorizedList);
+            setCurrentIndex(
+                Math.min(currentIndex, newUncategorizedList.length),
+            );
+        }
+
+        return categorizedCount;
+    }, [
+        encryptionKey,
+        automationRules,
+        uncategorizedTransactions,
+        currentIndex,
+        categories,
+        accounts,
+        banks,
+    ]);
+
+    const handleRulesDialogClose = useCallback(
+        async (open: boolean) => {
+            setRulesDialogOpen(open);
+
+            if (!open) {
+                await applyAutomationRulesToQueue();
+                commandInputRef.current?.focus();
+            }
+        },
+        [applyAutomationRulesToQueue],
+    );
 
     const handleCategorySelect = useCallback(
         async (category: Category) => {
@@ -424,11 +528,22 @@ export default function CategorizeTransactions({
                         <ArrowLeft className="h-4 w-4" />
                         Back to Transactions
                     </Link>
-                    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                            {remainingCount}
-                        </span>
-                        remaining
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRulesDialogOpen(true)}
+                            className="gap-2"
+                        >
+                            <Settings2 className="h-4 w-4" />
+                            Rules
+                        </Button>
+                        <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                            <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                                {remainingCount}
+                            </span>
+                            remaining
+                        </div>
                     </div>
                 </header>
 
@@ -679,6 +794,11 @@ export default function CategorizeTransactions({
                     </div>
                 </div>
             </div>
+
+            <AutomationRulesDialog
+                open={rulesDialogOpen}
+                onOpenChange={handleRulesDialogClose}
+            />
 
             <style>{`
                 @keyframes card-enter {
