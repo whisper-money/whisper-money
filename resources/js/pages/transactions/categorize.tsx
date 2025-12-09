@@ -24,7 +24,7 @@ import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { parseISO } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -426,11 +426,21 @@ export default function CategorizeTransactions({
                     handleSkip();
                 }
             }
+            // Escape to go back to transactions
+            if (e.key === 'Escape' && !rulesDialogOpen) {
+                e.preventDefault();
+                const transactionsUrl = categorizeRoute
+                    .url()
+                    ?.replace('/categorize', '');
+                if (transactionsUrl) {
+                    router.visit(transactionsUrl);
+                }
+            }
         };
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [animationState, currentTransaction, handleSkip]);
+    }, [animationState, currentTransaction, handleSkip, rulesDialogOpen]);
 
     const formatAmount = (amount: number, currencyCode: string): string => {
         return new Intl.NumberFormat('en-US', {
