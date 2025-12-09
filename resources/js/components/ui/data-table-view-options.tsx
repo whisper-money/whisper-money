@@ -36,7 +36,7 @@ export function DataTableViewOptions<TData>({
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                    Columns
+                    <span className='hidden sm:inline'>Columns</span>
                     <SlidersHorizontal className="ml-2 h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
