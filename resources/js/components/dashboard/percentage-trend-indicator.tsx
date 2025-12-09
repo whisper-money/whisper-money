@@ -5,6 +5,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 
 interface PercentageTrendIndicatorProps {
     trend: number | null;
@@ -34,6 +35,8 @@ export function PercentageTrendIndicator({
     invertColors = false,
     className,
 }: PercentageTrendIndicatorProps) {
+    const [open, setOpen] = useState(false);
+
     if (trend === null) return null;
 
     const isPositive = trend >= 0;
@@ -67,9 +70,14 @@ export function PercentageTrendIndicator({
             currencyCode,
         );
         return (
-            <Tooltip>
+            <Tooltip open={open} onOpenChange={setOpen}>
                 <TooltipTrigger asChild>
-                    <div className="cursor-default">{content}</div>
+                    <div
+                        className="cursor-default"
+                        onClick={() => setOpen((prev) => !prev)}
+                    >
+                        {content}
+                    </div>
                 </TooltipTrigger>
                 <TooltipContent>
                     {amountDiff >= 0 ? '+' : '-'}

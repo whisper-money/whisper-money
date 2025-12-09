@@ -5,6 +5,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { TrendingDown, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 
 interface AmountTrendIndicatorProps {
     trend: string | null;
@@ -31,6 +32,8 @@ export function AmountTrendIndicator({
     previousAmount,
     currentAmount,
 }: AmountTrendIndicatorProps) {
+    const [open, setOpen] = useState(false);
+
     if (trend === null) return null;
 
     const Icon = isPositive ? TrendingUp : TrendingDown;
@@ -59,9 +62,14 @@ export function AmountTrendIndicator({
 
     if (percentageChange !== null) {
         return (
-            <Tooltip>
+            <Tooltip open={open} onOpenChange={setOpen}>
                 <TooltipTrigger asChild>
-                    <div className="cursor-default">{content}</div>
+                    <div
+                        className="cursor-default"
+                        onClick={() => setOpen((prev) => !prev)}
+                    >
+                        {content}
+                    </div>
                 </TooltipTrigger>
                 <TooltipContent>
                     {percentageChange >= 0 ? '+' : ''}
