@@ -34,6 +34,7 @@ import {
     CheckCircle2,
     PartyPopper,
     Settings2,
+    SkipBack,
     SkipForward,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -411,6 +412,21 @@ export default function CategorizeTransactions({
         }, 300);
     }, [animationState]);
 
+    const handlePrevious = useCallback(() => {
+        if (animationState !== 'idle' || currentIndex === 0) return;
+
+        setAnimationState('exiting');
+
+        setTimeout(() => {
+            setCurrentIndex((prev) => prev - 1);
+            setAnimationState('entering');
+
+            setTimeout(() => {
+                setAnimationState('idle');
+            }, 300);
+        }, 300);
+    }, [animationState, currentIndex]);
+
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -419,11 +435,18 @@ export default function CategorizeTransactions({
                 e.preventDefault();
                 setRulesDialogOpen(true);
             }
-            // Ctrl + N for skip
+            // Ctrl + N for skip (next)
             if (e.ctrlKey && e.key === 'n') {
                 e.preventDefault();
                 if (animationState === 'idle' && currentTransaction) {
                     handleSkip();
+                }
+            }
+            // Ctrl + B for previous (back)
+            if (e.ctrlKey && e.key === 'b') {
+                e.preventDefault();
+                if (animationState === 'idle' && currentIndex > 0) {
+                    handlePrevious();
                 }
             }
             // Escape to go back to transactions
@@ -440,7 +463,14 @@ export default function CategorizeTransactions({
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [animationState, currentTransaction, handleSkip, rulesDialogOpen]);
+    }, [
+        animationState,
+        currentTransaction,
+        handleSkip,
+        handlePrevious,
+        currentIndex,
+        rulesDialogOpen,
+    ]);
 
     const formatAmount = (amount: number, currencyCode: string): string => {
         return new Intl.NumberFormat('en-US', {
@@ -570,6 +600,19 @@ export default function CategorizeTransactions({
                             <Settings2 className="h-4 w-4" />
                             Rules
                             <Kbd>Ctrl+R</Kbd>
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handlePrevious}
+                            disabled={
+                                animationState !== 'idle' || currentIndex === 0
+                            }
+                            className="gap-2 pr-2 text-muted-foreground"
+                        >
+                            <SkipBack className="h-4 w-4" />
+                            Prev
+                            <Kbd>Ctrl+B</Kbd>
                         </Button>
                         <Button
                             variant="ghost"
