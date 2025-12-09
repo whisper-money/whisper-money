@@ -1,4 +1,10 @@
 import { Button } from '@/components/ui/button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
@@ -28,8 +34,8 @@ function PlanCard({
         <div
             className={cn(
                 'relative flex flex-col overflow-hidden rounded-xl border bg-card',
-                isDefault && 'ring-2 ring-emerald-500 border-emerald-500',
-                isBestValue && 'ring-1 ring-blue-500 border-blue-500 shadow-xl',
+                isDefault && 'border-emerald-500 ring-2 ring-emerald-500',
+                isBestValue && 'border-blue-500 shadow-xl ring-1 ring-blue-500',
             )}
         >
             {isDefault && (
@@ -38,7 +44,7 @@ function PlanCard({
                 </div>
             )}
             {isBestValue && (
-                <div className="text-blue-500 bg-blue-50 p-2 text-center text-xs font-medium">
+                <div className="bg-blue-50 p-2 text-center text-xs font-medium text-blue-500">
                     Best Value
                 </div>
             )}
@@ -70,7 +76,7 @@ function PlanCard({
                         className={cn(
                             'w-full cursor-pointer',
                             isDefault &&
-                            'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700',
+                                'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700',
                         )}
                         variant={isDefault ? 'default' : 'outline'}
                     >
@@ -109,9 +115,9 @@ export default function Paywall() {
                             'grid gap-4',
                             planEntries.length === 1 && 'mx-auto max-w-sm',
                             planEntries.length === 2 &&
-                            'mx-auto max-w-2xl grid-cols-1 sm:grid-cols-2',
+                                'mx-auto max-w-2xl grid-cols-1 sm:grid-cols-2',
                             planEntries.length >= 3 &&
-                            'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+                                'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
                         )}
                     >
                         {planEntries.map(([key, plan]) => (
@@ -127,11 +133,25 @@ export default function Paywall() {
 
                     {pricing.promo.enabled && (
                         <p className="mt-6 text-center text-sm text-muted-foreground">
-                            Use code{' '}
-                            <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                                {pricing.promo.code}
-                            </span>{' '}
-                            at checkout • {pricing.promo.description}
+                            🎉 Get a founder discount •{' '}
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <a
+                                            href="https://discord.gg/9UQWZECDDv"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="font-semibold text-[#5865F2] underline-offset-2 hover:underline"
+                                        >
+                                            Join our Discord
+                                        </a>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        You'll receive an exclusive promo code
+                                        via DM!
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </p>
                     )}
                 </div>
