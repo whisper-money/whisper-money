@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LEAD_FUNNEL_EVENT_UUID } from '@/lib/constants';
 import { trackEvent } from '@/lib/track-event';
+import { cn } from '@/lib/utils';
 import { store } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
+import { Plan } from '@/types/pricing';
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import {
     BellIcon,
@@ -21,16 +23,111 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
+function getBillingLabel(billingPeriod: string | null): string {
+    if (!billingPeriod) {
+        return 'one-time';
+    }
+    return `/${billingPeriod}`;
+}
+
+function LandingPlanCard({
+    plan,
+    isDefault,
+    isBestValue,
+    promoEnabled,
+    promoBadge,
+}: {
+    plan: Plan;
+    isDefault: boolean;
+    isBestValue: boolean;
+    promoEnabled: boolean;
+    promoBadge: string;
+}) {
+    return (
+        <div
+            className={cn(
+                'relative flex flex-col overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#161615]',
+                isDefault && 'ring-2 ring-emerald-500 border-emerald-500 shadow-xl',
+                isBestValue && 'ring-1 ring-blue-500 border-blue-500 shadow-xl',
+            )}
+        >
+            {isDefault && (
+                <div className="bg-emerald-500 p-3 text-center text-xs font-semibold text-white uppercase">
+                    Most Popular
+                </div>
+            )}
+            {isBestValue && (
+                <div className="text-blue-500 bg-blue-50 p-3 text-center text-xs font-semibold uppercase">
+                    Best Value
+                </div>
+            )}
+            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 blur-3xl" />
+
+            <div className="relative flex flex-1 flex-col p-6">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-semibold">{plan.name}</h3>
+                    {promoEnabled && isDefault && (
+                        <div className="inline-block rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 uppercase dark:bg-emerald-900/30 dark:text-emerald-400">
+                            {promoBadge}
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-4 flex items-baseline gap-2">
+                    {plan.original_price && (
+                        <span className="text-xl font-medium text-[#706f6c] line-through decoration-2 dark:text-[#A1A09A]">
+                            ${plan.original_price}
+                        </span>
+                    )}
+                    <span className="text-4xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+                        ${plan.price}
+                    </span>
+                    <span className="text-base text-[#706f6c] dark:text-[#A1A09A]">
+                        {getBillingLabel(plan.billing_period)}
+                    </span>
+                </div>
+
+                <p className="mt-3 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                    Everything you need to manage your finances securely.
+                </p>
+
+                <ul className="mt-5 flex-1 space-y-2.5">
+                    {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2.5">
+                            <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                            <span className="text-sm">{feature}</span>
+                        </li>
+                    ))}
+                </ul>
+
+                <Link href="/register" className="mt-9">
+                    <Button
+                        className={cn(
+                            'w-full cursor-pointer py-5 text-base shadow-sm transition-all',
+                            isDefault
+                                ? 'bg-gradient-to-t from-zinc-700 to-zinc-900 text-white hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50'
+                                : 'border-[#e3e3e0] bg-transparent text-[#1b1b18] hover:bg-[#f5f5f4] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:bg-[#1f1f1e]',
+                        )}
+                        variant={isDefault ? 'default' : 'outline'}
+                    >
+                        Get Started
+                    </Button>
+                </Link>
+            </div>
+        </div>
+    );
+}
+
 export default function Welcome({
     canRegister = true,
     hideAuthButtons = false,
-    subscriptionsEnabled = false,
 }: {
     canRegister?: boolean;
     hideAuthButtons?: boolean;
-    subscriptionsEnabled?: boolean;
 }) {
-    const { appUrl } = usePage<SharedData>().props;
+    const { appUrl, subscriptionsEnabled, pricing } =
+        usePage<SharedData>().props;
+    const planEntries = Object.entries(pricing.plans);
     const emailInputRef = useRef<HTMLInputElement>(null);
     const visitTrackedRef = useRef(false);
 
@@ -367,91 +464,58 @@ export default function Welcome({
                         </div>
                     </section>
 
-                    {subscriptionsEnabled && !hideAuthButtons && (
+                    {subscriptionsEnabled && !hideAuthButtons && planEntries.length > 0 && (
                         <section
                             id="pricing"
                             className="px-4 py-12 sm:py-24 md:py-32"
                         >
-                            <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 sm:gap-12">
+                            <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 sm:gap-12">
                                 <div className="flex flex-col items-center gap-4 text-center">
                                     <p className="max-w-[600px] text-sm tracking-wider text-[#706f6c] uppercase dark:text-[#A1A09A]">
-                                        One plan, all features. No hidden fees.
+                                        Choose the plan that works for you
                                     </p>
                                     <h2 className="text-2xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
                                         Simple, transparent pricing
                                     </h2>
                                 </div>
 
-                                <div className="w-full max-w-md">
-                                    <div className="relative overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 shadow-lg dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                        <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 blur-3xl" />
-
-                                        <div className="relative">
-                                            <div className="mb-6 flex items-center gap-4">
-                                                <h3 className="text-xl font-semibold">
-                                                    Pro Plan
-                                                </h3>
-
-                                                <div className="inline-block rounded-lg bg-emerald-100 px-2 py-1.5 text-xs font-semibold text-emerald-700 uppercase dark:bg-emerald-900/30 dark:text-emerald-400">
-                                                    Founder Promotion
-                                                </div>
-                                            </div>
-
-                                            <div className="mb-6 flex items-baseline gap-3">
-                                                <span className="text-2xl font-medium text-[#706f6c] line-through decoration-2 dark:text-[#A1A09A]">
-                                                    $9
-                                                </span>
-                                                <span className="text-5xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-                                                    $1
-                                                </span>
-                                                <span className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
-                                                    /first month
-                                                </span>
-                                            </div>
-
-                                            <p className="mb-6 text-[#706f6c] dark:text-[#A1A09A]">
-                                                Everything you need to manage
-                                                your finances securely.
-                                            </p>
-
-                                            <ul className="mb-8 space-y-3">
-                                                {[
-                                                    'Unlimited accounts',
-                                                    'Unlimited transactions',
-                                                    'End-to-end encryption',
-                                                    'Smart categorization',
-                                                    'Automation rules',
-                                                    'Visual insights & reports',
-                                                    'Priority support',
-                                                ].map((feature) => (
-                                                    <li
-                                                        key={feature}
-                                                        className="flex items-center gap-3"
-                                                    >
-                                                        <CheckIcon className="size-5 shrink-0 text-emerald-500" />
-                                                        <span className="text-sm">
-                                                            {feature}
-                                                        </span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-
-                                            <p className="mb-4 text-center text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                                Use code{' '}
-                                                <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                                                    FOUNDER
-                                                </span>{' '}
-                                                at checkout • Then $9/month
-                                            </p>
-
-                                            <Link href="/register">
-                                                <Button className="w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 py-6 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50">
-                                                    Get Started
-                                                </Button>
-                                            </Link>
-                                        </div>
-                                    </div>
+                                <div
+                                    className={cn(
+                                        'grid w-full gap-6',
+                                        planEntries.length === 1 &&
+                                        'mx-auto max-w-md',
+                                        planEntries.length === 2 &&
+                                        'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
+                                        planEntries.length >= 3 &&
+                                        'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+                                    )}
+                                >
+                                    {planEntries.map(([key, plan]) => (
+                                        <LandingPlanCard
+                                            key={key}
+                                            plan={plan}
+                                            isDefault={
+                                                key === pricing.defaultPlan
+                                            }
+                                            isBestValue={
+                                                key === pricing.bestValuePlan
+                                            }
+                                            promoEnabled={pricing.promo.enabled}
+                                            promoBadge={pricing.promo.badge}
+                                        />
+                                    ))}
                                 </div>
+
+                                {pricing.promo.enabled && (
+                                    <p className="-mt-6 text-center text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        Use code{' '}
+                                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                            {pricing.promo.code}
+                                        </span>{' '}
+                                        at checkout •{' '}
+                                        {pricing.promo.description}
+                                    </p>
+                                )}
                             </div>
                         </section>
                     )}

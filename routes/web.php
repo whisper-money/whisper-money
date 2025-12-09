@@ -15,7 +15,6 @@ Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
         'hideAuthButtons' => config('landing.hide_auth_buttons', false),
-        'subscriptionsEnabled' => config('subscriptions.enabled', false),
     ]);
 })->name('home');
 

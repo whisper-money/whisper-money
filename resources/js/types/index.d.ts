@@ -1,6 +1,7 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 import { ReactNode } from 'react';
+import { PricingConfig } from './pricing';
 import { UUID } from './uuid';
 
 export interface Auth {
@@ -41,6 +42,7 @@ export interface SharedData {
     quote: { message: string; author: string };
     auth: Auth;
     subscriptionsEnabled: boolean;
+    pricing: PricingConfig;
     sidebarOpen: boolean;
     [key: string]: unknown;
 }

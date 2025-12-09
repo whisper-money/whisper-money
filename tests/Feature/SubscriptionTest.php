@@ -140,6 +140,10 @@ test('landing page passes subscriptions enabled prop when enabled', function () 
             ->component('welcome')
             ->has('subscriptionsEnabled')
             ->where('subscriptionsEnabled', true)
+            ->has('pricing')
+            ->has('pricing.plans')
+            ->has('pricing.defaultPlan')
+            ->has('pricing.promo')
         );
 });
 
@@ -152,5 +156,30 @@ test('landing page passes subscriptions enabled prop when disabled', function ()
             ->component('welcome')
             ->has('subscriptionsEnabled')
             ->where('subscriptionsEnabled', false)
+            ->has('pricing')
+        );
+});
+
+test('pricing config includes all plan details', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome')
+            ->has('pricing.plans.monthly', fn ($plan) => $plan
+                ->has('name')
+                ->has('price')
+                ->has('original_price')
+                ->has('stripe_price_id')
+                ->has('billing_period')
+                ->has('features')
+            )
+            ->has('pricing.promo', fn ($promo) => $promo
+                ->has('enabled')
+                ->has('code')
+                ->has('description')
+                ->has('badge')
+            )
         );
 });
