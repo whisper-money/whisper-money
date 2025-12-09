@@ -50,6 +50,12 @@ class HandleInertiaRequests extends Middleware
                 'hasProPlan' => $user?->hasProPlan() ?? false,
             ],
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
+            'pricing' => [
+                'plans' => config('subscriptions.plans', []),
+                'defaultPlan' => config('subscriptions.default_plan', 'monthly'),
+                'bestValuePlan' => config('subscriptions.best_value', null),
+                'promo' => config('subscriptions.promo', []),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
