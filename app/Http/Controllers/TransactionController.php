@@ -49,6 +49,36 @@ class TransactionController extends Controller
         ]);
     }
 
+    public function categorize(Request $request): Response
+    {
+        $user = $request->user();
+
+        $categories = Category::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon', 'color', 'type']);
+
+        $accounts = Account::query()
+            ->where('user_id', $user->id)
+            ->with('bank:id,name,logo')
+            ->orderBy('name')
+            ->get(['id', 'name', 'name_iv', 'bank_id', 'type', 'currency_code']);
+
+        $banks = Bank::query()
+            ->where(function ($q) use ($user) {
+                $q->whereNull('user_id')
+                    ->orWhere('user_id', $user->id);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'logo']);
+
+        return Inertia::render('transactions/categorize', [
+            'categories' => $categories,
+            'accounts' => $accounts,
+            'banks' => $banks,
+        ]);
+    }
+
     public function store(StoreTransactionRequest $request): JsonResponse
     {
         $data = $request->validated();
