@@ -32,6 +32,8 @@ export function DeleteAutomationRuleDialog({
     const handleDelete = async () => {
         setIsDeleting(true);
         router.delete(destroy(rule.id).url, {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: async () => {
                 onOpenChange(false);
                 await automationRuleSyncService.sync();

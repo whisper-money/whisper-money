@@ -38,7 +38,7 @@ class AutomationRuleController extends Controller
     {
         auth()->user()->automationRules()->create($request->validated());
 
-        return to_route('automation-rules.index');
+        return back();
     }
 
     /**
@@ -50,7 +50,7 @@ class AutomationRuleController extends Controller
 
         $automationRule->update($request->validated());
 
-        return to_route('automation-rules.index');
+        return back();
     }
 
     /**
@@ -62,6 +62,6 @@ class AutomationRuleController extends Controller
 
         $automationRule->delete();
 
-        return to_route('automation-rules.index');
+        return back();
     }
 }
