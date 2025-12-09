@@ -21,14 +21,16 @@ test('user can create an automation rule with category action', function () {
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post(route('automation-rules.store'), [
-        'title' => 'Grocery Rule',
-        'priority' => 10,
-        'rules_json' => json_encode(['in' => ['grocery', ['var' => 'description']]]),
-        'action_category_id' => $category->id,
-        'action_note' => null,
-        'action_note_iv' => null,
-    ]);
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Grocery Rule',
+            'priority' => 10,
+            'rules_json' => json_encode(['in' => ['grocery', ['var' => 'description']]]),
+            'action_category_id' => $category->id,
+            'action_note' => null,
+            'action_note_iv' => null,
+        ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
@@ -42,14 +44,16 @@ test('user can create an automation rule with category action', function () {
 test('user can create an automation rule with note action', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->post(route('automation-rules.store'), [
-        'title' => 'Note Rule',
-        'priority' => 5,
-        'rules_json' => json_encode(['==' => [['var' => 'amount'], 100]]),
-        'action_category_id' => null,
-        'action_note' => 'encrypted_note',
-        'action_note_iv' => 'test_iv',
-    ]);
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Note Rule',
+            'priority' => 5,
+            'rules_json' => json_encode(['==' => [['var' => 'amount'], 100]]),
+            'action_category_id' => null,
+            'action_note' => 'encrypted_note',
+            'action_note_iv' => 'test_iv',
+        ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
@@ -63,14 +67,16 @@ test('user can create an automation rule with both actions', function () {
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post(route('automation-rules.store'), [
-        'title' => 'Combined Rule',
-        'priority' => 0,
-        'rules_json' => json_encode(['>' => [['var' => 'amount'], 50]]),
-        'action_category_id' => $category->id,
-        'action_note' => 'encrypted_note',
-        'action_note_iv' => 'test_iv',
-    ]);
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Combined Rule',
+            'priority' => 0,
+            'rules_json' => json_encode(['>' => [['var' => 'amount'], 50]]),
+            'action_category_id' => $category->id,
+            'action_note' => 'encrypted_note',
+            'action_note_iv' => 'test_iv',
+        ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
@@ -118,14 +124,16 @@ test('user can update their automation rule', function () {
         'title' => 'Old Title',
     ]);
 
-    $response = $this->actingAs($user)->patch(route('automation-rules.update', $rule), [
-        'title' => 'New Title',
-        'priority' => 20,
-        'rules_json' => json_encode(['==' => [['var' => 'bank_name'], 'Chase']]),
-        'action_category_id' => $category->id,
-        'action_note' => null,
-        'action_note_iv' => null,
-    ]);
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->patch(route('automation-rules.update', $rule), [
+            'title' => 'New Title',
+            'priority' => 20,
+            'rules_json' => json_encode(['==' => [['var' => 'bank_name'], 'Chase']]),
+            'action_category_id' => $category->id,
+            'action_note' => null,
+            'action_note_iv' => null,
+        ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
@@ -155,7 +163,9 @@ test('user can soft delete their automation rule', function () {
     $user = User::factory()->create();
     $rule = AutomationRule::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->delete(route('automation-rules.destroy', $rule));
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->delete(route('automation-rules.destroy', $rule));
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertSoftDeleted('automation_rules', ['id' => $rule->id]);
@@ -208,14 +218,16 @@ test('rules with description filter are case insensitive with lowercase rule', f
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post(route('automation-rules.store'), [
-        'title' => 'Case Insensitive Description Rule (lowercase)',
-        'priority' => 10,
-        'rules_json' => json_encode(['in' => ['m3 sport', ['var' => 'description']]]),
-        'action_category_id' => $category->id,
-        'action_note' => null,
-        'action_note_iv' => null,
-    ]);
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Case Insensitive Description Rule (lowercase)',
+            'priority' => 10,
+            'rules_json' => json_encode(['in' => ['m3 sport', ['var' => 'description']]]),
+            'action_category_id' => $category->id,
+            'action_note' => null,
+            'action_note_iv' => null,
+        ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
@@ -228,14 +240,16 @@ test('rules with description filter are case insensitive with uppercase rule', f
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post(route('automation-rules.store'), [
-        'title' => 'Case Insensitive Description Rule (uppercase)',
-        'priority' => 10,
-        'rules_json' => json_encode(['in' => ['M3 SPORT', ['var' => 'description']]]),
-        'action_category_id' => $category->id,
-        'action_note' => null,
-        'action_note_iv' => null,
-    ]);
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Case Insensitive Description Rule (uppercase)',
+            'priority' => 10,
+            'rules_json' => json_encode(['in' => ['M3 SPORT', ['var' => 'description']]]),
+            'action_category_id' => $category->id,
+            'action_note' => null,
+            'action_note_iv' => null,
+        ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
@@ -248,14 +262,16 @@ test('rules with description filter are case insensitive with mixed case rule', 
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post(route('automation-rules.store'), [
-        'title' => 'Case Insensitive Description Rule (mixed)',
-        'priority' => 10,
-        'rules_json' => json_encode(['in' => ['M3 Sport Academy', ['var' => 'description']]]),
-        'action_category_id' => $category->id,
-        'action_note' => null,
-        'action_note_iv' => null,
-    ]);
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Case Insensitive Description Rule (mixed)',
+            'priority' => 10,
+            'rules_json' => json_encode(['in' => ['M3 Sport Academy', ['var' => 'description']]]),
+            'action_category_id' => $category->id,
+            'action_note' => null,
+            'action_note_iv' => null,
+        ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
@@ -268,14 +284,16 @@ test('rules with notes filter are case insensitive', function () {
     $user = User::factory()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
-    $response = $this->actingAs($user)->post(route('automation-rules.store'), [
-        'title' => 'Case Insensitive Notes Rule',
-        'priority' => 10,
-        'rules_json' => json_encode(['in' => ['IMPORTANT NOTE', ['var' => 'notes']]]),
-        'action_category_id' => $category->id,
-        'action_note' => null,
-        'action_note_iv' => null,
-    ]);
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Case Insensitive Notes Rule',
+            'priority' => 10,
+            'rules_json' => json_encode(['in' => ['IMPORTANT NOTE', ['var' => 'notes']]]),
+            'action_category_id' => $category->id,
+            'action_note' => null,
+            'action_note_iv' => null,
+        ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [

@@ -112,6 +112,8 @@ export function CreateAutomationRuleDialog({
                     action_note_iv: noteIv,
                 },
                 {
+                    preserveState: true,
+                    preserveScroll: true,
                     onSuccess: async () => {
                         setOpen(false);
                         setTitle('');

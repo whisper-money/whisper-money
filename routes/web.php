@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified', 'redirect.encryption', 'subscribed'])->gr
     Route::get('accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::get('transactions/categorize', [TransactionController::class, 'categorize'])->name('transactions.categorize');
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');

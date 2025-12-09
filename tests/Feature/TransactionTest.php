@@ -27,6 +27,26 @@ test('authenticated users can access transactions page', function () {
     );
 });
 
+test('authenticated users can access categorize transactions page', function () {
+    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+
+    $response = actingAs($user)->get(route('transactions.categorize'));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('transactions/categorize')
+        ->has('categories')
+        ->has('accounts')
+        ->has('banks')
+    );
+});
+
+test('guests cannot access categorize transactions page', function () {
+    $response = $this->get(route('transactions.categorize'));
+
+    $response->assertRedirect(route('login'));
+});
+
 test('users can update their own transaction category', function () {
     $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
     $account = Account::factory()->create(['user_id' => $user->id]);

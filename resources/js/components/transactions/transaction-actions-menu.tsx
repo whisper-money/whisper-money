@@ -1,3 +1,4 @@
+import { categorize } from '@/actions/App/Http/Controllers/TransactionController';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import {
@@ -17,6 +18,7 @@ import { useReEvaluateAllTransactions } from '@/hooks/use-re-evaluate-all-transa
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
+import { Link } from '@inertiajs/react';
 import { ChevronDown, Plus, Upload, WandSparkles } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -86,9 +88,51 @@ export function TransactionActionsMenu({
         }
     };
 
+    const uncategorizedCount = transactions.filter(
+        (t) => !t.category_id,
+    ).length;
+
     return (
         <>
             <ButtonGroup>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className={
+                                    !isKeySet || uncategorizedCount === 0
+                                        ? 'cursor-not-allowed opacity-50'
+                                        : ''
+                                }
+                                disabled={!isKeySet || uncategorizedCount === 0}
+                                asChild={isKeySet && uncategorizedCount > 0}
+                            >
+                                {isKeySet && uncategorizedCount > 0 ? (
+                                    <Link href={categorize.url()}>
+                                        Categorize
+                                        {uncategorizedCount > 0 && (
+                                            <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                                {uncategorizedCount}
+                                            </span>
+                                        )}
+                                    </Link>
+                                ) : (
+                                    <>Categorize</>
+                                )}
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            {!isKeySet
+                                ? 'Unlock encryption to categorize'
+                                : uncategorizedCount === 0
+                                  ? 'All transactions are categorized'
+                                  : `Categorize ${uncategorizedCount} transactions`}
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
