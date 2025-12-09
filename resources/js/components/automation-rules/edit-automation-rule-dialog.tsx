@@ -150,6 +150,8 @@ export function EditAutomationRuleDialog({
                     action_note_iv: noteIv,
                 },
                 {
+                    preserveState: true,
+                    preserveScroll: true,
                     onSuccess: async () => {
                         onOpenChange(false);
                         setErrors({});

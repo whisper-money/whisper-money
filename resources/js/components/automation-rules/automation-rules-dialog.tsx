@@ -221,8 +221,8 @@ export function AutomationRulesDialog({
                         : null;
                     const IconComponent = actions.category
                         ? (Icons[
-                            actions.category.icon as keyof typeof Icons
-                        ] as Icons.LucideIcon)
+                              actions.category.icon as keyof typeof Icons
+                          ] as Icons.LucideIcon)
                         : null;
                     return (
                         <div className="flex items-center gap-2">
@@ -331,11 +331,11 @@ export function AutomationRulesDialog({
                                                     {header.isPlaceholder
                                                         ? null
                                                         : flexRender(
-                                                            header.column
-                                                                .columnDef
-                                                                .header,
-                                                            header.getContext(),
-                                                        )}
+                                                              header.column
+                                                                  .columnDef
+                                                                  .header,
+                                                              header.getContext(),
+                                                          )}
                                                 </TableHead>
                                             );
                                         })}

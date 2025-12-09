@@ -11,6 +11,7 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
+import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
@@ -410,6 +411,27 @@ export default function CategorizeTransactions({
         }, 300);
     }, [animationState]);
 
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ctrl + R for rules dialog
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                setRulesDialogOpen(true);
+            }
+            // Ctrl + N for skip
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                if (animationState === 'idle' && currentTransaction) {
+                    handleSkip();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [animationState, currentTransaction, handleSkip]);
+
     const formatAmount = (amount: number, currencyCode: string): string => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -520,23 +542,37 @@ export default function CategorizeTransactions({
             <Head title="Categorize Transactions" />
 
             <div className="flex min-h-screen flex-col bg-white dark:bg-zinc-950">
-                <header className="flex items-center justify-between px-4 py-3 opacity-50 transition-all duration-200 hover:opacity-100 dark:border-zinc-800">
+                <header className="flex items-center justify-between px-4 py-3 dark:border-zinc-800">
                     <Link
                         href={categorizeRoute.url()?.replace('/categorize', '')}
-                        className="flex items-center gap-2 text-sm text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                        className="flex items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 dark:text-zinc-400 dark:hover:text-zinc-100"
                     >
                         <ArrowLeft className="h-4 w-4" />
                         Back to Transactions
                     </Link>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setRulesDialogOpen(true)}
-                            className="gap-2"
+                            className="gap-2 pr-2"
                         >
                             <Settings2 className="h-4 w-4" />
                             Rules
+                            <Kbd>Ctrl+R</Kbd>
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleSkip}
+                            disabled={
+                                animationState !== 'idle' || !currentTransaction
+                            }
+                            className="gap-2 pr-2 text-muted-foreground"
+                        >
+                            <SkipForward className="h-4 w-4" />
+                            Skip
+                            <Kbd>Ctrl+N</Kbd>
                         </Button>
                         <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                             <span className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -656,33 +692,20 @@ export default function CategorizeTransactions({
                                                 )}
                                             </div>
 
-                                            <div className="flex items-end justify-between">
-                                                <div className="mt-2 font-mono text-xl text-muted-foreground">
-                                                    <span
-                                                        className={cn(
-                                                            'rounded px-1',
-                                                            currentTransaction.amount >=
-                                                                0 &&
-                                                                'bg-green-100/70 dark:bg-green-900',
-                                                        )}
-                                                    >
-                                                        {formatAmount(
-                                                            currentTransaction.amount,
-                                                            currentTransaction.currency_code,
-                                                        )}
-                                                    </span>
-                                                </div>
-                                                <button
-                                                    onClick={handleSkip}
-                                                    disabled={
-                                                        animationState !==
-                                                        'idle'
-                                                    }
-                                                    className="flex items-center gap-1 text-xs text-zinc-400 opacity-50 transition-opacity hover:opacity-100 disabled:pointer-events-none dark:text-zinc-500"
+                                            <div className="mt-2 font-mono text-xl text-muted-foreground">
+                                                <span
+                                                    className={cn(
+                                                        'rounded px-1',
+                                                        currentTransaction.amount >=
+                                                            0 &&
+                                                            'bg-green-100/70 dark:bg-green-900',
+                                                    )}
                                                 >
-                                                    <SkipForward className="h-3 w-3" />
-                                                    Skip
-                                                </button>
+                                                    {formatAmount(
+                                                        currentTransaction.amount,
+                                                        currentTransaction.currency_code,
+                                                    )}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -705,11 +728,15 @@ export default function CategorizeTransactions({
                                     <h3 className="font-medium">
                                         Assign a new category
                                     </h3>
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="flex items-center gap-1 text-sm text-muted-foreground">
                                         Search, move{' '}
-                                        <ArrowUp className="inline size-4" />/
-                                        <ArrowDown className="inline size-4" />,
-                                        and press ⏎
+                                        <Kbd>
+                                            <ArrowUp className="size-3" />
+                                        </Kbd>
+                                        <Kbd>
+                                            <ArrowDown className="size-3" />
+                                        </Kbd>
+                                        , and press <Kbd>⏎</Kbd>
                                     </p>
                                 </div>
                                 <Command
