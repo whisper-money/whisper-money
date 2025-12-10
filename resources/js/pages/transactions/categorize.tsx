@@ -585,58 +585,62 @@ export default function CategorizeTransactions({
                 <header className="flex items-center justify-between px-4 py-3 dark:border-zinc-800">
                     <Link
                         href={categorizeRoute.url()?.replace('/categorize', '')}
-                        className="hidden items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 sm:flex dark:text-zinc-400 dark:hover:text-zinc-100"
+                        className="hidden sm:flex flex-1 w-fit items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 dark:text-zinc-400 dark:hover:text-zinc-100"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        Back to Transactions
+                        <div className='text-nowrap'>Back to Transactions</div>
                     </Link>
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setRulesDialogOpen(true)}
-                            className="gap-2 pr-2"
-                        >
-                            <Settings2 className="h-4 w-4" />
-                            Rules
-                            <Kbd>Ctrl+R</Kbd>
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handlePrevious}
-                            disabled={
-                                animationState !== 'idle' || currentIndex === 0
-                            }
-                            className="gap-2 pr-2 text-muted-foreground"
-                        >
-                            <SkipBack className="h-4 w-4" />
-                            <span className="hidden sm:inline">Prev</span>
-                            <Kbd>Ctrl+B</Kbd>
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleSkip}
-                            disabled={
-                                animationState !== 'idle' || !currentTransaction
-                            }
-                            className="gap-2 pr-2 text-muted-foreground"
-                        >
-                            <SkipForward className="h-4 w-4" />
-                            <span className="hidden sm:inline">Skip</span>
-                            <Kbd>Ctrl+N</Kbd>
-                        </Button>
-                        <div className="hidden items-center gap-2 text-sm text-zinc-600 sm:flex dark:text-zinc-400">
-                            <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                                {remainingCount}
-                            </span>
-                            remaining
+                    <div className="flex items-center justify-between sm:justify-center w-full gap-12">
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setRulesDialogOpen(true)}
+                                className="gap-2 pr-2"
+                            >
+                                <Settings2 className="h-4 w-4" />
+                                Rules
+                                <Kbd>Ctrl+R</Kbd>
+                            </Button>
                         </div>
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handlePrevious}
+                                disabled={
+                                    animationState !== 'idle' || currentIndex === 0
+                                }
+                                className="gap-2 pr-2 text-muted-foreground"
+                            >
+                                <SkipBack className="h-4 w-4" />
+                                <span className="">Prev</span>
+                                <Kbd>Ctrl+B</Kbd>
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSkip}
+                                disabled={
+                                    animationState !== 'idle' || !currentTransaction
+                                }
+                                className="gap-2 pr-2 text-muted-foreground"
+                            >
+                                <SkipForward className="h-4 w-4" />
+                                <span className="">Skip</span>
+                                <Kbd>Ctrl+N</Kbd>
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="hidden items-center flex-1 gap-2 text-sm text-zinc-600 sm:flex dark:text-zinc-400">
+                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                            {remainingCount}
+                        </span>
+                        remaining
                     </div>
                 </header>
 
-                <main className="flex flex-1 flex-col items-center justify-center p-4">
+                <main className="flex flex-1 flex-col items-center justify-start sm:justify-center p-4">
                     <div className="w-full max-w-xl space-y-8">
                         <div className="relative">
                             {animationState === 'success' &&
@@ -673,11 +677,11 @@ export default function CategorizeTransactions({
                                         className={cn(
                                             'rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl shadow-zinc-200/50 transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-zinc-900/50',
                                             animationState === 'exiting' &&
-                                                'translate-y-[-20px] scale-95 opacity-0',
+                                            'translate-y-[-20px] scale-95 opacity-0',
                                             animationState === 'entering' &&
-                                                'animate-card-enter',
+                                            'animate-card-enter',
                                             animationState === 'idle' &&
-                                                'translate-y-0 scale-100 opacity-100',
+                                            'translate-y-0 scale-100 opacity-100',
                                         )}
                                     >
                                         <div className="flex flex-col gap-4">
@@ -700,20 +704,20 @@ export default function CategorizeTransactions({
                                                                 {currentTransaction
                                                                     .bank
                                                                     ?.logo && (
-                                                                    <img
-                                                                        src={
-                                                                            currentTransaction
-                                                                                .bank
-                                                                                .logo
-                                                                        }
-                                                                        alt={
-                                                                            currentTransaction
-                                                                                .bank
-                                                                                .name
-                                                                        }
-                                                                        className="h-5 w-5 rounded"
-                                                                    />
-                                                                )}
+                                                                        <img
+                                                                            src={
+                                                                                currentTransaction
+                                                                                    .bank
+                                                                                    .logo
+                                                                            }
+                                                                            alt={
+                                                                                currentTransaction
+                                                                                    .bank
+                                                                                    .name
+                                                                            }
+                                                                            className="h-5 w-5 rounded"
+                                                                        />
+                                                                    )}
                                                                 <EncryptedText
                                                                     encryptedText={
                                                                         currentTransaction
@@ -750,8 +754,8 @@ export default function CategorizeTransactions({
                                                     className={cn(
                                                         'rounded px-1',
                                                         currentTransaction.amount >=
-                                                            0 &&
-                                                            'bg-green-100/70 dark:bg-green-900',
+                                                        0 &&
+                                                        'bg-green-100/70 dark:bg-green-900',
                                                     )}
                                                 >
                                                     {formatAmount(
@@ -770,11 +774,11 @@ export default function CategorizeTransactions({
                                 className={cn(
                                     'flex flex-col gap-4 px-6 pt-2 transition-all duration-300',
                                     animationState === 'exiting' &&
-                                        'translate-y-[-10px] opacity-0',
+                                    'translate-y-[-10px] opacity-0',
                                     animationState === 'entering' &&
-                                        'animate-command-enter',
+                                    'animate-command-enter',
                                     animationState === 'idle' &&
-                                        'translate-y-0 opacity-100',
+                                    'translate-y-0 opacity-100',
                                 )}
                             >
                                 <div className="flex flex-col gap-1">
@@ -857,22 +861,6 @@ export default function CategorizeTransactions({
                         )}
                     </div>
                 </main>
-
-                <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                    <div className="mx-auto flex max-w-lg items-center gap-3">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                            <div
-                                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
-                                style={{
-                                    width: `${(currentIndex / uncategorizedTransactions.length) * 100}%`,
-                                }}
-                            />
-                        </div>
-                        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">
-                            {currentIndex} / {uncategorizedTransactions.length}
-                        </span>
-                    </div>
-                </div>
             </div>
 
             <AutomationRulesDialog
