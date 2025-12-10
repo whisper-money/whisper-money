@@ -100,7 +100,6 @@ export function TransactionActionsMenu({
                         <TooltipTrigger asChild>
                             <Button
                                 variant="outline"
-                                size="sm"
                                 className={
                                     !isKeySet || uncategorizedCount === 0
                                         ? 'cursor-not-allowed opacity-50'
@@ -138,7 +137,6 @@ export function TransactionActionsMenu({
                         <TooltipTrigger asChild>
                             <Button
                                 variant="outline"
-                                size={'sm'}
                                 className={
                                     !isKeySet
                                         ? 'cursor-not-allowed opacity-50'
@@ -166,7 +164,7 @@ export function TransactionActionsMenu({
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        size="icon-sm"
+                                        size="icon"
                                         aria-label="More actions"
                                     >
                                         <ChevronDown className="h-4 w-4" />
