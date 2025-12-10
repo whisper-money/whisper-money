@@ -113,6 +113,7 @@ export function AccountListCard({
                                 className="text-sm"
                                 previousAmount={account.previousBalance}
                                 currentAmount={account.currentBalance}
+                                tooltipSide="bottom"
                             />
                         </div>
                     </div>

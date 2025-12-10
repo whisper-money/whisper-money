@@ -15,6 +15,7 @@ interface PercentageTrendIndicatorProps {
     currencyCode?: string;
     invertColors?: boolean;
     className?: string;
+    tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 }
 
 function formatCurrency(amount: number, currencyCode: string): string {
@@ -34,6 +35,7 @@ export function PercentageTrendIndicator({
     currencyCode = 'USD',
     invertColors = false,
     className,
+    tooltipSide = 'top',
 }: PercentageTrendIndicatorProps) {
     const [open, setOpen] = useState(false);
 
@@ -79,7 +81,7 @@ export function PercentageTrendIndicator({
                         {content}
                     </div>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent side={tooltipSide}>
                     {amountDiff >= 0 ? '+' : '-'}
                     {formattedDiff} {label}
                 </TooltipContent>
