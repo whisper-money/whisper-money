@@ -582,15 +582,15 @@ export default function CategorizeTransactions({
             <Head title="Categorize Transactions" />
 
             <div className="flex min-h-screen flex-col bg-white dark:bg-zinc-950">
-                <header className="flex items-center justify-between px-4 py-3 dark:border-zinc-800">
+                <header className="flex items-center gap-6 justify-between px-4 py-3 dark:border-zinc-800">
                     <Link
                         href={categorizeRoute.url()?.replace('/categorize', '')}
-                        className="hidden sm:flex flex-1 w-fit items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 dark:text-zinc-400 dark:hover:text-zinc-100"
+                        className="flex flex-1 w-fit items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 dark:text-zinc-400 dark:hover:text-zinc-100"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        <div className='text-nowrap'>Back to Transactions</div>
+                        <div className='hidden sm:block text-nowrap'>Back to Transactions</div>
                     </Link>
-                    <div className="flex items-center justify-between sm:justify-center w-full gap-12">
+                    <div className="flex items-center justify-end sm:justify-center w-full gap-6">
                         <div className="flex items-center gap-3">
                             <Button
                                 variant="outline"
