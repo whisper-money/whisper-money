@@ -97,10 +97,11 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
                             {account.description}
                         </p>
                         <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${account.hasTransactions
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                                }`}
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                account.hasTransactions
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            }`}
                         >
                             {account.hasTransactions
                                 ? 'Tracks transactions & balance'

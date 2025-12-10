@@ -2,7 +2,7 @@ import { ImportTransactionsDrawer } from '@/components/transactions/import-trans
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { ArrowRight, FileSpreadsheet, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface StepImportTransactionsProps {
     account: CreatedAccount | undefined;
@@ -23,6 +23,12 @@ export function StepImportTransactions({
         }
     };
 
+    useEffect(() => {
+        if (hasImported) {
+            onComplete()
+        }
+    }, [hasImported, onComplete])
+
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
             <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 shadow-lg duration-500 zoom-in">
@@ -39,7 +45,7 @@ export function StepImportTransactions({
                     : 'Import your transaction history to start tracking your finances.'}
             </p>
 
-            <div className="mb-8 w-full max-w-md rounded-xl border bg-card p-6">
+            <div className="mb-4 w-full max-w-md rounded-xl border bg-card p-6">
                 <h3 className="mb-4 font-semibold">
                     How to Export from Your Bank:
                 </h3>
@@ -71,13 +77,11 @@ export function StepImportTransactions({
                 </ol>
             </div>
 
-            <div className="mb-6 flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/30 p-4">
-                <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
-                <div>
+            <div className="mb-6 w-full max-w-md flex items-center gap-4 rounded-lg border border-dashed border-muted-foreground/30 p-4">
+                <FileSpreadsheet className="size-10 bg-muted rounded-full p-2.5 text-muted-foreground" />
+                <div className='flex flex-col gap-0.5'>
                     <p className="text-sm font-medium">Supported formats</p>
-                    <p className="text-xs text-muted-foreground">
-                        CSV, XLS, XLSX files
-                    </p>
+                    <p className="text-xs text-muted-foreground">CSV, XLS, XLSX files</p>
                 </div>
             </div>
 

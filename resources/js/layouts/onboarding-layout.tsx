@@ -31,10 +31,12 @@ export default function OnboardingLayout({
                     href={home()}
                     className="flex items-center gap-2 font-medium"
                 >
-                    <AppLogoIcon className={cn([
-                        "size-8 fill-current text-[var(--foreground)] dark:text-white opacity-100 transition-opacity duration-200",
-                        { 'opacity-0': currentStep === 0 }
-                    ])} />
+                    <AppLogoIcon
+                        className={cn([
+                            'size-8 fill-current text-[var(--foreground)] opacity-100 transition-opacity duration-200 dark:text-white',
+                            { 'opacity-0': currentStep === 0 },
+                        ])}
+                    />
                 </Link>
 
                 <div className="flex items-center gap-2">
@@ -46,8 +48,8 @@ export default function OnboardingLayout({
                                 index < currentStep
                                     ? 'bg-primary'
                                     : index === currentStep
-                                        ? 'scale-125 bg-primary'
-                                        : 'bg-muted',
+                                      ? 'scale-125 bg-primary'
+                                      : 'bg-muted',
                             )}
                         />
                     ))}

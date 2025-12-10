@@ -46,13 +46,12 @@ export function StepComplete() {
                         {[...Array(8)].map((_, i) => (
                             <Sparkles
                                 key={i}
-                                className={`absolute h-4 w-4 animate-ping ${
-                                    i % 3 === 0
-                                        ? 'text-amber-400'
-                                        : i % 3 === 1
-                                          ? 'text-pink-400'
-                                          : 'text-blue-400'
-                                }`}
+                                className={`absolute h-4 w-4 animate-ping ${i % 3 === 0
+                                    ? 'text-amber-400'
+                                    : i % 3 === 1
+                                        ? 'text-pink-400'
+                                        : 'text-blue-400'
+                                    }`}
                                 style={{
                                     top: `${50 + Math.sin((i * Math.PI * 2) / 8) * 60}%`,
                                     left: `${50 + Math.cos((i * Math.PI * 2) / 8) * 60}%`,
@@ -74,8 +73,8 @@ export function StepComplete() {
                 Welcome to Whisper Money!
             </p>
 
-            <div className="mb-8 grid w-full max-w-md gap-4 sm:grid-cols-3">
-                <div className="rounded-xl border bg-card p-4 text-center">
+            <div className="mb-8 flex flex-col w-full max-w-md gap-4">
+                <div className="rounded-xl flex items-center justify-center gap-4 border bg-card p-4">
                     <div className="mb-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                         ✓
                     </div>
@@ -83,7 +82,7 @@ export function StepComplete() {
                         Encryption Set
                     </p>
                 </div>
-                <div className="rounded-xl border bg-card p-4 text-center">
+                <div className="rounded-xl flex items-center justify-center gap-4 border bg-card p-4">
                     <div className="mb-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                         ✓
                     </div>
@@ -91,7 +90,7 @@ export function StepComplete() {
                         Accounts Created
                     </p>
                 </div>
-                <div className="rounded-xl border bg-card p-4 text-center">
+                <div className="rounded-xl flex items-center justify-center gap-4 border bg-card p-4">
                     <div className="mb-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                         ✓
                     </div>

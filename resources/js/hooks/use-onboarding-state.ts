@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { getStoredKey } from '@/lib/key-storage';
+import { useCallback, useMemo, useState } from 'react';
 
 export type OnboardingStep =
     | 'welcome'
@@ -14,7 +15,9 @@ export type OnboardingStep =
     | 'more-accounts'
     | 'complete';
 
-const STEP_ORDER: OnboardingStep[] = [
+// Primary steps shown in the progress indicator
+// import-transactions and import-balances are sub-steps that don't increment the counter
+const PRIMARY_STEPS: OnboardingStep[] = [
     'welcome',
     'encryption-explained',
     'encryption-setup',
@@ -23,10 +26,14 @@ const STEP_ORDER: OnboardingStep[] = [
     'category-types',
     'customize-categories',
     'smart-rules',
-    'import-transactions',
     'more-accounts',
     'complete',
 ];
+
+// Steps that are sub-steps (shown under the same progress position as 'create-account')
+const SUB_STEPS: OnboardingStep[] = ['import-transactions', 'import-balances'];
+
+const SCKIPABLE_ENCRYPTION_STEPS: OnboardingStep[] = ['encryption-setup'];
 
 export interface OnboardingState {
     currentStep: OnboardingStep;
@@ -43,38 +50,72 @@ export interface CreatedAccount {
     currencyCode: string;
 }
 
-export function useOnboardingState() {
-    const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
+export function useOnboardingState(existingAccountsCount: number = 0) {
+    const hasEncryptionKey = useMemo(() => {
+        return getStoredKey() !== null;
+    }, []);
+
+    const primarySteps = useMemo(() => {
+        if (hasEncryptionKey) {
+            return PRIMARY_STEPS.filter(
+                (step) => !SCKIPABLE_ENCRYPTION_STEPS.includes(step),
+            );
+        }
+        return PRIMARY_STEPS;
+    }, [hasEncryptionKey]);
+
+    // Determine initial step based on existing state
+    const initialStep = useMemo((): OnboardingStep => {
+        return 'welcome';
+    }, []);
+
+    const [currentStep, setCurrentStep] = useState<OnboardingStep>(initialStep);
     const [createdAccounts, setCreatedAccounts] = useState<CreatedAccount[]>(
         [],
     );
 
-    const stepIndex = STEP_ORDER.indexOf(currentStep);
-    const totalSteps = STEP_ORDER.length;
+    // Calculate step index for progress indicator
+    // Sub-steps (import-transactions, import-balances) use the same index as 'create-account'
+    const stepIndex = useMemo(() => {
+        if (SUB_STEPS.includes(currentStep)) {
+            // Sub-steps show under the 'create-account' position
+            return primarySteps.indexOf('create-account');
+        }
+        return primarySteps.indexOf(currentStep);
+    }, [currentStep, primarySteps]);
+
+    const totalSteps = primarySteps.length;
 
     const goToStep = useCallback((step: OnboardingStep) => {
         setCurrentStep(step);
     }, []);
 
     const goNext = useCallback(() => {
-        const currentIndex = STEP_ORDER.indexOf(currentStep);
-        if (currentIndex < STEP_ORDER.length - 1) {
-            setCurrentStep(STEP_ORDER[currentIndex + 1]);
+        // Find the next primary step
+        const primaryIndex = primarySteps.indexOf(currentStep);
+        if (primaryIndex >= 0 && primaryIndex < primarySteps.length - 1) {
+            setCurrentStep(primarySteps[primaryIndex + 1]);
         }
-    }, [currentStep]);
+    }, [currentStep, primarySteps]);
 
     const goBack = useCallback(() => {
-        const currentIndex = STEP_ORDER.indexOf(currentStep);
-        if (currentIndex > 0) {
-            setCurrentStep(STEP_ORDER[currentIndex - 1]);
+        // If we're on a sub-step, go back to create-account
+        if (SUB_STEPS.includes(currentStep)) {
+            setCurrentStep('create-account');
+            return;
         }
-    }, [currentStep]);
+        const primaryIndex = primarySteps.indexOf(currentStep);
+        if (primaryIndex > 0) {
+            setCurrentStep(primarySteps[primaryIndex - 1]);
+        }
+    }, [currentStep, primarySteps]);
 
     const addCreatedAccount = useCallback((account: CreatedAccount) => {
         setCreatedAccounts((prev) => [...prev, account]);
     }, []);
 
-    const isFirstAccount = createdAccounts.length === 0;
+    const isFirstAccount =
+        createdAccounts.length === 0 && existingAccountsCount === 0;
 
     return {
         currentStep,
@@ -86,5 +127,6 @@ export function useOnboardingState() {
         goNext,
         goBack,
         addCreatedAccount,
+        hasEncryptionKey,
     };
 }

@@ -3,17 +3,35 @@ import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { formatAccountType } from '@/types/account';
 import { Check, CheckCircle2, Plus, Wallet } from 'lucide-react';
 
+interface ExistingAccount {
+    id: string;
+    name: string;
+    name_iv: string;
+    type: string;
+    currency_code: string;
+    bank_id: string;
+    bank?: {
+        id: string;
+        name: string;
+        logo: string | null;
+    };
+}
+
 interface StepMoreAccountsProps {
     createdAccounts: CreatedAccount[];
+    existingAccounts?: ExistingAccount[];
     onAddMore: () => void;
     onFinish: () => void;
 }
 
 export function StepMoreAccounts({
     createdAccounts,
+    existingAccounts = [],
     onAddMore,
     onFinish,
 }: StepMoreAccountsProps) {
+    const totalAccounts = createdAccounts.length + existingAccounts.length;
+
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
             <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 shadow-lg duration-500 zoom-in">
@@ -25,9 +43,9 @@ export function StepMoreAccounts({
             </h1>
 
             <p className="mb-8 max-w-md text-center text-muted-foreground">
-                You've set up {createdAccounts.length} account
-                {createdAccounts.length !== 1 ? 's' : ''}. Would you like to add
-                more or continue to the dashboard?
+                You've set up {totalAccounts} account
+                {totalAccounts !== 1 ? 's' : ''}. Would you like to add more or
+                continue to the dashboard?
             </p>
 
             <div className="mb-8 w-full max-w-md">
@@ -48,6 +66,26 @@ export function StepMoreAccounts({
                                 <p className="text-sm text-muted-foreground">
                                     {formatAccountType(account.type)} •{' '}
                                     {account.currencyCode}
+                                </p>
+                            </div>
+                            <Check className="h-5 w-5 text-emerald-500" />
+                        </div>
+                    ))}
+                    {existingAccounts.map((account) => (
+                        <div
+                            key={account.id}
+                            className="flex items-center gap-3 rounded-lg border bg-card p-4"
+                        >
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-medium text-muted-foreground">
+                                    {account.bank?.name || 'Account'}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {formatAccountType(account.type)} •{' '}
+                                    {account.currency_code}
                                 </p>
                             </div>
                             <Check className="h-5 w-5 text-emerald-500" />

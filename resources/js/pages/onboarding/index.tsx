@@ -10,6 +10,7 @@ import { StepImportTransactions } from '@/components/onboarding/step-import-tran
 import { StepMoreAccounts } from '@/components/onboarding/step-more-accounts';
 import { StepSmartRules } from '@/components/onboarding/step-smart-rules';
 import { StepWelcome } from '@/components/onboarding/step-welcome';
+import { useSyncContext } from '@/contexts/sync-context';
 import {
     CreatedAccount,
     OnboardingStep,
@@ -19,11 +20,28 @@ import OnboardingLayout from '@/layouts/onboarding-layout';
 import { type Bank } from '@/types/account';
 import { Head } from '@inertiajs/react';
 
-interface OnboardingProps {
-    banks: Bank[];
+interface ExistingAccount {
+    id: string;
+    name: string;
+    name_iv: string;
+    type: string;
+    currency_code: string;
+    bank_id: string;
+    bank?: {
+        id: string;
+        name: string;
+        logo: string | null;
+    };
 }
 
-export default function Onboarding({ banks }: OnboardingProps) {
+interface OnboardingProps {
+    banks: Bank[];
+    accounts: ExistingAccount[];
+}
+
+export default function Onboarding({ banks, accounts }: OnboardingProps) {
+    const { sync } = useSyncContext();
+
     const {
         currentStep,
         stepIndex,
@@ -33,10 +51,13 @@ export default function Onboarding({ banks }: OnboardingProps) {
         goToStep,
         goNext,
         addCreatedAccount,
-    } = useOnboardingState();
+    } = useOnboardingState(accounts.length);
 
-    const handleAccountCreated = (account: CreatedAccount) => {
+    const handleAccountCreated = async (account: CreatedAccount) => {
         addCreatedAccount(account);
+
+        // Sync with backend to get the new account in local DB
+        await sync();
 
         const needsTransactionImport = [
             'checking',
@@ -51,7 +72,9 @@ export default function Onboarding({ banks }: OnboardingProps) {
         }
     };
 
-    const handleImportComplete = () => {
+    const handleImportComplete = async () => {
+        // Sync after import to ensure data is consistent
+        await sync();
         goToStep('more-accounts');
     };
 
@@ -84,7 +107,11 @@ export default function Onboarding({ banks }: OnboardingProps) {
                     <StepCreateAccount
                         banks={banks}
                         isFirstAccount={isFirstAccount}
+                        existingAccounts={accounts}
                         onAccountCreated={handleAccountCreated}
+                        onSkip={() => {
+                            goToStep('more-accounts');
+                        }}
                     />
                 );
 
@@ -122,6 +149,7 @@ export default function Onboarding({ banks }: OnboardingProps) {
                 return (
                     <StepMoreAccounts
                         createdAccounts={createdAccounts}
+                        existingAccounts={accounts}
                         onAddMore={handleAddMoreAccounts}
                         onFinish={handleFinishOnboarding}
                     />

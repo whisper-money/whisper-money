@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Bird, Sparkles } from 'lucide-react';
+import { ArrowRight, Bird } from 'lucide-react';
 
 interface StepWelcomeProps {
     onContinue: () => void;
@@ -16,7 +16,7 @@ export function StepWelcome({ onContinue }: StepWelcomeProps) {
                 Welcome to Whisper Money
             </h1>
 
-            <p className="mb-8 max-w-md text-lg text-muted-foreground">
+            <p className="mb-8 max-w-lg text-lg text-muted-foreground">
                 Take control of your finances with privacy-first money tracking.
                 Let's set up your account in just a few minutes.
             </p>

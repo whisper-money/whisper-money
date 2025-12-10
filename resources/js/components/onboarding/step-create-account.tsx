@@ -9,19 +9,37 @@ import { Spinner } from '@/components/ui/spinner';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import { router } from '@inertiajs/react';
-import { AlertCircle, CreditCard } from 'lucide-react';
+import { formatAccountType } from '@/types/account';
+import { AlertCircle, CheckCircle2, CreditCard } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
+
+interface ExistingAccount {
+    id: string;
+    name: string;
+    name_iv: string;
+    type: string;
+    currency_code: string;
+    bank_id: string;
+    bank?: {
+        id: string;
+        name: string;
+        logo: string | null;
+    };
+}
 
 interface StepCreateAccountProps {
     banks: { id: string; name: string; logo: string | null }[];
     isFirstAccount: boolean;
+    existingAccounts?: ExistingAccount[];
     onAccountCreated: (account: CreatedAccount) => void;
+    onSkip?: () => void;
 }
 
 export function StepCreateAccount({
     isFirstAccount,
+    existingAccounts = [],
     onAccountCreated,
+    onSkip,
 }: StepCreateAccountProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -128,36 +146,45 @@ export function StepCreateAccount({
             const key = await importKey(keyString);
             const { encrypted, iv } = await encrypt(displayName, key);
 
-            router.post(
-                store.url(),
-                {
+            const response = await fetch(store.url(), {
+                method: 'POST',
+                body: JSON.stringify({
                     name: encrypted,
                     name_iv: iv,
                     bank_id: finalBankId,
                     type: type,
                     currency_code: currencyCode,
+                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': decodeURIComponent(
+                        document.cookie
+                            .split('; ')
+                            .find((row) => row.startsWith('XSRF-TOKEN='))
+                            ?.split('=')[1] || '',
+                    ),
+                    Accept: 'application/json',
                 },
-                {
-                    onSuccess: () => {
-                        onAccountCreated({
-                            id: finalBankId,
-                            name: displayName,
-                            type: type,
-                            currencyCode: currencyCode,
-                        });
-                    },
-                    onError: (errors) => {
-                        setError(
-                            (Object.values(errors)[0] as string) ||
-                            'Failed to create account',
-                        );
-                        setIsSubmitting(false);
-                    },
-                    onFinish: () => {
-                        setIsSubmitting(false);
-                    },
-                },
-            );
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(
+                    errorData.message ||
+                    Object.values(errorData.errors || {})[0] ||
+                    'Failed to create account',
+                );
+            }
+
+            const accountData = await response.json();
+
+            onAccountCreated({
+                id: accountData.id || finalBankId,
+                name: displayName,
+                type: type,
+                currencyCode: currencyCode,
+            });
+            setIsSubmitting(false);
         } catch (err) {
             console.error('Account creation failed:', err);
             setError(
@@ -169,6 +196,8 @@ export function StepCreateAccount({
         }
     }
 
+    const hasExistingAccounts = existingAccounts.length > 0;
+
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
             <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg duration-500 zoom-in">
@@ -176,46 +205,103 @@ export function StepCreateAccount({
             </div>
 
             <h1 className="mb-4 text-center text-3xl font-bold tracking-tight">
-                {isFirstAccount
-                    ? 'Create Your First Account'
-                    : 'Add Another Account'}
+                {hasExistingAccounts
+                    ? 'Your Accounts'
+                    : isFirstAccount
+                        ? 'Create Your First Account'
+                        : 'Add Another Account'}
             </h1>
 
             <p className="mb-8 max-w-md text-center text-muted-foreground">
-                {isFirstAccount
-                    ? "Let's start with your main checking account. You can add more accounts later."
-                    : 'Add another account to track more of your finances.'}
+                {hasExistingAccounts
+                    ? "You already have accounts set up. Let's continue with the onboarding."
+                    : isFirstAccount
+                        ? "Let's start with your main checking account. You can add more accounts later."
+                        : 'Add another account to track more of your finances.'}
             </p>
 
-            <form onSubmit={handleSubmit} autoFocus className="w-full max-w-md space-y-4">
-                <AccountForm forceAccountType={isFirstAccount ? 'checking' : undefined} onChange={handleFormChange} />
-
-                {isFirstAccount && (
-                    <div className="rounded-lg border border-blue-100 bg-blue-50 text-sm p-3 dark:border-blue-900/50 dark:bg-blue-900/20">
-                        <p className="text-center">
-                            Your first account must be a{' '}
-                            <strong>Checking</strong> account.
-                        </p>
+            {hasExistingAccounts ? (
+                <div className="w-full max-w-md">
+                    <div className="mb-6 space-y-2">
+                        {existingAccounts.map((account) => (
+                            <div
+                                key={account.id}
+                                className="flex items-center gap-3 rounded-lg border bg-card p-4"
+                            >
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-medium">
+                                        {account.bank?.name || 'Account'}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {formatAccountType(account.type)} •{' '}
+                                        {account.currency_code}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                )}
 
-                {error && (
-                    <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                        <AlertCircle className="h-4 w-4 shrink-0" />
-                        {error}
-                    </div>
-                )}
-
-                <Button
-                    type="submit"
-                    size="lg"
-                    className="w-full"
-                    disabled={isSubmitting}
+                    <Button
+                        size="lg"
+                        className="w-full"
+                        onClick={() =>
+                            onAccountCreated({
+                                id: existingAccounts[0].id,
+                                name:
+                                    existingAccounts[0].bank?.name || 'Account',
+                                type: existingAccounts[0].type,
+                                currencyCode: existingAccounts[0].currency_code,
+                            })
+                        }
+                    >
+                        Continue
+                    </Button>
+                </div>
+            ) : (
+                <form
+                    onSubmit={handleSubmit}
+                    autoFocus
+                    className="w-full max-w-md space-y-4"
                 >
-                    {isSubmitting && <Spinner className="mr-2" />}
-                    {isSubmitting ? 'Creating...' : 'Create Account'}
-                </Button>
-            </form>
+                    <AccountForm
+                        forceAccountType={
+                            isFirstAccount ? 'checking' : undefined
+                        }
+                        onChange={handleFormChange}
+                    />
+
+                    {isFirstAccount && (
+                        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
+                            <p className="text-center">
+                                Your first account must be a{' '}
+                                <strong>Checking</strong> account.
+                            </p>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {error}
+                        </div>
+                    )}
+
+                    <Button
+                        type="submit"
+                        size="lg"
+                        className="w-full"
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting && <Spinner className="mr-2" />}
+                        {isSubmitting ? 'Creating...' : 'Create Account'}
+                    </Button>
+
+                    {!isFirstAccount && onSkip && <Button size='lg' className='w-full opacity-50 transition-all duration-200 hover:opacity-100' variant={'ghost'} disabled={isSubmitting} onClick={() => onSkip()}>Ignore</Button>}
+                </form>
+            )}
         </div>
     );
 }

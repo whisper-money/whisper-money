@@ -44,7 +44,11 @@ const initialCustomBankData: CustomBankData = {
     logoPreview: null,
 };
 
-export function AccountForm({ initialValues, forceAccountType, onChange }: AccountFormProps) {
+export function AccountForm({
+    initialValues,
+    forceAccountType,
+    onChange,
+}: AccountFormProps) {
     const [displayName, setDisplayName] = useState(
         initialValues?.displayName ?? '',
     );
@@ -175,11 +179,11 @@ export function AccountForm({ initialValues, forceAccountType, onChange }: Accou
                 </div>
                 {(selectedType === 'investment' ||
                     selectedType === 'retirement') && (
-                        <p className="pl-1 text-xs text-muted-foreground">
-                            This account type is for balance tracking only and
-                            doesn't support transactions.
-                        </p>
-                    )}
+                    <p className="pl-1 text-xs text-muted-foreground">
+                        This account type is for balance tracking only and
+                        doesn't support transactions.
+                    </p>
+                )}
             </div>
 
             <div className="space-y-2">

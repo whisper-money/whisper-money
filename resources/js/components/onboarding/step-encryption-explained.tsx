@@ -65,7 +65,7 @@ export function StepEncryptionExplained({
                 </div>
             </div>
 
-            <div className="mb-8 flex flex-col w-full max-w-xl items-center justify-center gap-6 rounded-xl border-2 border-dashed border-muted-foreground/20 p-6">
+            <div className="mb-8 flex w-full max-w-xl flex-col items-center justify-center gap-6 rounded-xl border-2 border-dashed border-muted-foreground/20 p-6">
                 <div className="flex items-center gap-2">
                     <Eye className="h-5 w-5 text-muted-foreground" />
                     <span className="text-sm font-medium">You see:</span>
