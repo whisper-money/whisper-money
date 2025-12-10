@@ -171,8 +171,8 @@ export function StepCreateAccount({
                 const errorData = await response.json();
                 throw new Error(
                     errorData.message ||
-                    Object.values(errorData.errors || {})[0] ||
-                    'Failed to create account',
+                        Object.values(errorData.errors || {})[0] ||
+                        'Failed to create account',
                 );
             }
 
@@ -208,16 +208,16 @@ export function StepCreateAccount({
                 {hasExistingAccounts
                     ? 'Your Accounts'
                     : isFirstAccount
-                        ? 'Create Your First Account'
-                        : 'Add Another Account'}
+                      ? 'Create Your First Account'
+                      : 'Add Another Account'}
             </h1>
 
             <p className="mb-8 max-w-md text-center text-muted-foreground">
                 {hasExistingAccounts
                     ? "You already have accounts set up. Let's continue with the onboarding."
                     : isFirstAccount
-                        ? "Let's start with your main checking account. You can add more accounts later."
-                        : 'Add another account to track more of your finances.'}
+                      ? "Let's start with your main checking account. You can add more accounts later."
+                      : 'Add another account to track more of your finances.'}
             </p>
 
             {hasExistingAccounts ? (
@@ -299,7 +299,17 @@ export function StepCreateAccount({
                         {isSubmitting ? 'Creating...' : 'Create Account'}
                     </Button>
 
-                    {!isFirstAccount && onSkip && <Button size='lg' className='w-full opacity-50 transition-all duration-200 hover:opacity-100' variant={'ghost'} disabled={isSubmitting} onClick={() => onSkip()}>Ignore</Button>}
+                    {!isFirstAccount && onSkip && (
+                        <Button
+                            size="lg"
+                            className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
+                            variant={'ghost'}
+                            disabled={isSubmitting}
+                            onClick={() => onSkip()}
+                        >
+                            Ignore
+                        </Button>
+                    )}
                 </form>
             )}
         </div>

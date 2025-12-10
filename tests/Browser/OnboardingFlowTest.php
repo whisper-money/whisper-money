@@ -88,7 +88,8 @@ it('shows encryption setup after encryption explanation', function () {
 
     $page->click("Let's Get Started")
         ->wait(1)
-        ->click('I Understand, Continue')
+        ->assertSee('Your Data, Your Privacy')
+        ->click('@encryption-continue-button')
         ->wait(1)
         ->assertSee('Create Your Encryption Password')
         ->assertNoJavascriptErrors();

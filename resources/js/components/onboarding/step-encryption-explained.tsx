@@ -82,7 +82,12 @@ export function StepEncryptionExplained({
                 </div>
             </div>
 
-            <Button size="lg" onClick={onContinue} className="group gap-2 px-8">
+            <Button
+                size="lg"
+                onClick={onContinue}
+                className="group gap-2 px-8"
+                data-testid="encryption-continue-button"
+            >
                 I Understand, Continue
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>

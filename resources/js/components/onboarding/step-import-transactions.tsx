@@ -25,9 +25,9 @@ export function StepImportTransactions({
 
     useEffect(() => {
         if (hasImported) {
-            onComplete()
+            onComplete();
         }
-    }, [hasImported, onComplete])
+    }, [hasImported, onComplete]);
 
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
@@ -77,11 +77,13 @@ export function StepImportTransactions({
                 </ol>
             </div>
 
-            <div className="mb-6 w-full max-w-md flex items-center gap-4 rounded-lg border border-dashed border-muted-foreground/30 p-4">
-                <FileSpreadsheet className="size-10 bg-muted rounded-full p-2.5 text-muted-foreground" />
-                <div className='flex flex-col gap-0.5'>
+            <div className="mb-6 flex w-full max-w-md items-center gap-4 rounded-lg border border-dashed border-muted-foreground/30 p-4">
+                <FileSpreadsheet className="size-10 rounded-full bg-muted p-2.5 text-muted-foreground" />
+                <div className="flex flex-col gap-0.5">
                     <p className="text-sm font-medium">Supported formats</p>
-                    <p className="text-xs text-muted-foreground">CSV, XLS, XLSX files</p>
+                    <p className="text-xs text-muted-foreground">
+                        CSV, XLS, XLSX files
+                    </p>
                 </div>
             </div>
 

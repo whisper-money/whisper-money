@@ -76,7 +76,7 @@ function PlanCard({
                         className={cn(
                             'w-full cursor-pointer',
                             isDefault &&
-                            'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700',
+                                'bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700',
                         )}
                         variant={isDefault ? 'default' : 'outline'}
                     >
@@ -115,9 +115,9 @@ export default function Paywall() {
                             'grid gap-4',
                             planEntries.length === 1 && 'mx-auto max-w-sm',
                             planEntries.length === 2 &&
-                            'mx-auto max-w-2xl grid-cols-1 sm:grid-cols-2',
+                                'mx-auto max-w-2xl grid-cols-1 sm:grid-cols-2',
                             planEntries.length >= 3 &&
-                            'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+                                'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
                         )}
                     >
                         {planEntries.map(([key, plan]) => (
@@ -132,9 +132,10 @@ export default function Paywall() {
                     </div>
 
                     {pricing.promo.enabled && (
-                        <p className="flex items-center justify-center gap-2 mt-6 text-center text-sm text-muted-foreground">
+                        <p className="mt-6 flex items-center justify-center gap-2 text-center text-sm text-muted-foreground">
                             <span>🎉</span>
-                            <span>Get a $8 founder discount</span> <span>•</span>
+                            <span>Get a $8 founder discount</span>{' '}
+                            <span>•</span>
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
