@@ -582,15 +582,17 @@ export default function CategorizeTransactions({
             <Head title="Categorize Transactions" />
 
             <div className="flex min-h-screen flex-col bg-white dark:bg-zinc-950">
-                <header className="flex items-center gap-6 justify-between px-4 py-3 dark:border-zinc-800">
+                <header className="flex items-center justify-between gap-6 px-4 py-3 dark:border-zinc-800">
                     <Link
                         href={categorizeRoute.url()?.replace('/categorize', '')}
-                        className="flex flex-1 w-fit items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 dark:text-zinc-400 dark:hover:text-zinc-100"
+                        className="flex w-fit flex-1 items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 dark:text-zinc-400 dark:hover:text-zinc-100"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        <div className='hidden sm:block text-nowrap'>Back to Transactions</div>
+                        <div className="hidden text-nowrap sm:block">
+                            Back to Transactions
+                        </div>
                     </Link>
-                    <div className="flex items-center justify-end sm:justify-center w-full gap-6">
+                    <div className="flex w-full items-center justify-end gap-6 sm:justify-center">
                         <div className="flex items-center gap-3">
                             <Button
                                 variant="outline"
@@ -609,7 +611,8 @@ export default function CategorizeTransactions({
                                 size="sm"
                                 onClick={handlePrevious}
                                 disabled={
-                                    animationState !== 'idle' || currentIndex === 0
+                                    animationState !== 'idle' ||
+                                    currentIndex === 0
                                 }
                                 className="gap-2 pr-2 text-muted-foreground"
                             >
@@ -622,7 +625,8 @@ export default function CategorizeTransactions({
                                 size="sm"
                                 onClick={handleSkip}
                                 disabled={
-                                    animationState !== 'idle' || !currentTransaction
+                                    animationState !== 'idle' ||
+                                    !currentTransaction
                                 }
                                 className="gap-2 pr-2 text-muted-foreground"
                             >
@@ -632,7 +636,7 @@ export default function CategorizeTransactions({
                             </Button>
                         </div>
                     </div>
-                    <div className="hidden items-center flex-1 gap-2 text-sm text-zinc-600 sm:flex dark:text-zinc-400">
+                    <div className="hidden flex-1 items-center gap-2 text-sm text-zinc-600 sm:flex dark:text-zinc-400">
                         <span className="font-medium text-zinc-900 dark:text-zinc-100">
                             {remainingCount}
                         </span>
@@ -640,7 +644,7 @@ export default function CategorizeTransactions({
                     </div>
                 </header>
 
-                <main className="flex flex-1 flex-col items-center justify-start sm:justify-center p-4">
+                <main className="flex flex-1 flex-col items-center justify-start p-4 sm:justify-center">
                     <div className="w-full max-w-xl space-y-8">
                         <div className="relative">
                             {animationState === 'success' &&
@@ -677,11 +681,11 @@ export default function CategorizeTransactions({
                                         className={cn(
                                             'rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl shadow-zinc-200/50 transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-zinc-900/50',
                                             animationState === 'exiting' &&
-                                            'translate-y-[-20px] scale-95 opacity-0',
+                                                'translate-y-[-20px] scale-95 opacity-0',
                                             animationState === 'entering' &&
-                                            'animate-card-enter',
+                                                'animate-card-enter',
                                             animationState === 'idle' &&
-                                            'translate-y-0 scale-100 opacity-100',
+                                                'translate-y-0 scale-100 opacity-100',
                                         )}
                                     >
                                         <div className="flex flex-col gap-4">
@@ -704,20 +708,20 @@ export default function CategorizeTransactions({
                                                                 {currentTransaction
                                                                     .bank
                                                                     ?.logo && (
-                                                                        <img
-                                                                            src={
-                                                                                currentTransaction
-                                                                                    .bank
-                                                                                    .logo
-                                                                            }
-                                                                            alt={
-                                                                                currentTransaction
-                                                                                    .bank
-                                                                                    .name
-                                                                            }
-                                                                            className="h-5 w-5 rounded"
-                                                                        />
-                                                                    )}
+                                                                    <img
+                                                                        src={
+                                                                            currentTransaction
+                                                                                .bank
+                                                                                .logo
+                                                                        }
+                                                                        alt={
+                                                                            currentTransaction
+                                                                                .bank
+                                                                                .name
+                                                                        }
+                                                                        className="h-5 w-5 rounded"
+                                                                    />
+                                                                )}
                                                                 <EncryptedText
                                                                     encryptedText={
                                                                         currentTransaction
@@ -754,8 +758,8 @@ export default function CategorizeTransactions({
                                                     className={cn(
                                                         'rounded px-1',
                                                         currentTransaction.amount >=
-                                                        0 &&
-                                                        'bg-green-100/70 dark:bg-green-900',
+                                                            0 &&
+                                                            'bg-green-100/70 dark:bg-green-900',
                                                     )}
                                                 >
                                                     {formatAmount(
@@ -774,11 +778,11 @@ export default function CategorizeTransactions({
                                 className={cn(
                                     'flex flex-col gap-4 px-6 pt-2 transition-all duration-300',
                                     animationState === 'exiting' &&
-                                    'translate-y-[-10px] opacity-0',
+                                        'translate-y-[-10px] opacity-0',
                                     animationState === 'entering' &&
-                                    'animate-command-enter',
+                                        'animate-command-enter',
                                     animationState === 'idle' &&
-                                    'translate-y-0 opacity-100',
+                                        'translate-y-0 opacity-100',
                                 )}
                             >
                                 <div className="flex flex-col gap-1">
