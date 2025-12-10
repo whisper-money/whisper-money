@@ -37,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'redirect.encryption' => RedirectToEncryptionSetup::class,
             'subscribed' => EnsureUserIsSubscribed::class,
+            'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

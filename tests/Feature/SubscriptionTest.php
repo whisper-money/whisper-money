@@ -13,9 +13,7 @@ test('guests cannot access subscription pages', function () {
 });
 
 test('users without subscription are redirected to paywall when accessing protected routes', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 
@@ -25,9 +23,7 @@ test('users without subscription are redirected to paywall when accessing protec
 });
 
 test('users can view the paywall page', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 
@@ -35,9 +31,7 @@ test('users can view the paywall page', function () {
 });
 
 test('subscribed users are redirected from paywall to dashboard', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $user->subscriptions()->create([
         'type' => 'default',
@@ -52,9 +46,7 @@ test('subscribed users are redirected from paywall to dashboard', function () {
 });
 
 test('subscribed users can access protected routes', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $user->subscriptions()->create([
         'type' => 'default',
@@ -69,9 +61,7 @@ test('subscribed users can access protected routes', function () {
 });
 
 test('users can view the success page after subscribing', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 
@@ -79,9 +69,7 @@ test('users can view the success page after subscribing', function () {
 });
 
 test('cancel route redirects to paywall', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 
@@ -91,9 +79,7 @@ test('cancel route redirects to paywall', function () {
 test('subscription middleware allows access when subscriptions are disabled', function () {
     config(['subscriptions.enabled' => false]);
 
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 

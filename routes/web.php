@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
@@ -42,9 +43,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe/checkout', [SubscriptionController::class, 'checkout'])->name('subscribe.checkout');
     Route::get('subscribe/success', [SubscriptionController::class, 'success'])->name('subscribe.success');
     Route::get('subscribe/cancel', [SubscriptionController::class, 'cancel'])->name('subscribe.cancel');
+
+    Route::middleware(['onboarded'])->group(function () {
+        Route::get('onboarding', [OnboardingController::class, 'index'])->name('onboarding');
+        Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+    });
 });
 
-Route::middleware(['auth', 'verified', 'redirect.encryption', 'subscribed'])->group(function () {
+Route::middleware(['auth', 'verified', 'redirect.encryption', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
