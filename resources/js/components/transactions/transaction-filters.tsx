@@ -89,7 +89,7 @@ export function TransactionFilters({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col flex-wrap items-center gap-3 sm:flex-row">
+            <div className="flex flex-col items-center gap-3 sm:flex-row">
                 <div className="flex w-full flex-row items-center gap-2 sm:w-auto">
                     <Input
                         placeholder={
@@ -406,11 +406,7 @@ export function TransactionFilters({
                         Clear
                     </Button>
                 )}
-                {actions ? (
-                    <div className="ml-auto flex items-center gap-2">
-                        {actions}
-                    </div>
-                ) : null}
+                {actions ? <div className="w-full">{actions}</div> : null}
             </div>
         </div>
     );

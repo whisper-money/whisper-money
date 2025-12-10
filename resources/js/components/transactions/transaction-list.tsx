@@ -1112,7 +1112,7 @@ export function TransactionList({
                     isKeySet={isKeySet}
                     hideAccountFilter={hideAccountFilter}
                     actions={
-                        <>
+                        <div className="flex justify-end gap-2">
                             {showActionsMenu && (
                                 <TransactionActionsMenu
                                     categories={categories}
@@ -1131,8 +1131,11 @@ export function TransactionList({
                                 />
                             )}
                             {headerActions}
-                            <DataTableViewOptions table={table} />
-                        </>
+                            <DataTableViewOptions
+                                table={table}
+                                hideColumnTextOnMobile={false}
+                            />
+                        </div>
                     }
                 />
 

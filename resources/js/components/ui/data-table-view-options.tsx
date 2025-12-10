@@ -9,13 +9,16 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface DataTableViewOptionsProps<TData> {
     table: TableType<TData>;
+    hideColumnTextOnMobile?: boolean
 }
 
 export function DataTableViewOptions<TData>({
     table,
+    hideColumnTextOnMobile = true,
 }: DataTableViewOptionsProps<TData>) {
     const columns = table
         .getAllLeafColumns()
@@ -35,9 +38,9 @@ export function DataTableViewOptions<TData>({
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                    <span className='hidden sm:inline'>Columns</span>
-                    <SlidersHorizontal className="ml-2 h-4 w-4" />
+                <Button variant="outline" className='flex gap-2'>
+                    <span className={cn({ 'hidden sm:inline': hideColumnTextOnMobile })}>Columns</span>
+                    <SlidersHorizontal className="h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

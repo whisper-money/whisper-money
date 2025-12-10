@@ -1084,7 +1084,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         accounts={accounts}
                         isKeySet={isKeySet}
                         actions={
-                            <>
+                            <div className="flex w-full justify-between gap-2 sm:justify-end">
                                 <TransactionActionsMenu
                                     categories={categories}
                                     accounts={accounts}
@@ -1101,7 +1101,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                                     }}
                                 />
                                 <DataTableViewOptions table={table} />
-                            </>
+                            </div>
                         }
                     />
 
