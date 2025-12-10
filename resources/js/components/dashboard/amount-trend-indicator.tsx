@@ -14,6 +14,7 @@ interface AmountTrendIndicatorProps {
     className?: string;
     previousAmount?: number;
     currentAmount?: number;
+    tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 }
 
 function calculatePercentageChange(
@@ -31,6 +32,7 @@ export function AmountTrendIndicator({
     className = '',
     previousAmount,
     currentAmount,
+    tooltipSide = 'top',
 }: AmountTrendIndicatorProps) {
     const [open, setOpen] = useState(false);
 
@@ -71,7 +73,7 @@ export function AmountTrendIndicator({
                         {content}
                     </div>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent side={tooltipSide}>
                     {percentageChange >= 0 ? '+' : ''}
                     {percentageChange.toFixed(1)}% {label}
                 </TooltipContent>
