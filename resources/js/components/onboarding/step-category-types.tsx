@@ -1,11 +1,6 @@
-import { Button } from '@/components/ui/button';
-import {
-    ArrowDownLeft,
-    ArrowRight,
-    ArrowUpRight,
-    Repeat,
-    Tag,
-} from 'lucide-react';
+import { StepButton } from '@/components/onboarding/step-button';
+import { StepHeader } from '@/components/onboarding/step-header';
+import { ArrowDownLeft, ArrowUpRight, Repeat, Tag } from 'lucide-react';
 
 interface StepCategoryTypesProps {
     onContinue: () => void;
@@ -47,18 +42,12 @@ const categoryTypes = [
 export function StepCategoryTypes({ onContinue }: StepCategoryTypesProps) {
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-purple-500 shadow-lg duration-500 zoom-in">
-                <Tag className="h-10 w-10 text-white" />
-            </div>
-
-            <h1 className="mb-4 text-center text-3xl font-bold tracking-tight">
-                Understanding Categories
-            </h1>
-
-            <p className="mb-8 max-w-lg text-center text-muted-foreground">
-                Categories help you organize and understand your spending. Every
-                transaction belongs to one of three types:
-            </p>
+            <StepHeader
+                icon={Tag}
+                iconContainerClassName="bg-gradient-to-br from-violet-400 to-purple-500"
+                title="Understanding Categories"
+                description="Categories help you organize and understand your spending. Every transaction belongs to one of three types:"
+            />
 
             <div className="mb-8 grid w-full max-w-3xl gap-4 md:grid-cols-3">
                 {categoryTypes.map((category) => (
@@ -99,10 +88,7 @@ export function StepCategoryTypes({ onContinue }: StepCategoryTypesProps) {
                 </p>
             </div>
 
-            <Button size="lg" onClick={onContinue} className="group gap-2 px-8">
-                Continue
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
+            <StepButton text="Continue" onClick={onContinue} />
         </div>
     );
 }

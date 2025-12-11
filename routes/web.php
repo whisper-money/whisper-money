@@ -32,12 +32,6 @@ Route::get('terms', function () {
     return Inertia::render('terms');
 })->name('terms');
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('setup-encryption', function () {
-        return Inertia::render('auth/setup-encryption');
-    })->name('setup-encryption');
-});
-
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe', [SubscriptionController::class, 'index'])->name('subscribe');
     Route::get('subscribe/checkout', [SubscriptionController::class, 'checkout'])->name('subscribe.checkout');
@@ -50,7 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
-Route::middleware(['auth', 'verified', 'redirect.encryption', 'onboarded', 'subscribed'])->group(function () {
+Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');

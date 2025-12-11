@@ -1,13 +1,6 @@
-import { Button } from '@/components/ui/button';
-import {
-    ArrowRight,
-    Eye,
-    EyeOff,
-    Lock,
-    Server,
-    Shield,
-    User,
-} from 'lucide-react';
+import { StepButton } from '@/components/onboarding/step-button';
+import { StepHeader } from '@/components/onboarding/step-header';
+import { Eye, EyeOff, Lock, Server, Shield, User } from 'lucide-react';
 
 interface StepEncryptionExplainedProps {
     onContinue: () => void;
@@ -18,20 +11,14 @@ export function StepEncryptionExplained({
 }: StepEncryptionExplainedProps) {
     return (
         <div className="flex animate-in flex-col items-center text-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-24 w-24 animate-in items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg duration-500 zoom-in">
-                <Shield className="size-10 text-white" />
-            </div>
+            <StepHeader
+                icon={Shield}
+                iconContainerClassName="bg-gradient-to-br from-blue-500 to-indigo-600"
+                title="Your Data, Your Privacy"
+                description="Whisper Money uses end-to-end encryption to protect your financial data. Here's how it works:"
+            />
 
-            <h1 className="mb-4 text-3xl sm:text-4xl font-bold tracking-tight md:text-5xl">
-                Your Data, Your Privacy
-            </h1>
-
-            <p className="mb-8 max-w-lg text-lg text-muted-foreground">
-                Whisper Money uses end-to-end encryption to protect your
-                financial data. Here's how it works:
-            </p>
-
-            <div className="mb-5 sm:mb-4 grid w-full max-w-xl gap-4">
+            <div className="mb-5 grid w-full max-w-xl gap-4 sm:mb-4">
                 <Item
                     title="Create a Password"
                     description="Only you know this password. It never leaves your device."
@@ -74,29 +61,35 @@ export function StepEncryptionExplained({
                 </div>
             </div>
 
-            <Button
-                size="lg"
+            <StepButton
+                text="I Understand, Continue"
                 onClick={onContinue}
-                className="group gap-2 !pl-8 !pr-7 w-full sm:w-auto"
                 data-testid="encryption-continue-button"
-            >
-                I Understand, Continue
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
+            />
         </div>
     );
 }
 
-function Item({ title, description, icon }: { title: string, description: string, icon: React.ReactNode }) {
+function Item({
+    title,
+    description,
+    icon,
+}: {
+    title: string;
+    description: string;
+    icon: React.ReactNode;
+}) {
     return (
-        <div className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3 sm:p-5 w-full">
-            <div className='flex flex-row items-center gap-2'>
+        <div className="flex w-full flex-col items-start gap-2 rounded-xl border bg-card p-3 sm:p-5">
+            <div className="flex flex-row items-center gap-2">
                 {icon}
                 <h3 className="font-semibold">{title}</h3>
             </div>
             <div className="text-left sm:text-center">
-                <p className="text-sm text-pretty text-muted-foreground">{description}</p>
+                <p className="text-sm text-pretty text-muted-foreground">
+                    {description}
+                </p>
             </div>
         </div>
-    )
+    );
 }

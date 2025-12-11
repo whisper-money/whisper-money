@@ -40,5 +40,4 @@ test('robots txt disallows protected routes', function () {
     $response->assertSuccessful();
     expect($response->content())->toContain('Disallow: /api/');
     expect($response->content())->toContain('Disallow: /dashboard');
-    expect($response->content())->toContain('Disallow: /setup-encryption');
 });

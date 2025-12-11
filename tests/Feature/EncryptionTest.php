@@ -9,7 +9,7 @@ use function Pest\Laravel\assertDatabaseHas;
 test('authenticated user without encryption salt can access setup page', function () {
     $user = User::factory()->create(['encryption_salt' => null]);
 
-    $response = actingAs($user)->get(route('setup-encryption'));
+    $response = actingAs($user)->get(route('onboarding'));
 
     $response->assertSuccessful();
 });

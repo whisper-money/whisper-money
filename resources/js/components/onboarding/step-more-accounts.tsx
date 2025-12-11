@@ -1,7 +1,10 @@
+import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { formatAccountType } from '@/types/account';
 import { Check, CheckCircle2, Plus, Wallet } from 'lucide-react';
+import { useMemo } from 'react';
+import { StepButton } from './step-button';
 
 interface ExistingAccount {
     id: string;
@@ -32,21 +35,18 @@ export function StepMoreAccounts({
 }: StepMoreAccountsProps) {
     const totalAccounts = createdAccounts.length + existingAccounts.length;
 
+    const description = useMemo(() => {
+        return `You've set up ${totalAccounts} account${totalAccounts !== 1 ? 's' : ''}. Would you like to add more or continue to the dashboard?`;
+    }, [totalAccounts]);
+
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 shadow-lg duration-500 zoom-in">
-                <Wallet className="h-10 w-10 text-white" />
-            </div>
-
-            <h1 className="mb-4 text-center text-3xl font-bold tracking-tight">
-                Great Progress!
-            </h1>
-
-            <p className="mb-8 max-w-md text-center text-muted-foreground">
-                You've set up {totalAccounts} account
-                {totalAccounts !== 1 ? 's' : ''}. Would you like to add more or
-                continue to the dashboard?
-            </p>
+            <StepHeader
+                icon={Wallet}
+                iconContainerClassName="bg-gradient-to-br from-teal-400 to-cyan-500"
+                title="Great Progress!"
+                description={description}
+            />
 
             <div className="mb-8 w-full max-w-md">
                 <h3 className="mb-3 text-sm font-medium text-muted-foreground">
@@ -96,7 +96,7 @@ export function StepMoreAccounts({
 
             <div className="mb-6 w-full max-w-md rounded-xl border-2 border-dashed border-muted-foreground/20 p-6">
                 <div className="text-center">
-                    <h3 className="mb-2 font-semibold">Add More Accounts?</h3>
+                    <h3 className="mb-1 font-semibold">Add More Accounts?</h3>
                     <p className="mb-4 text-sm text-muted-foreground">
                         Track all your finances in one place — checking,
                         savings, credit cards, investments, and more.
@@ -104,7 +104,7 @@ export function StepMoreAccounts({
                     <Button
                         variant="outline"
                         onClick={onAddMore}
-                        className="gap-2"
+                        className="gap-2 w-full !py-6"
                     >
                         <Plus className="h-4 w-4" />
                         Add Another Account
@@ -112,9 +112,7 @@ export function StepMoreAccounts({
                 </div>
             </div>
 
-            <Button size="lg" onClick={onFinish} className="gap-2 px-8">
-                Finish Setup
-            </Button>
+            <StepButton text="Finish Setup" onClick={onFinish} />
         </div>
     );
 }

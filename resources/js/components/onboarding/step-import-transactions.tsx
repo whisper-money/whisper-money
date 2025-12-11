@@ -1,8 +1,9 @@
+import { StepHeader } from '@/components/onboarding/step-header';
 import { ImportTransactionsDrawer } from '@/components/transactions/import-transactions-drawer';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { ArrowRight, FileSpreadsheet, Upload } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface StepImportTransactionsProps {
     account: CreatedAccount | undefined;
@@ -29,21 +30,20 @@ export function StepImportTransactions({
         }
     }, [hasImported, onComplete]);
 
+    const description = useMemo(() => {
+        return account
+            ? `Import transactions for "${account.name}". You can export transaction history from your bank's website.`
+            : 'Import your transaction history to start tracking your finances.';
+    }, [account]);
+
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 shadow-lg duration-500 zoom-in">
-                <Upload className="h-10 w-10 text-white" />
-            </div>
-
-            <h1 className="mb-4 text-center text-3xl font-bold tracking-tight">
-                Import Your Transactions
-            </h1>
-
-            <p className="mb-8 max-w-md text-center text-muted-foreground">
-                {account
-                    ? `Import transactions for "${account.name}". You can export transaction history from your bank's website.`
-                    : 'Import your transaction history to start tracking your finances.'}
-            </p>
+            <StepHeader
+                icon={Upload}
+                iconContainerClassName="bg-gradient-to-br from-indigo-400 to-purple-500"
+                title="Import Your Transactions"
+                description={description}
+            />
 
             <div className="mb-4 w-full max-w-md rounded-xl border bg-card p-6">
                 <h3 className="mb-4 font-semibold">
@@ -87,11 +87,11 @@ export function StepImportTransactions({
                 </div>
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 w-full sm:w-auto">
                 <Button
                     size="lg"
                     onClick={() => setIsDrawerOpen(true)}
-                    className="group gap-2 px-8"
+                    className="group w-full sm:w-auto py-6 gap-2 px-8"
                 >
                     <Upload className="h-4 w-4" />
                     Import Transactions

@@ -1,7 +1,5 @@
 import AppLogoIcon from '@/components/app-logo-icon';
 import { cn } from '@/lib/utils';
-import { home } from '@/routes';
-import { Link } from '@inertiajs/react';
 import { type PropsWithChildren, useEffect, useState } from 'react';
 
 interface OnboardingLayoutProps {
@@ -27,17 +25,12 @@ export default function OnboardingLayout({
     return (
         <div className="flex min-h-svh flex-col bg-background">
             <header className="flex items-center justify-between p-4 md:p-6">
-                <Link
-                    href={home()}
-                    className="flex items-center gap-2 font-medium"
-                >
-                    <AppLogoIcon
-                        className={cn([
-                            'size-8 fill-current text-[var(--foreground)] opacity-100 transition-opacity duration-200 dark:text-white',
-                            { 'opacity-0': currentStep === 0 },
-                        ])}
-                    />
-                </Link>
+                <AppLogoIcon
+                    className={cn([
+                        'size-6 fill-current text-[var(--foreground)] sm:opacity-75 dark:text-white',
+                        { 'opacity-0': currentStep === 0 },
+                    ])}
+                />
 
                 <div className="flex items-center gap-2">
                     {Array.from({ length: totalSteps }).map((_, index) => (
@@ -48,17 +41,17 @@ export default function OnboardingLayout({
                                 index < currentStep
                                     ? 'bg-primary'
                                     : index === currentStep
-                                        ? 'scale-125 bg-primary'
-                                        : 'bg-muted',
+                                      ? 'scale-125 bg-primary'
+                                      : 'bg-primary/15',
                             )}
                         />
                     ))}
                 </div>
 
-                <div></div>
+                <div className="size-6"></div>
             </header>
 
-            <main className="flex flex-1 flex-col items-center justify-start sm:justify-center px-4 pt-12 md:px-6">
+            <main className="flex flex-1 flex-col items-center justify-start px-4 pt-12 sm:justify-center md:px-6">
                 <div
                     key={stepKey}
                     className={cn(

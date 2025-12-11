@@ -4,14 +4,16 @@ import {
     AccountForm,
     AccountFormData,
 } from '@/components/accounts/account-form';
+import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import { formatAccountType } from '@/types/account';
+import { type AccountType, formatAccountType } from '@/types/account';
 import { AlertCircle, CheckCircle2, CreditCard } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { StepButton } from './step-button';
 
 interface ExistingAccount {
     id: string;
@@ -171,8 +173,8 @@ export function StepCreateAccount({
                 const errorData = await response.json();
                 throw new Error(
                     errorData.message ||
-                        Object.values(errorData.errors || {})[0] ||
-                        'Failed to create account',
+                    Object.values(errorData.errors || {})[0] ||
+                    'Failed to create account',
                 );
             }
 
@@ -198,27 +200,35 @@ export function StepCreateAccount({
 
     const hasExistingAccounts = existingAccounts.length > 0;
 
+    const { title, description } = useMemo(() => {
+        if (hasExistingAccounts) {
+            return {
+                title: 'Your Accounts',
+                description:
+                    "You already have accounts set up. Let's continue with the onboarding.",
+            };
+        }
+        if (isFirstAccount) {
+            return {
+                title: 'Create an Account',
+                description:
+                    "Let's start with your main checking account. You can add more accounts later.",
+            };
+        }
+        return {
+            title: 'Add Another Account',
+            description: 'Add another account to track more of your finances.',
+        };
+    }, [hasExistingAccounts, isFirstAccount]);
+
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg duration-500 zoom-in">
-                <CreditCard className="h-10 w-10 text-white" />
-            </div>
-
-            <h1 className="mb-4 text-center text-3xl font-bold tracking-tight">
-                {hasExistingAccounts
-                    ? 'Your Accounts'
-                    : isFirstAccount
-                      ? 'Create Your First Account'
-                      : 'Add Another Account'}
-            </h1>
-
-            <p className="mb-8 max-w-md text-center text-muted-foreground">
-                {hasExistingAccounts
-                    ? "You already have accounts set up. Let's continue with the onboarding."
-                    : isFirstAccount
-                      ? "Let's start with your main checking account. You can add more accounts later."
-                      : 'Add another account to track more of your finances.'}
-            </p>
+            <StepHeader
+                icon={CreditCard}
+                iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
+                title={title}
+                description={description}
+            />
 
             {hasExistingAccounts ? (
                 <div className="w-full max-w-md">
@@ -236,17 +246,18 @@ export function StepCreateAccount({
                                         {account.bank?.name || 'Account'}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {formatAccountType(account.type)} •{' '}
-                                        {account.currency_code}
+                                        {formatAccountType(
+                                            account.type as AccountType,
+                                        )}{' '}
+                                        • {account.currency_code}
                                     </p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    <Button
-                        size="lg"
-                        className="w-full"
+                    <StepButton
+                        text='Continue'
                         onClick={() =>
                             onAccountCreated({
                                 id: existingAccounts[0].id,
@@ -256,9 +267,7 @@ export function StepCreateAccount({
                                 currencyCode: existingAccounts[0].currency_code,
                             })
                         }
-                    >
-                        Continue
-                    </Button>
+                    />
                 </div>
             ) : (
                 <form
@@ -289,15 +298,13 @@ export function StepCreateAccount({
                         </div>
                     )}
 
-                    <Button
+                    <StepButton
                         type="submit"
-                        size="lg"
-                        className="w-full"
                         disabled={isSubmitting}
-                    >
-                        {isSubmitting && <Spinner className="mr-2" />}
-                        {isSubmitting ? 'Creating...' : 'Create Account'}
-                    </Button>
+                        loading={isSubmitting}
+                        loadingText='Creating...'
+                        text='Create Account'
+                    />
 
                     {!isFirstAccount && onSkip && (
                         <Button

@@ -1,5 +1,6 @@
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Bird } from 'lucide-react';
+import { StepButton } from '@/components/onboarding/step-button';
+import { StepHeader } from '@/components/onboarding/step-header';
+import { Bird } from 'lucide-react';
 
 interface StepWelcomeProps {
     onContinue: () => void;
@@ -8,28 +9,16 @@ interface StepWelcomeProps {
 export function StepWelcome({ onContinue }: StepWelcomeProps) {
     return (
         <div className="flex animate-in flex-col items-center text-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-24 w-24 animate-in items-center justify-center rounded-full bg-gradient-to-br from-black to-zinc-700 shadow-lg duration-500 zoom-in">
-                <Bird className="h-12 w-12 text-white" />
-            </div>
+            <StepHeader
+                icon={Bird}
+                iconContainerClassName="bg-gradient-to-br from-black to-zinc-700"
+                title="Welcome to</br>Whisper Money"
+                description="Take control of your finances with privacy-first money tracking. Let's set up your account in just a few minutes."
+                large
+            />
 
-            <h1 className="mb-4 text-3xl sm:text-4xl font-bold tracking-tight md:text-5xl">
-                Welcome to Whisper Money
-            </h1>
-
-            <p className="mb-8 max-w-lg text-lg text-muted-foreground">
-                Take control of your finances with privacy-first money tracking.
-                Let's set up your account in just a few minutes.
-            </p>
-
-            <div className="flex flex-col gap-4 w-full">
-                <Button
-                    size="lg"
-                    onClick={onContinue}
-                    className="group w-full sm:w-auto gap-2 px-8"
-                >
-                    Let's Get Started
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
+            <div className="flex w-full flex-col gap-4 sm:w-auto">
+                <StepButton text="Let's Get Started" onClick={onContinue} />
 
                 <p className="text-sm text-muted-foreground">
                     This will take less than 5 minutes

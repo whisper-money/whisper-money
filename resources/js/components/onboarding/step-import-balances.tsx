@@ -1,10 +1,10 @@
+import { StepButton } from '@/components/onboarding/step-button';
+import { StepHeader } from '@/components/onboarding/step-header';
 import { AmountInput } from '@/components/ui/amount-input';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
-import { AlertCircle, ArrowRight, TrendingUp, Wallet } from 'lucide-react';
-import { useState } from 'react';
+import { AlertCircle, TrendingUp, Wallet } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 interface StepImportBalancesProps {
     account: CreatedAccount | undefined;
@@ -40,21 +40,20 @@ export function StepImportBalances({
         }
     }
 
+    const description = useMemo(() => {
+        return account
+            ? `"${account.name}" is a ${account.type} account. These accounts track balance changes over time instead of individual transactions.`
+            : 'Set the current balance for this account to start tracking.';
+    }, [account]);
+
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg duration-500 zoom-in">
-                <TrendingUp className="h-10 w-10 text-white" />
-            </div>
-
-            <h1 className="mb-4 text-center text-3xl font-bold tracking-tight">
-                Set Account Balance
-            </h1>
-
-            <p className="mb-8 max-w-md text-center text-muted-foreground">
-                {account
-                    ? `"${account.name}" is a ${account.type} account. These accounts track balance changes over time instead of individual transactions.`
-                    : 'Set the current balance for this account to start tracking.'}
-            </p>
+            <StepHeader
+                icon={TrendingUp}
+                iconContainerClassName="bg-gradient-to-br from-amber-400 to-orange-500"
+                title="Set Account Balance"
+                description={description}
+            />
 
             <div className="mb-6 w-full max-w-md rounded-xl border bg-card p-6">
                 <div className="mb-4 flex items-center gap-3">
@@ -106,18 +105,12 @@ export function StepImportBalances({
                     </div>
                 )}
 
-                <Button
+                <StepButton
                     type="submit"
-                    size="lg"
-                    className="group w-full gap-2"
-                    disabled={isSubmitting}
-                >
-                    {isSubmitting && <Spinner className="mr-2" />}
-                    {isSubmitting ? 'Saving...' : 'Save Balance'}
-                    {!isSubmitting && (
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    )}
-                </Button>
+                    text="Save Balance"
+                    loading={isSubmitting}
+                    loadingText="Saving..."
+                />
             </form>
         </div>
     );

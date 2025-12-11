@@ -1,3 +1,4 @@
+import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,7 @@ import { storeKey } from '@/lib/key-storage';
 import axios from 'axios';
 import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
 import { useState } from 'react';
+import { StepButton } from './step-button';
 
 interface StepEncryptionSetupProps {
     onComplete: () => void;
@@ -80,18 +82,12 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
 
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg duration-500 zoom-in">
-                <KeyRound className="h-10 w-10 text-white" />
-            </div>
-
-            <h1 className="mb-4 text-center text-3xl font-bold tracking-tight">
-                Create Your Encryption Password
-            </h1>
-
-            <p className="mb-8 max-w-md text-center text-muted-foreground">
-                This password will encrypt all your financial data. Make it
-                strong and memorable — we can't recover it for you.
-            </p>
+            <StepHeader
+                icon={KeyRound}
+                iconContainerClassName="bg-gradient-to-br from-amber-400 to-orange-500"
+                title="Create Your Encryption Password"
+                description="This password will encrypt all your financial data. Make it strong and memorable — we can't recover it for you."
+            />
 
             <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
                 <div className="space-y-2">
@@ -111,11 +107,10 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                             {[1, 2, 3, 4].map((level) => (
                                 <div
                                     key={level}
-                                    className={`h-1.5 flex-1 rounded-full transition-colors ${
-                                        level <= passwordStrength.level
-                                            ? passwordStrength.color
-                                            : 'bg-muted'
-                                    }`}
+                                    className={`h-1.5 flex-1 rounded-full transition-colors ${level <= passwordStrength.level
+                                        ? passwordStrength.color
+                                        : 'bg-muted'
+                                        }`}
                                 />
                             ))}
                         </div>
@@ -182,17 +177,15 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                     </div>
                 )}
 
-                <Button
+                <StepButton
                     type="submit"
-                    size="lg"
-                    className="w-full"
                     disabled={processing || password.length < 12}
-                >
-                    {processing && <Spinner className="mr-2" />}
-                    {processing
-                        ? 'Setting up encryption...'
-                        : 'Setup Encryption'}
-                </Button>
+                    loading={processing}
+                    loadingText="Setting up encryption..."
+                    text={
+                        'Setup Encryption'
+                    }
+                />
             </form>
         </div>
     );

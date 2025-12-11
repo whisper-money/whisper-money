@@ -1,13 +1,6 @@
-import { Button } from '@/components/ui/button';
-import {
-    ArrowRight,
-    Bot,
-    Eye,
-    EyeOff,
-    Shield,
-    Sparkles,
-    Zap,
-} from 'lucide-react';
+import { StepButton } from '@/components/onboarding/step-button';
+import { StepHeader } from '@/components/onboarding/step-header';
+import { Bot, Eye, EyeOff, Shield, Sparkles, Zap } from 'lucide-react';
 
 interface StepSmartRulesProps {
     onContinue: () => void;
@@ -16,18 +9,12 @@ interface StepSmartRulesProps {
 export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <div className="mb-8 flex h-20 w-20 animate-in items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg duration-500 zoom-in">
-                <Zap className="h-10 w-10 text-white" />
-            </div>
-
-            <h1 className="mb-4 text-center text-3xl font-bold tracking-tight">
-                Smart Automation Rules
-            </h1>
-
-            <p className="mb-8 max-w-lg text-center text-muted-foreground">
-                Create rules to automatically categorize your transactions based
-                on patterns you define.
-            </p>
+            <StepHeader
+                icon={Zap}
+                iconContainerClassName="bg-gradient-to-br from-yellow-400 to-amber-500"
+                title="Smart Automation Rules"
+                description="Create rules to automatically categorize your transactions based on patterns you define."
+            />
 
             <div className="mb-6 grid w-full max-w-2xl gap-4 md:grid-cols-2">
                 <div className="rounded-xl border bg-card p-5">
@@ -115,10 +102,7 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                 </div>
             </div>
 
-            <Button size="lg" onClick={onContinue} className="group gap-2 px-8">
-                Continue to Import
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
+            <StepButton text="Continue to Import" onClick={onContinue} />
         </div>
     );
 }
