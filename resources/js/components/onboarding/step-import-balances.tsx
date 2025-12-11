@@ -1,5 +1,5 @@
+import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
@@ -15,7 +15,7 @@ export function StepImportBalances({
     account,
     onComplete,
 }: StepImportBalancesProps) {
-    const [balance, setBalance] = useState('');
+    const [balanceInCents, setBalanceInCents] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -23,20 +23,15 @@ export function StepImportBalances({
         e.preventDefault();
         setError(null);
 
-        if (!balance.trim()) {
+        if (balanceInCents === 0) {
             setError('Please enter a balance');
-            return;
-        }
-
-        const numericBalance = parseFloat(balance.replace(/[^0-9.-]/g, ''));
-        if (isNaN(numericBalance)) {
-            setError('Please enter a valid number');
             return;
         }
 
         setIsSubmitting(true);
 
         try {
+            // TODO: Save balance to backend
             onComplete();
         } catch (err) {
             console.error('Failed to set balance:', err);
@@ -44,10 +39,6 @@ export function StepImportBalances({
             setIsSubmitting(false);
         }
     }
-
-    const handleSkip = () => {
-        onComplete();
-    };
 
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
@@ -98,21 +89,14 @@ export function StepImportBalances({
             <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="balance">Current Balance</Label>
-                    <div className="relative">
-                        <span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
-                            {account?.currencyCode || '$'}
-                        </span>
-                        <Input
-                            id="balance"
-                            type="text"
-                            inputMode="decimal"
-                            value={balance}
-                            onChange={(e) => setBalance(e.target.value)}
-                            placeholder="0.00"
-                            className="pl-12"
-                            disabled={isSubmitting}
-                        />
-                    </div>
+                    <AmountInput
+                        id="balance"
+                        value={balanceInCents}
+                        onChange={setBalanceInCents}
+                        currencyCode={account?.currencyCode || 'USD'}
+                        disabled={isSubmitting}
+                        required
+                    />
                 </div>
 
                 {error && (
@@ -122,30 +106,18 @@ export function StepImportBalances({
                     </div>
                 )}
 
-                <div className="flex gap-3">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="lg"
-                        className="flex-1"
-                        onClick={handleSkip}
-                        disabled={isSubmitting}
-                    >
-                        Skip for Now
-                    </Button>
-                    <Button
-                        type="submit"
-                        size="lg"
-                        className="group flex-1 gap-2"
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting && <Spinner className="mr-2" />}
-                        {isSubmitting ? 'Saving...' : 'Save Balance'}
-                        {!isSubmitting && (
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                        )}
-                    </Button>
-                </div>
+                <Button
+                    type="submit"
+                    size="lg"
+                    className="group w-full gap-2"
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting && <Spinner className="mr-2" />}
+                    {isSubmitting ? 'Saving...' : 'Save Balance'}
+                    {!isSubmitting && (
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    )}
+                </Button>
             </form>
         </div>
     );

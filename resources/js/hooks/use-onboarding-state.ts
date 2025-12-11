@@ -33,7 +33,7 @@ const PRIMARY_STEPS: OnboardingStep[] = [
 // Steps that are sub-steps (shown under the same progress position as 'create-account')
 const SUB_STEPS: OnboardingStep[] = ['import-transactions', 'import-balances'];
 
-const SCKIPABLE_ENCRYPTION_STEPS: OnboardingStep[] = ['encryption-setup'];
+const SKIPPABLE_ENCRYPTION_STEPS: OnboardingStep[] = ['encryption-setup'];
 
 export interface OnboardingState {
     currentStep: OnboardingStep;
@@ -50,15 +50,29 @@ export interface CreatedAccount {
     currencyCode: string;
 }
 
-export function useOnboardingState(existingAccountsCount: number = 0) {
+interface UseOnboardingStateOptions {
+    existingAccountsCount?: number;
+    hasEncryptionSetup?: boolean;
+}
+
+export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
+    const { existingAccountsCount = 0, hasEncryptionSetup = false } = options;
+
+    // Check both: backend says encryption is set up AND we have the key in browser storage
+    // We need the key in storage to actually decrypt data
     const hasEncryptionKey = useMemo(() => {
+        // If backend says encryption is not set up, we definitely don't have a key
+        if (!hasEncryptionSetup) {
+            return false;
+        }
+        // If backend says it's set up, also check if we have the key locally
         return getStoredKey() !== null;
-    }, []);
+    }, [hasEncryptionSetup]);
 
     const primarySteps = useMemo(() => {
         if (hasEncryptionKey) {
             return PRIMARY_STEPS.filter(
-                (step) => !SCKIPABLE_ENCRYPTION_STEPS.includes(step),
+                (step) => !SKIPPABLE_ENCRYPTION_STEPS.includes(step),
             );
         }
         return PRIMARY_STEPS;

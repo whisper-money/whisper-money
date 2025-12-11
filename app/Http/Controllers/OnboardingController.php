@@ -27,6 +27,7 @@ class OnboardingController extends Controller
         return Inertia::render('onboarding/index', [
             'banks' => $banks,
             'accounts' => $accounts,
+            'hasEncryptionSetup' => $user->encryption_salt !== null,
         ]);
     }
 

@@ -19,6 +19,7 @@ import {
 import OnboardingLayout from '@/layouts/onboarding-layout';
 import { type Bank } from '@/types/account';
 import { Head } from '@inertiajs/react';
+import { useEffect, useRef } from 'react';
 
 interface ExistingAccount {
     id: string;
@@ -37,10 +38,24 @@ interface ExistingAccount {
 interface OnboardingProps {
     banks: Bank[];
     accounts: ExistingAccount[];
+    hasEncryptionSetup: boolean;
 }
 
-export default function Onboarding({ banks, accounts }: OnboardingProps) {
+export default function Onboarding({
+    banks,
+    accounts,
+    hasEncryptionSetup,
+}: OnboardingProps) {
     const { sync } = useSyncContext();
+    const hasSyncedRef = useRef(false);
+
+    // Sync banks on mount to ensure IndexedDB has the latest data
+    useEffect(() => {
+        if (!hasSyncedRef.current) {
+            hasSyncedRef.current = true;
+            sync();
+        }
+    }, [sync]);
 
     const {
         currentStep,
@@ -51,7 +66,10 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
         goToStep,
         goNext,
         addCreatedAccount,
-    } = useOnboardingState(accounts.length);
+    } = useOnboardingState({
+        existingAccountsCount: accounts.length,
+        hasEncryptionSetup,
+    });
 
     const handleAccountCreated = async (account: CreatedAccount) => {
         addCreatedAccount(account);

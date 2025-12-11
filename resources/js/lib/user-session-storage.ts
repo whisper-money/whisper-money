@@ -22,7 +22,9 @@ export function setStoredUserId(userId: UUID): void {
 export async function clearAllUserData(): Promise<void> {
     if (!isBrowser()) return;
 
+    // Delete and reopen the database to ensure it's ready for new user data
     await db.delete();
+    await db.open();
 
     const keysToPreserve = [USER_ID_KEY];
     const keysToRemove: string[] = [];
