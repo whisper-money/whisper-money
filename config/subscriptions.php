@@ -60,7 +60,7 @@ return [
         ],
         'yearly' => [
             'name' => 'Pro Yearly',
-            'price' => 69,
+            'price' => 48,
             'original_price' => 144,
             'stripe_price_id' => env('STRIPE_PRO_YEARLY_PRICE_ID'),
             'billing_period' => 'year',
