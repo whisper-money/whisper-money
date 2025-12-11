@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountBalance;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,7 +20,39 @@ class SubscriptionController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return Inertia::render('subscription/paywall');
+        return Inertia::render('subscription/paywall', [
+            'stats' => $this->getUserStats($user),
+        ]);
+    }
+
+    /**
+     * @return array{accountsCount: int, transactionsCount: int, categoriesCount: int, automationRulesCount: int, balancesByCurrency: array<string, int>}
+     */
+    private function getUserStats(User $user): array
+    {
+        $accounts = $user->accounts()->get();
+
+        $balancesByCurrency = [];
+        foreach ($accounts as $account) {
+            $latestBalance = AccountBalance::query()
+                ->where('account_id', $account->id)
+                ->orderBy('balance_date', 'desc')
+                ->value('balance') ?? 0;
+
+            $currency = $account->currency_code;
+            if (! isset($balancesByCurrency[$currency])) {
+                $balancesByCurrency[$currency] = 0;
+            }
+            $balancesByCurrency[$currency] += $latestBalance;
+        }
+
+        return [
+            'accountsCount' => $accounts->count(),
+            'transactionsCount' => $user->transactions()->count(),
+            'categoriesCount' => $user->categories()->count(),
+            'automationRulesCount' => $user->automationRules()->count(),
+            'balancesByCurrency' => $balancesByCurrency,
+        ];
     }
 
     public function checkout(Request $request): Checkout
