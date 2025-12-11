@@ -50,7 +50,7 @@ function getEquivalentBillingLabel(billingPeriod: string | null): string {
     }
 
     if (billingPeriod === 'year') {
-        return '/month'
+        return '/month';
     }
 
     return `/${billingPeriod}`;
@@ -244,9 +244,9 @@ function CompactPlanCard({
     const savingsPercent =
         plan.original_price && plan.billing_period === 'year'
             ? Math.round(
-                ((plan.original_price - plan.price) / plan.original_price) *
-                100,
-            )
+                  ((plan.original_price - plan.price) / plan.original_price) *
+                      100,
+              )
             : null;
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
@@ -261,7 +261,7 @@ function CompactPlanCard({
                     : 'border-border bg-card hover:border-muted-foreground/50',
             )}
         >
-            <div className='flex items-center gap-2'>
+            <div className="flex items-center gap-2">
                 <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                     {plan.billing_period === 'year' ? 'Annual' : 'Monthly'}
                 </span>
@@ -278,7 +278,9 @@ function CompactPlanCard({
                 </span>
             </div>
             {plan.billing_period === 'year' && (
-                <span className="mt-2 text-xs text-muted-foreground">Billed annually at ${plan.price}</span>
+                <span className="mt-2 text-xs text-muted-foreground">
+                    Billed annually at ${plan.price}
+                </span>
             )}
         </button>
     );

@@ -57,7 +57,14 @@ class SubscriptionController extends Controller
 
     public function checkout(Request $request): Checkout
     {
-        $priceId = config('subscriptions.prices.pro_monthly');
+        $planKey = $request->query('plan', config('subscriptions.default_plan'));
+        $plan = config("subscriptions.plans.{$planKey}");
+
+        if (! $plan || ! $plan['stripe_price_id']) {
+            abort(400, 'Invalid plan selected');
+        }
+
+        $priceId = $plan['stripe_price_id'];
 
         return $request->user()
             ->newSubscription('default', $priceId)
