@@ -103,10 +103,10 @@ function SocialProofSlider() {
                 <Icon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
             </div>
 
-            <div className="relative h-12 w-full overflow-hidden text-center">
+            <div className="relative w-full overflow-hidden text-center">
                 <p
                     key={currentIndex}
-                    className="animate-in text-lg duration-500 fade-in slide-in-from-right-4"
+                    className="animate-in text-balance text-lg duration-500 fade-in slide-in-from-right-4"
                 >
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                         {currentProof.highlight}
@@ -150,8 +150,8 @@ function StatItem({
     const animatedValue = useCountUp(value, { delay });
 
     return (
-        <div className="flex flex-col items-center gap-0.5">
-            <Icon className="h-4 w-4 text-emerald-500" />
+        <div className="flex-1 flex flex-col items-center gap-0.5">
+            <Icon className="h-4 w-4 mb-1.5 text-emerald-500" />
             <span className="text-xl font-bold">{animatedValue}</span>
             <span className="text-xs text-muted-foreground">{label}</span>
         </div>
@@ -170,8 +170,8 @@ function BalanceDisplay({
     }
 
     return (
-        <div className="flex flex-col items-center gap-0.5">
-            <WalletIcon className="h-4 w-4 text-emerald-500" />
+        <div className="flex-1 flex flex-col items-center gap-0.5">
+            <WalletIcon className="h-4 w-4 mb-1.5 text-emerald-500" />
             <div className="flex flex-col items-center">
                 {entries.map(([currency, amount]) => (
                     <span key={currency} className="text-xl font-bold">
@@ -203,45 +203,36 @@ function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
 
     return (
         <Card className="animate-in duration-500 [animation-delay:200ms] fade-in">
-            <CardContent className="flex flex-col gap-6">
-                <div
-                    className={cn(
-                        'grid gap-4',
-                        statCount <= 2 && 'grid-cols-2',
-                        statCount === 3 && 'grid-cols-3',
-                        statCount >= 4 && 'grid-cols-4',
-                    )}
-                >
-                    {stats.accountsCount > 0 && (
-                        <StatItem
-                            icon={PiggyBankIcon}
-                            value={stats.accountsCount}
-                            label="Accounts"
-                            delay={100}
-                        />
-                    )}
-                    {stats.transactionsCount > 0 && (
-                        <StatItem
-                            icon={ReceiptIcon}
-                            value={stats.transactionsCount}
-                            label="Transactions"
-                            delay={200}
-                        />
-                    )}
-                    {stats.categoriesCount > 0 && (
-                        <StatItem
-                            icon={FolderIcon}
-                            value={stats.categoriesCount}
-                            label="Categories"
-                            delay={300}
-                        />
-                    )}
-                    {Object.keys(stats.balancesByCurrency).length > 0 && (
-                        <BalanceDisplay
-                            balancesByCurrency={stats.balancesByCurrency}
-                        />
-                    )}
-                </div>
+            <CardContent className="flex flex-row gap-6">
+                {stats.accountsCount > 0 && (
+                    <StatItem
+                        icon={PiggyBankIcon}
+                        value={stats.accountsCount}
+                        label="Accounts"
+                        delay={100}
+                    />
+                )}
+                {stats.transactionsCount > 0 && (
+                    <StatItem
+                        icon={ReceiptIcon}
+                        value={stats.transactionsCount}
+                        label="Transactions"
+                        delay={200}
+                    />
+                )}
+                {stats.categoriesCount > 0 && (
+                    <StatItem
+                        icon={FolderIcon}
+                        value={stats.categoriesCount}
+                        label="Categories"
+                        delay={300}
+                    />
+                )}
+                {Object.keys(stats.balancesByCurrency).length > 0 && (
+                    <BalanceDisplay
+                        balancesByCurrency={stats.balancesByCurrency}
+                    />
+                )}
             </CardContent>
         </Card>
     );
@@ -259,9 +250,9 @@ function CompactPlanCard({
     const savingsPercent =
         plan.original_price && plan.billing_period === 'year'
             ? Math.round(
-                  ((plan.original_price - plan.price) / plan.original_price) *
-                      100,
-              )
+                ((plan.original_price - plan.price) / plan.original_price) *
+                100,
+            )
             : null;
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
@@ -328,7 +319,7 @@ function PricingSection({
 
             <a href={checkout.url({ query: { plan: selectedPlan } })}>
                 <Button
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
+                    className="w-full py-6 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
                     size="lg"
                 >
                     Start My Financial Journey
@@ -336,7 +327,7 @@ function PricingSection({
             </a>
 
             {selectedPlanData && (
-                <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <ul className="px-6 grid grid-cols-2 gap-x-4 gap-y-1">
                     {selectedPlanData.features.slice(0, 4).map((feature) => (
                         <li key={feature} className="flex items-center gap-1.5">
                             <CheckIcon className="size-3 shrink-0 text-emerald-500" />
