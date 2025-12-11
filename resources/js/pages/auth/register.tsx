@@ -1,9 +1,10 @@
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 import { Form, Head, router } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import InputError from '@/components/input-error';
+import { clearAllUserData } from '@/lib/user-session-storage';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,11 @@ export default function Register({ hideAuthButtons = false }: RegisterProps) {
         }
     }, [hideAuthButtons]);
 
+    const handleBeforeSubmit = useCallback(async () => {
+        await clearAllUserData();
+        return true;
+    }, []);
+
     if (hideAuthButtons) {
         return null;
     }
@@ -36,6 +42,7 @@ export default function Register({ hideAuthButtons = false }: RegisterProps) {
                 {...store.form()}
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
+                onBefore={handleBeforeSubmit}
                 className="flex flex-col gap-6"
             >
                 {({ processing, errors }) => (
