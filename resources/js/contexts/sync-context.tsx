@@ -1,12 +1,14 @@
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { checkDatabaseVersion } from '@/lib/db-migration-helper';
 import { db, type PendingChange } from '@/lib/dexie-db';
+import { handleUserChange } from '@/lib/user-session-storage';
 import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { bankSyncService } from '@/services/bank-sync';
 import { categorySyncService } from '@/services/category-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
+import type { User } from '@/types/index.d';
 import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -66,21 +68,25 @@ const SYNC_INTERVAL = 5 * 60 * 1000;
 interface SyncProviderProps {
     children: ReactNode;
     initialIsAuthenticated: boolean;
+    initialUser: User | null;
 }
 
 export function SyncProvider({
     children,
     initialIsAuthenticated,
+    initialUser,
 }: SyncProviderProps) {
     const isOnline = useOnlineStatus();
     const [isAuthenticated, setIsAuthenticated] = useState(
         initialIsAuthenticated,
     );
+    const [currentUser, setCurrentUser] = useState<User | null>(initialUser);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [wasOffline, setWasOffline] = useState(!isOnline);
     const syncInProgressRef = useRef(false);
+    const userChangeCheckedRef = useRef(false);
 
     const pendingOperations =
         useLiveQuery(() => db.pending_changes.toArray(), []) || [];
@@ -93,10 +99,12 @@ export function SyncProvider({
     useEffect(() => {
         const unsubscribe = router.on('navigate', (event) => {
             const page = event.detail.page as Page<{
-                auth?: { user?: unknown };
+                auth?: { user?: User };
             }>;
 
-            setIsAuthenticated(Boolean(page.props?.auth?.user));
+            const user = page.props?.auth?.user ?? null;
+            setIsAuthenticated(Boolean(user));
+            setCurrentUser(user);
         });
 
         return () => {
@@ -209,11 +217,27 @@ export function SyncProvider({
     }, [isAuthenticated, isOnline, sync]);
 
     useEffect(() => {
-        if (!isAuthenticated) {
+        if (!isAuthenticated || !currentUser) {
             return;
         }
 
-        checkDatabaseVersion().then(({ needsRefresh, missingStores }) => {
+        const checkUserAndSync = async () => {
+            if (userChangeCheckedRef.current) {
+                return;
+            }
+
+            userChangeCheckedRef.current = true;
+
+            const wasCleared = await handleUserChange(currentUser.id);
+
+            if (wasCleared) {
+                window.location.reload();
+                return;
+            }
+
+            const { needsRefresh, missingStores } =
+                await checkDatabaseVersion();
+
             if (needsRefresh) {
                 console.warn(
                     'Database needs update. Missing stores:',
@@ -221,11 +245,13 @@ export function SyncProvider({
                     '\nPlease refresh the page with Ctrl+Shift+R (or Cmd+Shift+R on Mac)',
                 );
             }
-        });
 
-        sync();
+            sync();
+        };
+
+        checkUserAndSync();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticated]);
+    }, [isAuthenticated, currentUser]);
 
     return (
         <SyncContext.Provider
