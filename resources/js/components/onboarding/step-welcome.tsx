@@ -12,7 +12,7 @@ export function StepWelcome({ onContinue }: StepWelcomeProps) {
                 <Bird className="h-12 w-12 text-white" />
             </div>
 
-            <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl">
+            <h1 className="mb-4 text-3xl sm:text-4xl font-bold tracking-tight md:text-5xl">
                 Welcome to Whisper Money
             </h1>
 
@@ -21,18 +21,18 @@ export function StepWelcome({ onContinue }: StepWelcomeProps) {
                 Let's set up your account in just a few minutes.
             </p>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 w-full">
                 <Button
                     size="lg"
                     onClick={onContinue}
-                    className="group gap-2 px-8"
+                    className="group w-full sm:w-auto gap-2 px-8"
                 >
                     Let's Get Started
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
 
                 <p className="text-sm text-muted-foreground">
-                    This will take about 5 minutes
+                    This will take less than 5 minutes
                 </p>
             </div>
         </div>

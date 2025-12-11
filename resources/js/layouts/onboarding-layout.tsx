@@ -48,19 +48,17 @@ export default function OnboardingLayout({
                                 index < currentStep
                                     ? 'bg-primary'
                                     : index === currentStep
-                                      ? 'scale-125 bg-primary'
-                                      : 'bg-muted',
+                                        ? 'scale-125 bg-primary'
+                                        : 'bg-muted',
                             )}
                         />
                     ))}
                 </div>
 
-                <div className="text-sm text-muted-foreground">
-                    {currentStep + 1} / {totalSteps}
-                </div>
+                <div></div>
             </header>
 
-            <main className="flex flex-1 flex-col items-center justify-center px-4 pb-12 md:px-6">
+            <main className="flex flex-1 flex-col items-center justify-start sm:justify-center px-4 pt-12 md:px-6">
                 <div
                     key={stepKey}
                     className={cn(

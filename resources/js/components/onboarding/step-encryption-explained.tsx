@@ -19,10 +19,10 @@ export function StepEncryptionExplained({
     return (
         <div className="flex animate-in flex-col items-center text-center duration-500 fade-in slide-in-from-bottom-4">
             <div className="mb-8 flex h-24 w-24 animate-in items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg duration-500 zoom-in">
-                <Shield className="h-12 w-12 text-white" />
+                <Shield className="size-10 text-white" />
             </div>
 
-            <h1 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
+            <h1 className="mb-4 text-3xl sm:text-4xl font-bold tracking-tight md:text-5xl">
                 Your Data, Your Privacy
             </h1>
 
@@ -31,41 +31,33 @@ export function StepEncryptionExplained({
                 financial data. Here's how it works:
             </p>
 
-            <div className="mb-8 grid w-full max-w-xl gap-4 md:grid-cols-3">
-                <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                        <User className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <h3 className="font-semibold">You Create a Password</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Only you know this password. It never leaves your
-                        device.
-                    </p>
-                </div>
+            <div className="mb-5 sm:mb-4 grid w-full max-w-xl gap-4">
+                <Item
+                    title="Create a Password"
+                    description="Only you know this password. It never leaves your device."
+                    icon={
+                        <User className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    }
+                />
 
-                <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-                        <Lock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <h3 className="font-semibold">Data is Encrypted</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Your financial data is encrypted before it leaves your
-                        browser.
-                    </p>
-                </div>
+                <Item
+                    title="Data is Encrypted"
+                    description="Your data is encrypted before it leaves your browser."
+                    icon={
+                        <Lock className="size-4 text-blue-600 dark:text-blue-400" />
+                    }
+                />
 
-                <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-                        <Server className="h-6 w-6 text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <h3 className="font-semibold">We Can't Read It</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Even we can't access your data. It's truly private.
-                    </p>
-                </div>
+                <Item
+                    title="We Can't Read It"
+                    description="Even we can't access your data. It's truly private."
+                    icon={
+                        <Server className="size-4 text-violet-600 dark:text-violet-400" />
+                    }
+                />
             </div>
 
-            <div className="mb-8 flex w-full max-w-xl flex-col items-center justify-center gap-6 rounded-xl border-2 border-dashed border-muted-foreground/20 p-6">
+            <div className="mb-8 flex w-full max-w-xl flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/20 p-4">
                 <div className="flex items-center gap-2">
                     <Eye className="h-5 w-5 text-muted-foreground" />
                     <span className="text-sm font-medium">You see:</span>
@@ -85,7 +77,7 @@ export function StepEncryptionExplained({
             <Button
                 size="lg"
                 onClick={onContinue}
-                className="group gap-2 px-8"
+                className="group gap-2 !pl-8 !pr-7 w-full sm:w-auto"
                 data-testid="encryption-continue-button"
             >
                 I Understand, Continue
@@ -93,4 +85,18 @@ export function StepEncryptionExplained({
             </Button>
         </div>
     );
+}
+
+function Item({ title, description, icon }: { title: string, description: string, icon: React.ReactNode }) {
+    return (
+        <div className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3 sm:p-5 w-full">
+            <div className='flex flex-row items-center gap-2'>
+                {icon}
+                <h3 className="font-semibold">{title}</h3>
+            </div>
+            <div className="text-left sm:text-center">
+                <p className="text-sm text-pretty text-muted-foreground">{description}</p>
+            </div>
+        </div>
+    )
 }
