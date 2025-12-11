@@ -1,4 +1,3 @@
-import AppLogoIcon from '@/components/app-logo-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -16,8 +15,11 @@ import { Head, usePage } from '@inertiajs/react';
 import {
     CheckIcon,
     FolderIcon,
+    LockIcon,
     PiggyBankIcon,
     ReceiptIcon,
+    TrendingUpIcon,
+    UsersIcon,
     WalletIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -58,18 +60,22 @@ function getEquivalentBillingLabel(billingPeriod: string | null): string {
 
 const socialProofs = [
     {
+        icon: TrendingUpIcon,
         highlight: '15% more savings',
         text: 'after 3 months with Whisper Money',
     },
     {
+        icon: PiggyBankIcon,
         highlight: '23% better',
         text: 'spending awareness reported',
     },
     {
+        icon: LockIcon,
         highlight: '100% private',
         text: '- we never sell your data',
     },
     {
+        icon: UsersIcon,
         highlight: '1,200+ users',
         text: 'taking control of their finances',
     },
@@ -86,9 +92,17 @@ function SocialProofSlider() {
     }, []);
 
     const currentProof = socialProofs[currentIndex];
+    const Icon = currentProof.icon;
 
     return (
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-4">
+            <div
+                key={`icon-${currentIndex}`}
+                className="flex h-16 w-16 animate-in items-center justify-center rounded-full bg-emerald-100 duration-500 zoom-in-95 fade-in dark:bg-emerald-900/30"
+            >
+                <Icon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+            </div>
+
             <div className="relative h-12 w-full overflow-hidden text-center">
                 <p
                     key={currentIndex}
@@ -102,6 +116,7 @@ function SocialProofSlider() {
                     </span>
                 </p>
             </div>
+
             <div className="flex gap-1.5">
                 {socialProofs.map((_, index) => (
                     <button
@@ -376,13 +391,7 @@ export default function Paywall() {
 
             <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
                 <div className="flex w-full max-w-md flex-col gap-6">
-                    <div className="flex flex-col items-center gap-4 text-center">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                            <AppLogoIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-
-                        <SocialProofSlider />
-                    </div>
+                    <SocialProofSlider />
 
                     <FinancialSnapshot stats={stats} />
 
