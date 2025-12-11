@@ -37,6 +37,14 @@ export function ImportStepAccount({
         loadAccounts();
     }, []);
 
+    // If there is only one account, auto-select it, and proceed to next step
+    useEffect(() => {
+        if (!loading && accounts.length === 1) {
+            onAccountSelect(accounts[0].id);
+            onNext();
+        }
+    }, [loading, accounts, onAccountSelect, onNext]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-8">
