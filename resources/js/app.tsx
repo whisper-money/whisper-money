@@ -31,13 +31,15 @@ createInertiaApp({
         const initialPageProps = props.initialPage?.props as
             | Partial<SharedData>
             | undefined;
-        const initialIsAuthenticated = Boolean(initialPageProps?.auth?.user);
+        const initialUser = initialPageProps?.auth?.user ?? null;
+        const initialIsAuthenticated = Boolean(initialUser);
 
         root.render(
             <StrictMode>
                 <EncryptionKeyProvider>
                     <SyncProvider
                         initialIsAuthenticated={initialIsAuthenticated}
+                        initialUser={initialUser}
                     >
                         <App {...props} />
                         <div className="[&_[data-sonner-toaster]]:!top-4 [&_[data-sonner-toaster]]:!left-1/2 [&_[data-sonner-toaster]]:!-translate-x-1/2 [&_[data-sonner-toaster]]:md:!top-auto [&_[data-sonner-toaster]]:md:!right-4 [&_[data-sonner-toaster]]:md:!bottom-4 [&_[data-sonner-toaster]]:md:!left-auto [&_[data-sonner-toaster]]:md:!translate-x-0">
