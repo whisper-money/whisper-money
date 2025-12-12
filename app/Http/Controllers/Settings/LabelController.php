@@ -7,7 +7,6 @@ use App\Http\Requests\Settings\StoreLabelRequest;
 use App\Http\Requests\Settings\UpdateLabelRequest;
 use App\Models\Label;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -34,13 +33,11 @@ class LabelController extends Controller
     /**
      * Store a newly created label.
      */
-    public function store(StoreLabelRequest $request): JsonResponse
+    public function store(StoreLabelRequest $request): RedirectResponse
     {
-        $label = auth()->user()->labels()->create($request->validated());
+        auth()->user()->labels()->create($request->validated());
 
-        return response()->json([
-            'data' => $label,
-        ], 201);
+        return to_route('labels.index');
     }
 
     /**

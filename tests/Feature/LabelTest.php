@@ -11,17 +11,9 @@ test('authenticated users can create a label', function () {
         'color' => 'blue',
     ];
 
-    $response = $this->actingAs($user)->postJson(route('labels.store'), $labelData);
+    $response = $this->actingAs($user)->post(route('labels.store'), $labelData);
 
-    $response->assertCreated();
-    $response->assertJsonStructure([
-        'data' => [
-            'id',
-            'name',
-            'color',
-            'user_id',
-        ],
-    ]);
+    $response->assertRedirect(route('labels.index'));
 
     $this->assertDatabaseHas('labels', [
         'user_id' => $user->id,
@@ -90,12 +82,18 @@ test('different users can have labels with the same name', function () {
         'name' => 'Important',
     ]);
 
-    $response = $this->actingAs($user2)->postJson(route('labels.store'), [
+    $response = $this->actingAs($user2)->post(route('labels.store'), [
         'name' => 'Important',
         'color' => 'blue',
     ]);
 
-    $response->assertCreated();
+    $response->assertRedirect(route('labels.index'));
+
+    $this->assertDatabaseHas('labels', [
+        'user_id' => $user2->id,
+        'name' => 'Important',
+        'color' => 'blue',
+    ]);
 });
 
 test('authenticated users can update their own label', function () {
