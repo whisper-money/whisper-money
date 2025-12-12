@@ -375,10 +375,12 @@ export function EditTransactionDialog({
                     notes_iv: string | null;
                     description?: string;
                     description_iv?: string;
+                    label_ids?: string[];
                 } = {
                     category_id: selectedCategoryId,
                     notes: encryptedNotes,
                     notes_iv: notesIv,
+                    label_ids: selectedLabelIds,
                 };
 
                 let finalDecryptedDescription =
@@ -408,6 +410,10 @@ export function EditTransactionDialog({
                       ) || null
                     : null;
 
+                const selectedLabels = labels.filter((label) =>
+                    selectedLabelIds.includes(label.id),
+                );
+
                 const updatedTransaction: DecryptedTransaction = {
                     ...transaction,
                     category_id: selectedCategoryId,
@@ -420,6 +426,7 @@ export function EditTransactionDialog({
                     decryptedNotes: trimmedNotes || null,
                     notes: encryptedNotes,
                     notes_iv: notesIv,
+                    labels: selectedLabels,
                     updated_at:
                         updatedRecord?.updated_at ?? transaction.updated_at,
                 };

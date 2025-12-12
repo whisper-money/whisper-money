@@ -109,17 +109,66 @@ class TransactionSyncService {
         }
     }
 
-    async update(id: string, data: Partial<Transaction>): Promise<void> {
+    async update(
+        id: string,
+        data: TransactionUpdateData,
+    ): Promise<Transaction | void> {
         const existing = await this.getById(id);
 
         if (!existing) {
             throw new Error('Transaction not found');
         }
 
+        const { label_ids, ...transactionData } = data;
         const timestamp = new Date().toISOString();
+
+        // If label_ids are provided, we need to sync with the server immediately
+        if (label_ids !== undefined) {
+            const csrfToken = decodeURIComponent(
+                document.cookie
+                    .split('; ')
+                    .find((row) => row.startsWith('XSRF-TOKEN='))
+                    ?.split('=')[1] || '',
+            );
+
+            const response = await fetch(`/api/sync/transactions/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    ...existing,
+                    ...transactionData,
+                    label_ids,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update transaction');
+            }
+
+            const result = await response.json();
+            const updatedFromServer = result.data as Transaction;
+
+            // Update local storage with server response (includes labels)
+            await db.transactions.put({
+                ...updatedFromServer,
+                transaction_date: String(
+                    updatedFromServer.transaction_date,
+                ).slice(0, 10),
+            });
+
+            return updatedFromServer;
+        }
+
+        // No label_ids, use the normal offline-first approach
         const updated = {
             ...existing,
-            ...data,
+            ...transactionData,
             updated_at: timestamp,
         };
 
