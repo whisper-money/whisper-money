@@ -17,7 +17,7 @@ export interface Transaction {
     currency_code: string;
     notes: string | null;
     notes_iv: string | null;
-    labels?: { id: UUID; name: string; color: string }[];
+    label_ids?: UUID[];
     created_at: string;
     updated_at: string;
 }
@@ -33,10 +33,20 @@ class TransactionSyncService {
         this.syncManager = new SyncManager({
             storeName: 'transactions',
             endpoint: '/api/sync/transactions',
-            transformFromServer: (data) => ({
-                ...data,
-                transaction_date: String(data.transaction_date).slice(0, 10),
-            }),
+            transformFromServer: (data) => {
+                // Extract label_ids from labels array if present
+                const label_ids = data.labels?.map((l: { id: string }) => l.id);
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { labels, ...rest } = data;
+                return {
+                    ...rest,
+                    transaction_date: String(data.transaction_date).slice(
+                        0,
+                        10,
+                    ),
+                    label_ids: label_ids || [],
+                };
+            },
         });
     }
 
@@ -152,17 +162,28 @@ class TransactionSyncService {
             }
 
             const result = await response.json();
-            const updatedFromServer = result.data as Transaction;
+            const serverData = result.data;
 
-            // Update local storage with server response (includes labels)
-            await db.transactions.put({
-                ...updatedFromServer,
-                transaction_date: String(
-                    updatedFromServer.transaction_date,
-                ).slice(0, 10),
-            });
+            // Extract label_ids from labels array
+            const serverLabelIds = serverData.labels?.map(
+                (l: { id: string }) => l.id,
+            );
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { labels: _labels, ...restServerData } = serverData;
 
-            return updatedFromServer;
+            const updatedTransaction: Transaction = {
+                ...restServerData,
+                transaction_date: String(serverData.transaction_date).slice(
+                    0,
+                    10,
+                ),
+                label_ids: serverLabelIds || [],
+            };
+
+            // Update local storage with transformed data (label_ids instead of labels)
+            await db.transactions.put(updatedTransaction);
+
+            return updatedTransaction;
         }
 
         // No label_ids, use the normal offline-first approach

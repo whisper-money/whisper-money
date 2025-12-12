@@ -86,7 +86,11 @@ export function EditTransactionDialog({
             setAmount(transaction.amount);
             setAccountId(transaction.account_id);
             setCategoryId(transaction.category_id || 'null');
-            setSelectedLabelIds(transaction.labels?.map((l) => l.id) || []);
+            setSelectedLabelIds(
+                transaction.label_ids ||
+                    transaction.labels?.map((l) => l.id) ||
+                    [],
+            );
             setNotes(transaction.decryptedNotes || '');
         } else if (mode === 'create' && open) {
             const today = new Date().toISOString().split('T')[0];
@@ -424,6 +428,7 @@ export function EditTransactionDialog({
                     decryptedNotes: trimmedNotes || null,
                     notes: encryptedNotes,
                     notes_iv: notesIv,
+                    label_ids: selectedLabelIds,
                     labels: selectedLabels,
                     updated_at:
                         updatedRecord?.updated_at ?? transaction.updated_at,

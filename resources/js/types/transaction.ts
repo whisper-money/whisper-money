@@ -18,7 +18,7 @@ export interface Transaction {
     notes: string | null;
     notes_iv: string | null;
     source: TransactionSource;
-    labels?: Label[];
+    label_ids?: UUID[];
     created_at: string;
     updated_at: string;
 }
