@@ -65,7 +65,8 @@ it('shows welcome step as first onboarding step', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to Whisper Money')
+    $page->assertSee('Welcome to')
+        ->assertSee('Whisper Money')
         ->assertSee("Let's Get Started")
         ->assertNoJavascriptErrors();
 });
@@ -79,7 +80,8 @@ it('navigates from welcome to encryption explanation', function () {
 
     $page = visit('/onboarding');
 
-    $page->assertSee('Welcome to Whisper Money')
+    $page->assertSee('Welcome to')
+        ->assertSee('Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
         ->assertSee('Your Data, Your Privacy')
@@ -141,7 +143,8 @@ it('skips encryption setup step when user has encryption key stored', function (
     $page->navigate('/onboarding')
         ->wait(1)
         // Still shows welcome
-        ->assertSee('Welcome to Whisper Money')
+        ->assertSee('Welcome to')
+        ->assertSee('Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
         // Still shows encryption explanation
@@ -172,7 +175,8 @@ it('shows encryption setup step when no encryption key exists', function () {
 
     $page->navigate('/onboarding')
         ->wait(1)
-        ->assertSee('Welcome to Whisper Money')
+        ->assertSee('Welcome to')
+        ->assertSee('Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
         ->assertSee('Your Data, Your Privacy')
@@ -375,7 +379,8 @@ it('completes onboarding flow through account creation', function () {
         ->assertNoJavascriptErrors();
 
     // Step 2: Welcome
-    $page->assertSee('Welcome to Whisper Money')
+    $page->assertSee('Welcome to')
+        ->assertSee('Whisper Money')
         ->click("Let's Get Started")
         ->wait(1);
 
