@@ -1249,7 +1249,6 @@ export default function Transactions({
                 accounts={accounts}
                 banks={banks}
                 labels={labels}
-                onLabelsChange={setLabels}
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
@@ -1262,7 +1261,6 @@ export default function Transactions({
                 accounts={accounts}
                 banks={banks}
                 labels={labels}
-                onLabelsChange={setLabels}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={() => {}}
@@ -1319,7 +1317,6 @@ export default function Transactions({
                 labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
                 onLabelsChange={handleBulkLabelsChange}
-                onLabelsUpdate={setLabels}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
                 onClear={handleClearSelection}
