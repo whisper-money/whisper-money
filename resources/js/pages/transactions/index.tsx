@@ -182,6 +182,7 @@ export default function Transactions({
     categories,
     accounts,
     banks,
+    labels,
     labels: initialLabels,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
@@ -628,6 +629,7 @@ export default function Transactions({
                     categories,
                     accounts,
                     banks,
+                    labels,
                     key,
                 );
 
@@ -714,7 +716,7 @@ export default function Transactions({
                 consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [isKeySet, categories, accounts, banks, updateTransaction],
+        [isKeySet, categories, accounts, banks, labels, updateTransaction],
     );
 
     async function handleBulkReEvaluateRules() {
@@ -778,6 +780,7 @@ export default function Transactions({
                     categories,
                     accounts,
                     banks,
+                    labels,
                     key,
                 );
 
@@ -905,12 +908,20 @@ export default function Transactions({
                 categories,
                 accounts,
                 banks,
+                labels,
                 onEdit: setEditTransaction,
                 onDelete: setDeleteTransaction,
                 onUpdate: updateTransaction,
                 onReEvaluateRules: handleReEvaluateRules,
             }),
-        [accounts, banks, categories, updateTransaction, handleReEvaluateRules],
+        [
+            accounts,
+            banks,
+            categories,
+            labels,
+            updateTransaction,
+            handleReEvaluateRules,
+        ],
     );
 
     const table = useReactTable({

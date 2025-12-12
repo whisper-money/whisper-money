@@ -16,12 +16,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 
 interface CreateColumnsOptions {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    labels: Label[];
     onEdit: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
     onUpdate: (transaction: DecryptedTransaction) => void;
@@ -32,6 +34,7 @@ export function createTransactionColumns({
     categories,
     accounts,
     banks,
+    labels,
     onEdit,
     onDelete,
     onUpdate,
@@ -131,15 +134,19 @@ export function createTransactionColumns({
         },
         {
             id: 'labels',
-            accessorKey: 'labels',
+            accessorKey: 'label_ids',
             meta: { label: 'Labels' },
             header: 'Labels',
             cell: ({ row }) => {
                 const transaction = row.original;
-                if (!transaction.labels || transaction.labels.length === 0) {
+                // Resolve labels from label_ids using the labels map
+                const transactionLabels = (transaction.label_ids || [])
+                    .map((id) => labels.find((l) => l.id === id))
+                    .filter(Boolean) as Label[];
+                if (transactionLabels.length === 0) {
                     return null;
                 }
-                return <LabelBadges labels={transaction.labels} max={2} />;
+                return <LabelBadges labels={transactionLabels} max={2} />;
             },
             enableHiding: true,
         },
