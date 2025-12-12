@@ -172,8 +172,8 @@ export function StepCreateAccount({
                 const errorData = await response.json();
                 throw new Error(
                     errorData.message ||
-                        Object.values(errorData.errors || {})[0] ||
-                        'Failed to create account',
+                    Object.values(errorData.errors || {})[0] ||
+                    'Failed to create account',
                 );
             }
 
@@ -300,6 +300,7 @@ export function StepCreateAccount({
 
                     <StepButton
                         type="submit"
+                        className="w-full sm:w-full"
                         disabled={isSubmitting}
                         loading={isSubmitting}
                         loadingText="Creating..."

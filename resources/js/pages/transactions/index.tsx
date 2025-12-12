@@ -117,7 +117,7 @@ function TransactionRowComponent({
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
             <ContextMenuTrigger asChild>
-                {}
+                { }
                 <TableRow
                     ref={rowVirtualizer.measureElement}
                     data-state={
@@ -159,8 +159,9 @@ function TransactionRowComponent({
 }
 
 function getInitialColumnVisibility(): VisibilityState {
+    const defaultVisibility = { bank: false }
     if (typeof window === 'undefined') {
-        return { account: false };
+        return defaultVisibility;
     }
 
     try {
@@ -174,7 +175,7 @@ function getInitialColumnVisibility(): VisibilityState {
             error,
         );
     }
-    return { account: false };
+    return defaultVisibility;
 }
 
 export default function Transactions({
@@ -674,7 +675,7 @@ export default function Transactions({
 
                     const selectedCategory = result.categoryId
                         ? categories.find((c) => c.id === result.categoryId) ||
-                          null
+                        null
                         : null;
 
                     let decryptedNotes = transaction.decryptedNotes;
@@ -824,7 +825,7 @@ export default function Transactions({
 
                     const selectedCategory = result.categoryId
                         ? categories.find((c) => c.id === result.categoryId) ||
-                          null
+                        null
                         : null;
 
                     let decryptedNotes = transaction.decryptedNotes;
@@ -1264,7 +1265,7 @@ export default function Transactions({
                 onLabelsChange={setLabels}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
-                onSuccess={() => {}}
+                onSuccess={() => { }}
                 mode="create"
             />
 
