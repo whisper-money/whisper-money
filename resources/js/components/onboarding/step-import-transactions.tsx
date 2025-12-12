@@ -87,11 +87,11 @@ export function StepImportTransactions({
                 </div>
             </div>
 
-            <div className="flex flex-col gap-3 w-full sm:w-auto">
+            <div className="flex w-full flex-col gap-3 sm:w-auto">
                 <Button
                     size="lg"
                     onClick={() => setIsDrawerOpen(true)}
-                    className="group w-full sm:w-auto py-6 gap-2 px-8"
+                    className="group w-full gap-2 px-8 py-6 sm:w-auto"
                 >
                     <Upload className="h-4 w-4" />
                     Import Transactions

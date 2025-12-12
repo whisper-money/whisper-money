@@ -17,9 +17,12 @@ import {
     useOnboardingState,
 } from '@/hooks/use-onboarding-state';
 import OnboardingLayout from '@/layouts/onboarding-layout';
+import { useTrackEvent } from '@/lib/track-event';
 import { type Bank } from '@/types/account';
 import { Head } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
+
+const ONBOARDING_FUNNEL_EVENT_UUID = '1478ba44-c5c4-4398-83a1-814b21cd7e34';
 
 interface ExistingAccount {
     id: string;
@@ -47,7 +50,9 @@ export default function Onboarding({
     hasEncryptionSetup,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
+    const trackEvent = useTrackEvent();
     const hasSyncedRef = useRef(false);
+    const trackedStepsRef = useRef<Set<OnboardingStep>>(new Set());
 
     // Sync banks on mount to ensure IndexedDB has the latest data
     useEffect(() => {
@@ -70,6 +75,13 @@ export default function Onboarding({
         existingAccountsCount: accounts.length,
         hasEncryptionSetup,
     });
+
+    useEffect(() => {
+        if (!trackedStepsRef.current.has(currentStep)) {
+            trackedStepsRef.current.add(currentStep);
+            trackEvent(ONBOARDING_FUNNEL_EVENT_UUID, { step: currentStep });
+        }
+    }, [currentStep, trackEvent]);
 
     const handleAccountCreated = async (account: CreatedAccount) => {
         addCreatedAccount(account);

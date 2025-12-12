@@ -1,5 +1,4 @@
 import { StepHeader } from '@/components/onboarding/step-header';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -9,7 +8,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Spinner } from '@/components/ui/spinner';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
     bufferToBase64,
@@ -107,10 +105,11 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                             {[1, 2, 3, 4].map((level) => (
                                 <div
                                     key={level}
-                                    className={`h-1.5 flex-1 rounded-full transition-colors ${level <= passwordStrength.level
-                                        ? passwordStrength.color
-                                        : 'bg-muted'
-                                        }`}
+                                    className={`h-1.5 flex-1 rounded-full transition-colors ${
+                                        level <= passwordStrength.level
+                                            ? passwordStrength.color
+                                            : 'bg-muted'
+                                    }`}
                                 />
                             ))}
                         </div>
@@ -182,9 +181,7 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                     disabled={processing || password.length < 12}
                     loading={processing}
                     loadingText="Setting up encryption..."
-                    text={
-                        'Setup Encryption'
-                    }
+                    text={'Setup Encryption'}
                 />
             </form>
         </div>

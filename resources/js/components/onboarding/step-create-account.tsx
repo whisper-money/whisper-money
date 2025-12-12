@@ -6,7 +6,6 @@ import {
 } from '@/components/accounts/account-form';
 import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
@@ -173,8 +172,8 @@ export function StepCreateAccount({
                 const errorData = await response.json();
                 throw new Error(
                     errorData.message ||
-                    Object.values(errorData.errors || {})[0] ||
-                    'Failed to create account',
+                        Object.values(errorData.errors || {})[0] ||
+                        'Failed to create account',
                 );
             }
 
@@ -257,7 +256,7 @@ export function StepCreateAccount({
                     </div>
 
                     <StepButton
-                        text='Continue'
+                        text="Continue"
                         onClick={() =>
                             onAccountCreated({
                                 id: existingAccounts[0].id,
@@ -302,8 +301,8 @@ export function StepCreateAccount({
                         type="submit"
                         disabled={isSubmitting}
                         loading={isSubmitting}
-                        loadingText='Creating...'
-                        text='Create Account'
+                        loadingText="Creating..."
+                        text="Create Account"
                     />
 
                     {!isFirstAccount && onSkip && (

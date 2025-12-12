@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { ArrowRight } from 'lucide-react';
 
 interface StepButtonProps {
     text: string;
@@ -27,7 +26,7 @@ export function StepButton({
             size="lg"
             onClick={onClick}
             disabled={disabled || loading}
-            className="group w-full gap-2 py-6 sm:py-4 sm:w-auto"
+            className="group w-full gap-2 py-6 sm:w-auto sm:py-4"
             data-testid={testId}
         >
             {loading ? (
@@ -36,9 +35,7 @@ export function StepButton({
                     {loadingText || text}
                 </>
             ) : (
-                <>
-                    {text}
-                </>
+                <>{text}</>
             )}
         </Button>
     );

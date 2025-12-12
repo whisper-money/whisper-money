@@ -104,7 +104,7 @@ export function StepMoreAccounts({
                     <Button
                         variant="outline"
                         onClick={onAddMore}
-                        className="gap-2 w-full !py-6"
+                        className="w-full gap-2 !py-6"
                     >
                         <Plus className="h-4 w-4" />
                         Add Another Account

@@ -21,8 +21,8 @@ export function StepHeader({
         <>
             <div
                 className={cn(
-                    ' flex animate-in items-center justify-center rounded-full shadow-lg duration-500 zoom-in',
-                    large ? 'size-24 mb-8' : 'size-16 mb-6',
+                    'flex animate-in items-center justify-center rounded-full shadow-lg duration-500 zoom-in',
+                    large ? 'mb-8 size-24' : 'mb-6 size-16',
                     iconContainerClassName,
                 )}
             >
@@ -36,15 +36,17 @@ export function StepHeader({
 
             <h1
                 className={cn(
-                    'text-center text-balance font-bold tracking-tight',
-                    large ? 'text-4xl sm:text-4xl md:text-5xl mb-4' : 'text-3xl mb-2',
+                    'text-center font-bold tracking-tight text-balance',
+                    large
+                        ? 'mb-4 text-4xl sm:text-4xl md:text-5xl'
+                        : 'mb-2 text-3xl',
                 )}
                 dangerouslySetInnerHTML={{ __html: title }}
             />
 
             <p
                 className={cn(
-                    'mb-8 max-w-lg text-balance text-center text-muted-foreground',
+                    'mb-8 max-w-lg text-center text-balance text-muted-foreground',
                     large && 'text-lg',
                 )}
             >

@@ -1,21 +1,12 @@
 import { complete } from '@/actions/App/Http/Controllers/OnboardingController';
 import { StepButton } from '@/components/onboarding/step-button';
-import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { router } from '@inertiajs/react';
-import { PartyPopper, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { PartyPopper } from 'lucide-react';
+import { useState } from 'react';
 
 export function StepComplete() {
     const [isRedirecting, setIsRedirecting] = useState(false);
-    const [showConfetti, setShowConfetti] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setShowConfetti(true);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, []);
 
     const handleComplete = () => {
         setIsRedirecting(true);
@@ -46,7 +37,7 @@ export function StepComplete() {
                 You're All Set!
             </h1>
 
-            <p className="mb-8 text-balance max-w-lg text-lg text-muted-foreground">
+            <p className="mb-8 max-w-lg text-lg text-balance text-muted-foreground">
                 Your accounts are ready and your data is securely encrypted.
                 Welcome to Whisper Money!
             </p>
