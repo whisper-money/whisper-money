@@ -38,7 +38,7 @@ export function StepHeader({
                 className={cn(
                     'text-center font-bold tracking-tight text-balance',
                     large
-                        ? 'mb-4 text-4xl sm:text-4xl md:text-5xl leading-tight'
+                        ? 'mb-4 text-4xl leading-tight sm:text-4xl md:text-5xl'
                         : 'mb-2 text-3xl',
                 )}
                 dangerouslySetInnerHTML={{ __html: title }}

@@ -99,22 +99,29 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                         disabled={processing}
                         autoComplete="new-password"
                         required
+                        minLength={12}
                     />
-                    <div className="flex items-center gap-2">
-                        <div className="flex flex-1 gap-1">
-                            {[1, 2, 3, 4].map((level) => (
-                                <div
-                                    key={level}
-                                    className={`h-1.5 flex-1 rounded-full transition-colors ${
-                                        level <= passwordStrength.level
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-1 items-center gap-2">
+                            <div className="flex flex-1 gap-1">
+                                {[1, 2, 3, 4].map((level) => (
+                                    <div
+                                        key={level}
+                                        className={`h-1.5 flex-1 rounded-full transition-colors ${level <= passwordStrength.level
                                             ? passwordStrength.color
                                             : 'bg-muted'
-                                    }`}
-                                />
-                            ))}
+                                            }`}
+                                    />
+                                ))}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                                {passwordStrength.label}
+                            </span>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                            {passwordStrength.label}
+                        <span
+                            className={`text-xs ${password.length >= 12 ? 'text-emerald-600' : 'text-muted-foreground'}`}
+                        >
+                            {password.length}/12 min
                         </span>
                     </div>
                 </div>
@@ -182,6 +189,7 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                     loading={processing}
                     loadingText="Setting up encryption..."
                     text={'Setup Encryption'}
+                    className='w-full sm:w-full'
                 />
             </form>
         </div>
@@ -199,11 +207,11 @@ function getPasswordStrength(password: string): {
 
     let score = 0;
 
+    if (password.length >= 6) score++;
     if (password.length >= 12) score++;
-    if (password.length >= 16) score++;
-    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/[A-Z]/.test(password) || /[a-z]/.test(password)) score++;
     if (/\d/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
 
     if (score <= 1) {
         return { level: 1, label: 'Weak', color: 'bg-red-500' };

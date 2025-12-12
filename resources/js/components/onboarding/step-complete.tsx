@@ -42,7 +42,7 @@ export function StepComplete() {
                 Welcome to Whisper Money!
             </p>
 
-            <div className="mb-12 justify-center flex w-full max-w-md flex-col gap-4">
+            <div className="mb-12 flex w-full max-w-md flex-col justify-center gap-4">
                 <div className="flex items-center justify-center gap-2 rounded-xl border bg-card p-2">
                     <div className="ml-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                         ✓

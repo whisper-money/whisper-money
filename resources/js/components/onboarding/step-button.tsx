@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 
 interface StepButtonProps {
     text: string;
@@ -9,6 +10,7 @@ interface StepButtonProps {
     loadingText?: string;
     type?: 'button' | 'submit';
     'data-testid'?: string;
+    className?: string;
 }
 
 export function StepButton({
@@ -19,6 +21,7 @@ export function StepButton({
     loadingText,
     type = 'button',
     'data-testid': testId,
+    className = '',
 }: StepButtonProps) {
     return (
         <Button
@@ -26,7 +29,10 @@ export function StepButton({
             size="lg"
             onClick={onClick}
             disabled={disabled || loading}
-            className="group w-full gap-2 py-6 sm:w-auto sm:py-4"
+            className={cn(
+                "group w-full gap-2 py-6 sm:w-auto sm:py-4",
+                className,
+            )}
             data-testid={testId}
         >
             {loading ? (
