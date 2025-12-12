@@ -257,6 +257,7 @@ export function StepCreateAccount({
 
                     <StepButton
                         text="Continue"
+                        className="w-full sm:w-full"
                         onClick={() =>
                             onAccountCreated({
                                 id: existingAccounts[0].id,

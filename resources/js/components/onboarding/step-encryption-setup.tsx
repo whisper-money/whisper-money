@@ -107,10 +107,11 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                                 {[1, 2, 3, 4].map((level) => (
                                     <div
                                         key={level}
-                                        className={`h-1.5 flex-1 rounded-full transition-colors ${level <= passwordStrength.level
-                                            ? passwordStrength.color
-                                            : 'bg-muted'
-                                            }`}
+                                        className={`h-1.5 flex-1 rounded-full transition-colors ${
+                                            level <= passwordStrength.level
+                                                ? passwordStrength.color
+                                                : 'bg-muted'
+                                        }`}
                                     />
                                 ))}
                             </div>
@@ -189,7 +190,7 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                     loading={processing}
                     loadingText="Setting up encryption..."
                     text={'Setup Encryption'}
-                    className='w-full sm:w-full'
+                    className="w-full sm:w-full"
                 />
             </form>
         </div>

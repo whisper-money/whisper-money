@@ -107,6 +107,7 @@ export function StepImportBalances({
 
                 <StepButton
                     type="submit"
+                    className="w-full sm:w-full"
                     text="Save Balance"
                     loading={isSubmitting}
                     loadingText="Saving..."

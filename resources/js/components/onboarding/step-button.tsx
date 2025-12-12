@@ -30,7 +30,7 @@ export function StepButton({
             onClick={onClick}
             disabled={disabled || loading}
             className={cn(
-                "group w-full gap-2 py-6 sm:w-auto sm:py-4",
+                'group w-full gap-2 py-6 sm:w-auto sm:py-4',
                 className,
             )}
             data-testid={testId}
