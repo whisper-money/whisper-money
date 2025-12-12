@@ -405,7 +405,7 @@ it('completes onboarding flow through account creation', function () {
         ->wait(1);
 
     // Step 6: Create Account
-    $page->assertSee('Create Your First Account')
+    $page->assertSee('Create an Account')
         ->assertSee('Your first account must be a')
         ->fill('#display_name', 'My Checking Account')
         // Select bank from combobox - need to search first
