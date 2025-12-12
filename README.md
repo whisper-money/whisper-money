@@ -9,11 +9,9 @@
 
 **The most secure way to understand your finances.**
 
-## 💬 Join our Community
-
-Whether you're a user looking for help or a developer wanting to contribute, we'd love to have you in our [Discord server](https://discord.gg/Zj4TWMX55y)! Share feedback, ask questions, discuss new features, or just hang out with fellow privacy enthusiasts.
-
 Whisper Money is a privacy-first personal finance application that helps you track, categorize, and understand your spending—all while keeping your financial data encrypted and secure.
+
+> 💬 **Join our Community:** Whether you're a user looking for help or a developer wanting to contribute, we'd love to have you in our [Discord server](https://discord.gg/Zj4TWMX55y)! Share feedback, ask questions, discuss new features, or just hang out with fellow privacy enthusiasts.
 
 ## Features
 
@@ -45,7 +43,7 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/your-username/whisper_money.git
+git clone https://github.com/whisper-money/whisper-money.git
 cd whisper_money
 ```
 
