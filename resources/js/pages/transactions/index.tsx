@@ -220,7 +220,7 @@ export default function Transactions({
         labelIds: [],
         searchText: '',
     });
-    const [labels, setLabels] = useState<Label[]>(initialLabels);
+    const labels = useLiveQuery(() => db.labels.toArray(), [], initialLabels);
     const [editTransaction, setEditTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);

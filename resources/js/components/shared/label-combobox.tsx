@@ -22,7 +22,6 @@ interface LabelComboboxProps {
     value: string[];
     onValueChange: (value: string[]) => void;
     labels: Label[];
-    onLabelsChange?: (labels: Label[]) => void;
     disabled?: boolean;
     placeholder?: string;
     triggerClassName?: string;
@@ -33,7 +32,6 @@ export function LabelCombobox({
     value,
     onValueChange,
     labels,
-    onLabelsChange,
     disabled = false,
     placeholder = 'Add labels...',
     triggerClassName,
@@ -84,7 +82,6 @@ export function LabelCombobox({
             );
 
             if (newLabel) {
-                onLabelsChange?.([...labels, newLabel]);
                 onValueChange([...value, newLabel.id]);
                 setInputValue('');
             }

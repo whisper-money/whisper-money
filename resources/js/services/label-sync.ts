@@ -46,13 +46,17 @@ class LabelSyncService {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to create label');
+            const errorData = await response.json().catch(() => null);
+            console.error('Failed to create label:', errorData);
+            throw new Error(errorData?.message || 'Failed to create label');
         }
 
         const result = await response.json();
         const label = result.data as Label;
 
-        await this.syncManager.createLocal<Label>(label as Omit<Label, 'id'>);
+        // Store the label in IndexedDB
+        const { db } = await import('@/lib/dexie-db');
+        await db.labels.put(label);
 
         return label;
     }

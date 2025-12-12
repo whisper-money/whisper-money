@@ -46,7 +46,6 @@ interface EditTransactionDialogProps {
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
-    onLabelsChange?: (labels: Label[]) => void;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
@@ -59,7 +58,6 @@ export function EditTransactionDialog({
     accounts,
     banks,
     labels,
-    onLabelsChange,
     open,
     onOpenChange,
     onSuccess,
@@ -638,7 +636,6 @@ export function EditTransactionDialog({
                                 value={selectedLabelIds}
                                 onValueChange={setSelectedLabelIds}
                                 labels={labels}
-                                onLabelsChange={onLabelsChange}
                                 disabled={isSubmitting}
                                 placeholder="Add labels..."
                                 allowCreate={true}
