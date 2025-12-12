@@ -11,6 +11,7 @@ export default function AppLogo({ mobile }: { mobile?: boolean }) {
                 ])}
             >
                 <AppLogoIcon
+                    animated
                     className={cn([
                         'size-5 fill-current text-white dark:text-black',
                         { 'size-5': mobile },
