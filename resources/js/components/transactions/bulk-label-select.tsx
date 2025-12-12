@@ -27,7 +27,7 @@ export function BulkLabelSelect({
             labels={labels}
             disabled={disabled}
             placeholder="Add labels"
-            triggerClassName="h-9 w-[180px]"
+            triggerClassName="h-9 w-[180px] min-h-9"
             allowCreate={true}
         />
     );

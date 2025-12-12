@@ -167,3 +167,35 @@ test('guests cannot access label management', function () {
     $response = $this->postJson(route('labels.store'), []);
     $response->assertUnauthorized();
 });
+
+test('creating a label with the same name as a deleted label creates a new one', function () {
+    $user = User::factory()->create();
+    $label = Label::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Wedding',
+        'color' => 'blue',
+    ]);
+    $originalId = $label->id;
+
+    $this->actingAs($user)->delete(route('labels.destroy', $label));
+
+    $this->assertSoftDeleted('labels', ['id' => $originalId]);
+
+    $response = $this->actingAs($user)->postJson(route('labels.store'), [
+        'name' => 'Wedding',
+        'color' => 'teal',
+    ]);
+
+    $response->assertCreated();
+
+    $newLabel = Label::where('user_id', $user->id)
+        ->where('name', 'Wedding')
+        ->whereNull('deleted_at')
+        ->first();
+
+    expect($newLabel)->not->toBeNull();
+    expect($newLabel->id)->not->toBe($originalId);
+    expect($newLabel->color)->toBe('teal');
+
+    $this->assertSoftDeleted('labels', ['id' => $originalId]);
+});
