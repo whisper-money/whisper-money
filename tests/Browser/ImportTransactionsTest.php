@@ -8,7 +8,7 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 
 it('can open import transactions drawer', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
     Account::factory()->create([
@@ -33,7 +33,7 @@ it('can open import transactions drawer', function () {
 })->skip('Requires browser encryption key setup');
 
 it('shows no accounts message when none exist', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -50,7 +50,7 @@ it('shows no accounts message when none exist', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can select account for import', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
     Account::factory()->create([
@@ -82,7 +82,7 @@ it('can select account for import', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can upload a CSV file for import', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
     Account::factory()->create([
@@ -116,7 +116,7 @@ it('can upload a CSV file for import', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can complete full import flow', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
     $account = Account::factory()->create([
@@ -167,7 +167,7 @@ it('can complete full import flow', function () {
 })->skip('Requires browser encryption key setup');
 
 it('shows column mapping step after file upload', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
     Account::factory()->create([
@@ -206,7 +206,7 @@ it('shows column mapping step after file upload', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can navigate back through import steps', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
     Account::factory()->create([
@@ -238,7 +238,7 @@ it('can navigate back through import steps', function () {
 })->skip('Requires browser encryption key setup');
 
 it('applies automation rules when importing transactions', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     $groceriesCategory = Category::factory()->create([
         'user_id' => $user->id,

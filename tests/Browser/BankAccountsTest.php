@@ -7,7 +7,7 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 
 it('can view bank accounts page', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     actingAs($user);
 
@@ -19,7 +19,7 @@ it('can view bank accounts page', function () {
 });
 
 it('shows existing accounts in list', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
     Account::factory()->create([
         'user_id' => $user->id,
@@ -42,7 +42,7 @@ it('shows existing accounts in list', function () {
 });
 
 it('can open create account dialog', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     actingAs($user);
 
@@ -56,7 +56,7 @@ it('can open create account dialog', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can create a new bank account', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'My Bank']);
 
     actingAs($user);
@@ -91,7 +91,7 @@ it('can create a new bank account', function () {
 })->skip('Requires browser encryption key setup');
 
 it('shows empty state when no accounts exist', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     actingAs($user);
 
@@ -103,7 +103,7 @@ it('shows empty state when no accounts exist', function () {
 });
 
 it('can filter accounts by name', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
     Account::factory()->create([
         'user_id' => $user->id,
@@ -130,7 +130,7 @@ it('can filter accounts by name', function () {
 });
 
 it('can edit an existing account via dropdown menu', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
     $account = Account::factory()->create([
         'user_id' => $user->id,
@@ -158,7 +158,7 @@ it('can edit an existing account via dropdown menu', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can delete an account via dropdown menu', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
     $account = Account::factory()->create([
         'user_id' => $user->id,

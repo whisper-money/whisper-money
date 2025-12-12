@@ -12,8 +12,9 @@ it('can register a new user', function () {
         ->fill('password_confirmation', 'password123')
         ->click('@register-user-button')
         ->wait(2)
-        ->assertSee('Setup Encryption')
-        ->assertPathIs('/setup-encryption')
+        ->assertSee('Welcome to')
+        ->assertSee('Whisper Money')
+        ->assertPathIs('/onboarding')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('users', [
@@ -36,10 +37,9 @@ it('shows validation errors for invalid registration', function () {
 });
 
 it('can login with valid credentials', function () {
-    $user = User::factory()->create([
+    $user = User::factory()->onboarded()->create([
         'email' => 'test@example.com',
         'password' => bcrypt('password123'),
-        'encryption_salt' => str_repeat('a', 24),
         'two_factor_secret' => null,
         'two_factor_confirmed_at' => null,
     ]);

@@ -7,7 +7,7 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 
 it('formats amount on blur', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create(['user_id' => $user->id]);
 
@@ -25,7 +25,7 @@ it('formats amount on blur', function () {
 })->skip('Requires browser encryption key setup');
 
 it('accepts comma as decimal separator', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create(['user_id' => $user->id]);
 
@@ -43,7 +43,7 @@ it('accepts comma as decimal separator', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can create a transaction with amount input', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create(['user_id' => $user->id]);
 

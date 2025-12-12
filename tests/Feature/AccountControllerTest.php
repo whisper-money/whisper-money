@@ -11,9 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $this->user = User::factory()->onboarded()->create();
     $this->actingAs($this->user);
 });
 

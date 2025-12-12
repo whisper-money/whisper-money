@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Account;
+use App\Models\AccountBalance;
+use App\Models\Category;
+use App\Models\Transaction;
 use App\Models\User;
 
 beforeEach(function () {
@@ -13,9 +17,7 @@ test('guests cannot access subscription pages', function () {
 });
 
 test('users without subscription are redirected to paywall when accessing protected routes', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 
@@ -25,19 +27,41 @@ test('users without subscription are redirected to paywall when accessing protec
 });
 
 test('users can view the paywall page', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 
     $this->get(route('subscribe'))->assertOk();
 });
 
+test('paywall page includes user stats', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $account = Account::factory()->for($user)->create(['currency_code' => 'USD']);
+    AccountBalance::factory()->for($account)->create(['balance' => 150000]);
+    Transaction::factory()->count(3)->for($user)->for($account)->create();
+    Category::factory()->count(2)->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->has('stats')
+            ->has('stats.accountsCount')
+            ->has('stats.transactionsCount')
+            ->has('stats.categoriesCount')
+            ->has('stats.automationRulesCount')
+            ->has('stats.balancesByCurrency')
+            ->where('stats.accountsCount', 1)
+            ->where('stats.transactionsCount', 3)
+            ->where('stats.balancesByCurrency.USD', 150000)
+        );
+});
+
 test('subscribed users are redirected from paywall to dashboard', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $user->subscriptions()->create([
         'type' => 'default',
@@ -52,9 +76,7 @@ test('subscribed users are redirected from paywall to dashboard', function () {
 });
 
 test('subscribed users can access protected routes', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $user->subscriptions()->create([
         'type' => 'default',
@@ -69,9 +91,7 @@ test('subscribed users can access protected routes', function () {
 });
 
 test('users can view the success page after subscribing', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 
@@ -79,9 +99,7 @@ test('users can view the success page after subscribing', function () {
 });
 
 test('cancel route redirects to paywall', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 
@@ -91,9 +109,7 @@ test('cancel route redirects to paywall', function () {
 test('subscription middleware allows access when subscriptions are disabled', function () {
     config(['subscriptions.enabled' => false]);
 
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+    $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
 

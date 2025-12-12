@@ -9,7 +9,7 @@ use function Pest\Laravel\assertDatabaseHas;
 test('authenticated user without encryption salt can access setup page', function () {
     $user = User::factory()->create(['encryption_salt' => null]);
 
-    $response = actingAs($user)->get(route('setup-encryption'));
+    $response = actingAs($user)->get(route('onboarding'));
 
     $response->assertSuccessful();
 });
@@ -93,18 +93,16 @@ test('user without encrypted message receives 404', function () {
     $response->assertNotFound();
 });
 
-test('user without encryption salt is redirected to setup', function () {
-    $user = User::factory()->create(['encryption_salt' => null]);
+test('user without onboarding is redirected to onboarding', function () {
+    $user = User::factory()->notOnboarded()->create(['encryption_salt' => 'test-salt']);
 
     $response = actingAs($user)->get(route('dashboard'));
 
-    $response->assertRedirect(route('setup-encryption'));
+    $response->assertRedirect(route('onboarding'));
 });
 
-test('user with encryption salt can access dashboard', function () {
-    $user = User::factory()->create([
-        'encryption_salt' => str_repeat('a', 24),
-    ]);
+test('onboarded user with encryption salt can access dashboard', function () {
+    $user = User::factory()->onboarded()->create();
 
     $response = actingAs($user)->get(route('dashboard'));
 

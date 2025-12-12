@@ -6,7 +6,7 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 
 it('can view categories page', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     actingAs($user);
 
@@ -18,7 +18,7 @@ it('can view categories page', function () {
 });
 
 it('shows existing categories in list', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create([
         'user_id' => $user->id,
         'name' => 'Groceries',
@@ -36,7 +36,7 @@ it('shows existing categories in list', function () {
 });
 
 it('can open create category dialog', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     actingAs($user);
 
@@ -50,7 +50,7 @@ it('can open create category dialog', function () {
 });
 
 it('can create a new category', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     actingAs($user);
 
@@ -86,7 +86,7 @@ it('can create a new category', function () {
 });
 
 it('can filter categories by name', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create([
         'user_id' => $user->id,
         'name' => 'Groceries',
@@ -109,7 +109,7 @@ it('can filter categories by name', function () {
 });
 
 it('shows empty state when no categories exist', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     actingAs($user);
 
@@ -121,7 +121,7 @@ it('shows empty state when no categories exist', function () {
 });
 
 it('can edit an existing category via context menu', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create([
         'user_id' => $user->id,
         'name' => 'Old Category',
@@ -152,7 +152,7 @@ it('can edit an existing category via context menu', function () {
 });
 
 it('shows transfer type description when transfer type is selected in create dialog', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     actingAs($user);
 
@@ -173,7 +173,7 @@ it('shows transfer type description when transfer type is selected in create dia
 });
 
 it('shows transfer type description when transfer type is selected in edit dialog', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create([
         'user_id' => $user->id,
         'name' => 'Test Category',

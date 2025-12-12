@@ -11,7 +11,7 @@ beforeEach(function () {
 });
 
 it('can create an automation rule with visual builder', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -41,7 +41,7 @@ it('can create an automation rule with visual builder', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can add multiple conditions to a group', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -69,7 +69,7 @@ it('can add multiple conditions to a group', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can add multiple groups', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -98,7 +98,7 @@ it('can add multiple groups', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can select different field types and operators', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -130,7 +130,7 @@ it('can select different field types and operators', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can edit an existing rule with visual builder', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     $rule = $user->automationRules()->create([
@@ -163,7 +163,7 @@ it('can edit an existing rule with visual builder', function () {
 })->skip('Requires browser encryption key setup');
 
 it('validates that at least one condition is required', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -188,7 +188,7 @@ it('validates that at least one condition is required', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can toggle group operators between AND and OR', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
@@ -219,7 +219,7 @@ it('can toggle group operators between AND and OR', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can use is empty operator for nullable fields', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);

@@ -34,6 +34,7 @@ interface AccountFormProps {
         type: AccountType;
         currencyCode: CurrencyCode;
     };
+    forceAccountType?: AccountType;
     onChange: (data: AccountFormData) => void;
 }
 
@@ -43,7 +44,11 @@ const initialCustomBankData: CustomBankData = {
     logoPreview: null,
 };
 
-export function AccountForm({ initialValues, onChange }: AccountFormProps) {
+export function AccountForm({
+    initialValues,
+    forceAccountType,
+    onChange,
+}: AccountFormProps) {
     const [displayName, setDisplayName] = useState(
         initialValues?.displayName ?? '',
     );
@@ -51,7 +56,7 @@ export function AccountForm({ initialValues, onChange }: AccountFormProps) {
         initialValues?.bank.id ?? null,
     );
     const [selectedType, setSelectedType] = useState<AccountType | null>(
-        initialValues?.type ?? null,
+        initialValues?.type ?? forceAccountType ?? null,
     );
     const [selectedCurrency, setSelectedCurrency] =
         useState<CurrencyCode | null>(initialValues?.currencyCode ?? null);
@@ -154,6 +159,7 @@ export function AccountForm({ initialValues, onChange }: AccountFormProps) {
                     <Select
                         name="type"
                         value={selectedType ?? undefined}
+                        disabled={!!forceAccountType}
                         onValueChange={(value) =>
                             setSelectedType(value as AccountType)
                         }
