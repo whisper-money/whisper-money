@@ -26,12 +26,20 @@ class LabelSyncService {
     }
 
     async create(data: { name: string; color: string }): Promise<Label> {
+        const csrfToken = decodeURIComponent(
+            document.cookie
+                .split('; ')
+                .find((row) => row.startsWith('XSRF-TOKEN='))
+                ?.split('=')[1] || '',
+        );
+
         const response = await fetch(store().url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': csrfToken,
             },
             credentials: 'same-origin',
             body: JSON.stringify(data),
