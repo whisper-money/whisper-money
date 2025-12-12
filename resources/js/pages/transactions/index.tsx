@@ -182,7 +182,6 @@ export default function Transactions({
     categories,
     accounts,
     banks,
-    labels,
     labels: initialLabels,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
