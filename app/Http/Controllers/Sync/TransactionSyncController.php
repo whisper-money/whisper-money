@@ -20,6 +20,7 @@ class TransactionSyncController extends Controller
         }
 
         $transactions = $query
+            ->with('labels:id,name,color')
             ->orderBy('transaction_date', 'desc')
             ->orderBy('updated_at', 'desc')
             ->get();

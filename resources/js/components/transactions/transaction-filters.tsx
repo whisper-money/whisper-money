@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
-import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Tag, X } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
 import { EncryptedText } from '@/components/encrypted-text';
@@ -14,7 +14,7 @@ import {
     CommandList,
 } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label as FormLabel } from '@/components/ui/label';
 import {
     Popover,
     PopoverContent,
@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { type Account } from '@/types/account';
 import { type Category, getCategoryColorClasses } from '@/types/category';
+import { getLabelColorClasses, type Label } from '@/types/label';
 import { type TransactionFilters as FiltersType } from '@/types/transaction';
 import { CategoryIcon } from '../shared/category-combobox';
 
@@ -30,6 +31,7 @@ interface TransactionFiltersProps {
     filters: FiltersType;
     onFiltersChange: (filters: FiltersType) => void;
     categories: Category[];
+    labels: Label[];
     accounts: Account[];
     isKeySet: boolean;
     actions?: ReactNode;
@@ -40,6 +42,7 @@ export function TransactionFilters({
     filters,
     onFiltersChange,
     categories,
+    labels,
     accounts,
     isKeySet,
     actions,
@@ -47,6 +50,7 @@ export function TransactionFilters({
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+    const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
     const isUncategorizedSelected = filters.categoryIds.includes(
         UNCATEGORIZED_CATEGORY_ID,
     );
@@ -67,6 +71,14 @@ export function TransactionFilters({
         onFiltersChange({ ...filters, accountIds: newAccountIds });
     }
 
+    function handleLabelToggle(labelId: string) {
+        const newLabelIds = filters.labelIds.includes(labelId)
+            ? filters.labelIds.filter((id) => id !== labelId)
+            : [...filters.labelIds, labelId];
+
+        onFiltersChange({ ...filters, labelIds: newLabelIds });
+    }
+
     function clearFilters() {
         onFiltersChange({
             dateFrom: null,
@@ -75,6 +87,7 @@ export function TransactionFilters({
             amountMax: null,
             categoryIds: [],
             accountIds: [],
+            labelIds: [],
             searchText: '',
         });
     }
@@ -85,6 +98,7 @@ export function TransactionFilters({
         (filters.amountMin !== null ? 1 : 0) +
         (filters.amountMax !== null ? 1 : 0) +
         filters.categoryIds.length +
+        filters.labelIds.length +
         (hideAccountFilter ? 0 : filters.accountIds.length);
 
     return (
@@ -132,7 +146,7 @@ export function TransactionFilters({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Date</Label>
+                                    <FormLabel>Date</FormLabel>
                                     <div className="grid grid-cols-2 gap-2 pt-2">
                                         <Input
                                             type="date"
@@ -182,7 +196,7 @@ export function TransactionFilters({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Amount</Label>
+                                    <FormLabel>Amount</FormLabel>
                                     <div className="grid grid-cols-2 gap-2 pt-2">
                                         <Input
                                             type="number"
@@ -220,7 +234,7 @@ export function TransactionFilters({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Categories</Label>
+                                    <FormLabel>Categories</FormLabel>
                                     <div className="pt-2">
                                         <Popover
                                             open={categoryDropdownOpen}
@@ -350,9 +364,109 @@ export function TransactionFilters({
                                     </div>
                                 </div>
 
+                                <div className="space-y-2">
+                                    <FormLabel>Labels</FormLabel>
+                                    <div className="pt-2">
+                                        <Popover
+                                            open={labelDropdownOpen}
+                                            onOpenChange={setLabelDropdownOpen}
+                                        >
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className="w-full justify-between"
+                                                >
+                                                    {filters.labelIds.length >
+                                                    0 ? (
+                                                        <span className="truncate">
+                                                            {
+                                                                filters.labelIds
+                                                                    .length
+                                                            }{' '}
+                                                            selected
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">
+                                                            Select labels...
+                                                        </span>
+                                                    )}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="w-full p-0"
+                                                align="start"
+                                            >
+                                                <Command>
+                                                    <CommandInput placeholder="Search labels..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>
+                                                            No labels found.
+                                                        </CommandEmpty>
+                                                        {labels.map((label) => {
+                                                            const isSelected =
+                                                                filters.labelIds.includes(
+                                                                    label.id,
+                                                                );
+                                                            const colorClasses =
+                                                                getLabelColorClasses(
+                                                                    label.color,
+                                                                );
+                                                            return (
+                                                                <CommandItem
+                                                                    key={
+                                                                        label.id
+                                                                    }
+                                                                    onSelect={() =>
+                                                                        handleLabelToggle(
+                                                                            label.id,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <div
+                                                                        className={cn(
+                                                                            'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
+                                                                            isSelected
+                                                                                ? 'bg-primary/10 text-primary-foreground'
+                                                                                : 'opacity-50 [&_svg]:invisible',
+                                                                        )}
+                                                                    >
+                                                                        <Check className="size-3" />
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div
+                                                                            className={cn(
+                                                                                'flex h-5 w-5 items-center justify-center rounded-full',
+                                                                                colorClasses.bg,
+                                                                            )}
+                                                                        >
+                                                                            <Tag
+                                                                                className={cn(
+                                                                                    'h-3 w-3',
+                                                                                    colorClasses.text,
+                                                                                )}
+                                                                            />
+                                                                        </div>
+                                                                        <span>
+                                                                            {
+                                                                                label.name
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                </CommandItem>
+                                                            );
+                                                        })}
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </div>
+
                                 {!hideAccountFilter && (
                                     <div className="space-y-2">
-                                        <Label>Accounts</Label>
+                                        <FormLabel>Accounts</FormLabel>
                                         <div className="flex flex-wrap gap-2 pt-2">
                                             {accounts.map((account) => {
                                                 const isSelected =

@@ -1,3 +1,4 @@
+import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label as FormLabel } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -33,6 +34,7 @@ import {
 } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { format, getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
@@ -43,6 +45,8 @@ interface EditTransactionDialogProps {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    labels: Label[];
+    onLabelsChange?: (labels: Label[]) => void;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
@@ -54,6 +58,8 @@ export function EditTransactionDialog({
     categories,
     accounts,
     banks,
+    labels,
+    onLabelsChange,
     open,
     onOpenChange,
     onSuccess,
@@ -65,6 +71,7 @@ export function EditTransactionDialog({
     const [amount, setAmount] = useState<number>(0);
     const [accountId, setAccountId] = useState<string>('');
     const [categoryId, setCategoryId] = useState<string>('null');
+    const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [decryptedAccountNames, setDecryptedAccountNames] = useState<
@@ -81,6 +88,7 @@ export function EditTransactionDialog({
             setAmount(transaction.amount);
             setAccountId(transaction.account_id);
             setCategoryId(transaction.category_id || 'null');
+            setSelectedLabelIds(transaction.labels?.map((l) => l.id) || []);
             setNotes(transaction.decryptedNotes || '');
         } else if (mode === 'create' && open) {
             const today = new Date().toISOString().split('T')[0];
@@ -92,6 +100,7 @@ export function EditTransactionDialog({
                 availableAccounts.length > 0 ? availableAccounts[0].id : '',
             );
             setCategoryId('null');
+            setSelectedLabelIds([]);
             setNotes('');
         }
     }, [mode, transaction, open, accounts]);
@@ -451,7 +460,7 @@ export function EditTransactionDialog({
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label
+                            <FormLabel
                                 htmlFor="date"
                                 className={
                                     mode === 'edit'
@@ -460,7 +469,7 @@ export function EditTransactionDialog({
                                 }
                             >
                                 Date
-                            </Label>
+                            </FormLabel>
                             {mode === 'create' ? (
                                 <Input
                                     id="date"
@@ -495,7 +504,7 @@ export function EditTransactionDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label
+                            <FormLabel
                                 htmlFor="description"
                                 className={
                                     mode === 'edit' &&
@@ -505,7 +514,7 @@ export function EditTransactionDialog({
                                 }
                             >
                                 Description
-                            </Label>
+                            </FormLabel>
                             {mode === 'create' ||
                             (mode === 'edit' &&
                                 transaction?.source === 'manually_created') ? (
@@ -542,7 +551,7 @@ export function EditTransactionDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label
+                            <FormLabel
                                 htmlFor="amount"
                                 className={
                                     mode === 'edit'
@@ -551,7 +560,7 @@ export function EditTransactionDialog({
                                 }
                             >
                                 Amount
-                            </Label>
+                            </FormLabel>
                             {mode === 'create' ? (
                                 <AmountInput
                                     id="amount"
@@ -576,7 +585,7 @@ export function EditTransactionDialog({
 
                         {mode === 'create' && (
                             <div className="space-y-2">
-                                <Label htmlFor="account">Account</Label>
+                                <FormLabel htmlFor="account">Account</FormLabel>
                                 <Select
                                     value={accountId}
                                     onValueChange={setAccountId}
@@ -604,7 +613,7 @@ export function EditTransactionDialog({
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="category">Category</Label>
+                            <FormLabel htmlFor="category">Category</FormLabel>
                             <CategorySelect
                                 value={categoryId}
                                 onValueChange={setCategoryId}
@@ -617,7 +626,20 @@ export function EditTransactionDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="notes">Notes</Label>
+                            <FormLabel>Labels</FormLabel>
+                            <LabelCombobox
+                                value={selectedLabelIds}
+                                onValueChange={setSelectedLabelIds}
+                                labels={labels}
+                                onLabelsChange={onLabelsChange}
+                                disabled={isSubmitting}
+                                placeholder="Add labels..."
+                                allowCreate={true}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <FormLabel htmlFor="notes">Notes</FormLabel>
                             <Textarea
                                 id="notes"
                                 placeholder="Add notes..."

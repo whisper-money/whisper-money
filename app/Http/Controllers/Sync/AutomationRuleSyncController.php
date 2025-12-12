@@ -14,7 +14,7 @@ class AutomationRuleSyncController extends Controller
     {
         $rules = auth()->user()
             ->automationRules()
-            ->with('category:id,name,icon,color')
+            ->with(['category:id,name,icon,color', 'labels:id,name,color'])
             ->orderBy('priority')
             ->get();
 

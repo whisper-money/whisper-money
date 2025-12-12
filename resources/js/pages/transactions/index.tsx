@@ -61,6 +61,7 @@ import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import {
     type DecryptedTransaction,
     type TransactionFilters as Filters,
@@ -77,6 +78,7 @@ interface Props {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    labels: Label[];
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
@@ -175,7 +177,12 @@ function getInitialColumnVisibility(): VisibilityState {
     return { account: false };
 }
 
-export default function Transactions({ categories, accounts, banks }: Props) {
+export default function Transactions({
+    categories,
+    accounts,
+    banks,
+    labels: initialLabels,
+}: Props) {
     const { isKeySet } = useEncryptionKey();
 
     const transactionIds = useLiveQuery(
@@ -209,8 +216,10 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         amountMax: null,
         categoryIds: [],
         accountIds: [],
+        labelIds: [],
         searchText: '',
     });
+    const [labels, setLabels] = useState<Label[]>(initialLabels);
     const [editTransaction, setEditTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -502,6 +511,17 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 !filters.accountIds.includes(transaction.account_id)
             ) {
                 return false;
+            }
+
+            if (filters.labelIds.length > 0) {
+                const transactionLabelIds =
+                    transaction.labels?.map((l) => l.id) || [];
+                const hasMatchingLabel = filters.labelIds.some((labelId) =>
+                    transactionLabelIds.includes(labelId),
+                );
+                if (!hasMatchingLabel) {
+                    return false;
+                }
             }
 
             if (filters.searchText && isKeySet) {
@@ -1041,6 +1061,52 @@ export default function Transactions({ categories, accounts, banks }: Props) {
         }
     }
 
+    async function handleBulkLabelsChange(labelIds: string[]) {
+        const selectedIds = Object.keys(rowSelection);
+        if (selectedIds.length === 0 || labelIds.length === 0) {
+            return;
+        }
+
+        setIsBulkUpdating(true);
+        try {
+            await transactionSyncService.updateMany(selectedIds, {
+                label_ids: labelIds,
+            });
+
+            const selectedLabels = labels.filter((l) =>
+                labelIds.includes(l.id),
+            );
+
+            setTransactions((previous) =>
+                previous.map((transaction) => {
+                    if (selectedIds.includes(transaction.id.toString())) {
+                        const existingLabels = transaction.labels || [];
+                        const newLabels = [
+                            ...existingLabels,
+                            ...selectedLabels.filter(
+                                (l) =>
+                                    !existingLabels.some(
+                                        (el) => el.id === l.id,
+                                    ),
+                            ),
+                        ];
+                        return {
+                            ...transaction,
+                            labels: newLabels,
+                        };
+                    }
+                    return transaction;
+                }),
+            );
+
+            setRowSelection({});
+        } catch (error) {
+            console.error('Failed to update transactions with labels:', error);
+        } finally {
+            setIsBulkUpdating(false);
+        }
+    }
+
     function handleClearSelection() {
         setRowSelection({});
     }
@@ -1081,6 +1147,7 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                         filters={filters}
                         onFiltersChange={setFilters}
                         categories={categories}
+                        labels={labels}
                         accounts={accounts}
                         isKeySet={isKeySet}
                         actions={
@@ -1180,6 +1247,8 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
+                labels={labels}
+                onLabelsChange={setLabels}
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
@@ -1191,6 +1260,8 @@ export default function Transactions({ categories, accounts, banks }: Props) {
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
+                labels={labels}
+                onLabelsChange={setLabels}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={() => {}}
@@ -1244,7 +1315,10 @@ export default function Transactions({ categories, accounts, banks }: Props) {
             <BulkActionsBar
                 selectedCount={Object.keys(rowSelection).length}
                 categories={categories}
+                labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
+                onLabelsChange={handleBulkLabelsChange}
+                onLabelsUpdate={setLabels}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
                 onClear={handleClearSelection}

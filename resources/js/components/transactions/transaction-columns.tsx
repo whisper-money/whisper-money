@@ -3,6 +3,7 @@ import { format, getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
 import { EncryptedText } from '@/components/encrypted-text';
+import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -127,6 +128,20 @@ export function createTransactionColumns({
                     </div>
                 );
             },
+        },
+        {
+            id: 'labels',
+            accessorKey: 'labels',
+            meta: { label: 'Labels' },
+            header: 'Labels',
+            cell: ({ row }) => {
+                const transaction = row.original;
+                if (!transaction.labels || transaction.labels.length === 0) {
+                    return null;
+                }
+                return <LabelBadges labels={transaction.labels} max={2} />;
+            },
+            enableHiding: true,
         },
         {
             accessorKey: 'bank',

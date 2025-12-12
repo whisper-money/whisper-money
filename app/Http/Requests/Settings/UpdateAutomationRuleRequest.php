@@ -41,6 +41,15 @@ class UpdateAutomationRuleRequest extends FormRequest
             ],
             'action_note' => ['nullable', 'string'],
             'action_note_iv' => ['nullable', 'string', 'required_with:action_note'],
+            'action_label_ids' => ['nullable', 'array'],
+            'action_label_ids.*' => [
+                'required',
+                'string',
+                'uuid',
+                Rule::exists('labels', 'id')->where(function ($query) {
+                    $query->where('user_id', auth()->id());
+                }),
+            ],
         ];
     }
 
@@ -50,8 +59,9 @@ class UpdateAutomationRuleRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            if (! $this->action_category_id && ! $this->action_note) {
-                $validator->errors()->add('action_category_id', 'At least one action (category or note) must be provided.');
+            $hasLabels = ! empty($this->action_label_ids);
+            if (! $this->action_category_id && ! $this->action_note && ! $hasLabels) {
+                $validator->errors()->add('action_category_id', 'At least one action (category, note, or labels) must be provided.');
             }
         });
     }

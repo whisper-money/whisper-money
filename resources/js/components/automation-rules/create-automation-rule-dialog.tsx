@@ -1,6 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { RuleBuilder } from '@/components/automation-rules/rule-builder';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
+import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -11,7 +12,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label as FormLabel } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
@@ -23,7 +24,9 @@ import {
 } from '@/lib/rule-builder-utils';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { categorySyncService } from '@/services/category-sync';
+import { labelSyncService } from '@/services/label-sync';
 import type { Category } from '@/types/category';
+import type { Label } from '@/types/label';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -38,6 +41,7 @@ export function CreateAutomationRuleDialog({
 }: CreateAutomationRuleDialogProps) {
     const [open, setOpen] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [labels, setLabels] = useState<Label[]>([]);
     const [title, setTitle] = useState('');
     const [priority, setPriority] = useState('10');
     const [ruleStructure, setRuleStructure] = useState<RuleStructure>({
@@ -45,16 +49,21 @@ export function CreateAutomationRuleDialog({
         groupOperator: 'or',
     });
     const [categoryId, setCategoryId] = useState<string>('');
+    const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [note, setNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
-        const loadCategories = async () => {
-            const data = await categorySyncService.getAll();
-            setCategories(data);
+        const loadData = async () => {
+            const [categoriesData, labelsData] = await Promise.all([
+                categorySyncService.getAll(),
+                labelSyncService.getAll(),
+            ]);
+            setCategories(categoriesData);
+            setLabels(labelsData);
         };
-        loadCategories();
+        loadData();
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -74,7 +83,7 @@ export function CreateAutomationRuleDialog({
             return;
         }
 
-        if (!categoryId && !note.trim()) {
+        if (!categoryId && !note.trim() && selectedLabelIds.length === 0) {
             setErrors((prev) => ({
                 ...prev,
                 action_category_id: 'At least one action is required',
@@ -110,6 +119,8 @@ export function CreateAutomationRuleDialog({
                     action_category_id: categoryId || null,
                     action_note: encryptedNote,
                     action_note_iv: noteIv,
+                    action_label_ids:
+                        selectedLabelIds.length > 0 ? selectedLabelIds : null,
                 },
                 {
                     preserveState: true,
@@ -123,6 +134,7 @@ export function CreateAutomationRuleDialog({
                             groupOperator: 'and',
                         });
                         setCategoryId('');
+                        setSelectedLabelIds([]);
                         setNote('');
                         setErrors({});
                         await automationRuleSyncService.sync();
@@ -157,7 +169,7 @@ export function CreateAutomationRuleDialog({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="title">Title</Label>
+                        <FormLabel htmlFor="title">Title</FormLabel>
                         <Input
                             id="title"
                             value={title}
@@ -173,7 +185,7 @@ export function CreateAutomationRuleDialog({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="priority">Priority</Label>
+                        <FormLabel htmlFor="priority">Priority</FormLabel>
                         <Input
                             id="priority"
                             type="number"
@@ -206,7 +218,9 @@ export function CreateAutomationRuleDialog({
                         </p>
 
                         <div className="space-y-2">
-                            <Label htmlFor="category">Set Category</Label>
+                            <FormLabel htmlFor="category">
+                                Set Category
+                            </FormLabel>
                             <CategoryCombobox
                                 value={categoryId}
                                 onValueChange={setCategoryId}
@@ -217,7 +231,19 @@ export function CreateAutomationRuleDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="note">Add Note</Label>
+                            <FormLabel>Add Labels</FormLabel>
+                            <LabelCombobox
+                                value={selectedLabelIds}
+                                onValueChange={setSelectedLabelIds}
+                                labels={labels}
+                                onLabelsChange={setLabels}
+                                placeholder="Select labels (optional)"
+                                allowCreate={true}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <FormLabel htmlFor="note">Add Note</FormLabel>
                             <Textarea
                                 id="note"
                                 value={note}
