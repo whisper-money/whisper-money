@@ -55,4 +55,25 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => null,
         ]);
     }
+
+    /**
+     * Indicate that the user has completed onboarding.
+     */
+    public function onboarded(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'onboarded_at' => now(),
+            'encryption_salt' => 'test-salt',
+        ]);
+    }
+
+    /**
+     * Indicate that the user has not completed onboarding.
+     */
+    public function notOnboarded(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'onboarded_at' => null,
+        ]);
+    }
 }

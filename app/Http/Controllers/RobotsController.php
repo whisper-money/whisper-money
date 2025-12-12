@@ -13,7 +13,6 @@ class RobotsController extends Controller
         $content = "User-agent: *\n";
         $content .= "Disallow: /api/\n";
         $content .= "Disallow: /dashboard\n";
-        $content .= "Disallow: /setup-encryption\n";
         $content .= "Disallow: /transactions\n";
         $content .= "Disallow: /settings\n";
         $content .= "\n";

@@ -58,22 +58,22 @@ return [
                 'Priority support',
             ],
         ],
-        // 'yearly' => [
-        //     'name' => 'Pro Yearly',
-        //     'price' => 69,
-        //     'original_price' => 144,
-        //     'stripe_price_id' => env('STRIPE_PRO_YEARLY_PRICE_ID'),
-        //     'billing_period' => 'year',
-        //     'features' => [
-        //         'Unlimited accounts',
-        //         'Unlimited transactions',
-        //         'End-to-end encryption',
-        //         'Smart categorization',
-        //         'Automation rules',
-        //         'Visual insights & reports',
-        //         'Priority support',
-        //     ],
-        // ],
+        'yearly' => [
+            'name' => 'Pro Yearly',
+            'price' => 48,
+            'original_price' => 144,
+            'stripe_price_id' => env('STRIPE_PRO_YEARLY_PRICE_ID'),
+            'billing_period' => 'year',
+            'features' => [
+                'Unlimited accounts',
+                'Unlimited transactions',
+                'End-to-end encryption',
+                'Smart categorization',
+                'Automation rules',
+                'Visual insights & reports',
+                'Priority support',
+            ],
+        ],
         // 'lifetime' => [
         //     'name' => 'Lifetime License',
         //     'price' => 129,
@@ -102,7 +102,7 @@ return [
     |
     */
 
-    'default_plan' => 'yearly',
+    'default_plan' => 'monthly',
 
     /*
     |--------------------------------------------------------------------------

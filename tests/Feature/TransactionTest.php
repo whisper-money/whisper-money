@@ -14,7 +14,7 @@ test('guests cannot access transactions page', function () {
 });
 
 test('authenticated users can access transactions page', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     $response = actingAs($user)->get(route('transactions.index'));
 
@@ -28,7 +28,7 @@ test('authenticated users can access transactions page', function () {
 });
 
 test('authenticated users can access categorize transactions page', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     $response = actingAs($user)->get(route('transactions.categorize'));
 
@@ -48,7 +48,7 @@ test('guests cannot access categorize transactions page', function () {
 });
 
 test('users can update their own transaction category', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
@@ -70,7 +70,7 @@ test('users can update their own transaction category', function () {
 });
 
 test('users can update transaction notes', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transaction = Transaction::factory()->create([
@@ -92,7 +92,7 @@ test('users can update transaction notes', function () {
 });
 
 test('users can clear transaction category', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
@@ -114,7 +114,7 @@ test('users can clear transaction category', function () {
 });
 
 test('users cannot update other users transactions', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->create(['encryption_salt' => str_repeat('b', 24)]);
     $account = Account::factory()->create(['user_id' => $otherUser->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);
@@ -132,7 +132,7 @@ test('users cannot update other users transactions', function () {
 });
 
 test('category_id must exist when updating transaction', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transaction = Transaction::factory()->create([
@@ -149,7 +149,7 @@ test('category_id must exist when updating transaction', function () {
 });
 
 test('notes_iv must be exactly 16 characters', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transaction = Transaction::factory()->create([
@@ -167,7 +167,7 @@ test('notes_iv must be exactly 16 characters', function () {
 });
 
 test('users can soft delete their own transactions', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transaction = Transaction::factory()->create([
@@ -184,7 +184,7 @@ test('users can soft delete their own transactions', function () {
 });
 
 test('users cannot delete other users transactions', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->create(['encryption_salt' => str_repeat('b', 24)]);
     $account = Account::factory()->create(['user_id' => $otherUser->id]);
 
@@ -203,7 +203,7 @@ test('users cannot delete other users transactions', function () {
 });
 
 test('transactions index page passes user categories', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->create();
 
     $userCategory = Category::factory()->create(['user_id' => $user->id, 'name' => 'My Category']);
@@ -220,7 +220,7 @@ test('transactions index page passes user categories', function () {
 });
 
 test('transactions index page passes user accounts', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->create();
 
     Account::factory()->create(['user_id' => $user->id, 'name' => 'encrypted_name_1', 'name_iv' => str_repeat('a', 16)]);
@@ -236,7 +236,7 @@ test('transactions index page passes user accounts', function () {
 });
 
 test('users can create a new transaction', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);
 
@@ -287,7 +287,7 @@ test('users can create a new transaction', function () {
 });
 
 test('users can create a transaction without category', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transactionData = [
@@ -314,7 +314,7 @@ test('users can create a transaction without category', function () {
 });
 
 test('users can create a transaction without notes', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transactionData = [
@@ -339,7 +339,7 @@ test('users can create a transaction without notes', function () {
 });
 
 test('account_id is required when creating transaction', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
 
     $transactionData = [
         'description' => 'encrypted_description',
@@ -356,7 +356,7 @@ test('account_id is required when creating transaction', function () {
 });
 
 test('description is required when creating transaction', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transactionData = [
@@ -374,7 +374,7 @@ test('description is required when creating transaction', function () {
 });
 
 test('amount is required when creating transaction', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transactionData = [
@@ -392,7 +392,7 @@ test('amount is required when creating transaction', function () {
 });
 
 test('transaction_date is required when creating transaction', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transactionData = [
@@ -410,7 +410,7 @@ test('transaction_date is required when creating transaction', function () {
 });
 
 test('currency_code is required when creating transaction', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transactionData = [

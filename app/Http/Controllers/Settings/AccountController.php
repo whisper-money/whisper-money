@@ -7,6 +7,7 @@ use App\Http\Requests\Settings\StoreAccountRequest;
 use App\Http\Requests\Settings\UpdateAccountRequest;
 use App\Models\Account;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -34,9 +35,13 @@ class AccountController extends Controller
     /**
      * Store a newly created account.
      */
-    public function store(StoreAccountRequest $request): RedirectResponse
+    public function store(StoreAccountRequest $request): RedirectResponse|JsonResponse
     {
-        auth()->user()->accounts()->create($request->validated());
+        $account = auth()->user()->accounts()->create($request->validated());
+
+        if ($request->wantsJson()) {
+            return response()->json($account, 201);
+        }
 
         return to_route('accounts.index');
     }

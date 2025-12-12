@@ -7,7 +7,7 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 
 it('can view transactions page', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     Account::factory()->create(['user_id' => $user->id]);
 
@@ -21,7 +21,7 @@ it('can view transactions page', function () {
 });
 
 it('can open add transaction dialog', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     Account::factory()->create(['user_id' => $user->id]);
 
@@ -37,7 +37,7 @@ it('can open add transaction dialog', function () {
 })->skip('Requires browser encryption key setup');
 
 it('can create a transaction', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create(['user_id' => $user->id]);
 
@@ -67,7 +67,7 @@ it('can create a transaction', function () {
 })->skip('Requires browser encryption key setup');
 
 it('shows empty state when no transactions exist', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     Account::factory()->create(['user_id' => $user->id]);
 
@@ -81,7 +81,7 @@ it('shows empty state when no transactions exist', function () {
 });
 
 it('can filter transactions by search text', function () {
-    $user = User::factory()->create(['encryption_salt' => str_repeat('a', 24)]);
+    $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     Account::factory()->create(['user_id' => $user->id]);
 

@@ -27,6 +27,7 @@ class User extends Authenticatable
         'email',
         'password',
         'encryption_salt',
+        'onboarded_at',
     ];
 
     /**
@@ -52,7 +53,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'onboarded_at' => 'datetime',
         ];
+    }
+
+    public function isOnboarded(): bool
+    {
+        return $this->onboarded_at !== null;
     }
 
     public function encryptedMessage(): HasOne
