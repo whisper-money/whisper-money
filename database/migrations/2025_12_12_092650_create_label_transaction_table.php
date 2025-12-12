@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('label_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('transaction_id')->constrained()->cascadeOnDelete();
-            $table->timestamp('created_at')->nullable();
+            $table->timestamps();
 
             $table->unique(['label_id', 'transaction_id']);
         });

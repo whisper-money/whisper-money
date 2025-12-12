@@ -44,6 +44,7 @@ class AutomationRule extends Model
 
     public function labels(): BelongsToMany
     {
-        return $this->belongsToMany(Label::class, 'automation_rule_labels');
+        return $this->belongsToMany(Label::class, 'automation_rule_labels')
+            ->using(AutomationRuleLabel::class);
     }
 }

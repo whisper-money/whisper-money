@@ -131,15 +131,27 @@ export function LabelCombobox({
                                     >
                                         <Tag className="h-3 w-3" />
                                         {label.name}
-                                        <button
-                                            type="button"
+                                        <span
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={(e) =>
                                                 handleRemove(label.id, e)
                                             }
-                                            className="ml-0.5 rounded-full hover:bg-black/10"
+                                            onKeyDown={(e) => {
+                                                if (
+                                                    e.key === 'Enter' ||
+                                                    e.key === ' '
+                                                ) {
+                                                    handleRemove(
+                                                        label.id,
+                                                        e as unknown as React.MouseEvent,
+                                                    );
+                                                }
+                                            }}
+                                            className="ml-0.5 cursor-pointer rounded-full hover:bg-black/10"
                                         >
                                             <X className="h-3 w-3" />
-                                        </button>
+                                        </span>
                                     </Badge>
                                 );
                             })}

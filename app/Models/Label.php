@@ -28,11 +28,13 @@ class Label extends Model
     public function transactions(): BelongsToMany
     {
         return $this->belongsToMany(Transaction::class)
-            ->withPivot('created_at');
+            ->using(LabelTransaction::class)
+            ->withTimestamps();
     }
 
     public function automationRules(): BelongsToMany
     {
-        return $this->belongsToMany(AutomationRule::class, 'automation_rule_labels');
+        return $this->belongsToMany(AutomationRule::class, 'automation_rule_labels')
+            ->using(AutomationRuleLabel::class);
     }
 }

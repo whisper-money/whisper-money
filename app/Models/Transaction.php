@@ -56,6 +56,7 @@ class Transaction extends Model
     public function labels(): BelongsToMany
     {
         return $this->belongsToMany(Label::class)
-            ->withPivot('created_at');
+            ->using(LabelTransaction::class)
+            ->withTimestamps();
     }
 }
