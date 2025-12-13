@@ -1,5 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal } from 'lucide-react';
+import { format, getYear, parseISO } from 'date-fns';
+import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
 import { EncryptedText } from '@/components/encrypted-text';
 import { LabelBadges } from '@/components/shared/label-combobox';
@@ -48,6 +49,7 @@ export function createTransactionColumns({
                         table.getIsAllPageRowsSelected() ||
                         (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
+                    className="ml-2"
                     onCheckedChange={(value) =>
                         table.toggleAllPageRowsSelected(!!value)
                     }
@@ -57,6 +59,7 @@ export function createTransactionColumns({
             cell: ({ row }) => (
                 <Checkbox
                     checked={row.getIsSelected()}
+                    className="ml-2"
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
                     onClick={(e) => e.stopPropagation()}
                     aria-label="Select row"
@@ -66,18 +69,85 @@ export function createTransactionColumns({
             enableHiding: false,
         },
         {
+            id: 'transaction_date',
+            accessorKey: 'transaction_date',
+            meta: {
+                label: 'Date',
+                cellClassName:
+                    '!w-[100px] !max-w-[100px] !min-w-[100px] whitespace-normal',
+            },
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === 'asc')
+                        }
+                    >
+                        Date
+                        <ArrowDown className="h-2 w-2 opacity-25" />
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const date = parseISO(row.getValue('transaction_date'));
+                const currentYear = getYear(new Date());
+                const transactionYear = getYear(date);
+                const formatString =
+                    transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
+
+                return <div className="pl-3">{format(date, formatString)}</div>;
+            },
+            enableHiding: true,
+        },
+        {
             accessorKey: 'category_id',
-            meta: { label: 'Category' },
+            meta: {
+                label: 'Category',
+                cellClassName:
+                    '!w-[170px] !max-w-[170px] !min-w-[170px] whitespace-normal',
+            },
             header: 'Category',
             cell: ({ row }) => {
                 return (
-                    <div className="max-w-[200px]">
-                        <CategoryCell
-                            transaction={row.original}
-                            categories={categories}
-                            accounts={accounts}
-                            banks={banks}
-                            onUpdate={onUpdate}
+                    <CategoryCell
+                        transaction={row.original}
+                        categories={categories}
+                        accounts={accounts}
+                        banks={banks}
+                        onUpdate={onUpdate}
+                        className="max-w-[150px]"
+                        withoutChevronIcon
+                    />
+                );
+            },
+            enableHiding: true,
+        },
+        {
+            id: 'account',
+            accessorKey: 'account',
+            meta: { label: 'Account' },
+            header: 'Account',
+            cell: ({ row }) => {
+                const transaction = row.original;
+                if (!transaction.account) {
+                    return <div className="text-muted-foreground">—</div>;
+                }
+
+                return (
+                    <div className="flex items-center gap-2">
+                        {transaction.bank?.logo && (
+                            <img
+                                src={transaction.bank.logo}
+                                alt={transaction.bank.name}
+                                className="h-5 w-5 rounded-full"
+                            />
+                        )}
+                        <EncryptedText
+                            encryptedText={transaction.account.name}
+                            iv={transaction.account.name_iv}
+                            length={{ min: 5, max: 15 }}
+                            className="truncate"
                         />
                     </div>
                 );
@@ -92,7 +162,6 @@ export function createTransactionColumns({
                 const transaction = row.original;
                 const columnVisibility = table.getState().columnVisibility;
 
-                const showAccount = columnVisibility.account !== false;
                 const showLabels = columnVisibility.labels !== false;
                 const showNotes = columnVisibility.notes !== false;
 
@@ -106,40 +175,25 @@ export function createTransactionColumns({
                     (transaction.notes && transaction.notes_iv);
 
                 return (
-                    <div className="flex flex-col gap-1 py-1">
-                        <div className="truncate font-medium">
-                            <EncryptedText
-                                encryptedText={transaction.description}
-                                iv={transaction.description_iv}
-                                length={{ min: 20, max: 80 }}
-                            />
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                            {showAccount && transaction.account && (
-                                <div className="flex items-center gap-1.5">
-                                    {transaction.bank?.logo && (
-                                        <img
-                                            src={transaction.bank.logo}
-                                            alt={transaction.bank.name}
-                                            className="h-4 w-4 rounded-full"
-                                        />
-                                    )}
-                                    <EncryptedText
-                                        encryptedText={transaction.account.name}
-                                        iv={transaction.account.name_iv}
-                                        length={{ min: 5, max: 15 }}
-                                        className="truncate"
-                                    />
-                                </div>
-                            )}
+                    <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-row justify-between gap-1">
+                            <div className="flex-grow truncate">
+                                <EncryptedText
+                                    encryptedText={transaction.description}
+                                    iv={transaction.description_iv}
+                                    length={{ min: 20, max: 80 }}
+                                />
+                            </div>
                             {showLabels && hasLabels && (
                                 <LabelBadges
                                     labels={transactionLabels}
                                     max={3}
                                 />
                             )}
-                            {showNotes && hasNotes && (
-                                <div className="max-w-[200px] truncate text-muted-foreground/70 italic">
+                        </div>
+                        {showNotes && hasNotes && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                                <div className="truncate text-muted-foreground/80">
                                     {transaction.decryptedNotes ? (
                                         <span>
                                             {transaction.decryptedNotes}
@@ -154,8 +208,8 @@ export function createTransactionColumns({
                                         />
                                     )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 );
             },
@@ -214,7 +268,7 @@ export function createTransactionColumns({
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="ghost"
-                                    className="h-8 w-8 p-0"
+                                    className="h-[24px] w-8 p-0"
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <span className="sr-only">Open menu</span>
@@ -248,22 +302,6 @@ export function createTransactionColumns({
             },
         },
         // Virtual columns for visibility control only (not rendered as table columns)
-        {
-            id: 'transaction_date',
-            accessorKey: 'transaction_date',
-            meta: { label: 'Date', isVirtual: true },
-            header: () => null,
-            cell: () => null,
-            enableHiding: true,
-        },
-        {
-            id: 'account',
-            accessorKey: 'account',
-            meta: { label: 'Account', isVirtual: true },
-            header: () => null,
-            cell: () => null,
-            enableHiding: true,
-        },
         {
             id: 'labels',
             accessorKey: 'label_ids',

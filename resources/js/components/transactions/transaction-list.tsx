@@ -118,18 +118,34 @@ function TransactionRowComponent({
                         .getVisibleCells()
                         .filter((cell: Cell<DecryptedTransaction, unknown>) => {
                             const meta = cell.column.columnDef.meta as
-                                | { isVirtual?: boolean }
+                                | {
+                                      isVirtual?: boolean;
+                                      cellClassName?: string;
+                                      cellStyle?: React.CSSProperties;
+                                  }
                                 | undefined;
                             return !meta?.isVirtual;
                         })
-                        .map((cell: Cell<DecryptedTransaction, unknown>) => (
-                            <TableCell key={cell.id}>
-                                {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext(),
-                                )}
-                            </TableCell>
-                        ))}
+                        .map((cell: Cell<DecryptedTransaction, unknown>) => {
+                            const meta = cell.column.columnDef.meta as
+                                | {
+                                      cellClassName?: string;
+                                      cellStyle?: React.CSSProperties;
+                                  }
+                                | undefined;
+                            return (
+                                <TableCell
+                                    key={cell.id}
+                                    className={meta?.cellClassName}
+                                    style={meta?.cellStyle}
+                                >
+                                    {flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext(),
+                                    )}
+                                </TableCell>
+                            );
+                        })}
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>

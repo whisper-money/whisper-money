@@ -130,18 +130,34 @@ function TransactionRowComponent({
                         .getVisibleCells()
                         .filter((cell: Cell<DecryptedTransaction, unknown>) => {
                             const meta = cell.column.columnDef.meta as
-                                | { isVirtual?: boolean }
+                                | {
+                                      isVirtual?: boolean;
+                                      cellClassName?: string;
+                                      cellStyle?: React.CSSProperties;
+                                  }
                                 | undefined;
                             return !meta?.isVirtual;
                         })
-                        .map((cell: Cell<DecryptedTransaction, unknown>) => (
-                            <TableCell key={cell.id}>
-                                {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext(),
-                                )}
-                            </TableCell>
-                        ))}
+                        .map((cell: Cell<DecryptedTransaction, unknown>) => {
+                            const meta = cell.column.columnDef.meta as
+                                | {
+                                      cellClassName?: string;
+                                      cellStyle?: React.CSSProperties;
+                                  }
+                                | undefined;
+                            return (
+                                <TableCell
+                                    key={cell.id}
+                                    className={meta?.cellClassName}
+                                    style={meta?.cellStyle}
+                                >
+                                    {flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext(),
+                                    )}
+                                </TableCell>
+                            );
+                        })}
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>
@@ -196,10 +212,10 @@ function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
         transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
 
     return (
-        <tr className="bg-muted/50">
+        <tr className="hidden">
             <td
                 colSpan={colSpan}
-                className="px-4 py-2 text-sm font-semibold text-muted-foreground"
+                className="px-4 pt-2 text-sm text-muted-foreground"
             >
                 {format(parsedDate, formatString)}
             </td>
@@ -1257,10 +1273,7 @@ export default function Transactions({
                                 renderRow={renderTransactionRow}
                                 getRowDate={(row) => row.transaction_date}
                                 renderDateHeader={(date, colSpan) => (
-                                    <DateHeader
-                                        date={date}
-                                        colSpan={colSpan}
-                                    />
+                                    <DateHeader date={date} colSpan={colSpan} />
                                 )}
                             />
 

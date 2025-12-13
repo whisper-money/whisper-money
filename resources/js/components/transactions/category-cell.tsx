@@ -2,6 +2,7 @@ import { CategorySelect } from '@/components/transactions/category-select';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
@@ -15,6 +16,8 @@ interface CategoryCellProps {
     accounts: Account[];
     banks: Bank[];
     onUpdate: (transaction: DecryptedTransaction) => void;
+    className?: string;
+    withoutChevronIcon?: boolean;
 }
 
 export function CategoryCell({
@@ -23,6 +26,8 @@ export function CategoryCell({
     accounts,
     banks,
     onUpdate,
+    className,
+    withoutChevronIcon,
 }: CategoryCellProps) {
     const { isKeySet } = useEncryptionKey();
     const [isUpdating, setIsUpdating] = useState(false);
@@ -98,8 +103,12 @@ export function CategoryCell({
             categories={categories}
             disabled={isUpdating}
             placeholder="Uncategorized"
-            triggerClassName="h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0"
+            triggerClassName={cn(
+                'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
+                className || '',
+            )}
             showUncategorized={true}
+            withoutChevronIcon={withoutChevronIcon}
         />
     );
 }

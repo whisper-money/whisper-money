@@ -20,6 +20,12 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
+interface ColumnMeta {
+    isVirtual?: boolean;
+    cellClassName?: string;
+    cellStyle?: React.CSSProperties;
+}
+
 interface DataTableProps<TData, TValue> {
     table: TableType<TData>;
     columns: ColumnDef<TData, TValue>[];
@@ -91,21 +97,23 @@ export function DataTable<TData, TValue>({
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
                                     const meta = header.column.columnDef
-                                        .meta as
-                                        | { isVirtual?: boolean }
-                                        | undefined;
+                                        .meta as ColumnMeta | undefined;
                                     if (meta?.isVirtual) {
                                         return null;
                                     }
                                     return (
-                                        <TableHead key={header.id}>
+                                        <TableHead
+                                            key={header.id}
+                                            className={meta?.cellClassName}
+                                            style={meta?.cellStyle}
+                                        >
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
-                                                      header.column.columnDef
-                                                          .header,
-                                                      header.getContext(),
-                                                  )}
+                                                    header.column.columnDef
+                                                        .header,
+                                                    header.getContext(),
+                                                )}
                                         </TableHead>
                                     );
                                 })}
@@ -136,8 +144,8 @@ export function DataTable<TData, TValue>({
                                             : null;
                                     const prevDate =
                                         showDateHeaders &&
-                                        getRowDate &&
-                                        prevRow
+                                            getRowDate &&
+                                            prevRow
                                             ? getRowDate(prevRow.original)
                                             : null;
 
@@ -187,9 +195,7 @@ export function DataTable<TData, TValue>({
                                                     .map((cell) => {
                                                         const meta = cell.column
                                                             .columnDef.meta as
-                                                            | {
-                                                                  isVirtual?: boolean;
-                                                              }
+                                                            | ColumnMeta
                                                             | undefined;
                                                         if (meta?.isVirtual) {
                                                             return null;
@@ -197,6 +203,8 @@ export function DataTable<TData, TValue>({
                                                         return (
                                                             <TableCell
                                                                 key={cell.id}
+                                                                className={meta?.cellClassName}
+                                                                style={meta?.cellStyle}
                                                             >
                                                                 {flexRender(
                                                                     cell.column
