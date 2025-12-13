@@ -3,6 +3,7 @@ import { consoleDebug } from '@/lib/debug';
 import type { Account, Bank } from '@/types/account';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
+import type { Label } from '@/types/label';
 import type { DecryptedTransaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
 import jsonLogic from 'json-logic-js';
@@ -10,6 +11,8 @@ import jsonLogic from 'json-logic-js';
 export interface RuleEvaluationResult {
     rule: AutomationRule;
     categoryId: UUID | null;
+    labelIds: UUID[];
+    labels: Label[];
     note: string | null;
     noteIv: string | null;
 }
@@ -157,6 +160,8 @@ export async function evaluateRules(
                 return {
                     rule,
                     categoryId: rule.action_category_id,
+                    labelIds: rule.labels?.map((l) => l.id) || [],
+                    labels: rule.labels || [],
                     note: rule.action_note,
                     noteIv: rule.action_note_iv,
                 };
@@ -288,6 +293,8 @@ export async function evaluateRulesForNewTransaction(
                 return {
                     rule,
                     categoryId: rule.action_category_id,
+                    labelIds: rule.labels?.map((l) => l.id) || [],
+                    labels: rule.labels || [],
                     note: rule.action_note,
                     noteIv: rule.action_note_iv,
                 };

@@ -300,6 +300,7 @@ export function StepCreateAccount({
 
                     <StepButton
                         type="submit"
+                        className="w-full sm:w-full"
                         disabled={isSubmitting}
                         loading={isSubmitting}
                         loadingText="Creating..."

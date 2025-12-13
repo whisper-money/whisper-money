@@ -17,8 +17,13 @@ export interface Transaction {
     currency_code: string;
     notes: string | null;
     notes_iv: string | null;
+    label_ids?: UUID[];
     created_at: string;
     updated_at: string;
+}
+
+interface TransactionUpdateData extends Partial<Transaction> {
+    label_ids?: string[];
 }
 
 class TransactionSyncService {
@@ -28,10 +33,20 @@ class TransactionSyncService {
         this.syncManager = new SyncManager({
             storeName: 'transactions',
             endpoint: '/api/sync/transactions',
-            transformFromServer: (data) => ({
-                ...data,
-                transaction_date: String(data.transaction_date).slice(0, 10),
-            }),
+            transformFromServer: (data) => {
+                // Extract label_ids from labels array if present
+                const label_ids = data.labels?.map((l: { id: string }) => l.id);
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { labels, ...rest } = data;
+                return {
+                    ...rest,
+                    transaction_date: String(data.transaction_date).slice(
+                        0,
+                        10,
+                    ),
+                    label_ids: label_ids || [],
+                };
+            },
         });
     }
 
@@ -104,17 +119,77 @@ class TransactionSyncService {
         }
     }
 
-    async update(id: string, data: Partial<Transaction>): Promise<void> {
+    async update(
+        id: string,
+        data: TransactionUpdateData,
+    ): Promise<Transaction | void> {
         const existing = await this.getById(id);
 
         if (!existing) {
             throw new Error('Transaction not found');
         }
 
+        const { label_ids, ...transactionData } = data;
         const timestamp = new Date().toISOString();
+
+        // If label_ids are provided, we need to sync with the server immediately
+        if (label_ids !== undefined) {
+            const csrfToken = decodeURIComponent(
+                document.cookie
+                    .split('; ')
+                    .find((row) => row.startsWith('XSRF-TOKEN='))
+                    ?.split('=')[1] || '',
+            );
+
+            const response = await fetch(`/api/sync/transactions/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    ...existing,
+                    ...transactionData,
+                    label_ids,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update transaction');
+            }
+
+            const result = await response.json();
+            const serverData = result.data;
+
+            // Extract label_ids from labels array
+            const serverLabelIds = serverData.labels?.map(
+                (l: { id: string }) => l.id,
+            );
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { labels: _labels, ...restServerData } = serverData;
+
+            const updatedTransaction: Transaction = {
+                ...restServerData,
+                transaction_date: String(serverData.transaction_date).slice(
+                    0,
+                    10,
+                ),
+                label_ids: serverLabelIds || [],
+            };
+
+            // Update local storage with transformed data (label_ids instead of labels)
+            await db.transactions.put(updatedTransaction);
+
+            return updatedTransaction;
+        }
+
+        // No label_ids, use the normal offline-first approach
         const updated = {
             ...existing,
-            ...data,
+            ...transactionData,
             updated_at: timestamp,
         };
 
@@ -127,8 +202,38 @@ class TransactionSyncService {
         });
     }
 
-    async updateMany(ids: string[], data: Partial<Transaction>): Promise<void> {
+    async updateMany(
+        ids: string[],
+        data: TransactionUpdateData,
+    ): Promise<void> {
         const timestamp = new Date().toISOString();
+        const { label_ids, ...transactionData } = data;
+
+        if (label_ids !== undefined) {
+            try {
+                const response = await fetch('/transactions/bulk', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        transaction_ids: ids,
+                        label_ids: label_ids,
+                        ...transactionData,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to bulk update transactions');
+                }
+            } catch (error) {
+                console.error('Failed to update transactions via API:', error);
+                throw error;
+            }
+        }
 
         for (const id of ids) {
             const existing = await this.getById(id);
@@ -140,7 +245,7 @@ class TransactionSyncService {
 
             const updated = {
                 ...existing,
-                ...data,
+                ...transactionData,
                 updated_at: timestamp,
             };
 

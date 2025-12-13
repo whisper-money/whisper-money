@@ -8,6 +8,7 @@ use App\Http\Controllers\Sync\AccountSyncController;
 use App\Http\Controllers\Sync\AutomationRuleSyncController;
 use App\Http\Controllers\Sync\BankSyncController;
 use App\Http\Controllers\Sync\CategorySyncController;
+use App\Http\Controllers\Sync\LabelSyncController;
 use App\Http\Controllers\Sync\TransactionSyncController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     // Sync
     Route::prefix('sync')->group(function () {
         Route::get('categories', [CategorySyncController::class, 'index']);
+        Route::get('labels', [LabelSyncController::class, 'index']);
         Route::get('accounts', [AccountSyncController::class, 'index']);
         Route::get('banks', [BankSyncController::class, 'index']);
         Route::get('automation-rules', [AutomationRuleSyncController::class, 'index']);

@@ -7,6 +7,7 @@ import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { bankSyncService } from '@/services/bank-sync';
 import { categorySyncService } from '@/services/category-sync';
+import { labelSyncService } from '@/services/label-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { User } from '@/types/index.d';
 import type { Page } from '@inertiajs/core';
@@ -149,6 +150,7 @@ export function SyncProvider({
                 accountBalancesResult,
                 banksResult,
                 automationRulesResult,
+                labelsResult,
                 transactionsResult,
             ] = await Promise.all([
                 categorySyncService.sync(),
@@ -156,6 +158,7 @@ export function SyncProvider({
                 accountBalanceSyncService.sync(),
                 bankSyncService.sync(),
                 automationRuleSyncService.sync(),
+                labelSyncService.sync(),
                 transactionSyncService.sync(),
             ]);
 
@@ -165,6 +168,7 @@ export function SyncProvider({
                 ...accountBalancesResult.errors,
                 ...banksResult.errors,
                 ...automationRulesResult.errors,
+                ...labelsResult.errors,
                 ...transactionsResult.errors,
             ];
 

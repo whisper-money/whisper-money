@@ -1,4 +1,5 @@
 import { BulkCategorySelect } from '@/components/transactions/bulk-category-select';
+import { BulkLabelSelect } from '@/components/transactions/bulk-label-select';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import {
@@ -9,12 +10,15 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { MoreHorizontal, Trash2, WandSparkles, X } from 'lucide-react';
 
 interface BulkActionsBarProps {
     selectedCount: number;
     categories: Category[];
+    labels: Label[];
     onCategoryChange: (categoryId: number | null) => void;
+    onLabelsChange: (labelIds: string[]) => void;
     onDelete: () => void;
     onReEvaluateRules: () => void;
     onClear: () => void;
@@ -24,7 +28,9 @@ interface BulkActionsBarProps {
 export function BulkActionsBar({
     selectedCount,
     categories,
+    labels,
     onCategoryChange,
+    onLabelsChange,
     onDelete,
     onReEvaluateRules,
     onClear,
@@ -47,6 +53,12 @@ export function BulkActionsBar({
                         <BulkCategorySelect
                             categories={categories}
                             onCategoryChange={onCategoryChange}
+                            disabled={isUpdating}
+                        />
+
+                        <BulkLabelSelect
+                            labels={labels}
+                            onLabelsChange={onLabelsChange}
                             disabled={isUpdating}
                         />
 

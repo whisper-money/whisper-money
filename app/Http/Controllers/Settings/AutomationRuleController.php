@@ -22,7 +22,7 @@ class AutomationRuleController extends Controller
     {
         $rules = auth()->user()
             ->automationRules()
-            ->with('category:id,name,icon,color')
+            ->with(['category:id,name,icon,color', 'labels:id,name,color'])
             ->orderBy('priority')
             ->get(['id', 'title', 'priority', 'rules_json', 'action_category_id', 'action_note', 'action_note_iv']);
 
@@ -36,7 +36,15 @@ class AutomationRuleController extends Controller
      */
     public function store(StoreAutomationRuleRequest $request): RedirectResponse
     {
-        auth()->user()->automationRules()->create($request->validated());
+        $validated = $request->validated();
+        $labelIds = $validated['action_label_ids'] ?? [];
+        unset($validated['action_label_ids']);
+
+        $rule = auth()->user()->automationRules()->create($validated);
+
+        if (! empty($labelIds)) {
+            $rule->labels()->sync($labelIds);
+        }
 
         return back();
     }
@@ -48,7 +56,12 @@ class AutomationRuleController extends Controller
     {
         $this->authorize('update', $automationRule);
 
-        $automationRule->update($request->validated());
+        $validated = $request->validated();
+        $labelIds = $validated['action_label_ids'] ?? [];
+        unset($validated['action_label_ids']);
+
+        $automationRule->update($validated);
+        $automationRule->labels()->sync($labelIds);
 
         return back();
     }
