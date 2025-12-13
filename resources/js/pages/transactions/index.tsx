@@ -12,7 +12,7 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
-import { isWithinInterval, parseISO } from 'date-fns';
+import { format, getYear, isWithinInterval, parseISO } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -117,7 +117,6 @@ function TransactionRowComponent({
     return (
         <ContextMenu key={row.id} onOpenChange={setContextMenuOpen}>
             <ContextMenuTrigger asChild>
-                {}
                 <TableRow
                     ref={rowVirtualizer.measureElement}
                     data-state={
@@ -129,6 +128,12 @@ function TransactionRowComponent({
                 >
                     {row
                         .getVisibleCells()
+                        .filter((cell: Cell<DecryptedTransaction, unknown>) => {
+                            const meta = cell.column.columnDef.meta as
+                                | { isVirtual?: boolean }
+                                | undefined;
+                            return !meta?.isVirtual;
+                        })
                         .map((cell: Cell<DecryptedTransaction, unknown>) => (
                             <TableCell key={cell.id}>
                                 {flexRender(
@@ -159,7 +164,12 @@ function TransactionRowComponent({
 }
 
 function getInitialColumnVisibility(): VisibilityState {
-    const defaultVisibility = { bank: false };
+    const defaultVisibility = {
+        transaction_date: true,
+        account: true,
+        labels: true,
+        notes: false,
+    };
     if (typeof window === 'undefined') {
         return defaultVisibility;
     }
@@ -167,7 +177,7 @@ function getInitialColumnVisibility(): VisibilityState {
     try {
         const stored = localStorage.getItem(COLUMN_VISIBILITY_KEY);
         if (stored) {
-            return JSON.parse(stored);
+            return { ...defaultVisibility, ...JSON.parse(stored) };
         }
     } catch (error) {
         console.error(
@@ -176,6 +186,25 @@ function getInitialColumnVisibility(): VisibilityState {
         );
     }
     return defaultVisibility;
+}
+
+function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
+    const parsedDate = parseISO(date);
+    const currentYear = getYear(new Date());
+    const transactionYear = getYear(parsedDate);
+    const formatString =
+        transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
+
+    return (
+        <tr className="bg-muted/50">
+            <td
+                colSpan={colSpan}
+                className="px-4 py-2 text-sm font-semibold text-muted-foreground"
+            >
+                {format(parsedDate, formatString)}
+            </td>
+        </tr>
+    );
 }
 
 export default function Transactions({
@@ -1186,26 +1215,28 @@ export default function Transactions({
                     {isLoading ? (
                         <div className="space-y-4">
                             <div className="overflow-hidden rounded-md border">
-                                <div className="grid grid-cols-6 gap-4 border-b p-4">
+                                <div className="grid grid-cols-4 gap-4 border-b p-4">
+                                    <Skeleton className="h-5 w-8" />
                                     <Skeleton className="h-5 w-24" />
-                                    <Skeleton className="h-5 w-28" />
                                     <Skeleton className="h-5 w-64" />
-                                    <Skeleton className="h-5 w-28" />
-                                    <Skeleton className="h-5 w-28" />
-                                    <Skeleton className="h-5 w-16 justify-self-end" />
+                                    <Skeleton className="h-5 w-20 justify-self-end" />
                                 </div>
                                 <div className="divide-y">
+                                    <div className="bg-muted/50 px-4 py-2">
+                                        <Skeleton className="h-4 w-32" />
+                                    </div>
                                     {Array.from({ length: 6 }).map(
                                         (_, index) => (
                                             <div
                                                 key={index}
-                                                className="grid grid-cols-6 gap-4 p-4"
+                                                className="grid grid-cols-4 gap-4 p-4"
                                             >
-                                                <Skeleton className="h-4 w-32" />
-                                                <Skeleton className="h-4 w-36" />
-                                                <Skeleton className="h-4 w-full" />
-                                                <Skeleton className="h-4 w-32" />
-                                                <Skeleton className="h-4 w-40" />
+                                                <Skeleton className="h-4 w-8" />
+                                                <Skeleton className="h-4 w-28" />
+                                                <div className="space-y-2">
+                                                    <Skeleton className="h-4 w-full" />
+                                                    <Skeleton className="h-3 w-48" />
+                                                </div>
                                                 <Skeleton className="h-4 w-20 justify-self-end" />
                                             </div>
                                         ),
@@ -1224,6 +1255,13 @@ export default function Transactions({
                                 columns={columns}
                                 emptyMessage="No transactions found."
                                 renderRow={renderTransactionRow}
+                                getRowDate={(row) => row.transaction_date}
+                                renderDateHeader={(date, colSpan) => (
+                                    <DateHeader
+                                        date={date}
+                                        colSpan={colSpan}
+                                    />
+                                )}
                             />
 
                             <DataTablePagination
