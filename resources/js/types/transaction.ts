@@ -1,5 +1,6 @@
 import { type Account, type Bank } from './account';
 import { type Category } from './category';
+import { type Label } from './label';
 import { UUID } from './uuid';
 
 export type TransactionSource = 'manually_created' | 'imported';
@@ -17,6 +18,7 @@ export interface Transaction {
     notes: string | null;
     notes_iv: string | null;
     source: TransactionSource;
+    label_ids?: UUID[];
     created_at: string;
     updated_at: string;
 }
@@ -27,6 +29,7 @@ export interface DecryptedTransaction extends Transaction {
     account?: Account;
     category?: Category | null;
     bank?: Bank;
+    labels?: Label[];
 }
 
 export interface TransactionFilters {
@@ -36,5 +39,6 @@ export interface TransactionFilters {
     amountMax: number | null;
     categoryIds: UUID[];
     accountIds: UUID[];
+    labelIds: UUID[];
     searchText: string;
 }

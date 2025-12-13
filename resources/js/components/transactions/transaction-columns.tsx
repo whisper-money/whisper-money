@@ -3,6 +3,7 @@ import { format, getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
 import { EncryptedText } from '@/components/encrypted-text';
+import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,12 +16,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 
 interface CreateColumnsOptions {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    labels: Label[];
     onEdit: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
     onUpdate: (transaction: DecryptedTransaction) => void;
@@ -31,6 +34,7 @@ export function createTransactionColumns({
     categories,
     accounts,
     banks,
+    labels,
     onEdit,
     onDelete,
     onUpdate,
@@ -127,6 +131,24 @@ export function createTransactionColumns({
                     </div>
                 );
             },
+        },
+        {
+            id: 'labels',
+            accessorKey: 'label_ids',
+            meta: { label: 'Labels' },
+            header: 'Labels',
+            cell: ({ row }) => {
+                const transaction = row.original;
+                // Resolve labels from label_ids using the labels map
+                const transactionLabels = (transaction.label_ids || [])
+                    .map((id) => labels.find((l) => l.id === id))
+                    .filter(Boolean) as Label[];
+                if (transactionLabels.length === 0) {
+                    return null;
+                }
+                return <LabelBadges labels={transactionLabels} max={2} />;
+            },
+            enableHiding: true,
         },
         {
             accessorKey: 'bank',

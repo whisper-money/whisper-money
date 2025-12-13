@@ -27,6 +27,8 @@ class StoreTransactionRequest extends FormRequest
             'notes' => ['nullable', 'string'],
             'notes_iv' => ['nullable', 'string', 'size:16'],
             'source' => ['required', Rule::enum(TransactionSource::class)],
+            'label_ids' => ['nullable', 'array'],
+            'label_ids.*' => ['string', 'uuid', 'exists:labels,id'],
         ];
     }
 

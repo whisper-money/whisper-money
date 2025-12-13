@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -42,10 +43,16 @@ class TransactionController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'logo']);
 
+        $labels = Label::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'color']);
+
         return Inertia::render('transactions/index', [
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
+            'labels' => $labels,
         ]);
     }
 
@@ -72,10 +79,16 @@ class TransactionController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'logo']);
 
+        $labels = Label::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'color']);
+
         return Inertia::render('transactions/categorize', [
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
+            'labels' => $labels,
         ]);
     }
 
@@ -149,16 +162,27 @@ class TransactionController extends Controller
             $updateData['notes_iv'] = $request->input('notes_iv');
         }
 
-        if (empty($updateData)) {
+        $labelIds = $request->input('label_ids');
+        $hasLabelUpdate = $request->has('label_ids');
+
+        if (empty($updateData) && ! $hasLabelUpdate) {
             return response()->json([
                 'message' => 'No update data provided.',
             ], 400);
         }
 
-        Transaction::query()
-            ->whereIn('id', $transactionIds)
-            ->where('user_id', $user->id)
-            ->update($updateData);
+        if (! empty($updateData)) {
+            Transaction::query()
+                ->whereIn('id', $transactionIds)
+                ->where('user_id', $user->id)
+                ->update($updateData);
+        }
+
+        if ($hasLabelUpdate) {
+            foreach ($transactions as $transaction) {
+                $transaction->labels()->sync($labelIds ?? []);
+            }
+        }
 
         return response()->json([
             'message' => 'Transactions updated successfully',

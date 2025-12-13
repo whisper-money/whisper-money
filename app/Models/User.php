@@ -87,6 +87,11 @@ class User extends Authenticatable
         return $this->hasMany(AutomationRule::class);
     }
 
+    public function labels(): HasMany
+    {
+        return $this->hasMany(Label::class);
+    }
+
     public function hasProPlan(): bool
     {
         if (! config('subscriptions.enabled')) {

@@ -19,6 +19,8 @@ class BulkUpdateTransactionsRequest extends FormRequest
             'category_id' => ['nullable', 'exists:categories,id'],
             'notes' => ['nullable', 'string'],
             'notes_iv' => ['nullable', 'string', 'size:16'],
+            'label_ids' => ['nullable', 'array'],
+            'label_ids.*' => ['required', 'string', 'uuid', 'exists:labels,id'],
         ];
     }
 

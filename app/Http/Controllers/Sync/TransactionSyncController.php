@@ -20,6 +20,7 @@ class TransactionSyncController extends Controller
         }
 
         $transactions = $query
+            ->with('labels:id,name,color')
             ->orderBy('transaction_date', 'desc')
             ->orderBy('updated_at', 'desc')
             ->get();
@@ -32,6 +33,8 @@ class TransactionSyncController extends Controller
     public function store(StoreTransactionRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $labelIds = $data['label_ids'] ?? [];
+        unset($data['label_ids']);
 
         // Create transaction with provided ID if available
         $transaction = new Transaction([
@@ -47,8 +50,12 @@ class TransactionSyncController extends Controller
 
         $transaction->save();
 
+        if (! empty($labelIds)) {
+            $transaction->labels()->sync($labelIds);
+        }
+
         return response()->json([
-            'data' => $transaction,
+            'data' => $transaction->load('labels:id,name,color'),
         ], 201);
     }
 
@@ -62,10 +69,17 @@ class TransactionSyncController extends Controller
         $data = $request->validated();
         unset($data['id']); // Don't allow ID changes
 
+        $labelIds = $data['label_ids'] ?? null;
+        unset($data['label_ids']);
+
         $transaction->update($data);
 
+        if ($labelIds !== null) {
+            $transaction->labels()->sync($labelIds);
+        }
+
         return response()->json([
-            'data' => $transaction->fresh(),
+            'data' => $transaction->fresh()->load('labels:id,name,color'),
         ]);
     }
 
