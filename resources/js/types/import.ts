@@ -28,6 +28,7 @@ export interface ParsedTransaction {
     amount: number;
     balance?: number | null;
     isDuplicate?: boolean;
+    selected?: boolean;
     validationErrors?: string[];
 }
 
