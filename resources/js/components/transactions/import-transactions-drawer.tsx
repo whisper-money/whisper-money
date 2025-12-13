@@ -706,7 +706,7 @@ export function ImportTransactionsDrawer({
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]">
-                <div className="mx-auto w-full max-w-3xl overflow-y-auto p-6">
+                <div className="mx-auto w-full max-w-5xl overflow-y-auto p-6">
                     <DrawerHeader className="px-0">
                         <DrawerTitle>{stepInfo.title}</DrawerTitle>
                         <DrawerDescription>
