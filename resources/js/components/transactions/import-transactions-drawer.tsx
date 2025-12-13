@@ -274,6 +274,7 @@ export function ImportTransactionsDrawer({
                 (transaction, index) => ({
                     ...transaction,
                     isDuplicate: duplicateFlags[index],
+                    selected: !duplicateFlags[index],
                 }),
             );
 
@@ -308,9 +309,7 @@ export function ImportTransactionsDrawer({
         setError(null);
         setImportErrors([]);
 
-        const newTransactions = state.transactions.filter(
-            (t) => !t.isDuplicate,
-        );
+        const newTransactions = state.transactions.filter((t) => t.selected);
         const total = newTransactions.length;
         setImportTotal(total);
         setImportProgress(0);
@@ -514,6 +513,24 @@ export function ImportTransactionsDrawer({
         });
     };
 
+    const handleSelectionChange = (index: number, selected: boolean) => {
+        setState((prev) => ({
+            ...prev,
+            transactions: prev.transactions.map((t, i) =>
+                i === index ? { ...t, selected } : t,
+            ),
+        }));
+    };
+
+    const handleSelectAll = (selected: boolean) => {
+        setState((prev) => ({
+            ...prev,
+            transactions: prev.transactions.map((t) =>
+                t.isDuplicate ? t : { ...t, selected },
+            ),
+        }));
+    };
+
     const moveToStep = (step: ImportStep) => {
         setState((prev) => ({ ...prev, step }));
     };
@@ -600,6 +617,8 @@ export function ImportTransactionsDrawer({
                         currencyCode={selectedAccount?.currency_code || 'USD'}
                         onConfirm={handleConfirmImport}
                         onBack={() => moveToStep(ImportStep.MapColumns)}
+                        onSelectionChange={handleSelectionChange}
+                        onSelectAll={handleSelectAll}
                         isImporting={isImporting}
                     />
                 );
