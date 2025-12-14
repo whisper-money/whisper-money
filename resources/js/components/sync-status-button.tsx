@@ -131,6 +131,9 @@ export function SyncStatusButton() {
                 open={showPendingDialog}
                 onOpenChange={setShowPendingDialog}
                 operations={pendingOperations}
+                onSyncNow={handleSyncNow}
+                syncStatus={syncStatus}
+                isOnline={isOnline}
             />
         </>
     );
