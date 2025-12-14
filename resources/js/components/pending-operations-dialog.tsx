@@ -67,7 +67,7 @@ export function PendingOperationsDialog({
     const canSync = isOnline && !isSyncing;
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="mx-4 max-w-2xl sm:mx-0">
                 <DialogHeader>
                     <DialogTitle>Pending Operations</DialogTitle>
                     <DialogDescription>
