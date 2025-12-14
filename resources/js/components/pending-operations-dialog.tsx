@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -13,13 +14,18 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import type { SyncStatus } from '@/contexts/sync-context';
 import type { PendingChange } from '@/lib/dexie-db';
 import { formatDistanceToNow } from 'date-fns';
+import { RefreshCw } from 'lucide-react';
 
 interface PendingOperationsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     operations: PendingChange[];
+    onSyncNow: () => void;
+    syncStatus: SyncStatus;
+    isOnline: boolean;
 }
 
 function getOperationBadgeClass(operation: PendingChange['operation']): string {
@@ -53,10 +59,15 @@ export function PendingOperationsDialog({
     open,
     onOpenChange,
     operations,
+    onSyncNow,
+    syncStatus,
+    isOnline,
 }: PendingOperationsDialogProps) {
+    const isSyncing = syncStatus === 'syncing';
+    const canSync = isOnline && !isSyncing;
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Pending Operations</DialogTitle>
                     <DialogDescription>
@@ -106,6 +117,18 @@ export function PendingOperationsDialog({
                             </TableBody>
                         </Table>
                     )}
+                </div>
+                <div className="flex justify-end pt-2">
+                    <Button
+                        onClick={onSyncNow}
+                        disabled={!canSync}
+                        className="gap-2"
+                    >
+                        <RefreshCw
+                            className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`}
+                        />
+                        {isSyncing ? 'Syncing...' : 'Sync now'}
+                    </Button>
                 </div>
             </DialogContent>
         </Dialog>
