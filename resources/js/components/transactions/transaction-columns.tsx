@@ -127,8 +127,12 @@ export function createTransactionColumns({
         {
             id: 'account',
             accessorKey: 'account',
-            meta: { label: 'Account' },
             header: 'Account',
+            meta: {
+                label: 'Account',
+                cellClassName:
+                    '!min-w-[125px] whitespace-normal',
+            },
             cell: ({ row }) => {
                 const transaction = row.original;
                 if (!transaction.account) {
