@@ -55,7 +55,7 @@ import { consoleDebug } from '@/lib/debug';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
-import { appendNoteIfNotPresent } from '@/lib/utils';
+import { appendNoteIfNotPresent, cn } from '@/lib/utils';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem } from '@/types';
@@ -148,7 +148,10 @@ function TransactionRowComponent({
                             return (
                                 <TableCell
                                     key={cell.id}
-                                    className={meta?.cellClassName}
+                                    className={cn(
+                                        meta?.cellClassName,
+                                        'pt-2.5 pb-2',
+                                    )}
                                     style={meta?.cellStyle}
                                 >
                                     {flexRender(

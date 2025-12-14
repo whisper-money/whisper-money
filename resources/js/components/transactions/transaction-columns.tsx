@@ -246,24 +246,15 @@ export function createTransactionColumns({
         {
             id: 'actions',
             enableHiding: false,
-            size: 35,
-            maxSize: 35,
-            minSize: 35,
             meta: {
                 cellClassName:
-                    '!w-[35px] !max-w-[35px] !min-w-[35px] !p-0 whitespace-normal',
-                cellStyle: {
-                    width: '35px',
-                    maxWidth: '35px',
-                    minWidth: '35px',
-                    padding: 0,
-                },
+                    '!w-[45px] !max-w-[45px] !min-w-[45px] whitespace-normal',
             },
             cell: ({ row }) => {
                 const transaction = row.original;
 
                 return (
-                    <div className="flex w-[35px] items-center justify-center">
+                    <div className="relative -top-0.5 flex w-[35px] items-center justify-center">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
