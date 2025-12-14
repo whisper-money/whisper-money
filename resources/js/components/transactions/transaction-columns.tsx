@@ -5,6 +5,7 @@ import { ArrowDown, MoreHorizontal } from 'lucide-react';
 import { EncryptedText } from '@/components/encrypted-text';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -226,18 +227,17 @@ export function createTransactionColumns({
                 const amount = amountInCents / 100;
                 const currencyCode = row.original.currency_code;
 
-                const formatted = new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: currencyCode,
-                }).format(amount);
-
                 return (
-                    <div className={`pl-4 text-right`}>
-                        <span
-                            className={`${amount < 0 ? '' : 'bg-green-100/70 dark:bg-green-900'}`}
-                        >
-                            {formatted}
-                        </span>
+                    <div className="pl-4 text-right">
+                        <AmountDisplay
+                            amountInCents={amountInCents}
+                            currencyCode={currencyCode}
+                            className={
+                                amount < 0
+                                    ? ''
+                                    : 'bg-green-100/70 dark:bg-green-900'
+                            }
+                        />
                     </div>
                 );
             },

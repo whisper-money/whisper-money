@@ -1,3 +1,4 @@
+import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Tooltip,
     TooltipContent,
@@ -16,15 +17,6 @@ interface PercentageTrendIndicatorProps {
     invertColors?: boolean;
     className?: string;
     tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
-}
-
-function formatCurrency(amount: number, currencyCode: string): string {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(amount / 100);
 }
 
 export function PercentageTrendIndicator({
@@ -67,10 +59,6 @@ export function PercentageTrendIndicator({
     );
 
     if (amountDiff !== null) {
-        const formattedDiff = formatCurrency(
-            Math.abs(amountDiff),
-            currencyCode,
-        );
         return (
             <Tooltip open={open} onOpenChange={setOpen}>
                 <TooltipTrigger asChild>
@@ -83,7 +71,13 @@ export function PercentageTrendIndicator({
                 </TooltipTrigger>
                 <TooltipContent side={tooltipSide}>
                     {amountDiff >= 0 ? '+' : '-'}
-                    {formattedDiff} {label}
+                    <AmountDisplay
+                        amountInCents={Math.abs(amountDiff)}
+                        currencyCode={currencyCode}
+                        minimumFractionDigits={0}
+                        maximumFractionDigits={0}
+                    />{' '}
+                    {label}
                 </TooltipContent>
             </Tooltip>
         );
