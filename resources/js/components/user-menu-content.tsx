@@ -48,9 +48,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                     ) : (
                         <EyeOff className="mr-2" />
                     )}
-                    {isPrivacyModeEnabled
-                        ? 'Show amounts'
-                        : 'Hide amounts (Privacy mode)'}
+                    {isPrivacyModeEnabled ? 'Show amounts' : 'Hide amounts'}
                 </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

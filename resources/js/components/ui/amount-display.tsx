@@ -1,5 +1,6 @@
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { cn } from '@/lib/utils';
+import { useEffect, useMemo, useState } from 'react';
 
 interface AmountDisplayProps {
     amountInCents: number;
@@ -19,38 +20,36 @@ export function AmountDisplay({
     maximumFractionDigits = 2,
 }: AmountDisplayProps) {
     const { isPrivacyModeEnabled } = usePrivacyMode();
+    const [amount, setAmount] = useState<number>(amountInCents / 100);
 
-    const amount = amountInCents / 100;
+    useEffect(() => {
+        if (isPrivacyModeEnabled) {
+            // return a random amount with the same lenfth as amountInCents
+            const length = amountInCents.toString().length;
 
-    const formatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits,
-        maximumFractionDigits,
-    }).format(amount);
+            let randomAmountInCents = '';
+            for (let i = 0; i < length; i++) {
+                randomAmountInCents += Math.floor(Math.random() * 10).toString();
+            }
 
-    if (isPrivacyModeEnabled) {
-        const currencySymbol = new Intl.NumberFormat('en-US', {
+            setAmount(parseInt(randomAmountInCents, 10) / 100)
+            return;
+        }
+
+        setAmount(amountInCents / 100);
+    }, [amountInCents, isPrivacyModeEnabled]);
+
+    const formatted = useMemo(() => {
+        return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: currencyCode,
-        })
-            .formatToParts(0)
-            .find((part) => part.type === 'currency')?.value || '$';
-
-        return (
-            <span
-                className={cn(
-                    'blur-sm transition-all duration-300',
-                    className,
-                )}
-            >
-                {currencySymbol}•••.••
-            </span>
-        );
-    }
+            minimumFractionDigits,
+            maximumFractionDigits,
+        }).format(amount);
+    }, [amount, currencyCode, minimumFractionDigits, maximumFractionDigits]);
 
     return (
-        <span className={cn('transition-all duration-300', className)}>
+        <span className={cn('transition-all duration-300', { 'blur-sm bg-black/5': isPrivacyModeEnabled }, className)}>
             {showSign && amount >= 0 && '+'}
             {formatted}
         </span>
