@@ -116,7 +116,7 @@ export function createTransactionColumns({
                         accounts={accounts}
                         banks={banks}
                         onUpdate={onUpdate}
-                        className="max-w-[150px]"
+                        className="relative -top-0.5 max-w-[150px]"
                         withoutChevronIcon
                     />
                 );
