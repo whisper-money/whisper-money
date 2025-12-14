@@ -49,6 +49,7 @@ export function createTransactionColumns({
                         table.getIsAllPageRowsSelected() ||
                         (table.getIsSomePageRowsSelected() && 'indeterminate')
                     }
+                    className="ml-2"
                     onCheckedChange={(value) =>
                         table.toggleAllPageRowsSelected(!!value)
                     }
@@ -58,6 +59,7 @@ export function createTransactionColumns({
             cell: ({ row }) => (
                 <Checkbox
                     checked={row.getIsSelected()}
+                    className="ml-2"
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
                     onClick={(e) => e.stopPropagation()}
                     aria-label="Select row"
@@ -67,8 +69,13 @@ export function createTransactionColumns({
             enableHiding: false,
         },
         {
+            id: 'transaction_date',
             accessorKey: 'transaction_date',
-            meta: { label: 'Date' },
+            meta: {
+                label: 'Date',
+                cellClassName:
+                    '!w-[100px] !max-w-[100px] !min-w-[100px] whitespace-normal',
+            },
             header: ({ column }) => {
                 return (
                     <Button
@@ -87,112 +94,126 @@ export function createTransactionColumns({
                 const currentYear = getYear(new Date());
                 const transactionYear = getYear(date);
                 const formatString =
-                    transactionYear === currentYear ? 'MMM d' : 'MMM d, yyyy';
+                    transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
 
-                return (
-                    <div className="pl-3 font-medium">
-                        {format(date, formatString)}
-                    </div>
-                );
+                return <div className="pl-3">{format(date, formatString)}</div>;
             },
             enableHiding: true,
         },
         {
             accessorKey: 'category_id',
-            meta: { label: 'Category' },
+            meta: {
+                label: 'Category',
+                cellClassName:
+                    '!w-[170px] !max-w-[170px] !min-w-[170px] whitespace-normal',
+            },
             header: 'Category',
             cell: ({ row }) => {
                 return (
-                    <div className="max-w-[200px]">
-                        <CategoryCell
-                            transaction={row.original}
-                            categories={categories}
-                            accounts={accounts}
-                            banks={banks}
-                            onUpdate={onUpdate}
+                    <CategoryCell
+                        transaction={row.original}
+                        categories={categories}
+                        accounts={accounts}
+                        banks={banks}
+                        onUpdate={onUpdate}
+                        className="relative -top-0.5 max-w-[150px]"
+                        withoutChevronIcon
+                    />
+                );
+            },
+            enableHiding: true,
+        },
+        {
+            id: 'account',
+            accessorKey: 'account',
+            meta: { label: 'Account' },
+            header: 'Account',
+            cell: ({ row }) => {
+                const transaction = row.original;
+                if (!transaction.account) {
+                    return <div className="text-muted-foreground">—</div>;
+                }
+
+                return (
+                    <div className="flex items-center gap-2">
+                        {transaction.bank?.logo && (
+                            <img
+                                src={transaction.bank.logo}
+                                alt={transaction.bank.name}
+                                className="h-5 w-5 rounded-full"
+                            />
+                        )}
+                        <EncryptedText
+                            encryptedText={transaction.account.name}
+                            iv={transaction.account.name_iv}
+                            length={{ min: 5, max: 15 }}
+                            className="truncate"
                         />
                     </div>
                 );
             },
+            enableHiding: true,
         },
         {
             accessorKey: 'decryptedDescription',
             meta: { label: 'Description' },
             header: 'Description',
-            cell: ({ row }) => {
+            cell: ({ row, table }) => {
                 const transaction = row.original;
-                return (
-                    <div className="max-w-[150px] truncate md:max-w-[250px] lg:max-w-[400px]">
-                        <EncryptedText
-                            encryptedText={transaction.description}
-                            iv={transaction.description_iv}
-                            length={{ min: 20, max: 80 }}
-                        />
-                    </div>
-                );
-            },
-        },
-        {
-            id: 'labels',
-            accessorKey: 'label_ids',
-            meta: { label: 'Labels' },
-            header: 'Labels',
-            cell: ({ row }) => {
-                const transaction = row.original;
-                // Resolve labels from label_ids using the labels map
+                const columnVisibility = table.getState().columnVisibility;
+
+                const showLabels = columnVisibility.labels !== false;
+                const showNotes = columnVisibility.notes !== false;
+
                 const transactionLabels = (transaction.label_ids || [])
                     .map((id) => labels.find((l) => l.id === id))
                     .filter(Boolean) as Label[];
-                if (transactionLabels.length === 0) {
-                    return null;
-                }
-                return <LabelBadges labels={transactionLabels} max={2} />;
-            },
-            enableHiding: true,
-        },
-        {
-            accessorKey: 'bank',
-            meta: { label: 'Bank' },
-            header: 'Bank',
-            cell: ({ row }) => {
-                const bank = row.original.bank;
-                return (
-                    <div className="flex items-center gap-2 px-1">
-                        <span>{bank?.name || 'N/A'}</span>
-                    </div>
-                );
-            },
-            enableHiding: true,
-        },
-        {
-            accessorKey: 'account',
-            meta: { label: 'Account' },
-            header: 'Account',
-            cell: ({ row }) => {
-                const bank = row.original.bank;
-                const account = row.original.account;
-                if (!account) {
-                    return <div className="px-1">N/A</div>;
-                }
+
+                const hasLabels = transactionLabels.length > 0;
+                const hasNotes =
+                    transaction.decryptedNotes ||
+                    (transaction.notes && transaction.notes_iv);
 
                 return (
-                    <div className="flex min-w-[140px] items-center gap-2 px-1">
-                        {bank?.logo && (
-                            <img
-                                src={bank.logo}
-                                alt={bank.name}
-                                className="h-6 w-6 rounded-full"
-                            />
+                    <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-row justify-between gap-1">
+                            <div className="flex-grow truncate">
+                                <EncryptedText
+                                    encryptedText={transaction.description}
+                                    iv={transaction.description_iv}
+                                    length={{ min: 20, max: 80 }}
+                                />
+                            </div>
+                            {showLabels && hasLabels && (
+                                <LabelBadges
+                                    labels={transactionLabels}
+                                    max={3}
+                                />
+                            )}
+                        </div>
+                        {showNotes && hasNotes && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                                <div className="truncate text-muted-foreground/80">
+                                    {transaction.decryptedNotes ? (
+                                        <span>
+                                            {transaction.decryptedNotes}
+                                        </span>
+                                    ) : (
+                                        <EncryptedText
+                                            encryptedText={
+                                                transaction.notes || ''
+                                            }
+                                            iv={transaction.notes_iv || ''}
+                                            length={{ min: 10, max: 30 }}
+                                        />
+                                    )}
+                                </div>
+                            </div>
                         )}
-                        <EncryptedText
-                            encryptedText={account.name}
-                            iv={account.name_iv}
-                            length={{ min: 5, max: 10 }}
-                            className="w-full truncate px-1"
-                        />
                     </div>
                 );
             },
+            enableHiding: false,
         },
         {
             accessorKey: 'amount',
@@ -220,33 +241,25 @@ export function createTransactionColumns({
                     </div>
                 );
             },
+            enableHiding: true,
         },
         {
             id: 'actions',
             enableHiding: false,
-            size: 35,
-            maxSize: 35,
-            minSize: 35,
             meta: {
                 cellClassName:
-                    '!w-[35px] !max-w-[35px] !min-w-[35px] !p-0 whitespace-normal',
-                cellStyle: {
-                    width: '35px',
-                    maxWidth: '35px',
-                    minWidth: '35px',
-                    padding: 0,
-                },
+                    '!w-[45px] !max-w-[45px] !min-w-[45px] whitespace-normal',
             },
             cell: ({ row }) => {
                 const transaction = row.original;
 
                 return (
-                    <div className="flex w-[35px] items-center justify-center">
+                    <div className="relative -top-0.5 flex w-[35px] items-center justify-center">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="ghost"
-                                    className="h-8 w-8 p-0"
+                                    className="h-[24px] w-8 p-0"
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <span className="sr-only">Open menu</span>
@@ -278,6 +291,23 @@ export function createTransactionColumns({
                     </div>
                 );
             },
+        },
+        // Virtual columns for visibility control only (not rendered as table columns)
+        {
+            id: 'labels',
+            accessorKey: 'label_ids',
+            meta: { label: 'Labels', isVirtual: true },
+            header: () => null,
+            cell: () => null,
+            enableHiding: true,
+        },
+        {
+            id: 'notes',
+            accessorKey: 'decryptedNotes',
+            meta: { label: 'Notes', isVirtual: true },
+            header: () => null,
+            cell: () => null,
+            enableHiding: true,
         },
     ];
 }

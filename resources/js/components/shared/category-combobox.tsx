@@ -46,6 +46,7 @@ interface CategoryComboboxProps {
     placeholder?: string;
     triggerClassName?: string;
     showUncategorized?: boolean;
+    withoutChevronIcon?: boolean;
 }
 
 export function CategoryCombobox({
@@ -56,6 +57,7 @@ export function CategoryCombobox({
     placeholder = 'Select category',
     triggerClassName,
     showUncategorized = true,
+    withoutChevronIcon = false,
 }: CategoryComboboxProps) {
     const [open, setOpen] = useState(false);
 
@@ -76,7 +78,7 @@ export function CategoryCombobox({
                     role="combobox"
                     aria-expanded={open}
                     className={cn(
-                        'w-full max-w-full justify-between !pl-2',
+                        'w-full max-w-full justify-between !pr-2 !pl-1',
                         triggerClassName,
                     )}
                     disabled={disabled}
@@ -90,18 +92,22 @@ export function CategoryCombobox({
                             </span>
                         </div>
                     ) : value === 'null' ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 truncate">
                             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
                                 <HelpCircle className="h-3 w-3 text-zinc-500" />
                             </div>
-                            <span className="text-zinc-500">Uncategorized</span>
+                            <span className="truncate text-zinc-500">
+                                Uncategorized
+                            </span>
                         </div>
                     ) : (
-                        <span className="text-muted-foreground">
+                        <span className="truncate text-muted-foreground">
                             {placeholder}
                         </span>
                     )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    {withoutChevronIcon === false && (
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    )}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0" align="start">
