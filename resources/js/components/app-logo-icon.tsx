@@ -22,11 +22,7 @@ export default function AppLogoIcon({
     const showBirdhouse = !isKeySet || isPrivacyModeEnabled;
 
     if (!animated) {
-        return showBirdhouse ? (
-            <Birdhouse className={iconClasses} />
-        ) : (
-            <BirdIcon className={iconClasses} />
-        );
+        <BirdIcon className={iconClasses} />
     }
 
     return (
