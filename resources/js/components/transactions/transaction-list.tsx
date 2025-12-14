@@ -200,7 +200,7 @@ function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
         transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
 
     return (
-        <tr className="bg-muted/50">
+        <tr className="hidden bg-muted/50">
             <td
                 colSpan={colSpan}
                 className="px-4 py-2 text-sm font-semibold text-muted-foreground"
@@ -273,6 +273,7 @@ export function TransactionList({
         amountMax: null,
         categoryIds: [],
         accountIds: accountId ? [accountId] : [],
+        labelIds: [],
         searchText: '',
     });
     const [editTransaction, setEditTransaction] =
@@ -1161,6 +1162,7 @@ export function TransactionList({
                     filters={filters}
                     onFiltersChange={setFilters}
                     categories={categories}
+                    labels={labels}
                     accounts={accounts}
                     isKeySet={isKeySet}
                     hideAccountFilter={hideAccountFilter}
