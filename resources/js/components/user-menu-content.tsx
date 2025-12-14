@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
+import { isAdmin } from '@/hooks/use-admin';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
@@ -36,22 +37,28 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-                <DropdownMenuItem
-                    onClick={() => {
-                        togglePrivacyMode();
-                        cleanup();
-                    }}
-                >
-                    {isPrivacyModeEnabled ? (
-                        <Eye className="mr-2" />
-                    ) : (
-                        <EyeOff className="mr-2" />
-                    )}
-                    {isPrivacyModeEnabled ? 'Show amounts' : 'Hide amounts'}
-                </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            {isAdmin() && (
+                <>
+                    <DropdownMenuGroup>
+                        <DropdownMenuItem
+                            onClick={() => {
+                                togglePrivacyMode();
+                                cleanup();
+                            }}
+                        >
+                            {isPrivacyModeEnabled ? (
+                                <Eye className="mr-2" />
+                            ) : (
+                                <EyeOff className="mr-2" />
+                            )}
+                            {isPrivacyModeEnabled
+                                ? 'Show amounts'
+                                : 'Hide amounts'}
+                        </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
+                </>
+            )}
             <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
                     <Link

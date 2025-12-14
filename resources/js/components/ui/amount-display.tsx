@@ -49,7 +49,7 @@ export function AmountDisplay({
     }, [amount, currencyCode, minimumFractionDigits, maximumFractionDigits]);
 
     return (
-        <span className={cn('transition-all duration-300', { 'blur-sm bg-black/5': isPrivacyModeEnabled }, className)}>
+        <span className={cn('transition-all duration-300', { 'blur-sm': isPrivacyModeEnabled }, className)}>
             {showSign && amount >= 0 && '+'}
             {formatted}
         </span>
