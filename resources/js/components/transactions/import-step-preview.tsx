@@ -1,3 +1,4 @@
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -53,13 +54,6 @@ export function ImportStepPreview({
             someSelected,
         };
     }, [transactions]);
-
-    const formatAmount = (amount: number): string => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: currencyCode,
-        }).format(amount / 100);
-    };
 
     const formatDate = (dateStr: string): string => {
         const date = new Date(dateStr);
@@ -186,7 +180,10 @@ export function ImportStepPreview({
                                         {transaction.description}
                                     </TableCell>
                                     <TableCell className="text-right font-mono">
-                                        {formatAmount(transaction.amount)}
+                                        <AmountDisplay
+                                            amountInCents={transaction.amount}
+                                            currencyCode={currencyCode}
+                                        />
                                     </TableCell>
                                 </TableRow>
                             ))

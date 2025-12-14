@@ -5,13 +5,14 @@ import {
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
+import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings } from 'lucide-react';
+import { Eye, EyeOff, LogOut, Settings } from 'lucide-react';
 
 interface UserMenuContentProps {
     user: User;
@@ -19,6 +20,7 @@ interface UserMenuContentProps {
 
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
+    const { isPrivacyModeEnabled, togglePrivacyMode } = usePrivacyMode();
 
     const handleLogout = () => {
         clearKey();
@@ -33,6 +35,24 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                     <UserInfo user={user} showEmail={true} />
                 </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+                <DropdownMenuItem
+                    onClick={() => {
+                        togglePrivacyMode();
+                        cleanup();
+                    }}
+                >
+                    {isPrivacyModeEnabled ? (
+                        <Eye className="mr-2" />
+                    ) : (
+                        <EyeOff className="mr-2" />
+                    )}
+                    {isPrivacyModeEnabled
+                        ? 'Show amounts'
+                        : 'Hide amounts (Privacy mode)'}
+                </DropdownMenuItem>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                 <DropdownMenuItem asChild>

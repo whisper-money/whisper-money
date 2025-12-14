@@ -1,4 +1,5 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { cn } from '@/lib/utils';
 import { BirdIcon, Birdhouse, SVGAttributes } from 'lucide-react';
 
@@ -10,6 +11,7 @@ export default function AppLogoIcon({
     animated?: boolean;
 }) {
     const { isKeySet } = useEncryptionKey();
+    const { isPrivacyModeEnabled } = usePrivacyMode();
 
     const iconClasses = cn(
         'size-5 text-[#1b1b18] dark:text-[#EDEDEC]',
@@ -17,8 +19,14 @@ export default function AppLogoIcon({
         'fill-transparent',
     );
 
+    const showBirdhouse = !isKeySet || isPrivacyModeEnabled;
+
     if (!animated) {
-        return <BirdIcon className={iconClasses} />;
+        return showBirdhouse ? (
+            <Birdhouse className={iconClasses} />
+        ) : (
+            <BirdIcon className={iconClasses} />
+        );
     }
 
     return (
@@ -27,14 +35,18 @@ export default function AppLogoIcon({
                 className={cn(
                     iconClasses,
                     'absolute inset-0 transition-all duration-300',
-                    isKeySet ? 'scale-100 opacity-100' : 'scale-75 opacity-0',
+                    showBirdhouse
+                        ? 'scale-75 opacity-0'
+                        : 'scale-100 opacity-100',
                 )}
             />
             <Birdhouse
                 className={cn(
                     iconClasses,
                     'absolute inset-0 transition-all duration-300',
-                    isKeySet ? 'scale-75 opacity-0' : 'scale-100 opacity-100',
+                    showBirdhouse
+                        ? 'scale-100 opacity-100'
+                        : 'scale-75 opacity-0',
                 )}
             />
         </div>
