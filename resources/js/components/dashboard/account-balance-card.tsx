@@ -1,6 +1,7 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { EncryptedText } from '@/components/encrypted-text';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { Link } from '@inertiajs/react';
@@ -35,11 +36,6 @@ export function AccountBalanceCard({
             </Card>
         );
     }
-
-    const formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: account.currency_code,
-    });
 
     const isPositive = account.diff >= 0;
 
@@ -81,18 +77,20 @@ export function AccountBalanceCard({
                             onClick={() => setUpdateBalanceOpen(true)}
                             className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left text-2xl font-medium transition-colors hover:bg-muted"
                         >
-                            {formatter.format(account.currentBalance / 100)}
+                            <AmountDisplay
+                                amountInCents={account.currentBalance}
+                                currencyCode={account.currency_code}
+                            />
                         </button>
                         <AmountTrendIndicator
                             isPositive={isPositive}
-                            trend={formatter.format(
-                                Math.abs(account.diff) / 100,
-                            )}
+                            trend={Math.abs(account.diff)}
                             label="vs last month"
                             className="text-sm"
                             previousAmount={account.previousBalance}
                             currentAmount={account.currentBalance}
                             tooltipSide="bottom"
+                            currencyCode={account.currency_code}
                         />
                     </div>
                     <div className="h-[70px] w-full max-w-[250px] flex-1">
@@ -112,9 +110,14 @@ export function AccountBalanceCard({
                                                     {data.date}
                                                 </p>
                                                 <p className="font-mono font-medium text-foreground tabular-nums">
-                                                    {formatter.format(
-                                                        data.value / 100,
-                                                    )}
+                                                    <AmountDisplay
+                                                        amountInCents={
+                                                            data.value
+                                                        }
+                                                        currencyCode={
+                                                            account.currency_code
+                                                        }
+                                                    />
                                                 </p>
                                             </div>
                                         );

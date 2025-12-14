@@ -1,4 +1,5 @@
 import { EncryptedText } from '@/components/encrypted-text';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
     CardContent,
@@ -35,15 +36,6 @@ function formatXAxisLabel(value: string): string {
     }
 
     return `${monthName} ${year.slice(-2)}`;
-}
-
-function formatCurrencyWithCode(value: number, currencyCode: string): string {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value / 100);
 }
 
 function calculateTrend(
@@ -103,7 +95,12 @@ function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
     if (totals.length === 1) {
         return (
             <span className="text-2xl font-semibold tabular-nums sm:text-4xl">
-                {formatCurrencyWithCode(totals[0].total, totals[0].currency)}
+                <AmountDisplay
+                    amountInCents={totals[0].total}
+                    currencyCode={totals[0].currency}
+                    minimumFractionDigits={0}
+                    maximumFractionDigits={0}
+                />
             </span>
         );
     }
@@ -118,7 +115,12 @@ function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
                         </span>
                     )}
                     <span className="text-2xl font-semibold tabular-nums sm:text-4xl">
-                        {formatCurrencyWithCode(item.total, item.currency)}
+                        <AmountDisplay
+                            amountInCents={item.total}
+                            currencyCode={item.currency}
+                            minimumFractionDigits={0}
+                            maximumFractionDigits={0}
+                        />
                     </span>
                 </span>
             ))}
@@ -196,12 +198,19 @@ export function NetWorthChart({
     }, [data]);
 
     const valueFormatter = useMemo(() => {
-        return (value: number, accountId?: string): string => {
+        return (value: number, accountId?: string): React.ReactNode => {
             const currency =
                 accountId && accountCurrencies[accountId]
                     ? accountCurrencies[accountId]
                     : 'USD';
-            return formatCurrencyWithCode(value, currency);
+            return (
+                <AmountDisplay
+                    amountInCents={value}
+                    currencyCode={currency}
+                    minimumFractionDigits={0}
+                    maximumFractionDigits={0}
+                />
+            );
         };
     }, [accountCurrencies]);
 

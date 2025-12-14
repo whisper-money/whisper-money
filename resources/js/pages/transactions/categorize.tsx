@@ -2,6 +2,7 @@ import { categorize as categorizeRoute } from '@/actions/App/Http/Controllers/Tr
 import { AutomationRulesDialog } from '@/components/automation-rules/automation-rules-dialog';
 import { EncryptedText } from '@/components/encrypted-text';
 import { CategoryIcon } from '@/components/shared/category-combobox';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -472,13 +473,6 @@ export default function CategorizeTransactions({
         rulesDialogOpen,
     ]);
 
-    const formatAmount = (amount: number, currencyCode: string): string => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: currencyCode,
-        }).format(amount / 100);
-    };
-
     const formatDate = (dateStr: string): string => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-US', {
@@ -754,19 +748,20 @@ export default function CategorizeTransactions({
                                             </div>
 
                                             <div className="mt-2 font-mono text-xl text-muted-foreground">
-                                                <span
+                                                <AmountDisplay
+                                                    amountInCents={
+                                                        currentTransaction.amount
+                                                    }
+                                                    currencyCode={
+                                                        currentTransaction.currency_code
+                                                    }
                                                     className={cn(
                                                         'rounded px-1',
                                                         currentTransaction.amount >=
                                                             0 &&
                                                             'bg-green-100/70 dark:bg-green-900',
                                                     )}
-                                                >
-                                                    {formatAmount(
-                                                        currentTransaction.amount,
-                                                        currentTransaction.currency_code,
-                                                    )}
-                                                </span>
+                                                />
                                             </div>
                                         </div>
                                     </div>

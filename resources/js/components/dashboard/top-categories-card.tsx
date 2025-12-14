@@ -1,3 +1,4 @@
+import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
     CardContent,
@@ -41,13 +42,6 @@ export function TopCategoriesCard({
     categories,
     loading,
 }: TopCategoriesCardProps) {
-    const formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    });
-
     if (loading) {
         return (
             <Card className="col-span-3">
@@ -129,7 +123,12 @@ export function TopCategoriesCard({
                                         />
                                     )}
                                     <span className="shrink-0 text-sm font-semibold tabular-nums">
-                                        {formatter.format(item.amount / 100)}
+                                        <AmountDisplay
+                                            amountInCents={item.amount}
+                                            currencyCode="USD"
+                                            minimumFractionDigits={0}
+                                            maximumFractionDigits={0}
+                                        />
                                     </span>
                                 </div>
                                 <Progress

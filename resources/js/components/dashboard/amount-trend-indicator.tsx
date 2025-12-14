@@ -1,3 +1,4 @@
+import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Tooltip,
     TooltipContent,
@@ -8,13 +9,14 @@ import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
 interface AmountTrendIndicatorProps {
-    trend: string | null;
+    trend: number;
     isPositive: boolean;
     label: string;
     className?: string;
     previousAmount?: number;
     currentAmount?: number;
     tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
+    currencyCode?: string;
 }
 
 function calculatePercentageChange(
@@ -33,10 +35,9 @@ export function AmountTrendIndicator({
     previousAmount,
     currentAmount,
     tooltipSide = 'top',
+    currencyCode = 'USD',
 }: AmountTrendIndicatorProps) {
     const [open, setOpen] = useState(false);
-
-    if (trend === null) return null;
 
     const Icon = isPositive ? TrendingUp : TrendingDown;
     const iconColorClass = isPositive
@@ -55,7 +56,10 @@ export function AmountTrendIndicator({
                     isPositive ? 'bg-green-100/25 dark:bg-green-900/25' : ''
                 }
             >
-                {trend}
+                <AmountDisplay
+                    amountInCents={trend}
+                    currencyCode={currencyCode}
+                />
             </span>
             <span className="text-muted-foreground">{label}</span>
             <Icon className={`h-4 w-4 ${iconColorClass}`} />
