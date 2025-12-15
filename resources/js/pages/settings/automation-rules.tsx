@@ -219,8 +219,8 @@ export default function AutomationRules() {
                         : null;
                     const IconComponent = actions.category
                         ? (Icons[
-                              actions.category.icon as keyof typeof Icons
-                          ] as Icons.LucideIcon)
+                            actions.category.icon as keyof typeof Icons
+                        ] as Icons.LucideIcon)
                         : null;
                     return (
                         <div className="flex items-center gap-2">
@@ -300,7 +300,7 @@ export default function AutomationRules() {
                     />
 
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex gap-4 items-center justify-between">
                             <Input
                                 placeholder="Filter rules..."
                                 value={
@@ -334,12 +334,12 @@ export default function AutomationRules() {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext(),
-                                                                      )}
+                                                                        header
+                                                                            .column
+                                                                            .columnDef
+                                                                            .header,
+                                                                        header.getContext(),
+                                                                    )}
                                                             </TableHead>
                                                         );
                                                     },
