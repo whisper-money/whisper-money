@@ -101,7 +101,7 @@ export function AmountDisplay({
     };
 
     return (
-        <div
+        <span
             className={cn(
                 'inline',
                 'transition-all duration-300',
@@ -115,7 +115,7 @@ export function AmountDisplay({
         >
             <span className='text-xs'>{showSign && amount >= 0 && '+'}</span>
             <span>{formatted}</span>
-        </div>
+        </span>
     );
 }
 

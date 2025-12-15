@@ -26,6 +26,7 @@ interface LabelComboboxProps {
     placeholder?: string;
     triggerClassName?: string;
     allowCreate?: boolean;
+    onLabelCreated?: (label: Label) => void;
 }
 
 export function LabelCombobox({
@@ -36,6 +37,7 @@ export function LabelCombobox({
     placeholder = 'Add labels...',
     triggerClassName,
     allowCreate = true,
+    onLabelCreated,
 }: LabelComboboxProps) {
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
@@ -84,6 +86,7 @@ export function LabelCombobox({
             if (newLabel) {
                 onValueChange([...value, newLabel.id]);
                 setInputValue('');
+                onLabelCreated?.(newLabel);
             }
         } catch (error) {
             console.error('Failed to create label:', error);

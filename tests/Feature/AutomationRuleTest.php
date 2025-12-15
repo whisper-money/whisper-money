@@ -42,26 +42,30 @@ test('user can create an automation rule with category action', function () {
     ]);
 });
 
-test('user can create an automation rule with note action', function () {
+test('user can create an automation rule with labels action only', function () {
     $user = User::factory()->create();
+    $label = Label::factory()->create(['user_id' => $user->id]);
 
     $response = $this->actingAs($user)
         ->from(route('automation-rules.index'))
         ->post(route('automation-rules.store'), [
-            'title' => 'Note Rule',
+            'title' => 'Label Only Rule',
             'priority' => 5,
             'rules_json' => json_encode(['==' => [['var' => 'amount'], 100]]),
             'action_category_id' => null,
-            'action_note' => 'encrypted_note',
-            'action_note_iv' => 'test_iv',
+            'action_note' => null,
+            'action_note_iv' => null,
+            'action_label_ids' => [$label->id],
         ]);
 
     $response->assertRedirect(route('automation-rules.index'));
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
-        'title' => 'Note Rule',
-        'action_note' => 'encrypted_note',
+        'title' => 'Label Only Rule',
     ]);
+    $rule = AutomationRule::where('title', 'Label Only Rule')->first();
+    expect($rule->labels)->toHaveCount(1);
+    expect($rule->labels->first()->id)->toBe($label->id);
 });
 
 test('user can create an automation rule with both actions', function () {
