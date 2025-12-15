@@ -235,11 +235,8 @@ export function createTransactionColumns({
                         <AmountDisplay
                             amountInCents={amountInCents}
                             currencyCode={currencyCode}
-                            className={
-                                amount < 0
-                                    ? ''
-                                    : 'bg-green-100/70 dark:bg-green-900'
-                            }
+                            variant="positive-highlight"
+                            highlightPositive={amount >= 0}
                         />
                     </div>
                 );
