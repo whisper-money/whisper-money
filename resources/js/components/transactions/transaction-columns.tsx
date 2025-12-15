@@ -75,7 +75,7 @@ export function createTransactionColumns({
             meta: {
                 label: 'Date',
                 cellClassName:
-                    '!w-[100px] !max-w-[100px] !min-w-[100px] whitespace-normal',
+                    'max-w-[80px] whitespace-normal',
             },
             header: ({ column }) => {
                 return (
@@ -106,7 +106,7 @@ export function createTransactionColumns({
             meta: {
                 label: 'Category',
                 cellClassName:
-                    'max-w-[170px] !sm:max-w-[170px] md:max-w-[200px] !min-w-[170px] whitespace-normal',
+                    'max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
             },
             header: 'Category',
             cell: ({ row }) => {
@@ -117,7 +117,7 @@ export function createTransactionColumns({
                         accounts={accounts}
                         banks={banks}
                         onUpdate={onUpdate}
-                        className="relative -top-0.5 max-w-[150px] md:max-w-[200px]"
+                        className="relative -top-0.5 max-w-[150px] md:max-w-[180px]"
                         withoutChevronIcon
                     />
                 );
@@ -162,7 +162,7 @@ export function createTransactionColumns({
             accessorKey: 'decryptedDescription',
             meta: {
                 label: 'Description',
-                cellClassName: 'max-w-[200px] sm:max-w-[400px] md:max-w-[600px] lg:max-w-[700px]',
+                cellClassName: 'max-w-[200px] sm:max-w-[400px] md:max-w-[400px] lg:max-w-[550px] xl:max-w-full xl:w-full',
             },
             header: 'Description',
             cell: ({ row, table }) => {
