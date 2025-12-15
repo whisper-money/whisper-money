@@ -202,7 +202,7 @@ export function CreateAutomationRuleDialog({
                             <FormLabel htmlFor="category">
                                 Set Category
                             </FormLabel>
-                            <div className='mt-1'>
+                            <div className="mt-1">
                                 <CategoryCombobox
                                     value={categoryId}
                                     onValueChange={setCategoryId}
@@ -215,7 +215,7 @@ export function CreateAutomationRuleDialog({
 
                         <div className="space-y-2">
                             <FormLabel>Add Labels</FormLabel>
-                            <div className='mt-1'>
+                            <div className="mt-1">
                                 <LabelCombobox
                                     value={selectedLabelIds}
                                     onValueChange={setSelectedLabelIds}
