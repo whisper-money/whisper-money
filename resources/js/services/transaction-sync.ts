@@ -248,11 +248,36 @@ class TransactionSyncService {
                 if (!response.ok) {
                     throw new Error('Failed to bulk update transactions');
                 }
+
+                // Update IndexedDB with the label_ids after successful API call
+                // Use bulkPut to update all transactions at once (single operation)
+                const updates = [];
+                for (const id of ids) {
+                    const existing = await this.getById(id);
+                    if (existing) {
+                        updates.push({
+                            ...existing,
+                            ...transactionData,
+                            label_ids: label_ids,
+                            updated_at: timestamp,
+                        });
+                    }
+                }
+
+                if (updates.length > 0) {
+                    await db.transactions.bulkPut(updates);
+                }
+
+                return;
             } catch (error) {
                 console.error('Failed to update transactions via API:', error);
                 throw error;
             }
         }
+
+        // Batch update for non-label updates (e.g., category changes)
+        const updates = [];
+        const pendingChanges = [];
 
         for (const id of ids) {
             const existing = await this.getById(id);
@@ -268,13 +293,18 @@ class TransactionSyncService {
                 updated_at: timestamp,
             };
 
-            await db.transactions.put(updated);
-            await db.pending_changes.add({
+            updates.push(updated);
+            pendingChanges.push({
                 store: 'transactions',
                 operation: 'update',
                 data: updated,
                 timestamp,
             });
+        }
+
+        if (updates.length > 0) {
+            await db.transactions.bulkPut(updates);
+            await db.pending_changes.bulkAdd(pendingChanges);
         }
     }
 
@@ -340,6 +370,10 @@ class TransactionSyncService {
             }
 
             const result = await response.json();
+
+            // After successful API call, sync from server to update IndexedDB
+            await this.sync();
+
             return result.count || 0;
         } catch (error) {
             console.error(

@@ -238,7 +238,7 @@ export default function Transactions({
         async () => {
             const txs = await db.transactions.toArray();
             return txs
-                .map((t) => t.id)
+                .map((t) => `${t.id}:${t.updated_at}`)
                 .sort()
                 .join(',');
         },
@@ -389,6 +389,17 @@ export default function Transactions({
                                 ? banksMap.get(account.bank.id)
                                 : undefined;
 
+                            // Map label_ids to Label objects
+                            const transactionLabels =
+                                transaction.label_ids
+                                    ?.map((labelId) =>
+                                        labels.find((l) => l.id === labelId),
+                                    )
+                                    .filter(
+                                        (label): label is Label =>
+                                            label !== undefined,
+                                    ) || [];
+
                             return {
                                 ...transaction,
                                 decryptedDescription,
@@ -396,6 +407,7 @@ export default function Transactions({
                                 account,
                                 category: category || null,
                                 bank,
+                                labels: transactionLabels,
                             } as DecryptedTransaction;
                         } catch (error) {
                             console.error(
@@ -428,7 +440,7 @@ export default function Transactions({
         }
 
         processTransactions();
-    }, [transactionIds, accounts, banks, categories, isKeySet]);
+    }, [transactionIds, accounts, banks, categories, labels, isKeySet]);
 
     useEffect(() => {
         try {
@@ -1048,30 +1060,38 @@ export default function Transactions({
 
         setIsBulkUpdating(true);
         try {
+            const categoriesMap = new Map(
+                categories.map((category) => [category.id, category]),
+            );
+            const selectedCategory = categoryId
+                ? categoriesMap.get(categoryId) || null
+                : null;
+
             if (isSelectingAll) {
+                // Update via filters
                 await transactionSyncService.updateByFilters(filters, {
                     category_id: categoryId,
                 });
 
+                // Optimistically update matching transactions in state
+                setTransactions((previous) =>
+                    previous.map((transaction) => ({
+                        ...transaction,
+                        category_id: categoryId,
+                        category: selectedCategory,
+                    })),
+                );
+
                 toast.success(
                     `Updated ${sortedTransactions.length} transactions`,
                 );
-
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
             } else {
+                // Update selected transactions
                 await transactionSyncService.updateMany(selectedIds, {
                     category_id: categoryId,
                 });
 
-                const categoriesMap = new Map(
-                    categories.map((category) => [category.id, category]),
-                );
-                const selectedCategory = categoryId
-                    ? categoriesMap.get(categoryId) || null
-                    : null;
-
+                // Optimistically update selected transactions in state
                 setTransactions((previous) =>
                     previous.map((transaction) => {
                         if (selectedIds.includes(transaction.id.toString())) {
@@ -1084,6 +1104,8 @@ export default function Transactions({
                         return transaction;
                     }),
                 );
+
+                toast.success(`Updated ${selectedIds.length} transactions`);
             }
 
             setRowSelection({});
@@ -1145,48 +1167,47 @@ export default function Transactions({
 
         setIsBulkUpdating(true);
         try {
+            const selectedLabels = labels.filter((l) =>
+                labelIds.includes(l.id),
+            );
+
             if (isSelectingAll) {
+                // Update via filters
                 await transactionSyncService.updateByFilters(filters, {
                     label_ids: labelIds,
                 });
 
+                // Optimistically update matching transactions in state
+                setTransactions((previous) =>
+                    previous.map((transaction) => ({
+                        ...transaction,
+                        labels: selectedLabels,
+                    })),
+                );
+
                 toast.success(
                     `Updated ${sortedTransactions.length} transactions`,
                 );
-
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
             } else {
+                // Update selected transactions
                 await transactionSyncService.updateMany(selectedIds, {
                     label_ids: labelIds,
                 });
 
-                const selectedLabels = labels.filter((l) =>
-                    labelIds.includes(l.id),
-                );
-
+                // Optimistically update selected transactions in state - REPLACE labels, don't add
                 setTransactions((previous) =>
                     previous.map((transaction) => {
                         if (selectedIds.includes(transaction.id.toString())) {
-                            const existingLabels = transaction.labels || [];
-                            const newLabels = [
-                                ...existingLabels,
-                                ...selectedLabels.filter(
-                                    (l) =>
-                                        !existingLabels.some(
-                                            (el) => el.id === l.id,
-                                        ),
-                                ),
-                            ];
                             return {
                                 ...transaction,
-                                labels: newLabels,
+                                labels: selectedLabels,
                             };
                         }
                         return transaction;
                     }),
                 );
+
+                toast.success(`Updated ${selectedIds.length} transactions`);
             }
 
             setRowSelection({});
