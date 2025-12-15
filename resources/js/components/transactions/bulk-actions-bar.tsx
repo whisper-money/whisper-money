@@ -42,7 +42,7 @@ export function BulkActionsBar({
 
     return (
         <div className="fixed bottom-6 flex w-full animate-in items-center justify-center duration-300 slide-in-from-bottom-5 slide-out-to-bottom-5 fade-in fade-out">
-            <div className="flex max-w-[75%] flex-row items-center justify-between gap-10 rounded-full border border-blue-900/75 bg-blue-900/25 px-4 py-2 shadow-lg">
+            <div className="flex max-w-[75%] flex-row items-center justify-between gap-10 rounded-full border border-border bg-card px-4 py-2 shadow-lg">
                 <div className="pl-2 text-sm">
                     {selectedCount} transaction{selectedCount !== 1 ? 's' : ''}{' '}
                     selected
