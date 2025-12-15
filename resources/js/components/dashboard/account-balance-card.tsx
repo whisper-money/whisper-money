@@ -75,11 +75,13 @@ export function AccountBalanceCard({
                         <button
                             type="button"
                             onClick={() => setUpdateBalanceOpen(true)}
-                            className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left text-2xl font-medium transition-colors hover:bg-muted"
+                            className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
                         >
                             <AmountDisplay
                                 amountInCents={account.currentBalance}
                                 currencyCode={account.currency_code}
+                                size="2xl"
+                                weight="medium"
                             />
                         </button>
                         <AmountTrendIndicator

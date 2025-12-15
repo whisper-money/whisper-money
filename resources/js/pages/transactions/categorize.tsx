@@ -755,12 +755,11 @@ export default function CategorizeTransactions({
                                                     currencyCode={
                                                         currentTransaction.currency_code
                                                     }
-                                                    className={cn(
-                                                        'rounded px-1',
+                                                    variant="positive-highlight"
+                                                    highlightPositive={
                                                         currentTransaction.amount >=
-                                                            0 &&
-                                                            'bg-green-100/70 dark:bg-green-900',
-                                                    )}
+                                                        0
+                                                    }
                                                 />
                                             </div>
                                         </div>

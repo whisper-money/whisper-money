@@ -47,9 +47,7 @@ export function PercentageTrendIndicator({
 
     const content = (
         <div className={cn(['flex items-center gap-1', className])}>
-            <span
-                className={isGood ? 'bg-green-100/25 dark:bg-green-900/25' : ''}
-            >
+            <span>
                 {isPositive ? '+' : ''}
                 {trend.toFixed(1)}%
             </span>
@@ -74,6 +72,8 @@ export function PercentageTrendIndicator({
                     <AmountDisplay
                         amountInCents={Math.abs(amountDiff)}
                         currencyCode={currencyCode}
+                        variant="trend"
+                        highlightPositive={amountDiff >= 0}
                         minimumFractionDigits={0}
                         maximumFractionDigits={0}
                     />{' '}

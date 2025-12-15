@@ -78,7 +78,7 @@ export default function AccountsIndex({ accounts }: Props) {
                     description="View and manage your bank accounts"
                 />
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-2">
                     {ACCOUNT_TYPE_ORDER.map((type) => {
                         const accountsInGroup = groupedAccounts[type];
                         if (accountsInGroup.length === 0) return null;

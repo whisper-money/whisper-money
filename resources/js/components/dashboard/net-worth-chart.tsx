@@ -94,14 +94,13 @@ function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
 
     if (totals.length === 1) {
         return (
-            <span className="text-2xl font-semibold tabular-nums sm:text-4xl">
-                <AmountDisplay
-                    amountInCents={totals[0].total}
-                    currencyCode={totals[0].currency}
-                    minimumFractionDigits={0}
-                    maximumFractionDigits={0}
-                />
-            </span>
+            <AmountDisplay
+                amountInCents={totals[0].total}
+                currencyCode={totals[0].currency}
+                variant="large"
+                minimumFractionDigits={0}
+                maximumFractionDigits={0}
+            />
         );
     }
 
@@ -114,14 +113,13 @@ function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
                             +
                         </span>
                     )}
-                    <span className="text-2xl font-semibold tabular-nums sm:text-4xl">
-                        <AmountDisplay
-                            amountInCents={item.total}
-                            currencyCode={item.currency}
-                            minimumFractionDigits={0}
-                            maximumFractionDigits={0}
-                        />
-                    </span>
+                    <AmountDisplay
+                        amountInCents={item.total}
+                        currencyCode={item.currency}
+                        variant="large"
+                        minimumFractionDigits={0}
+                        maximumFractionDigits={0}
+                    />
                 </span>
             ))}
         </div>
