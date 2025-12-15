@@ -108,6 +108,13 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             setDisplayValue(e.target.value);
         };
 
+        const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') {
+                const valueInCents = parseInputValue(displayValue);
+                onChange(valueInCents);
+            }
+        };
+
         const currencySymbol = getCurrencySymbol(currencyCode);
 
         return (
@@ -124,6 +131,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     onChange={handleChange}
                     onFocus={handleFocus}
                     onBlur={handleBlur}
+                    onKeyDown={handleKeyDown}
                     placeholder={placeholder}
                     disabled={disabled}
                     required={required}
