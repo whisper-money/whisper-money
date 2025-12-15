@@ -105,7 +105,14 @@ export default function Onboarding({
     const handleImportComplete = async () => {
         // Sync after import to ensure data is consistent
         await sync();
-        goToStep('more-accounts');
+
+        // After first account import, go to category steps
+        // After subsequent accounts, go back to more-accounts
+        if (createdAccounts.length === 1) {
+            goToStep('category-types');
+        } else {
+            goToStep('more-accounts');
+        }
     };
 
     const handleAddMoreAccounts = () => {

@@ -24,7 +24,6 @@ const PRIMARY_STEPS: OnboardingStep[] = [
     'account-types',
     'create-account',
     'category-types',
-    'customize-categories',
     'smart-rules',
     'more-accounts',
     'complete',
