@@ -281,6 +281,7 @@ export default function Transactions({
     const [isReEvaluating, setIsReEvaluating] = useState(false);
     const [displayedCount, setDisplayedCount] = useState(25);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [isSelectingAll, setIsSelectingAll] = useState(false);
 
     const updateTransaction = useCallback(
         (updatedTransaction: DecryptedTransaction) => {
@@ -1041,39 +1042,55 @@ export default function Transactions({
         }
 
         const selectedIds = Object.keys(rowSelection);
-        if (selectedIds.length === 0) {
+        if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
 
         setIsBulkUpdating(true);
         try {
-            await transactionSyncService.updateMany(selectedIds, {
-                category_id: categoryId,
-            });
+            if (isSelectingAll) {
+                await transactionSyncService.updateByFilters(filters, {
+                    category_id: categoryId,
+                });
 
-            const categoriesMap = new Map(
-                categories.map((category) => [category.id, category]),
-            );
-            const selectedCategory = categoryId
-                ? categoriesMap.get(categoryId) || null
-                : null;
+                toast.success(
+                    `Updated ${sortedTransactions.length} transactions`,
+                );
 
-            setTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (selectedIds.includes(transaction.id.toString())) {
-                        return {
-                            ...transaction,
-                            category_id: categoryId,
-                            category: selectedCategory,
-                        };
-                    }
-                    return transaction;
-                }),
-            );
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                await transactionSyncService.updateMany(selectedIds, {
+                    category_id: categoryId,
+                });
+
+                const categoriesMap = new Map(
+                    categories.map((category) => [category.id, category]),
+                );
+                const selectedCategory = categoryId
+                    ? categoriesMap.get(categoryId) || null
+                    : null;
+
+                setTransactions((previous) =>
+                    previous.map((transaction) => {
+                        if (selectedIds.includes(transaction.id.toString())) {
+                            return {
+                                ...transaction,
+                                category_id: categoryId,
+                                category: selectedCategory,
+                            };
+                        }
+                        return transaction;
+                    }),
+                );
+            }
 
             setRowSelection({});
+            setIsSelectingAll(false);
         } catch (error) {
             console.error('Failed to update transactions:', error);
+            toast.error('Failed to update transactions');
         } finally {
             setIsBulkUpdating(false);
         }
@@ -1122,45 +1139,61 @@ export default function Transactions({
 
     async function handleBulkLabelsChange(labelIds: string[]) {
         const selectedIds = Object.keys(rowSelection);
-        if (selectedIds.length === 0 || labelIds.length === 0) {
+        if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
 
         setIsBulkUpdating(true);
         try {
-            await transactionSyncService.updateMany(selectedIds, {
-                label_ids: labelIds,
-            });
+            if (isSelectingAll) {
+                await transactionSyncService.updateByFilters(filters, {
+                    label_ids: labelIds,
+                });
 
-            const selectedLabels = labels.filter((l) =>
-                labelIds.includes(l.id),
-            );
+                toast.success(
+                    `Updated ${sortedTransactions.length} transactions`,
+                );
 
-            setTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (selectedIds.includes(transaction.id.toString())) {
-                        const existingLabels = transaction.labels || [];
-                        const newLabels = [
-                            ...existingLabels,
-                            ...selectedLabels.filter(
-                                (l) =>
-                                    !existingLabels.some(
-                                        (el) => el.id === l.id,
-                                    ),
-                            ),
-                        ];
-                        return {
-                            ...transaction,
-                            labels: newLabels,
-                        };
-                    }
-                    return transaction;
-                }),
-            );
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                await transactionSyncService.updateMany(selectedIds, {
+                    label_ids: labelIds,
+                });
+
+                const selectedLabels = labels.filter((l) =>
+                    labelIds.includes(l.id),
+                );
+
+                setTransactions((previous) =>
+                    previous.map((transaction) => {
+                        if (selectedIds.includes(transaction.id.toString())) {
+                            const existingLabels = transaction.labels || [];
+                            const newLabels = [
+                                ...existingLabels,
+                                ...selectedLabels.filter(
+                                    (l) =>
+                                        !existingLabels.some(
+                                            (el) => el.id === l.id,
+                                        ),
+                                ),
+                            ];
+                            return {
+                                ...transaction,
+                                labels: newLabels,
+                            };
+                        }
+                        return transaction;
+                    }),
+                );
+            }
 
             setRowSelection({});
+            setIsSelectingAll(false);
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
+            toast.error('Failed to update transactions with labels');
         } finally {
             setIsBulkUpdating(false);
         }
@@ -1168,6 +1201,19 @@ export default function Transactions({
 
     function handleClearSelection() {
         setRowSelection({});
+        setIsSelectingAll(false);
+    }
+
+    function handleSelectAll() {
+        setIsSelectingAll(true);
+        const allIds = sortedTransactions.reduce(
+            (acc, transaction) => {
+                acc[transaction.id.toString()] = true;
+                return acc;
+            },
+            {} as Record<string, boolean>,
+        );
+        setRowSelection(allIds);
     }
 
     const renderTransactionRow = useCallback(
@@ -1377,12 +1423,15 @@ export default function Transactions({
 
             <BulkActionsBar
                 selectedCount={Object.keys(rowSelection).length}
+                totalFilteredCount={sortedTransactions.length}
+                isSelectingAll={isSelectingAll}
                 categories={categories}
                 labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
                 onLabelsChange={handleBulkLabelsChange}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
+                onSelectAll={handleSelectAll}
                 onClear={handleClearSelection}
                 isUpdating={isBulkUpdating || isReEvaluating}
             />

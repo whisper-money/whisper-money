@@ -26,6 +26,17 @@ interface TransactionUpdateData extends Partial<Transaction> {
     label_ids?: string[];
 }
 
+interface TransactionFilters {
+    dateFrom?: Date | null;
+    dateTo?: Date | null;
+    amountMin?: number | null;
+    amountMax?: number | null;
+    categoryIds?: number[];
+    accountIds?: string[];
+    labelIds?: string[];
+    searchText?: string;
+}
+
 class TransactionSyncService {
     private syncManager: SyncManager;
 
@@ -211,12 +222,20 @@ class TransactionSyncService {
 
         if (label_ids !== undefined) {
             try {
+                const csrfToken = decodeURIComponent(
+                    document.cookie
+                        .split('; ')
+                        .find((row) => row.startsWith('XSRF-TOKEN='))
+                        ?.split('=')[1] || '',
+                );
+
                 const response = await fetch('/transactions/bulk', {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
                         Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
+                        'X-XSRF-TOKEN': csrfToken,
                     },
                     credentials: 'same-origin',
                     body: JSON.stringify({
@@ -256,6 +275,78 @@ class TransactionSyncService {
                 data: updated,
                 timestamp,
             });
+        }
+    }
+
+    async updateByFilters(
+        filters: TransactionFilters,
+        data: TransactionUpdateData,
+    ): Promise<number> {
+        const { label_ids, ...transactionData } = data;
+
+        const requestFilters: Record<string, unknown> = {};
+        if (filters.dateFrom) {
+            requestFilters.date_from = filters.dateFrom
+                .toISOString()
+                .split('T')[0];
+        }
+        if (filters.dateTo) {
+            requestFilters.date_to = filters.dateTo.toISOString().split('T')[0];
+        }
+        if (filters.amountMin !== null && filters.amountMin !== undefined) {
+            requestFilters.amount_min = filters.amountMin;
+        }
+        if (filters.amountMax !== null && filters.amountMax !== undefined) {
+            requestFilters.amount_max = filters.amountMax;
+        }
+        if (filters.categoryIds && filters.categoryIds.length > 0) {
+            requestFilters.category_ids = filters.categoryIds;
+        }
+        if (filters.accountIds && filters.accountIds.length > 0) {
+            requestFilters.account_ids = filters.accountIds;
+        }
+        if (filters.labelIds && filters.labelIds.length > 0) {
+            requestFilters.label_ids = filters.labelIds;
+        }
+
+        try {
+            const csrfToken = decodeURIComponent(
+                document.cookie
+                    .split('; ')
+                    .find((row) => row.startsWith('XSRF-TOKEN='))
+                    ?.split('=')[1] || '',
+            );
+
+            const response = await fetch('/transactions/bulk', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    filters: requestFilters,
+                    label_ids: label_ids,
+                    ...transactionData,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    'Failed to bulk update transactions by filters',
+                );
+            }
+
+            const result = await response.json();
+            return result.count || 0;
+        } catch (error) {
+            console.error(
+                'Failed to update transactions by filters via API:',
+                error,
+            );
+            throw error;
         }
     }
 

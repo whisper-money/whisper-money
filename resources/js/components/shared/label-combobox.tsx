@@ -26,6 +26,7 @@ interface LabelComboboxProps {
     placeholder?: string;
     triggerClassName?: string;
     allowCreate?: boolean;
+    allowRemoveAll?: boolean;
     onLabelCreated?: (label: Label) => void;
 }
 
@@ -37,6 +38,7 @@ export function LabelCombobox({
     placeholder = 'Add labels...',
     triggerClassName,
     allowCreate = true,
+    allowRemoveAll = false,
     onLabelCreated,
 }: LabelComboboxProps) {
     const [open, setOpen] = useState(false);
@@ -174,6 +176,18 @@ export function LabelCombobox({
                     <CommandList>
                         {sortedLabels.length === 0 && !showCreateOption && (
                             <CommandEmpty>No labels found.</CommandEmpty>
+                        )}
+                        {allowRemoveAll && (
+                            <CommandItem
+                                onSelect={() => {
+                                    onValueChange([]);
+                                    setOpen(false);
+                                }}
+                                className="gap-2 text-destructive"
+                            >
+                                <X className="h-4 w-4" />
+                                Remove all labels
+                            </CommandItem>
                         )}
                         {showCreateOption && (
                             <CommandItem
