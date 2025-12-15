@@ -103,7 +103,6 @@ export function AccountListCard({
                                     currencyCode={account.currency_code}
                                     size="2xl"
                                     weight="bold"
-                                    monospace
                                 />
                             </button>
                             <AmountTrendIndicator

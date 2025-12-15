@@ -109,7 +109,7 @@ export function AmountDisplay({
                 size && sizeStyles[size],
                 weight && weightStyles[weight],
                 getBackgroundClass(shouldHideAmount),
-                'font-mono tabular-nums',
+                { 'font-mono tabular-nums': monospace },
                 className
             )}
         >

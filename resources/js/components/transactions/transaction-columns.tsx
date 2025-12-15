@@ -240,6 +240,7 @@ export function createTransactionColumns({
                             currencyCode={currencyCode}
                             variant="positive-highlight"
                             highlightPositive={amount >= 0}
+                            monospace
                         />
                     </div>
                 );
