@@ -183,7 +183,7 @@ export function LabelCombobox({
                                     onValueChange([]);
                                     setOpen(false);
                                 }}
-                                className="gap-2 text-destructive"
+                                className="gap-2"
                             >
                                 <X className="h-4 w-4" />
                                 Remove all labels
