@@ -780,7 +780,6 @@ export default function Transactions({
     );
 
     async function handleBulkReEvaluateRules() {
-        const selectedIds = Object.keys(rowSelection);
         consoleDebug('=== Re-evaluating rules for bulk transactions ===');
         consoleDebug(`Selected ${selectedIds.length} transactions`);
 
@@ -1053,7 +1052,6 @@ export default function Transactions({
             return;
         }
 
-        const selectedIds = Object.keys(rowSelection);
         if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
@@ -1118,13 +1116,19 @@ export default function Transactions({
         }
     }
 
-    function handleBulkDeleteClick() {
-        const selectedIds = Object.keys(rowSelection);
+    const selectedIds = useMemo(
+        () => Object.keys(rowSelection),
+        [rowSelection],
+    );
 
+    const selectedCount = useMemo(() => selectedIds.length, [selectedIds]);
+
+    function handleBulkDeleteClick() {
         if (selectedIds.length === 0) {
             return;
         }
 
+        // Defer the find operation until delete is actually clicked
         const firstSelectedTransaction = filteredTransactions.find(
             (t) => t.id.toString() === selectedIds[0],
         );
@@ -1136,7 +1140,6 @@ export default function Transactions({
     }
 
     async function handleBulkDelete() {
-        const selectedIds = Object.keys(rowSelection);
         if (selectedIds.length === 0) {
             return;
         }
@@ -1160,7 +1163,6 @@ export default function Transactions({
     }
 
     async function handleBulkLabelsChange(labelIds: string[]) {
-        const selectedIds = Object.keys(rowSelection);
         if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
@@ -1267,17 +1269,20 @@ export default function Transactions({
         setIsSelectingAll(false);
     }
 
-    function handleSelectAll() {
+    const handleSelectAll = useCallback(() => {
         setIsSelectingAll(true);
-        const allIds = sortedTransactions.reduce(
-            (acc, transaction) => {
-                acc[transaction.id.toString()] = true;
-                return acc;
-            },
-            {} as Record<string, boolean>,
-        );
-        setRowSelection(allIds);
-    }
+        // Use requestAnimationFrame to defer the expensive reduce operation
+        requestAnimationFrame(() => {
+            const allIds = sortedTransactions.reduce(
+                (acc, transaction) => {
+                    acc[transaction.id.toString()] = true;
+                    return acc;
+                },
+                {} as Record<string, boolean>,
+            );
+            setRowSelection(allIds);
+        });
+    }, [sortedTransactions]);
 
     const renderTransactionRow = useCallback(
         (
@@ -1457,7 +1462,7 @@ export default function Transactions({
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             {isBulkDeleteMode
-                                ? `Are you sure you want to delete ${Object.keys(rowSelection).length} transactions? This action cannot be undone.`
+                                ? `Are you sure you want to delete ${selectedCount} transactions? This action cannot be undone.`
                                 : 'Are you sure you want to delete this transaction? This action cannot be undone.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -1485,7 +1490,7 @@ export default function Transactions({
             </AlertDialog>
 
             <BulkActionsBar
-                selectedCount={Object.keys(rowSelection).length}
+                selectedCount={selectedCount}
                 totalFilteredCount={sortedTransactions.length}
                 isSelectingAll={isSelectingAll}
                 categories={categories}
