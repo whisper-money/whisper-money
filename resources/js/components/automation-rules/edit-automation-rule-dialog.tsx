@@ -222,12 +222,22 @@ export function EditAutomationRuleDialog({
                                 labels={labels}
                                 placeholder="Select labels (optional)"
                                 allowCreate={true}
+                                onLabelCreated={(newLabel) => {
+                                    setLabels((prev) => [...prev, newLabel]);
+                                }}
                             />
                         </div>
 
                         {errors.action_category_id && (
                             <p className="text-sm text-red-500">
                                 {errors.action_category_id}
+                            </p>
+                        )}
+                        {(errors['action_label_ids.0'] ||
+                            errors.action_label_ids) && (
+                            <p className="text-sm text-red-500">
+                                {errors['action_label_ids.0'] ||
+                                    errors.action_label_ids}
                             </p>
                         )}
                     </div>
