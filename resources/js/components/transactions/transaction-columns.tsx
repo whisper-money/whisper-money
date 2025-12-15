@@ -74,8 +74,7 @@ export function createTransactionColumns({
             accessorKey: 'transaction_date',
             meta: {
                 label: 'Date',
-                cellClassName:
-                    'max-w-[80px] whitespace-normal',
+                cellClassName: 'max-w-[80px] whitespace-normal',
             },
             header: ({ column }) => {
                 return (
@@ -162,7 +161,8 @@ export function createTransactionColumns({
             accessorKey: 'decryptedDescription',
             meta: {
                 label: 'Description',
-                cellClassName: 'max-w-[200px] sm:max-w-[400px] md:max-w-[400px] lg:max-w-[550px] xl:max-w-full xl:w-full',
+                cellClassName:
+                    'max-w-[200px] sm:max-w-[400px] md:max-w-[400px] lg:max-w-[550px] xl:max-w-full xl:w-full',
             },
             header: 'Description',
             cell: ({ row, table }) => {

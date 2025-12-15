@@ -300,7 +300,7 @@ export default function AutomationRules() {
                     />
 
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-4">
                             <Input
                                 placeholder="Filter rules..."
                                 value={

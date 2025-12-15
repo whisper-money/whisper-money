@@ -1,6 +1,7 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { RuleBuilder } from '@/components/automation-rules/rule-builder';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
+import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -11,9 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { decrypt, encrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
 import {
     buildJsonLogic,
     createEmptyGroup,
@@ -23,8 +21,10 @@ import {
 } from '@/lib/rule-builder-utils';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { categorySyncService } from '@/services/category-sync';
+import { labelSyncService } from '@/services/label-sync';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
+import type { Label as LabelType } from '@/types/label';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -42,6 +42,7 @@ export function EditAutomationRuleDialog({
     onSuccess,
 }: EditAutomationRuleDialogProps) {
     const [categories, setCategories] = useState<Category[]>([]);
+    const [labels, setLabels] = useState<LabelType[]>([]);
     const [title, setTitle] = useState('');
     const [priority, setPriority] = useState('0');
     const [ruleStructure, setRuleStructure] = useState<RuleStructure>({
@@ -49,16 +50,20 @@ export function EditAutomationRuleDialog({
         groupOperator: 'and',
     });
     const [categoryId, setCategoryId] = useState<string>('');
-    const [note, setNote] = useState('');
+    const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
-        const loadCategories = async () => {
-            const data = await categorySyncService.getAll();
-            setCategories(data);
+        const loadData = async () => {
+            const [categoriesData, labelsData] = await Promise.all([
+                categorySyncService.getAll(),
+                labelSyncService.getAll(),
+            ]);
+            setCategories(categoriesData);
+            setLabels(labelsData);
         };
-        loadCategories();
+        loadData();
     }, []);
 
     useEffect(() => {
@@ -69,29 +74,7 @@ export function EditAutomationRuleDialog({
             setCategoryId(
                 rule.action_category_id ? String(rule.action_category_id) : '',
             );
-
-            const decryptNote = async () => {
-                if (rule.action_note && rule.action_note_iv) {
-                    try {
-                        const keyString = getStoredKey();
-                        if (keyString) {
-                            const key = await importKey(keyString);
-                            const decrypted = await decrypt(
-                                rule.action_note,
-                                key,
-                                rule.action_note_iv,
-                            );
-                            setNote(decrypted);
-                        }
-                    } catch (error) {
-                        console.error('Failed to decrypt note:', error);
-                    }
-                } else {
-                    setNote('');
-                }
-            };
-
-            decryptNote();
+            setSelectedLabelIds(rule.labels?.map((l) => l.id) || []);
         }
     }, [rule, open]);
 
@@ -112,7 +95,7 @@ export function EditAutomationRuleDialog({
             return;
         }
 
-        if (!categoryId && !note.trim()) {
+        if (!categoryId && selectedLabelIds.length === 0) {
             setErrors((prev) => ({
                 ...prev,
                 action_category_id: 'At least one action is required',
@@ -123,20 +106,6 @@ export function EditAutomationRuleDialog({
         setIsSubmitting(true);
 
         try {
-            let encryptedNote: string | null = null;
-            let noteIv: string | null = null;
-
-            if (note.trim()) {
-                const keyString = getStoredKey();
-                if (!keyString) {
-                    throw new Error('Encryption key not available');
-                }
-                const key = await importKey(keyString);
-                const encrypted = await encrypt(note.trim(), key);
-                encryptedNote = encrypted.encrypted;
-                noteIv = encrypted.iv;
-            }
-
             const jsonLogic = buildJsonLogic(ruleStructure);
 
             router.patch(
@@ -146,8 +115,10 @@ export function EditAutomationRuleDialog({
                     priority: parseInt(priority, 10),
                     rules_json: JSON.stringify(jsonLogic),
                     action_category_id: categoryId || null,
-                    action_note: encryptedNote,
-                    action_note_iv: noteIv,
+                    action_note: null,
+                    action_note_iv: null,
+                    action_label_ids:
+                        selectedLabelIds.length > 0 ? selectedLabelIds : null,
                 },
                 {
                     preserveState: true,
@@ -174,12 +145,12 @@ export function EditAutomationRuleDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="overflow-x-hidden sm:max-w-[600px]">
                 <DialogHeader>
                     <DialogTitle>Edit Automation Rule</DialogTitle>
                     <DialogDescription>
                         Update the rule to automatically categorize transactions
-                        or add notes.
+                        and add labels.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -244,13 +215,13 @@ export function EditAutomationRuleDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="note">Add Note</Label>
-                            <Textarea
-                                id="note"
-                                value={note}
-                                onChange={(e) => setNote(e.target.value)}
-                                placeholder="Note to add (optional)"
-                                rows={2}
+                            <Label>Add Labels</Label>
+                            <LabelCombobox
+                                value={selectedLabelIds}
+                                onValueChange={setSelectedLabelIds}
+                                labels={labels}
+                                placeholder="Select labels (optional)"
+                                allowCreate={true}
                             />
                         </div>
 

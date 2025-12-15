@@ -13,9 +13,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label as FormLabel } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { encrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
 import {
     buildJsonLogic,
     createEmptyGroup,
@@ -50,7 +47,6 @@ export function CreateAutomationRuleDialog({
     });
     const [categoryId, setCategoryId] = useState<string>('');
     const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
-    const [note, setNote] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -83,7 +79,7 @@ export function CreateAutomationRuleDialog({
             return;
         }
 
-        if (!categoryId && !note.trim() && selectedLabelIds.length === 0) {
+        if (!categoryId && selectedLabelIds.length === 0) {
             setErrors((prev) => ({
                 ...prev,
                 action_category_id: 'At least one action is required',
@@ -94,20 +90,6 @@ export function CreateAutomationRuleDialog({
         setIsSubmitting(true);
 
         try {
-            let encryptedNote: string | null = null;
-            let noteIv: string | null = null;
-
-            if (note.trim()) {
-                const keyString = getStoredKey();
-                if (!keyString) {
-                    throw new Error('Encryption key not available');
-                }
-                const key = await importKey(keyString);
-                const encrypted = await encrypt(note.trim(), key);
-                encryptedNote = encrypted.encrypted;
-                noteIv = encrypted.iv;
-            }
-
             const jsonLogic = buildJsonLogic(ruleStructure);
 
             router.post(
@@ -117,8 +99,8 @@ export function CreateAutomationRuleDialog({
                     priority: parseInt(priority, 10),
                     rules_json: JSON.stringify(jsonLogic),
                     action_category_id: categoryId || null,
-                    action_note: encryptedNote,
-                    action_note_iv: noteIv,
+                    action_note: null,
+                    action_note_iv: null,
                     action_label_ids:
                         selectedLabelIds.length > 0 ? selectedLabelIds : null,
                 },
@@ -135,7 +117,6 @@ export function CreateAutomationRuleDialog({
                         });
                         setCategoryId('');
                         setSelectedLabelIds([]);
-                        setNote('');
                         setErrors({});
                         await automationRuleSyncService.sync();
                         onSuccess?.();
@@ -159,12 +140,12 @@ export function CreateAutomationRuleDialog({
             <DialogTrigger asChild>
                 <Button disabled={disabled}>Create Rule</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="overflow-x-hidden sm:max-w-[600px]">
                 <DialogHeader>
                     <DialogTitle>Create Automation Rule</DialogTitle>
                     <DialogDescription>
                         Create a rule to automatically categorize transactions
-                        or add notes.
+                        and add labels.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -221,36 +202,28 @@ export function CreateAutomationRuleDialog({
                             <FormLabel htmlFor="category">
                                 Set Category
                             </FormLabel>
-                            <CategoryCombobox
-                                value={categoryId}
-                                onValueChange={setCategoryId}
-                                categories={categories}
-                                placeholder="Select a category (optional)"
-                                showUncategorized={false}
-                            />
+                            <div className="mt-1">
+                                <CategoryCombobox
+                                    value={categoryId}
+                                    onValueChange={setCategoryId}
+                                    categories={categories}
+                                    placeholder="Select a category (optional)"
+                                    showUncategorized={false}
+                                />
+                            </div>
                         </div>
 
                         <div className="space-y-2">
                             <FormLabel>Add Labels</FormLabel>
-                            <LabelCombobox
-                                value={selectedLabelIds}
-                                onValueChange={setSelectedLabelIds}
-                                labels={labels}
-                                onLabelsChange={setLabels}
-                                placeholder="Select labels (optional)"
-                                allowCreate={true}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <FormLabel htmlFor="note">Add Note</FormLabel>
-                            <Textarea
-                                id="note"
-                                value={note}
-                                onChange={(e) => setNote(e.target.value)}
-                                placeholder="Note to add (optional)"
-                                rows={2}
-                            />
+                            <div className="mt-1">
+                                <LabelCombobox
+                                    value={selectedLabelIds}
+                                    onValueChange={setSelectedLabelIds}
+                                    labels={labels}
+                                    placeholder="Select labels (optional)"
+                                    allowCreate={true}
+                                />
+                            </div>
                         </div>
 
                         {errors.action_category_id && (
