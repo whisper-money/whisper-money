@@ -160,7 +160,10 @@ export function createTransactionColumns({
         },
         {
             accessorKey: 'decryptedDescription',
-            meta: { label: 'Description' },
+            meta: {
+                label: 'Description',
+                cellClassName: 'max-w-[200px] sm:max-w-[400px] md:max-w-[600px] lg:max-w-[700px]',
+            },
             header: 'Description',
             cell: ({ row, table }) => {
                 const transaction = row.original;
