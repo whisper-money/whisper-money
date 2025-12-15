@@ -44,6 +44,7 @@ class AutomationRuleController extends Controller
 
         if (! empty($labelIds)) {
             $rule->labels()->sync($labelIds);
+            $rule->touch();
         }
 
         return back();
@@ -62,6 +63,7 @@ class AutomationRuleController extends Controller
 
         $automationRule->update($validated);
         $automationRule->labels()->sync($labelIds);
+        $automationRule->touch();
 
         return back();
     }

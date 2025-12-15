@@ -398,3 +398,31 @@ test('user cannot use another users label in rule', function () {
 
     $response->assertSessionHasErrors('action_label_ids.0');
 });
+
+test('updating labels touches automation rule updated_at timestamp', function () {
+    $user = User::factory()->create();
+    $label1 = Label::factory()->create(['user_id' => $user->id]);
+    $label2 = Label::factory()->create(['user_id' => $user->id]);
+    $rule = AutomationRule::factory()->create(['user_id' => $user->id]);
+    $rule->labels()->attach($label1->id);
+
+    $originalUpdatedAt = $rule->updated_at;
+
+    $this->travel(2)->seconds();
+
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->patch(route('automation-rules.update', $rule), [
+            'title' => $rule->title,
+            'priority' => $rule->priority,
+            'rules_json' => json_encode($rule->rules_json),
+            'action_category_id' => $rule->action_category_id,
+            'action_note' => null,
+            'action_note_iv' => null,
+            'action_label_ids' => [$label2->id],
+        ]);
+
+    $response->assertRedirect(route('automation-rules.index'));
+    $rule->refresh();
+    expect($rule->updated_at->isAfter($originalUpdatedAt))->toBeTrue();
+});
