@@ -106,7 +106,7 @@ export function createTransactionColumns({
             meta: {
                 label: 'Category',
                 cellClassName:
-                    '!w-[170px] !max-w-[170px] !min-w-[170px] whitespace-normal',
+                    'max-w-[170px] !sm:max-w-[170px] md:max-w-[200px] !min-w-[170px] whitespace-normal',
             },
             header: 'Category',
             cell: ({ row }) => {
@@ -117,7 +117,7 @@ export function createTransactionColumns({
                         accounts={accounts}
                         banks={banks}
                         onUpdate={onUpdate}
-                        className="relative -top-0.5 max-w-[150px]"
+                        className="relative -top-0.5 max-w-[150px] md:max-w-[200px]"
                         withoutChevronIcon
                     />
                 );
