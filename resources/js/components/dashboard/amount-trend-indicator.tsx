@@ -51,16 +51,12 @@ export function AmountTrendIndicator({
 
     const content = (
         <div className={cn(['flex items-center gap-1', className])}>
-            <span
-                className={
-                    isPositive ? 'bg-green-100/25 dark:bg-green-900/25' : ''
-                }
-            >
-                <AmountDisplay
-                    amountInCents={trend}
-                    currencyCode={currencyCode}
-                />
-            </span>
+            <AmountDisplay
+                amountInCents={trend}
+                currencyCode={currencyCode}
+                variant="trend"
+                highlightPositive={isPositive}
+            />
             <span className="text-muted-foreground">{label}</span>
             <Icon className={`h-4 w-4 ${iconColorClass}`} />
         </div>

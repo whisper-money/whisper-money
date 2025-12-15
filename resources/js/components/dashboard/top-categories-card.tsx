@@ -122,14 +122,14 @@ export function TopCategoriesCard({
                                             className="shrink-0 text-xs"
                                         />
                                     )}
-                                    <span className="shrink-0 text-sm font-semibold tabular-nums">
-                                        <AmountDisplay
-                                            amountInCents={item.amount}
-                                            currencyCode="USD"
-                                            minimumFractionDigits={0}
-                                            maximumFractionDigits={0}
-                                        />
-                                    </span>
+                                    <AmountDisplay
+                                        amountInCents={item.amount}
+                                        currencyCode="USD"
+                                        variant="compact"
+                                        minimumFractionDigits={0}
+                                        maximumFractionDigits={0}
+                                        className="shrink-0"
+                                    />
                                 </div>
                                 <Progress
                                     value={percentage}
