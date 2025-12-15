@@ -72,3 +72,34 @@ it('can create a transaction with amount input', function () {
         'amount' => 12345,
     ]);
 })->skip('Requires browser encryption key setup');
+
+it('formats amount when pressing enter', function () {
+    $user = User::factory()->onboarded()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    actingAs($user);
+
+    $page = visit('/transactions');
+
+    $page->assertSee('Transactions')
+        ->click('Add Transaction')
+        ->wait(1)
+        ->fill('description', 'Test Transaction Enter')
+        ->click('Select Account')
+        ->wait(0.5)
+        ->click($account->name)
+        ->click('Select Category')
+        ->wait(0.5)
+        ->click($category->name)
+        ->fill('#amount', '99.99')
+        ->press('Enter')
+        ->wait(2)
+        ->assertNoJavascriptErrors();
+
+    $this->assertDatabaseHas('transactions', [
+        'user_id' => $user->id,
+        'description' => 'Test Transaction Enter',
+        'amount' => 9999,
+    ]);
+})->skip('Requires browser encryption key setup');

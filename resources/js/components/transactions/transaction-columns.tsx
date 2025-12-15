@@ -130,8 +130,7 @@ export function createTransactionColumns({
             header: 'Account',
             meta: {
                 label: 'Account',
-                cellClassName:
-                    '!min-w-[125px] whitespace-normal',
+                cellClassName: '!min-w-[125px] whitespace-normal',
             },
             cell: ({ row }) => {
                 const transaction = row.original;
