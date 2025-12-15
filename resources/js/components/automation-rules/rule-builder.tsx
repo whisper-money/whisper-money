@@ -276,9 +276,9 @@ function ConditionRow({
               : 'text';
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Select value={condition.field} onValueChange={handleFieldChange}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -294,7 +294,7 @@ function ConditionRow({
                 value={condition.operator}
                 onValueChange={handleOperatorChange}
             >
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -314,12 +314,12 @@ function ConditionRow({
                         onChange({ ...condition, value: e.target.value })
                     }
                     placeholder="Value"
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                     step={inputType === 'number' ? 'any' : undefined}
                 />
             )}
 
-            {!showValueInput && <div className="flex-1" />}
+            {!showValueInput && <div className="hidden sm:flex sm:flex-1" />}
 
             <Button
                 type="button"
@@ -327,6 +327,7 @@ function ConditionRow({
                 size="sm"
                 onClick={onRemove}
                 disabled={!canRemove}
+                className="self-end sm:self-auto"
             >
                 <X className="h-4 w-4" />
             </Button>

@@ -2,6 +2,7 @@
 
 use App\Models\AutomationRule;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\User;
 
 test('user can view their automation rules', function () {
@@ -300,4 +301,96 @@ test('rules with notes filter are case insensitive', function () {
         'user_id' => $user->id,
         'title' => 'Case Insensitive Notes Rule',
     ]);
+});
+
+test('user can create an automation rule with labels action', function () {
+    $user = User::factory()->create();
+    $label1 = Label::factory()->create(['user_id' => $user->id]);
+    $label2 = Label::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Labels Rule',
+            'priority' => 10,
+            'rules_json' => json_encode(['in' => ['grocery', ['var' => 'description']]]),
+            'action_category_id' => null,
+            'action_note' => null,
+            'action_note_iv' => null,
+            'action_label_ids' => [$label1->id, $label2->id],
+        ]);
+
+    $response->assertRedirect(route('automation-rules.index'));
+    $rule = AutomationRule::where('title', 'Labels Rule')->first();
+    expect($rule)->not->toBeNull();
+    expect($rule->labels)->toHaveCount(2);
+    expect($rule->labels->pluck('id')->toArray())->toContain($label1->id, $label2->id);
+});
+
+test('user can create an automation rule with category and labels', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    $label = Label::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->post(route('automation-rules.store'), [
+            'title' => 'Combined Category and Labels Rule',
+            'priority' => 5,
+            'rules_json' => json_encode(['>' => [['var' => 'amount'], 100]]),
+            'action_category_id' => $category->id,
+            'action_note' => null,
+            'action_note_iv' => null,
+            'action_label_ids' => [$label->id],
+        ]);
+
+    $response->assertRedirect(route('automation-rules.index'));
+    $rule = AutomationRule::where('title', 'Combined Category and Labels Rule')->first();
+    expect($rule)->not->toBeNull();
+    expect($rule->action_category_id)->toBe($category->id);
+    expect($rule->labels)->toHaveCount(1);
+    expect($rule->labels->first()->id)->toBe($label->id);
+});
+
+test('user can update automation rule labels', function () {
+    $user = User::factory()->create();
+    $label1 = Label::factory()->create(['user_id' => $user->id]);
+    $label2 = Label::factory()->create(['user_id' => $user->id]);
+    $rule = AutomationRule::factory()->create(['user_id' => $user->id]);
+    $rule->labels()->attach($label1->id);
+
+    $response = $this->actingAs($user)
+        ->from(route('automation-rules.index'))
+        ->patch(route('automation-rules.update', $rule), [
+            'title' => $rule->title,
+            'priority' => $rule->priority,
+            'rules_json' => json_encode($rule->rules_json),
+            'action_category_id' => null,
+            'action_note' => null,
+            'action_note_iv' => null,
+            'action_label_ids' => [$label2->id],
+        ]);
+
+    $response->assertRedirect(route('automation-rules.index'));
+    $rule->refresh();
+    expect($rule->labels)->toHaveCount(1);
+    expect($rule->labels->first()->id)->toBe($label2->id);
+});
+
+test('user cannot use another users label in rule', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $otherLabel = Label::factory()->create(['user_id' => $otherUser->id]);
+
+    $response = $this->actingAs($user)->post(route('automation-rules.store'), [
+        'title' => 'Invalid Label Rule',
+        'priority' => 0,
+        'rules_json' => json_encode(['==' => [1, 1]]),
+        'action_category_id' => null,
+        'action_note' => null,
+        'action_note_iv' => null,
+        'action_label_ids' => [$otherLabel->id],
+    ]);
+
+    $response->assertSessionHasErrors('action_label_ids.0');
 });
