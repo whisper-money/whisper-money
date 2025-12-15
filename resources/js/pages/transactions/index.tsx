@@ -1179,10 +1179,32 @@ export default function Transactions({
 
                 // Optimistically update matching transactions in state
                 setTransactions((previous) =>
-                    previous.map((transaction) => ({
-                        ...transaction,
-                        labels: selectedLabels,
-                    })),
+                    previous.map((transaction) => {
+                        // If labelIds is empty, remove all labels
+                        if (labelIds.length === 0) {
+                            return {
+                                ...transaction,
+                                labels: [],
+                            };
+                        }
+
+                        // Otherwise, merge with existing labels
+                        const existingLabels = transaction.labels || [];
+                        const mergedLabels = [
+                            ...existingLabels,
+                            ...selectedLabels.filter(
+                                (l) =>
+                                    !existingLabels.some(
+                                        (el) => el.id === l.id,
+                                    ),
+                            ),
+                        ];
+
+                        return {
+                            ...transaction,
+                            labels: mergedLabels,
+                        };
+                    }),
                 );
 
                 toast.success(
@@ -1194,13 +1216,33 @@ export default function Transactions({
                     label_ids: labelIds,
                 });
 
-                // Optimistically update selected transactions in state - REPLACE labels, don't add
+                // Optimistically update selected transactions in state
                 setTransactions((previous) =>
                     previous.map((transaction) => {
                         if (selectedIds.includes(transaction.id.toString())) {
+                            // If labelIds is empty, remove all labels
+                            if (labelIds.length === 0) {
+                                return {
+                                    ...transaction,
+                                    labels: [],
+                                };
+                            }
+
+                            // Otherwise, merge with existing labels
+                            const existingLabels = transaction.labels || [];
+                            const mergedLabels = [
+                                ...existingLabels,
+                                ...selectedLabels.filter(
+                                    (l) =>
+                                        !existingLabels.some(
+                                            (el) => el.id === l.id,
+                                        ),
+                                ),
+                            ];
+
                             return {
                                 ...transaction,
-                                labels: selectedLabels,
+                                labels: mergedLabels,
                             };
                         }
                         return transaction;

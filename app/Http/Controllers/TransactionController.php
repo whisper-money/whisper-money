@@ -236,7 +236,15 @@ class TransactionController extends Controller
 
         if ($hasLabelUpdate) {
             foreach ($transactions as $transaction) {
-                $transaction->labels()->sync($labelIds ?? []);
+                if (empty($labelIds)) {
+                    // If labelIds is empty, remove all labels
+                    $transaction->labels()->sync([]);
+                } else {
+                    // Otherwise, merge with existing labels (don't detach existing ones)
+                    $existingLabelIds = $transaction->labels()->pluck('labels.id')->toArray();
+                    $mergedLabelIds = array_unique(array_merge($existingLabelIds, $labelIds));
+                    $transaction->labels()->sync($mergedLabelIds);
+                }
                 $transaction->touch();
             }
         }

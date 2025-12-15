@@ -255,10 +255,21 @@ class TransactionSyncService {
                 for (const id of ids) {
                     const existing = await this.getById(id);
                     if (existing) {
+                        // Merge labels: if label_ids is empty, clear all; otherwise merge with existing
+                        const mergedLabelIds =
+                            label_ids.length === 0
+                                ? []
+                                : Array.from(
+                                      new Set([
+                                          ...(existing.label_ids || []),
+                                          ...label_ids,
+                                      ]),
+                                  );
+
                         updates.push({
                             ...existing,
                             ...transactionData,
-                            label_ids: label_ids,
+                            label_ids: mergedLabelIds,
                             updated_at: timestamp,
                         });
                     }
@@ -371,8 +382,93 @@ class TransactionSyncService {
 
             const result = await response.json();
 
-            // After successful API call, sync from server to update IndexedDB
-            await this.sync();
+            // Update IndexedDB locally instead of doing a full sync
+            // Get all transactions that match the filters and update them
+            const allTransactions = await db.transactions.toArray();
+            const updates = [];
+            const timestamp = new Date().toISOString();
+
+            for (const transaction of allTransactions) {
+                // Apply the same filters as the backend
+                let matches = true;
+
+                if (
+                    filters.dateFrom &&
+                    transaction.transaction_date <
+                        filters.dateFrom.toISOString().split('T')[0]
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.dateTo &&
+                    transaction.transaction_date >
+                        filters.dateTo.toISOString().split('T')[0]
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.amountMin !== null &&
+                    filters.amountMin !== undefined &&
+                    parseFloat(transaction.amount) < filters.amountMin * 100
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.amountMax !== null &&
+                    filters.amountMax !== undefined &&
+                    parseFloat(transaction.amount) > filters.amountMax * 100
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.categoryIds &&
+                    filters.categoryIds.length > 0 &&
+                    !filters.categoryIds.includes(
+                        transaction.category_id as number,
+                    )
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.accountIds &&
+                    filters.accountIds.length > 0 &&
+                    !filters.accountIds.includes(transaction.account_id)
+                ) {
+                    matches = false;
+                }
+                if (filters.labelIds && filters.labelIds.length > 0) {
+                    const hasMatchingLabel = transaction.label_ids?.some((id) =>
+                        filters.labelIds?.includes(id),
+                    );
+                    if (!hasMatchingLabel) {
+                        matches = false;
+                    }
+                }
+
+                if (matches) {
+                    const updated = {
+                        ...transaction,
+                        ...transactionData,
+                        label_ids:
+                            label_ids !== undefined
+                                ? label_ids.length === 0
+                                    ? []
+                                    : Array.from(
+                                          new Set([
+                                              ...(transaction.label_ids || []),
+                                              ...label_ids,
+                                          ]),
+                                      )
+                                : transaction.label_ids,
+                        updated_at: timestamp,
+                    };
+                    updates.push(updated);
+                }
+            }
+
+            if (updates.length > 0) {
+                await db.transactions.bulkPut(updates);
+            }
 
             return result.count || 0;
         } catch (error) {
