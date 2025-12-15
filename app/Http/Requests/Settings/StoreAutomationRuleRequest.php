@@ -60,8 +60,8 @@ class StoreAutomationRuleRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $hasLabels = ! empty($this->action_label_ids);
-            if (! $this->action_category_id && ! $this->action_note && ! $hasLabels) {
-                $validator->errors()->add('action_category_id', 'At least one action (category, note, or labels) must be provided.');
+            if (! $this->action_category_id && ! $hasLabels) {
+                $validator->errors()->add('action_category_id', 'At least one action (category or labels) must be provided.');
             }
         });
     }

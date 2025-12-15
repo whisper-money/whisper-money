@@ -22,6 +22,7 @@ import { CreateAutomationRuleDialog } from '@/components/automation-rules/create
 import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete-automation-rule-dialog';
 import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
 import HeadingSmall from '@/components/heading-small';
+import { LabelBadges } from '@/components/shared/label-combobox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -213,30 +214,33 @@ export default function AutomationRules() {
                 const rule = row.original;
                 const actions = getRuleActions(rule);
 
-                if (actions.type === 'both') {
-                    const colorClasses = actions.category
-                        ? getCategoryColorClasses(actions.category.color)
-                        : null;
-                    const IconComponent = actions.category
-                        ? (Icons[
-                              actions.category.icon as keyof typeof Icons
-                          ] as Icons.LucideIcon)
-                        : null;
+                if (actions.type === 'multiple') {
                     return (
-                        <div className="flex items-center gap-2">
-                            {colorClasses && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            {actions.category && (
                                 <Badge
-                                    className={`${colorClasses.bg} ${colorClasses.text} flex items-center gap-2`}
+                                    className={`${getCategoryColorClasses(actions.category.color).bg} ${getCategoryColorClasses(actions.category.color).text} flex items-center gap-2`}
                                 >
-                                    {IconComponent && (
-                                        <IconComponent className="h-3 w-3 opacity-80" />
-                                    )}
-                                    {actions.category?.name}
+                                    {(() => {
+                                        const IconComponent = Icons[
+                                            actions.category
+                                                .icon as keyof typeof Icons
+                                        ] as Icons.LucideIcon;
+                                        return IconComponent ? (
+                                            <IconComponent className="h-3 w-3 opacity-80" />
+                                        ) : null;
+                                    })()}
+                                    {actions.category.name}
                                 </Badge>
                             )}
-                            <span className="text-sm text-muted-foreground">
-                                and add note
-                            </span>
+                            {actions.hasLabels && actions.labels && (
+                                <LabelBadges labels={actions.labels} max={2} />
+                            )}
+                            {actions.hasNote && (
+                                <span className="text-sm text-muted-foreground">
+                                    + note
+                                </span>
+                            )}
                         </div>
                     );
                 }
@@ -256,6 +260,10 @@ export default function AutomationRules() {
                             {actions.category.name}
                         </Badge>
                     );
+                }
+
+                if (actions.type === 'labels' && actions.labels) {
+                    return <LabelBadges labels={actions.labels} max={3} />;
                 }
 
                 return (
