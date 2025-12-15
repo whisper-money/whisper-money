@@ -11,7 +11,8 @@ const categoryTypes = [
         type: 'expense',
         name: 'Expense',
         icon: ArrowUpRight,
-        description: 'Money going out of an account to pay for something (e.g., groceries, rent, subscriptions). Decreases your balance.',
+        description:
+            'Money going out of an account to pay for something (e.g., groceries, rent, subscriptions). Decreases your balance.',
         examples: ['Food', 'Rent', 'Entertainment', 'Transport'],
         color: 'from-red-500 to-rose-500',
         bgColor: 'bg-red-50 dark:bg-red-900/20',
@@ -21,7 +22,8 @@ const categoryTypes = [
         type: 'income',
         name: 'Income',
         icon: ArrowDownLeft,
-        description: 'Money coming into an account from a source (e.g., salary, refunds, interest). Increases your balance.',
+        description:
+            'Money coming into an account from a source (e.g., salary, refunds, interest). Increases your balance.',
         examples: ['Salary', 'Freelance', 'Investments', 'Refunds'],
         color: 'from-emerald-500 to-green-500',
         bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
@@ -31,7 +33,8 @@ const categoryTypes = [
         type: 'transfer',
         name: 'Transfer',
         icon: Repeat,
-        description: 'Moving money between accounts. It does not count in expenses or income charts.',
+        description:
+            'Moving money between accounts. It does not count in expenses or income charts.',
         examples: ['To savings', 'Credit card payment', 'Between banks'],
         color: 'from-blue-500 to-cyan-500',
         bgColor: 'bg-blue-50 dark:bg-blue-900/20',
@@ -53,15 +56,15 @@ export function StepCategoryTypes({ onContinue }: StepCategoryTypesProps) {
                 {categoryTypes.map((category) => (
                     <div
                         key={category.type}
-                        className="flex flex-col gap-2 items-start rounded-xl border bg-card p-6 text-center"
+                        className="flex flex-col items-start gap-2 rounded-xl border bg-card p-6 text-center"
                     >
-                        <div className='flex gap-2 flex-row items-center justify-center'>
+                        <div className="flex flex-row items-center justify-center gap-2">
                             <div
                                 className={`flex size-5 items-center justify-center rounded-full bg-gradient-to-br ${category.color}`}
                             >
                                 <category.icon className="size-4 text-white" />
                             </div>
-                            <h3 className="font-semibold text-base">
+                            <h3 className="text-base font-semibold">
                                 {category.name}
                             </h3>
                         </div>

@@ -58,6 +58,7 @@ export function AmountDisplay({
     const { isPrivacyModeEnabled } = usePrivacyMode();
     const { isKeySet } = useEncryptionKey();
     const [amount, setAmount] = useState<number>(amountInCents / 100);
+    const isPositive = amountInCents > 0
 
     const shouldHideAmount = isPrivacyModeEnabled || !isKeySet;
 
@@ -86,7 +87,7 @@ export function AmountDisplay({
         if (!highlightPositive && !shouldHideAmount) return '';
 
         if (shouldHideAmount) {
-            if (variant === 'positive-highlight') {
+            if (variant === 'positive-highlight' && isPositive) {
                 return 'rounded-xs bg-green-400 dark:bg-green-900 text-green-400 dark:text-green-900 opacity-20 dark:opacity-100';
             }
 

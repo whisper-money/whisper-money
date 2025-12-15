@@ -1,6 +1,6 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepHeader } from '@/components/onboarding/step-header';
-import { Bot, Eye, EyeOff, Shield, Sparkles, Zap } from 'lucide-react';
+import { Bot, Eye, EyeOff, Sparkles, Zap } from 'lucide-react';
 
 interface StepSmartRulesProps {
     onContinue: () => void;
@@ -18,7 +18,7 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
 
             <div className="mb-5 grid w-full max-w-2xl gap-4 md:grid-cols-2">
                 <div className="rounded-xl border bg-card p-5">
-                    <div className="flex flex-row gap-2 items-center">
+                    <div className="flex flex-row items-center gap-2">
                         <div className="mb-3 flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                             <Sparkles className="size-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
@@ -31,11 +31,13 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                 </div>
 
                 <div className="rounded-xl border bg-card p-5">
-                    <div className="flex flex-row gap-2 items-center">
+                    <div className="flex flex-row items-center gap-2">
                         <div className="mb-3 flex size-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
                             <Zap className="size-5 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <h3 className="mb-2 font-semibold">Instant Application</h3>
+                        <h3 className="mb-2 font-semibold">
+                            Instant Application
+                        </h3>
                     </div>
                     <p className="text-sm text-muted-foreground">
                         Rules apply automatically when you import new
