@@ -26,6 +26,17 @@ interface TransactionUpdateData extends Partial<Transaction> {
     label_ids?: string[];
 }
 
+interface TransactionFilters {
+    dateFrom?: Date | null;
+    dateTo?: Date | null;
+    amountMin?: number | null;
+    amountMax?: number | null;
+    categoryIds?: number[];
+    accountIds?: string[];
+    labelIds?: string[];
+    searchText?: string;
+}
+
 class TransactionSyncService {
     private syncManager: SyncManager;
 
@@ -211,12 +222,20 @@ class TransactionSyncService {
 
         if (label_ids !== undefined) {
             try {
+                const csrfToken = decodeURIComponent(
+                    document.cookie
+                        .split('; ')
+                        .find((row) => row.startsWith('XSRF-TOKEN='))
+                        ?.split('=')[1] || '',
+                );
+
                 const response = await fetch('/transactions/bulk', {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
                         Accept: 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
+                        'X-XSRF-TOKEN': csrfToken,
                     },
                     credentials: 'same-origin',
                     body: JSON.stringify({
@@ -229,11 +248,47 @@ class TransactionSyncService {
                 if (!response.ok) {
                     throw new Error('Failed to bulk update transactions');
                 }
+
+                // Update IndexedDB with the label_ids after successful API call
+                // Use bulkPut to update all transactions at once (single operation)
+                const updates = [];
+                for (const id of ids) {
+                    const existing = await this.getById(id);
+                    if (existing) {
+                        // Merge labels: if label_ids is empty, clear all; otherwise merge with existing
+                        const mergedLabelIds =
+                            label_ids.length === 0
+                                ? []
+                                : Array.from(
+                                      new Set([
+                                          ...(existing.label_ids || []),
+                                          ...label_ids,
+                                      ]),
+                                  );
+
+                        updates.push({
+                            ...existing,
+                            ...transactionData,
+                            label_ids: mergedLabelIds,
+                            updated_at: timestamp,
+                        });
+                    }
+                }
+
+                if (updates.length > 0) {
+                    await db.transactions.bulkPut(updates);
+                }
+
+                return;
             } catch (error) {
                 console.error('Failed to update transactions via API:', error);
                 throw error;
             }
         }
+
+        // Batch update for non-label updates (e.g., category changes)
+        const updates = [];
+        const pendingChanges = [];
 
         for (const id of ids) {
             const existing = await this.getById(id);
@@ -249,13 +304,179 @@ class TransactionSyncService {
                 updated_at: timestamp,
             };
 
-            await db.transactions.put(updated);
-            await db.pending_changes.add({
+            updates.push(updated);
+            pendingChanges.push({
                 store: 'transactions',
                 operation: 'update',
                 data: updated,
                 timestamp,
             });
+        }
+
+        if (updates.length > 0) {
+            await db.transactions.bulkPut(updates);
+            await db.pending_changes.bulkAdd(pendingChanges);
+        }
+    }
+
+    async updateByFilters(
+        filters: TransactionFilters,
+        data: TransactionUpdateData,
+    ): Promise<number> {
+        const { label_ids, ...transactionData } = data;
+
+        const requestFilters: Record<string, unknown> = {};
+        if (filters.dateFrom) {
+            requestFilters.date_from = filters.dateFrom
+                .toISOString()
+                .split('T')[0];
+        }
+        if (filters.dateTo) {
+            requestFilters.date_to = filters.dateTo.toISOString().split('T')[0];
+        }
+        if (filters.amountMin !== null && filters.amountMin !== undefined) {
+            requestFilters.amount_min = filters.amountMin;
+        }
+        if (filters.amountMax !== null && filters.amountMax !== undefined) {
+            requestFilters.amount_max = filters.amountMax;
+        }
+        if (filters.categoryIds && filters.categoryIds.length > 0) {
+            requestFilters.category_ids = filters.categoryIds;
+        }
+        if (filters.accountIds && filters.accountIds.length > 0) {
+            requestFilters.account_ids = filters.accountIds;
+        }
+        if (filters.labelIds && filters.labelIds.length > 0) {
+            requestFilters.label_ids = filters.labelIds;
+        }
+
+        try {
+            const csrfToken = decodeURIComponent(
+                document.cookie
+                    .split('; ')
+                    .find((row) => row.startsWith('XSRF-TOKEN='))
+                    ?.split('=')[1] || '',
+            );
+
+            const response = await fetch('/transactions/bulk', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    filters: requestFilters,
+                    label_ids: label_ids,
+                    ...transactionData,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    'Failed to bulk update transactions by filters',
+                );
+            }
+
+            const result = await response.json();
+
+            // Update IndexedDB locally instead of doing a full sync
+            // Get all transactions that match the filters and update them
+            const allTransactions = await db.transactions.toArray();
+            const updates = [];
+            const timestamp = new Date().toISOString();
+
+            for (const transaction of allTransactions) {
+                // Apply the same filters as the backend
+                let matches = true;
+
+                if (
+                    filters.dateFrom &&
+                    transaction.transaction_date <
+                        filters.dateFrom.toISOString().split('T')[0]
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.dateTo &&
+                    transaction.transaction_date >
+                        filters.dateTo.toISOString().split('T')[0]
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.amountMin !== null &&
+                    filters.amountMin !== undefined &&
+                    parseFloat(transaction.amount) < filters.amountMin * 100
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.amountMax !== null &&
+                    filters.amountMax !== undefined &&
+                    parseFloat(transaction.amount) > filters.amountMax * 100
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.categoryIds &&
+                    filters.categoryIds.length > 0 &&
+                    !filters.categoryIds.includes(
+                        transaction.category_id as number,
+                    )
+                ) {
+                    matches = false;
+                }
+                if (
+                    filters.accountIds &&
+                    filters.accountIds.length > 0 &&
+                    !filters.accountIds.includes(transaction.account_id)
+                ) {
+                    matches = false;
+                }
+                if (filters.labelIds && filters.labelIds.length > 0) {
+                    const hasMatchingLabel = transaction.label_ids?.some((id) =>
+                        filters.labelIds?.includes(id),
+                    );
+                    if (!hasMatchingLabel) {
+                        matches = false;
+                    }
+                }
+
+                if (matches) {
+                    const updated = {
+                        ...transaction,
+                        ...transactionData,
+                        label_ids:
+                            label_ids !== undefined
+                                ? label_ids.length === 0
+                                    ? []
+                                    : Array.from(
+                                          new Set([
+                                              ...(transaction.label_ids || []),
+                                              ...label_ids,
+                                          ]),
+                                      )
+                                : transaction.label_ids,
+                        updated_at: timestamp,
+                    };
+                    updates.push(updated);
+                }
+            }
+
+            if (updates.length > 0) {
+                await db.transactions.bulkPut(updates);
+            }
+
+            return result.count || 0;
+        } catch (error) {
+            console.error(
+                'Failed to update transactions by filters via API:',
+                error,
+            );
+            throw error;
         }
     }
 

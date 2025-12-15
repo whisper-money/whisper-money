@@ -139,16 +139,47 @@ class TransactionController extends Controller
     {
         $user = $request->user();
         $transactionIds = $request->input('transaction_ids');
+        $filters = $request->input('filters');
 
-        $transactions = Transaction::query()
-            ->whereIn('id', $transactionIds)
-            ->where('user_id', $user->id)
-            ->get();
+        $query = Transaction::query()->where('user_id', $user->id);
 
-        if ($transactions->count() !== count($transactionIds)) {
-            return response()->json([
-                'message' => 'Some transactions were not found or do not belong to you.',
-            ], 403);
+        if ($transactionIds && count($transactionIds) > 0) {
+            $query->whereIn('id', $transactionIds);
+            $transactions = $query->get();
+
+            if ($transactions->count() !== count($transactionIds)) {
+                return response()->json([
+                    'message' => 'Some transactions were not found or do not belong to you.',
+                ], 403);
+            }
+        } elseif ($filters !== null) {
+            if (isset($filters['date_from'])) {
+                $query->whereDate('transaction_date', '>=', $filters['date_from']);
+            }
+            if (isset($filters['date_to'])) {
+                $query->whereDate('transaction_date', '<=', $filters['date_to']);
+            }
+            if (isset($filters['amount_min'])) {
+                $query->where('amount', '>=', $filters['amount_min'] * 100);
+            }
+            if (isset($filters['amount_max'])) {
+                $query->where('amount', '<=', $filters['amount_max'] * 100);
+            }
+            if (! empty($filters['category_ids'])) {
+                $query->whereIn('category_id', $filters['category_ids']);
+            }
+            if (! empty($filters['account_ids'])) {
+                $query->whereIn('account_id', $filters['account_ids']);
+            }
+            if (! empty($filters['label_ids'])) {
+                $query->whereHas('labels', function ($q) use ($filters) {
+                    $q->whereIn('labels.id', $filters['label_ids']);
+                });
+            }
+
+            $transactions = $query->get();
+        } else {
+            $transactions = $query->get();
         }
 
         $updateData = [];
@@ -172,21 +203,55 @@ class TransactionController extends Controller
         }
 
         if (! empty($updateData)) {
-            Transaction::query()
-                ->whereIn('id', $transactionIds)
-                ->where('user_id', $user->id)
-                ->update($updateData);
+            $query = Transaction::query()->where('user_id', $user->id);
+            if ($transactionIds && count($transactionIds) > 0) {
+                $query->whereIn('id', $transactionIds);
+            } elseif ($filters !== null) {
+                if (isset($filters['date_from'])) {
+                    $query->whereDate('transaction_date', '>=', $filters['date_from']);
+                }
+                if (isset($filters['date_to'])) {
+                    $query->whereDate('transaction_date', '<=', $filters['date_to']);
+                }
+                if (isset($filters['amount_min'])) {
+                    $query->where('amount', '>=', $filters['amount_min'] * 100);
+                }
+                if (isset($filters['amount_max'])) {
+                    $query->where('amount', '<=', $filters['amount_max'] * 100);
+                }
+                if (! empty($filters['category_ids'])) {
+                    $query->whereIn('category_id', $filters['category_ids']);
+                }
+                if (! empty($filters['account_ids'])) {
+                    $query->whereIn('account_id', $filters['account_ids']);
+                }
+                if (! empty($filters['label_ids'])) {
+                    $query->whereHas('labels', function ($q) use ($filters) {
+                        $q->whereIn('labels.id', $filters['label_ids']);
+                    });
+                }
+            }
+            $query->update($updateData);
         }
 
         if ($hasLabelUpdate) {
             foreach ($transactions as $transaction) {
-                $transaction->labels()->sync($labelIds ?? []);
+                if (empty($labelIds)) {
+                    // If labelIds is empty, remove all labels
+                    $transaction->labels()->sync([]);
+                } else {
+                    // Otherwise, merge with existing labels (don't detach existing ones)
+                    $existingLabelIds = $transaction->labels()->pluck('labels.id')->toArray();
+                    $mergedLabelIds = array_unique(array_merge($existingLabelIds, $labelIds));
+                    $transaction->labels()->sync($mergedLabelIds);
+                }
+                $transaction->touch();
             }
         }
 
         return response()->json([
             'message' => 'Transactions updated successfully',
-            'count' => count($transactionIds),
+            'count' => $transactions->count(),
         ]);
     }
 }

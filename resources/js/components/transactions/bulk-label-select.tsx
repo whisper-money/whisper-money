@@ -29,6 +29,7 @@ export function BulkLabelSelect({
             placeholder="Add labels"
             triggerClassName="h-9 w-[180px] min-h-9"
             allowCreate={true}
+            allowRemoveAll={true}
         />
     );
 }

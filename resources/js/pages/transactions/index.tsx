@@ -238,7 +238,7 @@ export default function Transactions({
         async () => {
             const txs = await db.transactions.toArray();
             return txs
-                .map((t) => t.id)
+                .map((t) => `${t.id}:${t.updated_at}`)
                 .sort()
                 .join(',');
         },
@@ -281,6 +281,7 @@ export default function Transactions({
     const [isReEvaluating, setIsReEvaluating] = useState(false);
     const [displayedCount, setDisplayedCount] = useState(25);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [isSelectingAll, setIsSelectingAll] = useState(false);
 
     const updateTransaction = useCallback(
         (updatedTransaction: DecryptedTransaction) => {
@@ -388,6 +389,17 @@ export default function Transactions({
                                 ? banksMap.get(account.bank.id)
                                 : undefined;
 
+                            // Map label_ids to Label objects
+                            const transactionLabels =
+                                transaction.label_ids
+                                    ?.map((labelId) =>
+                                        labels.find((l) => l.id === labelId),
+                                    )
+                                    .filter(
+                                        (label): label is Label =>
+                                            label !== undefined,
+                                    ) || [];
+
                             return {
                                 ...transaction,
                                 decryptedDescription,
@@ -395,6 +407,7 @@ export default function Transactions({
                                 account,
                                 category: category || null,
                                 bank,
+                                labels: transactionLabels,
                             } as DecryptedTransaction;
                         } catch (error) {
                             console.error(
@@ -427,7 +440,7 @@ export default function Transactions({
         }
 
         processTransactions();
-    }, [transactionIds, accounts, banks, categories, isKeySet]);
+    }, [transactionIds, accounts, banks, categories, labels, isKeySet]);
 
     useEffect(() => {
         try {
@@ -767,7 +780,6 @@ export default function Transactions({
     );
 
     async function handleBulkReEvaluateRules() {
-        const selectedIds = Object.keys(rowSelection);
         consoleDebug('=== Re-evaluating rules for bulk transactions ===');
         consoleDebug(`Selected ${selectedIds.length} transactions`);
 
@@ -1040,17 +1052,12 @@ export default function Transactions({
             return;
         }
 
-        const selectedIds = Object.keys(rowSelection);
-        if (selectedIds.length === 0) {
+        if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
 
         setIsBulkUpdating(true);
         try {
-            await transactionSyncService.updateMany(selectedIds, {
-                category_id: categoryId,
-            });
-
             const categoriesMap = new Map(
                 categories.map((category) => [category.id, category]),
             );
@@ -1058,34 +1065,70 @@ export default function Transactions({
                 ? categoriesMap.get(categoryId) || null
                 : null;
 
-            setTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (selectedIds.includes(transaction.id.toString())) {
-                        return {
-                            ...transaction,
-                            category_id: categoryId,
-                            category: selectedCategory,
-                        };
-                    }
-                    return transaction;
-                }),
-            );
+            if (isSelectingAll) {
+                // Update via filters
+                await transactionSyncService.updateByFilters(filters, {
+                    category_id: categoryId,
+                });
+
+                // Optimistically update matching transactions in state
+                setTransactions((previous) =>
+                    previous.map((transaction) => ({
+                        ...transaction,
+                        category_id: categoryId,
+                        category: selectedCategory,
+                    })),
+                );
+
+                toast.success(
+                    `Updated ${sortedTransactions.length} transactions`,
+                );
+            } else {
+                // Update selected transactions
+                await transactionSyncService.updateMany(selectedIds, {
+                    category_id: categoryId,
+                });
+
+                // Optimistically update selected transactions in state
+                setTransactions((previous) =>
+                    previous.map((transaction) => {
+                        if (selectedIds.includes(transaction.id.toString())) {
+                            return {
+                                ...transaction,
+                                category_id: categoryId,
+                                category: selectedCategory,
+                            };
+                        }
+                        return transaction;
+                    }),
+                );
+
+                toast.success(`Updated ${selectedIds.length} transactions`);
+            }
 
             setRowSelection({});
+            setIsSelectingAll(false);
         } catch (error) {
             console.error('Failed to update transactions:', error);
+            toast.error('Failed to update transactions');
         } finally {
             setIsBulkUpdating(false);
         }
     }
 
-    function handleBulkDeleteClick() {
-        const selectedIds = Object.keys(rowSelection);
+    const selectedIds = useMemo(
+        () => Object.keys(rowSelection),
+        [rowSelection],
+    );
 
+    const selectedCount = useMemo(() => selectedIds.length, [selectedIds]);
+
+    function handleBulkDeleteClick() {
         if (selectedIds.length === 0) {
             return;
         }
 
+        // Defer the find operation until delete is actually clicked
         const firstSelectedTransaction = filteredTransactions.find(
             (t) => t.id.toString() === selectedIds[0],
         );
@@ -1097,7 +1140,6 @@ export default function Transactions({
     }
 
     async function handleBulkDelete() {
-        const selectedIds = Object.keys(rowSelection);
         if (selectedIds.length === 0) {
             return;
         }
@@ -1121,26 +1163,36 @@ export default function Transactions({
     }
 
     async function handleBulkLabelsChange(labelIds: string[]) {
-        const selectedIds = Object.keys(rowSelection);
-        if (selectedIds.length === 0 || labelIds.length === 0) {
+        if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
 
         setIsBulkUpdating(true);
         try {
-            await transactionSyncService.updateMany(selectedIds, {
-                label_ids: labelIds,
-            });
-
             const selectedLabels = labels.filter((l) =>
                 labelIds.includes(l.id),
             );
 
-            setTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (selectedIds.includes(transaction.id.toString())) {
+            if (isSelectingAll) {
+                // Update via filters
+                await transactionSyncService.updateByFilters(filters, {
+                    label_ids: labelIds,
+                });
+
+                // Optimistically update matching transactions in state
+                setTransactions((previous) =>
+                    previous.map((transaction) => {
+                        // If labelIds is empty, remove all labels
+                        if (labelIds.length === 0) {
+                            return {
+                                ...transaction,
+                                labels: [],
+                            };
+                        }
+
+                        // Otherwise, merge with existing labels
                         const existingLabels = transaction.labels || [];
-                        const newLabels = [
+                        const mergedLabels = [
                             ...existingLabels,
                             ...selectedLabels.filter(
                                 (l) =>
@@ -1149,18 +1201,64 @@ export default function Transactions({
                                     ),
                             ),
                         ];
+
                         return {
                             ...transaction,
-                            labels: newLabels,
+                            labels: mergedLabels,
                         };
-                    }
-                    return transaction;
-                }),
-            );
+                    }),
+                );
+
+                toast.success(
+                    `Updated ${sortedTransactions.length} transactions`,
+                );
+            } else {
+                // Update selected transactions
+                await transactionSyncService.updateMany(selectedIds, {
+                    label_ids: labelIds,
+                });
+
+                // Optimistically update selected transactions in state
+                setTransactions((previous) =>
+                    previous.map((transaction) => {
+                        if (selectedIds.includes(transaction.id.toString())) {
+                            // If labelIds is empty, remove all labels
+                            if (labelIds.length === 0) {
+                                return {
+                                    ...transaction,
+                                    labels: [],
+                                };
+                            }
+
+                            // Otherwise, merge with existing labels
+                            const existingLabels = transaction.labels || [];
+                            const mergedLabels = [
+                                ...existingLabels,
+                                ...selectedLabels.filter(
+                                    (l) =>
+                                        !existingLabels.some(
+                                            (el) => el.id === l.id,
+                                        ),
+                                ),
+                            ];
+
+                            return {
+                                ...transaction,
+                                labels: mergedLabels,
+                            };
+                        }
+                        return transaction;
+                    }),
+                );
+
+                toast.success(`Updated ${selectedIds.length} transactions`);
+            }
 
             setRowSelection({});
+            setIsSelectingAll(false);
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
+            toast.error('Failed to update transactions with labels');
         } finally {
             setIsBulkUpdating(false);
         }
@@ -1168,7 +1266,23 @@ export default function Transactions({
 
     function handleClearSelection() {
         setRowSelection({});
+        setIsSelectingAll(false);
     }
+
+    const handleSelectAll = useCallback(() => {
+        setIsSelectingAll(true);
+        // Use requestAnimationFrame to defer the expensive reduce operation
+        requestAnimationFrame(() => {
+            const allIds = sortedTransactions.reduce(
+                (acc, transaction) => {
+                    acc[transaction.id.toString()] = true;
+                    return acc;
+                },
+                {} as Record<string, boolean>,
+            );
+            setRowSelection(allIds);
+        });
+    }, [sortedTransactions]);
 
     const renderTransactionRow = useCallback(
         (
@@ -1348,7 +1462,7 @@ export default function Transactions({
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             {isBulkDeleteMode
-                                ? `Are you sure you want to delete ${Object.keys(rowSelection).length} transactions? This action cannot be undone.`
+                                ? `Are you sure you want to delete ${selectedCount} transactions? This action cannot be undone.`
                                 : 'Are you sure you want to delete this transaction? This action cannot be undone.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -1376,13 +1490,16 @@ export default function Transactions({
             </AlertDialog>
 
             <BulkActionsBar
-                selectedCount={Object.keys(rowSelection).length}
+                selectedCount={selectedCount}
+                totalFilteredCount={sortedTransactions.length}
+                isSelectingAll={isSelectingAll}
                 categories={categories}
                 labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
                 onLabelsChange={handleBulkLabelsChange}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
+                onSelectAll={handleSelectAll}
                 onClear={handleClearSelection}
                 isUpdating={isBulkUpdating || isReEvaluating}
             />
