@@ -87,6 +87,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Horizon Basic Auth
+    |--------------------------------------------------------------------------
+    |
+    | These credentials are used for HTTP Basic Authentication on the Horizon
+    | dashboard. If these are not set, empty, or null, the page will be
+    | accessible without authentication.
+    |
+    */
+
+    'basic_auth_username' => env('HORIZON_BASIC_AUTH_USERNAME'),
+    'basic_auth_password' => env('HORIZON_BASIC_AUTH_PASSWORD'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Queue Wait Time Thresholds
     |--------------------------------------------------------------------------
     |
