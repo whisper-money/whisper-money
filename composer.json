@@ -14,6 +14,7 @@
         "laravel/cashier": "^16.1",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
+        "laravel/horizon": "^5.40",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9"
     },
@@ -52,12 +53,12 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"bun run dev\" \"stripe listen --forward-to https://whispermoney.test/stripe/webhook\" --names=server,queue,logs,vite --kill-others"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan horizon\" \"php artisan pail --timeout=0\" \"bun run dev\" \"stripe listen --forward-to https://whispermoney.test/stripe/webhook\" --names=server,horizon,logs,vite --kill-others"
         ],
         "dev:ssr": [
             "bun run build:ssr",
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"php artisan inertia:start-ssr --runtime=bun\" --names=server,queue,logs,ssr --kill-others"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan horizon\" \"php artisan pail --timeout=0\" \"php artisan inertia:start-ssr --runtime=bun\" --names=server,horizon,logs,ssr --kill-others"
         ],
         "test": [
             "@php artisan config:clear --ansi",

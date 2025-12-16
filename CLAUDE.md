@@ -10,8 +10,9 @@ Whisper Money is a privacy-first personal finance app with end-to-end encryption
 
 ### Development
 ```bash
-composer run dev          # Start full dev environment (PHP server, queue, Vite, logs)
+composer run dev          # Start full dev environment (PHP server, Horizon, Vite, logs)
 bun run dev               # Vite dev server only
+php artisan horizon       # Start Horizon queue worker (included in composer run dev)
 ```
 
 ### Build & Quality
@@ -40,6 +41,17 @@ bun run format
 bun run lint
 ```
 
+### Queue & Background Jobs
+```bash
+php artisan horizon              # Start Horizon dashboard & workers
+php artisan horizon:status       # Check Horizon status
+php artisan horizon:terminate    # Gracefully terminate Horizon
+php artisan horizon:pause        # Pause all workers
+php artisan horizon:continue     # Resume paused workers
+```
+
+**Horizon Dashboard**: Access at `/horizon` (local & production)
+
 ## Architecture
 
 ### Backend (Laravel 12)
@@ -47,6 +59,7 @@ bun run lint
 - **Commands auto-register**: Files in `app/Console/Commands/` are automatically available
 - **Form Requests**: Always use for validation instead of inline controller validation
 - **Eloquent**: Prefer `Model::query()` over `DB::`, use eager loading to prevent N+1
+- **Queue System**: Laravel Horizon with MySQL driver for job management (local & production)
 
 ### Frontend (React 19 + Inertia v2)
 - **Pages**: `resources/js/pages/` - Inertia page components
@@ -101,6 +114,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel/cashier (CASHIER) - v16
 - laravel/fortify (FORTIFY) - v1
 - laravel/framework (LARAVEL) - v12
+- laravel/horizon (HORIZON) - v5
 - laravel/prompts (PROMPTS) - v0
 - laravel/wayfinder (WAYFINDER) - v0
 - laravel/mcp (MCP) - v0
@@ -629,4 +643,100 @@ Fortify is a headless authentication backend that provides authentication routes
 - `Features::updateProfileInformation()` to let users update their profile.
 - `Features::updatePasswords()` to let users change their passwords.
 - `Features::resetPasswords()` for password reset via email.
+
+
+=== laravel/horizon rules ===
+
+## Laravel Horizon
+
+Laravel Horizon provides a dashboard and configuration system for Laravel queues. This application uses Horizon with MySQL as the queue driver for both local and production environments.
+
+**Before implementing queue features, use the `search-docs` tool to get the latest Horizon documentation.**
+
+### Configuration & Setup
+- Configuration file: `config/horizon.php`
+- Queue connection: `database` (MySQL) for all environments
+- Dashboard accessible at `/horizon` route
+- Horizon uses MySQL for storing job data (jobs, failed_jobs, job_batches tables)
+
+### Key Configuration
+- **Local environment**: Configured with 3 max processes for development
+- **Production environment**: Configured with 10 max processes with auto-scaling
+- **Queue tables**: `jobs`, `failed_jobs`, `job_batches` (created via migration)
+- **Connection**: Uses `database` driver pointing to MySQL connection
+
+### Running Horizon
+- Start Horizon: `php artisan horizon` (included in `composer run dev`)
+- Check status: `php artisan horizon:status`
+- Graceful shutdown: `php artisan horizon:terminate`
+- Pause workers: `php artisan horizon:pause`
+- Resume workers: `php artisan horizon:continue`
+
+### Creating Queued Jobs
+- Use `php artisan make:job JobName` to create new jobs
+- Implement `ShouldQueue` interface for jobs that should be queued
+- Jobs are stored in `app/Jobs/` directory
+- Dispatch jobs using `JobName::dispatch()` or `dispatch(new JobName())`
+
+### Monitoring & Management
+- Access Horizon dashboard at `/horizon` to monitor:
+  - Current workload and throughput
+  - Recent jobs and their status
+  - Failed jobs with retry capability
+  - Job metrics and wait times
+- Failed jobs are stored in the `failed_jobs` table
+- Retry failed jobs from the Horizon dashboard or via `php artisan queue:retry {id}`
+
+### Production Deployment
+- Use a process monitor like Supervisor to keep Horizon running
+- Horizon will automatically handle graceful worker termination on deployment
+- Configuration in `config/horizon.php` handles environment-specific settings
+
+### Example Job
+
+<code-snippet name="Basic Queued Job" lang="php">
+<?php
+
+namespace App\Jobs;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+class ProcessTransaction implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function __construct(
+        public int $transactionId
+    ) {}
+
+    public function handle(): void
+    {
+        // Process transaction logic here
+    }
+}
+</code-snippet>
+
+### Dispatching Jobs
+
+<code-snippet name="Dispatching Jobs" lang="php">
+// Simple dispatch
+ProcessTransaction::dispatch($transactionId);
+
+// Dispatch to specific queue
+ProcessTransaction::dispatch($transactionId)->onQueue('high-priority');
+
+// Delayed dispatch
+ProcessTransaction::dispatch($transactionId)->delay(now()->addMinutes(5));
+
+// Chain jobs
+ProcessTransaction::dispatch($transactionId)
+    ->chain([
+        new SendNotification($userId),
+        new UpdateMetrics(),
+    ]);
+</code-snippet>
 </laravel-boost-guidelines>
