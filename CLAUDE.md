@@ -1,6 +1,91 @@
----
-alwaysApply: true
----
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Whisper Money is a privacy-first personal finance app with end-to-end encryption. It uses Laravel 12 (PHP 8.4) backend with React 19 frontend via Inertia.js v2.
+
+## Commands
+
+### Development
+```bash
+composer run dev          # Start full dev environment (PHP server, queue, Vite, logs)
+bun run dev               # Vite dev server only
+```
+
+### Build & Quality
+```bash
+bun run build             # Production build (don't run automatically - ask user)
+bun run format            # Format code with Prettier
+bun run lint              # ESLint with auto-fix
+vendor/bin/pint --dirty   # PHP code formatting
+```
+
+### Testing
+```bash
+php artisan test                              # Run all tests
+php artisan test tests/Feature/ExampleTest.php  # Run specific file
+php artisan test --filter=testName            # Filter by test name
+```
+
+### CI Requirements (must pass before finalizing changes)
+```bash
+bun install --frozen-lockfile
+composer install --no-interaction --prefer-dist --optimize-autoloader
+bun run build
+./vendor/bin/pest
+vendor/bin/pint --test
+bun run format
+bun run lint
+```
+
+## Architecture
+
+### Backend (Laravel 12)
+- **Streamlined structure**: No middleware files in `app/Http/Middleware/`, configuration in `bootstrap/app.php`
+- **Commands auto-register**: Files in `app/Console/Commands/` are automatically available
+- **Form Requests**: Always use for validation instead of inline controller validation
+- **Eloquent**: Prefer `Model::query()` over `DB::`, use eager loading to prevent N+1
+
+### Frontend (React 19 + Inertia v2)
+- **Pages**: `resources/js/pages/` - Inertia page components
+- **Components**: `resources/js/components/` - Reusable UI components
+- **Services**: `resources/js/services/` - Sync services with IndexedDB (Dexie) for offline support
+- **Wayfinder**: Type-safe routes generated in `resources/js/routes/` and `resources/js/actions/`
+
+### Wayfinder Usage
+```typescript
+// Import controller methods (tree-shakable)
+import { show, store } from '@/actions/App/Http/Controllers/PostController'
+
+show(1)           // { url: "/posts/1", method: "get" }
+show.url(1)       // "/posts/1"
+
+// With Inertia Form component
+<Form {...store.form()}><input name="title" /></Form>
+```
+
+### Navigation
+- Use `router.visit()` from `@inertiajs/react` or `<Link>` component
+- Never use traditional `<a>` tags for internal navigation
+
+## Key Conventions
+
+- **PHP**: Use constructor property promotion, explicit return types, curly braces for all control structures
+- **TypeScript**: Strict mode enabled, use proper type annotations
+- **Tailwind v4**: CSS-first configuration with `@theme` directive, use gap utilities instead of margins for spacing
+- **Dark mode**: All new components must support dark mode using `dark:` variants
+- **Tests**: Write Pest tests for all changes, use factories for model creation
+
+## Database
+
+- Eloquent relationships with return type hints
+- User model uses UUID primary keys
+- End-to-end encryption for sensitive financial data
+
+===
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
