@@ -19,7 +19,7 @@ class PromoCodeEmail extends Mailable
     {
         return new Envelope(
             subject: 'Your Founder Discount - First Month for $1',
-        );
+        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 
     public function content(): Content

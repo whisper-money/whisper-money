@@ -19,7 +19,7 @@ class WelcomeEmail extends Mailable
     {
         return new Envelope(
             subject: 'Welcome to Whisper Money - Your Privacy-First Finance App',
-        );
+        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 
     public function content(): Content

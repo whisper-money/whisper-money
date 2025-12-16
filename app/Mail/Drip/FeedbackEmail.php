@@ -19,7 +19,7 @@ class FeedbackEmail extends Mailable
     {
         return new Envelope(
             subject: "How's Your Experience So Far?",
-        );
+        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 
     public function content(): Content

@@ -1,35 +1,31 @@
 <x-mail::message>
 # Welcome to Whisper Money, {{ $userName }}!
 
-Thank you for joining Whisper Money, the privacy-first personal finance app that puts you in control.
+Hi! I'm Victor, the founder of Whisper Money. I wanted to personally welcome you and thank you for joining us.
+
+When I started building Whisper Money, I was frustrated with finance apps that wanted to mine my data or use AI to analyze my spending. I just wanted a simple, private way to track my finances - and I figured others might too.
 
 ## Your Data is Truly Private
 
-Unlike other finance apps, Whisper Money uses **end-to-end encryption**. This means:
+I built Whisper Money with **end-to-end encryption** because I believe your financial data should be yours alone:
 
 - Your financial data is encrypted with a key that only you control
-- We cannot read your transactions, balances, or any personal information
+- I cannot read your transactions, balances, or any personal information (and I don't want to!)
 - Your encryption key never leaves your device
 
 ## No AI, No Data Mining
 
-We don't use AI to analyze your spending patterns or sell insights about your habits. Your financial data stays between you and your spreadsheet-loving self.
+I don't use AI to analyze your spending or sell insights about your habits. Your financial data stays between you and your spreadsheet-loving self.
 
-## Getting Started is Easy
+What's more, even if I wanted to use it, I couldn't, since you're the only one who has the key to read the data.
 
-Here's what you can do with Whisper Money:
+<div style="height: 40px"></div>
 
-- **Import transactions** from your bank in seconds
-- **Track account balances** across all your accounts
-- **Create automated rules** to categorize transactions automatically
-- **Stay organized** without compromising your privacy
+If you have any questions or run into any issues, **just reply to this email**. I personally read every message and I'm here to help!
 
-<x-mail::button :url="config('app.url') . '/onboarding'">
-Complete Your Setup
-</x-mail::button>
-
-If you have any questions, just reply to this email. I'm here to help!
+Thanks for giving Whisper Money a try. It means a lot to me.
 
 Best,<br>
-{{ config('app.name') }}
+Víctor F,<br>
+Founder of Whisper Money
 </x-mail::message>

@@ -19,7 +19,7 @@ class OnboardingReminderEmail extends Mailable
     {
         return new Envelope(
             subject: 'Need Help Getting Started?',
-        );
+        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 
     public function content(): Content

@@ -19,7 +19,7 @@ class ImportHelpEmail extends Mailable
     {
         return new Envelope(
             subject: "Let's Import Your Transactions",
-        );
+        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 
     public function content(): Content
