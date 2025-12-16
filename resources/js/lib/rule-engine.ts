@@ -105,7 +105,7 @@ export async function prepareTransactionData(
         ),
         amount: transaction.amount / 100,
         transaction_date: transaction.transaction_date,
-        bank_name: bank?.name || '',
+        bank_name: (bank?.name || '').toLowerCase(),
         account_name: accountName.toLowerCase(),
         category: category?.name || null,
         notes: transaction.decryptedNotes
@@ -257,7 +257,7 @@ export async function evaluateRulesForNewTransaction(
         ),
         amount: transactionData.amount,
         transaction_date: transactionData.transaction_date,
-        bank_name: bank?.name || '',
+        bank_name: (bank?.name || '').toLowerCase(),
         account_name: accountName.toLowerCase(),
         category: null,
         notes: transactionData.notes
