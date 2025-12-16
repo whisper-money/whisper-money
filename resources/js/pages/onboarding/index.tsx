@@ -17,12 +17,11 @@ import {
     useOnboardingState,
 } from '@/hooks/use-onboarding-state';
 import OnboardingLayout from '@/layouts/onboarding-layout';
+import { ONBOARDING_FUNNEL_EVENT_UUID } from '@/lib/constants';
 import { useTrackEvent } from '@/lib/track-event';
 import { type Bank } from '@/types/account';
 import { Head } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
-
-const ONBOARDING_FUNNEL_EVENT_UUID = '1478ba44-c5c4-4398-83a1-814b21cd7e34';
 
 interface ExistingAccount {
     id: string;
