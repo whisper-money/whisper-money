@@ -15,7 +15,8 @@
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
-        "laravel/wayfinder": "^0.1.9"
+        "laravel/wayfinder": "^0.1.9",
+        "symfony/resend-mailer": "^7.4"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
