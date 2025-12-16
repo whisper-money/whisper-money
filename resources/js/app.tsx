@@ -44,30 +44,29 @@ createInertiaApp({
                             initialUser={initialUser}
                         >
                             <App {...props} />
-                            <div className="[&_[data-sonner-toaster]]:!top-4 [&_[data-sonner-toaster]]:!left-1/2 [&_[data-sonner-toaster]]:!-translate-x-1/2 [&_[data-sonner-toaster]]:md:!top-auto [&_[data-sonner-toaster]]:md:!right-4 [&_[data-sonner-toaster]]:md:!bottom-4 [&_[data-sonner-toaster]]:md:!left-auto [&_[data-sonner-toaster]]:md:!translate-x-0">
-                                <Toaster
-                                    richColors
-                                    icons={{
-                                        success: (
-                                            <CircleCheckIcon className="size-4" />
-                                        ),
-                                        info: <InfoIcon className="size-4" />,
-                                        warning: (
-                                            <TriangleAlertIcon className="size-4" />
-                                        ),
-                                        error: (
-                                            <OctagonXIcon className="size-4" />
-                                        ),
-                                        loading: (
-                                            <Loader2Icon className="size-4 animate-spin" />
-                                        ),
-                                    }}
-                                />
-                            </div>
+                            <Toaster
+                                richColors
+                                mobileOffset={{ bottom: '110px' }}
+                                icons={{
+                                    success: (
+                                        <CircleCheckIcon className="size-4" />
+                                    ),
+                                    info: <InfoIcon className="size-4" />,
+                                    warning: (
+                                        <TriangleAlertIcon className="size-4" />
+                                    ),
+                                    error: (
+                                        <OctagonXIcon className="size-4" />
+                                    ),
+                                    loading: (
+                                        <Loader2Icon className="size-4 animate-spin" />
+                                    ),
+                                }}
+                            />
                         </SyncProvider>
                     </PrivacyModeProvider>
                 </EncryptionKeyProvider>
-            </StrictMode>,
+            </StrictMode >,
         );
     },
     progress: {
