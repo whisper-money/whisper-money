@@ -33,7 +33,7 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
-import { Check } from 'lucide-react';
+import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
@@ -332,6 +332,7 @@ export function ImportTransactionsDrawer({
 
         const BATCH_SIZE = 20;
         let processedCount = 0;
+        let uncategorizedCount = 0;
 
         for (let i = 0; i < newTransactions.length; i += BATCH_SIZE) {
             const batch = newTransactions.slice(i, i + BATCH_SIZE);
@@ -398,6 +399,7 @@ export function ImportTransactionsDrawer({
                         success: true,
                         transaction: createdTransaction,
                         rowNumber,
+                        hasCategory: categoryId !== null,
                     };
                 }),
             );
@@ -408,6 +410,9 @@ export function ImportTransactionsDrawer({
 
                 if (result.status === 'fulfilled') {
                     createdTransactions.push(result.value.transaction);
+                    if (!result.value.hasCategory) {
+                        uncategorizedCount++;
+                    }
                 } else {
                     const errorMessage =
                         result.reason instanceof Error
@@ -478,24 +483,51 @@ export function ImportTransactionsDrawer({
         console.log('Import complete:', { successCount, errorCount, total });
 
         if (errorCount === 0 && successCount > 0) {
-            toast.success(
-                `${successCount} transaction${successCount !== 1 ? 's' : ''} imported successfully`,
-                {
-                    icon: <Check className="h-4 w-4" />,
-                },
-            );
+            const message =
+                uncategorizedCount > 0
+                    ? `${successCount} transaction${successCount !== 1 ? 's' : ''} imported (${uncategorizedCount} uncategorized)`
+                    : `${successCount} transaction${successCount !== 1 ? 's' : ''} imported successfully`;
+            toast.success(message, {
+                action:
+                    uncategorizedCount > 0
+                        ? {
+                              label: 'Categorize',
+                              onClick: () =>
+                                  router.visit('/transactions/categorize'),
+                          }
+                        : undefined,
+            });
             onOpenChange(false);
         } else if (successCount > 0 && errorCount > 0) {
-            toast.warning(
-                `${successCount} transaction${successCount !== 1 ? 's' : ''} imported, ${errorCount} failed`,
-            );
+            const message =
+                uncategorizedCount > 0
+                    ? `${successCount} transaction${successCount !== 1 ? 's' : ''} imported (${uncategorizedCount} uncategorized), ${errorCount} failed`
+                    : `${successCount} transaction${successCount !== 1 ? 's' : ''} imported, ${errorCount} failed`;
+            toast.warning(message, {
+                action:
+                    uncategorizedCount > 0
+                        ? {
+                              label: 'Categorize',
+                              onClick: () =>
+                                  router.visit('/transactions/categorize'),
+                          }
+                        : undefined,
+            });
         } else if (successCount > 0) {
-            toast.success(
-                `${successCount} transaction${successCount !== 1 ? 's' : ''} imported successfully`,
-                {
-                    icon: <Check className="h-4 w-4" />,
-                },
-            );
+            const message =
+                uncategorizedCount > 0
+                    ? `${successCount} transaction${successCount !== 1 ? 's' : ''} imported (${uncategorizedCount} uncategorized)`
+                    : `${successCount} transaction${successCount !== 1 ? 's' : ''} imported successfully`;
+            toast.success(message, {
+                action:
+                    uncategorizedCount > 0
+                        ? {
+                              label: 'Categorize',
+                              onClick: () =>
+                                  router.visit('/transactions/categorize'),
+                          }
+                        : undefined,
+            });
             onOpenChange(false);
         } else {
             toast.error('All transactions failed to import');
