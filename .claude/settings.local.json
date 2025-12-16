@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run format)",
+      "Bash(bun run lint)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "laravel-boost"
+  ],
+  "enableAllProjectMcpServers": true
+}
