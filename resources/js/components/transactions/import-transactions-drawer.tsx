@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/drawer';
 import { Progress } from '@/components/ui/progress';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { IMPORT_FUNNEL_EVENT_UUID } from '@/lib/constants';
 import { importKey } from '@/lib/crypto';
 import {
     autoDetectColumns,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/import-config-storage';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
+import { useTrackEvent } from '@/lib/track-event';
 import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { accountSyncService } from '@/services/account-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
@@ -34,7 +36,7 @@ import {
     type ImportState,
 } from '@/types/import';
 import { router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
 import { ImportStepMapping } from './import-step-mapping';
@@ -56,11 +58,21 @@ interface ImportError {
     error: string;
 }
 
+type ImportFunnelStep =
+    | 'Open'
+    | 'Choose account'
+    | 'Set file'
+    | 'Set mapping'
+    | 'Confirm Preview'
+    | 'Finish';
+
 export function ImportTransactionsDrawer({
     open,
     onOpenChange,
 }: ImportTransactionsDrawerProps) {
     const { isKeySet } = useEncryptionKey();
+    const trackEvent = useTrackEvent();
+    const trackedStepsRef = useRef<Set<ImportFunnelStep>>(new Set());
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
@@ -98,8 +110,20 @@ export function ImportTransactionsDrawer({
         }
     }, [state.selectedAccountId]);
 
+    const trackFunnelStep = useCallback(
+        (step: ImportFunnelStep) => {
+            if (!trackedStepsRef.current.has(step)) {
+                trackedStepsRef.current.add(step);
+                trackEvent(IMPORT_FUNNEL_EVENT_UUID, { step });
+            }
+        },
+        [trackEvent],
+    );
+
     useEffect(() => {
-        if (!open) {
+        if (open) {
+            trackFunnelStep('Open');
+        } else {
             setState({
                 step: ImportStep.SelectAccount,
                 selectedAccountId: null,
@@ -119,8 +143,9 @@ export function ImportTransactionsDrawer({
             setIsImporting(false);
             setError(null);
             setSelectedAccount(null);
+            trackedStepsRef.current.clear();
         }
-    }, [open]);
+    }, [open, trackFunnelStep]);
 
     const handleAccountSelect = (accountId: number) => {
         setState((prev) => ({ ...prev, selectedAccountId: accountId }));
@@ -290,6 +315,7 @@ export function ImportTransactionsDrawer({
                 transactions: transactionsWithDuplicateCheck,
                 step: ImportStep.Preview,
             }));
+            trackFunnelStep('Set mapping');
         } catch (err) {
             setError(
                 err instanceof Error
@@ -300,6 +326,8 @@ export function ImportTransactionsDrawer({
     };
 
     const handleConfirmImport = async () => {
+        trackFunnelStep('Confirm Preview');
+
         if (!isKeySet) {
             setError('Please unlock your encryption key first');
             return;
@@ -482,6 +510,10 @@ export function ImportTransactionsDrawer({
 
         console.log('Import complete:', { successCount, errorCount, total });
 
+        if (successCount > 0) {
+            trackFunnelStep('Finish');
+        }
+
         if (errorCount === 0 && successCount > 0) {
             const message =
                 uncategorizedCount > 0
@@ -615,7 +647,10 @@ export function ImportTransactionsDrawer({
                     <ImportStepAccount
                         selectedAccountId={state.selectedAccountId}
                         onAccountSelect={handleAccountSelect}
-                        onNext={() => moveToStep(ImportStep.UploadFile)}
+                        onNext={() => {
+                            trackFunnelStep('Choose account');
+                            moveToStep(ImportStep.UploadFile);
+                        }}
                     />
                 );
             case ImportStep.UploadFile:
@@ -623,7 +658,10 @@ export function ImportTransactionsDrawer({
                     <ImportStepUpload
                         file={state.file}
                         onFileSelect={handleFileSelect}
-                        onNext={() => moveToStep(ImportStep.MapColumns)}
+                        onNext={() => {
+                            trackFunnelStep('Set file');
+                            moveToStep(ImportStep.MapColumns);
+                        }}
                         onBack={() => moveToStep(ImportStep.SelectAccount)}
                     />
                 );
