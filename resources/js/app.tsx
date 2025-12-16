@@ -55,9 +55,7 @@ createInertiaApp({
                                     warning: (
                                         <TriangleAlertIcon className="size-4" />
                                     ),
-                                    error: (
-                                        <OctagonXIcon className="size-4" />
-                                    ),
+                                    error: <OctagonXIcon className="size-4" />,
                                     loading: (
                                         <Loader2Icon className="size-4 animate-spin" />
                                     ),
@@ -66,7 +64,7 @@ createInertiaApp({
                         </SyncProvider>
                     </PrivacyModeProvider>
                 </EncryptionKeyProvider>
-            </StrictMode >,
+            </StrictMode>,
         );
     },
     progress: {
