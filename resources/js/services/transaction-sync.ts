@@ -497,6 +497,50 @@ class TransactionSyncService {
         });
     }
 
+    async updateManyIndividual(
+        updates: Array<{ id: string; data: TransactionUpdateData }>,
+    ): Promise<void> {
+        const timestamp = new Date().toISOString();
+        const dbUpdates: Transaction[] = [];
+        const pendingChanges: Array<{
+            store: string;
+            operation: string;
+            data: Transaction;
+            timestamp: string;
+        }> = [];
+
+        for (const { id, data } of updates) {
+            const existing = await this.getById(id);
+
+            if (!existing) {
+                console.warn(`Transaction ${id} not found, skipping`);
+                continue;
+            }
+
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { label_ids, ...transactionData } = data;
+
+            const updated = {
+                ...existing,
+                ...transactionData,
+                updated_at: timestamp,
+            } as Transaction;
+
+            dbUpdates.push(updated);
+            pendingChanges.push({
+                store: 'transactions',
+                operation: 'update',
+                data: updated,
+                timestamp,
+            });
+        }
+
+        if (dbUpdates.length > 0) {
+            await db.transactions.bulkPut(dbUpdates);
+            await db.pending_changes.bulkAdd(pendingChanges);
+        }
+    }
+
     async deleteMany(ids: string[]): Promise<void> {
         const timestamp = new Date().toISOString();
 

@@ -689,7 +689,6 @@ export default function Transactions({
                     categories,
                     accounts,
                     banks,
-                    labels,
                     key,
                 );
 
@@ -776,10 +775,11 @@ export default function Transactions({
                 consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [isKeySet, categories, accounts, banks, labels, updateTransaction],
+        [isKeySet, categories, accounts, banks, updateTransaction],
     );
 
     async function handleBulkReEvaluateRules() {
+        const BATCH_SIZE = 25;
         consoleDebug('=== Re-evaluating rules for bulk transactions ===');
         consoleDebug(`Selected ${selectedIds.length} transactions`);
 
@@ -822,13 +822,23 @@ export default function Transactions({
                 })),
             );
 
-            const updates: Array<{
+            // Collect all updates first without updating IndexedDB
+            const allUpdates: Array<{
                 transaction: DecryptedTransaction;
                 categoryId: number | null;
                 category: Category | null;
                 notes: string | null;
                 notesIv: string | null;
                 decryptedNotes: string | null;
+            }> = [];
+
+            const dbUpdates: Array<{
+                id: string;
+                data: {
+                    category_id: number | null;
+                    notes: string | null;
+                    notes_iv: string | null;
+                };
             }> = [];
 
             for (const transaction of selectedTransactions) {
@@ -839,7 +849,6 @@ export default function Transactions({
                     categories,
                     accounts,
                     banks,
-                    labels,
                     key,
                 );
 
@@ -877,13 +886,13 @@ export default function Transactions({
                         notes: finalNotes,
                         notes_iv: finalNotesIv,
                     };
-                    consoleDebug('Updating transaction with:', updateData);
+                    consoleDebug('Queuing update for transaction:', updateData);
 
-                    await transactionSyncService.update(
-                        transaction.id,
-                        updateData,
-                    );
-                    consoleDebug('✓ Transaction updated in IndexedDB');
+                    // Collect for batch IndexedDB update
+                    dbUpdates.push({
+                        id: transaction.id,
+                        data: updateData,
+                    });
 
                     const selectedCategory = result.categoryId
                         ? categories.find((c) => c.id === result.categoryId) ||
@@ -899,7 +908,7 @@ export default function Transactions({
                         );
                     }
 
-                    updates.push({
+                    allUpdates.push({
                         transaction,
                         categoryId: result.categoryId,
                         category: selectedCategory,
@@ -917,34 +926,57 @@ export default function Transactions({
                 }
             }
 
-            consoleDebug(`\nApplying ${updates.length} updates to UI state...`);
-            if (updates.length > 0) {
-                setTransactions((previous) =>
-                    previous.map((transaction) => {
-                        const update = updates.find(
-                            (u) => u.transaction.id === transaction.id,
-                        );
-                        if (update) {
-                            consoleDebug(
-                                `Updating UI for transaction ${transaction.id}:`,
-                                {
-                                    newCategory:
-                                        update.category?.name || 'None',
-                                    hasNotes: !!update.decryptedNotes,
-                                },
-                            );
-                            return {
-                                ...transaction,
-                                category_id: update.categoryId,
-                                category: update.category,
-                                notes: update.notes,
-                                notes_iv: update.notesIv,
-                                decryptedNotes: update.decryptedNotes,
-                            };
-                        }
-                        return transaction;
-                    }),
+            // Batch update IndexedDB
+            if (dbUpdates.length > 0) {
+                consoleDebug(
+                    `\nBatch updating ${dbUpdates.length} transactions in IndexedDB...`,
                 );
+                await transactionSyncService.updateManyIndividual(dbUpdates);
+                consoleDebug('✓ IndexedDB batch update complete');
+            }
+
+            // Update UI state in batches
+            consoleDebug(
+                `\nApplying ${allUpdates.length} updates to UI state in batches of ${BATCH_SIZE}...`,
+            );
+            if (allUpdates.length > 0) {
+                for (let i = 0; i < allUpdates.length; i += BATCH_SIZE) {
+                    const batch = allUpdates.slice(i, i + BATCH_SIZE);
+                    const batchIds = new Set(
+                        batch.map((u) => u.transaction.id),
+                    );
+
+                    consoleDebug(
+                        `Applying batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} updates)...`,
+                    );
+
+                    setTransactions((previous) =>
+                        previous.map((transaction) => {
+                            if (!batchIds.has(transaction.id)) {
+                                return transaction;
+                            }
+                            const update = batch.find(
+                                (u) => u.transaction.id === transaction.id,
+                            );
+                            if (update) {
+                                return {
+                                    ...transaction,
+                                    category_id: update.categoryId,
+                                    category: update.category,
+                                    notes: update.notes,
+                                    notes_iv: update.notesIv,
+                                    decryptedNotes: update.decryptedNotes,
+                                };
+                            }
+                            return transaction;
+                        }),
+                    );
+
+                    // Small delay between batches to allow React to process renders
+                    if (i + BATCH_SIZE < allUpdates.length) {
+                        await new Promise((resolve) => setTimeout(resolve, 50));
+                    }
+                }
                 consoleDebug('✓ UI state updated successfully');
             } else {
                 consoleDebug('❌ No updates to apply');
