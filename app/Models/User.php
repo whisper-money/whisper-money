@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\DripEmailType;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -90,6 +91,16 @@ class User extends Authenticatable
     public function labels(): HasMany
     {
         return $this->hasMany(Label::class);
+    }
+
+    public function mailLogs(): HasMany
+    {
+        return $this->hasMany(UserMailLog::class);
+    }
+
+    public function hasReceivedEmail(DripEmailType $type): bool
+    {
+        return $this->mailLogs()->where('email_type', $type)->exists();
     }
 
     public function hasProPlan(): bool
