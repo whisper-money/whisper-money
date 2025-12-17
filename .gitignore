@@ -28,3 +28,4 @@ yarn-error.log
 /.zed
 .php-cs-fixer.cache
 /traefik/certs/*.pem
+.claude/settings.local.json
