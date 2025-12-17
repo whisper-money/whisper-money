@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Mail;
 
 class SendTestEmails extends Command
 {
-    protected $signature = 'emails:test {email : The email address to send all test emails to}';
+    protected $signature = 'email:test {email : The email address to send all test emails to}';
 
     protected $description = 'Send all application emails to a specific email address for testing';
 
