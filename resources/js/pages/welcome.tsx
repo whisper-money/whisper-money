@@ -40,8 +40,6 @@ function LandingPlanCard({
     plan,
     isDefault,
     isBestValue,
-    promoEnabled,
-    promoBadge,
 }: {
     plan: Plan;
     isDefault: boolean;
@@ -68,16 +66,16 @@ function LandingPlanCard({
                     Best Value
                 </div>
             )}
-            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 blur-3xl" />
+            <div
+                className={cn(
+                    'absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 blur-3xl',
+                    isBestValue && 'from-blue-500/20 to-cyan-500/20',
+                )}
+            />
 
             <div className="relative flex flex-1 flex-col p-6">
                 <div className="flex items-center gap-3">
                     <h3 className="text-xl font-semibold">{plan.name}</h3>
-                    {promoEnabled && isDefault && (
-                        <div className="inline-block rounded-lg bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 uppercase dark:bg-emerald-900/30 dark:text-emerald-400">
-                            {promoBadge}
-                        </div>
-                    )}
                 </div>
 
                 <div className="mt-4 flex items-baseline gap-2">
@@ -519,7 +517,7 @@ export default function Welcome({
                                     </div>
 
                                     {pricing.promo.enabled && (
-                                        <p className="-mt-6 text-center text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        <p className="text-center text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                             🎉 Get a founder discount •{' '}
                                             <TooltipProvider>
                                                 <Tooltip>
