@@ -1,7 +1,5 @@
-import InputError from '@/components/input-error';
 import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     Tooltip,
     TooltipContent,
@@ -11,10 +9,9 @@ import {
 import { LEAD_FUNNEL_EVENT_UUID } from '@/lib/constants';
 import { trackEvent } from '@/lib/track-event';
 import { cn } from '@/lib/utils';
-import { store } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     BellIcon,
     CheckIcon,
@@ -133,7 +130,6 @@ export default function Welcome({
     const { appUrl, subscriptionsEnabled, pricing } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
-    const emailInputRef = useRef<HTMLInputElement>(null);
     const visitTrackedRef = useRef(false);
 
     useEffect(() => {
@@ -252,46 +248,15 @@ export default function Welcome({
                                     while keeping your information completely
                                     secure.
                                 </p>
-                                <div className="flex w-full max-w-lg flex-col gap-4">
-                                    <Form
-                                        {...store.form()}
-                                        className="flex flex-col justify-center gap-2 sm:flex-row sm:items-center"
-                                    >
-                                        {({ processing, errors }) => (
-                                            <>
-                                                <Input
-                                                    ref={emailInputRef}
-                                                    type="email"
-                                                    name="email"
-                                                    placeholder="Enter your email"
-                                                    required
-                                                    className="h-12 border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]"
-                                                    autoComplete="email"
-                                                />
-                                                <Button
-                                                    type="submit"
-                                                    disabled={processing}
-                                                    className="text-shadow duration h-12 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-6 text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md disabled:cursor-default dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md"
-                                                >
-                                                    {processing
-                                                        ? 'Submitting...'
-                                                        : 'Get Early Access'}
-                                                </Button>
-                                                {errors.email && (
-                                                    <div className="w-full">
-                                                        <InputError
-                                                            message={
-                                                                errors.email
-                                                            }
-                                                        />
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-                                    </Form>
+                                <div className="flex w-full max-w-xs flex-col gap-4">
+                                    <Link href="/register">
+                                        <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
+                                            Get Started
+                                        </Button>
+                                    </Link>
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                        Your data is yours alone. Join our
-                                        waitlist for early access.
+                                        Your data is yours alone. Sign up to get
+                                        started.
                                     </p>
                                 </div>
                             </div>
