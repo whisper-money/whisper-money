@@ -17,7 +17,7 @@ test('feedback email is sent to non-subscribed users', function () {
 
     SendFeedbackEmailJob::dispatchSync($user);
 
-    Mail::assertSent(FeedbackEmail::class, function ($mail) use ($user) {
+    Mail::assertQueued(FeedbackEmail::class, function ($mail) use ($user) {
         return $mail->hasTo($user->email);
     });
 
@@ -39,7 +39,7 @@ test('feedback email is not sent to subscribed users', function () {
 
     SendFeedbackEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(FeedbackEmail::class);
+    Mail::assertNotQueued(FeedbackEmail::class);
 });
 
 test('feedback email is not sent if already received', function () {
@@ -49,5 +49,5 @@ test('feedback email is not sent if already received', function () {
 
     SendFeedbackEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(FeedbackEmail::class);
+    Mail::assertNotQueued(FeedbackEmail::class);
 });
