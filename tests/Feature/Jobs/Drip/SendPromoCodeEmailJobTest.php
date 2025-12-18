@@ -19,7 +19,7 @@ test('promo code email is sent to onboarded users with transactions who are not 
 
     SendPromoCodeEmailJob::dispatchSync($user);
 
-    Mail::assertSent(PromoCodeEmail::class, function ($mail) use ($user) {
+    Mail::assertQueued(PromoCodeEmail::class, function ($mail) use ($user) {
         return $mail->hasTo($user->email);
     });
 
@@ -35,7 +35,7 @@ test('promo code email is not sent to non-onboarded users', function () {
 
     SendPromoCodeEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(PromoCodeEmail::class);
+    Mail::assertNotQueued(PromoCodeEmail::class);
 });
 
 test('promo code email is not sent to users without transactions', function () {
@@ -43,7 +43,7 @@ test('promo code email is not sent to users without transactions', function () {
 
     SendPromoCodeEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(PromoCodeEmail::class);
+    Mail::assertNotQueued(PromoCodeEmail::class);
 });
 
 test('promo code email is not sent to subscribed users', function () {
@@ -59,7 +59,7 @@ test('promo code email is not sent to subscribed users', function () {
 
     SendPromoCodeEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(PromoCodeEmail::class);
+    Mail::assertNotQueued(PromoCodeEmail::class);
 });
 
 test('promo code email is not sent if already received', function () {
@@ -70,5 +70,5 @@ test('promo code email is not sent if already received', function () {
 
     SendPromoCodeEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(PromoCodeEmail::class);
+    Mail::assertNotQueued(PromoCodeEmail::class);
 });

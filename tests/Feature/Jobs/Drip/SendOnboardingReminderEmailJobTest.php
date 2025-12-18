@@ -16,7 +16,7 @@ test('onboarding reminder email is sent to non-onboarded users', function () {
 
     SendOnboardingReminderEmailJob::dispatchSync($user);
 
-    Mail::assertSent(OnboardingReminderEmail::class, function ($mail) use ($user) {
+    Mail::assertQueued(OnboardingReminderEmail::class, function ($mail) use ($user) {
         return $mail->hasTo($user->email);
     });
 
@@ -31,7 +31,7 @@ test('onboarding reminder email is not sent to onboarded users', function () {
 
     SendOnboardingReminderEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(OnboardingReminderEmail::class);
+    Mail::assertNotQueued(OnboardingReminderEmail::class);
 
     $this->assertDatabaseMissing('user_mail_logs', [
         'user_id' => $user->id,
@@ -46,5 +46,5 @@ test('onboarding reminder email is not sent if already received', function () {
 
     SendOnboardingReminderEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(OnboardingReminderEmail::class);
+    Mail::assertNotQueued(OnboardingReminderEmail::class);
 });
