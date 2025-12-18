@@ -15,6 +15,20 @@ class PromoCodeEmail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    /**
+     * The number of times the job may be attempted.
+     *
+     * @var int
+     */
+    public $tries = 5;
+
+    /**
+     * The number of seconds to wait before retrying the job.
+     *
+     * @var array<int, int>
+     */
+    public $backoff = [2, 5, 10, 30];
+
     public function __construct(public User $user)
     {
         $this->onQueue('emails');
