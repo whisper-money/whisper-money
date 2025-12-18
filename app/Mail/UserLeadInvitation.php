@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\SerializesModels;
 
 class UserLeadInvitation extends Mailable implements ShouldQueue
@@ -19,7 +20,7 @@ class UserLeadInvitation extends Mailable implements ShouldQueue
      */
     public function __construct(public UserLead $lead)
     {
-        //
+        $this->onQueue('emails');
     }
 
     /**
@@ -50,5 +51,15 @@ class UserLeadInvitation extends Mailable implements ShouldQueue
     public function attachments(): array
     {
         return [];
+    }
+
+    /**
+     * Get the middleware the job should pass through.
+     *
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [new RateLimited('emails', releaseAfter: 1)];
     }
 }

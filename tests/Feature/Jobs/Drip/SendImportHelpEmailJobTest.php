@@ -18,7 +18,7 @@ test('import help email is sent to onboarded users without transactions who are 
 
     SendImportHelpEmailJob::dispatchSync($user);
 
-    Mail::assertSent(ImportHelpEmail::class, function ($mail) use ($user) {
+    Mail::assertQueued(ImportHelpEmail::class, function ($mail) use ($user) {
         return $mail->hasTo($user->email);
     });
 
@@ -33,7 +33,7 @@ test('import help email is not sent to non-onboarded users', function () {
 
     SendImportHelpEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(ImportHelpEmail::class);
+    Mail::assertNotQueued(ImportHelpEmail::class);
 });
 
 test('import help email is not sent to users with transactions', function () {
@@ -42,7 +42,7 @@ test('import help email is not sent to users with transactions', function () {
 
     SendImportHelpEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(ImportHelpEmail::class);
+    Mail::assertNotQueued(ImportHelpEmail::class);
 });
 
 test('import help email is not sent to subscribed users', function () {
@@ -57,7 +57,7 @@ test('import help email is not sent to subscribed users', function () {
 
     SendImportHelpEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(ImportHelpEmail::class);
+    Mail::assertNotQueued(ImportHelpEmail::class);
 });
 
 test('import help email is not sent if already received', function () {
@@ -67,5 +67,5 @@ test('import help email is not sent if already received', function () {
 
     SendImportHelpEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(ImportHelpEmail::class);
+    Mail::assertNotQueued(ImportHelpEmail::class);
 });
