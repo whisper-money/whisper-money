@@ -16,7 +16,7 @@ test('welcome email is sent and logged', function () {
 
     SendWelcomeEmailJob::dispatchSync($user);
 
-    Mail::assertSent(WelcomeEmail::class, function ($mail) use ($user) {
+    Mail::assertQueued(WelcomeEmail::class, function ($mail) use ($user) {
         return $mail->hasTo($user->email);
     });
 
@@ -33,5 +33,5 @@ test('welcome email is not sent if already received', function () {
 
     SendWelcomeEmailJob::dispatchSync($user);
 
-    Mail::assertNotSent(WelcomeEmail::class);
+    Mail::assertNotQueued(WelcomeEmail::class);
 });
