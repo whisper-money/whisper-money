@@ -38,7 +38,7 @@ class UserLeadInvitation extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'mail.user-lead-invitation',
+            markdown: 'mail.user-lead-invitation',
         );
     }
 
