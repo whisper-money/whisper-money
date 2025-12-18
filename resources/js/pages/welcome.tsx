@@ -14,9 +14,13 @@ import { Plan } from '@/types/pricing';
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     BellIcon,
+    BrainIcon,
+    Building2Icon,
     CheckIcon,
     CodeIcon,
     EyeOffIcon,
+    FileUpIcon,
+    KeyIcon,
     LockIcon,
     PieChartIcon,
     ShieldCheckIcon,
@@ -234,7 +238,7 @@ export default function Welcome({
                                 <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
                                     <LockIcon className="size-3.5 opacity-75" />
                                     <span className="text-[#706f6c] dark:text-[#A1A09A]">
-                                        Military Grade Encryption
+                                        E2E Encryption
                                     </span>
                                 </span>
                                 <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
@@ -323,6 +327,170 @@ export default function Welcome({
                                 >
                                     <div className="absolute left-1/2 h-[256px] w-[60%] -translate-x-1/2 -translate-y-1/2 scale-[2.5] rounded-[50%] bg-radial from-[#1b1b18]/50 from-10% to-[#1b1b18]/0 to-60% opacity-20 sm:h-[512px] dark:from-[#EDEDEC]/50 dark:to-[#EDEDEC]/0 dark:opacity-100"></div>
                                     <div className="absolute left-1/2 h-[128px] w-[40%] -translate-x-1/2 -translate-y-1/2 scale-200 rounded-[50%] bg-radial from-[#1b1b18]/30 from-10% to-[#1b1b18]/0 to-60% opacity-20 sm:h-[256px] dark:from-[#EDEDEC]/30 dark:to-[#EDEDEC]/0 dark:opacity-100"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="px-4 py-12 sm:py-24 md:py-32">
+                        <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 sm:gap-12">
+                            <div className="flex flex-col items-center gap-4 text-center">
+                                <h2 className="max-w-[720px] text-3xl leading-tight font-semibold text-balance sm:text-5xl sm:leading-tight">
+                                    How End-to-End Encryption Works
+                                </h2>
+                                <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-xl dark:text-[#A1A09A]">
+                                    Your financial data is encrypted on your
+                                    device before it ever reaches our servers.
+                                </p>
+                            </div>
+
+                            <div className="grid w-full gap-8 sm:grid-cols-3">
+                                <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 text-center dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                    <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
+                                        <KeyIcon className="size-8 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <h3 className="text-xl font-semibold">
+                                        Your Private Key
+                                    </h3>
+                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        A unique encryption key is generated on
+                                        your device. Only you have access to
+                                        it—we never see or store it.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 text-center dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                    <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
+                                        <LockIcon className="size-8 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <h3 className="text-xl font-semibold">
+                                        Client-Side Encryption
+                                    </h3>
+                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        Your transactions, accounts, and budgets
+                                        are encrypted on your device before
+                                        syncing to the cloud.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 text-center dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                    <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
+                                        <ShieldCheckIcon className="size-8 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <h3 className="text-xl font-semibold">
+                                        Zero-Knowledge Architecture
+                                    </h3>
+                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        We store encrypted data we can't read.
+                                        Even if our servers were compromised,
+                                        your data stays secure.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="px-4 py-12 sm:py-24 md:py-32">
+                        <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 sm:gap-12">
+                            <div className="flex flex-col items-center gap-4 text-center">
+                                <h2 className="max-w-[720px] text-3xl leading-tight font-semibold sm:text-5xl sm:leading-tight">
+                                    Privacy by Design
+                                </h2>
+                                <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-xl dark:text-[#A1A09A]">
+                                    No AI. No bank connections. Your privacy is
+                                    our priority.
+                                </p>
+                            </div>
+
+                            <div className="grid w-full gap-8 sm:grid-cols-2">
+                                <div className="flex flex-col gap-6 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                                            <BrainIcon className="size-6 text-red-600 dark:text-red-400" />
+                                        </div>
+                                        <h3 className="text-2xl font-semibold">
+                                            No AI Snooping
+                                        </h3>
+                                    </div>
+                                    <p className="text-[#706f6c] dark:text-[#A1A09A]">
+                                        AI can't help you with your transactions
+                                        because they're end-to-end encrypted.
+                                        This is intentional—we believe your
+                                        financial data should never be fed into
+                                        AI systems that you don't control.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-6 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                                            <Building2Icon className="size-6 text-red-600 dark:text-red-400" />
+                                        </div>
+                                        <h3 className="text-2xl font-semibold">
+                                            No Bank Access Required
+                                        </h3>
+                                    </div>
+                                    <p className="text-[#706f6c] dark:text-[#A1A09A]">
+                                        We don't need direct access to your bank
+                                        accounts. No sharing credentials, no
+                                        third-party integrations, no security
+                                        risks. You stay in complete control of
+                                        your financial data.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="px-4 py-12 sm:py-24 md:py-32">
+                        <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 sm:gap-12">
+                            <div className="flex flex-col items-center gap-4 text-center">
+                                <h2 className="max-w-[720px] text-3xl leading-tight font-semibold text-balance sm:text-5xl sm:leading-tight">
+                                    Import Your Transactions in Seconds
+                                </h2>
+                                <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-xl dark:text-[#A1A09A]">
+                                    Get started quickly with your existing
+                                    financial data.
+                                </p>
+                            </div>
+
+                            <div className="flex w-full max-w-4xl flex-col items-center gap-8 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 sm:p-12 dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                <div className="flex size-20 items-center justify-center rounded-full bg-emerald-500/10">
+                                    <FileUpIcon className="size-10 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+
+                                <div className="flex flex-col gap-6 text-center">
+                                    <h3 className="text-2xl font-semibold">
+                                        Lightning-Fast CSV/XLS Import
+                                    </h3>
+                                    <p className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
+                                        Import a year's worth of transactions in
+                                        under 10 seconds. Simply export a CSV or
+                                        XLS file from your bank and drag it into
+                                        Whisper Money. All data is encrypted
+                                        locally before upload.
+                                    </p>
+                                </div>
+
+                                <div className="grid w-full gap-4 sm:grid-cols-3">
+                                    <div className="flex items-center gap-3 rounded-lg border border-[#e3e3e0] bg-background p-4 dark:border-[#3E3E3A]">
+                                        <CheckIcon className="size-5 shrink-0 text-emerald-500" />
+                                        <span className="text-sm font-medium">
+                                            Export from any bank
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 rounded-lg border border-[#e3e3e0] bg-background p-4 dark:border-[#3E3E3A]">
+                                        <CheckIcon className="size-5 shrink-0 text-emerald-500" />
+                                        <span className="text-sm font-medium">
+                                            Encrypted on your device
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 rounded-lg border border-[#e3e3e0] bg-background p-4 dark:border-[#3E3E3A]">
+                                        <CheckIcon className="size-5 shrink-0 text-emerald-500" />
+                                        <span className="text-sm font-medium">
+                                            Import in seconds
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
