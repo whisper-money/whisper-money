@@ -18,8 +18,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {
-    BUDGET_PERIOD_TYPES,
     Budget,
+    BUDGET_PERIOD_TYPES,
     BudgetPeriodType,
     getBudgetPeriodTypeLabel,
     getRolloverTypeLabel,
@@ -31,11 +31,17 @@ import { useEffect, useState } from 'react';
 
 interface Props {
     budget: Budget;
+    currentPeriod: { allocated_amount: number };
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
-export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
+export function EditBudgetDialog({
+    budget,
+    currentPeriod,
+    open,
+    onOpenChange,
+}: Props) {
     const [name, setName] = useState(budget.name);
     const [periodType, setPeriodType] = useState<BudgetPeriodType>(
         budget.period_type as BudgetPeriodType,
@@ -45,6 +51,9 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
     );
     const [periodStartDay, setPeriodStartDay] = useState<number>(
         budget.period_start_day || 1,
+    );
+    const [allocatedAmount, setAllocatedAmount] = useState<string>(
+        (currentPeriod.allocated_amount / 100).toString(),
     );
     const [rolloverType, setRolloverType] = useState<RolloverType>(
         budget.rollover_type as RolloverType,
@@ -57,13 +66,18 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
             setPeriodType(budget.period_type as BudgetPeriodType);
             setPeriodDuration(budget.period_duration);
             setPeriodStartDay(budget.period_start_day || 1);
+            setAllocatedAmount(
+                (currentPeriod.allocated_amount / 100).toString(),
+            );
             setRolloverType(budget.rollover_type as RolloverType);
         }
-    }, [open, budget]);
+    }, [open, budget, currentPeriod]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
+
+        const amountInCents = Math.round(parseFloat(allocatedAmount) * 100);
 
         router.patch(
             update({ budget: budget.id }).url,
@@ -72,6 +86,7 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
                 period_type: periodType,
                 period_duration: periodDuration,
                 period_start_day: periodStartDay,
+                allocated_amount: amountInCents,
                 rollover_type: rolloverType,
             },
             {
@@ -95,12 +110,13 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="space-y-6 py-4">
+                    <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label htmlFor="name">Budget Name</Label>
                             <Input
                                 id="name"
                                 value={name}
+                                className="mt-1"
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="e.g., Monthly Budget"
                                 required
@@ -109,23 +125,26 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
 
                         <div className="space-y-2">
                             <Label htmlFor="period-type">Period Type</Label>
-                            <Select
-                                value={periodType}
-                                onValueChange={(value) =>
-                                    setPeriodType(value as BudgetPeriodType)
-                                }
-                            >
-                                <SelectTrigger id="period-type">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {BUDGET_PERIOD_TYPES.map((type) => (
-                                        <SelectItem key={type} value={type}>
-                                            {getBudgetPeriodTypeLabel(type)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="mt-1">
+                                <Select
+                                    value={periodType}
+                                    disabled
+                                    onValueChange={(value) =>
+                                        setPeriodType(value as BudgetPeriodType)
+                                    }
+                                >
+                                    <SelectTrigger id="period-type">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {BUDGET_PERIOD_TYPES.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {getBudgetPeriodTypeLabel(type)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         {periodType === 'custom' && (
@@ -134,10 +153,12 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
                                     Period Duration (days)
                                 </Label>
                                 <Input
+                                    disabled
                                     id="period-duration"
                                     type="number"
                                     min="1"
                                     max="365"
+                                    className="mt-1"
                                     value={periodDuration ?? ''}
                                     onChange={(e) =>
                                         setPeriodDuration(
@@ -159,7 +180,9 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
                             </Label>
                             <Input
                                 id="period-start-day"
+                                disabled
                                 type="number"
+                                className="mt-1"
                                 min="0"
                                 max={periodType === 'monthly' ? '31' : '6'}
                                 value={periodStartDay}
@@ -178,24 +201,50 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="rollover">Rollover Type</Label>
-                            <Select
-                                value={rolloverType}
-                                onValueChange={(value) =>
-                                    setRolloverType(value as RolloverType)
+                            <Label htmlFor="allocated-amount">
+                                Allocated Amount
+                            </Label>
+                            <Input
+                                id="allocated-amount"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="mt-1"
+                                value={allocatedAmount}
+                                onChange={(e) =>
+                                    setAllocatedAmount(e.target.value)
                                 }
-                            >
-                                <SelectTrigger id="rollover">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ROLLOVER_TYPES.map((type) => (
-                                        <SelectItem key={type} value={type}>
-                                            {getRolloverTypeLabel(type)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="0.00"
+                                required
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                This will update the allocated amount for the
+                                current and future periods.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="rollover">Rollover Type</Label>
+                            <div className="mt-1">
+                                <Select
+                                    disabled
+                                    value={rolloverType}
+                                    onValueChange={(value) =>
+                                        setRolloverType(value as RolloverType)
+                                    }
+                                >
+                                    <SelectTrigger id="rollover">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {ROLLOVER_TYPES.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {getRolloverTypeLabel(type)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <p className="text-sm text-muted-foreground">
                                 {rolloverType === 'carry_over'
                                     ? 'Unused budget will carry over to the next period.'

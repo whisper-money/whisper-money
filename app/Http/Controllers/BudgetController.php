@@ -40,19 +40,47 @@ class BudgetController extends Controller
     {
         $this->authorize('view', $budget);
 
+        $user = $request->user();
+
         $currentPeriod = $budget->getCurrentPeriod();
 
         if (! $currentPeriod) {
             $currentPeriod = $this->budgetPeriodService->generatePeriod($budget);
         }
 
-        $currentPeriod->load(['budgetTransactions']);
+        $currentPeriod->load([
+            'budgetTransactions.transaction.account.bank',
+            'budgetTransactions.transaction.category',
+            'budgetTransactions.transaction.labels',
+        ]);
 
         $budget->load(['category', 'label']);
+
+        $categories = \App\Models\Category::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon', 'color']);
+
+        $accounts = \App\Models\Account::query()
+            ->where('user_id', $user->id)
+            ->with('bank:id,name,logo')
+            ->orderBy('name')
+            ->get(['id', 'name', 'name_iv', 'bank_id', 'type', 'currency_code']);
+
+        $banks = \App\Models\Bank::query()
+            ->where(function ($q) use ($user) {
+                $q->whereNull('user_id')
+                    ->orWhere('user_id', $user->id);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'logo']);
 
         return Inertia::render('budgets/show', [
             'budget' => $budget,
             'currentPeriod' => $currentPeriod,
+            'categories' => $categories,
+            'accounts' => $accounts,
+            'banks' => $banks,
         ]);
     }
 
