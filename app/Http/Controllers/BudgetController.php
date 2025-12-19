@@ -46,13 +46,16 @@ class BudgetController extends Controller
             $currentPeriod = $this->budgetPeriodService->generatePeriod($budget);
         }
 
+        // Reload the current period with all its relationships
+        $currentPeriod->load([
+            'allocations.budgetCategory.category',
+            'allocations.budgetCategory.labels',
+            'allocations.budgetTransactions',
+        ]);
+
         $budget->load([
             'budgetCategories.category',
             'budgetCategories.labels',
-            'periods' => function ($query) use ($currentPeriod) {
-                $query->where('id', $currentPeriod->id)
-                    ->with(['allocations.budgetCategory.category', 'allocations.budgetTransactions']);
-            },
         ]);
 
         return Inertia::render('budgets/show', [
@@ -73,7 +76,7 @@ class BudgetController extends Controller
 
             foreach ($request->categories as $categoryData) {
                 $budgetCategory = $budget->budgetCategories()->create([
-                    'category_id' => $categoryData['category_id'],
+                    'category_id' => !empty($categoryData['category_id']) ? $categoryData['category_id'] : null,
                     'rollover_type' => $categoryData['rollover_type'],
                 ]);
 
@@ -84,10 +87,8 @@ class BudgetController extends Controller
 
             $period = $this->budgetPeriodService->generatePeriod($budget);
 
-            foreach ($request->categories as $categoryData) {
-                $budgetCategory = $budget->budgetCategories()
-                    ->where('category_id', $categoryData['category_id'])
-                    ->first();
+            foreach ($request->categories as $index => $categoryData) {
+                $budgetCategory = $budget->budgetCategories()->skip($index)->first();
 
                 if ($budgetCategory) {
                     $period->allocations()->create([
