@@ -98,6 +98,11 @@ class User extends Authenticatable
         return $this->hasMany(UserMailLog::class);
     }
 
+    public function budgets(): HasMany
+    {
+        return $this->hasMany(Budget::class);
+    }
+
     public function hasReceivedEmail(DripEmailType $type): bool
     {
         return $this->mailLogs()->where('email_type', $type)->exists();

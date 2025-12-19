@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\BudgetAllocationController;
+use App\Http\Controllers\BudgetAnalyticsController;
+use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\RobotsController;
@@ -56,6 +59,18 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+
+    Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
+    Route::post('budgets', [BudgetController::class, 'store'])->name('budgets.store');
+    Route::get('budgets/{budget}', [BudgetController::class, 'show'])->name('budgets.show');
+    Route::patch('budgets/{budget}', [BudgetController::class, 'update'])->name('budgets.update');
+    Route::delete('budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
+
+    Route::get('budgets/{budget}/analytics/{budgetCategory}', [BudgetAnalyticsController::class, 'history'])->name('budgets.analytics');
+    Route::get('budget-allocations/{allocation}/transactions', [BudgetAnalyticsController::class, 'transactions'])->name('budget-allocations.transactions');
+
+    Route::get('budget-periods/{period}/allocations', [BudgetAllocationController::class, 'show'])->name('budget-periods.allocations.show');
+    Route::patch('budget-periods/{period}/allocations', [BudgetAllocationController::class, 'update'])->name('budget-periods.allocations.update');
 });
 
 require __DIR__.'/settings.php';

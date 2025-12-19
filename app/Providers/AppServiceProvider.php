@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Http\Responses\RegisterResponse;
+use App\Models\Transaction;
+use App\Observers\TransactionObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -23,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Transaction::observe(TransactionObserver::class);
+
         RateLimiter::for('emails', function (object $job): Limit {
             return Limit::perSecond(1);
         });
