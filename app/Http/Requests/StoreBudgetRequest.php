@@ -24,6 +24,7 @@ class StoreBudgetRequest extends FormRequest
             'categories' => ['required', 'array', 'min:1'],
             'categories.*.category_id' => ['required', 'exists:categories,id'],
             'categories.*.rollover_type' => ['required', Rule::enum(RolloverType::class)],
+            'categories.*.allocated_amount' => ['required', 'integer', 'min:0'],
             'categories.*.label_ids' => ['nullable', 'array'],
             'categories.*.label_ids.*' => ['exists:labels,id'],
         ];
