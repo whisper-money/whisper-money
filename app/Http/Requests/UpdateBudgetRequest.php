@@ -21,11 +21,10 @@ class UpdateBudgetRequest extends FormRequest
             'period_type' => ['sometimes', Rule::enum(BudgetPeriodType::class)],
             'period_duration' => ['nullable', 'integer', 'min:1', 'max:365'],
             'period_start_day' => ['nullable', 'integer', 'min:0', 'max:31'],
-            'categories' => ['sometimes', 'array'],
-            'categories.*.category_id' => ['required', 'exists:categories,id'],
-            'categories.*.rollover_type' => ['required', Rule::enum(RolloverType::class)],
-            'categories.*.label_ids' => ['nullable', 'array'],
-            'categories.*.label_ids.*' => ['exists:labels,id'],
+            'category_id' => ['nullable', 'exists:categories,id'],
+            'label_id' => ['nullable', 'exists:labels,id'],
+            'rollover_type' => ['sometimes', Rule::enum(RolloverType::class)],
+            'allocated_amount' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 }

@@ -22,6 +22,9 @@ import {
     Budget,
     BudgetPeriodType,
     getBudgetPeriodTypeLabel,
+    getRolloverTypeLabel,
+    ROLLOVER_TYPES,
+    RolloverType,
 } from '@/types/budget';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -41,7 +44,10 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
         budget.period_duration,
     );
     const [periodStartDay, setPeriodStartDay] = useState<number>(
-        budget.period_start_day,
+        budget.period_start_day || 1,
+    );
+    const [rolloverType, setRolloverType] = useState<RolloverType>(
+        budget.rollover_type as RolloverType,
     );
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,7 +56,8 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
             setName(budget.name);
             setPeriodType(budget.period_type as BudgetPeriodType);
             setPeriodDuration(budget.period_duration);
-            setPeriodStartDay(budget.period_start_day);
+            setPeriodStartDay(budget.period_start_day || 1);
+            setRolloverType(budget.rollover_type as RolloverType);
         }
     }, [open, budget]);
 
@@ -65,6 +72,7 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
                 period_type: periodType,
                 period_duration: periodDuration,
                 period_start_day: periodStartDay,
+                rollover_type: rolloverType,
             },
             {
                 onSuccess: () => {
@@ -82,9 +90,8 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
                     <DialogHeader>
                         <DialogTitle>Edit Budget</DialogTitle>
                         <DialogDescription>
-                            Update your budget name and period settings. To
-                            change the tracked category or allocated amount, use
-                            the budget page directly.
+                            Update your budget settings. To change the allocated
+                            amount or tracking, use the budget page directly.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -169,6 +176,32 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
                                       : 'Starting day'}
                             </p>
                         </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="rollover">Rollover Type</Label>
+                            <Select
+                                value={rolloverType}
+                                onValueChange={(value) =>
+                                    setRolloverType(value as RolloverType)
+                                }
+                            >
+                                <SelectTrigger id="rollover">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ROLLOVER_TYPES.map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                            {getRolloverTypeLabel(type)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-sm text-muted-foreground">
+                                {rolloverType === 'carry_over'
+                                    ? 'Unused budget will carry over to the next period.'
+                                    : 'Budget resets to zero at the start of each period.'}
+                            </p>
+                        </div>
                     </div>
 
                     <DialogFooter>
@@ -188,4 +221,3 @@ export function EditBudgetDialog({ budget, open, onOpenChange }: Props) {
         </Dialog>
     );
 }
-

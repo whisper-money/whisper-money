@@ -23,7 +23,7 @@ export function BudgetListCard({ budget }: Props) {
     const currentPeriod = budget.periods?.[0];
 
     const stats = useMemo(() => {
-        if (!currentPeriod || !currentPeriod.allocations) {
+        if (!currentPeriod) {
             return {
                 totalAllocated: 0,
                 totalSpent: 0,
@@ -32,19 +32,12 @@ export function BudgetListCard({ budget }: Props) {
             };
         }
 
-        const totalAllocated = currentPeriod.allocations.reduce(
-            (sum, alloc) => sum + alloc.allocated_amount,
-            0,
-        );
-
-        const totalSpent = currentPeriod.allocations.reduce((sum, alloc) => {
-            const spent =
-                alloc.budget_transactions?.reduce(
-                    (s, t) => s + t.amount,
-                    0,
-                ) ?? 0;
-            return sum + spent;
-        }, 0);
+        const totalAllocated = currentPeriod.allocated_amount;
+        const totalSpent =
+            currentPeriod.budget_transactions?.reduce(
+                (sum, t) => sum + t.amount,
+                0,
+            ) ?? 0;
 
         const remaining = totalAllocated - totalSpent;
         const percentageUsed =
@@ -79,6 +72,12 @@ export function BudgetListCard({ budget }: Props) {
             return 'text-yellow-600 dark:text-yellow-400';
         return 'text-green-600 dark:text-green-400';
     }, [stats.percentageUsed]);
+
+    const trackingLabel = useMemo(() => {
+        if (budget.category) return budget.category.name;
+        if (budget.label) return budget.label.name;
+        return 'No tracking';
+    }, [budget]);
 
     return (
         <Card className="transition-shadow hover:shadow-md">
@@ -119,7 +118,7 @@ export function BudgetListCard({ budget }: Props) {
 
                 <div className="flex items-center justify-between border-t pt-4">
                     <span className="text-sm text-muted-foreground">
-                        {budget.budget_categories?.length ?? 0} categories
+                        Tracking: {trackingLabel}
                     </span>
                     <Link href={show({ budget: budget.id }).url}>
                         <Button variant="ghost" size="sm">
@@ -132,4 +131,3 @@ export function BudgetListCard({ budget }: Props) {
         </Card>
     );
 }
-

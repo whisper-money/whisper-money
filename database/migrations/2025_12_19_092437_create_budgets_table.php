@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('period_type');
             $table->integer('period_duration')->nullable();
             $table->integer('period_start_day')->nullable();
+            $table->foreignUuid('category_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignUuid('label_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('rollover_type')->default('carry_over');
             $table->timestamps();
             $table->softDeletes();
         });

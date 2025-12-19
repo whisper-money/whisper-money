@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BudgetPeriodType;
+use App\Enums\RolloverType;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,12 +21,16 @@ class Budget extends Model
         'period_type',
         'period_duration',
         'period_start_day',
+        'category_id',
+        'label_id',
+        'rollover_type',
     ];
 
     protected function casts(): array
     {
         return [
             'period_type' => BudgetPeriodType::class,
+            'rollover_type' => RolloverType::class,
             'period_duration' => 'integer',
             'period_start_day' => 'integer',
         ];
@@ -36,9 +41,14 @@ class Budget extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function budgetCategories(): HasMany
+    public function category(): BelongsTo
     {
-        return $this->hasMany(BudgetCategory::class);
+        return $this->belongsTo(Category::class);
+    }
+
+    public function label(): BelongsTo
+    {
+        return $this->belongsTo(Label::class);
     }
 
     public function periods(): HasMany
@@ -54,4 +64,3 @@ class Budget extends Model
             ->first();
     }
 }
-
