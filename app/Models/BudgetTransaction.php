@@ -13,7 +13,7 @@ class BudgetTransaction extends Model
 
     protected $fillable = [
         'transaction_id',
-        'budget_period_allocation_id',
+        'budget_period_id',
         'amount',
     ];
 
@@ -29,9 +29,8 @@ class BudgetTransaction extends Model
         return $this->belongsTo(Transaction::class);
     }
 
-    public function allocation(): BelongsTo
+    public function budgetPeriod(): BelongsTo
     {
-        return $this->belongsTo(BudgetPeriodAllocation::class, 'budget_period_allocation_id');
+        return $this->belongsTo(BudgetPeriod::class);
     }
 }
-

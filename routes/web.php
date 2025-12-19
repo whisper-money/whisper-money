@@ -65,12 +65,6 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('budgets/{budget}', [BudgetController::class, 'show'])->name('budgets.show');
     Route::patch('budgets/{budget}', [BudgetController::class, 'update'])->name('budgets.update');
     Route::delete('budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
-
-    Route::get('budgets/{budget}/analytics/{budgetCategory}', [BudgetAnalyticsController::class, 'history'])->name('budgets.analytics');
-    Route::get('budget-allocations/{allocation}/transactions', [BudgetAnalyticsController::class, 'transactions'])->name('budget-allocations.transactions');
-
-    Route::get('budget-periods/{period}/allocations', [BudgetAllocationController::class, 'show'])->name('budget-periods.allocations.show');
-    Route::patch('budget-periods/{period}/allocations', [BudgetAllocationController::class, 'update'])->name('budget-periods.allocations.update');
 });
 
 require __DIR__.'/settings.php';

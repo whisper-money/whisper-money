@@ -32,13 +32,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
-interface CategorySelection {
-    category_id: string;
-    rollover_type: RolloverType;
-    allocated_amount: number;
-    label_ids: string[];
-}
-
 export function CreateBudgetDialog() {
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
@@ -62,12 +55,11 @@ export function CreateBudgetDialog() {
         e.preventDefault();
         setErrors({});
 
-        // Client-side validation
         const newErrors: Record<string, string> = {};
 
         if (!selectedCategoryId && !selectedLabelId) {
             newErrors.selection =
-                'You must select at least a category or a label.';
+                'You must select either a category or a label.';
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -77,15 +69,7 @@ export function CreateBudgetDialog() {
 
         setIsSubmitting(true);
 
-        const categories: CategorySelection[] = [];
         const amountInCents = Math.round(parseFloat(allocatedAmount) * 100);
-
-        categories.push({
-            category_id: selectedCategoryId || '',
-            rollover_type: rolloverType,
-            allocated_amount: amountInCents,
-            label_ids: selectedLabelId ? [selectedLabelId] : [],
-        });
 
         router.post(
             store().url,
@@ -94,7 +78,10 @@ export function CreateBudgetDialog() {
                 period_type: periodType,
                 period_duration: periodDuration,
                 period_start_day: periodStartDay,
-                categories,
+                category_id: selectedCategoryId || null,
+                label_id: selectedLabelId || null,
+                rollover_type: rolloverType,
+                allocated_amount: amountInCents,
             },
             {
                 onSuccess: () => {
@@ -130,8 +117,7 @@ export function CreateBudgetDialog() {
                     <DialogHeader>
                         <DialogTitle>Create Budget</DialogTitle>
                         <DialogDescription>
-                            Set up a new budget to track your spending across
-                            categories.
+                            Set up a spending limit for a category or label.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -142,7 +128,7 @@ export function CreateBudgetDialog() {
                                 id="name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g., Monthly Budget"
+                                placeholder="e.g., Padel Budget"
                                 required
                             />
                         </div>
@@ -218,13 +204,9 @@ export function CreateBudgetDialog() {
                         </div>
 
                         <div className="space-y-4">
-                            {(errors.selection ||
-                                errors['categories.0'] ||
-                                serverErrors['categories.0']) && (
+                            {(errors.selection || serverErrors.selection) && (
                                 <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                                    {errors.selection ||
-                                        errors['categories.0'] ||
-                                        serverErrors['categories.0']}
+                                    {errors.selection || serverErrors.selection}
                                 </div>
                             )}
 
@@ -267,15 +249,6 @@ export function CreateBudgetDialog() {
                                         </Button>
                                     )}
                                 </div>
-                                {(errors['categories.0.category_id'] ||
-                                    serverErrors['categories.0.category_id']) && (
-                                    <p className="text-sm text-destructive">
-                                        {errors['categories.0.category_id'] ||
-                                            serverErrors[
-                                                'categories.0.category_id'
-                                            ]}
-                                    </p>
-                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -319,15 +292,6 @@ export function CreateBudgetDialog() {
                                     Select at least a category or a label to
                                     track.
                                 </p>
-                                {(errors['categories.0.label_ids.0'] ||
-                                    serverErrors['categories.0.label_ids.0']) && (
-                                    <p className="text-sm text-destructive">
-                                        {errors['categories.0.label_ids.0'] ||
-                                            serverErrors[
-                                                'categories.0.label_ids.0'
-                                            ]}
-                                    </p>
-                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -347,8 +311,7 @@ export function CreateBudgetDialog() {
                                     required
                                 />
                                 <p className="text-sm text-muted-foreground">
-                                    How much do you want to budget for this
-                                    category per period?
+                                    How much do you want to budget per period?
                                 </p>
                             </div>
 
@@ -406,4 +369,3 @@ export function CreateBudgetDialog() {
         </Dialog>
     );
 }
-

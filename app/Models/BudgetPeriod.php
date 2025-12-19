@@ -16,6 +16,7 @@ class BudgetPeriod extends Model
         'budget_id',
         'start_date',
         'end_date',
+        'allocated_amount',
         'carried_over_amount',
     ];
 
@@ -24,6 +25,7 @@ class BudgetPeriod extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'allocated_amount' => 'integer',
             'carried_over_amount' => 'integer',
         ];
     }
@@ -33,30 +35,8 @@ class BudgetPeriod extends Model
         return $this->belongsTo(Budget::class);
     }
 
-    public function allocations(): HasMany
+    public function budgetTransactions(): HasMany
     {
-        return $this->hasMany(BudgetPeriodAllocation::class);
-    }
-
-    public function isActive(): bool
-    {
-        $now = now();
-
-        return $this->start_date <= $now && $this->end_date >= $now;
-    }
-
-    public function calculateSpent(): int
-    {
-        return $this->allocations->sum(function ($allocation) {
-            return $allocation->calculateSpent();
-        });
-    }
-
-    public function calculateRemaining(): int
-    {
-        return $this->allocations->sum(function ($allocation) {
-            return $allocation->calculateRemaining();
-        });
+        return $this->hasMany(BudgetTransaction::class);
     }
 }
-

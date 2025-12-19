@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignUuid('budget_id')->constrained()->cascadeOnDelete();
             $table->date('start_date');
             $table->date('end_date');
+            $table->bigInteger('allocated_amount')->default(0);
             $table->bigInteger('carried_over_amount')->default(0);
             $table->timestamps();
 

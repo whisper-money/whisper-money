@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\BudgetPeriodAllocation;
+use App\Models\Budget;
+use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
 
@@ -10,67 +11,54 @@ class BudgetTransactionService
 {
     public function assignTransaction(Transaction $transaction): void
     {
+        // Remove any existing assignments
         $this->unassignTransaction($transaction);
 
-        if (! $transaction->category_id) {
-            return;
-        }
-
-        $allocations = BudgetPeriodAllocation::query()
-            ->whereHas('budgetPeriod', function ($query) use ($transaction) {
-                $query->where('start_date', '<=', $transaction->transaction_date)
-                    ->where('end_date', '>=', $transaction->transaction_date);
+        // Find matching budget periods
+        $budgetPeriods = BudgetPeriod::query()
+            ->whereHas('budget', function ($query) use ($transaction) {
+                $query->where(function ($q) use ($transaction) {
+                    // Match by category
+                    $q->where('category_id', $transaction->category_id);
+                })
+                ->orWhere(function ($q) use ($transaction) {
+                    // Match by label
+                    $q->whereHas('label', function ($labelQuery) use ($transaction) {
+                        $labelQuery->whereIn('id', $transaction->labels->pluck('id'));
+                    });
+                });
             })
-            ->whereHas('budgetCategory', function ($query) use ($transaction) {
-                $query->where('category_id', $transaction->category_id);
-            })
+            ->where('start_date', '<=', $transaction->transaction_date)
+            ->where('end_date', '>=', $transaction->transaction_date)
+            ->with('budget')
             ->get();
 
-        if ($allocations->isEmpty()) {
-            return;
-        }
-
-        $transactionLabels = $transaction->labels->pluck('id')->toArray();
-
-        foreach ($allocations as $allocation) {
-            $budgetCategory = $allocation->budgetCategory;
-            $budgetLabels = $budgetCategory->labels->pluck('id')->toArray();
-
-            if (empty($budgetLabels)) {
-                $this->createBudgetTransaction($transaction, $allocation);
-                break;
+        foreach ($budgetPeriods as $period) {
+            $budget = $period->budget;
+            
+            // Check if transaction matches budget criteria
+            $matches = false;
+            
+            if ($budget->category_id && $budget->category_id === $transaction->category_id) {
+                $matches = true;
             }
-
-            if (! empty(array_intersect($transactionLabels, $budgetLabels))) {
-                $this->createBudgetTransaction($transaction, $allocation);
-                break;
+            
+            if ($budget->label_id && $transaction->labels->contains('id', $budget->label_id)) {
+                $matches = true;
+            }
+            
+            if ($matches) {
+                BudgetTransaction::create([
+                    'transaction_id' => $transaction->id,
+                    'budget_period_id' => $period->id,
+                    'amount' => abs($transaction->amount),
+                ]);
             }
         }
-    }
-
-    public function manualAssign(Transaction $transaction, BudgetPeriodAllocation $allocation, int $amount): BudgetTransaction
-    {
-        $this->unassignTransaction($transaction);
-
-        return BudgetTransaction::create([
-            'transaction_id' => $transaction->id,
-            'budget_period_allocation_id' => $allocation->id,
-            'amount' => abs($amount),
-        ]);
     }
 
     public function unassignTransaction(Transaction $transaction): void
     {
         BudgetTransaction::where('transaction_id', $transaction->id)->delete();
     }
-
-    protected function createBudgetTransaction(Transaction $transaction, BudgetPeriodAllocation $allocation): BudgetTransaction
-    {
-        return BudgetTransaction::create([
-            'transaction_id' => $transaction->id,
-            'budget_period_allocation_id' => $allocation->id,
-            'amount' => abs($transaction->amount),
-        ]);
-    }
 }
-

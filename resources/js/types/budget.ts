@@ -23,23 +23,15 @@ export interface Budget {
     period_type: BudgetPeriodType;
     period_duration: number | null;
     period_start_day: number | null;
-    created_at: string;
-    updated_at: string;
-    deleted_at: string | null;
-    budget_categories?: BudgetCategory[];
-    periods?: BudgetPeriod[];
-}
-
-export interface BudgetCategory {
-    id: UUID;
-    budget_id: UUID;
-    category_id: UUID;
+    category_id: UUID | null;
+    label_id: UUID | null;
     rollover_type: RolloverType;
     created_at: string;
     updated_at: string;
+    deleted_at: string | null;
     category?: Category;
-    labels?: Label[];
-    allocations?: BudgetPeriodAllocation[];
+    label?: Label;
+    periods?: BudgetPeriod[];
 }
 
 export interface BudgetPeriod {
@@ -47,29 +39,17 @@ export interface BudgetPeriod {
     budget_id: UUID;
     start_date: string;
     end_date: string;
+    allocated_amount: number;
     carried_over_amount: number;
     created_at: string;
     updated_at: string;
-    allocations?: BudgetPeriodAllocation[];
-}
-
-export interface BudgetPeriodAllocation {
-    id: UUID;
-    budget_period_id: UUID;
-    budget_category_id: UUID;
-    allocated_amount: number;
-    created_at: string;
-    updated_at: string;
-    budget_category?: BudgetCategory;
     budget_transactions?: BudgetTransaction[];
-    spent?: number;
-    remaining?: number;
 }
 
 export interface BudgetTransaction {
     id: UUID;
     transaction_id: UUID;
-    budget_period_allocation_id: UUID;
+    budget_period_id: UUID;
     amount: number;
     created_at: string;
     updated_at: string;
@@ -108,4 +88,3 @@ export function getRolloverTypeDescription(type: RolloverType): string {
     };
     return descriptions[type];
 }
-

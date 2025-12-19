@@ -9,7 +9,7 @@ use Carbon\Carbon;
 
 class BudgetPeriodService
 {
-    public function generatePeriod(Budget $budget, ?Carbon $startDate = null): BudgetPeriod
+    public function generatePeriod(Budget $budget, ?int $allocatedAmount = null, ?Carbon $startDate = null): BudgetPeriod
     {
         if ($startDate === null) {
             $startDate = $this->calculateNextPeriodStartDate($budget);
@@ -17,10 +17,17 @@ class BudgetPeriodService
 
         [$periodStart, $periodEnd] = $this->calculatePeriodDates($budget, $startDate);
 
+        // If no allocated amount provided, use the last period's amount or 0
+        if ($allocatedAmount === null) {
+            $lastPeriod = $budget->periods()->orderBy('end_date', 'desc')->first();
+            $allocatedAmount = $lastPeriod?->allocated_amount ?? 0;
+        }
+
         return BudgetPeriod::create([
             'budget_id' => $budget->id,
             'start_date' => $periodStart,
             'end_date' => $periodEnd,
+            'allocated_amount' => $allocatedAmount,
             'carried_over_amount' => 0,
         ]);
     }
@@ -30,16 +37,16 @@ class BudgetPeriodService
         $budget = $period->budget;
         $carriedOverAmount = 0;
 
-        foreach ($period->allocations as $allocation) {
-            $remaining = $allocation->calculateRemaining();
-            $budgetCategory = $allocation->budgetCategory;
-
-            if ($budgetCategory->rollover_type->value === 'carry_over') {
-                $carriedOverAmount += $remaining;
+        if ($budget->rollover_type->value === 'carry_over') {
+            $totalSpent = $period->budgetTransactions()->sum('amount');
+            $remaining = $period->allocated_amount - abs($totalSpent);
+            
+            if ($remaining > 0) {
+                $carriedOverAmount = $remaining;
             }
         }
 
-        $nextPeriod = $this->generatePeriod($budget);
+        $nextPeriod = $this->generatePeriod($budget, $period->allocated_amount);
         $nextPeriod->update(['carried_over_amount' => $carriedOverAmount]);
     }
 
@@ -99,4 +106,3 @@ class BudgetPeriodService
         return now();
     }
 }
-

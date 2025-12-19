@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('budget_transactions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('transaction_id')->constrained()->cascadeOnDelete();
-            $table->foreignUuid('budget_period_allocation_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('budget_period_id')->constrained()->cascadeOnDelete();
             $table->bigInteger('amount');
             $table->timestamps();
         });
