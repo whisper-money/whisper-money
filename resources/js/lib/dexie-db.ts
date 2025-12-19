@@ -1,4 +1,10 @@
 import type { Transaction } from '@/types/transaction';
+import type {
+    Budget,
+    BudgetCategory,
+    BudgetPeriod,
+    BudgetPeriodAllocation,
+} from '@/types/budget';
 import Dexie, { type EntityTable } from 'dexie';
 
 export interface SyncMetadata {
@@ -8,6 +14,10 @@ export interface SyncMetadata {
 
 type WhisperMoneyDB = Dexie & {
     transactions: EntityTable<Transaction, 'id'>;
+    budgets: EntityTable<Budget, 'id'>;
+    budget_categories: EntityTable<BudgetCategory, 'id'>;
+    budget_periods: EntityTable<BudgetPeriod, 'id'>;
+    budget_period_allocations: EntityTable<BudgetPeriodAllocation, 'id'>;
     sync_metadata: EntityTable<SyncMetadata, 'key'>;
 };
 
@@ -16,6 +26,7 @@ let dbInstance: WhisperMoneyDB | null = null;
 function initializeDatabase(): WhisperMoneyDB {
     const database = new Dexie('whisper_money') as WhisperMoneyDB;
 
+<<<<<<< HEAD
     database.version(5).stores({
         transactions: 'id, user_id, account_id, updated_at',
         accounts: 'id, user_id, bank_id, updated_at',
@@ -56,6 +67,16 @@ function initializeDatabase(): WhisperMoneyDB {
     // Version 8: Ensure clean state (no schema changes, just trigger upgrade)
     database.version(8).stores({
         transactions: 'id, user_id, account_id, updated_at',
+        sync_metadata: 'key',
+    });
+
+    // Version 9: Add budget tables
+    database.version(9).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        budgets: 'id, user_id, updated_at',
+        budget_categories: 'id, budget_id, updated_at',
+        budget_periods: 'id, budget_id, start_date, updated_at',
+        budget_period_allocations: 'id, budget_period_id, budget_category_id, updated_at',
         sync_metadata: 'key',
     });
 

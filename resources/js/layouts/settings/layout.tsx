@@ -2,6 +2,7 @@ import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
+import { settings as budgetsSettings } from '@/routes/budgets';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -45,6 +46,12 @@ const getNavItems = (
         type: 'nav-item',
         title: 'Labels',
         href: labelsIndex(),
+        icon: null,
+    },
+    {
+        type: 'nav-item',
+        title: 'Budgets',
+        href: budgetsSettings(),
         icon: null,
     },
     { type: 'divider' },
