@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateBudgetRequest;
 use App\Models\Budget;
 use App\Models\BudgetCategory;
 use App\Services\BudgetPeriodService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -14,6 +15,7 @@ use Inertia\Response;
 
 class BudgetController extends Controller
 {
+    use AuthorizesRequests;
     public function __construct(protected BudgetPeriodService $budgetPeriodService)
     {
     }
@@ -80,7 +82,20 @@ class BudgetController extends Controller
                 }
             }
 
-            $this->budgetPeriodService->generatePeriod($budget);
+            $period = $this->budgetPeriodService->generatePeriod($budget);
+
+            foreach ($request->categories as $categoryData) {
+                $budgetCategory = $budget->budgetCategories()
+                    ->where('category_id', $categoryData['category_id'])
+                    ->first();
+
+                if ($budgetCategory) {
+                    $period->allocations()->create([
+                        'budget_category_id' => $budgetCategory->id,
+                        'allocated_amount' => $categoryData['allocated_amount'],
+                    ]);
+                }
+            }
 
             return $budget;
         });

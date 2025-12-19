@@ -18,7 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useDexie } from '@/hooks/use-dexie';
+import { db } from '@/lib/dexie-db';
 import {
     BUDGET_PERIOD_TYPES,
     BudgetPeriodType,
@@ -27,15 +27,15 @@ import {
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
-import { Category } from '@/types/category';
-import { Label as LabelType } from '@/types/label';
 import { router } from '@inertiajs/react';
-import { Plus, X } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 interface CategorySelection {
     category_id: string;
     rollover_type: RolloverType;
+    allocated_amount: number;
     label_ids: string[];
 }
 
@@ -45,39 +45,30 @@ export function CreateBudgetDialog() {
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
     const [periodDuration, setPeriodDuration] = useState<number | null>(null);
     const [periodStartDay, setPeriodStartDay] = useState<number>(1);
-    const [categories, setCategories] = useState<CategorySelection[]>([]);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+    const [selectedLabelId, setSelectedLabelId] = useState<string>('');
+    const [allocatedAmount, setAllocatedAmount] = useState<string>('');
+    const [rolloverType, setRolloverType] = useState<RolloverType>('carry_over');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { categories: allCategories, labels: allLabels } = useDexie();
-
-    const handleAddCategory = () => {
-        setCategories([
-            ...categories,
-            {
-                category_id: '',
-                rollover_type: 'carry_over',
-                label_ids: [],
-            },
-        ]);
-    };
-
-    const handleRemoveCategory = (index: number) => {
-        setCategories(categories.filter((_, i) => i !== index));
-    };
-
-    const handleCategoryChange = (
-        index: number,
-        field: keyof CategorySelection,
-        value: any,
-    ) => {
-        const updated = [...categories];
-        updated[index] = { ...updated[index], [field]: value };
-        setCategories(updated);
-    };
+    const allCategories = useLiveQuery(() => db.categories.toArray(), []) || [];
+    const allLabels = useLiveQuery(() => db.labels.toArray(), []) || [];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
+
+        const categories: CategorySelection[] = [];
+
+        if (selectedCategoryId) {
+            const amountInCents = Math.round(parseFloat(allocatedAmount) * 100);
+            categories.push({
+                category_id: selectedCategoryId,
+                rollover_type: rolloverType,
+                allocated_amount: amountInCents,
+                label_ids: selectedLabelId ? [selectedLabelId] : [],
+            });
+        }
 
         router.post(
             store().url,
@@ -95,7 +86,10 @@ export function CreateBudgetDialog() {
                     setPeriodType('monthly');
                     setPeriodDuration(null);
                     setPeriodStartDay(1);
-                    setCategories([]);
+                    setSelectedCategoryId('');
+                    setSelectedLabelId('');
+                    setAllocatedAmount('');
+                    setRolloverType('carry_over');
                 },
                 onFinish: () => setIsSubmitting(false),
             },
@@ -203,96 +197,103 @@ export function CreateBudgetDialog() {
                         </div>
 
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <Label>Categories</Label>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleAddCategory}
+                            <div className="space-y-2">
+                                <Label htmlFor="category">Category</Label>
+                                <Select
+                                    value={selectedCategoryId}
+                                    onValueChange={setSelectedCategoryId}
                                 >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Category
-                                </Button>
+                                    <SelectTrigger id="category">
+                                        <SelectValue placeholder="Select a category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {allCategories.map((category) => (
+                                            <SelectItem
+                                                key={category.id}
+                                                value={category.id}
+                                            >
+                                                {category.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
-                            {categories.length === 0 && (
-                                <p className="text-sm text-muted-foreground">
-                                    Add at least one category to track in this
-                                    budget.
-                                </p>
-                            )}
-
-                            {categories.map((cat, index) => (
-                                <div
-                                    key={index}
-                                    className="space-y-3 rounded-lg border p-4"
+                            <div className="space-y-2">
+                                <Label htmlFor="label">
+                                    Label (Optional)
+                                </Label>
+                                <Select
+                                    value={selectedLabelId || undefined}
+                                    onValueChange={(value) => setSelectedLabelId(value)}
                                 >
-                                    <div className="flex items-start justify-between">
-                                        <Label>Category {index + 1}</Label>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                                handleRemoveCategory(index)
-                                            }
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
+                                    <SelectTrigger id="label">
+                                        <SelectValue placeholder="All transactions in category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {allLabels.map((label) => (
+                                            <SelectItem
+                                                key={label.id}
+                                                value={label.id}
+                                            >
+                                                {label.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-sm text-muted-foreground">
+                                    Optionally filter to only track transactions
+                                    with a specific label within this category.
+                                </p>
+                            </div>
 
-                                    <Select
-                                        value={cat.category_id}
-                                        onValueChange={(value) =>
-                                            handleCategoryChange(
-                                                index,
-                                                'category_id',
-                                                value,
-                                            )
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {allCategories.map((category) => (
-                                                <SelectItem
-                                                    key={category.id}
-                                                    value={category.id}
-                                                >
-                                                    {category.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                            <div className="space-y-2">
+                                <Label htmlFor="allocated-amount">
+                                    Allocated Amount
+                                </Label>
+                                <Input
+                                    id="allocated-amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={allocatedAmount}
+                                    onChange={(e) =>
+                                        setAllocatedAmount(e.target.value)
+                                    }
+                                    placeholder="0.00"
+                                    required
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                    How much do you want to budget for this
+                                    category per period?
+                                </p>
+                            </div>
 
-                                    <Select
-                                        value={cat.rollover_type}
-                                        onValueChange={(value) =>
-                                            handleCategoryChange(
-                                                index,
-                                                'rollover_type',
-                                                value as RolloverType,
-                                            )
-                                        }
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {ROLLOVER_TYPES.map((type) => (
-                                                <SelectItem
-                                                    key={type}
-                                                    value={type}
-                                                >
-                                                    {getRolloverTypeLabel(type)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            ))}
+                            <div className="space-y-2">
+                                <Label htmlFor="rollover">Rollover Type</Label>
+                                <Select
+                                    value={rolloverType}
+                                    onValueChange={(value) =>
+                                        setRolloverType(value as RolloverType)
+                                    }
+                                >
+                                    <SelectTrigger id="rollover">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {ROLLOVER_TYPES.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {getRolloverTypeLabel(type)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-sm text-muted-foreground">
+                                    {rolloverType === 'carry_over'
+                                        ? 'Unused budget will carry over to the next period.'
+                                        : 'Budget resets to zero at the start of each period.'}
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -309,7 +310,9 @@ export function CreateBudgetDialog() {
                             disabled={
                                 isSubmitting ||
                                 !name ||
-                                categories.length === 0
+                                !selectedCategoryId ||
+                                !allocatedAmount ||
+                                parseFloat(allocatedAmount) <= 0
                             }
                         >
                             {isSubmitting ? 'Creating...' : 'Create Budget'}
