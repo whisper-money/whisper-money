@@ -27,10 +27,11 @@ export function BudgetSpendingChart({ currentPeriod, budgetName }: Props) {
         const startDate = new Date(currentPeriod.start_date);
         const endDate = new Date(currentPeriod.end_date);
 
-        // Group transactions by date
+        // Group transactions by date (using the actual transaction date, not when it was assigned)
         const transactionsByDate = new Map<string, number>();
         transactions.forEach((t) => {
-            const date = new Date(t.created_at).toISOString().split('T')[0];
+            if (!t.transaction) return;
+            const date = new Date(t.transaction.transaction_date).toISOString().split('T')[0];
             transactionsByDate.set(
                 date,
                 (transactionsByDate.get(date) || 0) + t.amount
