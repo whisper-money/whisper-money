@@ -1,4 +1,5 @@
 import { update } from '@/actions/App/Http/Controllers/BudgetController';
+import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -32,6 +33,7 @@ import { useEffect, useState } from 'react';
 interface Props {
     budget: Budget;
     currentPeriod: { allocated_amount: number };
+    currencyCode?: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -39,9 +41,11 @@ interface Props {
 export function EditBudgetDialog({
     budget,
     currentPeriod,
+    currencyCode = 'USD',
     open,
     onOpenChange,
 }: Props) {
+
     const [name, setName] = useState(budget.name);
     const [periodType, setPeriodType] = useState<BudgetPeriodType>(
         budget.period_type as BudgetPeriodType,
@@ -52,8 +56,8 @@ export function EditBudgetDialog({
     const [periodStartDay, setPeriodStartDay] = useState<number>(
         budget.period_start_day || 1,
     );
-    const [allocatedAmount, setAllocatedAmount] = useState<string>(
-        (currentPeriod.allocated_amount / 100).toString(),
+    const [allocatedAmount, setAllocatedAmount] = useState<number>(
+        currentPeriod.allocated_amount,
     );
     const [rolloverType, setRolloverType] = useState<RolloverType>(
         budget.rollover_type as RolloverType,
@@ -66,9 +70,7 @@ export function EditBudgetDialog({
             setPeriodType(budget.period_type as BudgetPeriodType);
             setPeriodDuration(budget.period_duration);
             setPeriodStartDay(budget.period_start_day || 1);
-            setAllocatedAmount(
-                (currentPeriod.allocated_amount / 100).toString(),
-            );
+            setAllocatedAmount(currentPeriod.allocated_amount);
             setRolloverType(budget.rollover_type as RolloverType);
         }
     }, [open, budget, currentPeriod]);
@@ -77,8 +79,6 @@ export function EditBudgetDialog({
         e.preventDefault();
         setIsSubmitting(true);
 
-        const amountInCents = Math.round(parseFloat(allocatedAmount) * 100);
-
         router.patch(
             update({ budget: budget.id }).url,
             {
@@ -86,7 +86,7 @@ export function EditBudgetDialog({
                 period_type: periodType,
                 period_duration: periodDuration,
                 period_start_day: periodStartDay,
-                allocated_amount: amountInCents,
+                allocated_amount: allocatedAmount,
                 rollover_type: rolloverType,
             },
             {
@@ -204,16 +204,11 @@ export function EditBudgetDialog({
                             <Label htmlFor="allocated-amount">
                                 Allocated Amount
                             </Label>
-                            <Input
+                            <AmountInput
                                 id="allocated-amount"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                className="mt-1"
                                 value={allocatedAmount}
-                                onChange={(e) =>
-                                    setAllocatedAmount(e.target.value)
-                                }
+                                onChange={setAllocatedAmount}
+                                currencyCode={currencyCode}
                                 placeholder="0.00"
                                 required
                             />

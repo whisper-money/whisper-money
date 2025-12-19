@@ -19,9 +19,10 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 interface Props {
     currentPeriod: BudgetPeriod;
     budgetName: string;
+    currencyCode: string;
 }
 
-export function BudgetSpendingChart({ currentPeriod, budgetName }: Props) {
+export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }: Props) {
     const chartData = useMemo(() => {
         const transactions = currentPeriod.budget_transactions || [];
         const startDate = new Date(currentPeriod.start_date);
@@ -173,9 +174,11 @@ export function BudgetSpendingChart({ currentPeriod, budgetName }: Props) {
                             tickLine={false}
                             axisLine={false}
                             tickMargin={8}
-                            tickFormatter={(value) =>
-                                formatCurrency(value).replace('$', '')
-                            }
+                            tickFormatter={(value) => {
+                                const formatted = formatCurrency(value, currencyCode);
+                                // Remove currency symbol for Y-axis, keep just the number
+                                return formatted.replace(/[^\d.,\s-]/g, '').trim();
+                            }}
                         />
                         <ChartTooltip
                             content={
@@ -190,7 +193,7 @@ export function BudgetSpendingChart({ currentPeriod, budgetName }: Props) {
                                         });
                                     }}
                                     formatter={(value) =>
-                                        formatCurrency(value as number)
+                                        formatCurrency(value as number, currencyCode)
                                     }
                                 />
                             }

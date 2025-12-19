@@ -22,7 +22,8 @@ class BudgetController extends Controller
 
     public function index(Request $request): Response
     {
-        $budgets = $request->user()
+        $user = $request->user();
+        $budgets = $user
             ->budgets()
             ->with(['category', 'label', 'periods' => function ($query) {
                 $query->where('start_date', '<=', now())
@@ -33,6 +34,7 @@ class BudgetController extends Controller
 
         return Inertia::render('budgets/index', [
             'budgets' => $budgets,
+            'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }
 
@@ -81,6 +83,7 @@ class BudgetController extends Controller
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
+            'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }
 
