@@ -1,9 +1,10 @@
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountController';
+import { index as budgetsIndex } from '@/actions/App/Http/Controllers/BudgetController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import DiscordIcon from '@/components/icons/DiscordIcon';
 import { dashboard } from '@/routes';
 import { NavItem } from '@/types';
-import { CreditCard, Github, LayoutGrid, Receipt } from 'lucide-react';
+import { CreditCard, Github, LayoutGrid, PiggyBank, Receipt } from 'lucide-react';
 
 export const mainNavItems: NavItem[] = [
     {
@@ -23,6 +24,12 @@ export const mainNavItems: NavItem[] = [
         title: 'Transactions',
         href: transactionsIndex(),
         icon: Receipt,
+    },
+    {
+        type: 'nav-item',
+        title: 'Budgets',
+        href: budgetsIndex(),
+        icon: PiggyBank,
     },
 ];
 
