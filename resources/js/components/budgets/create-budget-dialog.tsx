@@ -27,9 +27,9 @@ import {
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface CategorySelection {
@@ -50,25 +50,42 @@ export function CreateBudgetDialog() {
     const [allocatedAmount, setAllocatedAmount] = useState<string>('');
     const [rolloverType, setRolloverType] = useState<RolloverType>('carry_over');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const allCategories = useLiveQuery(() => db.categories.toArray(), []) || [];
     const allLabels = useLiveQuery(() => db.labels.toArray(), []) || [];
 
+    const page = usePage();
+    const serverErrors = (page.props.errors as Record<string, string>) || {};
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setErrors({});
+
+        // Client-side validation
+        const newErrors: Record<string, string> = {};
+
+        if (!selectedCategoryId && !selectedLabelId) {
+            newErrors.selection =
+                'You must select at least a category or a label.';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
         setIsSubmitting(true);
 
         const categories: CategorySelection[] = [];
+        const amountInCents = Math.round(parseFloat(allocatedAmount) * 100);
 
-        if (selectedCategoryId) {
-            const amountInCents = Math.round(parseFloat(allocatedAmount) * 100);
-            categories.push({
-                category_id: selectedCategoryId,
-                rollover_type: rolloverType,
-                allocated_amount: amountInCents,
-                label_ids: selectedLabelId ? [selectedLabelId] : [],
-            });
-        }
+        categories.push({
+            category_id: selectedCategoryId || '',
+            rollover_type: rolloverType,
+            allocated_amount: amountInCents,
+            label_ids: selectedLabelId ? [selectedLabelId] : [],
+        });
 
         router.post(
             store().url,
@@ -90,6 +107,10 @@ export function CreateBudgetDialog() {
                     setSelectedLabelId('');
                     setAllocatedAmount('');
                     setRolloverType('carry_over');
+                    setErrors({});
+                },
+                onError: (errors) => {
+                    setErrors(errors as Record<string, string>);
                 },
                 onFinish: () => setIsSubmitting(false),
             },
@@ -197,54 +218,116 @@ export function CreateBudgetDialog() {
                         </div>
 
                         <div className="space-y-4">
+                            {(errors.selection ||
+                                errors['categories.0'] ||
+                                serverErrors['categories.0']) && (
+                                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                                    {errors.selection ||
+                                        errors['categories.0'] ||
+                                        serverErrors['categories.0']}
+                                </div>
+                            )}
+
                             <div className="space-y-2">
-                                <Label htmlFor="category">Category</Label>
-                                <Select
-                                    value={selectedCategoryId}
-                                    onValueChange={setSelectedCategoryId}
-                                >
-                                    <SelectTrigger id="category">
-                                        <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {allCategories.map((category) => (
-                                            <SelectItem
-                                                key={category.id}
-                                                value={category.id}
-                                            >
-                                                {category.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Label htmlFor="category">
+                                    Category (Optional)
+                                </Label>
+                                <div className="flex gap-2">
+                                    <Select
+                                        value={selectedCategoryId || undefined}
+                                        onValueChange={setSelectedCategoryId}
+                                    >
+                                        <SelectTrigger
+                                            id="category"
+                                            className="flex-1"
+                                        >
+                                            <SelectValue placeholder="Select a category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {allCategories.map((category) => (
+                                                <SelectItem
+                                                    key={category.id}
+                                                    value={category.id}
+                                                >
+                                                    {category.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {selectedCategoryId && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() =>
+                                                setSelectedCategoryId('')
+                                            }
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                                {(errors['categories.0.category_id'] ||
+                                    serverErrors['categories.0.category_id']) && (
+                                    <p className="text-sm text-destructive">
+                                        {errors['categories.0.category_id'] ||
+                                            serverErrors[
+                                                'categories.0.category_id'
+                                            ]}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="label">
-                                    Label (Optional)
-                                </Label>
-                                <Select
-                                    value={selectedLabelId || undefined}
-                                    onValueChange={(value) => setSelectedLabelId(value)}
-                                >
-                                    <SelectTrigger id="label">
-                                        <SelectValue placeholder="All transactions in category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {allLabels.map((label) => (
-                                            <SelectItem
-                                                key={label.id}
-                                                value={label.id}
-                                            >
-                                                {label.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Label htmlFor="label">Label (Optional)</Label>
+                                <div className="flex gap-2">
+                                    <Select
+                                        value={selectedLabelId || undefined}
+                                        onValueChange={(value) =>
+                                            setSelectedLabelId(value)
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="label"
+                                            className="flex-1"
+                                        >
+                                            <SelectValue placeholder="Select a label" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {allLabels.map((label) => (
+                                                <SelectItem
+                                                    key={label.id}
+                                                    value={label.id}
+                                                >
+                                                    {label.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {selectedLabelId && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => setSelectedLabelId('')}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Optionally filter to only track transactions
-                                    with a specific label within this category.
+                                    Select at least a category or a label to
+                                    track.
                                 </p>
+                                {(errors['categories.0.label_ids.0'] ||
+                                    serverErrors['categories.0.label_ids.0']) && (
+                                    <p className="text-sm text-destructive">
+                                        {errors['categories.0.label_ids.0'] ||
+                                            serverErrors[
+                                                'categories.0.label_ids.0'
+                                            ]}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -310,7 +393,7 @@ export function CreateBudgetDialog() {
                             disabled={
                                 isSubmitting ||
                                 !name ||
-                                !selectedCategoryId ||
+                                (!selectedCategoryId && !selectedLabelId) ||
                                 !allocatedAmount ||
                                 parseFloat(allocatedAmount) <= 0
                             }
