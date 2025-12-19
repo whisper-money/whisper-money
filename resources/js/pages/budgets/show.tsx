@@ -28,6 +28,7 @@ interface Props {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    currencyCode: string;
 }
 
 export default function BudgetShow({
@@ -36,6 +37,7 @@ export default function BudgetShow({
     categories,
     accounts,
     banks,
+    currencyCode,
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -127,6 +129,7 @@ export default function BudgetShow({
                 <BudgetSpendingChart
                     currentPeriod={currentPeriod}
                     budgetName={budget.name}
+                    currencyCode={currencyCode}
                 />
 
                 <TransactionList
@@ -143,6 +146,7 @@ export default function BudgetShow({
                 <EditBudgetDialog
                     budget={budget}
                     currentPeriod={currentPeriod}
+                    currencyCode={currencyCode}
                     open={editOpen}
                     onOpenChange={setEditOpen}
                 />

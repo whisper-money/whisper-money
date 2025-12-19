@@ -1,4 +1,5 @@
 import { store } from '@/actions/App/Http/Controllers/BudgetController';
+import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -27,12 +28,17 @@ import {
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
-export function CreateBudgetDialog() {
+interface Props {
+    currencyCode?: string;
+}
+
+export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
+
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
@@ -40,16 +46,13 @@ export function CreateBudgetDialog() {
     const [periodStartDay, setPeriodStartDay] = useState<number>(1);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
     const [selectedLabelId, setSelectedLabelId] = useState<string>('');
-    const [allocatedAmount, setAllocatedAmount] = useState<string>('');
+    const [allocatedAmount, setAllocatedAmount] = useState<number>(0);
     const [rolloverType, setRolloverType] = useState<RolloverType>('carry_over');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const allCategories = useLiveQuery(() => db.categories.toArray(), []) || [];
     const allLabels = useLiveQuery(() => db.labels.toArray(), []) || [];
-
-    const page = usePage();
-    const serverErrors = (page.props.errors as Record<string, string>) || {};
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,8 +72,6 @@ export function CreateBudgetDialog() {
 
         setIsSubmitting(true);
 
-        const amountInCents = Math.round(parseFloat(allocatedAmount) * 100);
-
         router.post(
             store().url,
             {
@@ -81,7 +82,7 @@ export function CreateBudgetDialog() {
                 category_id: selectedCategoryId || null,
                 label_id: selectedLabelId || null,
                 rollover_type: rolloverType,
-                allocated_amount: amountInCents,
+                allocated_amount: allocatedAmount,
             },
             {
                 onSuccess: () => {
@@ -92,7 +93,7 @@ export function CreateBudgetDialog() {
                     setPeriodStartDay(1);
                     setSelectedCategoryId('');
                     setSelectedLabelId('');
-                    setAllocatedAmount('');
+                    setAllocatedAmount(0);
                     setRolloverType('carry_over');
                     setErrors({});
                 },
@@ -204,9 +205,9 @@ export function CreateBudgetDialog() {
                         </div>
 
                         <div className="space-y-4">
-                            {(errors.selection || serverErrors.selection) && (
+                            {errors.selection && (
                                 <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                                    {errors.selection || serverErrors.selection}
+                                    {errors.selection}
                                 </div>
                             )}
 
@@ -298,15 +299,11 @@ export function CreateBudgetDialog() {
                                 <Label htmlFor="allocated-amount">
                                     Allocated Amount
                                 </Label>
-                                <Input
+                                <AmountInput
                                     id="allocated-amount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
                                     value={allocatedAmount}
-                                    onChange={(e) =>
-                                        setAllocatedAmount(e.target.value)
-                                    }
+                                    onChange={setAllocatedAmount}
+                                    currencyCode={currencyCode}
                                     placeholder="0.00"
                                     required
                                 />
@@ -357,8 +354,7 @@ export function CreateBudgetDialog() {
                                 isSubmitting ||
                                 !name ||
                                 (!selectedCategoryId && !selectedLabelId) ||
-                                !allocatedAmount ||
-                                parseFloat(allocatedAmount) <= 0
+                                allocatedAmount <= 0
                             }
                         >
                             {isSubmitting ? 'Creating...' : 'Create Budget'}

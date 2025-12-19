@@ -17,9 +17,10 @@ import { useMemo } from 'react';
 
 interface Props {
     budget: Budget;
+    currencyCode: string;
 }
 
-export function BudgetListCard({ budget }: Props) {
+export function BudgetListCard({ budget, currencyCode }: Props) {
     const currentPeriod = budget.periods?.[0];
 
     const stats = useMemo(() => {
@@ -100,8 +101,8 @@ export function BudgetListCard({ budget }: Props) {
                     <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Spent</span>
                         <span className={statusColor}>
-                            {formatCurrency(stats.totalSpent)} of{' '}
-                            {formatCurrency(stats.totalAllocated)}
+                            {formatCurrency(stats.totalSpent, currencyCode)} of{' '}
+                            {formatCurrency(stats.totalAllocated, currencyCode)}
                         </span>
                     </div>
                     <Progress
@@ -111,7 +112,7 @@ export function BudgetListCard({ budget }: Props) {
                     <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Remaining</span>
                         <span className={statusColor}>
-                            {formatCurrency(stats.remaining)}
+                            {formatCurrency(stats.remaining, currencyCode)}
                         </span>
                     </div>
                 </div>
