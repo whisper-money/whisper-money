@@ -11,14 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('budget_period_allocations', function (Blueprint $table) {
+        Schema::create('budget_periods', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('budget_period_id')->constrained()->cascadeOnDelete();
-            $table->foreignUuid('budget_category_id')->constrained()->cascadeOnDelete();
-            $table->bigInteger('allocated_amount')->default(0);
+            $table->foreignUuid('budget_id')->constrained()->cascadeOnDelete();
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->bigInteger('carried_over_amount')->default(0);
             $table->timestamps();
 
-            $table->unique(['budget_period_id', 'budget_category_id'], 'budget_period_alloc_period_category_unique');
+            $table->unique(['budget_id', 'start_date']);
         });
     }
 
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('budget_period_allocations');
+        Schema::dropIfExists('budget_periods');
     }
 };
