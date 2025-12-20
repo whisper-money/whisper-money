@@ -32,13 +32,13 @@ import { router } from '@inertiajs/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
+import { Card, CardContent } from '../ui/card';
 
 interface Props {
     currencyCode?: string;
 }
 
 export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
-
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
@@ -47,7 +47,8 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
     const [selectedLabelId, setSelectedLabelId] = useState<string>('');
     const [allocatedAmount, setAllocatedAmount] = useState<number>(0);
-    const [rolloverType, setRolloverType] = useState<RolloverType>('carry_over');
+    const [rolloverType, setRolloverType] =
+        useState<RolloverType>('carry_over');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -108,10 +109,14 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Budget
-                </Button>
+                <Card className="opacity-50 transition-opacity duration-200 hover:opacity-100">
+                    <CardContent className="flex h-full items-center justify-center">
+                        <div className="flex flex-row items-center justify-center gap-1">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Budget
+                        </div>
+                    </CardContent>
+                </Card>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
                 <form onSubmit={handleSubmit}>
@@ -283,7 +288,9 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
                                             type="button"
                                             variant="outline"
                                             size="icon"
-                                            onClick={() => setSelectedLabelId('')}
+                                            onClick={() =>
+                                                setSelectedLabelId('')
+                                            }
                                         >
                                             <X className="h-4 w-4" />
                                         </Button>
