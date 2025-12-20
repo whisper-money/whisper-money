@@ -8,7 +8,6 @@ import {
 import {
     ChartContainer,
     ChartTooltip,
-    ChartTooltipContent,
     type ChartConfig,
 } from '@/components/ui/chart';
 import { BudgetPeriod } from '@/types/budget';
@@ -20,6 +19,63 @@ interface Props {
     currentPeriod: BudgetPeriod;
     budgetName: string;
     currencyCode: string;
+}
+
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: Array<{
+        payload: {
+            date: string;
+            spent: number;
+            allocated: number;
+            remaining: number;
+        };
+    }>;
+    label?: string;
+    currencyCode: string;
+}
+
+function CustomTooltip({ active, payload, label, currencyCode }: CustomTooltipProps) {
+    if (!active || !payload || !payload.length || !label) {
+        return null;
+    }
+
+    const data = payload[0].payload;
+    const allocated = data.allocated;
+    const spent = data.spent;
+    const available = data.remaining;
+    const percentage = allocated > 0 ? Math.round((available / allocated) * 100) : 0;
+
+    return (
+        <div className="rounded-lg border bg-background p-3 shadow-lg">
+            <p className="mb-2 text-sm font-medium">
+                {new Date(label).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                })}
+            </p>
+            <div className="space-y-1 text-sm">
+                <div className="flex items-center justify-between gap-8">
+                    <span className="text-muted-foreground">Allocated:</span>
+                    <span className="font-medium">{formatCurrency(allocated, currencyCode)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-8">
+                    <span className="text-muted-foreground">Spent:</span>
+                    <span className="font-medium">{formatCurrency(spent, currencyCode)}</span>
+                </div>
+                <div className="border-t pt-1">
+                    <div className="flex items-center justify-between gap-8">
+                        <span className="font-medium">Available:</span>
+                        <div className="flex items-center gap-2">
+                            <span className="font-semibold">{formatCurrency(available, currencyCode)}</span>
+                            <span className="text-xs text-muted-foreground">{percentage}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }: Props) {
@@ -181,22 +237,7 @@ export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }:
                             }}
                         />
                         <ChartTooltip
-                            content={
-                                <ChartTooltipContent
-                                    labelFormatter={(value) => {
-                                        return new Date(
-                                            value as string
-                                        ).toLocaleDateString('en-US', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            year: 'numeric',
-                                        });
-                                    }}
-                                    formatter={(value) =>
-                                        formatCurrency(value as number, currencyCode)
-                                    }
-                                />
-                            }
+                            content={<CustomTooltip currencyCode={currencyCode} />}
                         />
                         <Area
                             dataKey="allocated"

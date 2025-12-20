@@ -13,14 +13,13 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import { Account } from '@/types/account';
-import { Bank } from '@/types/account';
 import { BreadcrumbItem } from '@/types';
+import { Account, Bank } from '@/types/account';
 import { Budget, BudgetPeriod, getBudgetPeriodTypeLabel } from '@/types/budget';
 import { Category } from '@/types/category';
 import { Head } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 interface Props {
     budget: Budget;
@@ -56,18 +55,18 @@ export default function BudgetShow({
     const periodLabel = useMemo(() => {
         const start = new Date(currentPeriod.start_date).toLocaleDateString(
             'en-US',
-            { month: 'long', day: 'numeric', year: 'numeric' },
+            { month: 'short', day: 'numeric', year: '2-digit' },
         );
         const end = new Date(currentPeriod.end_date).toLocaleDateString(
             'en-US',
-            { month: 'long', day: 'numeric', year: 'numeric' },
+            { month: 'short', day: 'numeric', year: '2-digit' },
         );
         return `${start} - ${end}`;
     }, [currentPeriod]);
 
     const trackingLabel = useMemo(() => {
-        if (budget.category) return budget.category.name;
-        if (budget.label) return budget.label.name;
+        if (budget.category) return 'Tracking ' + budget.category.name;
+        if (budget.label) return 'Tracking ' + budget.label.name;
         return 'No tracking';
     }, [budget]);
 
@@ -93,7 +92,19 @@ export default function BudgetShow({
                         </div>
                         <HeadingSmall
                             title={budget.name}
-                            description={`${trackingLabel} · ${getBudgetPeriodTypeLabel(budget.period_type)} · ${periodLabel}`}
+                            description={
+                                <div className="flex flex-row items-center gap-1 text-sm">
+                                    <span>{trackingLabel}</span>
+                                    <span className="opacity-50">/</span>
+                                    <span>
+                                        {periodLabel} (
+                                        {getBudgetPeriodTypeLabel(
+                                            budget.period_type,
+                                        )}
+                                        )
+                                    </span>
+                                </div>
+                            }
                         />
                     </div>
 
@@ -143,13 +154,13 @@ export default function BudgetShow({
                 />
             </div>
 
-                <EditBudgetDialog
-                    budget={budget}
-                    currentPeriod={currentPeriod}
-                    currencyCode={currencyCode}
-                    open={editOpen}
-                    onOpenChange={setEditOpen}
-                />
+            <EditBudgetDialog
+                budget={budget}
+                currentPeriod={currentPeriod}
+                currencyCode={currencyCode}
+                open={editOpen}
+                onOpenChange={setEditOpen}
+            />
 
             <DeleteBudgetDialog
                 budget={budget}

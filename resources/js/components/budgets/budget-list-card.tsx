@@ -68,7 +68,8 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
     }, [currentPeriod]);
 
     const statusColor = useMemo(() => {
-        if (stats.percentageUsed >= 100) return 'text-red-600 dark:text-red-400';
+        if (stats.percentageUsed >= 100)
+            return 'text-red-600 dark:text-red-400';
         if (stats.percentageUsed >= 80)
             return 'text-yellow-600 dark:text-yellow-400';
         return 'text-green-600 dark:text-green-400';
@@ -122,7 +123,11 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                         Tracking: {trackingLabel}
                     </span>
                     <Link href={show({ budget: budget.id }).url}>
-                        <Button variant="ghost" size="sm">
+                        <Button
+                            className="cursor-pointer"
+                            variant="ghost"
+                            size="sm"
+                        >
                             View Details
                             <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>

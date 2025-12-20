@@ -30,7 +30,6 @@ export default function BudgetsIndex({ budgets, currencyCode }: Props) {
                         title="Budgets"
                         description="Track your spending with flexible budgets"
                     />
-                    <CreateBudgetDialog currencyCode={currencyCode} />
                 </div>
 
                 {budgets.length > 0 ? (
@@ -42,6 +41,7 @@ export default function BudgetsIndex({ budgets, currencyCode }: Props) {
                                 currencyCode={currencyCode}
                             />
                         ))}
+                        <CreateBudgetDialog currencyCode={currencyCode} />
                     </div>
                 ) : (
                     <div className="flex h-[300px] flex-col items-center justify-center gap-4 text-muted-foreground">
@@ -53,4 +53,3 @@ export default function BudgetsIndex({ budgets, currencyCode }: Props) {
         </AppSidebarLayout>
     );
 }
-
