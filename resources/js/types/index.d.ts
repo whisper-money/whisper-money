@@ -40,6 +40,7 @@ export interface NavDivider {
 
 export interface Features {
     cashflow: boolean;
+    budgets: boolean;
 }
 
 export interface SharedData {

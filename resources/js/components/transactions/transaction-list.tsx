@@ -65,8 +65,8 @@ import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
     type DecryptedTransaction,
-    type Transaction,
     type TransactionFilters as Filters,
+    type Transaction,
 } from '@/types/transaction';
 import { UUID } from '@/types/uuid';
 
@@ -341,13 +341,15 @@ export function TransactionList({
 
                                 if (key) {
                                     try {
-                                        decryptedDescription =
-                                            await decrypt(
-                                                transaction.description,
-                                                key,
-                                                transaction.description_iv,
-                                            );
-                                        if (transaction.notes && transaction.notes_iv) {
+                                        decryptedDescription = await decrypt(
+                                            transaction.description,
+                                            key,
+                                            transaction.description_iv,
+                                        );
+                                        if (
+                                            transaction.notes &&
+                                            transaction.notes_iv
+                                        ) {
                                             decryptedNotes = await decrypt(
                                                 transaction.notes,
                                                 key,
