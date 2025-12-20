@@ -64,10 +64,10 @@ export default function BudgetShow({
         return `${start} - ${end}`;
     }, [currentPeriod]);
 
-    const trackingLabel = useMemo(() => {
-        if (budget.category) return 'Tracking ' + budget.category.name;
-        if (budget.label) return 'Tracking ' + budget.label.name;
-        return 'No tracking';
+    const trackingLabel = useMemo((): string | null => {
+        if (budget.category) return budget.category.name;
+        if (budget.label) return budget.label.name;
+        return null;
     }, [budget]);
 
     const periodTransactions = useMemo(() => {
@@ -84,25 +84,36 @@ export default function BudgetShow({
 
             <div className="space-y-6 p-6">
                 <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-4 pl-1">
-                        <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
-                            <span className="text-lg font-medium text-primary">
-                                {budget.name.charAt(0).toUpperCase()}
-                            </span>
-                        </div>
+                    <div className="flex items-center gap-4">
                         <HeadingSmall
                             title={budget.name}
                             description={
                                 <div className="flex flex-row items-center gap-1 text-sm">
-                                    <span>{trackingLabel}</span>
-                                    <span className="opacity-50">/</span>
-                                    <span>
-                                        {periodLabel} (
-                                        {getBudgetPeriodTypeLabel(
-                                            budget.period_type,
+                                    <div className="inline">
+                                        {trackingLabel !== null ? (
+                                            <>
+                                                <span className="opacity-50">
+                                                    Tracking{' '}
+                                                </span>
+                                                <span>{trackingLabel}</span>
+                                            </>
+                                        ) : (
+                                            <span className="opacity-50">
+                                                No tracking
+                                            </span>
                                         )}
-                                        )
-                                    </span>
+                                    </div>
+                                    <span className="opacity-25">/</span>
+                                    <div className="inline">
+                                        <span>{periodLabel} </span>
+                                        <span className="opacity-50">
+                                            (
+                                            {getBudgetPeriodTypeLabel(
+                                                budget.period_type,
+                                            )}
+                                            )
+                                        </span>
+                                    </div>
                                 </div>
                             }
                         />

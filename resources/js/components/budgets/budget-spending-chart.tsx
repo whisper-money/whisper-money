@@ -13,7 +13,7 @@ import {
 import { BudgetPeriod } from '@/types/budget';
 import { formatCurrency } from '@/utils/currency';
 import { useMemo } from 'react';
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, XAxis } from 'recharts';
 
 interface Props {
     currentPeriod: BudgetPeriod;
@@ -35,7 +35,12 @@ interface CustomTooltipProps {
     currencyCode: string;
 }
 
-function CustomTooltip({ active, payload, label, currencyCode }: CustomTooltipProps) {
+function CustomTooltip({
+    active,
+    payload,
+    label,
+    currencyCode,
+}: CustomTooltipProps) {
     if (!active || !payload || !payload.length || !label) {
         return null;
     }
@@ -44,7 +49,8 @@ function CustomTooltip({ active, payload, label, currencyCode }: CustomTooltipPr
     const allocated = data.allocated;
     const spent = data.spent;
     const available = data.remaining;
-    const percentage = allocated > 0 ? Math.round((available / allocated) * 100) : 0;
+    const percentage =
+        allocated > 0 ? Math.round((available / allocated) * 100) : 0;
 
     return (
         <div className="rounded-lg border bg-background p-3 shadow-lg">
@@ -58,18 +64,26 @@ function CustomTooltip({ active, payload, label, currencyCode }: CustomTooltipPr
             <div className="space-y-1 text-sm">
                 <div className="flex items-center justify-between gap-8">
                     <span className="text-muted-foreground">Allocated:</span>
-                    <span className="font-medium">{formatCurrency(allocated, currencyCode)}</span>
+                    <span className="font-medium">
+                        {formatCurrency(allocated, currencyCode)}
+                    </span>
                 </div>
                 <div className="flex items-center justify-between gap-8">
                     <span className="text-muted-foreground">Spent:</span>
-                    <span className="font-medium">{formatCurrency(spent, currencyCode)}</span>
+                    <span className="font-medium">
+                        {formatCurrency(spent, currencyCode)}
+                    </span>
                 </div>
                 <div className="border-t pt-1">
                     <div className="flex items-center justify-between gap-8">
                         <span className="font-medium">Available:</span>
-                        <div className="flex items-center gap-2">
-                            <span className="font-semibold">{formatCurrency(available, currencyCode)}</span>
-                            <span className="text-xs text-muted-foreground">{percentage}%</span>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-xs text-muted-foreground">
+                                {percentage}% /
+                            </span>
+                            <span className="font-semibold">
+                                {formatCurrency(available, currencyCode)}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -78,7 +92,11 @@ function CustomTooltip({ active, payload, label, currencyCode }: CustomTooltipPr
     );
 }
 
-export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }: Props) {
+export function BudgetSpendingChart({
+    currentPeriod,
+    budgetName,
+    currencyCode,
+}: Props) {
     const chartData = useMemo(() => {
         const transactions = currentPeriod.budget_transactions || [];
         const startDate = new Date(currentPeriod.start_date);
@@ -88,10 +106,12 @@ export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }:
         const transactionsByDate = new Map<string, number>();
         transactions.forEach((t) => {
             if (!t.transaction) return;
-            const date = new Date(t.transaction.transaction_date).toISOString().split('T')[0];
+            const date = new Date(t.transaction.transaction_date)
+                .toISOString()
+                .split('T')[0];
             transactionsByDate.set(
                 date,
-                (transactionsByDate.get(date) || 0) + t.amount
+                (transactionsByDate.get(date) || 0) + t.amount,
             );
         });
 
@@ -121,40 +141,25 @@ export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }:
     const chartConfig = {
         spent: {
             label: 'Spent',
-            color: 'hsl(var(--chart-1))',
+            color: 'var(--spent)',
         },
         allocated: {
             label: 'Budget',
-            color: 'hsl(var(--chart-2))',
+            color: 'var(--allocated)',
         },
     } satisfies ChartConfig;
 
     const periodLabel = useMemo(() => {
         const start = new Date(currentPeriod.start_date).toLocaleDateString(
             'en-US',
-            { month: 'short', day: 'numeric' }
+            { month: 'short', day: 'numeric' },
         );
         const end = new Date(currentPeriod.end_date).toLocaleDateString(
             'en-US',
-            { month: 'short', day: 'numeric', year: 'numeric' }
+            { month: 'short', day: 'numeric', year: 'numeric' },
         );
         return `${start} - ${end}`;
     }, [currentPeriod]);
-
-    const totalSpent = useMemo(() => {
-        return (
-            currentPeriod.budget_transactions?.reduce(
-                (sum, t) => sum + t.amount,
-                0
-            ) || 0
-        );
-    }, [currentPeriod]);
-
-    const percentageUsed = useMemo(() => {
-        return currentPeriod.allocated_amount > 0
-            ? (totalSpent / currentPeriod.allocated_amount) * 100
-            : 0;
-    }, [totalSpent, currentPeriod.allocated_amount]);
 
     return (
         <Card>
@@ -164,15 +169,15 @@ export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }:
                     Tracking spending for {budgetName} · {periodLabel}
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <CardContent className="px-6 pt-0">
+                <ChartContainer
+                    config={chartConfig}
+                    className="h-[300px] w-full"
+                >
                     <AreaChart
+                        className="overflow-hidden rounded"
                         data={chartData}
-                        margin={{
-                            left: 12,
-                            right: 12,
-                            top: 12,
-                        }}
+                        margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
                     >
                         <defs>
                             <linearGradient
@@ -183,14 +188,19 @@ export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }:
                                 y2="1"
                             >
                                 <stop
-                                    offset="5%"
+                                    offset="0%"
                                     stopColor="var(--color-spent)"
                                     stopOpacity={0.8}
                                 />
                                 <stop
-                                    offset="95%"
+                                    offset="50%"
                                     stopColor="var(--color-spent)"
-                                    stopOpacity={0.1}
+                                    stopOpacity={0.4}
+                                />
+                                <stop
+                                    offset="100%"
+                                    stopColor="var(--color-spent)"
+                                    stopOpacity={0.05}
                                 />
                             </linearGradient>
                             <linearGradient
@@ -201,18 +211,22 @@ export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }:
                                 y2="1"
                             >
                                 <stop
-                                    offset="5%"
+                                    offset="0%"
                                     stopColor="var(--color-allocated)"
-                                    stopOpacity={0.3}
+                                    stopOpacity={0.4}
                                 />
                                 <stop
-                                    offset="95%"
+                                    offset="50%"
+                                    stopColor="var(--color-allocated)"
+                                    stopOpacity={0.2}
+                                />
+                                <stop
+                                    offset="100%"
                                     stopColor="var(--color-allocated)"
                                     stopOpacity={0.05}
                                 />
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis
                             dataKey="date"
                             tickLine={false}
@@ -226,68 +240,34 @@ export function BudgetSpendingChart({ currentPeriod, budgetName, currencyCode }:
                                 });
                             }}
                         />
-                        <YAxis
-                            tickLine={false}
-                            axisLine={false}
-                            tickMargin={8}
-                            tickFormatter={(value) => {
-                                const formatted = formatCurrency(value, currencyCode);
-                                // Remove currency symbol for Y-axis, keep just the number
-                                return formatted.replace(/[^\d.,\s-]/g, '').trim();
-                            }}
-                        />
                         <ChartTooltip
-                            content={<CustomTooltip currencyCode={currencyCode} />}
+                            content={
+                                <CustomTooltip currencyCode={currencyCode} />
+                            }
                         />
                         <Area
                             dataKey="allocated"
-                            type="monotone"
+                            type="basis"
                             fill="url(#fillAllocated)"
                             stroke="var(--color-allocated)"
                             strokeWidth={2}
                             dot={false}
+                            activeDot={{ r: 6 }}
+                            fillOpacity={1}
                         />
                         <Area
                             dataKey="spent"
-                            type="monotone"
+                            type="basis"
                             fill="url(#fillSpent)"
                             stroke="var(--color-spent)"
                             strokeWidth={2}
                             dot={false}
+                            activeDot={{ r: 6 }}
+                            fillOpacity={1}
                         />
                     </AreaChart>
                 </ChartContainer>
-                <div className="mt-4 flex items-center justify-between border-t pt-4 text-sm">
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2">
-                            <div
-                                className="h-3 w-3 rounded-full"
-                                style={{
-                                    backgroundColor: 'var(--color-spent)',
-                                }}
-                            />
-                            <span className="text-muted-foreground">
-                                Spent: {formatCurrency(totalSpent)}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div
-                                className="h-3 w-3 rounded-full"
-                                style={{
-                                    backgroundColor: 'var(--color-allocated)',
-                                }}
-                            />
-                            <span className="text-muted-foreground">
-                                Budget: {formatCurrency(currentPeriod.allocated_amount)}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="font-medium">
-                        {percentageUsed.toFixed(1)}% used
-                    </div>
-                </div>
             </CardContent>
         </Card>
     );
 }
-

@@ -109,7 +109,7 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Card className="opacity-50 transition-opacity duration-200 hover:opacity-100">
+                <Card className="cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100">
                     <CardContent className="flex h-full items-center justify-center">
                         <div className="flex flex-row items-center justify-center gap-1">
                             <Plus className="mr-2 h-4 w-4" />
