@@ -40,7 +40,7 @@ class BudgetPeriodService
         if ($budget->rollover_type->value === 'carry_over') {
             $totalSpent = $period->budgetTransactions()->sum('amount');
             $remaining = $period->allocated_amount - abs($totalSpent);
-            
+
             if ($remaining > 0) {
                 $carriedOverAmount = $remaining;
             }

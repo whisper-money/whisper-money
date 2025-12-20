@@ -7,9 +7,7 @@ use App\Services\BudgetTransactionService;
 
 class TransactionObserver
 {
-    public function __construct(protected BudgetTransactionService $budgetTransactionService)
-    {
-    }
+    public function __construct(protected BudgetTransactionService $budgetTransactionService) {}
 
     public function created(Transaction $transaction): void
     {

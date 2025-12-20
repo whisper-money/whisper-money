@@ -21,12 +21,12 @@ class BudgetTransactionService
                     // Match by category
                     $q->where('category_id', $transaction->category_id);
                 })
-                ->orWhere(function ($q) use ($transaction) {
-                    // Match by label
-                    $q->whereHas('label', function ($labelQuery) use ($transaction) {
-                        $labelQuery->whereIn('id', $transaction->labels->pluck('id'));
+                    ->orWhere(function ($q) use ($transaction) {
+                        // Match by label
+                        $q->whereHas('label', function ($labelQuery) use ($transaction) {
+                            $labelQuery->whereIn('id', $transaction->labels->pluck('id'));
+                        });
                     });
-                });
             })
             ->where('start_date', '<=', $transaction->transaction_date)
             ->where('end_date', '>=', $transaction->transaction_date)
@@ -35,18 +35,18 @@ class BudgetTransactionService
 
         foreach ($budgetPeriods as $period) {
             $budget = $period->budget;
-            
+
             // Check if transaction matches budget criteria
             $matches = false;
-            
+
             if ($budget->category_id && $budget->category_id === $transaction->category_id) {
                 $matches = true;
             }
-            
+
             if ($budget->label_id && $transaction->labels->contains('id', $budget->label_id)) {
                 $matches = true;
             }
-            
+
             if ($matches) {
                 BudgetTransaction::create([
                     'transaction_id' => $transaction->id,
