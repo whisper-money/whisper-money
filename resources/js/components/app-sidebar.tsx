@@ -11,13 +11,17 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { cn, resolveUrl } from '@/lib/utils';
-import { footerNavItems, mainNavItems } from '@/providers/menu-item-provider';
+import {
+    footerNavItems,
+    getMainNavItems,
+} from '@/providers/menu-item-provider';
 import { dashboard } from '@/routes';
 import { Link, usePage } from '@inertiajs/react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
     const page = usePage();
+    const mainNavItems = getMainNavItems(page.props.features);
 
     return (
         <>

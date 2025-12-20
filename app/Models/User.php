@@ -12,11 +12,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Pennant\Concerns\HasFeatures;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use Billable, HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable;
+    use Billable, HasFactory, HasFeatures, HasUuids, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.

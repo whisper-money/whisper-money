@@ -44,6 +44,10 @@ export interface SharedData {
     subscriptionsEnabled: boolean;
     pricing: PricingConfig;
     sidebarOpen: boolean;
+    features: {
+        budgets: boolean;
+        [key: string]: boolean;
+    };
     [key: string]: unknown;
 }
 

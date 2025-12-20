@@ -2,13 +2,13 @@ import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
-import { settings as budgetsSettings } from '@/routes/budgets';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAccount } from '@/routes/account';
 import { edit as editAppearance } from '@/routes/appearance';
+import { settings as budgetsSettings } from '@/routes/budgets';
 import { edit as editDeleteAccount } from '@/routes/delete-account';
 import { billing } from '@/routes/settings';
 import {

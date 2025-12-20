@@ -74,7 +74,8 @@ db.version(7).stores({
     budgets: 'id, user_id, updated_at',
     budget_categories: 'id, budget_id, updated_at',
     budget_periods: 'id, budget_id, start_date, updated_at',
-    budget_period_allocations: 'id, budget_period_id, budget_category_id, updated_at',
+    budget_period_allocations:
+        'id, budget_period_id, budget_category_id, updated_at',
     sync_metadata: 'key',
     pending_changes: '++id, store, timestamp',
 });

@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Http\Responses\RegisterResponse;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Observers\TransactionObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
+use Laravel\Pennant\Feature;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,5 +32,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('emails', function (object $job): Limit {
             return Limit::perSecond(1);
         });
+
+        Feature::define('budgets', fn (User $user) => false);
     }
 }

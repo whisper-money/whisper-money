@@ -45,7 +45,6 @@ export function EditBudgetDialog({
     open,
     onOpenChange,
 }: Props) {
-
     const [name, setName] = useState(budget.name);
     const [periodType, setPeriodType] = useState<BudgetPeriodType>(
         budget.period_type as BudgetPeriodType,

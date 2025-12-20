@@ -12,32 +12,40 @@ import {
     Receipt,
 } from 'lucide-react';
 
-export const mainNavItems: NavItem[] = [
-    {
-        type: 'nav-item',
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        type: 'nav-item',
-        title: 'Accounts',
-        href: accountsIndex(),
-        icon: CreditCard,
-    },
-    {
-        type: 'nav-item',
-        title: 'Budgets',
-        href: budgetsIndex(),
-        icon: PiggyBank,
-    },
-    {
+export const getMainNavItems = (features: { budgets: boolean }): NavItem[] => {
+    const items: NavItem[] = [
+        {
+            type: 'nav-item',
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+        {
+            type: 'nav-item',
+            title: 'Accounts',
+            href: accountsIndex(),
+            icon: CreditCard,
+        },
+    ];
+
+    if (features.budgets) {
+        items.push({
+            type: 'nav-item',
+            title: 'Budgets',
+            href: budgetsIndex(),
+            icon: PiggyBank,
+        });
+    }
+
+    items.push({
         type: 'nav-item',
         title: 'Transactions',
         href: transactionsIndex(),
         icon: Receipt,
-    },
-];
+    });
+
+    return items;
+};
 
 export const footerNavItems: NavItem[] = [
     {

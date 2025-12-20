@@ -1,4 +1,7 @@
-export function formatCurrency(valueInCents: number, currencyCode = 'USD'): string {
+export function formatCurrency(
+    valueInCents: number,
+    currencyCode = 'USD',
+): string {
     const amount = valueInCents / 100;
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -17,4 +20,3 @@ export function getCurrencySymbol(currencyCode: string): string {
     };
     return symbols[currencyCode] || currencyCode;
 }
-

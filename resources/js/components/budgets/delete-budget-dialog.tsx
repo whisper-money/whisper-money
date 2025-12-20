@@ -49,8 +49,9 @@ export function DeleteBudgetDialog({
                     <AlertDialogTitle>Delete Budget</AlertDialogTitle>
                     <AlertDialogDescription>
                         Are you sure you want to delete "{budget.name}"? This
-                        action cannot be undone. All budget periods, allocations,
-                        and transaction assignments will be permanently removed.
+                        action cannot be undone. All budget periods,
+                        allocations, and transaction assignments will be
+                        permanently removed.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -69,4 +70,3 @@ export function DeleteBudgetDialog({
         </AlertDialog>
     );
 }
-
