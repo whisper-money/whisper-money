@@ -31,10 +31,10 @@ class StoreBudgetRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            $hasCategoryId = !empty($this->category_id);
-            $hasLabelId = !empty($this->label_id);
+            $hasCategoryId = ! empty($this->category_id);
+            $hasLabelId = ! empty($this->label_id);
 
-            if (!$hasCategoryId && !$hasLabelId) {
+            if (! $hasCategoryId && ! $hasLabelId) {
                 $validator->errors()->add(
                     'selection',
                     'You must select either a category or a label.'

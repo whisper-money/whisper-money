@@ -38,6 +38,7 @@ class BackfillUserCurrencyCode extends Command
 
         if ($users->isEmpty()) {
             $this->info('No users found that need currency code backfill.');
+
             return Command::SUCCESS;
         }
 
@@ -50,7 +51,7 @@ class BackfillUserCurrencyCode extends Command
 
         foreach ($users as $user) {
             $firstAccount = $user->accounts->first();
-            
+
             if ($firstAccount && $firstAccount->currency_code) {
                 $user->update(['currency_code' => $firstAccount->currency_code]);
                 $updated++;

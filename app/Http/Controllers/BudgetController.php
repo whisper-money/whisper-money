@@ -16,9 +16,7 @@ class BudgetController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(protected BudgetPeriodService $budgetPeriodService)
-    {
-    }
+    public function __construct(protected BudgetPeriodService $budgetPeriodService) {}
 
     public function index(Request $request): Response
     {

@@ -1,9 +1,6 @@
 <?php
 
-use App\Enums\BudgetPeriodType;
-use App\Enums\RolloverType;
 use App\Models\Budget;
-use App\Models\BudgetCategory;
 use App\Models\Category;
 use App\Models\User;
 
@@ -15,13 +12,9 @@ test('user can create a budget', function () {
         'name' => 'Monthly Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'categories' => [
-            [
-                'category_id' => $category->id,
-                'rollover_type' => 'carry_over',
-                'label_ids' => [],
-            ],
-        ],
+        'category_id' => $category->id,
+        'rollover_type' => 'reset',
+        'allocated_amount' => 100000,
     ]);
 
     $response->assertRedirect();
@@ -30,11 +23,11 @@ test('user can create a budget', function () {
         'user_id' => $user->id,
         'name' => 'Monthly Budget',
         'period_type' => 'monthly',
+        'category_id' => $category->id,
     ]);
 
     $budget = Budget::where('user_id', $user->id)->first();
     $this->assertNotNull($budget);
-    $this->assertCount(1, $budget->budgetCategories);
     $this->assertCount(1, $budget->periods);
 });
 
@@ -53,10 +46,9 @@ test('user can view their budgets', function () {
 
 test('user can view a specific budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    $budget = Budget::factory()->create(['user_id' => $user->id]);
     $category = Category::factory()->create(['user_id' => $user->id]);
-    BudgetCategory::factory()->create([
-        'budget_id' => $budget->id,
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
         'category_id' => $category->id,
     ]);
 
@@ -117,13 +109,9 @@ test('budget period is automatically generated', function () {
         'name' => 'Test Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'categories' => [
-            [
-                'category_id' => $category->id,
-                'rollover_type' => 'reset',
-                'label_ids' => [],
-            ],
-        ],
+        'category_id' => $category->id,
+        'rollover_type' => 'reset',
+        'allocated_amount' => 50000,
     ]);
 
     $budget = Budget::where('user_id', $user->id)->first();
