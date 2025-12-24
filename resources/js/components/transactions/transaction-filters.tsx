@@ -103,8 +103,8 @@ export function TransactionFilters({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col items-center gap-3 sm:flex-row">
-                <div className="flex w-full flex-row items-center gap-2 sm:w-auto">
+            <div className="flex flex-col items-center gap-3 lg:flex-row">
+                <div className="flex w-full flex-row items-center gap-2 lg:w-auto">
                     <Input
                         placeholder={
                             isKeySet
@@ -119,7 +119,7 @@ export function TransactionFilters({
                             })
                         }
                         disabled={!isKeySet}
-                        className="max-w-sm flex-1 sm:min-w-[200px] md:min-w-[300px]"
+                        className="max-w-sm flex-1 md:max-w-full"
                     />
 
                     <Popover open={isOpen} onOpenChange={setIsOpen}>
