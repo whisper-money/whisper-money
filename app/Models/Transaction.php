@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Enums\TransactionSource;
+use App\Events\TransactionCreated;
+use App\Events\TransactionDeleted;
+use App\Events\TransactionUpdated;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +18,13 @@ class Transaction extends Model
 {
     /** @use HasFactory<\Database\Factories\TransactionFactory> */
     use HasFactory, HasUuids, SoftDeletes;
+
+    /** @var array<string, class-string> */
+    protected $dispatchesEvents = [
+        'created' => TransactionCreated::class,
+        'updated' => TransactionUpdated::class,
+        'deleted' => TransactionDeleted::class,
+    ];
 
     protected $fillable = [
         'user_id',

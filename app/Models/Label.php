@@ -37,9 +37,4 @@ class Label extends Model
         return $this->belongsToMany(AutomationRule::class, 'automation_rule_labels')
             ->using(AutomationRuleLabel::class);
     }
-
-    public function budgetCategories(): BelongsToMany
-    {
-        return $this->belongsToMany(BudgetCategory::class, 'budget_category_labels');
-    }
 }
