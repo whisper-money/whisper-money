@@ -37,9 +37,6 @@ class GenerateBudgetPeriods extends Command
 
             $completedPeriods = BudgetPeriod::where('budget_id', $budget->id)
                 ->where('end_date', '<', now()->subDay())
-                ->whereDoesntHave('allocations', function ($query) {
-                    $query->whereHas('budgetTransactions');
-                })
                 ->get();
 
             foreach ($completedPeriods as $period) {

@@ -2,11 +2,15 @@
 
 namespace App\Providers;
 
+use App\Events\TransactionCreated;
+use App\Events\TransactionDeleted;
+use App\Events\TransactionUpdated;
 use App\Http\Responses\RegisterResponse;
-use App\Models\Transaction;
+use App\Listeners\AssignTransactionToBudget;
+use App\Listeners\UnassignTransactionFromBudget;
 use App\Models\User;
-use App\Observers\TransactionObserver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
@@ -27,7 +31,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Transaction::observe(TransactionObserver::class);
+        Event::listen(TransactionCreated::class, AssignTransactionToBudget::class);
+        Event::listen(TransactionUpdated::class, AssignTransactionToBudget::class);
+        Event::listen(TransactionDeleted::class, UnassignTransactionFromBudget::class);
 
         RateLimiter::for('emails', function (object $job): Limit {
             return Limit::perSecond(1);
