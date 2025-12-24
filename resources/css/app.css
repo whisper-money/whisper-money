@@ -210,4 +210,9 @@
     .bg-linear-to-l {
         background: linear-gradient(to left, var(--tw-gradient-stops));
     }
+
+    /* Charts */
+    .recharts-responsive-container:focus-visible {
+        outline: none;
+    }
 }
