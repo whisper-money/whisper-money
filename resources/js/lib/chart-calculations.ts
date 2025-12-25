@@ -228,7 +228,8 @@ export function computeRolling12mPercent(
 export function computeWaterfallSeries(
     nwSeries: MonthDataPoint[],
     monthIndex?: number,
-    _flows?: MonthlyFlows[],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    flows?: MonthlyFlows[],
 ): WaterfallDataPoint[] {
     if (nwSeries.length < 2) {
         return [];

@@ -77,7 +77,11 @@ export function useChartViews({
 }: UseChartViewsOptions): UseChartViewsReturn {
     // View state
     const [currentView, setCurrentViewState] = useState<ChartViewType>(
-        hasStackedView ? initialView : initialView === 'stacked' ? 'line' : initialView,
+        hasStackedView
+            ? initialView
+            : initialView === 'stacked'
+              ? 'line'
+              : initialView,
     );
     const [scaleType, setScaleType] = useState<ScaleType>('linear');
     const [changeSeriesType, setChangeSeriesType] =
