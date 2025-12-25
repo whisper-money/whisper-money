@@ -104,7 +104,7 @@ export default function UnlockMessageDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent hasKeyboard>
                 <DialogHeader>
                     <DialogTitle>Unlock Encrypted Message</DialogTitle>
                     <DialogDescription>
