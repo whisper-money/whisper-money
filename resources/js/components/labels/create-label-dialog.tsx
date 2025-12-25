@@ -31,7 +31,7 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
             <DialogTrigger asChild>
                 <Button>Create Label</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Create Label</DialogTitle>
                     <DialogDescription>
