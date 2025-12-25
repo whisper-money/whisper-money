@@ -1,3 +1,9 @@
+import {
+    ChangePercentChart,
+    ChartViewToggle,
+    NetWorthLineChart,
+    WaterfallChart,
+} from '@/components/charts';
 import { EncryptedText } from '@/components/encrypted-text';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import {
@@ -9,7 +15,9 @@ import {
 } from '@/components/ui/card';
 import { ChartConfig } from '@/components/ui/chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
+import { useChartViews } from '@/hooks/use-chart-views';
 import { NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
+import { AccountInfo } from '@/lib/chart-calculations';
 import { useMemo } from 'react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
 
@@ -140,6 +148,7 @@ export function NetWorthChart({
         currencyTotals,
         accountCurrencies,
         primaryCurrency,
+        accountsForHook,
     } = useMemo(() => {
         const accounts = data.accounts || {};
         const accountIds = Object.keys(accounts);
@@ -147,6 +156,7 @@ export function NetWorthChart({
 
         const config: ChartConfig = {};
         const currencies: Record<string, string> = {};
+        const hookAccounts: Record<string, AccountInfo> = {};
 
         accountIds.forEach((id) => {
             const account = accounts[id];
@@ -155,6 +165,13 @@ export function NetWorthChart({
             };
             if (account?.currency_code) {
                 currencies[id] = account.currency_code;
+            }
+            if (account) {
+                hookAccounts[id] = {
+                    id: account.id,
+                    type: account.type,
+                    currency_code: account.currency_code,
+                };
             }
         });
 
@@ -192,8 +209,16 @@ export function NetWorthChart({
             currencyTotals: currencyTotalsList,
             accountCurrencies: currencies,
             primaryCurrency: primary,
+            accountsForHook: hookAccounts,
         };
     }, [data]);
+
+    const chartViews = useChartViews({
+        data: chartData,
+        accounts: accountsForHook,
+        initialView: 'stacked',
+        hasStackedView: true,
+    });
 
     const valueFormatter = useMemo(() => {
         return (value: number, accountId?: string): React.ReactNode => {
@@ -248,7 +273,14 @@ export function NetWorthChart({
             <CardHeader>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 flex-col gap-2">
-                        <CardTitle>Net Worth Evolution</CardTitle>
+                        <div className="flex items-center gap-3">
+                            <CardTitle>Net Worth Evolution</CardTitle>
+                            <ChartViewToggle
+                                value={chartViews.currentView}
+                                onValueChange={chartViews.setCurrentView}
+                                availableViews={chartViews.availableViews}
+                            />
+                        </div>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
                                 trend={monthlyTrend?.percentage ?? null}
@@ -273,17 +305,52 @@ export function NetWorthChart({
                 </div>
             </CardHeader>
             <CardContent className="min-w-0">
-                <StackedBarChart
-                    data={chartData}
-                    dataKeys={dataKeys}
-                    config={chartConfig}
-                    xAxisKey="month"
-                    xAxisFormatter={formatXAxisLabel}
-                    valueFormatter={valueFormatter}
-                    accountCurrencies={accountCurrencies}
-                    className="h-[300px] w-full"
-                    showLegend={showLegend}
-                />
+                {chartViews.currentView === 'stacked' && (
+                    <StackedBarChart
+                        data={chartData}
+                        dataKeys={dataKeys}
+                        config={chartConfig}
+                        xAxisKey="month"
+                        xAxisFormatter={formatXAxisLabel}
+                        valueFormatter={valueFormatter}
+                        accountCurrencies={accountCurrencies}
+                        className="h-[300px] w-full"
+                        showLegend={showLegend}
+                    />
+                )}
+                {chartViews.currentView === 'line' && (
+                    <NetWorthLineChart
+                        data={chartViews.netWorthSeries}
+                        currencyCode={primaryCurrency}
+                        scaleType={chartViews.scaleType}
+                        onScaleTypeChange={chartViews.setScaleType}
+                        canUseLog={chartViews.canUseLog}
+                        logScaleWarning={chartViews.logScaleWarning}
+                        xAxisFormatter={formatXAxisLabel}
+                        className="h-[300px] w-full"
+                    />
+                )}
+                {chartViews.currentView === 'change' && (
+                    <ChangePercentChart
+                        data={chartViews.currentChangeSeries}
+                        seriesType={chartViews.changeSeriesType}
+                        onSeriesTypeChange={chartViews.setChangeSeriesType}
+                        seriesKey={chartViews.changeSeriesKey}
+                        currencyCode={primaryCurrency}
+                        xAxisFormatter={formatXAxisLabel}
+                        className="h-[300px] w-full"
+                    />
+                )}
+                {chartViews.currentView === 'waterfall' && (
+                    <WaterfallChart
+                        data={chartViews.waterfallSeries}
+                        monthlyData={chartViews.netWorthSeries}
+                        selectedMonthIndex={chartViews.waterfallMonthIndex}
+                        onMonthIndexChange={chartViews.setWaterfallMonthIndex}
+                        currencyCode={primaryCurrency}
+                        className="h-[300px] w-full"
+                    />
+                )}
             </CardContent>
         </Card>
     );

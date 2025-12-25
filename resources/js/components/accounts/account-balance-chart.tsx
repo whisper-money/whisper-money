@@ -1,5 +1,12 @@
+import {
+    ChangePercentChart,
+    ChartViewToggle,
+    NetWorthLineChart,
+    WaterfallChart,
+} from '@/components/charts';
 import { PercentageTrendIndicator } from '@/components/dashboard/percentage-trend-indicator';
 import { EncryptedText } from '@/components/encrypted-text';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
     CardContent,
@@ -13,11 +20,14 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from '@/components/ui/chart';
+import {
+    convertSingleAccountData,
+    useChartViews,
+} from '@/hooks/use-chart-views';
 import { Account } from '@/types/account';
 import { format, subMonths } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
-import { AmountDisplay } from '../ui/amount-display';
 
 interface BalanceDataPoint {
     month: string;
@@ -146,6 +156,23 @@ export function AccountBalanceChart({
             };
         }, [balanceData]);
 
+    // Convert data for useChartViews hook
+    const { data: hookData, accounts: hookAccounts } = useMemo(() => {
+        return convertSingleAccountData(
+            chartData,
+            account.id,
+            account.type,
+            account.currency_code,
+        );
+    }, [chartData, account.id, account.type, account.currency_code]);
+
+    const chartViews = useChartViews({
+        data: hookData,
+        accounts: hookAccounts,
+        initialView: 'line',
+        hasStackedView: false,
+    });
+
     const chartConfig: ChartConfig = {
         value: {
             label: (
@@ -199,7 +226,14 @@ export function AccountBalanceChart({
             <CardHeader>
                 <div className="flex flex-col items-start justify-between sm:flex-row">
                     <div className="flex flex-col gap-1 sm:gap-2">
-                        <CardTitle>Balance evolution</CardTitle>
+                        <div className="flex items-center gap-3">
+                            <CardTitle>Balance evolution</CardTitle>
+                            <ChartViewToggle
+                                value={chartViews.currentView}
+                                onValueChange={chartViews.setCurrentView}
+                                availableViews={chartViews.availableViews}
+                            />
+                        </div>
                         <button
                             type="button"
                             onClick={onBalanceClick}
@@ -246,33 +280,68 @@ export function AccountBalanceChart({
                 </div>
             </CardHeader>
             <CardContent>
-                <ChartContainer
-                    config={chartConfig}
-                    className="h-[300px] w-full"
-                >
-                    <BarChart accessibilityLayer data={chartData}>
-                        <XAxis
-                            dataKey="month"
-                            tickLine={false}
-                            tickMargin={10}
-                            axisLine={false}
-                            tickFormatter={formatXAxisLabel}
-                        />
-                        <ChartTooltip
-                            content={
-                                <ChartTooltipContent
-                                    hideLabel
-                                    valueFormatter={valueFormatter}
-                                />
-                            }
-                        />
-                        <Bar
-                            dataKey="value"
-                            fill="var(--color-chart-2)"
-                            radius={[4, 4, 0, 0]}
-                        />
-                    </BarChart>
-                </ChartContainer>
+                {chartViews.currentView === 'line' && (
+                    <NetWorthLineChart
+                        data={chartViews.netWorthSeries}
+                        currencyCode={account.currency_code}
+                        scaleType={chartViews.scaleType}
+                        onScaleTypeChange={chartViews.setScaleType}
+                        canUseLog={chartViews.canUseLog}
+                        logScaleWarning={chartViews.logScaleWarning}
+                        xAxisFormatter={formatXAxisLabel}
+                        className="h-[300px] w-full"
+                    />
+                )}
+                {chartViews.currentView === 'change' && (
+                    <ChangePercentChart
+                        data={chartViews.currentChangeSeries}
+                        seriesType={chartViews.changeSeriesType}
+                        onSeriesTypeChange={chartViews.setChangeSeriesType}
+                        seriesKey={chartViews.changeSeriesKey}
+                        currencyCode={account.currency_code}
+                        xAxisFormatter={formatXAxisLabel}
+                        className="h-[300px] w-full"
+                    />
+                )}
+                {chartViews.currentView === 'waterfall' && (
+                    <WaterfallChart
+                        data={chartViews.waterfallSeries}
+                        monthlyData={chartViews.netWorthSeries}
+                        selectedMonthIndex={chartViews.waterfallMonthIndex}
+                        onMonthIndexChange={chartViews.setWaterfallMonthIndex}
+                        currencyCode={account.currency_code}
+                        className="h-[300px] w-full"
+                    />
+                )}
+                {chartViews.currentView === 'stacked' && (
+                    <ChartContainer
+                        config={chartConfig}
+                        className="h-[300px] w-full"
+                    >
+                        <BarChart accessibilityLayer data={chartData}>
+                            <XAxis
+                                dataKey="month"
+                                tickLine={false}
+                                tickMargin={10}
+                                axisLine={false}
+                                tickFormatter={formatXAxisLabel}
+                            />
+                            <ChartTooltip
+                                content={
+                                    <ChartTooltipContent
+                                        hideLabel
+                                        valueFormatter={valueFormatter}
+                                    />
+                                }
+                            />
+                            <Bar
+                                dataKey="value"
+                                fill="var(--color-chart-2)"
+                                radius={[4, 4, 0, 0]}
+                            />
+                        </BarChart>
+                    </ChartContainer>
+                )}
             </CardContent>
         </Card>
     );
