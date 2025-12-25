@@ -17,6 +17,7 @@ import { Account } from '@/types/account';
 import { format, subMonths } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
+import { AmountDisplay } from '../ui/amount-display';
 
 interface BalanceDataPoint {
     month: string;
@@ -204,10 +205,12 @@ export function AccountBalanceChart({
                             onClick={onBalanceClick}
                             className="-ml-3 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted sm:hidden"
                         >
-                            {formatCurrency(
-                                currentBalance,
-                                account.currency_code,
-                            )}
+                            <AmountDisplay
+                                amountInCents={currentBalance}
+                                currencyCode={account.currency_code}
+                                minimumFractionDigits={0}
+                                maximumFractionDigits={0}
+                            />
                         </button>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
@@ -232,10 +235,12 @@ export function AccountBalanceChart({
                             onClick={onBalanceClick}
                             className="-mt-1 -mr-2 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
                         >
-                            {formatCurrency(
-                                currentBalance,
-                                account.currency_code,
-                            )}
+                            <AmountDisplay
+                                amountInCents={currentBalance}
+                                currencyCode={account.currency_code}
+                                minimumFractionDigits={0}
+                                maximumFractionDigits={0}
+                            />
                         </button>
                     </div>
                 </div>
