@@ -196,9 +196,19 @@ export function AccountBalanceChart({
     return (
         <Card>
             <CardHeader>
-                <div className="flex items-start justify-between">
-                    <div className="flex flex-col gap-2">
+                <div className="flex flex-col items-start justify-between sm:flex-row">
+                    <div className="flex flex-col gap-1 sm:gap-2">
                         <CardTitle>Balance evolution</CardTitle>
+                        <button
+                            type="button"
+                            onClick={onBalanceClick}
+                            className="-ml-3 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted sm:hidden"
+                        >
+                            {formatCurrency(
+                                currentBalance,
+                                account.currency_code,
+                            )}
+                        </button>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
                                 trend={monthlyTrend?.percentage ?? null}
@@ -216,11 +226,11 @@ export function AccountBalanceChart({
                             />
                         </CardDescription>
                     </div>
-                    <div>
+                    <div className="hidden sm:block">
                         <button
                             type="button"
                             onClick={onBalanceClick}
-                            className="-mr-2 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
+                            className="-mt-1 -mr-2 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
                         >
                             {formatCurrency(
                                 currentBalance,
