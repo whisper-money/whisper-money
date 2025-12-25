@@ -48,7 +48,7 @@ export function EditCategoryDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Edit Category</DialogTitle>
                     <DialogDescription>
