@@ -212,7 +212,10 @@
     }
 
     /* Charts */
-    .recharts-responsive-container:focus-visible {
+    .recharts-responsive-container:focus-visible,
+    svg:focus,
+    g:focus,
+    path:focus {
         outline: none;
     }
 }
