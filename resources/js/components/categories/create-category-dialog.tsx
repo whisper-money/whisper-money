@@ -44,7 +44,7 @@ export function CreateCategoryDialog({
             <DialogTrigger asChild>
                 <Button>Create Category</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Create Category</DialogTitle>
                     <DialogDescription>

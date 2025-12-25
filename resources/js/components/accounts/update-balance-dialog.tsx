@@ -92,7 +92,7 @@ export function UpdateBalanceDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-[400px]">
+            <DialogContent hasKeyboard className="sm:max-w-[400px]">
                 <DialogHeader>
                     <DialogTitle>Update balance</DialogTitle>
                     <DialogDescription>

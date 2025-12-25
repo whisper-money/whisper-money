@@ -200,7 +200,7 @@ export function EditAccountDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Edit Account</DialogTitle>
                     <DialogDescription>
