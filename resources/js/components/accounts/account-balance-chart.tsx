@@ -116,7 +116,8 @@ export function AccountBalanceChart({
             try {
                 const now = new Date();
                 const to = format(now, 'yyyy-MM-dd');
-                const from = format(subMonths(now, 12), 'yyyy-MM-dd');
+                // Fetch 24 months to support YoY and rolling 12M calculations
+                const from = format(subMonths(now, 24), 'yyyy-MM-dd');
 
                 const params = new URLSearchParams({ from, to });
                 const response = await fetch(
