@@ -156,6 +156,45 @@ it('validates required fields when creating a transaction', function () {
         ->assertJsonValidationErrors(['account_id', 'description', 'description_iv', 'transaction_date', 'amount', 'currency_code', 'source']);
 });
 
+it('returns existing transaction when creating with duplicate UUID (idempotent)', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+    $uuid = (string) Str::uuid7();
+
+    // Create the transaction first
+    $transaction = Transaction::factory()->for($user)->for($account)->create([
+        'id' => $uuid,
+        'description' => 'original_description',
+        'amount' => 10050,
+    ]);
+
+    // Try to create again with the same UUID
+    $transactionData = [
+        'id' => $uuid,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'description' => 'new_description',
+        'description_iv' => '1234567890123456',
+        'transaction_date' => now()->toDateString(),
+        'amount' => 99999,
+        'currency_code' => 'USD',
+        'notes' => null,
+        'notes_iv' => null,
+        'source' => 'imported',
+    ];
+
+    $response = $this->actingAs($user)->postJson('/api/sync/transactions', $transactionData);
+
+    // Should return 200 with existing transaction, not 201 or error
+    $response->assertOk()
+        ->assertJsonPath('data.id', $uuid)
+        ->assertJsonPath('data.amount', 10050)
+        ->assertJsonPath('data.description', 'original_description');
+
+    // Ensure no duplicate was created
+    expect(Transaction::where('id', $uuid)->count())->toBe(1);
+});
+
 it('can update a transaction', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();
