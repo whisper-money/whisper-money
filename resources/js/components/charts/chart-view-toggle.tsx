@@ -1,11 +1,6 @@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ChartViewType } from '@/hooks/use-chart-views';
-import {
-    BarChart3,
-    GitCompareArrows,
-    LineChart,
-    TrendingUp,
-} from 'lucide-react';
+import { BarChart3, Percent, TrendingUp } from 'lucide-react';
 
 interface ChartViewToggleProps {
     value: ChartViewType;
@@ -19,9 +14,8 @@ const viewConfig: Record<
     { icon: React.ElementType; label: string }
 > = {
     stacked: { icon: BarChart3, label: 'Accounts' },
-    line: { icon: LineChart, label: 'Line' },
-    change: { icon: TrendingUp, label: 'Change' },
-    waterfall: { icon: GitCompareArrows, label: 'Waterfall' },
+    mom: { icon: TrendingUp, label: 'MoM' },
+    mom_percent: { icon: Percent, label: 'MoM%' },
 };
 
 export function ChartViewToggle({

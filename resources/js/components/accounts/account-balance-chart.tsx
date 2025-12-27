@@ -1,8 +1,7 @@
 import {
-    ChangePercentChart,
     ChartViewToggle,
-    NetWorthLineChart,
-    WaterfallChart,
+    MoMChart,
+    MoMPercentChart,
 } from '@/components/charts';
 import { PercentageTrendIndicator } from '@/components/dashboard/percentage-trend-indicator';
 import { EncryptedText } from '@/components/encrypted-text';
@@ -116,8 +115,7 @@ export function AccountBalanceChart({
             try {
                 const now = new Date();
                 const to = format(now, 'yyyy-MM-dd');
-                // Fetch 24 months to support YoY and rolling 12M calculations
-                const from = format(subMonths(now, 24), 'yyyy-MM-dd');
+                const from = format(subMonths(now, 12), 'yyyy-MM-dd');
 
                 const params = new URLSearchParams({ from, to });
                 const response = await fetch(
@@ -170,8 +168,8 @@ export function AccountBalanceChart({
     const chartViews = useChartViews({
         data: hookData,
         accounts: hookAccounts,
-        initialView: 'line',
-        hasStackedView: false,
+        initialView: 'stacked',
+        hasStackedView: true,
     });
 
     const chartConfig: ChartConfig = {
@@ -281,45 +279,12 @@ export function AccountBalanceChart({
                 </div>
             </CardHeader>
             <CardContent>
-                {chartViews.currentView === 'line' && (
-                    <NetWorthLineChart
-                        data={chartViews.netWorthSeries}
-                        currencyCode={account.currency_code}
-                        scaleType={chartViews.scaleType}
-                        onScaleTypeChange={chartViews.setScaleType}
-                        canUseLog={chartViews.canUseLog}
-                        logScaleWarning={chartViews.logScaleWarning}
-                        xAxisFormatter={formatXAxisLabel}
-                        className="h-[300px] w-full"
-                    />
-                )}
-                {chartViews.currentView === 'change' && (
-                    <ChangePercentChart
-                        data={chartViews.currentChangeSeries}
-                        seriesType={chartViews.changeSeriesType}
-                        onSeriesTypeChange={chartViews.setChangeSeriesType}
-                        seriesKey={chartViews.changeSeriesKey}
-                        currencyCode={account.currency_code}
-                        xAxisFormatter={formatXAxisLabel}
-                        className="h-[300px] w-full"
-                    />
-                )}
-                {chartViews.currentView === 'waterfall' && (
-                    <WaterfallChart
-                        data={chartViews.waterfallSeries}
-                        monthlyData={chartViews.netWorthSeries}
-                        selectedMonthIndex={chartViews.waterfallMonthIndex}
-                        onMonthIndexChange={chartViews.setWaterfallMonthIndex}
-                        currencyCode={account.currency_code}
-                        className="h-[300px] w-full"
-                    />
-                )}
                 {chartViews.currentView === 'stacked' && (
                     <ChartContainer
                         config={chartConfig}
                         className="h-[300px] w-full"
                     >
-                        <BarChart accessibilityLayer data={chartData}>
+                        <BarChart accessibilityLayer data={chartData.slice(1)}>
                             <XAxis
                                 dataKey="month"
                                 tickLine={false}
@@ -342,6 +307,21 @@ export function AccountBalanceChart({
                             />
                         </BarChart>
                     </ChartContainer>
+                )}
+                {chartViews.currentView === 'mom' && (
+                    <MoMChart
+                        data={chartViews.deltaSeries}
+                        currencyCode={account.currency_code}
+                        xAxisFormatter={formatXAxisLabel}
+                        className="h-[300px] w-full"
+                    />
+                )}
+                {chartViews.currentView === 'mom_percent' && (
+                    <MoMPercentChart
+                        data={chartViews.momPercentSeries}
+                        xAxisFormatter={formatXAxisLabel}
+                        className="h-[300px] w-full"
+                    />
                 )}
             </CardContent>
         </Card>

@@ -1,18 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
     AccountInfo,
-    canUseLogScale,
     computeDeltaSeries,
     computeMoMPercent,
     computeNetWorthSeries,
-    computeRolling12mChange,
-    computeRolling12mPercent,
-    computeWaterfallSeries,
-    computeYoYPercent,
-    formatCurrencyValue,
     formatPercentValue,
     getAccountSign,
-    getLogScaleWarning,
     isLiabilityType,
     MonthDataPoint,
 } from './chart-calculations';
@@ -244,265 +237,63 @@ describe('computeMoMPercent', () => {
     });
 });
 
-describe('computeYoYPercent', () => {
-    it('returns null for first 12 months', () => {
-        const series: MonthDataPoint[] = Array.from({ length: 12 }, (_, i) => ({
-            month: `2025-${String(i + 1).padStart(2, '0')}`,
-            value: 10000 + i * 1000,
-        }));
+describe('edge cases for slice(1) in useChartViews hook', () => {
+    // The hook slices off the first month (needed for MoM calculation baseline)
+    // These tests document expected behavior for edge cases
 
-        const result = computeYoYPercent(series);
+    it('single month data results in empty series after slice', () => {
+        const data = [{ month: '2025-01', acc1: 10000 }];
+        const accounts: Record<string, AccountInfo> = {
+            acc1: { id: 'acc1', type: 'checking', currency_code: 'EUR' },
+        };
 
-        result.forEach((point) => {
-            expect(point.percent).toBeNull();
-        });
+        const netWorth = computeNetWorthSeries(data, accounts);
+        const delta = computeDeltaSeries(netWorth);
+        const momPercent = computeMoMPercent(netWorth);
+
+        // All series have 1 element before slicing
+        expect(netWorth).toHaveLength(1);
+        expect(delta).toHaveLength(1);
+        expect(momPercent).toHaveLength(1);
+
+        // After slice(1), all become empty
+        expect(netWorth.slice(1)).toHaveLength(0);
+        expect(delta.slice(1)).toHaveLength(0);
+        expect(momPercent.slice(1)).toHaveLength(0);
     });
 
-    it('computes correct YoY percentage after 12 months', () => {
-        const series: MonthDataPoint[] = Array.from({ length: 13 }, (_, i) => ({
-            month: `${2024 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`,
-            value: i === 0 ? 10000 : i === 12 ? 12000 : 10000 + i * 100,
-        }));
-
-        const result = computeYoYPercent(series);
-
-        expect(result[12].percent).toBe(20); // (12000 - 10000) / 10000 * 100 = 20%
-    });
-
-    it('returns null when year-ago value is zero', () => {
-        const series: MonthDataPoint[] = Array.from({ length: 13 }, (_, i) => ({
-            month: `${2024 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`,
-            value: i === 0 ? 0 : 10000,
-        }));
-
-        const result = computeYoYPercent(series);
-
-        expect(result[12].percent).toBeNull();
-    });
-});
-
-describe('computeRolling12mChange', () => {
-    it('returns null for first 12 months', () => {
-        const series: MonthDataPoint[] = Array.from({ length: 12 }, (_, i) => ({
-            month: `2025-${String(i + 1).padStart(2, '0')}`,
-            value: 10000,
-        }));
-
-        const result = computeRolling12mChange(series);
-
-        result.forEach((point) => {
-            expect(point.change).toBeNull();
-        });
-    });
-
-    it('computes correct rolling 12m change', () => {
-        const series: MonthDataPoint[] = Array.from({ length: 13 }, (_, i) => ({
-            month: `${2024 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`,
-            value: i === 0 ? 100000 : i === 12 ? 150000 : 110000,
-        }));
-
-        const result = computeRolling12mChange(series);
-
-        expect(result[12].change).toBe(50000); // 150000 - 100000
-    });
-});
-
-describe('computeRolling12mPercent', () => {
-    it('returns null for first 12 months', () => {
-        const series: MonthDataPoint[] = Array.from({ length: 12 }, (_, i) => ({
-            month: `2025-${String(i + 1).padStart(2, '0')}`,
-            value: 10000,
-        }));
-
-        const result = computeRolling12mPercent(series);
-
-        result.forEach((point) => {
-            expect(point.percent).toBeNull();
-        });
-    });
-
-    it('computes correct rolling 12m percentage', () => {
-        const series: MonthDataPoint[] = Array.from({ length: 13 }, (_, i) => ({
-            month: `${2024 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`,
-            value: i === 0 ? 100000 : i === 12 ? 150000 : 110000,
-        }));
-
-        const result = computeRolling12mPercent(series);
-
-        expect(result[12].percent).toBe(50); // 50% increase
-    });
-});
-
-describe('computeWaterfallSeries', () => {
-    it('returns empty array for series with less than 2 points', () => {
-        const series: MonthDataPoint[] = [{ month: '2025-01', value: 10000 }];
-
-        const result = computeWaterfallSeries(series);
-
-        expect(result).toEqual([]);
-    });
-
-    it('computes waterfall for last month transition by default', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 100000 },
-            { month: '2025-02', value: 120000 },
+    it('two months data results in single data point after slice', () => {
+        const data = [
+            { month: '2025-01', acc1: 10000 },
+            { month: '2025-02', acc1: 15000 },
         ];
+        const accounts: Record<string, AccountInfo> = {
+            acc1: { id: 'acc1', type: 'checking', currency_code: 'EUR' },
+        };
 
-        const result = computeWaterfallSeries(series);
+        const netWorth = computeNetWorthSeries(data, accounts);
+        const delta = computeDeltaSeries(netWorth);
+        const momPercent = computeMoMPercent(netWorth);
 
-        expect(result).toHaveLength(3);
-        expect(result[0]).toEqual({
-            name: 'Start',
-            value: 100000,
-            type: 'start',
-            month: '2025-01',
-        });
-        expect(result[1]).toEqual({
-            name: 'Change',
-            value: 20000,
-            type: 'change',
-            month: '2025-02',
-        });
-        expect(result[2]).toEqual({
-            name: 'End',
-            value: 120000,
-            type: 'end',
-            month: '2025-02',
-        });
+        // After slice(1), we have 1 displayable data point
+        expect(netWorth.slice(1)).toHaveLength(1);
+        expect(delta.slice(1)).toHaveLength(1);
+        expect(momPercent.slice(1)).toHaveLength(1);
+
+        // And the values are computed correctly
+        expect(netWorth.slice(1)[0].value).toBe(15000);
+        expect(delta.slice(1)[0].change).toBe(5000);
+        expect(momPercent.slice(1)[0].percent).toBe(50);
     });
 
-    it('maintains waterfall identity: Start + Change = End', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 100000 },
-            { month: '2025-02', value: 85000 },
-        ];
+    it('empty data results in empty series', () => {
+        const netWorth = computeNetWorthSeries([], {});
+        const delta = computeDeltaSeries(netWorth);
+        const momPercent = computeMoMPercent(netWorth);
 
-        const result = computeWaterfallSeries(series);
-
-        const start = result.find((p) => p.type === 'start')!.value;
-        const change = result.find((p) => p.type === 'change')!.value;
-        const end = result.find((p) => p.type === 'end')!.value;
-
-        expect(start + change).toBe(end);
-    });
-
-    it('handles negative change correctly', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 100000 },
-            { month: '2025-02', value: 80000 },
-        ];
-
-        const result = computeWaterfallSeries(series);
-
-        expect(result[1].value).toBe(-20000);
-    });
-
-    it('allows specifying month index', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 100000 },
-            { month: '2025-02', value: 110000 },
-            { month: '2025-03', value: 130000 },
-        ];
-
-        const result = computeWaterfallSeries(series, 1);
-
-        expect(result[0].month).toBe('2025-01');
-        expect(result[2].month).toBe('2025-02');
-    });
-
-    it('returns empty array for invalid month index', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 100000 },
-            { month: '2025-02', value: 110000 },
-        ];
-
-        expect(computeWaterfallSeries(series, 0)).toEqual([]);
-        expect(computeWaterfallSeries(series, 5)).toEqual([]);
-    });
-});
-
-describe('canUseLogScale', () => {
-    it('returns false for empty series', () => {
-        expect(canUseLogScale([])).toBe(false);
-    });
-
-    it('returns true when all values are positive', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 10000 },
-            { month: '2025-02', value: 20000 },
-        ];
-
-        expect(canUseLogScale(series)).toBe(true);
-    });
-
-    it('returns false when any value is zero', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 0 },
-            { month: '2025-02', value: 20000 },
-        ];
-
-        expect(canUseLogScale(series)).toBe(false);
-    });
-
-    it('returns false when any value is negative', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: -10000 },
-            { month: '2025-02', value: 20000 },
-        ];
-
-        expect(canUseLogScale(series)).toBe(false);
-    });
-});
-
-describe('getLogScaleWarning', () => {
-    it('returns message for empty series', () => {
-        expect(getLogScaleWarning([])).toBe('No data available');
-    });
-
-    it('returns null when log scale can be used', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 10000 },
-            { month: '2025-02', value: 20000 },
-        ];
-
-        expect(getLogScaleWarning(series)).toBeNull();
-    });
-
-    it('returns appropriate message for negative values', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: -10000 },
-            { month: '2025-02', value: 20000 },
-        ];
-
-        const warning = getLogScaleWarning(series);
-
-        expect(warning).toContain('negative');
-    });
-
-    it('returns appropriate message for zero values', () => {
-        const series: MonthDataPoint[] = [
-            { month: '2025-01', value: 0 },
-            { month: '2025-02', value: 20000 },
-        ];
-
-        const warning = getLogScaleWarning(series);
-
-        expect(warning).toContain('zero');
-    });
-});
-
-describe('formatCurrencyValue', () => {
-    it('formats EUR correctly', () => {
-        const result = formatCurrencyValue(150000, 'EUR');
-
-        expect(result).toMatch(/1[,.]?500/); // Handles different locale formats
-    });
-
-    it('formats USD correctly', () => {
-        const result = formatCurrencyValue(100000, 'USD');
-
-        expect(result).toContain('$');
-        expect(result).toMatch(/1[,.]?000/);
+        expect(netWorth.slice(1)).toHaveLength(0);
+        expect(delta.slice(1)).toHaveLength(0);
+        expect(momPercent.slice(1)).toHaveLength(0);
     });
 });
 

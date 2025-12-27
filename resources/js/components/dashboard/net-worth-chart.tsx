@@ -1,8 +1,7 @@
 import {
-    ChangePercentChart,
     ChartViewToggle,
-    NetWorthLineChart,
-    WaterfallChart,
+    MoMChart,
+    MoMPercentChart,
 } from '@/components/charts';
 import { EncryptedText } from '@/components/encrypted-text';
 import { AmountDisplay } from '@/components/ui/amount-display';
@@ -307,7 +306,7 @@ export function NetWorthChart({
             <CardContent className="min-w-0">
                 {chartViews.currentView === 'stacked' && (
                     <StackedBarChart
-                        data={chartData}
+                        data={chartData.slice(1)}
                         dataKeys={dataKeys}
                         config={chartConfig}
                         xAxisKey="month"
@@ -318,36 +317,18 @@ export function NetWorthChart({
                         showLegend={showLegend}
                     />
                 )}
-                {chartViews.currentView === 'line' && (
-                    <NetWorthLineChart
-                        data={chartViews.netWorthSeries}
-                        currencyCode={primaryCurrency}
-                        scaleType={chartViews.scaleType}
-                        onScaleTypeChange={chartViews.setScaleType}
-                        canUseLog={chartViews.canUseLog}
-                        logScaleWarning={chartViews.logScaleWarning}
-                        xAxisFormatter={formatXAxisLabel}
-                        className="h-[300px] w-full"
-                    />
-                )}
-                {chartViews.currentView === 'change' && (
-                    <ChangePercentChart
-                        data={chartViews.currentChangeSeries}
-                        seriesType={chartViews.changeSeriesType}
-                        onSeriesTypeChange={chartViews.setChangeSeriesType}
-                        seriesKey={chartViews.changeSeriesKey}
+                {chartViews.currentView === 'mom' && (
+                    <MoMChart
+                        data={chartViews.deltaSeries}
                         currencyCode={primaryCurrency}
                         xAxisFormatter={formatXAxisLabel}
                         className="h-[300px] w-full"
                     />
                 )}
-                {chartViews.currentView === 'waterfall' && (
-                    <WaterfallChart
-                        data={chartViews.waterfallSeries}
-                        monthlyData={chartViews.netWorthSeries}
-                        selectedMonthIndex={chartViews.waterfallMonthIndex}
-                        onMonthIndexChange={chartViews.setWaterfallMonthIndex}
-                        currencyCode={primaryCurrency}
+                {chartViews.currentView === 'mom_percent' && (
+                    <MoMPercentChart
+                        data={chartViews.momPercentSeries}
+                        xAxisFormatter={formatXAxisLabel}
                         className="h-[300px] w-full"
                     />
                 )}

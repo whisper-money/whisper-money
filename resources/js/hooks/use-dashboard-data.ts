@@ -98,13 +98,12 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
             const now = new Date();
             const to = format(now, 'yyyy-MM-dd');
 
-            // Fetch 24 months to support YoY and rolling 12M calculations
-            const from24Months = format(subMonths(now, 24), 'yyyy-MM-dd');
-            const params24Months = new URLSearchParams({
-                from: from24Months,
+            const from12Months = format(subMonths(now, 12), 'yyyy-MM-dd');
+            const params12Months = new URLSearchParams({
+                from: from12Months,
                 to,
             });
-            const query24Months = `?${params24Months.toString()}`;
+            const query12Months = `?${params12Months.toString()}`;
 
             const from30Days = format(subDays(now, 30), 'yyyy-MM-dd');
             const params30Days = new URLSearchParams({
@@ -115,7 +114,7 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
 
             const [netWorthEvolution, topCategories] = await Promise.all([
                 fetch(
-                    `/api/dashboard/net-worth-evolution${query24Months}`,
+                    `/api/dashboard/net-worth-evolution${query12Months}`,
                 ).then((r) => r.json()),
                 fetch(`/api/dashboard/top-categories${query30Days}`).then((r) =>
                     r.json(),
