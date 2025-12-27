@@ -221,18 +221,11 @@ export function AccountBalanceChart({
     }
 
     return (
-        <Card>
+        <Card className="group">
             <CardHeader>
                 <div className="flex flex-col items-start justify-between sm:flex-row">
                     <div className="flex flex-col gap-1 sm:gap-2">
-                        <div className="flex items-center gap-3">
-                            <CardTitle>Balance evolution</CardTitle>
-                            <ChartViewToggle
-                                value={chartViews.currentView}
-                                onValueChange={chartViews.setCurrentView}
-                                availableViews={chartViews.availableViews}
-                            />
-                        </div>
+                        <CardTitle>Balance evolution</CardTitle>
                         <button
                             type="button"
                             onClick={onBalanceClick}
@@ -278,7 +271,7 @@ export function AccountBalanceChart({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative">
                 {chartViews.currentView === 'stacked' && (
                     <ChartContainer
                         config={chartConfig}
@@ -323,6 +316,12 @@ export function AccountBalanceChart({
                         className="h-[300px] w-full"
                     />
                 )}
+                <ChartViewToggle
+                    value={chartViews.currentView}
+                    onValueChange={chartViews.setCurrentView}
+                    availableViews={chartViews.availableViews}
+                    className="absolute right-0 bottom-0 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100"
+                />
             </CardContent>
         </Card>
     );

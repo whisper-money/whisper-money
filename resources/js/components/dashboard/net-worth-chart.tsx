@@ -268,18 +268,11 @@ export function NetWorthChart({
     }
 
     return (
-        <Card className="overflow-hidden">
+        <Card className="group overflow-hidden">
             <CardHeader>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 flex-col gap-2">
-                        <div className="flex items-center gap-3">
-                            <CardTitle>Net Worth Evolution</CardTitle>
-                            <ChartViewToggle
-                                value={chartViews.currentView}
-                                onValueChange={chartViews.setCurrentView}
-                                availableViews={chartViews.availableViews}
-                            />
-                        </div>
+                        <CardTitle>Net Worth Evolution</CardTitle>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
                                 trend={monthlyTrend?.percentage ?? null}
@@ -303,7 +296,7 @@ export function NetWorthChart({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="min-w-0">
+            <CardContent className="relative min-w-0">
                 {chartViews.currentView === 'stacked' && (
                     <StackedBarChart
                         data={chartData.slice(1)}
@@ -332,6 +325,12 @@ export function NetWorthChart({
                         className="h-[300px] w-full"
                     />
                 )}
+                <ChartViewToggle
+                    value={chartViews.currentView}
+                    onValueChange={chartViews.setCurrentView}
+                    availableViews={chartViews.availableViews}
+                    className="absolute right-0 bottom-0 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100"
+                />
             </CardContent>
         </Card>
     );
