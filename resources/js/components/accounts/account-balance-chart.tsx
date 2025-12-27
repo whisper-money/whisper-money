@@ -223,7 +223,7 @@ export function AccountBalanceChart({
     return (
         <Card className="group">
             <CardHeader>
-                <div className="flex flex-col items-start justify-between sm:flex-row">
+                <div className="flex flex-row items-start justify-between">
                     <div className="flex flex-col gap-1 sm:gap-2">
                         <CardTitle>Balance evolution</CardTitle>
                         <button
