@@ -1,5 +1,11 @@
+import {
+    ChartViewToggle,
+    MoMChart,
+    MoMPercentChart,
+} from '@/components/charts';
 import { PercentageTrendIndicator } from '@/components/dashboard/percentage-trend-indicator';
 import { EncryptedText } from '@/components/encrypted-text';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
     CardContent,
@@ -13,11 +19,14 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from '@/components/ui/chart';
+import {
+    convertSingleAccountData,
+    useChartViews,
+} from '@/hooks/use-chart-views';
 import { Account } from '@/types/account';
 import { format, subMonths } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
-import { AmountDisplay } from '../ui/amount-display';
 
 interface BalanceDataPoint {
     month: string;
@@ -146,6 +155,23 @@ export function AccountBalanceChart({
             };
         }, [balanceData]);
 
+    // Convert data for useChartViews hook
+    const { data: hookData, accounts: hookAccounts } = useMemo(() => {
+        return convertSingleAccountData(
+            chartData,
+            account.id,
+            account.type,
+            account.currency_code,
+        );
+    }, [chartData, account.id, account.type, account.currency_code]);
+
+    const chartViews = useChartViews({
+        data: hookData,
+        accounts: hookAccounts,
+        initialView: 'stacked',
+        hasStackedView: true,
+    });
+
     const chartConfig: ChartConfig = {
         value: {
             label: (
@@ -195,7 +221,7 @@ export function AccountBalanceChart({
     }
 
     return (
-        <Card>
+        <Card className="group">
             <CardHeader>
                 <div className="flex flex-col items-start justify-between sm:flex-row">
                     <div className="flex flex-col gap-1 sm:gap-2">
@@ -203,7 +229,7 @@ export function AccountBalanceChart({
                         <button
                             type="button"
                             onClick={onBalanceClick}
-                            className="-ml-3 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted sm:hidden"
+                            className="-ml-3 cursor-pointer rounded-md px-2 py-1 text-left text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
                         >
                             <AmountDisplay
                                 amountInCents={currentBalance}
@@ -229,50 +255,58 @@ export function AccountBalanceChart({
                             />
                         </CardDescription>
                     </div>
-                    <div className="hidden sm:block">
-                        <button
-                            type="button"
-                            onClick={onBalanceClick}
-                            className="-mt-1 -mr-2 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
-                        >
-                            <AmountDisplay
-                                amountInCents={currentBalance}
-                                currencyCode={account.currency_code}
-                                minimumFractionDigits={0}
-                                maximumFractionDigits={0}
-                            />
-                        </button>
-                    </div>
+                    <ChartViewToggle
+                        value={chartViews.currentView}
+                        onValueChange={chartViews.setCurrentView}
+                        availableViews={chartViews.availableViews}
+                    />
                 </div>
             </CardHeader>
-            <CardContent>
-                <ChartContainer
-                    config={chartConfig}
-                    className="h-[300px] w-full"
-                >
-                    <BarChart accessibilityLayer data={chartData}>
-                        <XAxis
-                            dataKey="month"
-                            tickLine={false}
-                            tickMargin={10}
-                            axisLine={false}
-                            tickFormatter={formatXAxisLabel}
-                        />
-                        <ChartTooltip
-                            content={
-                                <ChartTooltipContent
-                                    hideLabel
-                                    valueFormatter={valueFormatter}
-                                />
-                            }
-                        />
-                        <Bar
-                            dataKey="value"
-                            fill="var(--color-chart-2)"
-                            radius={[4, 4, 0, 0]}
-                        />
-                    </BarChart>
-                </ChartContainer>
+            <CardContent className="relative">
+                {chartViews.currentView === 'stacked' && (
+                    <ChartContainer
+                        config={chartConfig}
+                        className="h-[300px] w-full"
+                    >
+                        <BarChart accessibilityLayer data={chartData.slice(1)}>
+                            <XAxis
+                                dataKey="month"
+                                tickLine={false}
+                                tickMargin={10}
+                                axisLine={false}
+                                tickFormatter={formatXAxisLabel}
+                            />
+                            <ChartTooltip
+                                content={
+                                    <ChartTooltipContent
+                                        hideLabel
+                                        valueFormatter={valueFormatter}
+                                    />
+                                }
+                            />
+                            <Bar
+                                dataKey="value"
+                                fill="var(--color-chart-2)"
+                                radius={[4, 4, 0, 0]}
+                            />
+                        </BarChart>
+                    </ChartContainer>
+                )}
+                {chartViews.currentView === 'mom' && (
+                    <MoMChart
+                        data={chartViews.deltaSeries}
+                        currencyCode={account.currency_code}
+                        xAxisFormatter={formatXAxisLabel}
+                        className="h-[300px] w-full"
+                    />
+                )}
+                {chartViews.currentView === 'mom_percent' && (
+                    <MoMPercentChart
+                        data={chartViews.momPercentSeries}
+                        xAxisFormatter={formatXAxisLabel}
+                        className="h-[300px] w-full"
+                    />
+                )}
             </CardContent>
         </Card>
     );
