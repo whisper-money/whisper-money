@@ -2,6 +2,7 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { ChangeDataPoint } from '@/lib/chart-calculations';
 import { cn } from '@/lib/utils';
+import { useEffect, useRef } from 'react';
 import {
     Bar,
     BarChart,
@@ -17,6 +18,7 @@ interface MoMChartProps {
     currencyCode: string;
     xAxisFormatter?: (value: string) => string;
     className?: string;
+    minBarWidth?: number;
 }
 
 const chartConfig: ChartConfig = {
@@ -77,56 +79,76 @@ export function MoMChart({
     currencyCode,
     xAxisFormatter,
     className,
+    minBarWidth = 50,
 }: MoMChartProps) {
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const minChartWidth = data.length * minBarWidth;
+
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft =
+                scrollContainerRef.current.scrollWidth;
+        }
+    }, [data]);
+
     const chartData = data.map((point) => ({
         ...point,
         displayValue: point.change,
     }));
 
     return (
-        <ChartContainer config={chartConfig} className={className}>
-            <BarChart accessibilityLayer data={chartData}>
-                <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    tickMargin={10}
-                    axisLine={false}
-                    tickFormatter={xAxisFormatter}
-                />
-                <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value: number) => {
-                        return new Intl.NumberFormat('en-US', {
-                            notation: 'compact',
-                            compactDisplay: 'short',
-                        }).format(value / 100);
-                    }}
-                    width={50}
-                />
-                <ReferenceLine
-                    y={0}
-                    stroke="var(--color-border)"
-                    strokeDasharray="3 3"
-                />
-                <Tooltip
-                    content={<CustomTooltip currencyCode={currencyCode} />}
-                    cursor={{ fill: 'var(--color-muted)', opacity: 0.3 }}
-                />
-                <Bar dataKey="displayValue" radius={[4, 4, 0, 0]}>
-                    {chartData.map((entry, index) => {
-                        const value = entry.displayValue;
-                        let fill = 'var(--color-muted)';
-                        if (value !== null) {
-                            fill =
-                                value >= 0
-                                    ? 'var(--color-chart-2)'
-                                    : 'var(--color-chart-5)';
-                        }
-                        return <Cell key={`cell-${index}`} fill={fill} />;
-                    })}
-                </Bar>
-            </BarChart>
-        </ChartContainer>
+        <div
+            ref={scrollContainerRef}
+            className={cn('overflow-x-auto', className)}
+        >
+            <ChartContainer
+                config={chartConfig}
+                className="h-full w-full"
+                style={{ minWidth: `${minChartWidth}px` }}
+            >
+                <BarChart accessibilityLayer data={chartData}>
+                    <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={xAxisFormatter}
+                    />
+                    <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value: number) => {
+                            return new Intl.NumberFormat('en-US', {
+                                notation: 'compact',
+                                compactDisplay: 'short',
+                            }).format(value / 100);
+                        }}
+                        width={50}
+                    />
+                    <ReferenceLine
+                        y={0}
+                        stroke="var(--color-border)"
+                        strokeDasharray="3 3"
+                    />
+                    <Tooltip
+                        content={<CustomTooltip currencyCode={currencyCode} />}
+                        cursor={{ fill: 'var(--color-muted)', opacity: 0.3 }}
+                    />
+                    <Bar dataKey="displayValue" radius={[4, 4, 0, 0]}>
+                        {chartData.map((entry, index) => {
+                            const value = entry.displayValue;
+                            let fill = 'var(--color-muted)';
+                            if (value !== null) {
+                                fill =
+                                    value >= 0
+                                        ? 'var(--color-chart-2)'
+                                        : 'var(--color-chart-5)';
+                            }
+                            return <Cell key={`cell-${index}`} fill={fill} />;
+                        })}
+                    </Bar>
+                </BarChart>
+            </ChartContainer>
+        </div>
     );
 }
