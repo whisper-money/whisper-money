@@ -36,21 +36,6 @@ class TransactionSyncController extends Controller
         $labelIds = $data['label_ids'] ?? [];
         unset($data['label_ids']);
 
-        // If ID is provided, check if transaction already exists (idempotent create)
-        if (isset($data['id'])) {
-            $existing = Transaction::query()
-                ->where('id', $data['id'])
-                ->where('user_id', $request->user()->id)
-                ->first();
-
-            if ($existing) {
-                // Transaction already exists, return it as success (idempotent)
-                return response()->json([
-                    'data' => $existing->load('labels:id,name,color'),
-                ], 200);
-            }
-        }
-
         // Create transaction with provided ID if available
         $transaction = new Transaction([
             ...$data,
