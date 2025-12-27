@@ -37,7 +37,13 @@ class AccountController extends Controller
      */
     public function store(StoreAccountRequest $request): RedirectResponse|JsonResponse
     {
-        $account = auth()->user()->accounts()->create($request->validated());
+        $user = auth()->user();
+        $account = $user->accounts()->create($request->validated());
+
+        // Set user's currency_code from first account if not already set
+        if (is_null($user->currency_code)) {
+            $user->update(['currency_code' => $account->currency_code]);
+        }
 
         if ($request->wantsJson()) {
             return response()->json($account, 201);

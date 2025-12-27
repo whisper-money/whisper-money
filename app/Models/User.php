@@ -12,11 +12,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Pennant\Concerns\HasFeatures;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use Billable, HasFactory, HasUuids, Notifiable, TwoFactorAuthenticatable;
+    use Billable, HasFactory, HasFeatures, HasUuids, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -29,6 +30,7 @@ class User extends Authenticatable
         'password',
         'encryption_salt',
         'onboarded_at',
+        'currency_code',
     ];
 
     /**
@@ -96,6 +98,11 @@ class User extends Authenticatable
     public function mailLogs(): HasMany
     {
         return $this->hasMany(UserMailLog::class);
+    }
+
+    public function budgets(): HasMany
+    {
+        return $this->hasMany(Budget::class);
     }
 
     public function hasReceivedEmail(DripEmailType $type): bool

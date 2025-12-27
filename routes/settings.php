@@ -42,6 +42,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('settings/labels/{label}', [LabelController::class, 'update'])->name('labels.update');
     Route::delete('settings/labels/{label}', [LabelController::class, 'destroy'])->name('labels.destroy');
 
+    Route::get('settings/budgets', function () {
+        return Inertia::render('settings/budgets');
+    })->name('budgets.settings');
+
     Route::get('settings/automation-rules', [\App\Http\Controllers\Settings\AutomationRuleController::class, 'index'])->name('automation-rules.index');
     Route::post('settings/automation-rules', [\App\Http\Controllers\Settings\AutomationRuleController::class, 'store'])->name('automation-rules.store');
     Route::patch('settings/automation-rules/{automationRule}', [\App\Http\Controllers\Settings\AutomationRuleController::class, 'update'])->name('automation-rules.update');

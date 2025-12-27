@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\RobotsController;
@@ -56,6 +57,14 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+});
+
+Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'budgets'])->group(function () {
+    Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
+    Route::post('budgets', [BudgetController::class, 'store'])->name('budgets.store');
+    Route::get('budgets/{budget}', [BudgetController::class, 'show'])->name('budgets.show');
+    Route::patch('budgets/{budget}', [BudgetController::class, 'update'])->name('budgets.update');
+    Route::delete('budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
 });
 
 require __DIR__.'/settings.php';

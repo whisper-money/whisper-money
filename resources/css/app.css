@@ -98,6 +98,8 @@
     --chart-8: var(--color-zinc-200);
     --chart-9: var(--color-zinc-100);
     --chart-10: var(--color-zinc-50);
+    --spent: var(--color-zinc-800);
+    --allocated: var(--color-zinc-200);
     --radius: 0.625rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
@@ -139,6 +141,8 @@
     --chart-8: var(--color-zinc-900);
     --chart-9: var(--color-zinc-50);
     --chart-10: var(--color-zinc-100);
+    --spent: var(--color-zinc-200);
+    --allocated: var(--color-zinc-700);
     --sidebar: oklch(0.205 0 0);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.985 0 0);

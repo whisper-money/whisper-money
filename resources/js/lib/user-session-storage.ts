@@ -36,21 +36,42 @@ export async function clearAllUserData(): Promise<void> {
     // Clear all tables including sync_metadata (which contains last_sync timestamps)
     // This ensures a fresh start for the new user without stale sync timestamps
     try {
-        await db.open();
-        await Promise.all([
-            db.transactions.clear(),
-            db.accounts.clear(),
-            db.categories.clear(),
-            db.banks.clear(),
-            db.automation_rules.clear(),
-            db.account_balances.clear(),
-            db.sync_metadata.clear(),
-            db.pending_changes.clear(),
+        const clearPromise = (async () => {
+            await db.open();
+            await Promise.all([
+                db.transactions.clear(),
+                db.accounts.clear(),
+                db.categories.clear(),
+                db.banks.clear(),
+                db.automation_rules.clear(),
+                db.account_balances.clear(),
+                db.sync_metadata.clear(),
+                db.pending_changes.clear(),
+            ]);
+        })();
+
+        // Add timeout to prevent hanging (5 seconds)
+        await Promise.race([
+            clearPromise,
+            new Promise<void>((resolve) => setTimeout(resolve, 5000)),
         ]);
     } catch {
         // If clearing fails, delete and recreate the database
-        await db.delete();
-        await db.open();
+        try {
+            const deletePromise = (async () => {
+                await db.delete();
+                await db.open();
+            })();
+
+            // Add timeout for delete operation too
+            await Promise.race([
+                deletePromise,
+                new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+            ]);
+        } catch {
+            // If all fails, continue anyway
+            console.warn('Failed to clear user data');
+        }
     }
 }
 
