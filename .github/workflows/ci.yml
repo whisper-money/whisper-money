@@ -146,6 +146,9 @@ jobs:
       - name: Lint Frontend
         run: bun run lint
 
+      - name: Frontend Tests
+        run: bun run test
+
   deploy:
     runs-on: ubuntu-latest
     needs: [tests, linter]
