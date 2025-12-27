@@ -1,4 +1,9 @@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { ChartViewType } from '@/hooks/use-chart-views';
 import { cn } from '@/lib/utils';
 import { BarChart3, Percent, TrendingUp } from 'lucide-react';
@@ -12,11 +17,19 @@ interface ChartViewToggleProps {
 
 const viewConfig: Record<
     ChartViewType,
-    { icon: React.ElementType; label: string }
+    { icon: React.ElementType; label: string; tooltip: string }
 > = {
-    stacked: { icon: BarChart3, label: 'Accounts' },
-    mom: { icon: TrendingUp, label: 'MoM' },
-    mom_percent: { icon: Percent, label: 'MoM%' },
+    stacked: {
+        icon: BarChart3,
+        label: 'Aggregate',
+        tooltip: 'Monthly balance',
+    },
+    mom: { icon: TrendingUp, label: 'MoM', tooltip: 'Month over month change' },
+    mom_percent: {
+        icon: Percent,
+        label: 'MoM%',
+        tooltip: 'Month over month change (%)',
+    },
 };
 
 export function ChartViewToggle({
@@ -40,15 +53,20 @@ export function ChartViewToggle({
                 const config = viewConfig[view];
                 const Icon = config.icon;
                 return (
-                    <ToggleGroupItem
-                        key={view}
-                        value={view}
-                        aria-label={config.label}
-                        className="gap-1.5 px-2"
-                    >
-                        <Icon className="size-3.5" />
-                        <span className="hidden sm:inline">{config.label}</span>
-                    </ToggleGroupItem>
+                    <Tooltip key={view}>
+                        <TooltipTrigger asChild>
+                            <ToggleGroupItem
+                                value={view}
+                                aria-label={config.label}
+                                className="px-2"
+                            >
+                                <Icon className="size-3.5" />
+                            </ToggleGroupItem>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                            {config.tooltip}
+                        </TooltipContent>
+                    </Tooltip>
                 );
             })}
         </ToggleGroup>

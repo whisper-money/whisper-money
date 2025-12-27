@@ -25,7 +25,7 @@ import {
 } from '@/hooks/use-chart-views';
 import { Account } from '@/types/account';
 import { format, subMonths } from 'date-fns';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
 
 interface BalanceDataPoint {
@@ -189,6 +189,17 @@ export function AccountBalanceChart({
         return formatCurrency(value, account.currency_code);
     };
 
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const minBarWidth = 50;
+    const minChartWidth = chartData.length * minBarWidth;
+
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollLeft =
+                scrollContainerRef.current.scrollWidth;
+        }
+    }, [chartData]);
+
     if (initialLoading || isLoading) {
         return (
             <Card>
@@ -264,33 +275,42 @@ export function AccountBalanceChart({
             </CardHeader>
             <CardContent className="relative">
                 {chartViews.currentView === 'stacked' && (
-                    <ChartContainer
-                        config={chartConfig}
-                        className="h-[300px] w-full"
+                    <div
+                        ref={scrollContainerRef}
+                        className="h-[300px] w-full overflow-x-auto"
                     >
-                        <BarChart accessibilityLayer data={chartData.slice(1)}>
-                            <XAxis
-                                dataKey="month"
-                                tickLine={false}
-                                tickMargin={10}
-                                axisLine={false}
-                                tickFormatter={formatXAxisLabel}
-                            />
-                            <ChartTooltip
-                                content={
-                                    <ChartTooltipContent
-                                        hideLabel
-                                        valueFormatter={valueFormatter}
-                                    />
-                                }
-                            />
-                            <Bar
-                                dataKey="value"
-                                fill="var(--color-chart-2)"
-                                radius={[4, 4, 0, 0]}
-                            />
-                        </BarChart>
-                    </ChartContainer>
+                        <ChartContainer
+                            config={chartConfig}
+                            className="h-full w-full"
+                            style={{ minWidth: `${minChartWidth}px` }}
+                        >
+                            <BarChart
+                                accessibilityLayer
+                                data={chartData.slice(1)}
+                            >
+                                <XAxis
+                                    dataKey="month"
+                                    tickLine={false}
+                                    tickMargin={10}
+                                    axisLine={false}
+                                    tickFormatter={formatXAxisLabel}
+                                />
+                                <ChartTooltip
+                                    content={
+                                        <ChartTooltipContent
+                                            hideLabel
+                                            valueFormatter={valueFormatter}
+                                        />
+                                    }
+                                />
+                                <Bar
+                                    dataKey="value"
+                                    fill="var(--color-chart-2)"
+                                    radius={[4, 4, 0, 0]}
+                                />
+                            </BarChart>
+                        </ChartContainer>
+                    </div>
                 )}
                 {chartViews.currentView === 'mom' && (
                     <MoMChart
