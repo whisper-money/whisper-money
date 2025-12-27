@@ -58,6 +58,6 @@ class ImportHelpEmail extends Mailable implements ShouldQueue
      */
     public function middleware(): array
     {
-        return [new RateLimited('emails', releaseAfter: 1)];
+        return [(new RateLimited('emails'))->releaseAfter(1)];
     }
 }
