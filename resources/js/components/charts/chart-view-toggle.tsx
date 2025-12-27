@@ -1,5 +1,6 @@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ChartViewType } from '@/hooks/use-chart-views';
+import { cn } from '@/lib/utils';
 import { BarChart3, Percent, TrendingUp } from 'lucide-react';
 
 interface ChartViewToggleProps {
@@ -33,7 +34,7 @@ export function ChartViewToggle({
             }}
             variant="outline"
             size="sm"
-            className={className}
+            className={cn('', className)}
         >
             {availableViews.map((view) => {
                 const config = viewConfig[view];

@@ -229,7 +229,7 @@ export function AccountBalanceChart({
                         <button
                             type="button"
                             onClick={onBalanceClick}
-                            className="-ml-3 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted sm:hidden"
+                            className="-ml-3 cursor-pointer rounded-md px-2 py-1 text-left text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
                         >
                             <AmountDisplay
                                 amountInCents={currentBalance}
@@ -255,20 +255,11 @@ export function AccountBalanceChart({
                             />
                         </CardDescription>
                     </div>
-                    <div className="hidden sm:block">
-                        <button
-                            type="button"
-                            onClick={onBalanceClick}
-                            className="-mt-1 -mr-2 cursor-pointer rounded-md px-2 py-1 text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
-                        >
-                            <AmountDisplay
-                                amountInCents={currentBalance}
-                                currencyCode={account.currency_code}
-                                minimumFractionDigits={0}
-                                maximumFractionDigits={0}
-                            />
-                        </button>
-                    </div>
+                    <ChartViewToggle
+                        value={chartViews.currentView}
+                        onValueChange={chartViews.setCurrentView}
+                        availableViews={chartViews.availableViews}
+                    />
                 </div>
             </CardHeader>
             <CardContent className="relative">
@@ -316,12 +307,6 @@ export function AccountBalanceChart({
                         className="h-[300px] w-full"
                     />
                 )}
-                <ChartViewToggle
-                    value={chartViews.currentView}
-                    onValueChange={chartViews.setCurrentView}
-                    availableViews={chartViews.availableViews}
-                    className="absolute right-0 bottom-0 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100"
-                />
             </CardContent>
         </Card>
     );

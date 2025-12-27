@@ -270,10 +270,13 @@ export function NetWorthChart({
     return (
         <Card className="group overflow-hidden">
             <CardHeader>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-row items-start justify-between gap-4">
                     <div className="flex min-w-0 flex-col gap-2">
                         <CardTitle>Net Worth Evolution</CardTitle>
                         <CardDescription className="flex flex-col gap-1 text-sm">
+                            <div className="text-foreground">
+                                <TotalDisplay totals={currencyTotals} />
+                            </div>
                             <PercentageTrendIndicator
                                 trend={monthlyTrend?.percentage ?? null}
                                 label="this month"
@@ -291,9 +294,11 @@ export function NetWorthChart({
                         </CardDescription>
                     </div>
 
-                    <div className="shrink-0">
-                        <TotalDisplay totals={currencyTotals} />
-                    </div>
+                    <ChartViewToggle
+                        value={chartViews.currentView}
+                        onValueChange={chartViews.setCurrentView}
+                        availableViews={chartViews.availableViews}
+                    />
                 </div>
             </CardHeader>
             <CardContent className="relative min-w-0">
@@ -325,12 +330,6 @@ export function NetWorthChart({
                         className="h-[300px] w-full"
                     />
                 )}
-                <ChartViewToggle
-                    value={chartViews.currentView}
-                    onValueChange={chartViews.setCurrentView}
-                    availableViews={chartViews.availableViews}
-                    className="absolute right-0 bottom-0 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100"
-                />
             </CardContent>
         </Card>
     );
