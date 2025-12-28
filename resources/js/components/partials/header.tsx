@@ -2,10 +2,30 @@ import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BirdIcon, Github } from 'lucide-react';
+import { BirdIcon, Github, StarIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import DiscordIcon from '../icons/DiscordIcon';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
+
+function useGitHubStars(): number | null {
+    const [stars, setStars] = useState<number | null>(null);
+
+    useEffect(() => {
+        fetch('https://api.github.com/repos/whisper-money/whisper-money')
+            .then((res) => res.json())
+            .then((data) => {
+                if (typeof data.stargazers_count === 'number') {
+                    setStars(data.stargazers_count);
+                }
+            })
+            .catch(() => {
+                // Silently fail - stars will remain null
+            });
+    }, []);
+
+    return stars;
+}
 
 type Props = {
     canRegister?: boolean;
@@ -19,6 +39,7 @@ export default function Header({
     hideExternalButtons = false,
 }: Props) {
     const { auth } = usePage<SharedData>().props;
+    const stars = useGitHubStars();
 
     return (
         <header className="fade-bottom fixed top-0 z-50 w-full bg-background/5 backdrop-blur-lg">
@@ -46,6 +67,12 @@ export default function Header({
                                     <span className="hidden sm:inline">
                                         Github
                                     </span>
+                                    {stars !== null && (
+                                        <span className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
+                                            <StarIcon className="size-3 fill-amber-400 text-amber-400" />
+                                            {stars}
+                                        </span>
+                                    )}
                                 </Button>
                             </a>
                             <a
