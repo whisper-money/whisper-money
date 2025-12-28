@@ -39,6 +39,7 @@ export interface NavDivider {
 export interface SharedData {
     name: string;
     appUrl: string;
+    version: string;
     quote: { message: string; author: string };
     auth: Auth;
     subscriptionsEnabled: boolean;
