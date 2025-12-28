@@ -57,7 +57,6 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                                 : 'Hide amounts'}
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
                 </>
             )}
             <DropdownMenuGroup>
@@ -88,8 +87,9 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <div className="px-2 py-1.5 text-center text-xs text-muted-foreground">
-                v{version}
+            <div className="flex items-center justify-between px-2 py-1.5 text-xs text-muted-foreground">
+                <span>Version:</span>
+                <span>{version}</span>
             </div>
         </>
     );
