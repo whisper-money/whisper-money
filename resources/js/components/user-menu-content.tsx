@@ -11,8 +11,8 @@ import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
-import { type User } from '@/types';
-import { Link, router } from '@inertiajs/react';
+import { type SharedData, type User } from '@/types';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Eye, EyeOff, LogOut, Settings } from 'lucide-react';
 
 interface UserMenuContentProps {
@@ -22,6 +22,7 @@ interface UserMenuContentProps {
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const { isPrivacyModeEnabled, togglePrivacyMode } = usePrivacyMode();
+    const { version } = usePage<SharedData>().props;
 
     const handleLogout = () => {
         clearKey();
@@ -86,6 +87,10 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                     Log out
                 </Link>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-center text-xs text-muted-foreground">
+                v{version}
+            </div>
         </>
     );
 }
