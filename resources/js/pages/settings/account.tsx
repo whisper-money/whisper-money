@@ -8,6 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
 import AppLayout from '@/layouts/app-layout';
@@ -16,6 +23,7 @@ import { edit as accountEdit } from '@/routes/account';
 import { disable, enable } from '@/routes/two-factor';
 import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
+import { CURRENCY_OPTIONS } from '@/types/account';
 import { Transition } from '@headlessui/react';
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ShieldBan, ShieldCheck } from 'lucide-react';
@@ -111,6 +119,39 @@ export default function Account({
                                     <InputError
                                         className="mt-2"
                                         message={errors.email}
+                                    />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="currency_code">
+                                        Currency
+                                    </Label>
+
+                                    <Select
+                                        name="currency_code"
+                                        defaultValue={auth.user.currency_code}
+                                        required
+                                    >
+                                        <SelectTrigger className="mt-1 w-full">
+                                            <SelectValue placeholder="Select currency" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {CURRENCY_OPTIONS.map(
+                                                (currency) => (
+                                                    <SelectItem
+                                                        key={currency}
+                                                        value={currency}
+                                                    >
+                                                        {currency}
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <InputError
+                                        className="mt-2"
+                                        message={errors.currency_code}
                                     />
                                 </div>
 

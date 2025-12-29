@@ -29,6 +29,7 @@ class User extends Authenticatable
         'password',
         'encryption_salt',
         'onboarded_at',
+        'currency_code',
     ];
 
     /**
