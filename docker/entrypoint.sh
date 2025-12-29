@@ -13,12 +13,16 @@ mkdir -p /app/storage/logs
 chown -R www-data:www-data /app/storage
 chmod -R 775 /app/storage
 
-# Auto-generate APP_KEY if not set
-if [ -z "$APP_KEY" ]; then
-    echo "No APP_KEY found, generating one..."
+# Auto-generate APP_KEY if not set or invalid (must start with "base64:")
+if [ -z "$APP_KEY" ] || [[ ! "$APP_KEY" =~ ^base64: ]]; then
+    if [ -n "$APP_KEY" ]; then
+        echo "APP_KEY is set but invalid (must start with 'base64:')"
+    else
+        echo "No APP_KEY found"
+    fi
+    echo "Generating new APP_KEY..."
     APP_KEY=$(php artisan key:generate --show)
     export APP_KEY
-    echo "Generated APP_KEY: $APP_KEY"
     echo ""
     echo "=================================================="
     echo "IMPORTANT: Save this key in your environment!"

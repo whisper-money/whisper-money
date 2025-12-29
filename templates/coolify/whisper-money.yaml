@@ -12,8 +12,8 @@ services:
       - APP_NAME=Whisper Money
       - APP_ENV=production
       - APP_DEBUG=false
-      - APP_KEY=${SERVICE_BASE64_64_APPKEY}
       - APP_URL=${SERVICE_FQDN_WHISPERMONEY_80}
+      # APP_KEY is auto-generated on first startup if not provided
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
