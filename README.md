@@ -104,12 +104,41 @@ To use a different port, set `APP_PORT`:
 APP_PORT=3000 docker compose -f docker-compose.production.yml up -d
 ```
 
-## Other Environment Variables
+## Deploying to Coolify
+
+Whisper Money can be easily deployed to [Coolify](https://coolify.io) using our Docker Compose template.
+
+### Quick Deploy
+
+1. In Coolify, create a new resource and select **Docker Compose**
+2. Choose **Empty Compose File** as the source
+3. Paste the contents from our template:
+   👉 **[whisper-money.yaml](https://raw.githubusercontent.com/whisper-money/whisper-money/main/templates/coolify/whisper-money.yaml)**
+4. Deploy!
+
+The template includes:
+- Whisper Money application container
+- MySQL 8.0 database with health checks
+- Persistent volumes for data and storage
+- Auto-generated database credentials
+
+### Required Environment Variables
+
+| Variable         | Description                                                |
+| ---------------- | ---------------------------------------------------------- |
+| `RESEND_API_KEY` | Email service API key (for password resets, notifications) |
+
+> **Note**: `APP_KEY` and `APP_URL` are auto-configured. The container generates an `APP_KEY` on first startup if not provided.
+
+### Optional Environment Variables
 
 | Variable                | Default | Description                                 |
 | ----------------------- | ------- | ------------------------------------------- |
 | `HIDE_AUTH_BUTTONS`     | `false` | Hide login/register buttons on landing page |
 | `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                 |
+| `STRIPE_KEY`            | -       | Stripe publishable key                      |
+| `STRIPE_SECRET`         | -       | Stripe secret key                           |
+| `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret               |
 
 ## License
 
