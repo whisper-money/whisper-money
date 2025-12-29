@@ -1,6 +1,7 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 import { ReactNode } from 'react';
+import { CurrencyCode } from './account';
 import { PricingConfig } from './pricing';
 import { UUID } from './uuid';
 
@@ -52,6 +53,7 @@ export interface User {
     id: UUID;
     name: string;
     email: string;
+    currency_code: CurrencyCode;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
