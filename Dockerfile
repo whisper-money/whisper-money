@@ -70,5 +70,13 @@ RUN chown -R www-data:www-data /app \
 # Expose port
 EXPOSE 80
 
-# Start supervisor
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost/up || exit 1
+
+# Copy entrypoint script
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Run entrypoint script (handles migrations, caching, then starts supervisor)
+CMD ["/entrypoint.sh"]
