@@ -1,0 +1,67 @@
+# documentation: https://github.com/whisper-money/whisper-money
+# slogan: Privacy-first personal finance with end-to-end encryption
+# tags: finance, personal-finance, budgeting, privacy, encryption, laravel, react
+# logo: svgs/whisper-money.svg
+# port: 80
+
+services:
+  whisper-money:
+    image: ghcr.io/whisper-money/whisper-money:latest
+    environment:
+      - APP_NAME=Whisper Money
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${SERVICE_BASE64_64_APPKEY}
+      - APP_URL=${SERVICE_FQDN_WHISPERMONEY_80}
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=${MYSQL_DATABASE:-whisper_money}
+      - DB_USERNAME=${SERVICE_USER_MYSQL}
+      - DB_PASSWORD=${SERVICE_PASSWORD_MYSQL}
+      - CACHE_STORE=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=database
+      - REDIS_HOST=127.0.0.1
+      - HIDE_AUTH_BUTTONS=${HIDE_AUTH_BUTTONS:-false}
+      - MAIL_MAILER=${MAIL_MAILER:-log}
+      - MAIL_HOST=${MAIL_HOST:-}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-hi@whisper.money}
+      - MAIL_FROM_NAME=${MAIL_FROM_NAME:-Whisper Money}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - STRIPE_KEY=${STRIPE_KEY:-}
+      - STRIPE_SECRET=${STRIPE_SECRET:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - SUBSCRIPTIONS_ENABLED=${SUBSCRIPTIONS_ENABLED:-false}
+    volumes:
+      - whisper-money-storage:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=${SERVICE_PASSWORD_MYSQLROOT}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-whisper_money}
+      - MYSQL_USER=${SERVICE_USER_MYSQL}
+      - MYSQL_PASSWORD=${SERVICE_PASSWORD_MYSQL}
+    volumes:
+      - whisper-money-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${SERVICE_PASSWORD_MYSQLROOT}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  whisper-money-storage:
+  whisper-money-mysql:
