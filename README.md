@@ -80,6 +80,37 @@ This will concurrently start:
 
 The application will be available at `https://whispermoney.test`.
 
+## Running with Docker (Production Image)
+
+For testing the production Docker image locally:
+
+1. **Copy the production environment file:**
+
+```bash
+cp .env.production.example .env
+```
+
+2. **Start the services:**
+
+```bash
+docker compose -f docker-compose.production.yml up -d
+```
+
+The application will be available at `http://localhost:8080`.
+
+To use a different port, set `APP_PORT`:
+
+```bash
+APP_PORT=3000 docker compose -f docker-compose.production.yml up -d
+```
+
+## Other Environment Variables
+
+| Variable                | Default | Description                                 |
+| ----------------------- | ------- | ------------------------------------------- |
+| `HIDE_AUTH_BUTTONS`     | `false` | Hide login/register buttons on landing page |
+| `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                 |
+
 ## License
 
 This work is licensed under a
