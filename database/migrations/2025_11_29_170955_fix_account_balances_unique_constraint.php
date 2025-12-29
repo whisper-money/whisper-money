@@ -12,9 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('account_balances', function (Blueprint $table) {
-            // Drop the broken index
-            $table->dropUnique('account_balances_account_id_balance_date_unique');
-
             // Recreate it properly
             $table->unique(['account_id', 'balance_date'], 'account_balances_account_id_balance_date_unique');
         });

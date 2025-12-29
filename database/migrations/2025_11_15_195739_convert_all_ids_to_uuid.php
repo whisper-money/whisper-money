@@ -123,6 +123,7 @@ return new class extends Migration
             });
 
             Schema::table('account_balances', function (Blueprint $table) {
+                $table->dropUnique('account_balances_account_id_balance_date_unique');
                 $table->dropColumn('account_id');
             });
             Schema::table('account_balances', function (Blueprint $table) {
