@@ -27,19 +27,43 @@ if [ -z "$APP_KEY" ]; then
     echo ""
 fi
 
-# Wait for MySQL to be ready
-echo "Waiting for MySQL..."
+# Wait for MySQL to be ready using PHP PDO (more reliable than artisan commands)
+echo "Waiting for MySQL at ${DB_HOST:-mysql}:${DB_PORT:-3306}..."
 max_attempts=30
 attempt=0
-until php artisan db:monitor --databases=mysql > /dev/null 2>&1 || [ $attempt -ge $max_attempts ]; do
+
+wait_for_mysql() {
+    php -r "
+        \$host = getenv('DB_HOST') ?: 'mysql';
+        \$port = getenv('DB_PORT') ?: '3306';
+        \$user = getenv('DB_USERNAME') ?: 'root';
+        \$pass = getenv('DB_PASSWORD') ?: '';
+        \$db = getenv('DB_DATABASE') ?: 'whisper_money';
+        try {
+            new PDO(\"mysql:host=\$host;port=\$port;dbname=\$db\", \$user, \$pass, [
+                PDO::ATTR_TIMEOUT => 5,
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+            exit(0);
+        } catch (Exception \$e) {
+            exit(1);
+        }
+    " 2>/dev/null
+}
+
+until wait_for_mysql || [ $attempt -ge $max_attempts ]; do
     attempt=$((attempt + 1))
     echo "MySQL not ready (attempt $attempt/$max_attempts)..."
     sleep 2
 done
 
 if [ $attempt -ge $max_attempts ]; then
-    echo "Warning: MySQL may not be ready, proceeding anyway..."
+    echo "ERROR: Could not connect to MySQL after $max_attempts attempts"
+    echo "DB_HOST=${DB_HOST:-mysql}, DB_PORT=${DB_PORT:-3306}, DB_DATABASE=${DB_DATABASE:-whisper_money}"
+    exit 1
 fi
+
+echo "MySQL is ready!"
 
 # Run migrations
 echo "Running migrations..."
