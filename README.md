@@ -96,11 +96,13 @@ cp .env.production.example .env
 docker compose -f docker-compose.production.yml up -d
 ```
 
-The application will be available at `http://localhost`.
+The application will be available at `http://localhost:8080`.
 
-> **Note**: The `APP_KEY` is auto-generated on first startup if not provided. Check the container logs (`docker compose -f docker-compose.production.yml logs app`) to see the generated key and save it for future deployments.
+To use a different port, set `APP_PORT`:
 
-> For production with external MySQL, remove the `mysql` service from the compose file and update `DB_HOST` in your `.env`.
+```bash
+APP_PORT=3000 docker compose -f docker-compose.production.yml up -d
+```
 
 ## Deploying to Coolify
 
@@ -119,21 +121,21 @@ The Whisper Money template is available in Coolify's service catalog. Search for
 
 ### Required Environment Variables
 
-| Variable | Description |
-|----------|-------------|
+| Variable         | Description                                                |
+| ---------------- | ---------------------------------------------------------- |
 | `RESEND_API_KEY` | Email service API key (for password resets, notifications) |
 
 > **Note**: `APP_KEY` and `APP_URL` are auto-configured. The container generates an `APP_KEY` on first startup if not provided.
 
 ### Optional Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HIDE_AUTH_BUTTONS` | `false` | Hide login/register buttons on landing page |
-| `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions |
-| `STRIPE_KEY` | - | Stripe publishable key |
-| `STRIPE_SECRET` | - | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | - | Stripe webhook signing secret |
+| Variable                | Default | Description                                 |
+| ----------------------- | ------- | ------------------------------------------- |
+| `HIDE_AUTH_BUTTONS`     | `false` | Hide login/register buttons on landing page |
+| `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                 |
+| `STRIPE_KEY`            | -       | Stripe publishable key                      |
+| `STRIPE_SECRET`         | -       | Stripe secret key                           |
+| `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret               |
 
 ## License
 

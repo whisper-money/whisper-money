@@ -1,10 +1,13 @@
 services:
   app:
-    image: ghcr.io/whisper-money/whisper-money:latest
+    image: ${WHISPER_IMAGE:-ghcr.io/whisper-money/whisper-money:latest}
     ports:
-      - "80:80"
+      - "${APP_PORT:-8080}:80"
     env_file:
       - .env
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
     volumes:
       - whisper-storage:/app/storage
     depends_on:
