@@ -46,6 +46,10 @@ export interface SharedData {
     subscriptionsEnabled: boolean;
     pricing: PricingConfig;
     sidebarOpen: boolean;
+    features: {
+        budgets: boolean;
+        [key: string]: boolean;
+    };
     [key: string]: unknown;
 }
 
@@ -57,6 +61,7 @@ export interface User {
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
+    currency_code?: string | null;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

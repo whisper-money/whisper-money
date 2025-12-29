@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAccount } from '@/routes/account';
 import { edit as editAppearance } from '@/routes/appearance';
+import { settings as budgetsSettings } from '@/routes/budgets';
 import { edit as editDeleteAccount } from '@/routes/delete-account';
 import { billing } from '@/routes/settings';
 import {
@@ -44,6 +45,12 @@ const getNavItems = (
         type: 'nav-item',
         title: 'Labels',
         href: labelsIndex(),
+        icon: null,
+    },
+    {
+        type: 'nav-item',
+        title: 'Budgets',
+        href: budgetsSettings(),
         icon: null,
     },
     { type: 'divider' },
