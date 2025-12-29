@@ -104,38 +104,12 @@ To use a different port, set `APP_PORT`:
 APP_PORT=3000 docker compose -f docker-compose.production.yml up -d
 ```
 
-## Deploying to Coolify
-
-Whisper Money has a one-click template available for [Coolify](https://coolify.io).
-
-### Option 1: One-Click Template
-
-The Whisper Money template is available in Coolify's service catalog. Search for "Whisper Money" and deploy with one click.
-
-### Option 2: Docker Compose Deployment
-
-1. In Coolify, create a new resource and select **Docker Compose**
-2. Paste the contents of `templates/coolify/whisper-money.yaml`
-3. Configure the environment variables
-4. Deploy!
-
-### Required Environment Variables
-
-| Variable         | Description                                                |
-| ---------------- | ---------------------------------------------------------- |
-| `RESEND_API_KEY` | Email service API key (for password resets, notifications) |
-
-> **Note**: `APP_KEY` and `APP_URL` are auto-configured. The container generates an `APP_KEY` on first startup if not provided.
-
-### Optional Environment Variables
+## Other Environment Variables
 
 | Variable                | Default | Description                                 |
 | ----------------------- | ------- | ------------------------------------------- |
 | `HIDE_AUTH_BUTTONS`     | `false` | Hide login/register buttons on landing page |
 | `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                 |
-| `STRIPE_KEY`            | -       | Stripe publishable key                      |
-| `STRIPE_SECRET`         | -       | Stripe secret key                           |
-| `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret               |
 
 ## License
 
