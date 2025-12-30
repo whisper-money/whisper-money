@@ -89,7 +89,7 @@ export function AmountDisplay({
                 return 'rounded-xs bg-green-400 dark:bg-green-900 text-green-400 dark:text-green-900 opacity-20 dark:opacity-100';
             }
 
-            return 'rounded-xs bg-foreground'
+            return 'rounded-xs bg-zinc-950 dark:bg-zinc-700 dark:text-zinc-700'
         }
 
         if (variant === 'positive-highlight') {
