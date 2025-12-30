@@ -5,6 +5,7 @@ import { ArrowDown, MoreHorizontal } from 'lucide-react';
 import { EncryptedText } from '@/components/encrypted-text';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
+import { EncryptedTransactionDescription } from '@/components/transactions/encrypted-transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -185,7 +186,7 @@ export function createTransactionColumns({
                     <div className="flex flex-col gap-0.5">
                         <div className="flex flex-row justify-between gap-1">
                             <div className="flex-grow truncate">
-                                <EncryptedText
+                                <EncryptedTransactionDescription
                                     encryptedText={transaction.description}
                                     iv={transaction.description_iv}
                                     length={{ min: 20, max: 80 }}
