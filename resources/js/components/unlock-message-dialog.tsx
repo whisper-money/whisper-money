@@ -106,10 +106,10 @@ export default function UnlockMessageDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent hasKeyboard>
                 <DialogHeader>
-                    <DialogTitle>Unlock Encrypted Message</DialogTitle>
+                    <DialogTitle>Unlock Encrypted Data</DialogTitle>
                     <DialogDescription>
-                        Enter your encryption password to decrypt and view your
-                        message.
+                        Enter your encryption password to decrypt transactions
+                        information and accounts name.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleUnlock}>
