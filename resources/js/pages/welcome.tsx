@@ -1,3 +1,4 @@
+import EncryptionVideoPlayer from '@/components/landing/encryption-video-player';
 import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +21,6 @@ import {
     CodeIcon,
     EyeOffIcon,
     FileUpIcon,
-    KeyIcon,
     LockIcon,
     PieChartIcon,
     ShieldCheckIcon,
@@ -342,11 +342,13 @@ export default function Welcome({
                                 </p>
                             </div>
 
-                            <div className="grid w-full gap-8 sm:grid-cols-3">
-                                <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 text-center dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                    <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
-                                        <KeyIcon className="size-8 text-emerald-600 dark:text-emerald-400" />
-                                    </div>
+                            <div className="flex flex-col gap-8 sm:flex-row">
+                                <div className="flex w-full grow flex-col items-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-center dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                    <EncryptionVideoPlayer
+                                        lightSrc="/images/landing_videos/Whisper Money - Light - Encryption.mp4"
+                                        darkSrc="/images/landing_videos/Whisper Money - Dark - Encryption.mp4"
+                                        className="w-full max-w-4xl"
+                                    />
                                     <h3 className="text-xl font-semibold">
                                         Your Private Key
                                     </h3>
@@ -357,32 +359,36 @@ export default function Welcome({
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 text-center dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                    <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
-                                        <LockIcon className="size-8 text-emerald-600 dark:text-emerald-400" />
-                                    </div>
-                                    <h3 className="text-xl font-semibold">
-                                        Client-Side Encryption
-                                    </h3>
-                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        Your transactions, accounts, and budgets
-                                        are encrypted on your device before
-                                        syncing to the cloud.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col items-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-8 text-center dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                    <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
-                                        <ShieldCheckIcon className="size-8 text-emerald-600 dark:text-emerald-400" />
-                                    </div>
-                                    <h3 className="text-xl font-semibold">
-                                        Zero-Knowledge Architecture
-                                    </h3>
-                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        We store encrypted data we can't read.
-                                        Even if our servers were compromised,
-                                        your data stays secure.
-                                    </p>
+                                <div className="grid grow-0 gap-8">
+                                    {[
+                                        {
+                                            icon: LockIcon,
+                                            title: 'Client-Side Encryption',
+                                            description:
+                                                'Your transactions, accounts, and budgets are encrypted on your device before syncing to the cloud.',
+                                        },
+                                        {
+                                            icon: ShieldCheckIcon,
+                                            title: 'Zero-Knowledge Architecture',
+                                            description:
+                                                "We store encrypted data we can't read. Even if our servers were compromised, your data stays secure.",
+                                        },
+                                    ].map((item) => (
+                                        <div
+                                            key={item.title}
+                                            className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-center dark:border-[#3E3E3A] dark:bg-[#161615]"
+                                        >
+                                            <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
+                                                <item.icon className="size-8 text-emerald-600 dark:text-emerald-400" />
+                                            </div>
+                                            <h3 className="text-xl font-semibold">
+                                                {item.title}
+                                            </h3>
+                                            <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {item.description}
+                                            </p>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
