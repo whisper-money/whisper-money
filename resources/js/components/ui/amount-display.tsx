@@ -1,5 +1,4 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -55,12 +54,11 @@ export function AmountDisplay({
     monospace = false,
     highlightPositive = false,
 }: AmountDisplayProps) {
-    const { isPrivacyModeEnabled } = usePrivacyMode();
     const { isKeySet } = useEncryptionKey();
     const [amount, setAmount] = useState<number>(amountInCents / 100);
     const isPositive = amountInCents > 0
 
-    const shouldHideAmount = isPrivacyModeEnabled || !isKeySet;
+    const shouldHideAmount = !isKeySet;
 
     useEffect(() => {
         if (shouldHideAmount) {
