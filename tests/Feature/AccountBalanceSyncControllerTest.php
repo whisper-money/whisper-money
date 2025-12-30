@@ -191,3 +191,95 @@ it('updates existing balance when creating with duplicate account_id and balance
         ->where('balance_date', $date)
         ->count())->toBe(1);
 });
+
+it('can update balance by adding transaction amount to existing balance', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+    $date = now()->toDateString();
+
+    // Create an initial balance
+    $initialBalance = AccountBalance::factory()->for($account)->create([
+        'balance_date' => $date,
+        'balance' => 100000, // $1,000.00 in cents
+    ]);
+
+    // Simulate adding a transaction amount (e.g., +$50.00 = 5000 cents)
+    $transactionAmount = 5000;
+    $newBalance = $initialBalance->balance + $transactionAmount;
+
+    $balanceData = [
+        'account_id' => $account->id,
+        'balance_date' => $date,
+        'balance' => $newBalance, // 105000 cents = $1,050.00
+    ];
+
+    $response = $this->actingAs($user)->postJson('/api/sync/account-balances', $balanceData);
+
+    $response->assertOk()
+        ->assertJsonPath('data.balance', 105000);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => $date,
+        'balance' => 105000,
+    ]);
+});
+
+it('can create new balance with transaction amount when no previous balance exists', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+    $date = now()->toDateString();
+
+    // Simulate starting from 0 and adding a transaction amount
+    $transactionAmount = -7500; // expense of $75.00
+
+    $balanceData = [
+        'account_id' => $account->id,
+        'balance_date' => $date,
+        'balance' => $transactionAmount, // -$75.00
+    ];
+
+    $response = $this->actingAs($user)->postJson('/api/sync/account-balances', $balanceData);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.balance', -7500);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => $date,
+        'balance' => -7500,
+    ]);
+});
+
+it('can subtract expense amount from existing balance', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+    $date = now()->toDateString();
+
+    // Create an initial balance
+    $initialBalance = AccountBalance::factory()->for($account)->create([
+        'balance_date' => $date,
+        'balance' => 500000, // $5,000.00 in cents
+    ]);
+
+    // Simulate adding an expense transaction (-$120.50 = -12050 cents)
+    $transactionAmount = -12050;
+    $newBalance = $initialBalance->balance + $transactionAmount;
+
+    $balanceData = [
+        'account_id' => $account->id,
+        'balance_date' => $date,
+        'balance' => $newBalance, // 487950 cents = $4,879.50
+    ];
+
+    $response = $this->actingAs($user)->postJson('/api/sync/account-balances', $balanceData);
+
+    $response->assertOk()
+        ->assertJsonPath('data.balance', 487950);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => $date,
+        'balance' => 487950,
+    ]);
+});
