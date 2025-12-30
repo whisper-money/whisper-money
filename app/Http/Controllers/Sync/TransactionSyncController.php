@@ -42,6 +42,21 @@ class TransactionSyncController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
+        // If ID is provided, check if transaction already exists (idempotent create)
+        if (isset($data['id'])) {
+            $existing = Transaction::query()
+                ->where('id', $data['id'])
+                ->where('user_id', $request->user()->id)
+                ->first();
+
+            if ($existing) {
+                // Transaction already exists, return it as success (idempotent)
+                return response()->json([
+                    'data' => $existing->load('labels:id,name,color'),
+                ], 200);
+            }
+        }
+
         // If ID is provided, use it; otherwise Laravel will generate UUID v7
         if (isset($data['id'])) {
             $transaction->id = $data['id'];
