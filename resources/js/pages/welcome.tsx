@@ -30,6 +30,30 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
+const LANDING_IMAGES = [
+    {
+        key: 'bank-accounts',
+        light: '/images/landing/whisper.money_light_3.png',
+        dark: '/images/landing/whisper.money_dark_3.png',
+        alt: 'Transactions encrypted',
+        className: 'left-[-24%] group-hover:left-[-32%]',
+    },
+    {
+        key: 'unlock-key',
+        light: '/images/landing/whisper.money_light_2.png',
+        dark: '/images/landing/whisper.money_dark_2.png',
+        alt: 'Manage all your accounts in a single place',
+        className: '',
+    },
+    {
+        key: 'transactions',
+        light: '/images/landing/whisper.money_light_1.png',
+        dark: '/images/landing/whisper.money_dark_1.png',
+        alt: 'Analyze your money, how it evolves, and how do you spent it',
+        className: 'left-[32%] group-hover:left-[48%]',
+    },
+] as const;
+
 function getBillingLabel(billingPeriod: string | null): string {
     if (!billingPeriod) {
         return 'one-time';
@@ -266,60 +290,34 @@ export default function Welcome({
                             </div>
 
                             <div className="group relative sm:px-24">
-                                <div className="relative left-[-24%] z-10 h-[24px] rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:left-[-32%] group-hover:rotate-[-12deg] group-hover:skew-y-6">
-                                    <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
-                                        <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <img
-                                                    src="/images/landing/bank-accounts.png"
-                                                    alt="Bank accounts securely stored"
-                                                    className="h-full w-auto rounded-lg dark:hidden"
-                                                />
-                                                <img
-                                                    src="/images/landing/dark_bank-accounts.png"
-                                                    alt="Bank accounts securely stored"
-                                                    className="hidden h-full w-auto rounded-lg dark:block"
-                                                />
+                                {LANDING_IMAGES.map((image, index) => (
+                                    <div
+                                        key={image.key}
+                                        className={cn(
+                                            'relative z-10 rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:rotate-[-12deg] group-hover:skew-y-6',
+                                            index < LANDING_IMAGES.length - 1 &&
+                                                'h-[24px]',
+                                            image.className,
+                                        )}
+                                    >
+                                        <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
+                                            <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
+                                                <div className="rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+                                                    <img
+                                                        src={image.light}
+                                                        alt={image.alt}
+                                                        className="h-full w-auto rounded-lg dark:hidden"
+                                                    />
+                                                    <img
+                                                        src={image.dark}
+                                                        alt={image.alt}
+                                                        className="hidden h-full w-auto rounded-lg dark:block"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="relative z-10 h-[24px] rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:rotate-[-12deg] group-hover:skew-y-6">
-                                    <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
-                                        <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <img
-                                                    src="/images/landing/unlock-key.png"
-                                                    alt="Everything is encrypted with a private & local key you only have"
-                                                    className="h-full w-auto rounded-lg dark:hidden"
-                                                />
-                                                <img
-                                                    src="/images/landing/dark_unlock-key.png"
-                                                    alt="Everything is encrypted with a private & local key you only have"
-                                                    className="hidden h-full w-auto rounded-lg dark:block"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="relative left-[32%] z-10 rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:left-[48%] group-hover:rotate-[-12deg] group-hover:skew-y-6">
-                                    <div className="relative z-10 overflow-hidden rounded-2xl border border-[#e3e3e0]/50 bg-[#FDFDFC]/50 p-2 shadow-2xl dark:border-[#3E3E3A]/10 dark:bg-[#161615]/50">
-                                        <div className="relative z-10 overflow-hidden rounded-md border border-[#e3e3e0]/70 shadow-2xl dark:border-[#3E3E3A]/5">
-                                            <div className="aspect-[16/10] rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
-                                                <img
-                                                    src="/images/landing/transactions.png"
-                                                    alt="You're transactions with a military grade encryption"
-                                                    className="h-full w-auto rounded-lg dark:hidden"
-                                                />
-                                                <img
-                                                    src="/images/landing/dark_transactions.png"
-                                                    alt="You're transactions with a military grade encryption"
-                                                    className="hidden h-full w-auto rounded-lg dark:block"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                ))}
 
                                 <div
                                     data-slot="glow"
