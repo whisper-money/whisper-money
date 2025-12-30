@@ -628,16 +628,38 @@ export function EditTransactionDialog({
                                 Amount
                             </FormLabel>
                             {mode === 'create' ? (
-                                <AmountInput
-                                    id="amount"
-                                    value={amount}
-                                    onChange={setAmount}
-                                    currencyCode={
-                                        selectedAccount?.currency_code || 'USD'
-                                    }
-                                    disabled={isSubmitting}
-                                    required
-                                />
+                                <>
+                                    <AmountInput
+                                        id="amount"
+                                        value={amount}
+                                        onChange={setAmount}
+                                        currencyCode={
+                                            selectedAccount?.currency_code ||
+                                            'USD'
+                                        }
+                                        disabled={isSubmitting}
+                                        required
+                                    />
+
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="update-balance"
+                                            checked={updateAccountBalance}
+                                            onCheckedChange={(checked) =>
+                                                handleUpdateBalanceChange(
+                                                    checked === true,
+                                                )
+                                            }
+                                            disabled={isSubmitting}
+                                        />
+                                        <FormLabel
+                                            htmlFor="update-balance"
+                                            className="cursor-pointer font-normal"
+                                        >
+                                            Update account balance
+                                        </FormLabel>
+                                    </div>
+                                </>
                             ) : (
                                 <div className="text-sm font-medium">
                                     {transaction &&
@@ -675,27 +697,6 @@ export function EditTransactionDialog({
                                         )}
                                     </SelectContent>
                                 </Select>
-                            </div>
-                        )}
-
-                        {mode === 'create' && (
-                            <div className="flex items-center gap-2">
-                                <Checkbox
-                                    id="update-balance"
-                                    checked={updateAccountBalance}
-                                    onCheckedChange={(checked) =>
-                                        handleUpdateBalanceChange(
-                                            checked === true,
-                                        )
-                                    }
-                                    disabled={isSubmitting}
-                                />
-                                <FormLabel
-                                    htmlFor="update-balance"
-                                    className="cursor-pointer font-normal"
-                                >
-                                    Update account balance
-                                </FormLabel>
                             </div>
                         )}
 
