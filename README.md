@@ -132,13 +132,14 @@ The template includes:
 
 ### Optional Environment Variables
 
-| Variable                | Default | Description                                 |
-| ----------------------- | ------- | ------------------------------------------- |
-| `HIDE_AUTH_BUTTONS`     | `false` | Hide login/register buttons on landing page |
-| `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                 |
-| `STRIPE_KEY`            | -       | Stripe publishable key                      |
-| `STRIPE_SECRET`         | -       | Stripe secret key                           |
-| `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret               |
+| Variable                | Default | Description                                        |
+| ----------------------- | ------- | -------------------------------------------------- |
+| `DRIP_EMAILS_ENABLED`   | `true`  | Enable drip emails (welcome, onboarding, feedback) |
+| `HIDE_AUTH_BUTTONS`     | `false` | Hide login/register buttons on landing page        |
+| `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                        |
+| `STRIPE_KEY`            | -       | Stripe publishable key                             |
+| `STRIPE_SECRET`         | -       | Stripe secret key                                  |
+| `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret                      |
 
 ## License
 

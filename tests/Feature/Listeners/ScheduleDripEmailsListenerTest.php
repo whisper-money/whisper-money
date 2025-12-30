@@ -80,3 +80,13 @@ test('all jobs are dispatched to the emails queue', function () {
     Queue::assertPushedOn('emails', SendImportHelpEmailJob::class);
     Queue::assertPushedOn('emails', SendFeedbackEmailJob::class);
 });
+
+test('no drip emails are dispatched when disabled', function () {
+    config(['mail.drip_emails_enabled' => false]);
+
+    $user = User::factory()->create();
+
+    event(new Registered($user));
+
+    Queue::assertNothingPushed();
+});
