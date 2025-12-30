@@ -59,4 +59,11 @@ class UserMailLogFactory extends Factory
             'email_type' => DripEmailType::Feedback,
         ]);
     }
+
+    public function subscriptionCancelled(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'email_type' => DripEmailType::SubscriptionCancelled,
+        ]);
+    }
 }
