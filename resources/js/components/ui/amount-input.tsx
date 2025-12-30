@@ -33,6 +33,7 @@ const formatCurrency = (value: number): string => {
 };
 
 const parseInputValue = (input: string): number => {
+    const isNegative = input.trim().startsWith('-');
     const cleaned = input.replace(/[^\d.,]/g, '');
 
     if (!cleaned) {
@@ -58,7 +59,8 @@ const parseInputValue = (input: string): number => {
         return 0;
     }
 
-    return Math.round(parsed * 100);
+    const cents = Math.round(parsed * 100);
+    return isNegative ? -cents : cents;
 };
 
 export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
@@ -90,7 +92,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
 
         const handleFocus = () => {
             setIsFocused(true);
-            if (value > 0) {
+            if (value !== 0) {
                 const amount = (value / 100).toFixed(2);
                 setDisplayValue(amount);
             } else {

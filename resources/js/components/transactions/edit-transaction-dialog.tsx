@@ -2,6 +2,7 @@ import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -25,6 +26,7 @@ import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
+import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
@@ -63,6 +65,9 @@ export function EditTransactionDialog({
     onSuccess,
     mode,
 }: EditTransactionDialogProps) {
+    const STORAGE_KEY_UPDATE_BALANCE =
+        'whisper_money_update_balance_on_transaction';
+
     const { isKeySet } = useEncryptionKey();
     const [transactionDate, setTransactionDate] = useState('');
     const [description, setDescription] = useState('');
@@ -78,6 +83,13 @@ export function EditTransactionDialog({
     const [automationRules, setAutomationRules] = useState<AutomationRule[]>(
         [],
     );
+    const [updateAccountBalance, setUpdateAccountBalance] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem(STORAGE_KEY_UPDATE_BALANCE);
+            return stored === 'true';
+        }
+        return false;
+    });
 
     useEffect(() => {
         if (mode === 'edit' && transaction) {
@@ -234,6 +246,42 @@ export function EditTransactionDialog({
         };
     }
 
+    function handleUpdateBalanceChange(checked: boolean) {
+        setUpdateAccountBalance(checked);
+        localStorage.setItem(STORAGE_KEY_UPDATE_BALANCE, String(checked));
+    }
+
+    async function updateBalanceForTransaction(
+        accountIdToUpdate: string,
+        transactionDateStr: string,
+        transactionAmount: number,
+    ) {
+        try {
+            const allBalances = await accountBalanceSyncService.getAll();
+            const accountBalances = allBalances
+                .filter((b) => b.account_id === accountIdToUpdate)
+                .sort(
+                    (a, b) =>
+                        new Date(b.balance_date).getTime() -
+                        new Date(a.balance_date).getTime(),
+                );
+
+            const latestBalance =
+                accountBalances.length > 0 ? accountBalances[0].balance : 0;
+
+            const newBalance = latestBalance + transactionAmount;
+
+            await accountBalanceSyncService.updateOrCreate(
+                accountIdToUpdate as unknown as number,
+                transactionDateStr,
+                newBalance,
+            );
+        } catch (error) {
+            console.error('Failed to update account balance:', error);
+            toast.error('Transaction created, but failed to update balance');
+        }
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
 
@@ -344,6 +392,14 @@ export function EditTransactionDialog({
                         ? banks.find((b) => b.id === selectedAccount.bank?.id)
                         : undefined,
                 };
+
+                if (updateAccountBalance) {
+                    await updateBalanceForTransaction(
+                        accountId,
+                        transactionDate,
+                        amount,
+                    );
+                }
 
                 toast.success('Transaction created successfully');
                 if (ruleResult.ruleName) {
@@ -572,16 +628,38 @@ export function EditTransactionDialog({
                                 Amount
                             </FormLabel>
                             {mode === 'create' ? (
-                                <AmountInput
-                                    id="amount"
-                                    value={amount}
-                                    onChange={setAmount}
-                                    currencyCode={
-                                        selectedAccount?.currency_code || 'USD'
-                                    }
-                                    disabled={isSubmitting}
-                                    required
-                                />
+                                <>
+                                    <AmountInput
+                                        id="amount"
+                                        value={amount}
+                                        onChange={setAmount}
+                                        currencyCode={
+                                            selectedAccount?.currency_code ||
+                                            'USD'
+                                        }
+                                        disabled={isSubmitting}
+                                        required
+                                    />
+
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            id="update-balance"
+                                            checked={updateAccountBalance}
+                                            onCheckedChange={(checked) =>
+                                                handleUpdateBalanceChange(
+                                                    checked === true,
+                                                )
+                                            }
+                                            disabled={isSubmitting}
+                                        />
+                                        <FormLabel
+                                            htmlFor="update-balance"
+                                            className="cursor-pointer font-normal"
+                                        >
+                                            Update account balance
+                                        </FormLabel>
+                                    </div>
+                                </>
                             ) : (
                                 <div className="text-sm font-medium">
                                     {transaction &&
