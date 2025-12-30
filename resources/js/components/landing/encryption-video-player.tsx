@@ -75,7 +75,8 @@ export default function EncryptionVideoPlayer({
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
-            <div className="rounded-lg border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#0a0a0a]">
+            {/* Frame styling matching the landing page images - no rotation */}
+            <div className="rounded-lg border border-border/60 bg-[#FDFDFC] shadow dark:bg-[#0a0a0a]">
                 <video
                     ref={lightVideoRef}
                     src={lightSrc}
