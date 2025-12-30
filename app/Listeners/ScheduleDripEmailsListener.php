@@ -13,6 +13,10 @@ class ScheduleDripEmailsListener
 {
     public function handle(Registered $event): void
     {
+        if (! config('mail.drip_emails_enabled')) {
+            return;
+        }
+
         $user = $event->user;
 
         SendWelcomeEmailJob::dispatch($user)->delay(now()->addMinutes(30));

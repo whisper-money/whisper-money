@@ -4,6 +4,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Drip Emails
+    |--------------------------------------------------------------------------
+    |
+    | This option controls whether drip emails are sent to new users upon
+    | registration. When disabled, no welcome, onboarding, promo code,
+    | import help, or feedback emails will be scheduled.
+    |
+    */
+
+    'drip_emails_enabled' => env('DRIP_EMAILS_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Mailer
     |--------------------------------------------------------------------------
     |

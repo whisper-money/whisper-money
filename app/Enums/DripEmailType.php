@@ -9,4 +9,5 @@ enum DripEmailType: string
     case PromoCode = 'promo_code';
     case ImportHelp = 'import_help';
     case Feedback = 'feedback';
+    case SubscriptionCancelled = 'subscription_cancelled';
 }
