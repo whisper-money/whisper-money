@@ -103,3 +103,34 @@ it('formats amount when pressing enter', function () {
         'amount' => 9999,
     ]);
 })->skip('Requires browser encryption key setup');
+
+it('accepts negative amounts', function () {
+    $user = User::factory()->onboarded()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    actingAs($user);
+
+    $page = visit('/transactions');
+
+    $page->assertSee('Transactions')
+        ->click('Add Transaction')
+        ->wait(1)
+        ->fill('description', 'Test Negative Amount')
+        ->click('Select Account')
+        ->wait(0.5)
+        ->click($account->name)
+        ->click('Select Category')
+        ->wait(0.5)
+        ->click($category->name)
+        ->fill('#amount', '-50.00')
+        ->click('Create')
+        ->wait(2)
+        ->assertNoJavascriptErrors();
+
+    $this->assertDatabaseHas('transactions', [
+        'user_id' => $user->id,
+        'description' => 'Test Negative Amount',
+        'amount' => -5000,
+    ]);
+})->skip('Requires browser encryption key setup');
