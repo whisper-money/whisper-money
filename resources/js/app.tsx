@@ -1,6 +1,7 @@
 import '../css/app.css';
 
 import { createInertiaApp } from '@inertiajs/react';
+import * as Sentry from '@sentry/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import {
     CircleCheckIcon,
@@ -17,6 +18,12 @@ import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
 import type { SharedData } from './types';
+
+Sentry.init({
+    dsn: 'https://47f7a823afae4c2f93ab3159ca7c0a3a@bugsink.whisper.money/2',
+    integrations: [],
+    tracesSampleRate: 0,
+});
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
