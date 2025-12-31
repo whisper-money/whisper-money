@@ -119,7 +119,7 @@ export function TransactionFilters({
                             })
                         }
                         disabled={!isKeySet}
-                        className="max-w-sm flex-1 md:max-w-full"
+                        className="max-w-sm flex-1 md:max-w-full md:min-w-[350px]"
                     />
 
                     <Popover open={isOpen} onOpenChange={setIsOpen}>
