@@ -21,6 +21,7 @@ import type { SharedData } from './types';
 
 Sentry.init({
     dsn: 'https://47f7a823afae4c2f93ab3159ca7c0a3a@bugsink.whisper.money/2',
+    environment: import.meta.env.MODE,
     integrations: [],
     tracesSampleRate: 0,
 });
