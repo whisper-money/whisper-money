@@ -160,7 +160,7 @@ test('account balance evolution returns data for single account', function () {
 
     AccountBalance::factory()->create([
         'account_id' => $account->id,
-        'balance_date' => now()->subMonth()->endOfMonth(),
+        'balance_date' => now()->subMonthNoOverflow()->endOfMonth(),
         'balance' => 100000,
     ]);
     AccountBalance::factory()->create([

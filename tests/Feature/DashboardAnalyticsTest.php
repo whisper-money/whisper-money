@@ -77,12 +77,12 @@ test('monthly spending calculates expenses correctly', function () {
         'transaction_date' => now(),
     ]);
 
-    // Previous period expense
+    // Previous period expense (use subMonthNoOverflow to avoid Dec 31 -> Dec 1 issue)
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category->id,
         'amount' => -3000, // -$30.00
-        'transaction_date' => now()->subMonth(),
+        'transaction_date' => now()->subMonthNoOverflow(),
     ]);
 
     $response = $this->getJson('/api/dashboard/monthly-spending?'.http_build_query([
@@ -194,12 +194,12 @@ test('net worth evolution returns monthly data points with per-account balances'
 
     AccountBalance::factory()->create([
         'account_id' => $account1->id,
-        'balance_date' => now()->subMonth()->endOfMonth(),
+        'balance_date' => now()->subMonthNoOverflow()->endOfMonth(),
         'balance' => 100000,
     ]);
     AccountBalance::factory()->create([
         'account_id' => $account2->id,
-        'balance_date' => now()->subMonth()->endOfMonth(),
+        'balance_date' => now()->subMonthNoOverflow()->endOfMonth(),
         'balance' => 200000,
     ]);
     AccountBalance::factory()->create([
