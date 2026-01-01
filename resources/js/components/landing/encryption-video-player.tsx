@@ -26,11 +26,15 @@ export default function EncryptionVideoPlayer({
 
         if (lightVideo) {
             lightVideo.currentTime = 0;
-            lightVideo.play();
+            lightVideo.play().catch(() => {
+                // Autoplay was prevented - user will need to interact
+            });
         }
         if (darkVideo) {
             darkVideo.currentTime = 0;
-            darkVideo.play();
+            darkVideo.play().catch(() => {
+                // Autoplay was prevented - user will need to interact
+            });
         }
         setHasEnded(false);
     }, []);
@@ -51,8 +55,12 @@ export default function EncryptionVideoPlayer({
                 entries.forEach((entry) => {
                     if (entry.isIntersecting && !hasPlayedRef.current) {
                         hasPlayedRef.current = true;
-                        lightVideo.play();
-                        darkVideo.play();
+                        lightVideo.play().catch(() => {
+                            // Autoplay was prevented - user will need to interact
+                        });
+                        darkVideo.play().catch(() => {
+                            // Autoplay was prevented - user will need to interact
+                        });
                     }
                 });
             },
