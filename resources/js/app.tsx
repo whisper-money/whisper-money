@@ -24,6 +24,7 @@ Sentry.init({
     environment: import.meta.env.MODE,
     integrations: [],
     tracesSampleRate: 0,
+    enabled: import.meta.env.PROD,
 });
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
