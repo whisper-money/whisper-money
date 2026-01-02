@@ -13,6 +13,7 @@ export function StepEncryptionExplained({
         <div className="flex animate-in flex-col items-center text-center duration-500 fade-in slide-in-from-bottom-4">
             <StepHeader
                 icon={Shield}
+                image={"/images/onboarding/data_privacy.png"}
                 iconContainerClassName="bg-gradient-to-br from-blue-500 to-indigo-600"
                 title="Your Data, Your Privacy"
                 description="Whisper Money uses end-to-end encryption to protect your financial data. Here's how it works:"

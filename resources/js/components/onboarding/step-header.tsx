@@ -3,6 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 
 interface StepHeaderProps {
     icon: LucideIcon;
+    image?: string;
     iconContainerClassName?: string;
     title: string;
     description: string;
@@ -12,6 +13,7 @@ interface StepHeaderProps {
 
 export function StepHeader({
     icon: Icon,
+    image,
     iconContainerClassName,
     title,
     description,
@@ -19,20 +21,24 @@ export function StepHeader({
 }: StepHeaderProps) {
     return (
         <>
-            <div
-                className={cn(
-                    'flex animate-in items-center justify-center rounded-full shadow-lg duration-500 zoom-in',
-                    large ? 'mb-8 size-24' : 'mb-6 size-16',
-                    iconContainerClassName,
-                )}
-            >
-                <Icon
+            {!image && (
+                <div
                     className={cn(
-                        'text-white',
-                        large ? 'h-12 w-12' : 'h-10 w-10',
+                        'flex animate-in items-center justify-center rounded-full shadow-lg duration-500 zoom-in',
+                        large ? 'mb-8 size-24' : 'mb-6 size-16',
+                        iconContainerClassName,
                     )}
-                />
-            </div>
+                >
+                    <Icon
+                        className={cn(
+                            'text-white',
+                            large ? 'h-12 w-12' : 'h-10 w-10',
+                        )}
+                    />
+                </div>
+            )}
+
+            {image && <img src={image} className="mb-8 size-72 rounded-full" />}
 
             <h1
                 className={cn(

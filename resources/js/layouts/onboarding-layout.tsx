@@ -51,7 +51,7 @@ export default function OnboardingLayout({
                 <div className="size-6"></div>
             </header>
 
-            <main className="flex flex-1 flex-col items-center justify-start px-4 pt-12 sm:justify-center md:px-6">
+            <main className="flex flex-1 flex-col items-center justify-start px-4 sm:justify-center md:px-6">
                 <div
                     key={stepKey}
                     className={cn(

@@ -82,6 +82,7 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
             <StepHeader
                 icon={KeyRound}
+                image={'/images/onboarding/create_key.png'}
                 iconContainerClassName="bg-gradient-to-br from-amber-400 to-orange-500"
                 title="Create Your Encryption Password"
                 description="This password will encrypt all your financial data. Make it strong and memorable — we can't recover it for you."

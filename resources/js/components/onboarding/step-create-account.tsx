@@ -224,6 +224,7 @@ export function StepCreateAccount({
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
             <StepHeader
                 icon={CreditCard}
+                image={'/images/onboarding/create_account.png'}
                 iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
                 title={title}
                 description={description}
