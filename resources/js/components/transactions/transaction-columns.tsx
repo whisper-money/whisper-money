@@ -97,7 +97,11 @@ export function createTransactionColumns({
                 const formatString =
                     transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
 
-                return <div className="pl-3">{format(date, formatString)}</div>;
+                return (
+                    <div className="pl-3 whitespace-nowrap">
+                        {format(date, formatString)}
+                    </div>
+                );
             },
             enableHiding: true,
         },
