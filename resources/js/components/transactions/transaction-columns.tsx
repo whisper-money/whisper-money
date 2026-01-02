@@ -75,7 +75,7 @@ export function createTransactionColumns({
             accessorKey: 'transaction_date',
             meta: {
                 label: 'Date',
-                cellClassName: 'max-w-[80px] whitespace-normal',
+                cellClassName: 'max-w-[95px] whitespace-normal',
             },
             header: ({ column }) => {
                 return (
