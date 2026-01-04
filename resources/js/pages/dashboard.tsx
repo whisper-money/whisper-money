@@ -1,4 +1,5 @@
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
+import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-card';
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
 import HeadingSmall from '@/components/heading-small';
@@ -58,11 +59,12 @@ export default function Dashboard() {
                           ))}
                 </div>
 
-                <div className="">
+                <div className="grid gap-4 md:grid-cols-2">
                     <TopCategoriesCard
                         categories={topCategories}
                         loading={isLoading}
                     />
+                    <CashflowSummaryCard loading={isLoading} />
                 </div>
             </div>
         </AppSidebarLayout>

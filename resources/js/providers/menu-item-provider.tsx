@@ -1,9 +1,15 @@
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import DiscordIcon from '@/components/icons/DiscordIcon';
-import { dashboard } from '@/routes';
+import { cashflow, dashboard } from '@/routes';
 import { NavItem } from '@/types';
-import { CreditCard, Github, LayoutGrid, Receipt } from 'lucide-react';
+import {
+    CreditCard,
+    Github,
+    LayoutGrid,
+    Receipt,
+    TrendingUp,
+} from 'lucide-react';
 
 export const mainNavItems: NavItem[] = [
     {
@@ -11,6 +17,12 @@ export const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        type: 'nav-item',
+        title: 'Cashflow',
+        href: cashflow(),
+        icon: TrendingUp,
     },
     {
         type: 'nav-item',
