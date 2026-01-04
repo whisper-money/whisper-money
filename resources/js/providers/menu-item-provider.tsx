@@ -2,7 +2,7 @@ import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountCo
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import DiscordIcon from '@/components/icons/DiscordIcon';
 import { cashflow, dashboard } from '@/routes';
-import { NavItem } from '@/types';
+import { Features, NavItem } from '@/types';
 import {
     CreditCard,
     Github,
@@ -11,32 +11,42 @@ import {
     TrendingUp,
 } from 'lucide-react';
 
-export const mainNavItems: NavItem[] = [
-    {
-        type: 'nav-item',
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        type: 'nav-item',
-        title: 'Cashflow',
-        href: cashflow(),
-        icon: TrendingUp,
-    },
-    {
-        type: 'nav-item',
-        title: 'Accounts',
-        href: accountsIndex(),
-        icon: CreditCard,
-    },
-    {
-        type: 'nav-item',
-        title: 'Transactions',
-        href: transactionsIndex(),
-        icon: Receipt,
-    },
-];
+export function getMainNavItems(features: Features): NavItem[] {
+    const items: NavItem[] = [
+        {
+            type: 'nav-item',
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+    ];
+
+    if (features.cashflow) {
+        items.push({
+            type: 'nav-item',
+            title: 'Cashflow',
+            href: cashflow(),
+            icon: TrendingUp,
+        });
+    }
+
+    items.push(
+        {
+            type: 'nav-item',
+            title: 'Accounts',
+            href: accountsIndex(),
+            icon: CreditCard,
+        },
+        {
+            type: 'nav-item',
+            title: 'Transactions',
+            href: transactionsIndex(),
+            icon: Receipt,
+        },
+    );
+
+    return items;
+}
 
 export const footerNavItems: NavItem[] = [
     {

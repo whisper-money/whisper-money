@@ -6,8 +6,8 @@ import HeadingSmall from '@/components/heading-small';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { dashboard } from '@/routes';
-import { BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { BreadcrumbItem, SharedData } from '@/types';
+import { Head, usePage } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -17,6 +17,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Dashboard() {
+    const { props } = usePage<SharedData>();
     const {
         netWorthEvolution,
         accounts: accountMetrics,
@@ -64,7 +65,9 @@ export default function Dashboard() {
                         categories={topCategories}
                         loading={isLoading}
                     />
-                    <CashflowSummaryCard loading={isLoading} />
+                    {props.features.cashflow && (
+                        <CashflowSummaryCard loading={isLoading} />
+                    )}
                 </div>
             </div>
         </AppSidebarLayout>

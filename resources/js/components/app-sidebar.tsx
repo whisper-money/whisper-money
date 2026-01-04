@@ -11,13 +11,22 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { cn, resolveUrl } from '@/lib/utils';
-import { footerNavItems, mainNavItems } from '@/providers/menu-item-provider';
+import {
+    footerNavItems,
+    getMainNavItems,
+} from '@/providers/menu-item-provider';
 import { dashboard } from '@/routes';
+import { SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
-    const page = usePage();
+    const page = usePage<SharedData>();
+    const mainNavItems = useMemo(
+        () => getMainNavItems(page.props.features),
+        [page.props.features],
+    );
 
     return (
         <>

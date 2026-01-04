@@ -37,6 +37,10 @@ export interface NavDivider {
     type: 'divider';
 }
 
+export interface Features {
+    cashflow: boolean;
+}
+
 export interface SharedData {
     name: string;
     appUrl: string;
@@ -46,6 +50,7 @@ export interface SharedData {
     subscriptionsEnabled: boolean;
     pricing: PricingConfig;
     sidebarOpen: boolean;
+    features: Features;
     [key: string]: unknown;
 }
 
