@@ -1,7 +1,13 @@
+import { EncryptedTransactionDescription } from '@/components/transactions/encrypted-transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     Table,
     TableBody,
@@ -10,12 +16,19 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import {
+    transactionSyncService,
+    type Transaction,
+} from '@/services/transaction-sync';
 import { type ParsedTransaction } from '@/types/import';
-import { useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface ImportStepPreviewProps {
     transactions: ParsedTransaction[];
     currencyCode: string;
+    accountId: string;
     onConfirm: () => void;
     onBack: () => void;
     onSelectionChange: (index: number, selected: boolean) => void;
@@ -26,12 +39,32 @@ interface ImportStepPreviewProps {
 export function ImportStepPreview({
     transactions,
     currencyCode,
+    accountId,
     onConfirm,
     onBack,
     onSelectionChange,
     onSelectAll,
     isImporting,
 }: ImportStepPreviewProps) {
+    const { isKeySet } = useEncryptionKey();
+    const [existingTransactions, setExistingTransactions] = useState<
+        Transaction[]
+    >([]);
+    const [isExistingOpen, setIsExistingOpen] = useState(false);
+
+    useEffect(() => {
+        if (accountId && isKeySet) {
+            transactionSyncService.getByAccountId(accountId).then((txns) => {
+                const sorted = txns.sort(
+                    (a, b) =>
+                        new Date(b.transaction_date).getTime() -
+                        new Date(a.transaction_date).getTime(),
+                );
+                setExistingTransactions(sorted.slice(0, 10));
+            });
+        }
+    }, [accountId, isKeySet]);
+
     const stats = useMemo(() => {
         const selectableTransactions = transactions.filter(
             (t) => !t.isDuplicate,
@@ -191,6 +224,79 @@ export function ImportStepPreview({
                     </TableBody>
                 </Table>
             </div>
+
+            {existingTransactions.length > 0 && (
+                <Collapsible
+                    open={isExistingOpen}
+                    onOpenChange={setIsExistingOpen}
+                    className="rounded-lg border border-sidebar-border bg-sidebar p-1"
+                >
+                    <CollapsibleTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            className="flex w-full cursor-pointer items-center justify-between hover:bg-transparent"
+                        >
+                            <span className="text-sm text-muted-foreground">
+                                Latest transactions in this account
+                            </span>
+                            <ChevronDown
+                                className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                                    isExistingOpen ? 'rotate-180' : ''
+                                }`}
+                            />
+                        </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                        <div className="mt-3 max-h-[250px] overflow-auto rounded-lg border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Description</TableHead>
+                                        <TableHead className="text-right">
+                                            Amount
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {existingTransactions.map((tx) => (
+                                        <TableRow key={tx.id}>
+                                            <TableCell className="whitespace-nowrap">
+                                                {formatDate(
+                                                    tx.transaction_date,
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="max-w-[200px] truncate">
+                                                <EncryptedTransactionDescription
+                                                    encryptedText={
+                                                        tx.description
+                                                    }
+                                                    iv={tx.description_iv}
+                                                    length={{
+                                                        min: 10,
+                                                        max: 40,
+                                                    }}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono">
+                                                <AmountDisplay
+                                                    amountInCents={parseInt(
+                                                        tx.amount,
+                                                        10,
+                                                    )}
+                                                    currencyCode={
+                                                        tx.currency_code
+                                                    }
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
+            )}
 
             <div className="flex justify-between">
                 <Button

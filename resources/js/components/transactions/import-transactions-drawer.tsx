@@ -685,6 +685,7 @@ export function ImportTransactionsDrawer({
                     <ImportStepPreview
                         transactions={state.transactions}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
+                        accountId={selectedAccount?.id || ''}
                         onConfirm={handleConfirmImport}
                         onBack={() => moveToStep(ImportStep.MapColumns)}
                         onSelectionChange={handleSelectionChange}
