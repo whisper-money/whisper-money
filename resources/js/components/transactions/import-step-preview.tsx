@@ -234,7 +234,7 @@ export function ImportStepPreview({
                     <CollapsibleTrigger asChild>
                         <Button
                             variant="ghost"
-                            className="flex w-full items-center justify-between p-0 hover:bg-transparent"
+                            className="flex w-full cursor-pointer items-center justify-between hover:bg-transparent"
                         >
                             <span className="text-sm text-muted-foreground">
                                 Latest transactions in this account
