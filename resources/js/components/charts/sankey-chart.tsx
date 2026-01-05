@@ -29,10 +29,10 @@ interface LinkData {
     height: number;
 }
 
-const COLUMN_POSITIONS = [0.05, 0.5, 0.95];
-const NODE_WIDTH = 20;
-const NODE_PADDING = 8;
-const MIN_NODE_HEIGHT = 24;
+const COLUMN_POSITIONS = [0.25, 0.5, 0.75];
+const NODE_WIDTH = 12;
+const NODE_PADDING = 6;
+const MIN_NODE_HEIGHT = 20;
 
 function formatAmount(amountInCents: number): string {
     return new Intl.NumberFormat('en-US', {
@@ -77,7 +77,7 @@ export function SankeyChart({
             .map((item) => {
                 const nodeHeight = Math.max(
                     MIN_NODE_HEIGHT,
-                    (item.amount / maxTotal) * availableHeight * 0.7,
+                    (item.amount / maxTotal) * availableHeight * 0.5,
                 );
                 const node: NodeData = {
                     id: `income-${item.category_id}`,
@@ -95,10 +95,10 @@ export function SankeyChart({
 
         // Create center node (total cashflow)
         const centerHeight = Math.max(
-            MIN_NODE_HEIGHT * 2,
+            MIN_NODE_HEIGHT * 1.5,
             (Math.max(total_income, total_expense) / maxTotal) *
                 availableHeight *
-                0.8,
+                0.6,
         );
         const centerY = (height - centerHeight) / 2;
         const centerNode: NodeData = {
@@ -118,7 +118,7 @@ export function SankeyChart({
             .map((item) => {
                 const nodeHeight = Math.max(
                     MIN_NODE_HEIGHT,
-                    (item.amount / maxTotal) * availableHeight * 0.7,
+                    (item.amount / maxTotal) * availableHeight * 0.5,
                 );
                 const node: NodeData = {
                     id: `expense-${item.category_id}`,
@@ -199,6 +199,7 @@ export function SankeyChart({
                 viewBox={`0 0 ${width} ${height}`}
                 className="w-full"
                 style={{ minWidth: 400, maxWidth: '100%' }}
+                preserveAspectRatio="xMidYMid meet"
             >
                 {/* Links */}
                 <g className="links">
@@ -288,12 +289,12 @@ export function SankeyChart({
                                 <text
                                     x={
                                         node.column === 0
-                                            ? x - 8
+                                            ? x - 6
                                             : node.column === 2
-                                              ? x + NODE_WIDTH + 8
+                                              ? x + NODE_WIDTH + 6
                                               : x + NODE_WIDTH / 2
                                     }
-                                    y={node.y + node.height / 2}
+                                    y={node.y + node.height / 2 - 6}
                                     textAnchor={
                                         node.column === 0
                                             ? 'end'
@@ -302,7 +303,7 @@ export function SankeyChart({
                                               : 'middle'
                                     }
                                     dominantBaseline="middle"
-                                    className="fill-foreground text-xs font-medium"
+                                    className="fill-foreground text-[9px] font-medium"
                                 >
                                     {node.label}
                                 </text>
@@ -310,12 +311,12 @@ export function SankeyChart({
                                 <text
                                     x={
                                         node.column === 0
-                                            ? x - 8
+                                            ? x - 6
                                             : node.column === 2
-                                              ? x + NODE_WIDTH + 8
+                                              ? x + NODE_WIDTH + 6
                                               : x + NODE_WIDTH / 2
                                     }
-                                    y={node.y + node.height / 2 + 14}
+                                    y={node.y + node.height / 2 + 6}
                                     textAnchor={
                                         node.column === 0
                                             ? 'end'
@@ -324,7 +325,7 @@ export function SankeyChart({
                                               : 'middle'
                                     }
                                     dominantBaseline="middle"
-                                    className="fill-muted-foreground text-[10px]"
+                                    className="fill-muted-foreground text-[9px]"
                                 >
                                     {formatAmount(node.value)}
                                 </text>
@@ -332,24 +333,6 @@ export function SankeyChart({
                         );
                     })}
                 </g>
-
-                {/* Column headers */}
-                <text
-                    x={COLUMN_POSITIONS[0] * width}
-                    y={10}
-                    textAnchor="middle"
-                    className="fill-muted-foreground text-xs font-medium tracking-wide uppercase"
-                >
-                    Income
-                </text>
-                <text
-                    x={COLUMN_POSITIONS[2] * width}
-                    y={10}
-                    textAnchor="middle"
-                    className="fill-muted-foreground text-xs font-medium tracking-wide uppercase"
-                >
-                    Expenses
-                </text>
             </svg>
         </div>
     );
