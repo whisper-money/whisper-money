@@ -68,18 +68,11 @@ export function SavingsRateCard({
                         {current.savings_rate.toFixed(1)}%
                     </span>
                     {hasPreviousData && (
-                        <div
-                            className={cn(
-                                'flex items-center gap-1 text-sm',
-                                isPositive
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-red-600 dark:text-red-400',
-                            )}
-                        >
+                        <div className={cn('flex items-center gap-1 text-sm')}>
                             {isPositive ? (
-                                <TrendingUp className="size-4" />
+                                <TrendingUp className="size-4 text-green-600 dark:text-green-400" />
                             ) : (
-                                <TrendingDown className="size-4" />
+                                <TrendingDown className="size-4 text-red-600 dark:text-red-400" />
                             )}
                             <span>
                                 {isPositive ? '+' : ''}

@@ -109,7 +109,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
                             weight="semibold"
-                            className="text-green-600 dark:text-green-400"
+                            highlightPositive
                         />
                     </div>
 
@@ -124,7 +124,6 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
                             weight="semibold"
-                            className="text-red-600 dark:text-red-400"
                         />
                     </div>
 
@@ -143,11 +142,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                                 minimumFractionDigits={0}
                                 maximumFractionDigits={0}
                                 weight="semibold"
-                                className={cn(
-                                    isPositiveNet
-                                        ? 'text-green-600 dark:text-green-400'
-                                        : 'text-red-600 dark:text-red-400',
-                                )}
+                                highlightPositive
                             />
                         </div>
                     </div>

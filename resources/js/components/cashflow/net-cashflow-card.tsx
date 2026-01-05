@@ -51,18 +51,21 @@ export function NetCashflowCard({
             </CardHeader>
             <CardContent>
                 <div className="flex items-baseline gap-2">
-                    <div
-                        className={cn(
-                            'flex items-center gap-1',
-                            isPositive
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-red-600 dark:text-red-400',
-                        )}
-                    >
+                    <div className={cn('flex items-center gap-1')}>
                         {isPositive ? (
-                            <ArrowUp className="size-5" />
+                            <ArrowUp
+                                className={cn(
+                                    'size-4',
+                                    'text-green-600 dark:text-green-400',
+                                )}
+                            />
                         ) : (
-                            <ArrowDown className="size-5" />
+                            <ArrowDown
+                                className={cn(
+                                    'size-4',
+                                    'text-red-600 dark:text-red-400',
+                                )}
+                            />
                         )}
                         <AmountDisplay
                             amountInCents={Math.abs(current.net)}
@@ -71,22 +74,26 @@ export function NetCashflowCard({
                             weight="bold"
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
+                            highlightPositive
                         />
                     </div>
                 </div>
                 {hasPreviousData && (
-                    <div
-                        className={cn(
-                            'mt-2 flex items-center gap-1 text-sm',
-                            diffIsPositive
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-red-600 dark:text-red-400',
-                        )}
-                    >
+                    <div className={cn('mt-2 flex items-center gap-1 text-sm')}>
                         {diffIsPositive ? (
-                            <TrendingUp className="size-4" />
+                            <TrendingUp
+                                className={cn(
+                                    'size-4',
+                                    'text-green-600 dark:text-green-400',
+                                )}
+                            />
                         ) : (
-                            <TrendingDown className="size-4" />
+                            <TrendingDown
+                                className={cn(
+                                    'size-4',
+                                    'text-red-600 dark:text-red-400',
+                                )}
+                            />
                         )}
                         <span>
                             {diffIsPositive ? '+' : ''}
@@ -96,6 +103,7 @@ export function NetCashflowCard({
                                 minimumFractionDigits={0}
                                 maximumFractionDigits={0}
                                 className="text-sm"
+                                highlightPositive
                             />
                         </span>
                         <span className="text-muted-foreground">
@@ -112,7 +120,7 @@ export function NetCashflowCard({
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
                             weight="medium"
-                            className="text-green-600 dark:text-green-400"
+                            highlightPositive
                         />
                     </div>
                     <div>
@@ -125,7 +133,6 @@ export function NetCashflowCard({
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
                             weight="medium"
-                            className="text-red-600 dark:text-red-400"
                         />
                     </div>
                 </div>

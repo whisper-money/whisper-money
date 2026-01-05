@@ -75,11 +75,7 @@ export function BreakdownCard({ type, data, loading }: BreakdownCardProps) {
                         minimumFractionDigits={0}
                         maximumFractionDigits={0}
                         weight="semibold"
-                        className={cn(
-                            type === 'income'
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-red-600 dark:text-red-400',
-                        )}
+                        highlightPositive
                     />
                 </div>
                 <CardDescription>{description}</CardDescription>
