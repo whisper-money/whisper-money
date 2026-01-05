@@ -394,3 +394,139 @@ test('cashflow page returns categories with type', function () {
         ->has('categories.0.type')
     );
 });
+
+test('cashflow summary includes uncategorized income', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    // Uncategorized positive amount = income
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'amount' => 50000, // $500
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/summary?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk()
+        ->assertJson([
+            'current' => [
+                'income' => 50000,
+                'expense' => 0,
+                'net' => 50000,
+            ],
+        ]);
+});
+
+test('cashflow summary includes uncategorized expenses', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    // Uncategorized negative amount = expense
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'amount' => -30000, // $300
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/summary?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk()
+        ->assertJson([
+            'current' => [
+                'income' => 0,
+                'expense' => 30000,
+                'net' => -30000,
+            ],
+        ]);
+});
+
+test('sankey includes unknown income and expense categories', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    // Uncategorized income
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'amount' => 100000,
+        'transaction_date' => now(),
+    ]);
+
+    // Uncategorized expense
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'amount' => -50000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['income_categories'])->toHaveCount(1);
+    expect($data['expense_categories'])->toHaveCount(1);
+    expect($data['income_categories'][0]['category']['name'])->toBe('Unknown Income');
+    expect($data['income_categories'][0]['amount'])->toBe(100000);
+    expect($data['expense_categories'][0]['category']['name'])->toBe('Unknown Expense');
+    expect($data['expense_categories'][0]['amount'])->toBe(50000);
+});
+
+test('breakdown includes unknown income category', function () {
+    $incomeCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Income,
+        'name' => 'Salary',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    // Categorized income
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 200000,
+        'transaction_date' => now(),
+    ]);
+
+    // Uncategorized income
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+        'amount' => 50000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/breakdown?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+        'type' => 'income',
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['total'])->toBe(250000);
+    expect($data['data'])->toHaveCount(2);
+
+    $unknownCategory = collect($data['data'])->firstWhere('category.name', 'Unknown Income');
+    expect($unknownCategory)->not->toBeNull();
+    expect($unknownCategory['amount'])->toBe(50000);
+    expect($unknownCategory['percentage'])->toEqual(20.0); // 50k / 250k = 20%
+});

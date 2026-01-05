@@ -155,15 +155,22 @@ class CashflowAnalyticsController extends Controller
         return Transaction::query()
             ->where('user_id', $userId)
             ->whereBetween('transaction_date', [$from, $to])
-            ->whereHas('category', function ($q) use ($type) {
-                $q->where('type', $type);
+            ->where(function ($q) use ($type) {
+                $q->whereHas('category', function ($q) use ($type) {
+                    $q->where('type', $type);
+                })
+                    ->orWhere(function ($q) use ($type) {
+                        $q->whereNull('category_id')
+                            ->where('amount', $type === CategoryType::Income ? '>' : '<', 0);
+                    });
             })
             ->sum('amount');
     }
 
     private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type)
     {
-        return Transaction::query()
+        // Get categorized transactions
+        $categorized = Transaction::query()
             ->where('user_id', $userId)
             ->whereBetween('transaction_date', [$from, $to])
             ->whereHas('category', function ($q) use ($type) {
@@ -180,5 +187,30 @@ class CashflowAnalyticsController extends Controller
                     'amount' => abs($item->total_amount),
                 ];
             });
+
+        // Get uncategorized transactions
+        $uncategorized = Transaction::query()
+            ->where('user_id', $userId)
+            ->whereBetween('transaction_date', [$from, $to])
+            ->whereNull('category_id')
+            ->where('amount', $type === CategoryType::Income ? '>' : '<', 0)
+            ->sum('amount');
+
+        // Add uncategorized as a special category if there are any
+        if ($uncategorized != 0) {
+            $categorized->push([
+                'category_id' => null,
+                'category' => (object) [
+                    'id' => null,
+                    'name' => $type === CategoryType::Income ? 'Unknown Income' : 'Unknown Expense',
+                    'type' => $type,
+                    'color' => 'gray',
+                    'icon' => 'HelpCircle',
+                ],
+                'amount' => abs($uncategorized),
+            ]);
+        }
+
+        return $categorized;
     }
 }
