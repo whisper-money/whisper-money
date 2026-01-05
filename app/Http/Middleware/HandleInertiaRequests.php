@@ -2,9 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Features\CashflowFeature;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -58,6 +60,9 @@ class HandleInertiaRequests extends Middleware
                 'promo' => config('subscriptions.promo', []),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'features' => [
+                'cashflow' => $user ? Feature::for($user)->active(CashflowFeature::class) : false,
+            ],
         ];
     }
 }

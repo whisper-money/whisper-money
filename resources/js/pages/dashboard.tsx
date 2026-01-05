@@ -1,12 +1,13 @@
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
+import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-card';
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
 import HeadingSmall from '@/components/heading-small';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { dashboard } from '@/routes';
-import { BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { BreadcrumbItem, SharedData } from '@/types';
+import { Head, usePage } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -16,6 +17,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Dashboard() {
+    const { props } = usePage<SharedData>();
     const {
         netWorthEvolution,
         accounts: accountMetrics,
@@ -58,11 +60,14 @@ export default function Dashboard() {
                           ))}
                 </div>
 
-                <div className="">
+                <div className="grid gap-4 md:grid-cols-2">
                     <TopCategoriesCard
                         categories={topCategories}
                         loading={isLoading}
                     />
+                    {props.features.cashflow && (
+                        <CashflowSummaryCard loading={isLoading} />
+                    )}
                 </div>
             </div>
         </AppSidebarLayout>

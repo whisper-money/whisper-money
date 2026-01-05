@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\RobotsController;
@@ -46,6 +47,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::get('cashflow', CashflowController::class)->name('cashflow');
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
     Route::get('accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');

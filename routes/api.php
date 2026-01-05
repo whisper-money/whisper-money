@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountBalanceController;
+use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\Sync\AccountBalanceSyncController;
@@ -48,5 +49,13 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('net-worth-evolution', [DashboardAnalyticsController::class, 'netWorthEvolution']);
         Route::get('top-categories', [DashboardAnalyticsController::class, 'topCategories']);
         Route::get('account/{account}/balance-evolution', [DashboardAnalyticsController::class, 'accountBalanceEvolution']);
+    });
+
+    // Cashflow Analytics
+    Route::prefix('cashflow')->group(function () {
+        Route::get('summary', [CashflowAnalyticsController::class, 'summary']);
+        Route::get('sankey', [CashflowAnalyticsController::class, 'sankey']);
+        Route::get('trend', [CashflowAnalyticsController::class, 'trend']);
+        Route::get('breakdown', [CashflowAnalyticsController::class, 'breakdown']);
     });
 });
