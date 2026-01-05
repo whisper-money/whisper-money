@@ -2,6 +2,16 @@
 <p align="center">
   <img src="https://whisper.money/images/og_whisper_money.png" alt="Whisper Money" width="100%">
 </p>
+<p align="center">
+<a href="https://zdoc.app/de/whisper-money/whisper-money">Deutsch</a> | 
+<a href="https://zdoc.app/es/whisper-money/whisper-money">Español</a> | 
+<a href="https://zdoc.app/fr/whisper-money/whisper-money">français</a> | 
+<a href="https://zdoc.app/ja/whisper-money/whisper-money">日本語</a> | 
+<a href="https://zdoc.app/ko/whisper-money/whisper-money">한국어</a> | 
+<a href="https://zdoc.app/pt/whisper-money/whisper-money">Português</a> | 
+<a href="https://zdoc.app/ru/whisper-money/whisper-money">Русский</a> | 
+<a href="https://zdoc.app/zh/whisper-money/whisper-money">中文</a>
+</p>
 
 # Whisper Money
 
