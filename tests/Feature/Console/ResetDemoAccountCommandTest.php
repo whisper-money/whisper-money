@@ -102,3 +102,95 @@ test('demo:reset assigns labels to transactions based on percentage', function (
     $transactionsWithLabels = $user->transactions()->whereHas('labels')->count();
     expect($transactionsWithLabels)->toBeGreaterThan(0);
 });
+
+test('demo:reset creates an active subscription', function () {
+    $this->artisan('demo:reset')
+        ->assertSuccessful();
+
+    $user = User::where('email', 'demo@whisper.money')->first();
+
+    expect($user->subscriptions()->count())->toBe(1);
+    expect($user->subscribed('default'))->toBeTrue();
+    expect($user->hasProPlan())->toBeTrue();
+});
+
+test('demo:reset creates balances for all accounts', function () {
+    $this->artisan('demo:reset')
+        ->assertSuccessful();
+
+    $user = User::where('email', 'demo@whisper.money')->first();
+
+    foreach ($user->accounts as $account) {
+        expect($account->balances()->count())->toBe(1);
+        expect($account->balances()->first()->balance)->toBeGreaterThan(0);
+    }
+});
+
+test('demo:reset assigns categories to all transactions', function () {
+    $this->artisan('demo:reset')
+        ->assertSuccessful();
+
+    $user = User::where('email', 'demo@whisper.money')->first();
+
+    $transactionsWithoutCategory = $user->transactions()->whereNull('category_id')->count();
+    expect($transactionsWithoutCategory)->toBe(0);
+});
+
+test('demo:reset assigns accounts to all transactions', function () {
+    $this->artisan('demo:reset')
+        ->assertSuccessful();
+
+    $user = User::where('email', 'demo@whisper.money')->first();
+
+    $transactionsWithoutAccount = $user->transactions()->whereNull('account_id')->count();
+    expect($transactionsWithoutAccount)->toBe(0);
+});
+
+test('demo:reset creates encrypted message that can be decrypted', function () {
+    $this->artisan('demo:reset')->assertSuccessful();
+
+    $user = User::where('email', 'demo@whisper.money')->first();
+    $encryptedMessage = $user->encryptedMessage;
+
+    expect($encryptedMessage)->not->toBeNull();
+    expect($encryptedMessage->encrypted_content)->not->toBeEmpty();
+    expect($encryptedMessage->iv)->not->toBeEmpty();
+
+    $service = new \App\Services\Demo\DemoEncryptionService;
+    $key = $service->deriveKey('demo', $user->encryption_salt);
+
+    $decrypted = $service->decrypt($encryptedMessage->encrypted_content, $key, $encryptedMessage->iv);
+    expect($decrypted)->toBe('Hello, world');
+});
+
+test('demo:reset encrypts account names correctly', function () {
+    $this->artisan('demo:reset')->assertSuccessful();
+
+    $user = User::where('email', 'demo@whisper.money')->first();
+    $service = new \App\Services\Demo\DemoEncryptionService;
+    $key = $service->deriveKey('demo', $user->encryption_salt);
+
+    $account = $user->accounts()->first();
+    $decryptedName = $service->decrypt($account->name, $key, $account->name_iv);
+
+    expect($decryptedName)->toBeIn([
+        'Primary Checking',
+        'Secondary Checking',
+        'Emergency Savings',
+        '401k Retirement',
+        'Investment Portfolio',
+    ]);
+});
+
+test('demo:reset encrypts transaction descriptions correctly', function () {
+    $this->artisan('demo:reset')->assertSuccessful();
+
+    $user = User::where('email', 'demo@whisper.money')->first();
+    $service = new \App\Services\Demo\DemoEncryptionService;
+    $key = $service->deriveKey('demo', $user->encryption_salt);
+
+    $transaction = $user->transactions()->first();
+    $decryptedDescription = $service->decrypt($transaction->description, $key, $transaction->description_iv);
+
+    expect($decryptedDescription)->not->toBeEmpty();
+});

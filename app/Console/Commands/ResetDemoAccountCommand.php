@@ -6,12 +6,16 @@ use App\Actions\CreateDefaultCategories;
 use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\Bank;
+use App\Models\Category;
+use App\Models\EncryptedMessage;
 use App\Models\Label;
 use App\Models\User;
 use App\Services\Demo\DemoAutomationRulesProvider;
+use App\Services\Demo\DemoEncryptionService;
 use App\Services\Demo\DemoLabelsProvider;
 use App\Services\Demo\DemoTransactionsProvider;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 
 class ResetDemoAccountCommand extends Command
 {
@@ -19,10 +23,13 @@ class ResetDemoAccountCommand extends Command
 
     protected $description = 'Reset the demo account with fresh data';
 
+    private string $encryptionKey;
+
     public function __construct(
         private DemoTransactionsProvider $transactionsProvider,
         private DemoLabelsProvider $labelsProvider,
         private DemoAutomationRulesProvider $rulesProvider,
+        private DemoEncryptionService $encryptionService,
     ) {
         parent::__construct();
     }
@@ -41,9 +48,14 @@ class ResetDemoAccountCommand extends Command
 
         $this->info("Resetting demo account: {$demoEmail}");
 
-        $user = $this->findOrCreateDemoUser($demoEmail, $demoPassword, $demoEncryptionKey);
+        $salt = $this->encryptionService->generateSalt($demoEncryptionKey);
+        $this->encryptionKey = $this->encryptionService->deriveKey($demoEncryptionKey, $salt);
+
+        $user = $this->findOrCreateDemoUser($demoEmail, $demoPassword, $salt);
 
         $this->deleteExistingData($user);
+
+        $this->createEncryptedMessage($user);
 
         $this->createCategories($user);
 
@@ -53,24 +65,32 @@ class ResetDemoAccountCommand extends Command
 
         $this->createAutomationRules($user, $labels);
 
+        $this->createSubscription($user);
+
         $this->info('✓ Demo account reset successfully!');
 
         return self::SUCCESS;
     }
 
-    private function findOrCreateDemoUser(string $email, string $password, ?string $encryptionKey): User
+    private function findOrCreateDemoUser(string $email, string $password, string $salt): User
     {
-        return User::firstOrCreate(
-            ['email' => $email],
-            [
-                'name' => 'Demo User',
-                'password' => $password,
-                'email_verified_at' => now(),
-                'onboarded_at' => now(),
-                'encryption_salt' => $encryptionKey,
-                'currency_code' => 'USD',
-            ]
-        );
+        $user = User::where('email', $email)->first();
+
+        if ($user) {
+            $user->update(['encryption_salt' => $salt]);
+
+            return $user;
+        }
+
+        return User::create([
+            'email' => $email,
+            'name' => 'Demo User',
+            'password' => $password,
+            'email_verified_at' => now(),
+            'onboarded_at' => now(),
+            'encryption_salt' => $salt,
+            'currency_code' => 'USD',
+        ]);
     }
 
     private function deleteExistingData(User $user): void
@@ -80,8 +100,26 @@ class ResetDemoAccountCommand extends Command
         $user->labels()->forceDelete();
         $user->automationRules()->forceDelete();
         $user->categories()->forceDelete();
+        $user->encryptedMessage()?->delete();
 
         $this->info('  Deleted existing data');
+    }
+
+    private function createEncryptedMessage(User $user): void
+    {
+        $testMessage = $this->encryptionService->encrypt(
+            'Hello, world',
+            $this->encryptionKey,
+            'demo_test_message'
+        );
+
+        EncryptedMessage::create([
+            'user_id' => $user->id,
+            'encrypted_content' => $testMessage['encrypted'],
+            'iv' => $testMessage['iv'],
+        ]);
+
+        $this->info('  Created encrypted message for key verification');
     }
 
     private function createCategories(User $user): void
@@ -120,42 +158,68 @@ class ResetDemoAccountCommand extends Command
     private function createAccountsWithTransactions(User $user, array $labels): void
     {
         $bank = Bank::whereNull('user_id')->first() ?? Bank::factory()->create(['user_id' => null]);
+        $categories = $user->categories()->get()->keyBy('name');
 
         $accounts = [
-            ['name' => 'Primary Checking', 'type' => AccountType::Checking],
-            ['name' => 'Secondary Checking', 'type' => AccountType::Checking],
-            ['name' => 'Emergency Savings', 'type' => AccountType::Savings],
-            ['name' => '401k Retirement', 'type' => AccountType::Retirement],
-            ['name' => 'Investment Portfolio', 'type' => AccountType::Investment],
+            ['name' => 'Primary Checking', 'type' => AccountType::Checking, 'balance' => 2500000],
+            ['name' => 'Secondary Checking', 'type' => AccountType::Checking, 'balance' => 750000],
+            ['name' => 'Emergency Savings', 'type' => AccountType::Savings, 'balance' => 1500000],
+            ['name' => '401k Retirement', 'type' => AccountType::Retirement, 'balance' => 8500000],
+            ['name' => 'Investment Portfolio', 'type' => AccountType::Investment, 'balance' => 3200000],
         ];
 
-        foreach ($accounts as $accountData) {
+        foreach ($accounts as $index => $accountData) {
+            $encrypted = $this->encryptionService->encrypt(
+                $accountData['name'],
+                $this->encryptionKey,
+                "demo_account_{$index}"
+            );
+
             $account = $user->accounts()->create([
-                'name' => $accountData['name'],
-                'name_iv' => 'demo_iv_'.uniqid(),
+                'name' => $encrypted['encrypted'],
+                'name_iv' => $encrypted['iv'],
                 'bank_id' => $bank->id,
                 'currency_code' => 'USD',
                 'type' => $accountData['type'],
             ]);
 
-            $this->createTransactionsForAccount($user, $account, $labels);
+            $account->balances()->create([
+                'balance_date' => now()->format('Y-m-d'),
+                'balance' => $accountData['balance'],
+            ]);
+
+            $this->createTransactionsForAccount($account, $categories, $labels);
         }
 
-        $this->info('  Created 5 accounts with transactions');
+        $this->info('  Created 5 accounts with transactions and balances');
     }
 
     /**
+     * @param  Collection<string, Category>  $categories
      * @param  array<int, array{label: Label, assignment_percentage: int}>  $labels
      */
-    private function createTransactionsForAccount(User $user, Account $account, array $labels): void
+    private function createTransactionsForAccount(Account $account, Collection $categories, array $labels): void
     {
         $transactions = $this->transactionsProvider->getTransactions();
-        $category = $user->categories()->first();
 
-        foreach ($transactions as $transactionData) {
-            $transaction = $user->transactions()->create([
-                'account_id' => $account->id,
-                'category_id' => $category?->id,
+        foreach ($transactions as $index => $transactionData) {
+            $categoryName = $transactionData['category_name'];
+            unset($transactionData['category_name']);
+
+            $category = $categories->get($categoryName);
+
+            $encrypted = $this->encryptionService->encrypt(
+                $transactionData['description'],
+                $this->encryptionKey,
+                "demo_tx_{$account->id}_{$index}"
+            );
+
+            $transactionData['description'] = $encrypted['encrypted'];
+            $transactionData['description_iv'] = $encrypted['iv'];
+
+            $transaction = $account->transactions()->create([
+                'user_id' => $account->user_id,
+                'category_id' => $category->id,
                 ...$transactionData,
             ]);
 
@@ -196,5 +260,19 @@ class ResetDemoAccountCommand extends Command
         }
 
         $this->info('  Created '.count($rules).' automation rules');
+    }
+
+    private function createSubscription(User $user): void
+    {
+        $user->subscriptions()->delete();
+
+        $user->subscriptions()->create([
+            'type' => 'default',
+            'stripe_id' => 'sub_demo_free_forever',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_demo_free',
+        ]);
+
+        $this->info('  Created demo subscription');
     }
 }
