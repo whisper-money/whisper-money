@@ -9,7 +9,7 @@ import { useCashflowData } from '@/hooks/use-cashflow-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import { useState } from 'react';
 
@@ -21,6 +21,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function CashflowPage() {
+    const { auth } = usePage<{ auth: { user: { currency_code: string } } }>()
+        .props;
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const period = {
@@ -59,6 +61,7 @@ export default function CashflowPage() {
                         current={summary.current}
                         previous={summary.previous}
                         loading={isLoading}
+                        currency={auth.user.currency_code}
                     />
                     <SavingsRateCard
                         current={summary.current}
@@ -76,7 +79,11 @@ export default function CashflowPage() {
                         {isLoading ? (
                             <div className="h-[400px] animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                         ) : (
-                            <SankeyChart data={sankey} height={400} />
+                            <SankeyChart
+                                data={sankey}
+                                height={400}
+                                currency={auth.user.currency_code}
+                            />
                         )}
                     </CardContent>
                 </Card>
@@ -87,16 +94,22 @@ export default function CashflowPage() {
                         type="income"
                         data={incomeBreakdown}
                         loading={isLoading}
+                        currency={auth.user.currency_code}
                     />
                     <BreakdownCard
                         type="expense"
                         data={expenseBreakdown}
                         loading={isLoading}
+                        currency={auth.user.currency_code}
                     />
                 </div>
 
                 {/* Trend Chart */}
-                <CashflowTrendChart data={trend} loading={isLoading} />
+                <CashflowTrendChart
+                    data={trend}
+                    loading={isLoading}
+                    currency={auth.user.currency_code}
+                />
             </div>
         </AppSidebarLayout>
     );

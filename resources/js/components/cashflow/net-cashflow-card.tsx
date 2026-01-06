@@ -14,12 +14,14 @@ interface NetCashflowCardProps {
     current: CashflowSummary;
     previous: CashflowSummary;
     loading?: boolean;
+    currency?: string;
 }
 
 export function NetCashflowCard({
     current,
     previous,
     loading,
+    currency = 'USD',
 }: NetCashflowCardProps) {
     if (loading) {
         return (
@@ -69,7 +71,7 @@ export function NetCashflowCard({
                         )}
                         <AmountDisplay
                             amountInCents={Math.abs(current.net)}
-                            currencyCode="USD"
+                            currencyCode={currency}
                             size="2xl"
                             weight="bold"
                             minimumFractionDigits={0}
@@ -99,7 +101,7 @@ export function NetCashflowCard({
                             {diffIsPositive ? '+' : ''}
                             <AmountDisplay
                                 amountInCents={diff}
-                                currencyCode="USD"
+                                currencyCode={currency}
                                 minimumFractionDigits={0}
                                 maximumFractionDigits={0}
                                 className="text-sm"
@@ -116,7 +118,7 @@ export function NetCashflowCard({
                         <p className="text-xs text-muted-foreground">Income</p>
                         <AmountDisplay
                             amountInCents={current.income}
-                            currencyCode="USD"
+                            currencyCode={currency}
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
                             weight="medium"
@@ -129,7 +131,7 @@ export function NetCashflowCard({
                         </p>
                         <AmountDisplay
                             amountInCents={current.expense}
-                            currencyCode="USD"
+                            currencyCode={currency}
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
                             weight="medium"

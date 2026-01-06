@@ -18,6 +18,7 @@ interface BreakdownCardProps {
     type: 'income' | 'expense';
     data: BreakdownData;
     loading?: boolean;
+    currency?: string;
 }
 
 const CHART_COLORS = [
@@ -31,7 +32,12 @@ const CHART_COLORS = [
     'var(--chart-8)',
 ];
 
-export function BreakdownCard({ type, data, loading }: BreakdownCardProps) {
+export function BreakdownCard({
+    type,
+    data,
+    loading,
+    currency = 'USD',
+}: BreakdownCardProps) {
     const title = type === 'income' ? 'Income Sources' : 'Expense Categories';
     const description =
         type === 'income'
@@ -71,7 +77,7 @@ export function BreakdownCard({ type, data, loading }: BreakdownCardProps) {
                     <CardTitle className="text-base">{title}</CardTitle>
                     <AmountDisplay
                         amountInCents={data.total}
-                        currencyCode="USD"
+                        currencyCode={currency}
                         minimumFractionDigits={0}
                         maximumFractionDigits={0}
                         weight="semibold"
@@ -122,7 +128,7 @@ export function BreakdownCard({ type, data, loading }: BreakdownCardProps) {
                                                 item.previous_amount
                                             }
                                             currentAmount={item.amount}
-                                            currencyCode="USD"
+                                            currencyCode={currency}
                                             invertColors={type === 'expense'}
                                             className="shrink-0 text-xs"
                                         />
@@ -133,7 +139,7 @@ export function BreakdownCard({ type, data, loading }: BreakdownCardProps) {
                                         </span>
                                         <AmountDisplay
                                             amountInCents={item.amount}
-                                            currencyCode="USD"
+                                            currencyCode={currency}
                                             variant="compact"
                                             minimumFractionDigits={0}
                                             maximumFractionDigits={0}

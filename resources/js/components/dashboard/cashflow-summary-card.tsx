@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -25,6 +25,8 @@ interface CashflowSummaryCardProps {
 }
 
 export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
+    const { auth } = usePage<{ auth: { user: { currency_code: string } } }>()
+        .props;
     const [data, setData] = useState<{
         current: CashflowSummary;
         previous: CashflowSummary;
@@ -105,7 +107,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                         <p className="text-xs text-muted-foreground">Income</p>
                         <AmountDisplay
                             amountInCents={current.income}
-                            currencyCode="USD"
+                            currencyCode={auth.user.currency_code}
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
                             weight="semibold"
@@ -120,7 +122,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                         </p>
                         <AmountDisplay
                             amountInCents={current.expense}
-                            currencyCode="USD"
+                            currencyCode={auth.user.currency_code}
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
                             weight="semibold"
@@ -138,7 +140,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                             )}
                             <AmountDisplay
                                 amountInCents={Math.abs(current.net)}
-                                currencyCode="USD"
+                                currencyCode={auth.user.currency_code}
                                 minimumFractionDigits={0}
                                 maximumFractionDigits={0}
                                 weight="semibold"

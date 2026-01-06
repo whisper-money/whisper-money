@@ -7,6 +7,7 @@ interface SankeyChartProps {
     data: SankeyData;
     height?: number;
     className?: string;
+    currency?: string;
 }
 
 interface NodeData {
@@ -34,10 +35,10 @@ const NODE_WIDTH = 12;
 const NODE_PADDING = 6;
 const MIN_NODE_HEIGHT = 20;
 
-function formatAmount(amountInCents: number): string {
+function formatAmount(amountInCents: number, currency: string): string {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD',
+        currency: currency,
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(amountInCents / 100);
@@ -47,6 +48,7 @@ export function SankeyChart({
     data,
     height = 400,
     className,
+    currency = 'USD',
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
@@ -327,7 +329,7 @@ export function SankeyChart({
                                     dominantBaseline="middle"
                                     className="fill-muted-foreground text-[9px]"
                                 >
-                                    {formatAmount(node.value)}
+                                    {formatAmount(node.value, currency)}
                                 </text>
                             </g>
                         );

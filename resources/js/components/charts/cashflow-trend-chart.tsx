@@ -25,6 +25,7 @@ interface CashflowTrendChartProps {
     data: TrendDataPoint[];
     loading?: boolean;
     className?: string;
+    currency?: string;
 }
 
 const chartConfig: ChartConfig = {
@@ -53,6 +54,7 @@ interface TooltipPayloadItem {
 interface CustomTooltipProps {
     active?: boolean;
     payload?: TooltipPayloadItem[];
+    currency?: string;
 }
 
 function formatMonth(yearMonth: string): string {
@@ -68,7 +70,11 @@ function formatMonth(yearMonth: string): string {
     );
 }
 
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
+function CustomTooltip({
+    active,
+    payload,
+    currency = 'USD',
+}: CustomTooltipProps) {
     if (!active || !payload?.length) return null;
 
     const data = payload[0].payload;
@@ -85,7 +91,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
                     </span>
                     <AmountDisplay
                         amountInCents={data.income}
-                        currencyCode="USD"
+                        currencyCode={currency}
                         minimumFractionDigits={0}
                         maximumFractionDigits={0}
                         className="font-mono font-medium tabular-nums"
@@ -98,7 +104,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
                     </span>
                     <AmountDisplay
                         amountInCents={data.expense}
-                        currencyCode="USD"
+                        currencyCode={currency}
                         minimumFractionDigits={0}
                         maximumFractionDigits={0}
                         className="font-mono font-medium tabular-nums"
@@ -111,7 +117,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
                     </span>
                     <AmountDisplay
                         amountInCents={data.net}
-                        currencyCode="USD"
+                        currencyCode={currency}
                         minimumFractionDigits={0}
                         maximumFractionDigits={0}
                         className={cn(
@@ -129,6 +135,7 @@ export function CashflowTrendChart({
     data,
     loading,
     className,
+    currency = 'USD',
 }: CashflowTrendChartProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
@@ -191,7 +198,7 @@ export function CashflowTrendChart({
                                         notation: 'compact',
                                         compactDisplay: 'short',
                                         style: 'currency',
-                                        currency: 'USD',
+                                        currency: currency,
                                         minimumFractionDigits: 0,
                                         maximumFractionDigits: 0,
                                     }).format(value / 100);
@@ -204,7 +211,7 @@ export function CashflowTrendChart({
                                 strokeDasharray="3 3"
                             />
                             <Tooltip
-                                content={<CustomTooltip />}
+                                content={<CustomTooltip currency={currency} />}
                                 cursor={{
                                     fill: 'var(--color-muted)',
                                     opacity: 0.3,
