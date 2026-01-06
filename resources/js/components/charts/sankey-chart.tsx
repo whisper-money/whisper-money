@@ -27,11 +27,12 @@ interface LinkData {
     value: number;
     sourceY: number;
     targetY: number;
-    height: number;
+    sourceHeight: number;
+    targetHeight: number;
 }
 
 const COLUMN_POSITIONS = [0.25, 0.5, 0.75];
-const NODE_WIDTH = 12;
+const NODE_WIDTH = 8;
 const NODE_PADDING = 6;
 const MIN_NODE_HEIGHT = 20;
 
@@ -151,7 +152,8 @@ export function SankeyChart({
                 value: incomeNode.value,
                 sourceY: incomeNode.y + incomeNode.height / 2,
                 targetY: incomeLinkY + linkHeight / 2,
-                height: linkHeight,
+                sourceHeight: incomeNode.height,
+                targetHeight: linkHeight,
             });
             incomeLinkY += linkHeight;
         });
@@ -167,7 +169,8 @@ export function SankeyChart({
                 value: expenseNode.value,
                 sourceY: expenseLinkY + linkHeight / 2,
                 targetY: expenseNode.y + expenseNode.height / 2,
-                height: linkHeight,
+                sourceHeight: linkHeight,
+                targetHeight: expenseNode.height,
             });
             expenseLinkY += linkHeight;
         });
@@ -229,14 +232,14 @@ export function SankeyChart({
 
                         // Create a curved path
                         const path = `
-                            M ${sourceX} ${link.sourceY - link.height / 2}
-                            C ${(sourceX + targetX) / 2} ${link.sourceY - link.height / 2},
-                              ${(sourceX + targetX) / 2} ${link.targetY - link.height / 2},
-                              ${targetX} ${link.targetY - link.height / 2}
-                            L ${targetX} ${link.targetY + link.height / 2}
-                            C ${(sourceX + targetX) / 2} ${link.targetY + link.height / 2},
-                              ${(sourceX + targetX) / 2} ${link.sourceY + link.height / 2},
-                              ${sourceX} ${link.sourceY + link.height / 2}
+                            M ${sourceX} ${link.sourceY - link.sourceHeight / 2}
+                            C ${(sourceX + targetX) / 2} ${link.sourceY - link.sourceHeight / 2},
+                              ${(sourceX + targetX) / 2} ${link.targetY - link.targetHeight / 2},
+                              ${targetX} ${link.targetY - link.targetHeight / 2}
+                            L ${targetX} ${link.targetY + link.targetHeight / 2}
+                            C ${(sourceX + targetX) / 2} ${link.targetY + link.targetHeight / 2},
+                              ${(sourceX + targetX) / 2} ${link.sourceY + link.sourceHeight / 2},
+                              ${sourceX} ${link.sourceY + link.sourceHeight / 2}
                             Z
                         `;
 
@@ -278,7 +281,7 @@ export function SankeyChart({
                                     y={node.y}
                                     width={NODE_WIDTH}
                                     height={node.height}
-                                    rx={4}
+                                    rx={2}
                                     fill={
                                         node.id === 'center'
                                             ? 'var(--color-chart-1)'
