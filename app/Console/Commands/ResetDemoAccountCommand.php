@@ -161,12 +161,39 @@ class ResetDemoAccountCommand extends Command
         $categories = $user->categories()->get()->keyBy('name');
 
         $accounts = [
-            ['name' => 'Primary Checking', 'type' => AccountType::Checking, 'balance' => 2500000],
-            ['name' => 'Secondary Checking', 'type' => AccountType::Checking, 'balance' => 750000],
-            ['name' => 'Emergency Savings', 'type' => AccountType::Savings, 'balance' => 1500000],
-            ['name' => '401k Retirement', 'type' => AccountType::Retirement, 'balance' => 8500000],
-            ['name' => 'Investment Portfolio', 'type' => AccountType::Investment, 'balance' => 3200000],
+            [
+                'name' => 'Primary Checking',
+                'type' => AccountType::Checking,
+                'current_balance' => $this->generateRealisticBalance(2000000, 3500000),
+                'monthly_variance' => 150000,
+            ],
+            [
+                'name' => 'Joint Checking',
+                'type' => AccountType::Checking,
+                'current_balance' => $this->generateRealisticBalance(500000, 1200000),
+                'monthly_variance' => 80000,
+            ],
+            [
+                'name' => 'Emergency Fund',
+                'type' => AccountType::Savings,
+                'current_balance' => $this->generateRealisticBalance(1200000, 1800000),
+                'monthly_variance' => 25000,
+            ],
+            [
+                'name' => '401(k) Retirement',
+                'type' => AccountType::Retirement,
+                'current_balance' => $this->generateRealisticBalance(8500000, 12500000),
+                'monthly_variance' => 350000,
+            ],
+            [
+                'name' => 'Brokerage Account',
+                'type' => AccountType::Investment,
+                'current_balance' => $this->generateRealisticBalance(3500000, 5500000),
+                'monthly_variance' => 200000,
+            ],
         ];
+
+        $totalTransactions = 0;
 
         foreach ($accounts as $index => $accountData) {
             $encrypted = $this->encryptionService->encrypt(
@@ -183,30 +210,63 @@ class ResetDemoAccountCommand extends Command
                 'type' => $accountData['type'],
             ]);
 
-            $account->balances()->create([
-                'balance_date' => now()->format('Y-m-d'),
-                'balance' => $accountData['balance'],
-            ]);
+            $this->createBalanceHistory($account, $accountData['current_balance'], $accountData['monthly_variance']);
 
-            $this->createTransactionsForAccount($account, $categories, $labels);
+            $transactionCount = $this->createTransactionsForAccount($account, $categories, $labels);
+            $totalTransactions += $transactionCount;
         }
 
-        $this->info('  Created 5 accounts with transactions and balances');
+        $this->info("  Created 5 accounts with {$totalTransactions} transactions and 12 months of balances");
+    }
+
+    private function generateRealisticBalance(int $min, int $max): int
+    {
+        $base = rand($min, $max);
+        $cents = rand(0, 99);
+
+        return (int) (floor($base / 100) * 100 + $cents);
+    }
+
+    private function createBalanceHistory(Account $account, int $currentBalance, int $monthlyVariance): void
+    {
+        $balance = $currentBalance;
+
+        for ($i = 0; $i <= 12; $i++) {
+            $date = now()->subMonths($i)->endOfMonth();
+
+            if ($i === 0) {
+                $date = now();
+            }
+
+            $account->balances()->create([
+                'balance_date' => $date->format('Y-m-d'),
+                'balance' => $balance,
+            ]);
+
+            $change = rand(-$monthlyVariance, $monthlyVariance);
+            $balance = max(10000, $balance - $change);
+            $balance = $this->generateRealisticBalance($balance - 5000, $balance + 5000);
+        }
     }
 
     /**
      * @param  Collection<string, Category>  $categories
      * @param  array<int, array{label: Label, assignment_percentage: int}>  $labels
      */
-    private function createTransactionsForAccount(Account $account, Collection $categories, array $labels): void
+    private function createTransactionsForAccount(Account $account, Collection $categories, array $labels): int
     {
         $transactions = $this->transactionsProvider->getTransactions();
+        $count = 0;
 
         foreach ($transactions as $index => $transactionData) {
             $categoryName = $transactionData['category_name'];
             unset($transactionData['category_name']);
 
             $category = $categories->get($categoryName);
+
+            if (! $category) {
+                continue;
+            }
 
             $encrypted = $this->encryptionService->encrypt(
                 $transactionData['description'],
@@ -228,7 +288,11 @@ class ResetDemoAccountCommand extends Command
                     $transaction->labels()->attach($labelConfig['label']->id);
                 }
             }
+
+            $count++;
         }
+
+        return $count;
     }
 
     /**

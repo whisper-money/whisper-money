@@ -32,17 +32,17 @@ test('demo:reset creates 5 accounts', function () {
     expect($types)->toContain(AccountType::Investment);
 });
 
-test('demo:reset creates 10 transactions per account', function () {
+test('demo:reset creates 12 months of transactions per account', function () {
     $this->artisan('demo:reset')
         ->assertSuccessful();
 
     $user = User::where('email', 'demo@whisper.money')->first();
 
     foreach ($user->accounts as $account) {
-        expect($account->transactions()->count())->toBe(10);
+        expect($account->transactions()->count())->toBeGreaterThan(100);
     }
 
-    expect($user->transactions()->count())->toBe(50);
+    expect($user->transactions()->count())->toBeGreaterThan(2000);
 });
 
 test('demo:reset creates 3 labels', function () {
@@ -74,6 +74,7 @@ test('demo:reset deletes existing data before recreating', function () {
 
     $user = User::where('email', 'demo@whisper.money')->first();
     $originalAccountIds = $user->accounts->pluck('id')->toArray();
+    $originalTransactionCount = $user->transactions()->count();
 
     $this->artisan('demo:reset')->assertSuccessful();
 
@@ -83,7 +84,7 @@ test('demo:reset deletes existing data before recreating', function () {
     expect(array_intersect($originalAccountIds, $newAccountIds))->toBeEmpty();
 
     expect($user->accounts()->count())->toBe(5);
-    expect($user->transactions()->count())->toBe(50);
+    expect($user->transactions()->count())->toBeGreaterThan(2000);
 });
 
 test('demo:reset fails if demo email is not configured', function () {
@@ -114,15 +115,21 @@ test('demo:reset creates an active subscription', function () {
     expect($user->hasProPlan())->toBeTrue();
 });
 
-test('demo:reset creates balances for all accounts', function () {
+test('demo:reset creates 12 months of balance history for all accounts', function () {
     $this->artisan('demo:reset')
         ->assertSuccessful();
 
     $user = User::where('email', 'demo@whisper.money')->first();
 
     foreach ($user->accounts as $account) {
-        expect($account->balances()->count())->toBe(1);
+        expect($account->balances()->count())->toBe(13);
         expect($account->balances()->first()->balance)->toBeGreaterThan(0);
+
+        $balances = $account->balances()->pluck('balance')->toArray();
+        foreach ($balances as $balance) {
+            $cents = $balance % 100;
+            expect($cents)->toBeGreaterThanOrEqual(0);
+        }
     }
 });
 
@@ -175,10 +182,10 @@ test('demo:reset encrypts account names correctly', function () {
 
     expect($decryptedName)->toBeIn([
         'Primary Checking',
-        'Secondary Checking',
-        'Emergency Savings',
-        '401k Retirement',
-        'Investment Portfolio',
+        'Joint Checking',
+        'Emergency Fund',
+        '401(k) Retirement',
+        'Brokerage Account',
     ]);
 });
 
