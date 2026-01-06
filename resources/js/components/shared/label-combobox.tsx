@@ -33,7 +33,7 @@ interface LabelComboboxProps {
 export function LabelCombobox({
     value,
     onValueChange,
-    labels,
+    labels = [],
     disabled = false,
     placeholder = 'Add labels...',
     triggerClassName,
