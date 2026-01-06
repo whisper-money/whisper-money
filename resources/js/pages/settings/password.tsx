@@ -2,16 +2,18 @@ import PasswordController from '@/actions/App/Http/Controllers/Settings/Password
 import InputError from '@/components/input-error';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Transition } from '@headlessui/react';
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import { useRef } from 'react';
 
 import HeadingSmall from '@/components/heading-small';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/user-password';
+import { InfoIcon } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -21,6 +23,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Password() {
+    const { auth } = usePage<SharedData>().props;
+    const isDemoAccount = auth?.isDemoAccount ?? false;
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
@@ -34,6 +38,16 @@ export default function Password() {
                         title="Update password"
                         description="Ensure your account is using a long, random password to stay secure"
                     />
+
+                    {isDemoAccount && (
+                        <Alert>
+                            <InfoIcon className="h-4 w-4" />
+                            <AlertDescription>
+                                Password changes are disabled on the demo
+                                account.
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
                     <Form
                         {...PasswordController.update.form()}
@@ -118,7 +132,7 @@ export default function Password() {
 
                                 <div className="flex items-center gap-4">
                                     <Button
-                                        disabled={processing}
+                                        disabled={processing || isDemoAccount}
                                         data-test="update-password-button"
                                     >
                                         Save password

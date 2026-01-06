@@ -1,14 +1,16 @@
 import HeadingSmall from '@/components/heading-small';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { billing } from '@/routes/settings';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Head, usePage } from '@inertiajs/react';
 import {
     CheckIcon,
     CreditCardIcon,
     InfinityIcon,
+    InfoIcon,
     ShieldCheckIcon,
     SparklesIcon,
 } from 'lucide-react';
@@ -46,6 +48,9 @@ const benefits = [
 ];
 
 export default function Billing() {
+    const { auth } = usePage<SharedData>().props;
+    const isDemoAccount = auth?.isDemoAccount ?? false;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manage Plan" />
@@ -56,6 +61,16 @@ export default function Billing() {
                         title="Your Pro Plan"
                         description="You're enjoying all the benefits of Whisper Money Pro"
                     />
+
+                    {isDemoAccount && (
+                        <Alert>
+                            <InfoIcon className="h-4 w-4" />
+                            <AlertDescription>
+                                Billing management is not available on the demo
+                                account.
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
                     <div className="grid gap-4 sm:grid-cols-2">
                         {benefits.map((benefit) => (
@@ -90,12 +105,14 @@ export default function Billing() {
                             Manage your subscription, update payment methods, or
                             view invoices through the Stripe billing portal.
                         </p>
-                        <a href={billing.portal.url()}>
-                            <Button className="mt-4">
-                                <CreditCardIcon className="size-4" />
-                                Manage Subscription
-                            </Button>
-                        </a>
+                        {!isDemoAccount && (
+                            <a href={billing.portal.url()}>
+                                <Button className="mt-4">
+                                    <CreditCardIcon className="size-4" />
+                                    Manage Subscription
+                                </Button>
+                            </a>
+                        )}
                     </div>
                 </div>
             </SettingsLayout>

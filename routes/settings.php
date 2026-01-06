@@ -16,13 +16,15 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/account', [ProfileController::class, 'account'])->name('account.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::delete('settings/profile', [ProfileController::class, 'destroy'])
+        ->middleware('block-demo')
+        ->name('profile.destroy');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('user-password.edit');
 
     Route::put('settings/password', [PasswordController::class, 'update'])
-        ->middleware('throttle:6,1')
+        ->middleware(['throttle:6,1', 'block-demo'])
         ->name('user-password.update');
 
     Route::get('settings/accounts', [AccountController::class, 'index'])->name('accounts.index');

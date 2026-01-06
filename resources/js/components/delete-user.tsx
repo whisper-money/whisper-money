@@ -1,6 +1,7 @@
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -13,11 +14,32 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Form } from '@inertiajs/react';
+import { type SharedData } from '@/types';
+import { Form, usePage } from '@inertiajs/react';
+import { InfoIcon } from 'lucide-react';
 import { useRef } from 'react';
 
 export default function DeleteUser() {
+    const { auth } = usePage<SharedData>().props;
+    const isDemoAccount = auth?.isDemoAccount ?? false;
     const passwordInput = useRef<HTMLInputElement>(null);
+
+    if (isDemoAccount) {
+        return (
+            <div className="space-y-6">
+                <HeadingSmall
+                    title="Delete account"
+                    description="Delete your account and all of its resources"
+                />
+                <Alert>
+                    <InfoIcon className="h-4 w-4" />
+                    <AlertDescription>
+                        The demo account cannot be deleted.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

@@ -51,6 +51,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 'hasProPlan' => $user?->hasProPlan() ?? false,
+                'isDemoAccount' => $user?->isDemoAccount() ?? false,
             ],
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'pricing' => [

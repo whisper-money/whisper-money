@@ -1,15 +1,16 @@
 import HeadingSmall from '@/components/heading-small';
 import TwoFactorRecoveryCodes from '@/components/two-factor-recovery-codes';
 import TwoFactorSetupModal from '@/components/two-factor-setup-modal';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { disable, enable, show } from '@/routes/two-factor';
-import { type BreadcrumbItem } from '@/types';
-import { Form, Head } from '@inertiajs/react';
-import { ShieldBan, ShieldCheck } from 'lucide-react';
+import { type BreadcrumbItem, type SharedData } from '@/types';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { InfoIcon, ShieldBan, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
 interface TwoFactorProps {
@@ -28,6 +29,8 @@ export default function TwoFactor({
     requiresConfirmation = false,
     twoFactorEnabled = false,
 }: TwoFactorProps) {
+    const { auth } = usePage<SharedData>().props;
+    const isDemoAccount = auth?.isDemoAccount ?? false;
     const {
         qrCodeSvg,
         hasSetupData,
@@ -49,6 +52,17 @@ export default function TwoFactor({
                         title="Two-Factor Authentication"
                         description="Manage your two-factor authentication settings"
                     />
+
+                    {isDemoAccount && (
+                        <Alert>
+                            <InfoIcon className="h-4 w-4" />
+                            <AlertDescription>
+                                Two-factor authentication settings cannot be
+                                changed on the demo account.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     {twoFactorEnabled ? (
                         <div className="flex flex-col items-start justify-start space-y-4">
                             <Badge variant="default">Enabled</Badge>
@@ -65,19 +79,21 @@ export default function TwoFactor({
                                 errors={errors}
                             />
 
-                            <div className="relative inline">
-                                <Form {...disable.form()}>
-                                    {({ processing }) => (
-                                        <Button
-                                            variant="destructive"
-                                            type="submit"
-                                            disabled={processing}
-                                        >
-                                            <ShieldBan /> Disable 2FA
-                                        </Button>
-                                    )}
-                                </Form>
-                            </div>
+                            {!isDemoAccount && (
+                                <div className="relative inline">
+                                    <Form {...disable.form()}>
+                                        {({ processing }) => (
+                                            <Button
+                                                variant="destructive"
+                                                type="submit"
+                                                disabled={processing}
+                                            >
+                                                <ShieldBan /> Disable 2FA
+                                            </Button>
+                                        )}
+                                    </Form>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="flex flex-col items-start justify-start space-y-4">
@@ -89,33 +105,37 @@ export default function TwoFactor({
                                 application on your phone.
                             </p>
 
-                            <div>
-                                {hasSetupData ? (
-                                    <Button
-                                        onClick={() => setShowSetupModal(true)}
-                                    >
-                                        <ShieldCheck />
-                                        Continue Setup
-                                    </Button>
-                                ) : (
-                                    <Form
-                                        {...enable.form()}
-                                        onSuccess={() =>
-                                            setShowSetupModal(true)
-                                        }
-                                    >
-                                        {({ processing }) => (
-                                            <Button
-                                                type="submit"
-                                                disabled={processing}
-                                            >
-                                                <ShieldCheck />
-                                                Enable 2FA
-                                            </Button>
-                                        )}
-                                    </Form>
-                                )}
-                            </div>
+                            {!isDemoAccount && (
+                                <div>
+                                    {hasSetupData ? (
+                                        <Button
+                                            onClick={() =>
+                                                setShowSetupModal(true)
+                                            }
+                                        >
+                                            <ShieldCheck />
+                                            Continue Setup
+                                        </Button>
+                                    ) : (
+                                        <Form
+                                            {...enable.form()}
+                                            onSuccess={() =>
+                                                setShowSetupModal(true)
+                                            }
+                                        >
+                                            {({ processing }) => (
+                                                <Button
+                                                    type="submit"
+                                                    disabled={processing}
+                                                >
+                                                    <ShieldCheck />
+                                                    Enable 2FA
+                                                </Button>
+                                            )}
+                                        </Form>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 

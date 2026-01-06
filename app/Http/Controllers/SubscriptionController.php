@@ -96,6 +96,11 @@ class SubscriptionController extends Controller
 
     public function billingPortal(Request $request): RedirectResponse
     {
+        if ($request->user()->isDemoAccount()) {
+            return redirect()->route('settings.billing')
+                ->withErrors(['demo' => 'Billing management is not available on the demo account.']);
+        }
+
         return $request->user()->redirectToBillingPortal(route('settings.billing'));
     }
 }

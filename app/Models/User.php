@@ -112,4 +112,9 @@ class User extends Authenticatable
 
         return $this->subscribed('default');
     }
+
+    public function isDemoAccount(): bool
+    {
+        return $this->email === config('app.demo.email');
+    }
 }

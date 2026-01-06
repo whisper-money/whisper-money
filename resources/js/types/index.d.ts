@@ -8,6 +8,7 @@ import { UUID } from './uuid';
 export interface Auth {
     user: User;
     hasProPlan: boolean;
+    isDemoAccount: boolean;
 }
 
 export interface BreadcrumbItem {

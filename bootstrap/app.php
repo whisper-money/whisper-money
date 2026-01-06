@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
+            'block-demo' => \App\Http\Middleware\BlockDemoAccountActions::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
