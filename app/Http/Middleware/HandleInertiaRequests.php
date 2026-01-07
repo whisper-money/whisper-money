@@ -41,6 +41,8 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
+        $isDemoAccount = $user?->isDemoAccount() ?? false;
+        $isDemoQuery = $request->query('demo') === '1';
 
         return [
             ...parent::share($request),
@@ -51,7 +53,13 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
                 'hasProPlan' => $user?->hasProPlan() ?? false,
+                'isDemoAccount' => $isDemoAccount,
             ],
+            'demoCredentials' => ($isDemoQuery || $isDemoAccount) ? [
+                'email' => config('app.demo.email'),
+                'password' => config('app.demo.password'),
+            ] : null,
+            'demoEncryptionKey' => $isDemoAccount ? config('app.demo.encryption_key') : null,
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'pricing' => [
                 'plans' => config('subscriptions.plans', []),

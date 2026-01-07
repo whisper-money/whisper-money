@@ -21,6 +21,7 @@ import { type PropsWithChildren } from 'react';
 
 const getNavItems = (
     subscriptionsEnabled: boolean,
+    isDemoAccount: boolean,
 ): (NavItem | NavSectionHeader | NavDivider)[] => [
     {
         type: 'nav-item',
@@ -51,13 +52,17 @@ const getNavItems = (
         type: 'section-header',
         title: 'Profile Settings',
     },
-    {
-        type: 'nav-item',
-        title: 'User account',
-        href: editAccount(),
-        icon: null,
-    },
-    ...(subscriptionsEnabled
+    ...(!isDemoAccount
+        ? [
+              {
+                  type: 'nav-item',
+                  title: 'User account',
+                  href: editAccount(),
+                  icon: null,
+              },
+          ]
+        : []),
+    ...(subscriptionsEnabled && !isDemoAccount
         ? [
               {
                   type: 'nav-item' as const,
@@ -73,17 +78,22 @@ const getNavItems = (
         href: editAppearance(),
         icon: null,
     },
-    { type: 'divider' },
-    {
-        type: 'nav-item',
-        title: 'Delete Account',
-        href: editDeleteAccount(),
-        icon: null,
-    },
+    ...(!isDemoAccount
+        ? [
+              { type: 'divider' as const },
+              {
+                  type: 'nav-item' as const,
+                  title: 'Delete Account',
+                  href: editDeleteAccount(),
+                  icon: null,
+              },
+          ]
+        : []),
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
-    const { subscriptionsEnabled } = usePage<SharedData>().props;
+    const { subscriptionsEnabled, auth } = usePage<SharedData>().props;
+    const isDemoAccount = auth?.isDemoAccount ?? false;
 
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
@@ -91,7 +101,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     }
 
     const currentPath = window.location.pathname;
-    const sidebarNavItems = getNavItems(subscriptionsEnabled);
+    const sidebarNavItems = getNavItems(subscriptionsEnabled, isDemoAccount);
 
     return (
         <div className="px-4 py-6">

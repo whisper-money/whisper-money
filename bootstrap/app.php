@@ -31,11 +31,13 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\BlockDemoAccountActions::class.':auto',
         ]);
 
         $middleware->alias([
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
+            'block-demo' => \App\Http\Middleware\BlockDemoAccountActions::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
