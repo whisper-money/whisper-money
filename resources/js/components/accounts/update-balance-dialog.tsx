@@ -1,4 +1,4 @@
-import { store } from '@/actions/App/Http/Controllers/Sync/AccountBalanceSyncController';
+import { store } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import type { Account } from '@/types/account';
 import { useState } from 'react';
 
@@ -53,7 +52,7 @@ export function UpdateBalanceDialog({
         setError(null);
 
         try {
-            const response = await fetch(store.url(), {
+            const response = await fetch(store.url(account.id), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -66,7 +65,6 @@ export function UpdateBalanceDialog({
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
-                    account_id: account.id,
                     balance_date: date,
                     balance: balance,
                 }),
@@ -76,8 +74,6 @@ export function UpdateBalanceDialog({
                 const data = await response.json();
                 throw new Error(data.message || 'Failed to update balance');
             }
-
-            await accountBalanceSyncService.sync();
 
             handleOpenChange(false);
             onSuccess?.();

@@ -8,7 +8,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { categorySyncService } from '@/services/category-sync';
 import { type Category } from '@/types/category';
 import { Form } from '@inertiajs/react';
 
@@ -37,8 +36,7 @@ export function DeleteCategoryDialog({
                 </DialogHeader>
                 <Form
                     {...destroy.form.delete(category.id)}
-                    onSuccess={async () => {
-                        await categorySyncService.delete(category.id);
+                    onSuccess={() => {
                         onOpenChange(false);
                         onSuccess?.();
                     }}

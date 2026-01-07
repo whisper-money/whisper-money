@@ -32,6 +32,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('settings/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
     Route::delete('settings/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy');
 
+    Route::get('settings/banks', [BankController::class, 'index'])->name('banks.index');
     Route::post('settings/banks', [BankController::class, 'store'])->name('banks.store');
 
     Route::get('settings/categories', [CategoryController::class, 'index'])->name('categories.index');

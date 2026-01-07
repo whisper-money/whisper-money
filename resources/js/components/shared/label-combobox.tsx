@@ -1,3 +1,4 @@
+import { store } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +14,6 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { labelSyncService } from '@/services/label-sync';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
 import { Check, ChevronsUpDown, Plus, Tag, X } from 'lucide-react';
 import { useState } from 'react';
@@ -80,10 +80,31 @@ export function LabelCombobox({
         try {
             const randomColor =
                 LABEL_COLORS[Math.floor(Math.random() * LABEL_COLORS.length)];
-            const newLabel = await labelSyncService.findOrCreate(
-                inputValue.trim(),
-                randomColor,
-            );
+
+            const response = await fetch(store.url(), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': decodeURIComponent(
+                        document.cookie
+                            .split('; ')
+                            .find((row) => row.startsWith('XSRF-TOKEN='))
+                            ?.split('=')[1] || '',
+                    ),
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    name: inputValue.trim(),
+                    color: randomColor,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create label');
+            }
+
+            const data = await response.json();
+            const newLabel = data.data || data;
 
             if (newLabel) {
                 onValueChange([...value, newLabel.id]);
