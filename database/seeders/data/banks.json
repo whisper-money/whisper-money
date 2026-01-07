@@ -9446,5 +9446,17 @@
     {
         "name": "Česká spořitelna",
         "logo": "https://cdn-logos.gocardless.com/ais/CESKA_SPORITELNA_GIBACZPX.png"
+    },
+    {
+        "name": "Indexa Capital",
+        "logo": "/images/banks/logos/indexa-capital.jpg"
+    },
+    {
+        "name": "Binance",
+        "logo": "https://whisper.money/storage/banks/logos/t1h5rqi19dJTPl6ZadziPjNwm0lrcdTFBRzB3iCy.png"
+    },
+    {
+        "name": "Bitpanda",
+        "logo": "https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png"
     }
 ]

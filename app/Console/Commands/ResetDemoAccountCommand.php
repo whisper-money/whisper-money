@@ -124,7 +124,7 @@ class ResetDemoAccountCommand extends Command
 
     private function createCategories(User $user): void
     {
-        (new CreateDefaultCategories)->handle($user);
+        (new CreateDefaultCategories())->handle($user);
         $this->info('  Created default categories');
     }
 
@@ -147,7 +147,7 @@ class ResetDemoAccountCommand extends Command
             ];
         }
 
-        $this->info('  Created '.count($labels).' labels');
+        $this->info('  Created ' . count($labels) . ' labels');
 
         return $labels;
     }
@@ -157,7 +157,14 @@ class ResetDemoAccountCommand extends Command
      */
     private function createAccountsWithTransactions(User $user, array $labels): void
     {
-        $bank = Bank::whereNull('user_id')->first() ?? Bank::factory()->create(['user_id' => null]);
+        $bbvaBank = Bank::query()->whereNull('user_id')->where('name', 'BBVA')->first()
+            ?? Bank::factory()->create(['user_id' => null]);
+        $ingBank = Bank::query()->whereNull('user_id')->where('name', 'ING')->first()
+            ?? Bank::factory()->create(['user_id' => null]);
+        $indexaCapitalBank = Bank::query()->whereNull('user_id')->where('name', 'Indexa Capital')->first()
+            ?? Bank::factory()->create(['user_id' => null]);
+        $binanceBank = Bank::query()->whereNull('user_id')->where('name', 'Binance')->first()
+            ?? Bank::factory()->create(['user_id' => null]);
         $categories = $user->categories()->get()->keyBy('name');
 
         $accounts = [
@@ -166,30 +173,42 @@ class ResetDemoAccountCommand extends Command
                 'type' => AccountType::Checking,
                 'current_balance' => $this->generateRealisticBalance(2000000, 3500000),
                 'monthly_variance' => 150000,
+                'bank_account_id' => $bbvaBank->id,
             ],
             [
                 'name' => 'Joint Checking',
                 'type' => AccountType::Checking,
                 'current_balance' => $this->generateRealisticBalance(500000, 1200000),
                 'monthly_variance' => 80000,
+                'bank_account_id' => $bbvaBank->id,
             ],
             [
                 'name' => 'Emergency Fund',
                 'type' => AccountType::Savings,
                 'current_balance' => $this->generateRealisticBalance(1200000, 1800000),
                 'monthly_variance' => 25000,
+                'bank_account_id' => $ingBank->id,
             ],
             [
                 'name' => '401(k) Retirement',
                 'type' => AccountType::Retirement,
                 'current_balance' => $this->generateRealisticBalance(8500000, 12500000),
                 'monthly_variance' => 350000,
+                'bank_account_id' => $indexaCapitalBank->id,
             ],
             [
                 'name' => 'Brokerage Account',
                 'type' => AccountType::Investment,
-                'current_balance' => $this->generateRealisticBalance(3500000, 5500000),
+                'current_balance' => $this->generateRealisticBalance(1500000, 3500000),
                 'monthly_variance' => 200000,
+                'bank_account_id' => $indexaCapitalBank->id,
+            ],
+            [
+                'name' => 'Cryptos',
+                'type' => AccountType::Investment,
+                'current_balance' => $this->generateRealisticBalance(1500000, 4500000),
+                'monthly_variance' => 100000,
+                'bank_account_id' => $binanceBank->id,
             ],
         ];
 
@@ -205,15 +224,17 @@ class ResetDemoAccountCommand extends Command
             $account = $user->accounts()->create([
                 'name' => $encrypted['encrypted'],
                 'name_iv' => $encrypted['iv'],
-                'bank_id' => $bank->id,
+                'bank_id' => $accountData['bank_account_id'],
                 'currency_code' => 'USD',
                 'type' => $accountData['type'],
             ]);
 
             $this->createBalanceHistory($account, $accountData['current_balance'], $accountData['monthly_variance']);
 
-            $transactionCount = $this->createTransactionsForAccount($account, $categories, $labels);
-            $totalTransactions += $transactionCount;
+            if ($this->accountTypeHasTransactions($accountData['type'])) {
+                $transactionCount = $this->createTransactionsForAccount($account, $categories, $labels);
+                $totalTransactions += $transactionCount;
+            }
         }
 
         $this->info("  Created 5 accounts with {$totalTransactions} transactions and 12 months of balances");
@@ -323,7 +344,12 @@ class ResetDemoAccountCommand extends Command
             }
         }
 
-        $this->info('  Created '.count($rules).' automation rules');
+        $this->info('  Created ' . count($rules) . ' automation rules');
+    }
+
+    private function accountTypeHasTransactions(AccountType $type): bool
+    {
+        return $type !== AccountType::Investment && $type !== AccountType::Retirement;
     }
 
     private function createSubscription(User $user): void
