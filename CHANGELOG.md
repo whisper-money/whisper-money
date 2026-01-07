@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/whisper-money/whisper-money/compare/v0.1.1...v0.1.2) (2026-01-07)
+
+
+### Bug Fixes
+
+* issue on filters when no label created ([cb1d6a2](https://github.com/whisper-money/whisper-money/commit/cb1d6a230f0c1c0734e5267a5a4d2753f4b91cff))
+
 ## 0.1.1 (2026-01-05)
 
 
