@@ -24,10 +24,6 @@ class PasswordController extends Controller
      */
     public function update(Request $request): RedirectResponse
     {
-        if ($request->user()->isDemoAccount()) {
-            return back()->withErrors(['current_password' => 'Password cannot be changed on the demo account.']);
-        }
-
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
             'password' => ['required', Password::defaults(), 'confirmed'],
