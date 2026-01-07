@@ -23,7 +23,7 @@ test('demo:reset creates 5 accounts', function () {
         ->assertSuccessful();
 
     $user = User::where('email', 'demo@whisper.money')->first();
-    expect($user->accounts()->count())->toBe(5);
+    expect($user->accounts()->count())->toBe(6);
 
     $types = $user->accounts->pluck('type')->toArray();
     expect($types)->toContain(AccountType::Checking);
@@ -39,6 +39,10 @@ test('demo:reset creates 12 months of transactions per account', function () {
     $user = User::where('email', 'demo@whisper.money')->first();
 
     foreach ($user->accounts as $account) {
+        if ($account->type === AccountType::Investment || $account->type === AccountType::Retirement) {
+            continue;
+        }
+
         expect($account->transactions()->count())->toBeGreaterThan(100);
     }
 
@@ -83,7 +87,7 @@ test('demo:reset deletes existing data before recreating', function () {
 
     expect(array_intersect($originalAccountIds, $newAccountIds))->toBeEmpty();
 
-    expect($user->accounts()->count())->toBe(5);
+    expect($user->accounts()->count())->toBe(6);
     expect($user->transactions()->count())->toBeGreaterThan(2000);
 });
 
@@ -130,6 +134,27 @@ test('demo:reset creates 12 months of balance history for all accounts', functio
             $cents = $balance % 100;
             expect($cents)->toBeGreaterThanOrEqual(0);
         }
+    }
+});
+
+test('demo:reset creates balance history with at least 5% growth over the year', function () {
+    $this->artisan('demo:reset')
+        ->assertSuccessful();
+
+    $user = User::where('email', 'demo@whisper.money')->first();
+    $minGrowthPercentage = 0.05;
+
+    foreach ($user->accounts as $account) {
+        $balances = $account->balances()
+            ->orderBy('balance_date', 'desc')
+            ->pluck('balance')
+            ->toArray();
+
+        $currentBalance = $balances[0];
+        $oldestBalance = $balances[12];
+
+        $growth = ($currentBalance - $oldestBalance) / $oldestBalance;
+        expect($growth)->toBeGreaterThanOrEqual($minGrowthPercentage);
     }
 });
 

@@ -29,6 +29,8 @@ import {
     importKey,
 } from '@/lib/crypto';
 import { getStoredKey, storeKey } from '@/lib/key-storage';
+import { type SharedData } from '@/types';
+import { usePage } from '@inertiajs/react';
 
 interface UnlockMessageDialogProps {
     open: boolean;
@@ -48,6 +50,8 @@ export default function UnlockMessageDialog({
     salt,
 }: UnlockMessageDialogProps) {
     const { refreshKeyState } = useEncryptionKey();
+    const { demoEncryptionKey, auth } = usePage<SharedData>().props;
+    const isDemoAccount: boolean = auth?.isDemoAccount ?? false;
     const [password, setPassword] = useState('');
     const [storagePreference, setStoragePreference] = useState<
         'session' | 'persistent'
@@ -128,6 +132,12 @@ export default function UnlockMessageDialog({
                                 placeholder="Enter your encryption password"
                                 disabled={processing}
                             />
+                            {isDemoAccount && demoEncryptionKey && (
+                                <p className="text-sm text-red-600 dark:text-red-400">
+                                    <span>Demo encryption password:</span>
+                                    <code>{demoEncryptionKey}</code>
+                                </p>
+                            )}
                         </div>
 
                         <div className="grid gap-2">

@@ -10,8 +10,9 @@ import { clearKey } from '@/lib/key-storage';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import { Form, Head } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { type SharedData } from '@/types';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 interface LoginProps {
     status?: string;
@@ -24,9 +25,19 @@ export default function Login({
     canResetPassword,
     canRegister,
 }: LoginProps) {
+    const { demoCredentials } = usePage<SharedData>().props;
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
     useEffect(() => {
         clearKey();
-    }, []);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('demo') === '1' && demoCredentials) {
+            setEmail(demoCredentials.email);
+            setPassword(demoCredentials.password);
+        }
+    }, [demoCredentials]);
 
     return (
         <AuthLayout
@@ -55,6 +66,8 @@ export default function Login({
                                     tabIndex={1}
                                     autoComplete="email"
                                     placeholder="email@example.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                 />
                                 <InputError message={errors.email} />
                             </div>
@@ -80,6 +93,10 @@ export default function Login({
                                     tabIndex={2}
                                     autoComplete="current-password"
                                     placeholder="Password"
+                                    value={password}
+                                    onChange={(e) =>
+                                        setPassword(e.target.value)
+                                    }
                                 />
                                 <InputError message={errors.password} />
                             </div>

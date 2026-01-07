@@ -23,6 +23,8 @@ class ResetDemoAccountCommand extends Command
 
     protected $description = 'Reset the demo account with fresh data';
 
+    private const MIN_BALANCE_GROWTH_PERCENTAGE = 0.05;
+
     private string $encryptionKey;
 
     public function __construct(
@@ -124,7 +126,7 @@ class ResetDemoAccountCommand extends Command
 
     private function createCategories(User $user): void
     {
-        (new CreateDefaultCategories())->handle($user);
+        (new CreateDefaultCategories)->handle($user);
         $this->info('  Created default categories');
     }
 
@@ -147,7 +149,7 @@ class ResetDemoAccountCommand extends Command
             ];
         }
 
-        $this->info('  Created ' . count($labels) . ' labels');
+        $this->info('  Created '.count($labels).' labels');
 
         return $labels;
     }
@@ -250,7 +252,9 @@ class ResetDemoAccountCommand extends Command
 
     private function createBalanceHistory(Account $account, int $currentBalance, int $monthlyVariance): void
     {
+        $targetFirstMonthBalance = (int) ($currentBalance / (1 + self::MIN_BALANCE_GROWTH_PERCENTAGE));
         $balance = $currentBalance;
+        $balances = [];
 
         for ($i = 0; $i <= 12; $i++) {
             $date = now()->subMonths($i)->endOfMonth();
@@ -259,14 +263,36 @@ class ResetDemoAccountCommand extends Command
                 $date = now();
             }
 
-            $account->balances()->create([
-                'balance_date' => $date->format('Y-m-d'),
+            $balances[] = [
+                'date' => $date,
                 'balance' => $balance,
-            ]);
+            ];
 
-            $change = rand(-$monthlyVariance, $monthlyVariance);
-            $balance = max(10000, $balance - $change);
-            $balance = $this->generateRealisticBalance($balance - 5000, $balance + 5000);
+            if ($i < 12) {
+                $change = rand(-$monthlyVariance, $monthlyVariance);
+                $balance = max(10000, $balance - $change);
+                $balance = $this->generateRealisticBalance($balance - 5000, $balance + 5000);
+            }
+        }
+
+        $firstMonthBalance = $balances[12]['balance'];
+        $reductionNeeded = $firstMonthBalance - $targetFirstMonthBalance;
+
+        if ($reductionNeeded > 0) {
+            $reductionPerMonth = ($reductionNeeded + 100) / 12;
+
+            for ($i = 0; $i <= 12; $i++) {
+                $monthIndex = $i;
+                $reduction = (int) ($reductionPerMonth * $monthIndex);
+                $balances[$i]['balance'] = max(10000, $balances[$i]['balance'] - $reduction);
+            }
+        }
+
+        foreach ($balances as $balanceData) {
+            $account->balances()->create([
+                'balance_date' => $balanceData['date']->format('Y-m-d'),
+                'balance' => $balanceData['balance'],
+            ]);
         }
     }
 
@@ -344,7 +370,7 @@ class ResetDemoAccountCommand extends Command
             }
         }
 
-        $this->info('  Created ' . count($rules) . ' automation rules');
+        $this->info('  Created '.count($rules).' automation rules');
     }
 
     private function accountTypeHasTransactions(AccountType $type): bool
