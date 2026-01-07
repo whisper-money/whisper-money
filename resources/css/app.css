@@ -218,4 +218,44 @@
     path:focus {
         outline: none;
     }
+
+    /* Unlock button attention animation */
+    @keyframes pulse-glow {
+        0%,
+        100% {
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.4);
+        }
+        50% {
+            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.1);
+        }
+    }
+
+    @keyframes pulse-scale {
+        0%,
+        100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    @keyframes icon-pulse {
+        0%,
+        100% {
+            color: currentColor;
+        }
+        50% {
+            color: rgb(59, 130, 246);
+        }
+    }
+
+    .unlock-button-pulse {
+        animation: pulse-glow 2s ease-in-out infinite,
+            pulse-scale 2s ease-in-out infinite;
+    }
+
+    .unlock-icon-pulse {
+        animation: icon-pulse 2s ease-in-out infinite;
+    }
 }

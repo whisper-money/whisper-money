@@ -1,4 +1,5 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { cn } from '@/lib/utils';
 import { LockKeyhole, LockKeyholeOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
@@ -62,7 +63,10 @@ export function EncryptionKeyButton() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-9 w-9"
+                            className={cn(
+                                'h-8 w-8',
+                                !isKeySet && 'unlock-button-pulse',
+                            )}
                             onClick={handleClick}
                             aria-label={
                                 isKeySet
