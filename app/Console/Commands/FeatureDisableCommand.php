@@ -11,7 +11,7 @@ class FeatureDisableCommand extends Command
 {
     use ResolvesFeatures;
 
-    protected $signature = 'feature:disable {feature : The feature class name (e.g., CashflowFeature)} {target : User email or "all" for everyone}';
+    protected $signature = 'feature:disable {feature : The feature class name} {target : User email or "all" for everyone}';
 
     protected $description = 'Disable a feature for a specific user or all users';
 
