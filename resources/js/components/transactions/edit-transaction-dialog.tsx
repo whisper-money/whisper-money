@@ -1,3 +1,7 @@
+import {
+    index as indexBalances,
+    store as storeBalance,
+} from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AmountInput } from '@/components/ui/amount-input';
@@ -26,8 +30,6 @@ import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
     filterTransactionalAccounts,
@@ -48,6 +50,7 @@ interface EditTransactionDialogProps {
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
+    automationRules?: AutomationRule[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
@@ -60,6 +63,7 @@ export function EditTransactionDialog({
     accounts,
     banks,
     labels,
+    automationRules = [],
     open,
     onOpenChange,
     onSuccess,
@@ -80,9 +84,6 @@ export function EditTransactionDialog({
     const [decryptedAccountNames, setDecryptedAccountNames] = useState<
         Map<string, string>
     >(new Map());
-    const [automationRules, setAutomationRules] = useState<AutomationRule[]>(
-        [],
-    );
     const [updateAccountBalance, setUpdateAccountBalance] = useState(() => {
         if (typeof window !== 'undefined') {
             const stored = localStorage.getItem(STORAGE_KEY_UPDATE_BALANCE);
@@ -161,20 +162,6 @@ export function EditTransactionDialog({
         decryptAccountNames();
     }, [open, mode, accounts]);
 
-    useEffect(() => {
-        if (!open || mode !== 'create') return;
-
-        async function loadAutomationRules() {
-            try {
-                const rules = await automationRuleSyncService.getAll();
-                setAutomationRules(rules);
-            } catch (error) {
-                console.error('Failed to load automation rules:', error);
-            }
-        }
-
-        loadAutomationRules();
-    }, [open, mode]);
 
     async function checkAndApplyAutomationRules() {
         if (mode !== 'create' || automationRules.length === 0) {
@@ -256,26 +243,63 @@ export function EditTransactionDialog({
         transactionDateStr: string,
         transactionAmount: number,
     ) {
+        const xsrfToken = decodeURIComponent(
+            document.cookie
+                .split('; ')
+                .find((row) => row.startsWith('XSRF-TOKEN='))
+                ?.split('=')[1] || '',
+        );
+
         try {
-            const allBalances = await accountBalanceSyncService.getAll();
-            const accountBalances = allBalances
-                .filter((b) => b.account_id === accountIdToUpdate)
-                .sort(
-                    (a, b) =>
-                        new Date(b.balance_date).getTime() -
-                        new Date(a.balance_date).getTime(),
-                );
+            // Fetch balances from backend
+            const balancesResponse = await fetch(
+                indexBalances.url(accountIdToUpdate),
+                {
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                },
+            );
+
+            if (!balancesResponse.ok) {
+                throw new Error('Failed to fetch balances');
+            }
+
+            const balancesData = await balancesResponse.json();
+            const accountBalances = (balancesData.data || []).sort(
+                (
+                    a: { balance_date: string },
+                    b: { balance_date: string },
+                ) =>
+                    new Date(b.balance_date).getTime() -
+                    new Date(a.balance_date).getTime(),
+            );
 
             const latestBalance =
                 accountBalances.length > 0 ? accountBalances[0].balance : 0;
 
             const newBalance = latestBalance + transactionAmount;
 
-            await accountBalanceSyncService.updateOrCreate(
-                accountIdToUpdate as unknown as number,
-                transactionDateStr,
-                newBalance,
+            // Store new balance via backend
+            const storeResponse = await fetch(
+                storeBalance.url(accountIdToUpdate),
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': xsrfToken,
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        balance_date: transactionDateStr,
+                        balance: newBalance,
+                    }),
+                },
             );
+
+            if (!storeResponse.ok) {
+                throw new Error('Failed to store balance');
+            }
         } catch (error) {
             console.error('Failed to update account balance:', error);
             toast.error('Transaction created, but failed to update balance');

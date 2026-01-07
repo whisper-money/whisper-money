@@ -18,7 +18,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { labelSyncService } from '@/services/label-sync';
 import { getLabelColorClasses, LABEL_COLORS } from '@/types/label';
 import { Form } from '@inertiajs/react';
 import { useState } from 'react';
@@ -40,8 +39,7 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
                 </DialogHeader>
                 <Form
                     {...store.form()}
-                    onSuccess={async () => {
-                        await labelSyncService.sync();
+                    onSuccess={() => {
                         setOpen(false);
                         onSuccess?.();
                     }}

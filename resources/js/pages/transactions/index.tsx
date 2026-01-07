@@ -56,10 +56,10 @@ import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent, cn } from '@/lib/utils';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
@@ -79,6 +79,7 @@ interface Props {
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
+    automationRules: AutomationRule[];
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
@@ -357,6 +358,7 @@ export default function Transactions({
     accounts,
     banks,
     labels: initialLabels,
+    automationRules,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
 
@@ -816,7 +818,7 @@ export default function Transactions({
                 consoleDebug('✓ Encryption key found');
 
                 const key = await importKey(keyString);
-                const rules = await automationRuleSyncService.getAll();
+                const rules = automationRules;
                 consoleDebug(`Found ${rules.length} automation rules`);
 
                 if (rules.length === 0) {
@@ -944,7 +946,7 @@ export default function Transactions({
             consoleDebug('✓ Encryption key found');
 
             const key = await importKey(keyString);
-            const rules = await automationRuleSyncService.getAll();
+            const rules = automationRules;
             consoleDebug(`Found ${rules.length} automation rules`);
 
             if (rules.length === 0) {

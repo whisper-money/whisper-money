@@ -27,6 +27,33 @@ class AccountBalanceController extends Controller
     }
 
     /**
+     * Store a new balance for an account.
+     */
+    public function store(Account $account): JsonResponse
+    {
+        $this->authorize('update', $account);
+
+        $validated = request()->validate([
+            'balance' => 'required|numeric',
+            'balance_date' => 'required|date',
+        ]);
+
+        $balance = AccountBalance::updateOrCreate(
+            [
+                'account_id' => $account->id,
+                'balance_date' => $validated['balance_date'],
+            ],
+            [
+                'balance' => $validated['balance'],
+            ]
+        );
+
+        return response()->json([
+            'data' => $balance,
+        ], 201);
+    }
+
+    /**
      * Update or create the current balance for an account.
      */
     public function updateCurrent(UpdateCurrentAccountBalanceRequest $request, Account $account): JsonResponse

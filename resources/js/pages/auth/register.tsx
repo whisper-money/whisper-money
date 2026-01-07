@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
-import { clearAllUserData } from '@/lib/user-session-storage';
+import { transactionSyncService } from '@/services/transaction-sync';
 
 interface RegisterProps {
     hideAuthButtons?: boolean;
@@ -24,7 +24,7 @@ export default function Register({ hideAuthButtons = false }: RegisterProps) {
     }, [hideAuthButtons]);
 
     const handleBeforeSubmit = useCallback(async () => {
-        await clearAllUserData();
+        await transactionSyncService.clearAll();
         return true;
     }, []);
 

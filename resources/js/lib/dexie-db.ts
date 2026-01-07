@@ -1,8 +1,4 @@
-import type { Transaction } from '@/services/transaction-sync';
-import type { Account, AccountBalance, Bank } from '@/types/account';
-import type { AutomationRule } from '@/types/automation-rule';
-import type { Category } from '@/types/category';
-import type { Label } from '@/types/label';
+import type { Transaction } from '@/types/transaction';
 import Dexie, { type EntityTable } from 'dexie';
 
 export interface SyncMetadata {
@@ -10,24 +6,9 @@ export interface SyncMetadata {
     value: string;
 }
 
-export interface PendingChange {
-    id?: number;
-    store: string;
-    operation: 'create' | 'update' | 'delete';
-    data: Record<string, unknown>;
-    timestamp: string;
-}
-
 const db = new Dexie('whisper_money') as Dexie & {
     transactions: EntityTable<Transaction, 'id'>;
-    accounts: EntityTable<Account, 'id'>;
-    categories: EntityTable<Category, 'id'>;
-    labels: EntityTable<Label, 'id'>;
-    banks: EntityTable<Bank, 'id'>;
-    automation_rules: EntityTable<AutomationRule, 'id'>;
-    account_balances: EntityTable<AccountBalance, 'id'>;
     sync_metadata: EntityTable<SyncMetadata, 'key'>;
-    pending_changes: EntityTable<PendingChange, 'id'>;
 };
 
 db.version(5).stores({
@@ -51,6 +32,20 @@ db.version(6).stores({
     account_balances: 'id, account_id, balance_date, updated_at',
     sync_metadata: 'key',
     pending_changes: '++id, store, timestamp',
+});
+
+// Version 7: Remove all tables except transactions and sync_metadata
+db.version(7).stores({
+    transactions: 'id, user_id, account_id, updated_at',
+    sync_metadata: 'key',
+    // Delete removed tables
+    accounts: null,
+    categories: null,
+    labels: null,
+    banks: null,
+    automation_rules: null,
+    account_balances: null,
+    pending_changes: null,
 });
 
 export { db };

@@ -1,18 +1,8 @@
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { checkDatabaseVersion } from '@/lib/db-migration-helper';
-import { db, type PendingChange } from '@/lib/dexie-db';
-import { handleUserChange } from '@/lib/user-session-storage';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
-import { accountSyncService } from '@/services/account-sync';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
-import { bankSyncService } from '@/services/bank-sync';
-import { categorySyncService } from '@/services/category-sync';
-import { labelSyncService } from '@/services/label-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { User } from '@/types/index.d';
 import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import {
     createContext,
     useCallback,
@@ -32,9 +22,6 @@ interface SyncContextType {
     isAuthenticated: boolean;
     sync: () => Promise<void>;
     error: string | null;
-    pendingOperationsCount: number;
-    pendingOperations: PendingChange[];
-    refreshPendingOperations: () => Promise<void>;
 }
 
 const SyncContext = createContext<SyncContextType | undefined>(undefined);
@@ -87,15 +74,7 @@ export function SyncProvider({
     const [error, setError] = useState<string | null>(null);
     const [wasOffline, setWasOffline] = useState(!isOnline);
     const syncInProgressRef = useRef(false);
-    const userChangeCheckedRef = useRef(false);
-
-    const pendingOperations =
-        useLiveQuery(() => db.pending_changes.toArray(), []) || [];
-    const pendingOperationsCount = pendingOperations.length;
-
-    const refreshPendingOperations = useCallback(async () => {
-        // No-op: useLiveQuery handles reactivity automatically
-    }, []);
+    const lastUserIdRef = useRef<string | null>(initialUser?.id ?? null);
 
     useEffect(() => {
         const unsubscribe = router.on('navigate', (event) => {
@@ -144,37 +123,11 @@ export function SyncProvider({
         setError(null);
 
         try {
-            const [
-                categoriesResult,
-                accountsResult,
-                accountBalancesResult,
-                banksResult,
-                automationRulesResult,
-                labelsResult,
-                transactionsResult,
-            ] = await Promise.all([
-                categorySyncService.sync(),
-                accountSyncService.sync(),
-                accountBalanceSyncService.sync(),
-                bankSyncService.sync(),
-                automationRuleSyncService.sync(),
-                labelSyncService.sync(),
-                transactionSyncService.sync(),
-            ]);
+            const result = await transactionSyncService.sync();
 
-            const allErrors = [
-                ...categoriesResult.errors,
-                ...accountsResult.errors,
-                ...accountBalancesResult.errors,
-                ...banksResult.errors,
-                ...automationRulesResult.errors,
-                ...labelsResult.errors,
-                ...transactionsResult.errors,
-            ];
-
-            if (allErrors.length > 0) {
+            if (result.errors.length > 0) {
                 const uniqueFormattedErrors = [
-                    ...new Set(allErrors.map(formatErrorMessage)),
+                    ...new Set(result.errors.map(formatErrorMessage)),
                 ];
                 setError(uniqueFormattedErrors.join(' '));
                 setSyncStatus('error');
@@ -226,36 +179,18 @@ export function SyncProvider({
         }
 
         const checkUserAndSync = async () => {
-            if (userChangeCheckedRef.current) {
-                return;
+            // If user changed, clear transactions and resync
+            if (lastUserIdRef.current && lastUserIdRef.current !== currentUser.id) {
+                await transactionSyncService.clearAll();
             }
-
-            userChangeCheckedRef.current = true;
-
-            const wasCleared = await handleUserChange(currentUser.id);
-
-            if (wasCleared) {
-                window.location.reload();
-                return;
-            }
-
-            const { needsRefresh, missingStores } =
-                await checkDatabaseVersion();
-
-            if (needsRefresh) {
-                console.warn(
-                    'Database needs update. Missing stores:',
-                    missingStores,
-                    '\nPlease refresh the page with Ctrl+Shift+R (or Cmd+Shift+R on Mac)',
-                );
-            }
+            lastUserIdRef.current = currentUser.id;
 
             sync();
         };
 
         checkUserAndSync();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticated, currentUser]);
+    }, [isAuthenticated, currentUser?.id]);
 
     return (
         <SyncContext.Provider
@@ -266,9 +201,6 @@ export function SyncProvider({
                 isAuthenticated,
                 sync,
                 error,
-                pendingOperationsCount,
-                pendingOperations,
-                refreshPendingOperations,
             }}
         >
             {children}

@@ -6,6 +6,7 @@ use App\Http\Requests\BulkUpdateTransactionsRequest;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Account;
+use App\Models\AutomationRule;
 use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
@@ -48,11 +49,17 @@ class TransactionController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'color']);
 
+        $automationRules = AutomationRule::query()
+            ->where('user_id', $user->id)
+            ->orderBy('priority')
+            ->get();
+
         return Inertia::render('transactions/index', [
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
             'labels' => $labels,
+            'automationRules' => $automationRules,
         ]);
     }
 
