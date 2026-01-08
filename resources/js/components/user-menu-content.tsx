@@ -13,7 +13,7 @@ import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
 import { type SharedData, type User } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
-import { Eye, EyeOff, LogOut, Settings } from 'lucide-react';
+import { Eye, EyeOff, LogOut, Map, MessageSquare, Settings } from 'lucide-react';
 
 interface UserMenuContentProps {
     user: User;
@@ -71,6 +71,33 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         <Settings className="mr-2" />
                         Settings
                     </Link>
+                </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+                <DropdownMenuItem asChild>
+                    <a
+                        className="block w-full cursor-pointer"
+                        href="https://whisper-money.canny.io/feature-requests"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={cleanup}
+                    >
+                        <MessageSquare className="mr-2" />
+                        Feedback
+                    </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <a
+                        className="block w-full cursor-pointer"
+                        href="https://whisper-money.canny.io/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={cleanup}
+                    >
+                        <Map className="mr-2" />
+                        Roadmap
+                    </a>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
