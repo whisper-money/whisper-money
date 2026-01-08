@@ -33,6 +33,7 @@ class SendWelcomeEmailJob implements ShouldQueue
         UserMailLog::create([
             'user_id' => $this->user->id,
             'email_type' => DripEmailType::Welcome,
+            'email_identifier' => DripEmailType::Welcome->value,
             'sent_at' => now(),
         ]);
     }

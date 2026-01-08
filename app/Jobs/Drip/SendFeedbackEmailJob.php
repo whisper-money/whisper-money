@@ -37,6 +37,7 @@ class SendFeedbackEmailJob implements ShouldQueue
         UserMailLog::create([
             'user_id' => $this->user->id,
             'email_type' => DripEmailType::Feedback,
+            'email_identifier' => DripEmailType::Feedback->value,
             'sent_at' => now(),
         ]);
     }

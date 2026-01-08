@@ -45,6 +45,7 @@ class SendPromoCodeEmailJob implements ShouldQueue
         UserMailLog::create([
             'user_id' => $this->user->id,
             'email_type' => DripEmailType::PromoCode,
+            'email_identifier' => DripEmailType::PromoCode->value,
             'sent_at' => now(),
         ]);
     }

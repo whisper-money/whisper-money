@@ -15,6 +15,7 @@ class UserMailLog extends Model
     protected $fillable = [
         'user_id',
         'email_type',
+        'email_identifier',
         'sent_at',
     ];
 
@@ -22,6 +23,7 @@ class UserMailLog extends Model
     {
         return [
             'email_type' => DripEmailType::class,
+            'email_identifier' => 'string',
             'sent_at' => 'datetime',
         ];
     }

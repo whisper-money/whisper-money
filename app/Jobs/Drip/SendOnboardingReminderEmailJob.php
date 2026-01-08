@@ -37,6 +37,7 @@ class SendOnboardingReminderEmailJob implements ShouldQueue
         UserMailLog::create([
             'user_id' => $this->user->id,
             'email_type' => DripEmailType::OnboardingReminder,
+            'email_identifier' => DripEmailType::OnboardingReminder->value,
             'sent_at' => now(),
         ]);
     }
