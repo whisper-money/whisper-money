@@ -1,3 +1,18 @@
+# Whisper Money - Production Docker Compose
+#
+# Quick install: curl -fsSL https://whisper.money/install.sh | bash
+#
+# Manual usage:
+#   1. Copy .env.production.example to .env and configure
+#   2. docker compose -f docker-compose.production.yml up -d
+#
+# Management:
+#   - View logs: docker compose -f docker-compose.production.yml logs -f
+#   - Stop: docker compose -f docker-compose.production.yml down
+#   - Update: docker compose -f docker-compose.production.yml pull && docker compose -f docker-compose.production.yml up -d --force-recreate
+#
+# Documentation: https://whisper.money/docs/INSTALLATION.md
+
 services:
   app:
     image: ${WHISPER_IMAGE:-ghcr.io/whisper-money/whisper-money:latest}

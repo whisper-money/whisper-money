@@ -33,6 +33,25 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 - 🤖 **Automation rules** — Set up rules to auto-categorize transactions
 - 📈 **Financial insights** — Understand your spending patterns
 
+## Quick Install (Self-Hosting)
+
+Run Whisper Money on your local machine with a single command:
+
+```bash
+curl -fsSL https://whisper.money/install.sh | bash
+```
+
+This installs Whisper Money on port 8080 with:
+- MySQL database with secure credentials
+- Local email logging (no external services needed)
+- All features enabled except Stripe
+
+After installation, visit `http://localhost:8080` and create your account.
+
+**What you need:** Docker Desktop 20.10+ (includes Docker Compose v2)
+
+📖 **Full Guide:** [Installation Documentation](docs/INSTALLATION.md) | [Self-Hosting Guide](docs/SELF-HOSTING.md)
+
 ## Tech Stack
 
 - **Backend:** Laravel 12, PHP 8.4
@@ -42,116 +61,17 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 - **Cache/Queue:** Redis
 - **Testing:** Pest v4
 
-## Running Locally
+## Deployment Options
 
-### Prerequisites
+Looking to deploy or develop Whisper Money? We have several options:
 
-- Docker & Docker Compose
-- Composer
-- Node.js / Bun
+- **🚀 [Quick Install](#quick-install-self-hosting)** - Single command to run locally (above)
+- **💻 Local Development** - Set up development environment
+- **🐳 Docker Production** - Run production image locally
+- **☁️ Coolify** - One-click deploy to Coolify
+- **🌐 Other Platforms** - DigitalOcean, Railway, Render
 
-### Setup
-
-1. **Clone the repository:**
-
-```bash
-git clone https://github.com/whisper-money/whisper-money.git
-cd whisper_money
-```
-
-2. **Copy the environment file:**
-
-```bash
-cp .env.example .env
-```
-
-3. **Start the Docker services:**
-
-```bash
-docker compose up -d
-```
-
-4. **Install dependencies and setup the application:**
-
-```bash
-composer setup
-```
-
-5. **Start the development server:**
-
-```bash
-composer run dev
-```
-
-This will concurrently start:
-
-- PHP development server
-- Queue worker
-- Log viewer (Pail)
-- Vite dev server
-
-The application will be available at `https://whispermoney.test`.
-
-## Running with Docker (Production Image)
-
-For testing the production Docker image locally:
-
-1. **Copy the production environment file:**
-
-```bash
-cp .env.production.example .env
-```
-
-2. **Start the services:**
-
-```bash
-docker compose -f docker-compose.production.yml up -d
-```
-
-The application will be available at `http://localhost:8080`.
-
-To use a different port, set `APP_PORT`:
-
-```bash
-APP_PORT=3000 docker compose -f docker-compose.production.yml up -d
-```
-
-## Deploying to Coolify
-
-Whisper Money can be easily deployed to [Coolify](https://coolify.io) using our Docker Compose template.
-
-### Quick Deploy
-
-1. In Coolify, create a new resource and select **Docker Compose**
-2. Choose **Empty Compose File** as the source
-3. Paste the contents from our template:
-   👉 **[whisper-money.yaml](https://raw.githubusercontent.com/whisper-money/whisper-money/main/templates/coolify/whisper-money.yaml)**
-4. Deploy!
-
-The template includes:
-- Whisper Money application container
-- MySQL 8.0 database with health checks
-- Persistent volumes for data and storage
-- Auto-generated database credentials
-
-### Required Environment Variables
-
-| Variable         | Description                                                |
-| ---------------- | ---------------------------------------------------------- |
-| `RESEND_API_KEY` | Email service API key (for password resets, notifications) |
-
-> **Note**: `APP_KEY` and `APP_URL` are auto-configured. The container generates an `APP_KEY` on first startup if not provided.
-
-### Optional Environment Variables
-
-| Variable                | Default | Description                                        |
-| ----------------------- | ------- | -------------------------------------------------- |
-| `DRIP_EMAILS_ENABLED`   | `true`  | Enable drip emails (welcome, onboarding, feedback) |
-| `HIDE_AUTH_BUTTONS`     | `false` | Hide login/register buttons on landing page        |
-| `SUBSCRIPTIONS_ENABLED` | `false` | Enable Stripe subscriptions                        |
-| `STRIPE_KEY`            | -       | Stripe publishable key                             |
-| `STRIPE_SECRET`         | -       | Stripe secret key                                  |
-| `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret                      |
+**📖 Full Guide:** [Deployment Options](docs/DEPLOYMENT.md)
 
 ## License
 
