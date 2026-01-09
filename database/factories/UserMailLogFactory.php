@@ -18,9 +18,12 @@ class UserMailLogFactory extends Factory
      */
     public function definition(): array
     {
+        $emailType = fake()->randomElement(DripEmailType::cases());
+
         return [
             'user_id' => User::factory(),
-            'email_type' => fake()->randomElement(DripEmailType::cases()),
+            'email_type' => $emailType,
+            'email_identifier' => $emailType->value,
             'sent_at' => now(),
         ];
     }
@@ -29,6 +32,7 @@ class UserMailLogFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_type' => DripEmailType::Welcome,
+            'email_identifier' => DripEmailType::Welcome->value,
         ]);
     }
 
@@ -36,6 +40,7 @@ class UserMailLogFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_type' => DripEmailType::OnboardingReminder,
+            'email_identifier' => DripEmailType::OnboardingReminder->value,
         ]);
     }
 
@@ -43,6 +48,7 @@ class UserMailLogFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_type' => DripEmailType::PromoCode,
+            'email_identifier' => DripEmailType::PromoCode->value,
         ]);
     }
 
@@ -50,6 +56,7 @@ class UserMailLogFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_type' => DripEmailType::ImportHelp,
+            'email_identifier' => DripEmailType::ImportHelp->value,
         ]);
     }
 
@@ -57,6 +64,7 @@ class UserMailLogFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_type' => DripEmailType::Feedback,
+            'email_identifier' => DripEmailType::Feedback->value,
         ]);
     }
 
@@ -64,6 +72,7 @@ class UserMailLogFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_type' => DripEmailType::SubscriptionCancelled,
+            'email_identifier' => DripEmailType::SubscriptionCancelled->value,
         ]);
     }
 }
