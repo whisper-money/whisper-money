@@ -45,6 +45,7 @@ class SendImportHelpEmailJob implements ShouldQueue
         UserMailLog::create([
             'user_id' => $this->user->id,
             'email_type' => DripEmailType::ImportHelp,
+            'email_identifier' => DripEmailType::ImportHelp->value,
             'sent_at' => now(),
         ]);
     }

@@ -33,6 +33,7 @@ class SendSubscriptionCancelledEmailJob implements ShouldQueue
         UserMailLog::create([
             'user_id' => $this->user->id,
             'email_type' => DripEmailType::SubscriptionCancelled,
+            'email_identifier' => DripEmailType::SubscriptionCancelled->value,
             'sent_at' => now(),
         ]);
     }
