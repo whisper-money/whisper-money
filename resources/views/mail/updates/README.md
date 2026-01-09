@@ -42,17 +42,39 @@ Once you've created your template and deployed it to production:
 
 ```bash
 # Basic usage
-php artisan update-email:send jan-2026-updates jan-2026-updates
+php artisan email:update jan-2026-updates
+
+# With custom identifier
+php artisan email:update jan-2026-updates jan-2026-updates
 
 # With custom subject
-php artisan update-email:send jan-2026-updates jan-2026-updates --subject="Exciting January Updates!"
+php artisan email:update jan-2026-updates --subject="Exciting January Updates!"
 
 # Exclude demo account
-php artisan update-email:send jan-2026-updates jan-2026-updates --exclude-demo
+php artisan email:update jan-2026-updates --exclude-demo
 
 # Skip confirmation prompt (for scripts/automation)
-php artisan update-email:send jan-2026-updates jan-2026-updates --force
+php artisan email:update jan-2026-updates --force
 ```
+
+### 3.1. Rate Limiting
+
+**Important**: The command automatically rate limits to **50 emails per day** to avoid overwhelming your email service and to maintain good sender reputation.
+
+For example:
+- **50 users**: All sent immediately
+- **125 users**: 50 sent today, 50 tomorrow, 25 the day after
+- **250 users**: 50 per day over 5 days
+
+The command will show you the schedule:
+```
+Found 126 user(s).
+Rate limit: 50 emails per day
+Successfully queued 126 update email(s) to the 'emails' queue!
+Emails will be sent over 2 day(s) (50 emails per day)
+```
+
+Jobs are queued with delays automatically - you don't need to do anything special!
 
 ### 4. Command Arguments
 
@@ -100,7 +122,7 @@ Important information here
 vim resources/views/mail/updates/feb-2026-updates.blade.php
 
 # 2. Test locally (optional - create test user first)
-php artisan update-email:send feb-2026-updates test-feb-2026
+php artisan email:update feb-2026-updates test-feb-2026
 
 # 3. Commit and push
 git add resources/views/mail/updates/feb-2026-updates.blade.php
@@ -111,7 +133,7 @@ git push
 # ... your deployment process ...
 
 # 5. Send on production
-php artisan update-email:send feb-2026-updates feb-2026-updates
+php artisan email:update feb-2026-updates feb-2026-updates
 ```
 
 ## Best Practices

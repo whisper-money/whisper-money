@@ -73,13 +73,20 @@ class SendUpdateEmailCommand extends Command
         }
 
         $this->info('Queueing update emails...');
+        $this->info('Rate limit: 50 emails per day');
 
         $progressBar = $this->output->createProgressBar($users->count());
         $progressBar->start();
 
         $queued = 0;
-        foreach ($users as $user) {
-            SendUpdateEmailJob::dispatch($user, $viewName, $identifier, $subject);
+        foreach ($users as $index => $user) {
+            // Add delay of +1 day for every 50 emails
+            $delayDays = (int) floor($index / 50);
+            $delay = now()->addDays($delayDays);
+
+            SendUpdateEmailJob::dispatch($user, $viewName, $identifier, $subject)
+                ->delay($delay);
+
             $queued++;
             $progressBar->advance();
         }
@@ -87,7 +94,13 @@ class SendUpdateEmailCommand extends Command
         $progressBar->finish();
         $this->newLine();
 
-        $this->info("Successfully queued {$queued} update email(s) to the 'emails' queue!");
+        if ($queued > 50) {
+            $totalDays = (int) floor(($queued - 1) / 50);
+            $this->info("Successfully queued {$queued} update email(s) to the 'emails' queue!");
+            $this->info("Emails will be sent over {$totalDays} day(s) (50 emails per day)");
+        } else {
+            $this->info("Successfully queued {$queued} update email(s) to the 'emails' queue!");
+        }
 
         return self::SUCCESS;
     }
