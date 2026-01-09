@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.3](https://github.com/whisper-money/whisper-money/compare/v0.1.1...v0.1.3) (2026-01-09)
+
+
+### Bug Fixes
+
+* issue on filters when no label created ([cb1d6a2](https://github.com/whisper-money/whisper-money/commit/cb1d6a230f0c1c0734e5267a5a4d2753f4b91cff))
+* scroll category combobox to top while searching ([c1ddc14](https://github.com/whisper-money/whisper-money/commit/c1ddc1477d89c9bfc9aa36bc81f8d48fda05208a))
+
+
+### Features
+
+* new roadmap and feedback links ([0646b38](https://github.com/whisper-money/whisper-money/commit/0646b380cecc6c3a2859206429a84c0e3ac1c798))
+* Send custom emails to users ([#52](https://github.com/whisper-money/whisper-money/issues/52)) ([683b3f3](https://github.com/whisper-money/whisper-money/commit/683b3f32a7a1467a9fd2e269903570c33164ff83))
+
 ## [0.1.2](https://github.com/whisper-money/whisper-money/compare/v0.1.1...v0.1.2) (2026-01-07)
 
 ### New Features
