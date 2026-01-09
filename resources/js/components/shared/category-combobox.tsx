@@ -20,7 +20,7 @@ import {
     HelpCircle,
     type LucideIcon,
 } from 'lucide-react';
-import { memo, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 const iconCache = new Map<string, LucideIcon>();
 
@@ -60,6 +60,8 @@ export function CategoryCombobox({
     withoutChevronIcon = false,
 }: CategoryComboboxProps) {
     const [open, setOpen] = useState(false);
+    const [filterValue, setFilterValue] = useState('');
+    const listRef = useRef<HTMLDivElement>(null);
 
     const selectedCategory =
         value && value !== 'null'
@@ -69,6 +71,21 @@ export function CategoryCombobox({
     const sortedCategories = [...categories].sort((a, b) =>
         a.name.localeCompare(b.name),
     );
+
+    useEffect(() => {
+        if (filterValue && listRef.current) {
+            listRef.current.scrollTop = 0;
+        }
+    }, [filterValue]);
+
+    useEffect(() => {
+        if (open && listRef.current) {
+            listRef.current.scrollTop = 0;
+        }
+        if (!open) {
+            setFilterValue('');
+        }
+    }, [open]);
 
     return (
         <Popover modal open={open} onOpenChange={setOpen}>
@@ -112,8 +129,12 @@ export function CategoryCombobox({
             </PopoverTrigger>
             <PopoverContent className="p-0" align="start">
                 <Command>
-                    <CommandInput placeholder="Search categories..." />
-                    <CommandList>
+                    <CommandInput
+                        placeholder="Search categories..."
+                        value={filterValue}
+                        onValueChange={setFilterValue}
+                    />
+                    <CommandList ref={listRef}>
                         <CommandEmpty>No category found.</CommandEmpty>
                         {showUncategorized && (
                             <CommandItem
