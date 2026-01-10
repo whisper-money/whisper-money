@@ -128,7 +128,7 @@ return [
     'promo' => [
         'enabled' => env('PROMO_ENABLED', true),
         'code' => 'FOUNDER',
-        'description' => '$8 off your first month',
+        'description' => '80% off your first period',
         'badge' => 'Founder Promotion',
     ],
 

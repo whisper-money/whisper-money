@@ -349,7 +349,7 @@ function PromoSection() {
                             rel="noopener noreferrer"
                             className="font-medium text-[#5865F2] underline-offset-2 hover:underline"
                         >
-                            Discord for $8 off
+                            Discord for 80% off
                         </a>
                     </TooltipTrigger>
                     <TooltipContent>

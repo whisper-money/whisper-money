@@ -36,9 +36,9 @@ class PromoCodeEmail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Your Founder Discount - First Month for $1',
-        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
+        return (new Envelope(
+            subject: 'Your Founder Discount - 80% Off First Period'
+        ))->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 
     public function content(): Content

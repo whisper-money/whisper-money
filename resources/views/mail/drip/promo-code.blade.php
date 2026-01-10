@@ -8,7 +8,7 @@ Hi! It's Victor, the founder of Whisper Money. I see you've already started impo
 As one of our early users, I want to offer you a special founder's discount. When you subscribe, you're not just getting a great app - you're directly supporting me as I continue building Whisper Money. Every subscription helps me keep the lights on and build features you actually want.
 
 <x-mail::panel>
-Use code **{{ $promoCode }}** to get your first month for just **$1**
+Use code **{{ $promoCode }}** to get **80% off** your first period (monthly or yearly!)
 </x-mail::panel>
 
 This gives you full access to all Whisper Money features:

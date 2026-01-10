@@ -16,7 +16,7 @@ It's personal finance, but actually private.
 As someone who believed in us early, I want to offer you something special:
 
 <x-mail::panel>
-Use code **FOUNDER** to get **$8 off** - your first month for just **$1**
+Use code **FOUNDER** to get **80% off** your first period (monthly or yearly!)
 </x-mail::panel>
 
 This gets you full access to everything:
@@ -43,5 +43,5 @@ Best,<br>
 Víctor<br>
 Founder, Whisper Money
 
-P.S. The FOUNDER code gives you $8 off, so your first month is just $1. After that, it's $9/month. Cancel anytime, no questions asked.
+P.S. The FOUNDER code gives you 80% off your first billing period, whether you choose monthly ($1.80 first month, then $9/month) or yearly ($9.60 first year, then $48/year). Cancel anytime, no questions asked.
 </x-mail::message>

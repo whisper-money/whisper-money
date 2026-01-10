@@ -251,7 +251,8 @@
     }
 
     .unlock-button-pulse {
-        animation: pulse-glow 2s ease-in-out infinite,
+        animation:
+            pulse-glow 2s ease-in-out infinite,
             pulse-scale 2s ease-in-out infinite;
     }
 

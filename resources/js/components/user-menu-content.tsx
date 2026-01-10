@@ -13,7 +13,14 @@ import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
 import { type SharedData, type User } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
-import { Eye, EyeOff, LogOut, Map, MessageSquare, Settings } from 'lucide-react';
+import {
+    Eye,
+    EyeOff,
+    LogOut,
+    Map,
+    MessageSquare,
+    Settings,
+} from 'lucide-react';
 
 interface UserMenuContentProps {
     user: User;
