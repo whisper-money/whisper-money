@@ -38,6 +38,7 @@ class DashboardController extends Controller
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
+            'showEncryptionPrompt' => session('show_encryption_prompt', false),
         ]);
     }
 }
