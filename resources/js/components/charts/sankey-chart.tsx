@@ -1,4 +1,15 @@
-import { SankeyData } from '@/hooks/use-cashflow-data';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
+import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
+import {
+    calculatePercentage,
+    GroupedCategory,
+    groupSmallCategories,
+} from '@/lib/sankey-utils';
 import { cn } from '@/lib/utils';
 import { Category } from '@/types/category';
 import { useMemo, useState } from 'react';
@@ -8,6 +19,7 @@ interface SankeyChartProps {
     height?: number;
     className?: string;
     currency?: string;
+    groupingThreshold?: number;
 }
 
 interface NodeData {
@@ -45,16 +57,90 @@ function formatAmount(amountInCents: number, currency: string): string {
     }).format(amountInCents / 100);
 }
 
+interface OtherCategoriesBreakdownProps {
+    categories: SankeyCategory[];
+    total: number;
+    currency: string;
+    grandTotal: number;
+}
+
+function OtherCategoriesBreakdown({
+    categories,
+    total,
+    currency,
+    grandTotal,
+}: OtherCategoriesBreakdownProps) {
+    return (
+        <div className="w-64">
+            <div className="space-y-3">
+                <div>
+                    <h4 className="text-sm font-medium">
+                        Other Categories ({categories.length})
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                        Categories below 5% of total
+                    </p>
+                </div>
+
+                <div className="max-h-60 space-y-1.5 overflow-y-auto">
+                    {categories.map((item) => {
+                        const percentage = calculatePercentage(
+                            item.amount,
+                            grandTotal,
+                        );
+                        return (
+                            <div
+                                key={item.category_id}
+                                className="flex items-center justify-between gap-3 text-xs"
+                            >
+                                <div className="flex items-center gap-2 truncate">
+                                    <div
+                                        className="size-2 shrink-0 rounded-full"
+                                        style={{
+                                            backgroundColor:
+                                                item.category.color ||
+                                                'var(--color-chart-4)',
+                                        }}
+                                    />
+                                    <span className="truncate">
+                                        {item.category.name}
+                                    </span>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <span className="font-medium">
+                                        {formatAmount(item.amount, currency)}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        {percentage.toFixed(1)}%
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between text-sm font-medium">
+                    <span>Total</span>
+                    <span>{formatAmount(total, currency)}</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function SankeyChart({
     data,
     height = 400,
     className,
     currency = 'USD',
+    groupingThreshold = 0.03,
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
 
-    const { nodes, links, isEmpty } = useMemo(() => {
+    const { nodes, links, isEmpty, otherGroups } = useMemo(() => {
         const {
             income_categories,
             expense_categories,
@@ -63,38 +149,69 @@ export function SankeyChart({
         } = data;
 
         if (total_income === 0 && total_expense === 0) {
-            return { nodes: [], links: [], isEmpty: true };
+            return {
+                nodes: [],
+                links: [],
+                isEmpty: true,
+                otherGroups: {},
+            };
         }
 
         const nodeMap: Record<string, NodeData> = {};
         const linkList: LinkData[] = [];
+        const otherGroupsMap: Record<string, GroupedCategory> = {};
 
         // Calculate available height for nodes
         const availableHeight = height - 40; // padding
         const maxTotal = Math.max(total_income, total_expense);
 
+        // Group income categories
+        const groupedIncome = groupSmallCategories(
+            income_categories,
+            total_income,
+            groupingThreshold,
+        );
+
         // Create income nodes (left column)
         let incomeY = 20;
-        const incomeNodes = income_categories
-            .sort((a, b) => b.amount - a.amount)
-            .map((item) => {
-                const nodeHeight = Math.max(
-                    MIN_NODE_HEIGHT,
-                    (item.amount / maxTotal) * availableHeight * 0.5,
-                );
-                const node: NodeData = {
-                    id: `income-${item.category_id}`,
-                    label: item.category.name,
-                    value: item.amount,
-                    color: item.category.color || 'var(--color-chart-2)',
-                    y: incomeY,
-                    height: nodeHeight,
-                    column: 0,
-                    category: item.category,
-                };
-                incomeY += nodeHeight + NODE_PADDING;
-                return node;
-            });
+        const incomeNodes = groupedIncome.main.map((item) => {
+            const nodeHeight = Math.max(
+                MIN_NODE_HEIGHT,
+                (item.amount / maxTotal) * availableHeight * 0.5,
+            );
+            const node: NodeData = {
+                id: `income-${item.category_id}`,
+                label: item.category.name,
+                value: item.amount,
+                color: item.category.color || 'var(--color-chart-2)',
+                y: incomeY,
+                height: nodeHeight,
+                column: 0,
+                category: item.category,
+            };
+            incomeY += nodeHeight + NODE_PADDING;
+            return node;
+        });
+
+        // Add "Other" income node if needed
+        if (groupedIncome.other) {
+            const nodeHeight = Math.max(
+                MIN_NODE_HEIGHT,
+                (groupedIncome.other.total / maxTotal) * availableHeight * 0.5,
+            );
+            const otherNode: NodeData = {
+                id: 'income-other',
+                label: 'Other',
+                value: groupedIncome.other.total,
+                color: 'var(--color-muted)',
+                y: incomeY,
+                height: nodeHeight,
+                column: 0,
+            };
+            incomeNodes.push(otherNode);
+            otherGroupsMap['income-other'] = groupedIncome.other;
+            incomeY += nodeHeight + NODE_PADDING;
+        }
 
         // Create center node (total cashflow)
         const centerHeight = Math.max(
@@ -114,28 +231,53 @@ export function SankeyChart({
             column: 1,
         };
 
+        // Group expense categories
+        const groupedExpense = groupSmallCategories(
+            expense_categories,
+            total_expense,
+            groupingThreshold,
+        );
+
         // Create expense nodes (right column)
         let expenseY = 20;
-        const expenseNodes = expense_categories
-            .sort((a, b) => b.amount - a.amount)
-            .map((item) => {
-                const nodeHeight = Math.max(
-                    MIN_NODE_HEIGHT,
-                    (item.amount / maxTotal) * availableHeight * 0.5,
-                );
-                const node: NodeData = {
-                    id: `expense-${item.category_id}`,
-                    label: item.category.name,
-                    value: item.amount,
-                    color: item.category.color || 'var(--color-chart-3)',
-                    y: expenseY,
-                    height: nodeHeight,
-                    column: 2,
-                    category: item.category,
-                };
-                expenseY += nodeHeight + NODE_PADDING;
-                return node;
-            });
+        const expenseNodes = groupedExpense.main.map((item) => {
+            const nodeHeight = Math.max(
+                MIN_NODE_HEIGHT,
+                (item.amount / maxTotal) * availableHeight * 0.5,
+            );
+            const node: NodeData = {
+                id: `expense-${item.category_id}`,
+                label: item.category.name,
+                value: item.amount,
+                color: item.category.color || 'var(--color-chart-3)',
+                y: expenseY,
+                height: nodeHeight,
+                column: 2,
+                category: item.category,
+            };
+            expenseY += nodeHeight + NODE_PADDING;
+            return node;
+        });
+
+        // Add "Other" expense node if needed
+        if (groupedExpense.other) {
+            const nodeHeight = Math.max(
+                MIN_NODE_HEIGHT,
+                (groupedExpense.other.total / maxTotal) * availableHeight * 0.5,
+            );
+            const otherNode: NodeData = {
+                id: 'expense-other',
+                label: 'Other',
+                value: groupedExpense.other.total,
+                color: 'var(--color-muted)',
+                y: expenseY,
+                height: nodeHeight,
+                column: 2,
+            };
+            expenseNodes.push(otherNode);
+            otherGroupsMap['expense-other'] = groupedExpense.other;
+            expenseY += nodeHeight + NODE_PADDING;
+        }
 
         // Add all nodes to map
         incomeNodes.forEach((n) => (nodeMap[n.id] = n));
@@ -179,8 +321,9 @@ export function SankeyChart({
             nodes: Object.values(nodeMap),
             links: linkList,
             isEmpty: false,
+            otherGroups: otherGroupsMap,
         };
-    }, [data, height]);
+    }, [data, height, groupingThreshold]);
 
     if (isEmpty) {
         return (
@@ -268,13 +411,21 @@ export function SankeyChart({
                             COLUMN_POSITIONS[node.column] * width -
                             NODE_WIDTH / 2;
                         const isHovered = hoveredNode === node.id;
+                        const isOtherNode = node.id.endsWith('-other');
+                        const otherGroup = isOtherNode
+                            ? otherGroups[node.id]
+                            : null;
 
-                        return (
+                        const nodeContent = (
                             <g
                                 key={node.id}
                                 onMouseEnter={() => setHoveredNode(node.id)}
                                 onMouseLeave={() => setHoveredNode(null)}
-                                className="cursor-pointer"
+                                className={cn(
+                                    'transition-all duration-200',
+                                    isOtherNode && 'cursor-pointer',
+                                    !isOtherNode && 'cursor-default',
+                                )}
                             >
                                 <rect
                                     x={x}
@@ -287,7 +438,19 @@ export function SankeyChart({
                                             ? 'var(--color-chart-1)'
                                             : node.color
                                     }
-                                    fillOpacity={isHovered ? 1 : 0.8}
+                                    fillOpacity={
+                                        isOtherNode
+                                            ? isHovered
+                                                ? 1
+                                                : 0.6
+                                            : isHovered
+                                              ? 1
+                                              : 0.8
+                                    }
+                                    stroke={
+                                        isOtherNode ? 'var(--border)' : 'none'
+                                    }
+                                    strokeWidth={isOtherNode ? 1 : 0}
                                     className="transition-all duration-200"
                                 />
                                 {/* Label */}
@@ -311,6 +474,12 @@ export function SankeyChart({
                                     className="fill-foreground text-[9px] font-medium"
                                 >
                                     {node.label}
+                                    {isOtherNode && (
+                                        <tspan className="fill-muted-foreground">
+                                            {' '}
+                                            ⋯
+                                        </tspan>
+                                    )}
                                 </text>
                                 {/* Amount */}
                                 <text
@@ -336,6 +505,40 @@ export function SankeyChart({
                                 </text>
                             </g>
                         );
+
+                        // Wrap "Other" nodes in Popover
+                        if (isOtherNode && otherGroup) {
+                            const grandTotal = node.id.startsWith('income-')
+                                ? data.total_income
+                                : data.total_expense;
+
+                            return (
+                                <Popover key={node.id}>
+                                    <PopoverTrigger
+                                        asChild
+                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${formatAmount(otherGroup.total, currency)}`}
+                                    >
+                                        {nodeContent}
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        align={
+                                            node.column === 0 ? 'start' : 'end'
+                                        }
+                                        side="top"
+                                        className="p-4"
+                                    >
+                                        <OtherCategoriesBreakdown
+                                            categories={otherGroup.categories}
+                                            total={otherGroup.total}
+                                            currency={currency}
+                                            grandTotal={grandTotal}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            );
+                        }
+
+                        return nodeContent;
                     })}
                 </g>
             </svg>
