@@ -9,9 +9,9 @@ import { useCashflowData } from '@/hooks/use-cashflow-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
-import { endOfMonth, startOfMonth } from 'date-fns';
-import { useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { endOfMonth, format, parse, startOfMonth } from 'date-fns';
+import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -23,7 +23,27 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function CashflowPage() {
     const { auth } = usePage<{ auth: { user: { currency_code: string } } }>()
         .props;
-    const [currentDate, setCurrentDate] = useState(new Date());
+
+    // Initialize currentDate from URL query param or default to current month
+    const [currentDate, setCurrentDate] = useState<Date>(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodParam = urlParams.get('period');
+
+        if (periodParam) {
+            try {
+                // Parse YYYY-MM format
+                const parsedDate = parse(periodParam, 'yyyy-MM', new Date());
+                // Validate it's a valid date
+                if (!isNaN(parsedDate.getTime())) {
+                    return parsedDate;
+                }
+            } catch {
+                // Fall through to default
+            }
+        }
+
+        return new Date();
+    });
 
     const period = {
         from: startOfMonth(currentDate),
@@ -38,6 +58,23 @@ export default function CashflowPage() {
         expenseBreakdown,
         isLoading,
     } = useCashflowData(period);
+
+    // Update URL when currentDate changes
+    useEffect(() => {
+        const periodParam = format(currentDate, 'yyyy-MM');
+        const currentPeriodParam = new URLSearchParams(
+            window.location.search,
+        ).get('period');
+
+        // Only update if the period has changed
+        if (currentPeriodParam !== periodParam) {
+            router.visit(cashflow({ query: { period: periodParam } }).url, {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            });
+        }
+    }, [currentDate]);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
