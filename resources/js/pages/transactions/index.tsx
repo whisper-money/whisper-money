@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -12,7 +12,7 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
-import { format, getYear, isWithinInterval, parseISO } from 'date-fns';
+import { format, getYear, isWithinInterval, parse, parseISO } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -82,6 +82,132 @@ interface Props {
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
+
+/**
+ * Parse filters from URL query parameters
+ */
+function parseFiltersFromURL(): Filters {
+    if (typeof window === 'undefined') {
+        return {
+            dateFrom: null,
+            dateTo: null,
+            amountMin: null,
+            amountMax: null,
+            categoryIds: [],
+            accountIds: [],
+            labelIds: [],
+            searchText: '',
+        };
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Parse dates
+    let dateFrom: Date | null = null;
+    let dateTo: Date | null = null;
+    const dateFromParam = urlParams.get('dateFrom');
+    const dateToParam = urlParams.get('dateTo');
+
+    if (dateFromParam) {
+        try {
+            const parsed = parse(dateFromParam, 'yyyy-MM-dd', new Date());
+            if (!isNaN(parsed.getTime())) {
+                dateFrom = parsed;
+            }
+        } catch {
+            // Invalid date, ignore
+        }
+    }
+
+    if (dateToParam) {
+        try {
+            const parsed = parse(dateToParam, 'yyyy-MM-dd', new Date());
+            if (!isNaN(parsed.getTime())) {
+                dateTo = parsed;
+            }
+        } catch {
+            // Invalid date, ignore
+        }
+    }
+
+    // Parse amounts
+    const amountMinParam = urlParams.get('amountMin');
+    const amountMaxParam = urlParams.get('amountMax');
+    const amountMin =
+        amountMinParam !== null ? parseFloat(amountMinParam) || null : null;
+    const amountMax =
+        amountMaxParam !== null ? parseFloat(amountMaxParam) || null : null;
+
+    // Parse ID arrays (comma-separated)
+    const categoryIdsParam = urlParams.get('categoryIds');
+    const accountIdsParam = urlParams.get('accountIds');
+    const labelIdsParam = urlParams.get('labelIds');
+
+    const categoryIds = categoryIdsParam
+        ? categoryIdsParam.split(',').filter(Boolean)
+        : [];
+    const accountIds = accountIdsParam
+        ? accountIdsParam.split(',').filter(Boolean)
+        : [];
+    const labelIds = labelIdsParam
+        ? labelIdsParam.split(',').filter(Boolean)
+        : [];
+
+    // Parse search text
+    const searchText = urlParams.get('search') || '';
+
+    return {
+        dateFrom,
+        dateTo,
+        amountMin,
+        amountMax,
+        categoryIds,
+        accountIds,
+        labelIds,
+        searchText,
+    };
+}
+
+/**
+ * Serialize filters to URL query parameters
+ */
+function serializeFiltersToURL(filters: Filters): Record<string, string> {
+    const params: Record<string, string> = {};
+
+    if (filters.dateFrom) {
+        params.dateFrom = format(filters.dateFrom, 'yyyy-MM-dd');
+    }
+
+    if (filters.dateTo) {
+        params.dateTo = format(filters.dateTo, 'yyyy-MM-dd');
+    }
+
+    if (filters.amountMin !== null) {
+        params.amountMin = filters.amountMin.toString();
+    }
+
+    if (filters.amountMax !== null) {
+        params.amountMax = filters.amountMax.toString();
+    }
+
+    if (filters.categoryIds.length > 0) {
+        params.categoryIds = filters.categoryIds.join(',');
+    }
+
+    if (filters.accountIds.length > 0) {
+        params.accountIds = filters.accountIds.join(',');
+    }
+
+    if (filters.labelIds.length > 0) {
+        params.labelIds = filters.labelIds.join(',');
+    }
+
+    if (filters.searchText) {
+        params.search = filters.searchText;
+    }
+
+    return params;
+}
 
 interface TransactionRowProps {
     row: Row<DecryptedTransaction>;
@@ -258,16 +384,9 @@ export default function Transactions({
         getInitialColumnVisibility(),
     );
     const [rowSelection, setRowSelection] = useState({});
-    const [filters, setFilters] = useState<Filters>({
-        dateFrom: null,
-        dateTo: null,
-        amountMin: null,
-        amountMax: null,
-        categoryIds: [],
-        accountIds: [],
-        labelIds: [],
-        searchText: '',
-    });
+    const [filters, setFilters] = useState<Filters>(() =>
+        parseFiltersFromURL(),
+    );
     const labels = useLiveQuery(() => db.labels.toArray(), [], initialLabels);
     const [editTransaction, setEditTransaction] =
         useState<DecryptedTransaction | null>(null);
@@ -455,6 +574,29 @@ export default function Transactions({
             );
         }
     }, [columnVisibility]);
+
+    // Sync filters to URL
+    useEffect(() => {
+        const params = serializeFiltersToURL(filters);
+        const currentParams = new URLSearchParams(window.location.search);
+        const currentParamsObj: Record<string, string> = {};
+
+        currentParams.forEach((value, key) => {
+            currentParamsObj[key] = value;
+        });
+
+        // Check if params have changed
+        const hasChanged =
+            JSON.stringify(params) !== JSON.stringify(currentParamsObj);
+
+        if (hasChanged) {
+            router.visit(transactionsIndex({ query: params }).url, {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            });
+        }
+    }, [filters]);
 
     useEffect(() => {
         async function reDecryptTransactions() {
