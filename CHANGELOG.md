@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.4](https://github.com/whisper-money/whisper-money/compare/v0.1.3...v0.1.4) (2026-01-11)
+
+
+### Bug Fixes
+
+* delay emails to avoid reaching daily resend limit ([8ac2520](https://github.com/whisper-money/whisper-money/commit/8ac25200dc9ed5a5b4e24e36e32668e52ea95477))
+* Remove scheduled horizon command (unused anymore) ([63bde93](https://github.com/whisper-money/whisper-money/commit/63bde938b51d5f13a6f817a0beb5d91f48f3d6f3))
+
+
+### Features
+
+* Group small expending categories on the Sankey chart ([5618893](https://github.com/whisper-money/whisper-money/commit/5618893be8a0e0255e1abd7b3e2ff7c65e3eb046))
+* New discord offer ([4a5c60c](https://github.com/whisper-money/whisper-money/commit/4a5c60c6301e02ef1edc09071bee03c3f80f115a))
+* Persis transactions filter on the URL ([c9877a5](https://github.com/whisper-money/whisper-money/commit/c9877a503dea45505dc46a1b9b23142e0aefc290))
+* Persist cashflow period on the URL ([1343e1c](https://github.com/whisper-money/whisper-money/commit/1343e1c75fc645ae7253f2d02b50178243cb70d9))
+
 ## [0.1.3](https://github.com/whisper-money/whisper-money/compare/v0.1.1...v0.1.3) (2026-01-09)
 
 
