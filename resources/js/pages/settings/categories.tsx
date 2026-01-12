@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnDef,
@@ -12,7 +12,6 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
@@ -49,7 +48,6 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { db } from '@/lib/dexie-db';
 import { type BreadcrumbItem } from '@/types';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 
@@ -162,7 +160,7 @@ function CategoryRow({ row }: { row: Row<Category> }) {
 }
 
 export default function Categories() {
-    const categories = useLiveQuery(() => db.categories.toArray(), []) || [];
+    const { categories } = usePage<{ categories: Category[] }>().props;
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'name', desc: false },
     ]);

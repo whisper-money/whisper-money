@@ -38,7 +38,7 @@ import { ImportBalanceStepUpload } from './import-balances/import-balance-step-u
 interface ImportBalancesDrawerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    accounts: Account[];
+    accounts?: Account[];
     accountId?: UUID;
     onSuccess?: () => void;
 }
@@ -55,7 +55,7 @@ interface ImportError {
 export function ImportBalancesDrawer({
     open,
     onOpenChange,
-    accounts,
+    accounts = [],
     accountId,
     onSuccess,
 }: ImportBalancesDrawerProps) {

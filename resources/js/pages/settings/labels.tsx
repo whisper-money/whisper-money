@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnDef,
@@ -12,7 +12,6 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowUpDown, MoreHorizontal, Tag } from 'lucide-react';
 import { useState } from 'react';
 
@@ -48,7 +47,6 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { db } from '@/lib/dexie-db';
 import { type BreadcrumbItem } from '@/types';
 import { getLabelColorClasses, type Label } from '@/types/label';
 
@@ -161,7 +159,7 @@ function LabelRow({ row }: { row: Row<Label> }) {
 }
 
 export default function Labels() {
-    const labels = useLiveQuery(() => db.labels.toArray(), []) || [];
+    const { labels } = usePage<{ labels: Label[] }>().props;
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'name', desc: false },
     ]);

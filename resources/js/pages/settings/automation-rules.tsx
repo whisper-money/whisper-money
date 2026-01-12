@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnDef,
@@ -12,7 +12,6 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
 import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -51,7 +50,6 @@ import {
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { db } from '@/lib/dexie-db';
 import { type BreadcrumbItem } from '@/types';
 import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
 import { getCategoryColorClasses } from '@/types/category';
@@ -162,8 +160,9 @@ function AutomationRuleRow({ row }: { row: Row<AutomationRule> }) {
 
 export default function AutomationRules() {
     const { isKeySet } = useEncryptionKey();
-    const rawRules =
-        useLiveQuery(() => db.automation_rules.toArray(), []) || [];
+    const { automationRules: rawRules } = usePage<{
+        automationRules: AutomationRule[];
+    }>().props;
     const rules = useMemo(
         () =>
             rawRules.map((rule) => ({

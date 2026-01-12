@@ -25,7 +25,7 @@ import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { parseISO } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -97,6 +97,9 @@ export default function CategorizeTransactions({
     banks,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
+    const { automationRules: sharedAutomationRules } = usePage<{
+        automationRules: AutomationRule[];
+    }>().props;
 
     const transactionIds = useLiveQuery(
         async () => {
@@ -125,19 +128,16 @@ export default function CategorizeTransactions({
     const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
     const commandInputRef = useRef<HTMLInputElement>(null);
 
-    const automationRules = useLiveQuery(
-        async () => {
-            const rules = await db.automation_rules.toArray();
-            return rules.map((rule) => ({
+    const automationRules = useMemo(
+        () =>
+            sharedAutomationRules.map((rule) => ({
                 ...rule,
                 rules_json:
                     typeof rule.rules_json === 'string'
                         ? JSON.parse(rule.rules_json)
                         : rule.rules_json,
-            })) as AutomationRule[];
-        },
-        [],
-        [],
+            })) as AutomationRule[],
+        [sharedAutomationRules],
     );
 
     useEffect(() => {

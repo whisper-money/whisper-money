@@ -7,14 +7,14 @@ import type { UUID } from '@/types/uuid';
 import { Building2 } from 'lucide-react';
 
 interface ImportBalanceStepAccountProps {
-    accounts: Account[];
+    accounts?: Account[];
     selectedAccountId: UUID | null;
     onAccountSelect: (accountId: UUID) => void;
     onNext: () => void;
 }
 
 export function ImportBalanceStepAccount({
-    accounts,
+    accounts = [],
     selectedAccountId,
     onAccountSelect,
     onNext,
