@@ -48,4 +48,10 @@ db.version(7).stores({
     pending_changes: null,
 });
 
+// Version 8: Ensure clean state (no schema changes, just trigger upgrade)
+db.version(8).stores({
+    transactions: 'id, user_id, account_id, updated_at',
+    sync_metadata: 'key',
+});
+
 export { db };
