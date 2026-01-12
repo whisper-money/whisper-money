@@ -136,7 +136,10 @@ export class TransactionSyncManager {
     }
 
     async getByAccountId(accountId: UUID): Promise<Transaction[]> {
-        return await db.transactions.where('account_id').equals(accountId).toArray();
+        return await db.transactions
+            .where('account_id')
+            .equals(accountId)
+            .toArray();
     }
 
     isSyncing(): boolean {

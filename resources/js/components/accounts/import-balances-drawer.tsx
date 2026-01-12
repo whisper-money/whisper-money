@@ -395,18 +395,21 @@ export function ImportBalancesDrawer({
                 batch.map(async (balance, batchIndex) => {
                     const rowNumber = i + batchIndex + 1;
 
-                    const response = await fetch(store.url(selectedAccount.id), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-XSRF-TOKEN': xsrfToken,
-                            Accept: 'application/json',
+                    const response = await fetch(
+                        store.url(selectedAccount.id),
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-XSRF-TOKEN': xsrfToken,
+                                Accept: 'application/json',
+                            },
+                            body: JSON.stringify({
+                                balance_date: balance.balance_date,
+                                balance: balance.balance,
+                            }),
                         },
-                        body: JSON.stringify({
-                            balance_date: balance.balance_date,
-                            balance: balance.balance,
-                        }),
-                    });
+                    );
 
                     if (!response.ok) {
                         const data = await response.json();

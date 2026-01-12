@@ -13,7 +13,8 @@ import { CloudAlert, CloudCheck, CloudOff, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
 export function SyncStatusButton() {
-    const { syncStatus, lastSyncTime, isOnline, sync, error } = useSyncContext();
+    const { syncStatus, lastSyncTime, isOnline, sync, error } =
+        useSyncContext();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const getIcon = () => {

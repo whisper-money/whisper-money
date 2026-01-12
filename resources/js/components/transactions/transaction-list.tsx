@@ -666,7 +666,9 @@ export function TransactionList({
                 consoleDebug('✓ Encryption key found');
 
                 const key = await importKey(keyString);
-                consoleDebug(`Found ${automationRules.length} automation rules`);
+                consoleDebug(
+                    `Found ${automationRules.length} automation rules`,
+                );
 
                 if (automationRules.length === 0) {
                     consoleDebug('❌ No rules to evaluate');
@@ -766,7 +768,14 @@ export function TransactionList({
                 consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [isKeySet, categories, accounts, banks, updateTransaction, automationRules],
+        [
+            isKeySet,
+            categories,
+            accounts,
+            banks,
+            updateTransaction,
+            automationRules,
+        ],
     );
 
     async function handleBulkReEvaluateRules() {

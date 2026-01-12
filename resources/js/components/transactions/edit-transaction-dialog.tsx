@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useSyncContext } from '@/contexts/sync-context';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
@@ -73,6 +74,7 @@ export function EditTransactionDialog({
         'whisper_money_update_balance_on_transaction';
 
     const { isKeySet } = useEncryptionKey();
+    const { sync } = useSyncContext();
     const [transactionDate, setTransactionDate] = useState('');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState<number>(0);
@@ -161,7 +163,6 @@ export function EditTransactionDialog({
 
         decryptAccountNames();
     }, [open, mode, accounts]);
-
 
     async function checkAndApplyAutomationRules() {
         if (mode !== 'create' || automationRules.length === 0) {
@@ -267,10 +268,7 @@ export function EditTransactionDialog({
 
             const balancesData = await balancesResponse.json();
             const accountBalances = (balancesData.data || []).sort(
-                (
-                    a: { balance_date: string },
-                    b: { balance_date: string },
-                ) =>
+                (a: { balance_date: string }, b: { balance_date: string }) =>
                     new Date(b.balance_date).getTime() -
                     new Date(a.balance_date).getTime(),
             );
@@ -432,6 +430,9 @@ export function EditTransactionDialog({
 
                 onSuccess(newTransaction);
                 onOpenChange(false);
+
+                // Sync to update IndexedDB
+                sync();
             } else {
                 if (!transaction) {
                     return;
@@ -517,6 +518,9 @@ export function EditTransactionDialog({
                 toast.success('Transaction updated successfully');
                 onSuccess(updatedTransaction);
                 onOpenChange(false);
+
+                // Sync to update IndexedDB
+                sync();
             }
         } catch (error) {
             console.error('Failed to save transaction:', error);
