@@ -11,10 +11,10 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
 import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { usePage } from '@inertiajs/react';
 
 import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
 import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete-automation-rule-dialog';
@@ -53,7 +53,6 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { db } from '@/lib/dexie-db';
 import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
 import { getCategoryColorClasses } from '@/types/category';
 
@@ -164,8 +163,7 @@ export function AutomationRulesDialog({
     onOpenChange,
 }: AutomationRulesDialogProps) {
     const { isKeySet } = useEncryptionKey();
-    const rawRules =
-        useLiveQuery(() => db.automation_rules.toArray(), []) || [];
+    const { automationRules: rawRules } = usePage<{ automationRules: AutomationRule[] }>().props;
     const rules = useMemo(
         () =>
             rawRules.map((rule) => ({

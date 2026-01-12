@@ -205,6 +205,7 @@ export default function AccountShow({
             <ImportBalancesDrawer
                 open={importBalancesOpen}
                 onOpenChange={setImportBalancesOpen}
+                accounts={accounts}
                 accountId={account.id}
                 onSuccess={handleBalanceUpdated}
             />

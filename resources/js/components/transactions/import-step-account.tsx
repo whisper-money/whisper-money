@@ -8,14 +8,14 @@ import { Building2 } from 'lucide-react';
 import { useEffect } from 'react';
 
 interface ImportStepAccountProps {
-    accounts: Account[];
+    accounts?: Account[];
     selectedAccountId: UUID | null;
     onAccountSelect: (accountId: UUID) => void;
     onNext: () => void;
 }
 
 export function ImportStepAccount({
-    accounts: rawAccounts,
+    accounts: rawAccounts = [],
     selectedAccountId,
     onAccountSelect,
     onNext,

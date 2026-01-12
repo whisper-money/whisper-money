@@ -396,7 +396,7 @@ export default function Transactions({
     const [filters, setFilters] = useState<Filters>(() =>
         parseFiltersFromURL(),
     );
-    const labels = useLiveQuery(() => db.labels.toArray(), [], initialLabels);
+    const labels = initialLabels;
     const [editTransaction, setEditTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);

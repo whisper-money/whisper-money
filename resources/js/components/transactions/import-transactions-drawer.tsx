@@ -42,10 +42,10 @@ import { ImportStepPreview } from './import-step-preview';
 import { ImportStepUpload } from './import-step-upload';
 
 interface ImportTransactionsDrawerProps {
-    accounts: Account[];
-    categories: Category[];
-    banks: Bank[];
-    automationRules: AutomationRule[];
+    accounts?: Account[];
+    categories?: Category[];
+    banks?: Bank[];
+    automationRules?: AutomationRule[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -69,10 +69,10 @@ type ImportFunnelStep =
     | 'Finish';
 
 export function ImportTransactionsDrawer({
-    accounts,
-    categories,
-    banks,
-    automationRules,
+    accounts = [],
+    categories = [],
+    banks = [],
+    automationRules = [],
     open,
     onOpenChange,
 }: ImportTransactionsDrawerProps) {

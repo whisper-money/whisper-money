@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountBalanceController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
+use App\Http\Controllers\Api\ImportDataController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\Sync\TransactionSyncController;
 use Illuminate\Support\Facades\Route;
@@ -11,6 +12,9 @@ Route::middleware(['web', 'auth'])->group(function () {
     // Encryption
     Route::post('encryption/setup', [EncryptionController::class, 'setup']);
     Route::get('encryption/message', [EncryptionController::class, 'getMessage']);
+
+    // Import Data (for import drawers)
+    Route::get('import/data', [ImportDataController::class, 'index']);
 
     // Transaction Sync (for IndexedDB client-side search)
     Route::prefix('sync')->group(function () {
