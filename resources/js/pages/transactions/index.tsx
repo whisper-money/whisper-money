@@ -49,6 +49,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useSyncContext } from '@/contexts/sync-context';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
@@ -361,6 +362,12 @@ export default function Transactions({
     automationRules,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
+    const { sync } = useSyncContext();
+
+    // Sync transactions when page loads
+    useEffect(() => {
+        sync();
+    }, [sync]);
 
     const transactionIds = useLiveQuery(
         async () => {
@@ -1213,6 +1220,9 @@ export default function Transactions({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
+
+            // Sync to update IndexedDB
+            sync();
         } catch (error) {
             console.error('Failed to delete transaction:', error);
         } finally {
@@ -1284,6 +1294,9 @@ export default function Transactions({
 
             setRowSelection({});
             setIsSelectingAll(false);
+
+            // Sync to update IndexedDB
+            sync();
         } catch (error) {
             console.error('Failed to update transactions:', error);
             toast.error('Failed to update transactions');
@@ -1331,6 +1344,9 @@ export default function Transactions({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
+
+            // Sync to update IndexedDB
+            sync();
         } catch (error) {
             console.error('Failed to delete transactions:', error);
         } finally {
@@ -1432,6 +1448,9 @@ export default function Transactions({
 
             setRowSelection({});
             setIsSelectingAll(false);
+
+            // Sync to update IndexedDB
+            sync();
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
             toast.error('Failed to update transactions with labels');

@@ -172,34 +172,15 @@ export function SyncProvider({
     }, [isAuthenticated, isOnline, wasOffline, sync]);
 
     useEffect(() => {
-        if (!isOnline || !isAuthenticated) {
-            return;
-        }
-
-        const interval = setInterval(() => {
-            sync();
-        }, SYNC_INTERVAL);
-
-        return () => clearInterval(interval);
-    }, [isAuthenticated, isOnline, sync]);
-
-    useEffect(() => {
         if (!isAuthenticated || !currentUser) {
             return;
         }
 
-        const checkUserAndSync = async () => {
-            // If user changed, clear transactions and resync
-            if (lastUserIdRef.current && lastUserIdRef.current !== currentUser.id) {
-                await transactionSyncService.clearAll();
-            }
-            lastUserIdRef.current = currentUser.id;
-
-            sync();
-        };
-
-        checkUserAndSync();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // If user changed, clear transactions
+        if (lastUserIdRef.current && lastUserIdRef.current !== currentUser.id) {
+            transactionSyncService.clearAll();
+        }
+        lastUserIdRef.current = currentUser.id;
     }, [isAuthenticated, currentUser?.id]);
 
     // Auto-sync when pending changes are detected

@@ -41,7 +41,10 @@ class TransactionSyncService {
                 const { labels, ...rest } = data;
                 return {
                     ...rest,
-                    transaction_date: String(data.transaction_date).slice(0, 10),
+                    transaction_date: String(data.transaction_date).slice(
+                        0,
+                        10,
+                    ),
                     label_ids: label_ids || [],
                 };
             },
@@ -94,7 +97,10 @@ class TransactionSyncService {
         return created;
     }
 
-    async update(id: string, data: TransactionUpdateData): Promise<Transaction> {
+    async update(
+        id: string,
+        data: TransactionUpdateData,
+    ): Promise<Transaction> {
         const existing = await this.getById(id);
 
         if (!existing) {
@@ -126,7 +132,9 @@ class TransactionSyncService {
         const result = await response.json();
         const serverData = result.data;
 
-        const serverLabelIds = serverData.labels?.map((l: { id: string }) => l.id);
+        const serverLabelIds = serverData.labels?.map(
+            (l: { id: string }) => l.id,
+        );
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { labels: _labels, ...restServerData } = serverData;
 
@@ -137,7 +145,10 @@ class TransactionSyncService {
         } as Transaction;
     }
 
-    async updateMany(ids: string[], data: TransactionUpdateData): Promise<void> {
+    async updateMany(
+        ids: string[],
+        data: TransactionUpdateData,
+    ): Promise<void> {
         const { label_ids, ...transactionData } = data;
 
         const response = await fetch('/transactions/bulk', {
@@ -169,7 +180,9 @@ class TransactionSyncService {
 
         const requestFilters: Record<string, unknown> = {};
         if (filters.dateFrom) {
-            requestFilters.date_from = filters.dateFrom.toISOString().split('T')[0];
+            requestFilters.date_from = filters.dateFrom
+                .toISOString()
+                .split('T')[0];
         }
         if (filters.dateTo) {
             requestFilters.date_to = filters.dateTo.toISOString().split('T')[0];
@@ -249,7 +262,8 @@ class TransactionSyncService {
             const minDate = dates.reduce((a, b) => (a < b ? a : b));
             const maxDate = dates.reduce((a, b) => (a > b ? a : b));
 
-            const normalizeDate = (dateStr: string): string => dateStr.slice(0, 10);
+            const normalizeDate = (dateStr: string): string =>
+                dateStr.slice(0, 10);
 
             const allTransactions = await this.getByAccountId(accountId);
             const transactionsInRange = allTransactions.filter((t) => {
@@ -300,13 +314,18 @@ class TransactionSyncService {
 
                 return validDecryptedTransactions.some(
                     (existing) =>
-                        existing.transaction_date === importingTx.transaction_date &&
-                        Math.abs(existing.amount - importingTx.amount) < 0.001 &&
+                        existing.transaction_date ===
+                            importingTx.transaction_date &&
+                        Math.abs(existing.amount - importingTx.amount) <
+                            0.001 &&
                         existing.description === normalizedDescription,
                 );
             });
         } catch (error) {
-            console.warn('Duplicate check failed, assuming no duplicates:', error);
+            console.warn(
+                'Duplicate check failed, assuming no duplicates:',
+                error,
+            );
             return transactions.map(() => false);
         }
     }

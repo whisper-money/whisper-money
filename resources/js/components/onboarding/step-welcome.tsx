@@ -18,10 +18,7 @@ export function StepWelcome({ onContinue }: StepWelcomeProps) {
             />
 
             <div className="flex w-full flex-col gap-4 sm:w-auto">
-                <StepButton
-                    text="Let's Get Started"
-                    onClick={onContinue}
-                />
+                <StepButton text="Let's Get Started" onClick={onContinue} />
 
                 <p className="text-sm text-muted-foreground">
                     This will take less than 5 minutes

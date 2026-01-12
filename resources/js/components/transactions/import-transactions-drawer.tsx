@@ -496,9 +496,7 @@ export function ImportTransactionsDrawer({
                         ?.split('=')[1] || '',
                 );
 
-                const balanceRecords = Array.from(
-                    balancesToImport.entries(),
-                );
+                const balanceRecords = Array.from(balancesToImport.entries());
 
                 for (const [date, balance] of balanceRecords) {
                     await fetch(storeBalance.url(selectedAccount.id), {
