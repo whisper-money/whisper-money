@@ -616,22 +616,23 @@ install() {
 
     echo ""
 
+    # Install Composer dependencies BEFORE starting Docker services
+    # (Docker Compose mounts files from vendor/laravel/sail that need to exist)
+    echo -e "${BLUE}Installing Composer dependencies...${NC}"
+    composer install --no-interaction --prefer-dist --optimize-autoloader
+    echo -e "${GREEN}Composer dependencies installed.${NC}"
+    echo ""
+
     # Setup SSL certificates before starting Caddy
     setup_ssl_certificates
     echo ""
 
-    # Start Docker services (but don't start PHP yet - we'll start it after dependencies are installed)
+    # Start Docker services (but don't start PHP yet - we'll start it after APP_KEY is generated)
     echo -e "${BLUE}Starting Docker services (excluding PHP for now)...${NC}"
     docker compose up -d mysql redis caddy mailhog
 
     wait_for_service "mysql"
     wait_for_service "redis"
-    echo ""
-
-    # Install Composer dependencies
-    echo -e "${BLUE}Installing Composer dependencies...${NC}"
-    composer install --no-interaction --prefer-dist --optimize-autoloader
-    echo -e "${GREEN}Composer dependencies installed.${NC}"
     echo ""
 
     # Generate APP_KEY if not set (after Composer dependencies are installed)
