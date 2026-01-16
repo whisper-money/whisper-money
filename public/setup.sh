@@ -65,7 +65,7 @@ check_and_setup_repo() {
         echo -e "${BLUE}You can clone it manually and run this script from the repository directory:${NC}"
         echo -e "  ${GREEN}git clone ${REPO_URL}${NC}"
         echo -e "  ${GREEN}cd ${REPO_DIR}${NC}"
-        echo -e "  ${GREEN}./whispermoney${NC}"
+        echo -e "  ${GREEN}whispermoney${NC}"
         exit 0
     fi
 
@@ -175,7 +175,7 @@ check_project_version() {
             echo -e "${BLUE}Your local project is ${behind_count} commit(s) behind the remote repository.${NC}"
             echo ""
             echo -e "${YELLOW}To update, run:${NC}"
-            echo -e "  ${GREEN}./whispermoney upgrade${NC}"
+            echo -e "  ${GREEN}whispermoney upgrade${NC}"
             echo ""
             echo -e "${BLUE}Or manually:${NC}"
             echo -e "  ${GREEN}git pull${NC}"
@@ -803,10 +803,10 @@ install() {
     echo -e "  • MailHog (email testing)"
     echo ""
     echo -e "${YELLOW}To stop all services:${NC}"
-    echo -e "  ${YELLOW}./whispermoney stop${NC}"
+    echo -e "  ${YELLOW}whispermoney stop${NC}"
     echo ""
     echo -e "${YELLOW}To start services again:${NC}"
-    echo -e "  ${YELLOW}./whispermoney start${NC}"
+    echo -e "  ${YELLOW}whispermoney start${NC}"
     echo ""
 }
 
