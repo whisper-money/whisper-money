@@ -68,25 +68,25 @@ cd whisper-money
 2. **Run the setup script:**
 
 ```bash
-./setup.sh install
+./wispermoney install
 ```
 
 ### Available Commands
 
-Once installed, you can use the setup script for common tasks:
+Once installed, you can use the `wispermoney` command for common tasks:
 
 ```bash
 # Start all services
-./setup.sh start
+./wispermoney start
 
 # Stop all services
-./setup.sh stop
+./wispermoney stop
 
 # Upgrade to latest version
-./setup.sh upgrade
+./wispermoney upgrade
 
 # Interactive menu
-./setup.sh
+./wispermoney
 ```
 
 ### Development Server
