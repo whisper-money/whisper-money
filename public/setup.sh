@@ -17,7 +17,6 @@ REPO_DIR="whisper-money"
 check_and_setup_repo() {
     # Check if we're already in the whisper-money git repo
     if [ -d ".git" ] && git remote get-url origin 2>/dev/null | grep -q "whisper-money"; then
-        echo -e "${GREEN}✓ Already in Whisper Money repository${NC}"
         return 0
     fi
 
@@ -81,6 +80,11 @@ check_and_setup_repo() {
         # Make sure the script is executable
         if [ -f "public/setup.sh" ]; then
             chmod +x public/setup.sh
+        fi
+
+        # Make sure the script is executable
+        if [ -f "whispermoney" ]; then
+            chmod +x whispermoney
         fi
 
         echo -e "${GREEN}✓ Ready to continue with installation${NC}"
