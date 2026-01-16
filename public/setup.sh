@@ -27,7 +27,7 @@ check_and_setup_repo() {
         echo -e "${YELLOW}Changing to ${REPO_DIR} directory...${NC}"
         cd "$REPO_DIR"
         # Re-execute the script from the new directory with original arguments
-        exec "./setup.sh" "$@"
+        exec "./whisper-money.sh" "$@"
     fi
 
     # Not in repo and repo directory doesn't exist - prompt to clone
@@ -45,7 +45,7 @@ check_and_setup_repo() {
     echo -e "  • Change into that directory"
     echo -e "  • Continue with installation"
     echo ""
-    
+
     # Check if git is available
     if ! command_exists git; then
         echo -e "${RED}Git is not installed. Please install Git first:${NC}"
@@ -66,7 +66,7 @@ check_and_setup_repo() {
         echo -e "${BLUE}You can clone it manually and run this script from the repository directory:${NC}"
         echo -e "  ${GREEN}git clone ${REPO_URL}${NC}"
         echo -e "  ${GREEN}cd ${REPO_DIR}${NC}"
-        echo -e "  ${GREEN}./setup.sh${NC}"
+        echo -e "  ${GREEN}./whispermoney${NC}"
         exit 0
     fi
 
@@ -77,17 +77,17 @@ check_and_setup_repo() {
         echo ""
         echo -e "${YELLOW}Changing to ${REPO_DIR} directory...${NC}"
         cd "$REPO_DIR"
-        
+
         # Make sure the script is executable
-        if [ -f "setup.sh" ]; then
-            chmod +x setup.sh
+        if [ -f "public/setup.sh" ]; then
+            chmod +x public/setup.sh
         fi
-        
+
         echo -e "${GREEN}✓ Ready to continue with installation${NC}"
         echo ""
-        
+
         # Re-execute the script from the new directory
-        exec "./setup.sh" "$@"
+        exec "./whispermoney" "$@"
     else
         echo -e "${RED}✗ Failed to clone repository${NC}"
         echo -e "${YELLOW}Please check your internet connection and try again.${NC}"
@@ -149,7 +149,7 @@ check_project_version() {
 
     # Get current branch
     local current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-    
+
     # Compare local and remote commits
     local local_commit=$(git rev-parse HEAD 2>/dev/null)
     local remote_commit=$(git rev-parse "origin/${current_branch}" 2>/dev/null)
@@ -161,7 +161,7 @@ check_project_version() {
     # Check if we're behind remote
     if [ "$local_commit" != "$remote_commit" ]; then
         local behind_count=$(git rev-list --count HEAD.."origin/${current_branch}" 2>/dev/null || echo "0")
-        
+
         if [ "$behind_count" -gt 0 ]; then
             echo ""
             echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -171,7 +171,7 @@ check_project_version() {
             echo -e "${BLUE}Your local project is ${behind_count} commit(s) behind the remote repository.${NC}"
             echo ""
             echo -e "${YELLOW}To update, run:${NC}"
-            echo -e "  ${GREEN}./setup.sh upgrade${NC}"
+            echo -e "  ${GREEN}./whispermoney upgrade${NC}"
             echo ""
             echo -e "${BLUE}Or manually:${NC}"
             echo -e "  ${GREEN}git pull${NC}"
@@ -237,7 +237,7 @@ wait_for_service() {
         # Check container status
         local ps_output=$(docker compose ps "$service" 2>/dev/null | grep "$service" || echo "")
         local container_state=$(echo "$ps_output" | awk '{print $1}' || echo "")
-        
+
         # Check if container is running
         if echo "$ps_output" | grep -qE "Up|healthy"; then
             # For PHP service, verify it's actually responding
@@ -248,7 +248,7 @@ wait_for_service() {
                 else
                     sleep 1
                 fi
-                
+
                 # Check if we can exec into the container and PHP works
                 if docker compose exec -T php php -v >/dev/null 2>&1; then
                     # Try multiple ways to check if server is running
@@ -286,7 +286,7 @@ wait_for_service() {
             docker compose logs --tail=30 "$service" 2>&1
             return 1
         fi
-        
+
         if [ $((attempt % 10)) -eq 0 ]; then
             echo -e "${YELLOW}Still waiting... (${attempt}/${max_attempts})${NC}"
             if [ "$service" = "php" ]; then
@@ -296,7 +296,7 @@ wait_for_service() {
                 docker compose logs --tail=5 php 2>&1 | tail -3
             fi
         fi
-        
+
         sleep 2
         attempt=$((attempt + 1))
     done
@@ -352,7 +352,7 @@ update_hosts_file() {
 
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo -e "${YELLOW}Updating hosts file (sudo access required)...${NC}"
-        
+
         # Use sudo to add the line if it doesn't exist
         if sudo sh -c "grep -q '${hosts_line}' ${hosts_file} || echo '${hosts_line}' >> ${hosts_file}"; then
             echo -e "${GREEN}✓ Successfully updated ${hosts_file}${NC}"
@@ -396,7 +396,7 @@ setup_ssl_certificates() {
         echo ""
         echo -e "${BLUE}mkcert creates locally-trusted certificates that browsers automatically trust.${NC}"
         echo ""
-        
+
         if [[ "$OSTYPE" == "darwin"* ]]; then
             echo -e "${YELLOW}Install mkcert:${NC}"
             echo -e "  ${GREEN}brew install mkcert${NC}"
@@ -405,7 +405,7 @@ setup_ssl_certificates() {
             read -p "Would you like to install mkcert now? (y/n) " -n 1 -r
             echo ""
             echo ""
-            
+
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 if command_exists brew; then
                     echo -e "${YELLOW}Installing mkcert...${NC}"
@@ -435,12 +435,12 @@ setup_ssl_certificates() {
             read -p "Continue with fallback self-signed certificates? (y/n) " -n 1 -r
             echo ""
             echo ""
-            
+
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                 echo -e "${YELLOW}Please install mkcert and run the setup again.${NC}"
                 exit 1
             fi
-            
+
             create_fallback_certificates
             return 0
         fi
@@ -483,9 +483,9 @@ create_fallback_certificates() {
 
     echo ""
     echo -e "${YELLOW}Creating self-signed certificates (browser will show a warning)...${NC}"
-    
+
     mkdir -p "$certs_dir"
-    
+
     # Check if openssl is available
     if command_exists openssl; then
         # Create certificate with proper SAN extension
@@ -495,7 +495,7 @@ create_fallback_certificates() {
             -subj "/CN=${domain}/O=Development/C=US" \
             -addext "subjectAltName=DNS:${domain},DNS:*.${domain},IP:127.0.0.1" \
             2>/dev/null
-        
+
         if [ -f "$cert_file" ] && [ -f "$key_file" ]; then
             # Set proper permissions
             chmod 644 "$cert_file"
@@ -506,7 +506,7 @@ create_fallback_certificates() {
             return 0
         fi
     fi
-    
+
     echo -e "${RED}✗ Could not create certificates${NC}"
     echo -e "${YELLOW}  Please install mkcert or openssl to generate certificates.${NC}"
     return 1
@@ -516,7 +516,7 @@ create_fallback_certificates() {
 show_manual_hosts_instructions() {
     local hostname="whisper.money.local"
     local hosts_line="127.0.0.1 ${hostname}"
-    
+
     echo ""
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${YELLOW}Manual Hosts File Update${NC}"
@@ -546,7 +546,7 @@ start_services() {
 
     wait_for_service "mysql"
     wait_for_service "redis"
-    
+
     # Only wait for PHP if it's supposed to be running
     if docker compose ps php 2>/dev/null | grep -q "php"; then
         wait_for_service "php"
@@ -647,10 +647,10 @@ install() {
         docker compose logs php 2>&1 | tail -20
         exit 1
     fi
-    
+
     # Wait a moment for PHP container to start
     sleep 5
-    
+
     # Check if container started successfully
     if ! docker compose ps php 2>/dev/null | grep -q "php"; then
         echo -e "${RED}PHP container failed to start!${NC}"
@@ -658,7 +658,7 @@ install() {
         docker compose logs php 2>&1 | tail -30
         exit 1
     fi
-    
+
     wait_for_service "php"
     echo ""
 
@@ -676,10 +676,10 @@ install() {
 
     # Build frontend assets with retry logic
     echo -e "${BLUE}Building frontend assets...${NC}"
-    
+
     # Small delay to ensure file system is ready
     sleep 1
-    
+
     local build_success=false
     local max_build_attempts=3
     local build_attempt=1
@@ -772,7 +772,7 @@ install() {
     echo ""
     echo -e "  ${GREEN}Visit: https://whisper.money.local${NC}"
     echo ""
-    
+
     # Check if mkcert certificates are being used
     if [ -f "docker/caddy/certs/whisper.money.local.pem" ]; then
         echo -e "${GREEN}✓ Using trusted SSL certificates (mkcert)${NC}"
@@ -798,10 +798,10 @@ install() {
     echo -e "  • MailHog (email testing)"
     echo ""
     echo -e "${YELLOW}To stop all services:${NC}"
-    echo -e "  ${YELLOW}./setup.sh stop${NC}"
+    echo -e "  ${YELLOW}./whispermoney stop${NC}"
     echo ""
     echo -e "${YELLOW}To start services again:${NC}"
-    echo -e "  ${YELLOW}./setup.sh start${NC}"
+    echo -e "  ${YELLOW}./whispermoney start${NC}"
     echo ""
 }
 
@@ -844,10 +844,10 @@ upgrade() {
 
     # Rebuild assets with retry logic
     echo -e "${BLUE}Rebuilding frontend assets...${NC}"
-    
+
     # Small delay to ensure file system is ready
     sleep 1
-    
+
     local build_success=false
     local max_build_attempts=3
     local build_attempt=1
