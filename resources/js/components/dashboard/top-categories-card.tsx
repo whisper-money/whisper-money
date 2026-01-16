@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { SharedData } from '@/types';
 import { Category, getCategoryColorClasses } from '@/types/category';
 import { usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
@@ -43,9 +44,9 @@ export function TopCategoriesCard({
     categories,
     loading,
 }: TopCategoriesCardProps) {
-    const { auth } = usePage<{ auth: { user: { currency_code: string } } }>();
+    const { auth } = usePage<SharedData>().props;
 
-    if (loading) {
+    if (loading || !auth?.user) {
         return (
             <Card className="col-span-3">
                 <CardHeader>

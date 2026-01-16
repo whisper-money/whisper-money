@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
+import { SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
@@ -25,8 +26,8 @@ interface CashflowSummaryCardProps {
 }
 
 export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
-    const { auth } = usePage<{ auth: { user: { currency_code: string } } }>()
-        .props;
+    const { auth } = usePage<SharedData>().props;
+
     const [data, setData] = useState<{
         current: CashflowSummary;
         previous: CashflowSummary;
@@ -56,7 +57,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
         fetchData();
     }, []);
 
-    if (isLoading || loading) {
+    if (!auth?.user || isLoading || loading) {
         return (
             <Card className="col-span-3">
                 <CardHeader>
