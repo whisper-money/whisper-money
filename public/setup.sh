@@ -229,6 +229,224 @@ check_dependencies() {
     echo -e "${GREEN}All dependencies are installed.${NC}"
 }
 
+# Check if a port is available
+is_port_available() {
+    local port=$1
+    
+    # Try lsof first (works on macOS and Linux)
+    if command_exists lsof; then
+        if lsof -i :"$port" >/dev/null 2>&1; then
+            return 1  # Port is in use
+        else
+            return 0  # Port is available
+        fi
+    fi
+    
+    # Try netstat (works on macOS and Linux)
+    if command_exists netstat; then
+        if netstat -an 2>/dev/null | grep -qE ":$port |:$port$|:$port\s"; then
+            return 1  # Port is in use
+        else
+            return 0  # Port is available
+        fi
+    fi
+    
+    # Try ss (Linux only)
+    if command_exists ss; then
+        if ss -tuln 2>/dev/null | grep -q ":${port} "; then
+            return 1  # Port is in use
+        else
+            return 0  # Port is available
+        fi
+    fi
+    
+    # Fallback: try to connect to the port using nc
+    if command_exists nc; then
+        if nc -z localhost "$port" >/dev/null 2>&1; then
+            return 1  # Port is in use
+        else
+            return 0  # Port is available
+        fi
+    fi
+    
+    # If we can't check, assume it's available (optimistic)
+    return 0
+}
+
+# Find an available port starting from a base port
+find_available_port() {
+    local base_port=$1
+    local max_attempts=100
+    local port=$base_port
+    local attempt=0
+
+    while [ $attempt -lt $max_attempts ]; do
+        if is_port_available "$port"; then
+            echo "$port"
+            return 0
+        fi
+        port=$((port + 1))
+        attempt=$((attempt + 1))
+    done
+
+    echo "$base_port"
+    return 1
+}
+
+# Check and configure ports for Docker services
+check_and_configure_ports() {
+    echo -e "${BLUE}Checking port availability...${NC}"
+
+    # Check required ports (Caddy and PHP - these cannot be changed)
+    if ! is_port_available 80; then
+        echo -e "${RED}Port 80 is already in use. Caddy requires this port.${NC}"
+        echo -e "${YELLOW}Please stop the service using port 80 and try again.${NC}"
+        exit 1
+    fi
+
+    if ! is_port_available 443; then
+        echo -e "${RED}Port 443 is already in use. Caddy requires this port.${NC}"
+        echo -e "${YELLOW}Please stop the service using port 443 and try again.${NC}"
+        exit 1
+    fi
+
+    if ! is_port_available 8000; then
+        echo -e "${RED}Port 8000 is already in use. PHP requires this port.${NC}"
+        echo -e "${YELLOW}Please stop the service using port 8000 and try again.${NC}"
+        exit 1
+    fi
+
+    # Check optional ports and find alternatives if needed
+    local db_port=3307
+    local redis_port=6380
+    local mailhog_port=1025
+    local mailhog_dashboard_port=8025
+
+    # Read existing ports from .env if they exist
+    if [ -f .env ]; then
+        if grep -q "^FORWARD_DB_PORT=" .env 2>/dev/null; then
+            db_port=$(grep "^FORWARD_DB_PORT=" .env | cut -d '=' -f2 | tr -d ' ')
+        fi
+        if grep -q "^FORWARD_REDIS_PORT=" .env 2>/dev/null; then
+            redis_port=$(grep "^FORWARD_REDIS_PORT=" .env | cut -d '=' -f2 | tr -d ' ')
+        fi
+        if grep -q "^FORWARD_MAILHOG_PORT=" .env 2>/dev/null; then
+            mailhog_port=$(grep "^FORWARD_MAILHOG_PORT=" .env | cut -d '=' -f2 | tr -d ' ')
+        fi
+        if grep -q "^FORWARD_MAILHOG_DASHBOARD_PORT=" .env 2>/dev/null; then
+            mailhog_dashboard_port=$(grep "^FORWARD_MAILHOG_DASHBOARD_PORT=" .env | cut -d '=' -f2 | tr -d ' ')
+        fi
+    fi
+
+    # Check MySQL port
+    local original_db_port=$db_port
+    if ! is_port_available "$db_port"; then
+        echo -e "${YELLOW}Port ${db_port} is in use. Finding alternative port for MySQL...${NC}"
+        db_port=$(find_available_port "$db_port")
+        if [ "$db_port" != "$original_db_port" ]; then
+            echo -e "${GREEN}Using port ${db_port} for MySQL (instead of ${original_db_port})${NC}"
+        fi
+    fi
+
+    # Check Redis port
+    local original_redis_port=$redis_port
+    if ! is_port_available "$redis_port"; then
+        echo -e "${YELLOW}Port ${redis_port} is in use. Finding alternative port for Redis...${NC}"
+        redis_port=$(find_available_port "$redis_port")
+        if [ "$redis_port" != "$original_redis_port" ]; then
+            echo -e "${GREEN}Using port ${redis_port} for Redis (instead of ${original_redis_port})${NC}"
+        fi
+    fi
+
+    # Check MailHog SMTP port
+    local original_mailhog_port=$mailhog_port
+    if ! is_port_available "$mailhog_port"; then
+        echo -e "${YELLOW}Port ${mailhog_port} is in use. Finding alternative port for MailHog SMTP...${NC}"
+        mailhog_port=$(find_available_port "$mailhog_port")
+        if [ "$mailhog_port" != "$original_mailhog_port" ]; then
+            echo -e "${GREEN}Using port ${mailhog_port} for MailHog SMTP (instead of ${original_mailhog_port})${NC}"
+        fi
+    fi
+
+    # Check MailHog Dashboard port
+    local original_mailhog_dashboard_port=$mailhog_dashboard_port
+    if ! is_port_available "$mailhog_dashboard_port"; then
+        echo -e "${YELLOW}Port ${mailhog_dashboard_port} is in use. Finding alternative port for MailHog Dashboard...${NC}"
+        mailhog_dashboard_port=$(find_available_port "$mailhog_dashboard_port")
+        if [ "$mailhog_dashboard_port" != "$original_mailhog_dashboard_port" ]; then
+            echo -e "${GREEN}Using port ${mailhog_dashboard_port} for MailHog Dashboard (instead of ${original_mailhog_dashboard_port})${NC}"
+        fi
+    fi
+
+    # Update .env file with the ports
+    if [ -f .env ]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # Update or add FORWARD_DB_PORT
+            if grep -q "^FORWARD_DB_PORT=" .env; then
+                sed -i '' "s|^FORWARD_DB_PORT=.*|FORWARD_DB_PORT=${db_port}|g" .env
+            else
+                echo "FORWARD_DB_PORT=${db_port}" >> .env
+            fi
+
+            # Update or add FORWARD_REDIS_PORT
+            if grep -q "^FORWARD_REDIS_PORT=" .env; then
+                sed -i '' "s|^FORWARD_REDIS_PORT=.*|FORWARD_REDIS_PORT=${redis_port}|g" .env
+            else
+                echo "FORWARD_REDIS_PORT=${redis_port}" >> .env
+            fi
+
+            # Update or add FORWARD_MAILHOG_PORT
+            if grep -q "^FORWARD_MAILHOG_PORT=" .env; then
+                sed -i '' "s|^FORWARD_MAILHOG_PORT=.*|FORWARD_MAILHOG_PORT=${mailhog_port}|g" .env
+            else
+                echo "FORWARD_MAILHOG_PORT=${mailhog_port}" >> .env
+            fi
+
+            # Update or add FORWARD_MAILHOG_DASHBOARD_PORT
+            if grep -q "^FORWARD_MAILHOG_DASHBOARD_PORT=" .env; then
+                sed -i '' "s|^FORWARD_MAILHOG_DASHBOARD_PORT=.*|FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}|g" .env
+            else
+                echo "FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}" >> .env
+            fi
+        else
+            # Update or add FORWARD_DB_PORT
+            if grep -q "^FORWARD_DB_PORT=" .env; then
+                sed -i "s|^FORWARD_DB_PORT=.*|FORWARD_DB_PORT=${db_port}|g" .env
+            else
+                echo "FORWARD_DB_PORT=${db_port}" >> .env
+            fi
+
+            # Update or add FORWARD_REDIS_PORT
+            if grep -q "^FORWARD_REDIS_PORT=" .env; then
+                sed -i "s|^FORWARD_REDIS_PORT=.*|FORWARD_REDIS_PORT=${redis_port}|g" .env
+            else
+                echo "FORWARD_REDIS_PORT=${redis_port}" >> .env
+            fi
+
+            # Update or add FORWARD_MAILHOG_PORT
+            if grep -q "^FORWARD_MAILHOG_PORT=" .env; then
+                sed -i "s|^FORWARD_MAILHOG_PORT=.*|FORWARD_MAILHOG_PORT=${mailhog_port}|g" .env
+            else
+                echo "FORWARD_MAILHOG_PORT=${mailhog_port}" >> .env
+            fi
+
+            # Update or add FORWARD_MAILHOG_DASHBOARD_PORT
+            if grep -q "^FORWARD_MAILHOG_DASHBOARD_PORT=" .env; then
+                sed -i "s|^FORWARD_MAILHOG_DASHBOARD_PORT=.*|FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}|g" .env
+            else
+                echo "FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}" >> .env
+            fi
+        fi
+    fi
+
+    echo -e "${GREEN}Port configuration complete.${NC}"
+    echo -e "${BLUE}  MySQL: ${db_port}${NC}"
+    echo -e "${BLUE}  Redis: ${redis_port}${NC}"
+    echo -e "${BLUE}  MailHog SMTP: ${mailhog_port}${NC}"
+    echo -e "${BLUE}  MailHog Dashboard: ${mailhog_dashboard_port}${NC}"
+    echo ""
+}
+
 # Wait for service to be healthy
 wait_for_service() {
     local service=$1
@@ -545,6 +763,11 @@ show_manual_hosts_instructions() {
 
 # Start Docker services
 start_services() {
+    # Check and configure ports before starting Docker services
+    if [ -f .env ]; then
+        check_and_configure_ports
+    fi
+
     echo -e "${BLUE}Starting Docker services...${NC}"
     docker compose up -d
 
@@ -626,6 +849,9 @@ install() {
     # Setup SSL certificates before starting Caddy
     setup_ssl_certificates
     echo ""
+
+    # Check and configure ports before starting Docker services
+    check_and_configure_ports
 
     # Start Docker services (but don't start PHP yet - we'll start it after APP_KEY is generated)
     echo -e "${BLUE}Starting Docker services (excluding PHP for now)...${NC}"
