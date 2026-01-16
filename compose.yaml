@@ -1,27 +1,20 @@
 services:
-    traefik:
-        image: 'traefik:v3.0'
-        command:
-            - '--api.insecure=true'
-            - '--providers.docker=true'
-            - '--providers.docker.exposedbydefault=false'
-            - '--providers.file.directory=/etc/traefik/dynamic'
-            - '--providers.file.watch=true'
-            - '--entrypoints.web.address=:80'
-            - '--entrypoints.websecure.address=:443'
-            - '--log.level=INFO'
+    caddy:
+        image: 'caddy:latest'
         ports:
             - '80:80'
             - '443:443'
-            - '8080:8080'
+            - '443:443/udp'
         volumes:
-            - '/var/run/docker.sock:/var/run/docker.sock:ro'
-            - './traefik/dynamic:/etc/traefik/dynamic:ro'
-            - './traefik/certs:/etc/traefik/certs:ro'
+            - './Caddyfile:/etc/caddy/Caddyfile:ro'
+            - './docker/caddy/certs:/etc/caddy/certs:ro'
+            - 'caddy_data:/data'
+            - 'caddy_config:/config'
         networks:
             - sail
         extra_hosts:
             - 'host.docker.internal:host-gateway'
+        restart: unless-stopped
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:
@@ -69,6 +62,32 @@ services:
             - '${FORWARD_MAILHOG_DASHBOARD_PORT:-8025}:8025'
         networks:
             - sail
+    php:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        ports:
+            - '8000:8000'
+        volumes:
+            - '.:/app'
+            - './vendor:/app/vendor'
+            - './node_modules:/app/node_modules'
+        env_file:
+            - .env
+        environment:
+            - DB_HOST=mysql
+            - DB_PORT=3306
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+        networks:
+            - sail
+        depends_on:
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        restart: unless-stopped
+        command: php artisan serve --host=0.0.0.0 --port=8000
 networks:
     sail:
         driver: bridge
@@ -76,4 +95,8 @@ volumes:
     sail-mysql:
         driver: local
     sail-redis:
+        driver: local
+    caddy_data:
+        driver: local
+    caddy_config:
         driver: local
