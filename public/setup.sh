@@ -26,7 +26,7 @@ check_and_setup_repo() {
         echo -e "${YELLOW}Changing to ${REPO_DIR} directory...${NC}"
         cd "$REPO_DIR"
         # Re-execute the script from the new directory with original arguments
-        exec "./whisper-money.sh" "$@"
+        exec "./whispermoney" "$@"
     fi
 
     # Not in repo and repo directory doesn't exist - prompt to clone
