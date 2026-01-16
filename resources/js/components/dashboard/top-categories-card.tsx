@@ -9,6 +9,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Category, getCategoryColorClasses } from '@/types/category';
+import { usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
@@ -42,6 +43,8 @@ export function TopCategoriesCard({
     categories,
     loading,
 }: TopCategoriesCardProps) {
+    const { auth } = usePage<{ auth: { user: { currency_code: string } } }>();
+
     if (loading) {
         return (
             <Card className="col-span-3">
@@ -117,14 +120,16 @@ export function TopCategoriesCard({
                                                 item.previous_amount
                                             }
                                             currentAmount={item.amount}
-                                            currencyCode="USD"
+                                            currencyCode={
+                                                auth.user.currency_code
+                                            }
                                             invertColors
                                             className="shrink-0 text-xs"
                                         />
                                     )}
                                     <AmountDisplay
                                         amountInCents={item.amount}
-                                        currencyCode="USD"
+                                        currencyCode={auth.user.currency_code}
                                         variant="compact"
                                         minimumFractionDigits={0}
                                         maximumFractionDigits={0}
