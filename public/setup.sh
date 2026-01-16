@@ -232,43 +232,34 @@ check_dependencies() {
 # Check if a port is available
 is_port_available() {
     local port=$1
-    
-    # Try lsof first (works on macOS and Linux)
-    if command_exists lsof; then
-        if lsof -i :"$port" >/dev/null 2>&1; then
-            return 1  # Port is in use
-        else
-            return 0  # Port is available
-        fi
-    fi
-    
+
     # Try netstat (works on macOS and Linux)
     if command_exists netstat; then
         if netstat -an 2>/dev/null | grep -qE ":$port |:$port$|:$port\s"; then
-            return 1  # Port is in use
+            return 1 # Port is in use
         else
-            return 0  # Port is available
+            return 0 # Port is available
         fi
     fi
-    
+
     # Try ss (Linux only)
     if command_exists ss; then
         if ss -tuln 2>/dev/null | grep -q ":${port} "; then
-            return 1  # Port is in use
+            return 1 # Port is in use
         else
-            return 0  # Port is available
+            return 0 # Port is available
         fi
     fi
-    
+
     # Fallback: try to connect to the port using nc
     if command_exists nc; then
         if nc -z localhost "$port" >/dev/null 2>&1; then
-            return 1  # Port is in use
+            return 1 # Port is in use
         else
-            return 0  # Port is available
+            return 0 # Port is available
         fi
     fi
-    
+
     # If we can't check, assume it's available (optimistic)
     return 0
 }
@@ -385,56 +376,56 @@ check_and_configure_ports() {
             if grep -q "^FORWARD_DB_PORT=" .env; then
                 sed -i '' "s|^FORWARD_DB_PORT=.*|FORWARD_DB_PORT=${db_port}|g" .env
             else
-                echo "FORWARD_DB_PORT=${db_port}" >> .env
+                echo "FORWARD_DB_PORT=${db_port}" >>.env
             fi
 
             # Update or add FORWARD_REDIS_PORT
             if grep -q "^FORWARD_REDIS_PORT=" .env; then
                 sed -i '' "s|^FORWARD_REDIS_PORT=.*|FORWARD_REDIS_PORT=${redis_port}|g" .env
             else
-                echo "FORWARD_REDIS_PORT=${redis_port}" >> .env
+                echo "FORWARD_REDIS_PORT=${redis_port}" >>.env
             fi
 
             # Update or add FORWARD_MAILHOG_PORT
             if grep -q "^FORWARD_MAILHOG_PORT=" .env; then
                 sed -i '' "s|^FORWARD_MAILHOG_PORT=.*|FORWARD_MAILHOG_PORT=${mailhog_port}|g" .env
             else
-                echo "FORWARD_MAILHOG_PORT=${mailhog_port}" >> .env
+                echo "FORWARD_MAILHOG_PORT=${mailhog_port}" >>.env
             fi
 
             # Update or add FORWARD_MAILHOG_DASHBOARD_PORT
             if grep -q "^FORWARD_MAILHOG_DASHBOARD_PORT=" .env; then
                 sed -i '' "s|^FORWARD_MAILHOG_DASHBOARD_PORT=.*|FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}|g" .env
             else
-                echo "FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}" >> .env
+                echo "FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}" >>.env
             fi
         else
             # Update or add FORWARD_DB_PORT
             if grep -q "^FORWARD_DB_PORT=" .env; then
                 sed -i "s|^FORWARD_DB_PORT=.*|FORWARD_DB_PORT=${db_port}|g" .env
             else
-                echo "FORWARD_DB_PORT=${db_port}" >> .env
+                echo "FORWARD_DB_PORT=${db_port}" >>.env
             fi
 
             # Update or add FORWARD_REDIS_PORT
             if grep -q "^FORWARD_REDIS_PORT=" .env; then
                 sed -i "s|^FORWARD_REDIS_PORT=.*|FORWARD_REDIS_PORT=${redis_port}|g" .env
             else
-                echo "FORWARD_REDIS_PORT=${redis_port}" >> .env
+                echo "FORWARD_REDIS_PORT=${redis_port}" >>.env
             fi
 
             # Update or add FORWARD_MAILHOG_PORT
             if grep -q "^FORWARD_MAILHOG_PORT=" .env; then
                 sed -i "s|^FORWARD_MAILHOG_PORT=.*|FORWARD_MAILHOG_PORT=${mailhog_port}|g" .env
             else
-                echo "FORWARD_MAILHOG_PORT=${mailhog_port}" >> .env
+                echo "FORWARD_MAILHOG_PORT=${mailhog_port}" >>.env
             fi
 
             # Update or add FORWARD_MAILHOG_DASHBOARD_PORT
             if grep -q "^FORWARD_MAILHOG_DASHBOARD_PORT=" .env; then
                 sed -i "s|^FORWARD_MAILHOG_DASHBOARD_PORT=.*|FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}|g" .env
             else
-                echo "FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}" >> .env
+                echo "FORWARD_MAILHOG_DASHBOARD_PORT=${mailhog_dashboard_port}" >>.env
             fi
         fi
     fi
@@ -829,11 +820,21 @@ install() {
         sed -i '' 's|^DB_PORT=.*|DB_PORT=3306|g' .env
         sed -i '' 's|^REDIS_HOST=.*|REDIS_HOST=redis|g' .env
         sed -i '' 's|^REDIS_PORT=.*|REDIS_PORT=6379|g' .env
+
+        # Add MYSQL_EXTRA_OPTIONS if it doesn't exist
+        if ! grep -q "^MYSQL_EXTRA_OPTIONS=" .env 2>/dev/null; then
+            echo "MYSQL_EXTRA_OPTIONS=" >>.env
+        fi
     else
         sed -i 's|^DB_HOST=.*|DB_HOST=mysql|g' .env
         sed -i 's|^DB_PORT=.*|DB_PORT=3306|g' .env
         sed -i 's|^REDIS_HOST=.*|REDIS_HOST=redis|g' .env
         sed -i 's|^REDIS_PORT=.*|REDIS_PORT=6379|g' .env
+
+        # Add MYSQL_EXTRA_OPTIONS if it doesn't exist
+        if ! grep -q "^MYSQL_EXTRA_OPTIONS=" .env 2>/dev/null; then
+            echo "MYSQL_EXTRA_OPTIONS=" >>.env
+        fi
     fi
     echo -e "${GREEN}Database and Redis configured for Docker.${NC}"
 
