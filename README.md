@@ -44,40 +44,54 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 
 ## Running Locally
 
-### Prerequisites
+### Quick Start (Recommended)
 
-- Docker & Docker Compose
-- Composer
-- Node.js / Bun
+The easiest way to get started is using our automated setup script:
 
-### Setup
+```bash
+bash <(curl -fsSL https://whisper.money/setup.sh)
+```
+
+After installation, just visit **https://whisper.money.local** in your browser.
+
+### Manual Setup
+
+If you prefer to set up manually:
 
 1. **Clone the repository:**
 
 ```bash
 git clone https://github.com/whisper-money/whisper-money.git
-cd whisper_money
+cd whisper-money
 ```
 
-2. **Copy the environment file:**
+2. **Run the setup script:**
 
 ```bash
-cp .env.example .env
+./setup.sh install
 ```
 
-3. **Start the Docker services:**
+### Available Commands
+
+Once installed, you can use the setup script for common tasks:
 
 ```bash
-docker compose up -d
+# Start all services
+./setup.sh start
+
+# Stop all services
+./setup.sh stop
+
+# Upgrade to latest version
+./setup.sh upgrade
+
+# Interactive menu
+./setup.sh
 ```
 
-4. **Install dependencies and setup the application:**
+### Development Server
 
-```bash
-composer setup
-```
-
-5. **Start the development server:**
+For active development with hot reloading:
 
 ```bash
 composer run dev
@@ -90,7 +104,7 @@ This will concurrently start:
 - Log viewer (Pail)
 - Vite dev server
 
-The application will be available at `https://whispermoney.test`.
+The application will be available at **https://whisper.money.local** (via Caddy) or **http://localhost:8000** (direct PHP server).
 
 ## Running with Docker (Production Image)
 
