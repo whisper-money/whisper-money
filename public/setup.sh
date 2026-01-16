@@ -586,15 +586,6 @@ install() {
         echo -e "${GREEN}.env file already exists.${NC}"
     fi
 
-    # Generate APP_KEY if not set
-    if ! grep -q "APP_KEY=base64:" .env 2>/dev/null || grep -q "APP_KEY=$" .env 2>/dev/null; then
-        echo -e "${YELLOW}Generating application key...${NC}"
-        php artisan key:generate --no-interaction
-        echo -e "${GREEN}Application key generated.${NC}"
-    else
-        echo -e "${GREEN}Application key already exists.${NC}"
-    fi
-
     # Update APP_URL if needed
     if grep -q "APP_URL=https://whispermoney.test" .env 2>/dev/null || grep -q "APP_URL=$" .env 2>/dev/null; then
         echo -e "${YELLOW}Updating APP_URL to https://whisper.money.local...${NC}"
@@ -641,6 +632,16 @@ install() {
     echo -e "${BLUE}Installing Composer dependencies...${NC}"
     composer install --no-interaction --prefer-dist --optimize-autoloader
     echo -e "${GREEN}Composer dependencies installed.${NC}"
+    echo ""
+
+    # Generate APP_KEY if not set (after Composer dependencies are installed)
+    if ! grep -q "APP_KEY=base64:" .env 2>/dev/null || grep -q "APP_KEY=$" .env 2>/dev/null; then
+        echo -e "${YELLOW}Generating application key...${NC}"
+        php artisan key:generate --no-interaction
+        echo -e "${GREEN}Application key generated.${NC}"
+    else
+        echo -e "${GREEN}Application key already exists.${NC}"
+    fi
     echo ""
 
     # Now start PHP service (after dependencies are installed)
