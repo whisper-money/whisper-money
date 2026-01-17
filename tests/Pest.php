@@ -13,13 +13,7 @@
 
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature');
-
-pest()->extend(Tests\TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Browser');
-
-pest()->browser()->timeout(30000);
+    ->in('Feature', 'Browser');
 
 /*
 |--------------------------------------------------------------------------
@@ -32,9 +26,9 @@ pest()->browser()->timeout(30000);
 |
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
+// expect()->extend('toBeOne', function () {
+//     return $this->toBe(1);
+// });
 
 /*
 |--------------------------------------------------------------------------
@@ -49,8 +43,8 @@ expect()->extend('toBeOne', function () {
 
 function setupEncryptionKey($page, ?string $key = null): void
 {
-    $key = $key ?? base64_encode(random_bytes(32));
+    $key ??= base64_encode(random_bytes(32));
     $currentUrl = $page->url();
-    $page->script("localStorage.setItem('encryption_key', ".json_encode($key).")");
+    $page->script("localStorage.setItem('encryption_key', " . json_encode($key) . ')');
     $page->navigate($currentUrl)->wait(1);
 }
