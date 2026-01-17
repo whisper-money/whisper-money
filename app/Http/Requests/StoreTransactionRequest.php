@@ -17,8 +17,18 @@ class StoreTransactionRequest extends FormRequest
     {
         return [
             'id' => ['sometimes', 'uuid'],
-            'account_id' => ['required', 'exists:accounts,id'],
-            'category_id' => ['nullable', 'exists:categories,id'],
+            'account_id' => [
+                'required',
+                Rule::exists('accounts', 'id')->where(function ($query) {
+                    $query->where('user_id', $this->user()->id);
+                }),
+            ],
+            'category_id' => [
+                'nullable',
+                Rule::exists('categories', 'id')->where(function ($query) {
+                    $query->where('user_id', $this->user()->id);
+                }),
+            ],
             'description' => ['required', 'string'],
             'description_iv' => ['required', 'string', 'size:16'],
             'transaction_date' => ['required', 'date'],
@@ -28,7 +38,13 @@ class StoreTransactionRequest extends FormRequest
             'notes_iv' => ['nullable', 'string', 'size:16'],
             'source' => ['required', Rule::enum(TransactionSource::class)],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => ['string', 'uuid', 'exists:labels,id'],
+            'label_ids.*' => [
+                'string',
+                'uuid',
+                Rule::exists('labels', 'id')->where(function ($query) {
+                    $query->where('user_id', $this->user()->id);
+                }),
+            ],
         ];
     }
 
@@ -36,8 +52,9 @@ class StoreTransactionRequest extends FormRequest
     {
         return [
             'account_id.required' => 'The account is required.',
-            'account_id.exists' => 'The selected account does not exist.',
-            'category_id.exists' => 'The selected category does not exist.',
+            'account_id.exists' => 'The selected account does not exist or does not belong to you.',
+            'category_id.exists' => 'The selected category does not exist or does not belong to you.',
+            'label_ids.*.exists' => 'One or more selected labels do not exist or do not belong to you.',
             'description.required' => 'The description is required.',
             'description_iv.required' => 'The description IV is required.',
             'description_iv.size' => 'The description IV must be exactly 16 characters.',
