@@ -192,12 +192,13 @@ it('can update a transaction', function () {
 
 it('cannot update another user transaction', function () {
     $user = User::factory()->create();
+    $userAccount = Account::factory()->for($user)->create();
     $otherUser = User::factory()->create();
-    $account = Account::factory()->for($otherUser)->create();
-    $transaction = Transaction::factory()->for($otherUser)->for($account)->create();
+    $otherAccount = Account::factory()->for($otherUser)->create();
+    $transaction = Transaction::factory()->for($otherUser)->for($otherAccount)->create();
 
     $updateData = [
-        'account_id' => $account->id,
+        'account_id' => $userAccount->id,
         'category_id' => null,
         'description' => 'hacked',
         'description_iv' => $transaction->description_iv,
@@ -212,6 +213,12 @@ it('cannot update another user transaction', function () {
     $response = $this->actingAs($user)->patchJson("/api/sync/transactions/{$transaction->id}", $updateData);
 
     $response->assertForbidden();
+
+    $this->assertDatabaseHas('transactions', [
+        'id' => $transaction->id,
+        'user_id' => $otherUser->id,
+        'account_id' => $otherAccount->id,
+    ]);
 });
 
 it('can delete a transaction', function () {
