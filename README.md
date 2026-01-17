@@ -1,15 +1,14 @@
-<!-- <p align="center"><a href="https://www.producthunt.com/products/whisper-money?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-whisper&#0045;money" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1042250&theme=light&t=1764232132380" alt="Whisper&#0032;Money - The&#0032;most&#0032;secure&#0032;way&#0032;to&#0032;understand&#0032;your&#0032;finances | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a></p> -->
 <p align="center">
   <img src="https://whisper.money/images/og_whisper_money.png" alt="Whisper Money" width="100%">
 </p>
 <p align="center">
-<a href="https://zdoc.app/de/whisper-money/whisper-money">Deutsch</a> | 
-<a href="https://zdoc.app/es/whisper-money/whisper-money">Español</a> | 
-<a href="https://zdoc.app/fr/whisper-money/whisper-money">français</a> | 
-<a href="https://zdoc.app/ja/whisper-money/whisper-money">日本語</a> | 
-<a href="https://zdoc.app/ko/whisper-money/whisper-money">한국어</a> | 
-<a href="https://zdoc.app/pt/whisper-money/whisper-money">Português</a> | 
-<a href="https://zdoc.app/ru/whisper-money/whisper-money">Русский</a> | 
+<a href="https://zdoc.app/de/whisper-money/whisper-money">Deutsch</a> |
+<a href="https://zdoc.app/es/whisper-money/whisper-money">Español</a> |
+<a href="https://zdoc.app/fr/whisper-money/whisper-money">français</a> |
+<a href="https://zdoc.app/ja/whisper-money/whisper-money">日本語</a> |
+<a href="https://zdoc.app/ko/whisper-money/whisper-money">한국어</a> |
+<a href="https://zdoc.app/pt/whisper-money/whisper-money">Português</a> |
+<a href="https://zdoc.app/ru/whisper-money/whisper-money">Русский</a> |
 <a href="https://zdoc.app/zh/whisper-money/whisper-money">中文</a>
 </p>
 
@@ -52,7 +51,7 @@ The easiest way to get started is using our automated setup script:
 bash <(curl -fsSL https://whisper.money/setup.sh)
 ```
 
-After installation, just visit **https://whisper.money.local** in your browser.
+After installation, just visit **<https://whisper.money.local>** in your browser.
 
 ### Manual Setup
 
@@ -65,10 +64,10 @@ git clone https://github.com/whisper-money/whisper-money.git
 cd whisper-money
 ```
 
-2. **Run the setup script:**
+1. **Run the setup script:**
 
 ```bash
-./wispermoney install
+whispermoney install
 ```
 
 ### Available Commands
@@ -77,16 +76,16 @@ Once installed, you can use the `wispermoney` command for common tasks:
 
 ```bash
 # Start all services
-./wispermoney start
+whispermoney start
 
 # Stop all services
-./wispermoney stop
+whispermoney stop
 
 # Upgrade to latest version
-./wispermoney upgrade
+whispermoney upgrade
 
 # Interactive menu
-./wispermoney
+whispermoney
 ```
 
 ### Development Server
@@ -104,7 +103,7 @@ This will concurrently start:
 - Log viewer (Pail)
 - Vite dev server
 
-The application will be available at **https://whisper.money.local** (via Caddy) or **http://localhost:8000** (direct PHP server).
+The application will be available at **<https://whisper.money.local>** or **<http://localhost:8000>** (direct PHP server).
 
 ## Running with Docker (Production Image)
 
@@ -116,7 +115,7 @@ For testing the production Docker image locally:
 cp .env.production.example .env
 ```
 
-2. **Start the services:**
+1. **Start the services:**
 
 ```bash
 docker compose -f docker-compose.production.yml up -d
@@ -143,6 +142,7 @@ Whisper Money can be easily deployed to [Coolify](https://coolify.io) using our 
 4. Deploy!
 
 The template includes:
+
 - Whisper Money application container
 - MySQL 8.0 database with health checks
 - Persistent volumes for data and storage
