@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreAccountBalanceRequest extends FormRequest
 {
@@ -15,7 +16,12 @@ class StoreAccountBalanceRequest extends FormRequest
     {
         return [
             'id' => ['sometimes', 'uuid'],
-            'account_id' => ['required', 'exists:accounts,id'],
+            'account_id' => [
+                'required',
+                Rule::exists('accounts', 'id')->where(function ($query) {
+                    $query->where('user_id', $this->user()->id);
+                }),
+            ],
             'balance_date' => ['required', 'date'],
             'balance' => ['required', 'integer'],
         ];

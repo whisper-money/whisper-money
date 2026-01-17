@@ -150,12 +150,13 @@ it('can update an account balance', function () {
 
 it('cannot update another user account balance', function () {
     $user = User::factory()->create();
+    $userAccount = Account::factory()->for($user)->create();
     $otherUser = User::factory()->create();
-    $account = Account::factory()->for($otherUser)->create();
-    $balance = AccountBalance::factory()->for($account)->create();
+    $otherAccount = Account::factory()->for($otherUser)->create();
+    $balance = AccountBalance::factory()->for($otherAccount)->create();
 
     $updateData = [
-        'account_id' => $account->id,
+        'account_id' => $userAccount->id,
         'balance_date' => $balance->balance_date->toDateString(),
         'balance' => 999999,
     ];
@@ -163,6 +164,11 @@ it('cannot update another user account balance', function () {
     $response = $this->actingAs($user)->patchJson("/api/sync/account-balances/{$balance->id}", $updateData);
 
     $response->assertForbidden();
+
+    $this->assertDatabaseHas('account_balances', [
+        'id' => $balance->id,
+        'account_id' => $otherAccount->id,
+    ]);
 });
 
 it('updates existing balance when creating with duplicate account_id and balance_date', function () {
