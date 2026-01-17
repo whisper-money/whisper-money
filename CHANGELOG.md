@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.5](https://github.com/whisper-money/whisper-money/compare/v0.1.3...v0.1.5) (2026-01-17)
+
+### Bug Fixes
+
+- broken dashboard while loading ([253fe44](https://github.com/whisper-money/whisper-money/commit/253fe447bdd999db78f7fa96e2ffa34e8194e5ce))
+- Check IDOR vulnerabilities ([#60](https://github.com/whisper-money/whisper-money/issues/60)) ([80117c3](https://github.com/whisper-money/whisper-money/commit/80117c3edeaf5c5a5166f3815fc555a15b5ce686))
+- delay emails to avoid reaching daily resend limit ([8ac2520](https://github.com/whisper-money/whisper-money/commit/8ac25200dc9ed5a5b4e24e36e32668e52ea95477))
+- Remove scheduled horizon command (unused anymore) ([63bde93](https://github.com/whisper-money/whisper-money/commit/63bde938b51d5f13a6f817a0beb5d91f48f3d6f3))
+- Use user currency in top spending categories card ([#57](https://github.com/whisper-money/whisper-money/issues/57)) ([21a4d87](https://github.com/whisper-money/whisper-money/commit/21a4d87f8562a0e95a62abe261cff7accb8fb2b2)), closes [#56](https://github.com/whisper-money/whisper-money/issues/56)
+
+### Features
+
+- Add wispermoney local command ([#59](https://github.com/whisper-money/whisper-money/issues/59)) ([ffd9694](https://github.com/whisper-money/whisper-money/commit/ffd96949e5e682aa42904d241772ba87ac72a067))
+- Auto-open encryption key modal after login ([#54](https://github.com/whisper-money/whisper-money/issues/54)) ([d16282d](https://github.com/whisper-money/whisper-money/commit/d16282dbad7c7b58843c28dedf0a04265355a8a6))
+- Automated setup script for local deployment ([#58](https://github.com/whisper-money/whisper-money/issues/58)) ([819bea1](https://github.com/whisper-money/whisper-money/commit/819bea19223bdf2a33ff4a66c2e4803f26fbaf5e))
+- Group small expending categories on the Sankey chart ([5618893](https://github.com/whisper-money/whisper-money/commit/5618893be8a0e0255e1abd7b3e2ff7c65e3eb046))
+- Persist transactions filter on the URL ([c9877a5](https://github.com/whisper-money/whisper-money/commit/c9877a503dea45505dc46a1b9b23142e0aefc290))
+- Persist cashflow period on the URL ([1343e1c](https://github.com/whisper-money/whisper-money/commit/1343e1c75fc645ae7253f2d02b50178243cb70d9))
+
 ## [0.1.4](https://github.com/whisper-money/whisper-money/compare/v0.1.3...v0.1.4) (2026-01-11)
 
 ### Bug Fixes
