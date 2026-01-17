@@ -47,7 +47,10 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function setupEncryptionKey($page, ?string $key = null): void
 {
-    // ..
+    $key = $key ?? base64_encode(random_bytes(32));
+    $currentUrl = $page->url();
+    $page->script("localStorage.setItem('encryption_key', ".json_encode($key).")");
+    $page->navigate($currentUrl)->wait(1);
 }

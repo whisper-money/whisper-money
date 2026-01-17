@@ -21,6 +21,7 @@ it('can open import transactions drawer', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -30,7 +31,7 @@ it('can open import transactions drawer', function () {
         ->assertSee('Import Transactions')
         ->assertSee('Select the account to import transactions into')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('shows no accounts message when none exist', function () {
     $user = User::factory()->onboarded()->create();
@@ -39,6 +40,7 @@ it('shows no accounts message when none exist', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -47,7 +49,7 @@ it('shows no accounts message when none exist', function () {
         ->wait(0.5)
         ->assertSee('No accounts found')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can select account for import', function () {
     $user = User::factory()->onboarded()->create();
@@ -64,6 +66,7 @@ it('can select account for import', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -79,7 +82,7 @@ it('can select account for import', function () {
         ->assertSee('Drop your file here')
         ->assertSee('Supports CSV, XLS, and XLSX files')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can upload a CSV file for import', function () {
     $user = User::factory()->onboarded()->create();
@@ -96,6 +99,7 @@ it('can upload a CSV file for import', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
@@ -113,7 +117,7 @@ it('can upload a CSV file for import', function () {
         ->wait(1)
         ->assertSee('test-transactions.csv')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can complete full import flow', function () {
     $user = User::factory()->onboarded()->create();
@@ -130,6 +134,7 @@ it('can complete full import flow', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
@@ -164,7 +169,7 @@ it('can complete full import flow', function () {
         ->assertSee('Total')
         ->assertSee('New')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('shows column mapping step after file upload', function () {
     $user = User::factory()->onboarded()->create();
@@ -181,6 +186,7 @@ it('shows column mapping step after file upload', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
@@ -203,7 +209,7 @@ it('shows column mapping step after file upload', function () {
         ->assertSee('Amount')
         ->assertSee('Balance (Optional)')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can navigate back through import steps', function () {
     $user = User::factory()->onboarded()->create();
@@ -220,6 +226,7 @@ it('can navigate back through import steps', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -235,7 +242,7 @@ it('can navigate back through import steps', function () {
         ->wait(0.5)
         ->assertSee('Select the account to import transactions into')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('applies automation rules when importing transactions', function () {
     $user = User::factory()->onboarded()->create();
@@ -272,6 +279,7 @@ it('applies automation rules when importing transactions', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
@@ -317,4 +325,4 @@ it('applies automation rules when importing transactions', function () {
 
     expect($walmartTransaction)->not->toBeNull();
     expect($walmartTransaction->category_id)->toBe($groceriesCategory->id);
-})->skip('Requires browser encryption key setup');
+});

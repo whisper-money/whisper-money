@@ -17,6 +17,7 @@ it('can create an automation rule with visual builder', function () {
     actingAs($user);
 
     $page = visit('/settings/automation-rules');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
@@ -38,7 +39,7 @@ it('can create an automation rule with visual builder', function () {
         'title' => 'Test Rule',
         'priority' => 10,
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can add multiple conditions to a group', function () {
     $user = User::factory()->onboarded()->create();
@@ -47,6 +48,7 @@ it('can add multiple conditions to a group', function () {
     actingAs($user);
 
     $page = visit('/settings/automation-rules');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
@@ -66,7 +68,7 @@ it('can add multiple conditions to a group', function () {
         'user_id' => $user->id,
         'title' => 'Multi-Condition Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can add multiple groups', function () {
     $user = User::factory()->onboarded()->create();
@@ -75,6 +77,7 @@ it('can add multiple groups', function () {
     actingAs($user);
 
     $page = visit('/settings/automation-rules');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
@@ -95,7 +98,7 @@ it('can add multiple groups', function () {
         'user_id' => $user->id,
         'title' => 'Multi-Group Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can select different field types and operators', function () {
     $user = User::factory()->onboarded()->create();
@@ -104,6 +107,7 @@ it('can select different field types and operators', function () {
     actingAs($user);
 
     $page = visit('/settings/automation-rules');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
@@ -127,7 +131,7 @@ it('can select different field types and operators', function () {
         'user_id' => $user->id,
         'title' => 'Amount Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can edit an existing rule with visual builder', function () {
     $user = User::factory()->onboarded()->create();
@@ -143,6 +147,7 @@ it('can edit an existing rule with visual builder', function () {
     actingAs($user);
 
     $page = visit('/settings/automation-rules');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Original Rule')
         ->click('button[aria-label="Actions"]')
@@ -160,7 +165,7 @@ it('can edit an existing rule with visual builder', function () {
         'id' => $rule->id,
         'title' => 'Updated Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('validates that at least one condition is required', function () {
     $user = User::factory()->onboarded()->create();
@@ -169,6 +174,7 @@ it('validates that at least one condition is required', function () {
     actingAs($user);
 
     $page = visit('/settings/automation-rules');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
@@ -185,7 +191,7 @@ it('validates that at least one condition is required', function () {
         'user_id' => $user->id,
         'title' => 'Invalid Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can toggle group operators between AND and OR', function () {
     $user = User::factory()->onboarded()->create();
@@ -194,6 +200,7 @@ it('can toggle group operators between AND and OR', function () {
     actingAs($user);
 
     $page = visit('/settings/automation-rules');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
@@ -216,7 +223,7 @@ it('can toggle group operators between AND and OR', function () {
         'user_id' => $user->id,
         'title' => 'OR Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can use is empty operator for nullable fields', function () {
     $user = User::factory()->onboarded()->create();
@@ -225,6 +232,7 @@ it('can use is empty operator for nullable fields', function () {
     actingAs($user);
 
     $page = visit('/settings/automation-rules');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Automation Rules')
         ->click('Create Rule')
@@ -246,4 +254,4 @@ it('can use is empty operator for nullable fields', function () {
         'user_id' => $user->id,
         'title' => 'Empty Category Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});

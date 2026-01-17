@@ -47,13 +47,14 @@ it('can open create account dialog', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
         ->wait(0.5)
         ->assertSee('Add a new bank account to track your transactions')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can create a new bank account', function () {
     $user = User::factory()->onboarded()->create();
@@ -62,6 +63,7 @@ it('can create a new bank account', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
@@ -88,7 +90,7 @@ it('can create a new bank account', function () {
         'type' => 'savings',
         'currency_code' => 'EUR',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('shows empty state when no accounts exist', function () {
     $user = User::factory()->onboarded()->create();
@@ -144,6 +146,7 @@ it('can edit an existing account via dropdown menu', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
@@ -155,7 +158,7 @@ it('can edit an existing account via dropdown menu', function () {
         ->click('Save')
         ->wait(2)
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can delete an account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
@@ -170,6 +173,7 @@ it('can delete an account via dropdown menu', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
@@ -184,4 +188,4 @@ it('can delete an account via dropdown menu', function () {
     $this->assertDatabaseMissing('accounts', [
         'id' => $account->id,
     ]);
-})->skip('Requires browser encryption key setup');
+});

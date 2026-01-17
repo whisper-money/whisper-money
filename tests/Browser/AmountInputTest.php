@@ -14,6 +14,7 @@ it('formats amount on blur', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -22,7 +23,7 @@ it('formats amount on blur', function () {
         ->click('description')
         ->wait(0.5)
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('accepts comma as decimal separator', function () {
     $user = User::factory()->onboarded()->create();
@@ -32,6 +33,7 @@ it('accepts comma as decimal separator', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -40,7 +42,7 @@ it('accepts comma as decimal separator', function () {
         ->click('description')
         ->wait(0.5)
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can create a transaction with amount input', function () {
     $user = User::factory()->onboarded()->create();
@@ -50,6 +52,7 @@ it('can create a transaction with amount input', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -57,7 +60,7 @@ it('can create a transaction with amount input', function () {
         ->fill('description', 'Test Transaction')
         ->click('Select Account')
         ->wait(0.5)
-        ->click($account->name)
+        ->click('//div[@role="option"][1]')
         ->click('Select Category')
         ->wait(0.5)
         ->click($category->name)
@@ -71,7 +74,7 @@ it('can create a transaction with amount input', function () {
         'description' => 'Test Transaction',
         'amount' => 12345,
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('formats amount when pressing enter', function () {
     $user = User::factory()->onboarded()->create();
@@ -81,6 +84,7 @@ it('formats amount when pressing enter', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -88,7 +92,7 @@ it('formats amount when pressing enter', function () {
         ->fill('description', 'Test Transaction Enter')
         ->click('Select Account')
         ->wait(0.5)
-        ->click($account->name)
+        ->click('//div[@role="option"][1]')
         ->click('Select Category')
         ->wait(0.5)
         ->click($category->name)
@@ -102,7 +106,7 @@ it('formats amount when pressing enter', function () {
         'description' => 'Test Transaction Enter',
         'amount' => 9999,
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('accepts negative amounts', function () {
     $user = User::factory()->onboarded()->create();
@@ -112,6 +116,7 @@ it('accepts negative amounts', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -119,7 +124,7 @@ it('accepts negative amounts', function () {
         ->fill('description', 'Test Negative Amount')
         ->click('Select Account')
         ->wait(0.5)
-        ->click($account->name)
+        ->click('//div[@role="option"][1]')
         ->click('Select Category')
         ->wait(0.5)
         ->click($category->name)
@@ -133,4 +138,4 @@ it('accepts negative amounts', function () {
         'description' => 'Test Negative Amount',
         'amount' => -5000,
     ]);
-})->skip('Requires browser encryption key setup');
+});

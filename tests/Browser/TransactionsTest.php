@@ -28,13 +28,14 @@ it('can open add transaction dialog', function () {
     actingAs($user);
 
     $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
         ->wait(0.5)
         ->assertSee('Create Transaction')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can create a transaction', function () {
     $user = User::factory()->onboarded()->create();
@@ -43,28 +44,33 @@ it('can create a transaction', function () {
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    $page = $this->visitWithEncryptionKey('/transactions');
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
-        ->wait(0.5)
+        ->wait(2)
+        ->assertSee('Create Transaction')
         ->fill('description', 'Test Transaction')
-        ->click('Select Account')
+        ->wait(1)
+        ->click('button:has-text("Select Account")')
+        ->wait(3)
+        ->press('Tab')
         ->wait(0.5)
-        ->click($account->name)
-        ->click('Select Category')
-        ->wait(0.5)
+        ->press('Enter')
+        ->wait(1)
+        ->click('button:has-text("Select Category")')
+        ->wait(1)
         ->click($category->name)
         ->fill('#amount', '50.00')
         ->click('Create')
-        ->wait(2)
+        ->wait(3)
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('transactions', [
         'user_id' => $user->id,
         'amount' => 5000,
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('shows empty state when no transactions exist', function () {
     $user = User::factory()->onboarded()->create();
@@ -87,10 +93,11 @@ it('can filter transactions by search text', function () {
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    $page = $this->visitWithEncryptionKey('/transactions');
 
     $page->assertSee('Transactions')
+        ->wait(2)
         ->fill('input[placeholder="Search transactions..."]', 'grocery')
         ->wait(0.5)
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
