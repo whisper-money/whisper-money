@@ -10,10 +10,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserMailLog;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Cashier\Subscription;
-
-uses(RefreshDatabase::class);
 
 test('deletes user and all associated data when confirmed', function () {
     $user = User::factory()->onboarded()->create([

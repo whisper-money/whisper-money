@@ -6,9 +6,6 @@ use App\Models\AccountBalance;
 use App\Models\Bank;
 use App\Models\Category;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->user = User::factory()->onboarded()->create();
