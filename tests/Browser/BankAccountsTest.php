@@ -75,11 +75,13 @@ it('can create a new bank account', function () {
         ->wait(0.5)
         ->click('My Bank')
         ->click('button[name="type"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Savings")')
         ->wait(0.3)
-        ->click('Savings')
         ->click('button[name="currency_code"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("EUR")')
         ->wait(0.3)
-        ->click('EUR')
         ->click('[data-testid="submit-account"]')
         ->wait(2)
         ->assertNoJavascriptErrors();
@@ -133,59 +135,62 @@ it('can filter accounts by name', function () {
 
 it('can edit an existing account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'Test Bank']);
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'Old Account Name',
-        'name_iv' => str_repeat('b', 16),
-        'type' => 'checking',
-        'currency_code' => 'USD',
-    ]);
+    $bank = Bank::factory()->create(['name' => 'Edit Bank']);
 
     actingAs($user);
 
     $page = visit('/settings/accounts');
     $this->setupEncryptionKey($page);
 
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'Old Account Name', 'Edit Bank', 'Checking', 'USD');
+
+    $page->navigate('/settings/accounts')->wait(1);
+
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
-        ->wait(0.3)
-        ->click('Edit')
         ->wait(0.5)
+        ->click('Edit')
+        ->wait(1)
         ->assertSee('Edit Account')
         ->fill('#display_name', 'Updated Account Name')
-        ->click('Save')
-        ->wait(2)
+        ->click('button[type="submit"]:has-text("Update")')
+        ->wait(2);
+
+    $page->navigate('/settings/accounts')->wait(1);
+
+    $page->assertSee('Updated Account Name')
         ->assertNoJavascriptErrors();
 });
 
 it('can delete an account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'Test Bank']);
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'Account To Delete',
-        'name_iv' => str_repeat('b', 16),
-    ]);
+    $bank = Bank::factory()->create(['name' => 'Delete Bank']);
 
     actingAs($user);
 
     $page = visit('/settings/accounts');
     $this->setupEncryptionKey($page);
 
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'Account To Delete', 'Delete Bank', 'Checking', 'USD');
+
+    $page->navigate('/settings/accounts')->wait(1);
+
     $page->assertSee('Bank accounts')
+        ->assertSee('Account To Delete')
         ->click('button[aria-label="Open menu"]')
-        ->wait(0.3)
+        ->wait(0.5)
         ->click('Delete')
         ->wait(0.5)
         ->assertSee('Delete Account')
-        ->click('Delete')
-        ->wait(2)
-        ->assertNoJavascriptErrors();
+        ->fill('#confirm', 'DELETE')
+        ->wait(0.3)
+        ->click('button[type="submit"]:has-text("Delete")')
+        ->wait(2);
 
-    $this->assertDatabaseMissing('accounts', [
-        'id' => $account->id,
-    ]);
+    $page->navigate('/settings/accounts')->wait(1);
+
+    $page->assertDontSee('Account To Delete')
+        ->assertNoJavascriptErrors();
 });

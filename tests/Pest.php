@@ -51,3 +51,46 @@ function setupEncryptionKey($page, ?string $key = null): void
     // Reload again to ensure sync completes
     $page->navigate($currentUrl)->wait(3);
 }
+
+function createCategoryViaUI($page, string $name, string $color = 'green', string $type = 'Expense'): void
+{
+    $page->click('Create Category')
+        ->wait(0.5)
+        ->fill('name', $name)
+        ->click('Select an icon')
+        ->wait(0.5)
+        ->click('//div[@role="option"][1]')
+        ->wait(0.3)
+        ->click('Select a color')
+        ->wait(0.5)
+        ->click("//div[@role=\"option\"][contains(., \"{$color}\")]")
+        ->wait(0.3)
+        ->click('Select a type')
+        ->wait(0.5)
+        ->click("//div[@role=\"option\"][contains(., \"{$type}\")]")
+        ->wait(0.3)
+        ->click('button[type="submit"]')
+        ->wait(2);
+}
+
+function createAccountViaUI($page, string $displayName, string $bankName, string $type = 'Checking', string $currency = 'USD'): void
+{
+    $page->click('Create Account')
+        ->wait(0.5)
+        ->fill('#display_name', $displayName)
+        ->click('[data-testid="bank-select"]')
+        ->wait(0.5)
+        ->fill('input[placeholder="Search bank..."]', $bankName)
+        ->wait(0.5)
+        ->click($bankName)
+        ->click('button[name="type"]')
+        ->wait(0.5)
+        ->click("[role=\"option\"]:has-text(\"{$type}\")")
+        ->wait(0.3)
+        ->click('button[name="currency_code"]')
+        ->wait(0.5)
+        ->click("[role=\"option\"]:has-text(\"{$currency}\")")
+        ->wait(0.3)
+        ->click('[data-testid="submit-account"]')
+        ->wait(2);
+}

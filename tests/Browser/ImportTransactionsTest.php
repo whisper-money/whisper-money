@@ -11,25 +11,25 @@ it('can open import transactions drawer', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'Test Account',
-        'name_iv' => str_repeat('b', 16),
-    ]);
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    $page = visit('/settings/accounts');
     $this->setupEncryptionKey($page);
+
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'Test Account', 'Test Bank');
+
+    $page->navigate('/transactions')->wait(2);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
         ->wait(0.5)
+        ->click('Import Transactions')
+        ->wait(2)
         ->assertSee('Import Transactions')
         ->assertSee('Select the account to import transactions into')
+        ->waitForText('Test Account', 5)
         ->assertNoJavascriptErrors();
 });
 
@@ -55,30 +55,28 @@ it('can select account for import', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'My Checking',
-        'name_iv' => str_repeat('b', 16),
-        'currency_code' => 'USD',
-    ]);
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    $page = visit('/settings/accounts');
     $this->setupEncryptionKey($page);
+
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
+
+    $page->navigate('/transactions')->wait(2);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
+        ->wait(0.5)
         ->click('Import Transactions')
-        ->wait(0.5)
-        ->assertSee('My Bank')
+        ->wait(2)
+        ->waitForText('My Bank', 5)
         ->assertSee('USD')
-        ->click('label')
-        ->wait(0.3)
-        ->click('Next')
+        ->click('input[type="radio"]')
         ->wait(0.5)
+        ->click('Next')
+        ->wait(1)
         ->assertSee('Drop your file here')
         ->assertSee('Supports CSV, XLS, and XLSX files')
         ->assertNoJavascriptErrors();
@@ -88,30 +86,29 @@ it('can upload a CSV file for import', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'My Checking',
-        'name_iv' => str_repeat('b', 16),
-        'currency_code' => 'USD',
-    ]);
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    $page = visit('/settings/accounts');
     $this->setupEncryptionKey($page);
+
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
+
+    $page->navigate('/transactions')->wait(2);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
+        ->wait(0.5)
         ->click('Import Transactions')
+        ->wait(2)
+        ->waitForText('My Bank', 5)
+        ->click('input[type="radio"]')
         ->wait(0.5)
-        ->click('label')
-        ->wait(0.3)
         ->click('Next')
-        ->wait(0.5)
+        ->wait(1)
         ->assertSee('Drop your file here')
         ->attach('input[type="file"]', $testFile)
         ->wait(1)
@@ -123,30 +120,29 @@ it('can complete full import flow', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'My Checking',
-        'name_iv' => str_repeat('b', 16),
-        'currency_code' => 'USD',
-    ]);
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    $page = visit('/settings/accounts');
     $this->setupEncryptionKey($page);
+
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
+
+    $page->navigate('/transactions')->wait(2);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
         ->wait(0.5)
-        ->click('label')
+        ->click('Import Transactions')
+        ->wait(2)
+        ->waitForText('My Bank', 5)
+        ->click('input[type="radio"]')
         ->wait(0.5)
         ->click('Next')
-        ->wait(0.5)
+        ->wait(1)
         ->assertSee('Drop your file here')
         ->attach('input[type="file"]', $testFile)
         ->wait(1)
@@ -155,14 +151,16 @@ it('can complete full import flow', function () {
         ->wait(1)
         ->assertSee('Transaction Date')
         ->click('#date-column')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Date")')
         ->wait(0.3)
-        ->click('Date')
         ->click('#description-column')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Description")')
         ->wait(0.3)
-        ->click('Description')
         ->click('#amount-column')
-        ->wait(0.3)
-        ->click('Amount')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Amount")')
         ->wait(0.5)
         ->click('Preview Transactions')
         ->wait(2)
@@ -175,30 +173,29 @@ it('shows column mapping step after file upload', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'My Checking',
-        'name_iv' => str_repeat('b', 16),
-        'currency_code' => 'USD',
-    ]);
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    $page = visit('/settings/accounts');
     $this->setupEncryptionKey($page);
+
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
+
+    $page->navigate('/transactions')->wait(2);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
         ->wait(0.5)
-        ->click('label')
+        ->click('Import Transactions')
+        ->wait(2)
+        ->waitForText('My Bank', 5)
+        ->click('input[type="radio"]')
         ->wait(0.5)
         ->click('Next')
-        ->wait(0.5)
+        ->wait(1)
         ->assertSee('Drop your file here')
         ->attach('input[type="file"]', $testFile)
         ->wait(1)
@@ -215,28 +212,27 @@ it('can navigate back through import steps', function () {
     $user = User::factory()->onboarded()->create();
     Category::factory()->create(['user_id' => $user->id]);
     $bank = Bank::factory()->create(['name' => 'My Bank']);
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'My Checking',
-        'name_iv' => str_repeat('b', 16),
-        'currency_code' => 'USD',
-    ]);
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    $page = visit('/settings/accounts');
     $this->setupEncryptionKey($page);
+
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
+
+    $page->navigate('/transactions')->wait(2);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.3)
-        ->click('Import Transactions')
         ->wait(0.5)
-        ->click('label')
+        ->click('Import Transactions')
+        ->wait(2)
+        ->waitForText('My Bank', 5)
+        ->click('input[type="radio"]')
         ->wait(0.5)
         ->click('Next')
-        ->wait(0.5)
+        ->wait(1)
         ->assertSee('Drop your file here')
         ->click('Back')
         ->wait(0.5)
@@ -246,68 +242,62 @@ it('can navigate back through import steps', function () {
 
 it('applies automation rules when importing transactions', function () {
     $user = User::factory()->onboarded()->create();
-
-    $groceriesCategory = Category::factory()->create([
-        'user_id' => $user->id,
-        'name' => 'Groceries',
-    ]);
-
     $bank = Bank::factory()->create(['name' => 'My Bank']);
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'My Checking',
-        'name_iv' => str_repeat('b', 16),
-        'currency_code' => 'USD',
-    ]);
-
-    \App\Models\AutomationRule::factory()->create([
-        'user_id' => $user->id,
-        'title' => 'Auto Categorize Groceries',
-        'priority' => 1,
-        'rules_json' => [
-            'in' => [
-                'walmart',
-                ['var' => 'description'],
-            ],
-        ],
-        'action_category_id' => $groceriesCategory->id,
-        'action_note' => null,
-        'action_note_iv' => null,
-    ]);
 
     actingAs($user);
 
-    $page = visit('/transactions');
+    // Create category via UI
+    $page = visit('/settings/categories');
     $this->setupEncryptionKey($page);
+    createCategoryViaUI($page, 'Groceries');
+
+    // Create account via UI
+    $page->navigate('/settings/accounts')->wait(1);
+    createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
+
+    // Create automation rule via UI
+    $page->navigate('/settings/automation-rules')->wait(2);
+    $page->click('button:has-text("Create Rule")')
+        ->wait(0.5)
+        ->fill('title', 'Auto Categorize Groceries')
+        ->fill('priority', '1')
+        ->fill('input[placeholder="Value"]', 'walmart')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Groceries')
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+
+    $page->navigate('/transactions')->wait(2);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(1)
-        ->press('ArrowDown')
-        ->wait(0.2)
-        ->press('Enter')
-        ->wait(1)
-        ->click('label')
+        ->wait(0.5)
+        ->click('Import Transactions')
+        ->wait(2)
+        ->waitForText('My Checking', 5)
+        ->click('input[type="radio"]')
         ->wait(0.5)
         ->click('Next')
-        ->wait(0.5)
+        ->wait(1)
         ->assertSee('Drop your file here')
         ->attach('input[type="file"]', $testFile)
         ->wait(1)
         ->click('Next')
         ->wait(1)
         ->click('#date-column')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Date")')
         ->wait(0.3)
-        ->click('Date')
         ->click('#description-column')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Description")')
         ->wait(0.3)
-        ->click('Description')
         ->click('#amount-column')
-        ->wait(0.3)
-        ->click('Amount')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Amount")')
         ->wait(0.5)
         ->click('Preview Transactions')
         ->wait(2)
@@ -324,5 +314,10 @@ it('applies automation rules when importing transactions', function () {
         ->first();
 
     expect($walmartTransaction)->not->toBeNull();
+
+    $groceriesCategory = \App\Models\Category::where('user_id', $user->id)
+        ->where('name', 'Groceries')
+        ->first();
+
     expect($walmartTransaction->category_id)->toBe($groceriesCategory->id);
 });
