@@ -45,7 +45,7 @@ function setupEncryptionKey($page, ?string $key = null): void
 {
     $key ??= base64_encode(random_bytes(32));
     $currentUrl = $page->url();
-    $page->script("localStorage.setItem('encryption_key', " . json_encode($key) . ')');
+    $page->script("localStorage.setItem('encryption_key', ".json_encode($key).')');
     // Reload to trigger sync
     $page->navigate($currentUrl)->wait(1);
     // Reload again to ensure sync completes

@@ -30,13 +30,14 @@ it('can open import transactions drawer', function () {
     // Visit transactions page
     $page = visit('/transactions');
     $this->setupEncryptionKey($page, $encryptionKey);
-    $page->wait(3); // Extra wait for IndexedDB to sync
+    // Wait longer for encryption key context to update and IndexedDB to fully sync
+    $page->wait(8);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(1) // Wait for menu to open
+        ->wait(2) // Wait for menu to fully render
         ->click('Import Transactions')
-        ->wait(2) // Wait for drawer to open
+        ->wait(3) // Wait for drawer to open
         ->assertSee('Import Transactions')
         ->assertSee('Select the account to import transactions into')
         ->waitForText('Test Account', 5)

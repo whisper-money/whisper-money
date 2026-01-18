@@ -30,7 +30,7 @@ abstract class TestCase extends BaseTestCase
     protected function setupEncryptionKey($page, ?string $key = null, bool $reload = true): void
     {
         $key = $key ?? $this->generateTestEncryptionKey();
-        $page->script("localStorage.setItem('encryption_key', ".json_encode($key).")");
+        $page->script("localStorage.setItem('encryption_key', ".json_encode($key).')');
         if ($reload) {
             $currentUrl = $page->url();
             $page->navigate($currentUrl)->wait(1);
@@ -44,8 +44,9 @@ abstract class TestCase extends BaseTestCase
     {
         $key = $key ?? $this->generateTestEncryptionKey();
         $page = visit($url);
-        $page->script("localStorage.setItem('encryption_key', ".json_encode($key).")");
+        $page->script("localStorage.setItem('encryption_key', ".json_encode($key).')');
         $page->navigate($url)->wait(1);
+
         return $page;
     }
 
@@ -59,6 +60,7 @@ abstract class TestCase extends BaseTestCase
         if ($key === null) {
             $key = $this->generateTestEncryptionKey();
         }
+
         return $key;
     }
 }
