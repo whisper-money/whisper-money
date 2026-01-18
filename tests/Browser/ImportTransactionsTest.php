@@ -20,11 +20,13 @@ it('can open import transactions drawer', function () {
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Test Account', 'Test Bank');
 
-    $page->navigate('/transactions')->wait(2);
+    // Visit transactions page (don't use navigate as it doesn't trigger full page load)
+    $page = visit('/transactions');
+    $page->wait(2);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.5)
+        ->wait(1)
         ->click('Import Transactions')
         ->wait(2)
         ->assertSee('Import Transactions')
@@ -64,11 +66,13 @@ it('can select account for import', function () {
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
-    $page->navigate('/transactions')->wait(2);
+    // Visit transactions page (don't use navigate as it doesn't trigger full page load)
+    $page = visit('/transactions');
+    $page->wait(2);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.5)
+        ->wait(1)
         ->click('Import Transactions')
         ->wait(2)
         ->waitForText('My Bank', 5)
@@ -101,7 +105,7 @@ it('can upload a CSV file for import', function () {
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.5)
+        ->wait(1)
         ->click('Import Transactions')
         ->wait(2)
         ->waitForText('My Bank', 5)
@@ -135,7 +139,7 @@ it('can complete full import flow', function () {
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.5)
+        ->wait(1)
         ->click('Import Transactions')
         ->wait(2)
         ->waitForText('My Bank', 5)
@@ -188,7 +192,7 @@ it('shows column mapping step after file upload', function () {
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.5)
+        ->wait(1)
         ->click('Import Transactions')
         ->wait(2)
         ->waitForText('My Bank', 5)
@@ -221,11 +225,13 @@ it('can navigate back through import steps', function () {
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
-    $page->navigate('/transactions')->wait(2);
+    // Visit transactions page (don't use navigate as it doesn't trigger full page load)
+    $page = visit('/transactions');
+    $page->wait(2);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.5)
+        ->wait(1)
         ->click('Import Transactions')
         ->wait(2)
         ->waitForText('My Bank', 5)
@@ -252,11 +258,13 @@ it('applies automation rules when importing transactions', function () {
     createCategoryViaUI($page, 'Groceries');
 
     // Create account via UI
-    $page->navigate('/settings/accounts')->wait(1);
+    $page = visit('/settings/accounts');
+    $page->wait(1);
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
     // Create automation rule via UI
-    $page->navigate('/settings/automation-rules')->wait(2);
+    $page = visit('/settings/automation-rules');
+    $page->wait(1);
     $page->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Auto Categorize Groceries')
@@ -274,7 +282,7 @@ it('applies automation rules when importing transactions', function () {
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(0.5)
+        ->wait(1)
         ->click('Import Transactions')
         ->wait(2)
         ->waitForText('My Checking', 5)

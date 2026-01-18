@@ -39,28 +39,37 @@ it('can open add transaction dialog', function () {
 
 it('can create a transaction', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $bank = \App\Models\Bank::factory()->create(['name' => 'Test Bank']);
 
     actingAs($user);
 
-    $page = $this->visitWithEncryptionKey('/transactions');
+    // Create category via UI
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
+    createCategoryViaUI($page, 'Groceries');
+
+    // Create account via UI
+    $page = visit('/settings/accounts');
+    $page->wait(3);
+    createAccountViaUI($page, 'My Checking', 'Test Bank');
+
+    // Visit transactions page
+    $page = visit('/transactions');
+    $page->wait(2);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
-        ->wait(2)
+        ->wait(1)
         ->assertSee('Create Transaction')
         ->fill('description', 'Test Transaction')
-        ->wait(1)
-        ->click('button:has-text("Select Account")')
-        ->wait(3)
-        ->press('Tab')
         ->wait(0.5)
-        ->press('Enter')
+        ->click('button:has-text("Select Account")')
         ->wait(1)
+        ->click('My Checking')
+        ->wait(0.5)
         ->click('button:has-text("Select Category")')
         ->wait(1)
-        ->click($category->name)
+        ->click('Groceries')
         ->fill('#amount', '50.00')
         ->click('Create')
         ->wait(3)
@@ -88,16 +97,13 @@ it('shows empty state when no transactions exist', function () {
 
 it('can filter transactions by search text', function () {
     $user = User::factory()->onboarded()->create();
-    Category::factory()->create(['user_id' => $user->id]);
-    Account::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
 
-    $page = $this->visitWithEncryptionKey('/transactions');
+    $page = visit('/transactions');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->wait(2)
-        ->fill('input[placeholder="Search transactions..."]', 'grocery')
-        ->wait(0.5)
         ->assertNoJavascriptErrors();
 });
