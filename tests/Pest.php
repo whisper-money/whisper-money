@@ -75,7 +75,7 @@ function createCategoryViaUI($page, string $name, string $color = 'green', strin
 
 function createAccountViaUI($page, string $displayName, string $bankName, string $type = 'Checking', string $currency = 'USD'): void
 {
-    $page->waitForText('Bank accounts', 10);
+    $page->assertSee('Bank accounts');
     $page->click('Create Account')
         ->wait(0.5)
         ->fill('#display_name', $displayName)

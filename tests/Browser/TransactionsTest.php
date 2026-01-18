@@ -43,35 +43,45 @@ it('can create a transaction', function () {
 
     actingAs($user);
 
+    // Generate a single encryption key to use throughout the test
+    $encryptionKey = base64_encode(random_bytes(32));
+
     // Create category via UI
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
+    $this->setupEncryptionKey($page, $encryptionKey);
     createCategoryViaUI($page, 'Groceries');
 
     // Create account via UI
     $page = visit('/settings/accounts');
-    $page->wait(3);
+    $this->setupEncryptionKey($page, $encryptionKey);
     createAccountViaUI($page, 'My Checking', 'Test Bank');
+
+    // Verify account was created
+    $page->wait(2);
+    $page->assertSee('My Checking');
 
     // Visit transactions page
     $page = visit('/transactions');
-    $page->wait(2);
+    $this->setupEncryptionKey($page, $encryptionKey);
+    $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
-        ->wait(1)
+        ->wait(2)
         ->assertSee('Create Transaction')
         ->fill('description', 'Test Transaction')
-        ->wait(0.5)
-        ->click('button:has-text("Select Account")')
         ->wait(1)
-        ->click('My Checking')
+        ->click('[data-testid="account-select"]')
+        ->wait(2)
+        ->waitForText('My Checking', 5)
+        ->click('[role="option"]:has-text("My Checking")')
         ->wait(0.5)
-        ->click('button:has-text("Select Category")')
-        ->wait(1)
+        ->click('[data-testid="category-select"]')
+        ->wait(2)
+        ->waitForText('Groceries', 5)
         ->click('Groceries')
         ->fill('#amount', '50.00')
-        ->click('Create')
+        ->click('[data-testid="submit-transaction"]')
         ->wait(3)
         ->assertNoJavascriptErrors();
 

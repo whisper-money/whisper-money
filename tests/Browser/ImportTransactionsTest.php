@@ -14,21 +14,29 @@ it('can open import transactions drawer', function () {
 
     actingAs($user);
 
+    // Generate a single encryption key to use throughout the test
+    $encryptionKey = base64_encode(random_bytes(32));
+
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
+    $this->setupEncryptionKey($page, $encryptionKey);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Test Account', 'Test Bank');
 
-    // Visit transactions page (don't use navigate as it doesn't trigger full page load)
-    $page = visit('/transactions');
+    // Verify account was created
     $page->wait(2);
+    $page->assertSee('Test Account');
+
+    // Visit transactions page
+    $page = visit('/transactions');
+    $this->setupEncryptionKey($page, $encryptionKey);
+    $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
-        ->wait(1)
+        ->wait(1) // Wait for menu to open
         ->click('Import Transactions')
-        ->wait(2)
+        ->wait(2) // Wait for drawer to open
         ->assertSee('Import Transactions')
         ->assertSee('Select the account to import transactions into')
         ->waitForText('Test Account', 5)
@@ -60,15 +68,20 @@ it('can select account for import', function () {
 
     actingAs($user);
 
+    // Generate a single encryption key to use throughout the test
+    $encryptionKey = base64_encode(random_bytes(32));
+
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
+    $this->setupEncryptionKey($page, $encryptionKey);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
-    // Visit transactions page (don't use navigate as it doesn't trigger full page load)
+    // Visit transactions page
     $page = visit('/transactions');
-    $page->wait(2);
+    $this->setupEncryptionKey($page, $encryptionKey);
+    // Wait for encryption key context to update (it checks every 1 second) and IndexedDB to sync
+    $page->wait(5);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -93,13 +106,19 @@ it('can upload a CSV file for import', function () {
 
     actingAs($user);
 
+    // Generate a single encryption key to use throughout the test
+    $encryptionKey = base64_encode(random_bytes(32));
+
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
+    $this->setupEncryptionKey($page, $encryptionKey);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
-    $page->navigate('/transactions')->wait(2);
+    // Visit transactions page
+    $page = visit('/transactions');
+    $this->setupEncryptionKey($page, $encryptionKey);
+    $page->wait(2);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
@@ -127,13 +146,19 @@ it('can complete full import flow', function () {
 
     actingAs($user);
 
+    // Generate a single encryption key to use throughout the test
+    $encryptionKey = base64_encode(random_bytes(32));
+
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
+    $this->setupEncryptionKey($page, $encryptionKey);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
-    $page->navigate('/transactions')->wait(2);
+    // Visit transactions page
+    $page = visit('/transactions');
+    $this->setupEncryptionKey($page, $encryptionKey);
+    $page->wait(2);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
@@ -180,13 +205,19 @@ it('shows column mapping step after file upload', function () {
 
     actingAs($user);
 
+    // Generate a single encryption key to use throughout the test
+    $encryptionKey = base64_encode(random_bytes(32));
+
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
+    $this->setupEncryptionKey($page, $encryptionKey);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
-    $page->navigate('/transactions')->wait(2);
+    // Visit transactions page
+    $page = visit('/transactions');
+    $this->setupEncryptionKey($page, $encryptionKey);
+    $page->wait(2);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
@@ -219,15 +250,20 @@ it('can navigate back through import steps', function () {
 
     actingAs($user);
 
+    // Generate a single encryption key to use throughout the test
+    $encryptionKey = base64_encode(random_bytes(32));
+
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
+    $this->setupEncryptionKey($page, $encryptionKey);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
-    // Visit transactions page (don't use navigate as it doesn't trigger full page load)
+    // Visit transactions page
     $page = visit('/transactions');
-    $page->wait(2);
+    $this->setupEncryptionKey($page, $encryptionKey);
+    // Wait for encryption key context to update (it checks every 1 second) and IndexedDB to sync
+    $page->wait(5);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -252,19 +288,22 @@ it('applies automation rules when importing transactions', function () {
 
     actingAs($user);
 
+    // Generate a single encryption key to use throughout the test
+    $encryptionKey = base64_encode(random_bytes(32));
+
     // Create category via UI
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
+    $this->setupEncryptionKey($page, $encryptionKey);
     createCategoryViaUI($page, 'Groceries');
 
     // Create account via UI
     $page = visit('/settings/accounts');
-    $page->wait(1);
+    $this->setupEncryptionKey($page, $encryptionKey);
     createAccountViaUI($page, 'My Checking', 'My Bank', 'Checking', 'USD');
 
     // Create automation rule via UI
     $page = visit('/settings/automation-rules');
-    $page->wait(1);
+    $this->setupEncryptionKey($page, $encryptionKey);
     $page->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Auto Categorize Groceries')
@@ -272,11 +311,15 @@ it('applies automation rules when importing transactions', function () {
         ->fill('input[placeholder="Value"]', 'walmart')
         ->click('[data-testid="action-category-select"]')
         ->wait(0.5)
-        ->click('Groceries')
+        ->waitForText('Groceries', 5)
+        ->click('[role="option"]:has-text("Groceries")')
         ->click('[data-testid="submit-automation-rule"]')
         ->wait(2);
 
-    $page->navigate('/transactions')->wait(2);
+    // Visit transactions page
+    $page = visit('/transactions');
+    $this->setupEncryptionKey($page, $encryptionKey);
+    $page->wait(2);
 
     $testFile = __DIR__.'/assets/test-transactions.csv';
 
