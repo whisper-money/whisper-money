@@ -679,7 +679,7 @@ export function EditTransactionDialog({
                                     onValueChange={setAccountId}
                                     disabled={isSubmitting}
                                 >
-                                    <SelectTrigger id="account">
+                                    <SelectTrigger id="account" data-testid="account-select">
                                         <SelectValue placeholder="Select account" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -710,6 +710,7 @@ export function EditTransactionDialog({
                                 placeholder="Uncategorized"
                                 triggerClassName="w-full"
                                 showUncategorized={true}
+                                data-testid="category-select"
                             />
                         </div>
 
@@ -747,7 +748,7 @@ export function EditTransactionDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting} data-testid="submit-transaction">
                             {isSubmitting
                                 ? 'Saving...'
                                 : mode === 'create'

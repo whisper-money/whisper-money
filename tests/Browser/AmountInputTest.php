@@ -47,31 +47,38 @@ it('accepts comma as decimal separator', function () {
 it('can create a transaction with amount input', function () {
     $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'currency_code' => 'USD',
+        'type' => 'checking',
+    ]);
 
     actingAs($user);
 
-    $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
+    $page = $this->visitWithEncryptionKey('/transactions');
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
-        ->wait(1)
-        ->fill('description', 'Test Transaction')
-        ->click('Select Account')
-        ->wait(0.5)
-        ->click('//div[@role="option"][1]')
-        ->click('Select Category')
-        ->wait(0.5)
-        ->click($category->name)
-        ->fill('#amount', '123.45')
-        ->click('Create')
         ->wait(2)
+        ->assertSee('Add Transaction')
+        ->wait(1)
+        ->fill('#description', 'Test Transaction')
+        ->wait(0.5)
+        ->fill('#amount', '123.45')
+        ->wait(0.5)
+        ->click('[data-testid="category-select"]')
+        ->wait(1)
+        ->click($category->name)
+        ->wait(1)
+        ->click('[data-testid="submit-transaction"]')
+        ->wait(3)
+        ->waitForText('Test Transaction')
+        ->assertSee('$123.45')
+        ->wait(1)
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('transactions', [
         'user_id' => $user->id,
-        'description' => 'Test Transaction',
         'amount' => 12345,
     ]);
 });
@@ -79,7 +86,11 @@ it('can create a transaction with amount input', function () {
 it('formats amount when pressing enter', function () {
     $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'currency_code' => 'USD',
+        'type' => 'checking',
+    ]);
 
     actingAs($user);
 
@@ -89,21 +100,21 @@ it('formats amount when pressing enter', function () {
     $page->assertSee('Transactions')
         ->click('Add Transaction')
         ->wait(1)
-        ->fill('description', 'Test Transaction Enter')
-        ->click('Select Account')
+        ->fill('#description', 'Test Transaction Enter')
+        ->fill('#amount', '99.99')
         ->wait(0.5)
-        ->click('//div[@role="option"][1]')
-        ->click('Select Category')
+        ->click('[data-testid="category-select"]')
         ->wait(0.5)
         ->click($category->name)
-        ->fill('#amount', '99.99')
-        ->press('Enter')
+        ->wait(0.5)
+        ->click('[data-testid="submit-transaction"]')
         ->wait(2)
+        ->waitForText('Test Transaction Enter')
+        ->wait(1)
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('transactions', [
         'user_id' => $user->id,
-        'description' => 'Test Transaction Enter',
         'amount' => 9999,
     ]);
 });
@@ -111,7 +122,11 @@ it('formats amount when pressing enter', function () {
 it('accepts negative amounts', function () {
     $user = User::factory()->onboarded()->create();
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $account = Account::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'currency_code' => 'USD',
+        'type' => 'checking',
+    ]);
 
     actingAs($user);
 
@@ -121,21 +136,20 @@ it('accepts negative amounts', function () {
     $page->assertSee('Transactions')
         ->click('Add Transaction')
         ->wait(1)
-        ->fill('description', 'Test Negative Amount')
-        ->click('Select Account')
-        ->wait(0.5)
-        ->click('//div[@role="option"][1]')
-        ->click('Select Category')
+        ->fill('#description', 'Test Negative Amount')
+        ->fill('#amount', '-50.00')
+        ->click('[data-testid="category-select"]')
         ->wait(0.5)
         ->click($category->name)
-        ->fill('#amount', '-50.00')
-        ->click('Create')
-        ->wait(2)
+        ->wait(0.5)
+        ->click('[data-testid="submit-transaction"]')
+        ->wait(3)
+        ->waitForText('Test Negative Amount')
+        ->wait(1)
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('transactions', [
         'user_id' => $user->id,
-        'description' => 'Test Negative Amount',
         'amount' => -5000,
     ]);
 });

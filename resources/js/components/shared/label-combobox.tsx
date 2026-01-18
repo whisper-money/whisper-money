@@ -103,7 +103,7 @@ export function LabelCombobox({
         !labels.some((l) => l.name.toLowerCase() === inputValue.toLowerCase());
 
     return (
-        <Popover modal open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"

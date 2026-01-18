@@ -47,6 +47,7 @@ interface CategoryComboboxProps {
     triggerClassName?: string;
     showUncategorized?: boolean;
     withoutChevronIcon?: boolean;
+    'data-testid'?: string;
 }
 
 export function CategoryCombobox({
@@ -58,6 +59,7 @@ export function CategoryCombobox({
     triggerClassName,
     showUncategorized = true,
     withoutChevronIcon = false,
+    'data-testid': dataTestId,
 }: CategoryComboboxProps) {
     const [open, setOpen] = useState(false);
     const [filterValue, setFilterValue] = useState('');
@@ -88,7 +90,7 @@ export function CategoryCombobox({
     }, [open]);
 
     return (
-        <Popover modal open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
@@ -100,6 +102,7 @@ export function CategoryCombobox({
                     )}
                     disabled={disabled}
                     onClick={(e) => e.stopPropagation()}
+                    data-testid={dataTestId}
                 >
                     {selectedCategory ? (
                         <div className="flex items-center gap-2 overflow-x-hidden">

@@ -86,13 +86,14 @@ export function BankCombobox({
     };
 
     return (
-        <Popover open={open} onOpenChange={setOpen} modal={true}>
+        <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
                     className="w-full justify-between"
+                    data-testid="bank-select"
                 >
                     {selectedBank ? (
                         <div className="flex items-center gap-2">

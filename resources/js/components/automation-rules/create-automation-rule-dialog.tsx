@@ -209,6 +209,7 @@ export function CreateAutomationRuleDialog({
                                     categories={categories}
                                     placeholder="Select a category (optional)"
                                     showUncategorized={false}
+                                    data-testid="action-category-select"
                                 />
                             </div>
                         </div>
@@ -255,7 +256,7 @@ export function CreateAutomationRuleDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting} data-testid="submit-automation-rule">
                             {isSubmitting ? 'Creating...' : 'Create'}
                         </Button>
                     </div>
