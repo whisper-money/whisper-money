@@ -62,5 +62,9 @@
             event-uuid="696e6c66-33e0-482c-aa4a-a21410ec38c8"
             src="https://tracker.metricswave.com/js/visits.js"
         ></script>
+
+        @if(app()->environment('production'))
+            <script async defer src="{{ config('services.rybbit.instance_url') }}/api/script.js" data-site-id="{{ config('services.rybbit.site_id') }}"></script>
+        @endif
     </body>
 </html>

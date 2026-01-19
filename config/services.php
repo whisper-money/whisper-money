@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'rybbit' => [
+        'instance_url' => env('RYBBIT_INSTANCE_URL', 'https://app.rybbit.io'),
+        'site_id' => env('RYBBIT_SITE_ID'),
+    ],
+
 ];

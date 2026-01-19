@@ -10,8 +10,9 @@ import {
     OctagonXIcon,
     TriangleAlertIcon,
 } from 'lucide-react';
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+import { router } from '@inertiajs/react';
 import { Toaster } from 'sonner';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
@@ -28,6 +29,22 @@ Sentry.init({
 });
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+function RybbitTracker() {
+    useEffect(() => {
+        const unsubscribe = router.on('success', () => {
+            if (typeof window !== 'undefined' && window.rybbit) {
+                window.rybbit.pageview();
+            }
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, []);
+
+    return null;
+}
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
@@ -52,6 +69,7 @@ createInertiaApp({
                             initialIsAuthenticated={initialIsAuthenticated}
                             initialUser={initialUser}
                         >
+                            <RybbitTracker />
                             <App {...props} />
                             <Toaster
                                 richColors

@@ -67,3 +67,12 @@ export interface User {
     updated_at: string;
     [key: string]: unknown;
 }
+
+declare global {
+    interface Window {
+        rybbit?: {
+            pageview: () => void;
+            event: (name: string, data?: Record<string, unknown>) => void;
+        };
+    }
+}
