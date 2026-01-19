@@ -13,13 +13,7 @@
 
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature');
-
-pest()->extend(Tests\TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Browser');
-
-pest()->browser()->timeout(30000);
+    ->in('Feature', 'Browser');
 
 /*
 |--------------------------------------------------------------------------
@@ -32,9 +26,9 @@ pest()->browser()->timeout(30000);
 |
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
+// expect()->extend('toBeOne', function () {
+//     return $this->toBe(1);
+// });
 
 /*
 |--------------------------------------------------------------------------
@@ -47,7 +41,57 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function setupEncryptionKey($page, ?string $key = null): void
 {
-    // ..
+    $key ??= base64_encode(random_bytes(32));
+    $currentUrl = $page->url();
+    $page->script("localStorage.setItem('encryption_key', ".json_encode($key).')');
+    // Reload to trigger sync
+    $page->navigate($currentUrl)->wait(1);
+    // Reload again to ensure sync completes
+    $page->navigate($currentUrl)->wait(3);
+}
+
+function createCategoryViaUI($page, string $name, string $color = 'green', string $type = 'Expense'): void
+{
+    $page->click('Create Category')
+        ->wait(0.5)
+        ->fill('name', $name)
+        ->click('Select an icon')
+        ->wait(0.5)
+        ->click('//div[@role="option"][1]')
+        ->wait(0.3)
+        ->click('Select a color')
+        ->wait(0.5)
+        ->click("//div[@role=\"option\"][contains(., \"{$color}\")]")
+        ->wait(0.3)
+        ->click('Select a type')
+        ->wait(0.5)
+        ->click("//div[@role=\"option\"][contains(., \"{$type}\")]")
+        ->wait(0.3)
+        ->click('button[type="submit"]')
+        ->wait(2);
+}
+
+function createAccountViaUI($page, string $displayName, string $bankName, string $type = 'Checking', string $currency = 'USD'): void
+{
+    $page->assertSee('Bank accounts');
+    $page->click('Create Account')
+        ->wait(0.5)
+        ->fill('#display_name', $displayName)
+        ->click('[data-testid="bank-select"]')
+        ->wait(0.5)
+        ->fill('input[placeholder="Search bank..."]', $bankName)
+        ->wait(0.5)
+        ->click($bankName)
+        ->click('button[name="type"]')
+        ->wait(0.5)
+        ->click("[role=\"option\"]:has-text(\"{$type}\")")
+        ->wait(0.3)
+        ->click('button[name="currency_code"]')
+        ->wait(0.5)
+        ->click("[role=\"option\"]:has-text(\"{$currency}\")")
+        ->wait(0.3)
+        ->click('[data-testid="submit-account"]')
+        ->wait(2);
 }

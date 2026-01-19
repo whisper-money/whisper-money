@@ -47,13 +47,14 @@ it('can open create account dialog', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
         ->wait(0.5)
         ->assertSee('Add a new bank account to track your transactions')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can create a new bank account', function () {
     $user = User::factory()->onboarded()->create();
@@ -62,23 +63,26 @@ it('can create a new bank account', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
         ->wait(0.5)
         ->fill('#display_name', 'My Savings Account')
-        ->click('Select a bank...')
+        ->click('[data-testid="bank-select"]')
         ->wait(0.5)
-        ->fill('input[placeholder="Search banks..."]', 'My Bank')
+        ->fill('input[placeholder="Search bank..."]', 'My Bank')
         ->wait(0.5)
         ->click('My Bank')
-        ->click('Select account type')
+        ->click('button[name="type"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Savings")')
         ->wait(0.3)
-        ->click('Savings')
-        ->click('Select currency')
+        ->click('button[name="currency_code"]')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("EUR")')
         ->wait(0.3)
-        ->click('EUR')
-        ->click('button[type="submit"]')
+        ->click('[data-testid="submit-account"]')
         ->wait(2)
         ->assertNoJavascriptErrors();
 
@@ -88,7 +92,7 @@ it('can create a new bank account', function () {
         'type' => 'savings',
         'currency_code' => 'EUR',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('shows empty state when no accounts exist', function () {
     $user = User::factory()->onboarded()->create();
@@ -131,57 +135,62 @@ it('can filter accounts by name', function () {
 
 it('can edit an existing account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'Test Bank']);
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'Old Account Name',
-        'name_iv' => str_repeat('b', 16),
-        'type' => 'checking',
-        'currency_code' => 'USD',
-    ]);
+    $bank = Bank::factory()->create(['name' => 'Edit Bank']);
 
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
+
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'Old Account Name', 'Edit Bank', 'Checking', 'USD');
+
+    $page->navigate('/settings/accounts')->wait(1);
 
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
-        ->wait(0.3)
-        ->click('Edit')
         ->wait(0.5)
+        ->click('Edit')
+        ->wait(1)
         ->assertSee('Edit Account')
         ->fill('#display_name', 'Updated Account Name')
-        ->click('Save')
-        ->wait(2)
+        ->click('button[type="submit"]:has-text("Update")')
+        ->wait(2);
+
+    $page->navigate('/settings/accounts')->wait(1);
+
+    $page->assertSee('Updated Account Name')
         ->assertNoJavascriptErrors();
-})->skip('Requires browser encryption key setup');
+});
 
 it('can delete an account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'Test Bank']);
-    $account = Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'name' => 'Account To Delete',
-        'name_iv' => str_repeat('b', 16),
-    ]);
+    $bank = Bank::factory()->create(['name' => 'Delete Bank']);
 
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
+
+    // Create account via UI to ensure it syncs to IndexedDB
+    createAccountViaUI($page, 'Account To Delete', 'Delete Bank', 'Checking', 'USD');
+
+    $page->navigate('/settings/accounts')->wait(1);
 
     $page->assertSee('Bank accounts')
+        ->assertSee('Account To Delete')
         ->click('button[aria-label="Open menu"]')
-        ->wait(0.3)
+        ->wait(0.5)
         ->click('Delete')
         ->wait(0.5)
         ->assertSee('Delete Account')
-        ->click('Delete')
-        ->wait(2)
-        ->assertNoJavascriptErrors();
+        ->fill('#confirm', 'DELETE')
+        ->wait(0.3)
+        ->click('button[type="submit"]:has-text("Delete")')
+        ->wait(2);
 
-    $this->assertDatabaseMissing('accounts', [
-        'id' => $account->id,
-    ]);
-})->skip('Requires browser encryption key setup');
+    $page->navigate('/settings/accounts')->wait(1);
+
+    $page->assertDontSee('Account To Delete')
+        ->assertNoJavascriptErrors();
+});

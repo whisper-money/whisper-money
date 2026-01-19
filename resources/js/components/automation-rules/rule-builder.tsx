@@ -117,6 +117,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                                                                 : 'and',
                                                     });
                                                 }}
+                                                data-testid="toggle-condition-operator"
                                             >
                                                 <span className="text-sm">
                                                     Conditions joined by:{' '}

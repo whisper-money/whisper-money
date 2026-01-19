@@ -165,7 +165,7 @@ export function AccountForm({
                         }
                         required
                     >
-                        <SelectTrigger>
+                        <SelectTrigger name="type">
                             <SelectValue placeholder="Select account type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -197,7 +197,7 @@ export function AccountForm({
                         }
                         required
                     >
-                        <SelectTrigger>
+                        <SelectTrigger name="currency_code">
                             <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
                         <SelectContent>

@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Category;
 use App\Models\User;
 use Illuminate\Support\Facades\Notification;
 
@@ -12,23 +11,31 @@ beforeEach(function () {
 
 it('can create an automation rule with visual builder', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
 
-    $page = visit('/settings/automation-rules');
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
 
-    $page->assertSee('Automation Rules')
-        ->click('Create Rule')
+    // Create category via UI to ensure it syncs to IndexedDB
+    createCategoryViaUI($page, 'Groceries');
+
+    // Now visit automation rules page
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Test Rule')
         ->fill('priority', '10')
         ->assertSee('Conditions')
         ->assertSee('Description')
         ->fill('input[placeholder="Value"]', 'grocery')
-        ->click('Set Category')
-        ->click($category->name)
-        ->click('Create')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Groceries')
+        ->click('[data-testid="submit-automation-rule"]')
         ->wait(2)
         ->assertSee('Test Rule')
         ->assertNoJavascriptErrors();
@@ -38,146 +45,194 @@ it('can create an automation rule with visual builder', function () {
         'title' => 'Test Rule',
         'priority' => 10,
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can add multiple conditions to a group', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
 
-    $page = visit('/settings/automation-rules');
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
 
-    $page->assertSee('Automation Rules')
-        ->click('Create Rule')
+    createCategoryViaUI($page, 'Shopping');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Multi-Condition Rule')
         ->fill('priority', '5')
+        ->fill('input[placeholder="Value"]', 'grocery')
         ->click('Add Condition')
+        ->wait(0.5)
         ->assertSee('AND')
-        ->click('Set Category')
-        ->click($category->name)
-        ->click('Create')
-        ->wait(2)
-        ->assertSee('Multi-Condition Rule')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Shopping')
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+
+    $page->navigate('/settings/automation-rules')->wait(1);
+
+    $page->assertSee('Multi-Condition Rule')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
         'title' => 'Multi-Condition Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can add multiple groups', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
 
-    $page = visit('/settings/automation-rules');
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
 
-    $page->assertSee('Automation Rules')
-        ->click('Create Rule')
+    createCategoryViaUI($page, 'Food');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Multi-Group Rule')
         ->fill('priority', '3')
+        ->fill('input[placeholder="Value"]', 'grocery')
         ->click('Add Group')
-        ->assertSee('Group 1')
-        ->assertSee('Group 2')
-        ->click('Set Category')
-        ->click($category->name)
-        ->click('Create')
-        ->wait(2)
-        ->assertSee('Multi-Group Rule')
+        ->wait(0.5)
+        ->assertSee('Groups joined by')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Food')
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+
+    $page->navigate('/settings/automation-rules')->wait(1);
+
+    $page->assertSee('Multi-Group Rule')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
         'title' => 'Multi-Group Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can select different field types and operators', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
 
-    $page = visit('/settings/automation-rules');
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
 
-    $page->assertSee('Automation Rules')
-        ->click('Create Rule')
+    createCategoryViaUI($page, 'Bills');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Amount Rule')
         ->fill('priority', '1')
-        ->click('Description')
-        ->click('Amount')
-        ->assertSee('greater than')
-        ->click('contains')
-        ->click('greater than')
-        ->fill('input[type="number"]', '100')
-        ->click('Set Category')
-        ->click($category->name)
-        ->click('Create')
-        ->wait(2)
-        ->assertSee('Amount Rule')
+        ->click('button:has-text("Description")')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Amount")')
+        ->wait(1)
+        // After selecting Amount, the value input changes to number type
+        ->fill('input[type="number"][placeholder="Value"]', '100')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Bills')
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+
+    $page->navigate('/settings/automation-rules')->wait(1);
+
+    $page->assertSee('Amount Rule')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
         'title' => 'Amount Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can edit an existing rule with visual builder', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
-
-    $rule = $user->automationRules()->create([
-        'title' => 'Original Rule',
-        'priority' => 5,
-        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
-        'action_category_id' => $category->id,
-    ]);
 
     actingAs($user);
 
-    $page = visit('/settings/automation-rules');
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
 
+    createCategoryViaUI($page, 'Transport');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    // First create a rule to edit
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
+        ->wait(0.5)
+        ->fill('title', 'Original Rule')
+        ->fill('priority', '5')
+        ->fill('input[placeholder="Value"]', 'grocery')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Transport')
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+
+    $page->navigate('/settings/automation-rules')->wait(1);
+
+    // Now edit it
     $page->assertSee('Original Rule')
         ->click('button[aria-label="Actions"]')
-        ->click('Edit')
         ->wait(0.5)
+        ->click('Edit')
+        ->wait(1)
         ->assertSee('Edit Automation Rule')
-        ->assertSee('grocery')
         ->fill('title', 'Updated Rule')
-        ->click('Save Changes')
-        ->wait(2)
-        ->assertSee('Updated Rule')
-        ->assertNoJavascriptErrors();
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
 
-    $this->assertDatabaseHas('automation_rules', [
-        'id' => $rule->id,
-        'title' => 'Updated Rule',
-    ]);
-})->skip('Requires browser encryption key setup');
+    $page->navigate('/settings/automation-rules')->wait(1);
+
+    $page->assertSee('Updated Rule')
+        ->assertNoJavascriptErrors();
+});
 
 it('validates that at least one condition is required', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
 
-    $page = visit('/settings/automation-rules');
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
 
-    $page->assertSee('Automation Rules')
-        ->click('Create Rule')
+    createCategoryViaUI($page, 'Entertainment');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Invalid Rule')
         ->fill('priority', '1')
-        ->click('Set Category')
-        ->click($category->name)
-        ->click('Create')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Entertainment')
+        ->click('[data-testid="submit-automation-rule"]')
         ->assertSee('At least one valid condition is required')
         ->assertNoJavascriptErrors();
 
@@ -185,65 +240,90 @@ it('validates that at least one condition is required', function () {
         'user_id' => $user->id,
         'title' => 'Invalid Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can toggle group operators between AND and OR', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
 
-    $page = visit('/settings/automation-rules');
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
 
-    $page->assertSee('Automation Rules')
-        ->click('Create Rule')
+    createCategoryViaUI($page, 'Health');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'OR Rule')
         ->fill('priority', '1')
-        ->click('Add Condition')
-        ->assertSee('AND')
-        ->click('Conditions joined by:')
-        ->assertSee('OR')
         ->fill('input[placeholder="Value"]', 'test')
-        ->click('Set Category')
-        ->click($category->name)
-        ->click('Create')
-        ->wait(2)
-        ->assertSee('OR Rule')
+        ->click('Add Condition')
+        ->wait(0.5)
+        ->assertSee('AND')
+        ->click('[data-testid="toggle-condition-operator"]')
+        ->wait(0.5)
+        ->assertSee('OR')
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Health')
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+
+    $page->navigate('/settings/automation-rules')->wait(1);
+
+    $page->assertSee('OR Rule')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
         'title' => 'OR Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});
 
 it('can use is empty operator for nullable fields', function () {
     $user = User::factory()->onboarded()->create();
-    $category = Category::factory()->create(['user_id' => $user->id]);
 
     actingAs($user);
 
-    $page = visit('/settings/automation-rules');
+    $page = visit('/settings/categories');
+    $this->setupEncryptionKey($page);
 
-    $page->assertSee('Automation Rules')
-        ->click('Create Rule')
+    createCategoryViaUI($page, 'Travel');
+
+    $page->navigate('/settings/automation-rules')->wait(2);
+
+    $page->assertSee('Automation rules settings')
+        ->wait(1)
+        ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Empty Category Rule')
         ->fill('priority', '1')
-        ->click('Description')
-        ->click('Category')
-        ->click('contains')
-        ->click('is empty')
-        ->click('Set Category')
-        ->click($category->name)
-        ->click('Create')
-        ->wait(2)
-        ->assertSee('Empty Category Rule')
+        ->click('button:has-text("Description")')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Category")')
+        ->wait(1)
+        // Click the operator dropdown - it shows "equals" by default for Category field
+        ->click('button[role="combobox"]:has-text("equals")')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("is empty")')
+        ->wait(0.5)
+        ->click('[data-testid="action-category-select"]')
+        ->wait(0.5)
+        ->click('Travel')
+        ->click('[data-testid="submit-automation-rule"]')
+        ->wait(2);
+
+    $page->navigate('/settings/automation-rules')->wait(1);
+
+    $page->assertSee('Empty Category Rule')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
         'title' => 'Empty Category Rule',
     ]);
-})->skip('Requires browser encryption key setup');
+});

@@ -93,6 +93,7 @@ export function BankCombobox({
                     role="combobox"
                     aria-expanded={open}
                     className="w-full justify-between"
+                    data-testid="bank-select"
                 >
                     {selectedBank ? (
                         <div className="flex items-center gap-2">

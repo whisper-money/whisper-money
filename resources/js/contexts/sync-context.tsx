@@ -65,6 +65,7 @@ function formatErrorMessage(error: string): string {
 }
 
 const SYNC_INTERVAL = 5 * 60 * 1000;
+const AUTO_SYNC_DEBOUNCE = 500; // Auto-sync 500ms after pending changes detected
 
 interface SyncProviderProps {
     children: ReactNode;
@@ -88,6 +89,7 @@ export function SyncProvider({
     const [wasOffline, setWasOffline] = useState(!isOnline);
     const syncInProgressRef = useRef(false);
     const userChangeCheckedRef = useRef(false);
+    const autoSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const pendingOperations =
         useLiveQuery(() => db.pending_changes.toArray(), []) || [];
@@ -256,6 +258,29 @@ export function SyncProvider({
         checkUserAndSync();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, currentUser]);
+
+    // Auto-sync when pending changes are detected
+    useEffect(() => {
+        if (!isAuthenticated || !isOnline || pendingOperationsCount === 0) {
+            return;
+        }
+
+        // Clear any existing timeout
+        if (autoSyncTimeoutRef.current) {
+            clearTimeout(autoSyncTimeoutRef.current);
+        }
+
+        // Debounce sync to avoid too many calls
+        autoSyncTimeoutRef.current = setTimeout(() => {
+            sync();
+        }, AUTO_SYNC_DEBOUNCE);
+
+        return () => {
+            if (autoSyncTimeoutRef.current) {
+                clearTimeout(autoSyncTimeoutRef.current);
+            }
+        };
+    }, [isAuthenticated, isOnline, pendingOperationsCount, sync]);
 
     return (
         <SyncContext.Provider
