@@ -30,10 +30,12 @@ abstract class TestCase extends BaseTestCase
     protected function setupEncryptionKey($page, ?string $key = null, bool $reload = true): void
     {
         $key = $key ?? $this->generateTestEncryptionKey();
+        // Wait a bit to ensure page is ready before executing script
+        $page->wait(0.5);
         $page->script("localStorage.setItem('encryption_key', ".json_encode($key).')');
         if ($reload) {
             $currentUrl = $page->url();
-            $page->navigate($currentUrl)->wait(1);
+            $page->navigate($currentUrl)->wait(2);
         }
     }
 
