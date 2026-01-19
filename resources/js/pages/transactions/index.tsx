@@ -926,7 +926,14 @@ export default function Transactions({
                 consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [isKeySet, categories, accounts, banks, updateTransaction, automationRules],
+        [
+            isKeySet,
+            categories,
+            accounts,
+            banks,
+            updateTransaction,
+            automationRules,
+        ],
     );
 
     async function handleBulkReEvaluateRules() {

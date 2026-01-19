@@ -78,7 +78,11 @@ function AutomationRuleActions({
         <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Actions">
+                    <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        aria-label="Actions"
+                    >
                         <span className="sr-only">Open menu</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>

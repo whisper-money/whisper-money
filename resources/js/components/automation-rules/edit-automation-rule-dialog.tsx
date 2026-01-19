@@ -235,7 +235,11 @@ export function EditAutomationRuleDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting} data-testid="submit-automation-rule">
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            data-testid="submit-automation-rule"
+                        >
                             {isSubmitting ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>

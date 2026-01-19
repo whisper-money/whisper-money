@@ -707,7 +707,10 @@ export function EditTransactionDialog({
                                     onValueChange={setAccountId}
                                     disabled={isSubmitting}
                                 >
-                                    <SelectTrigger id="account" data-testid="account-select">
+                                    <SelectTrigger
+                                        id="account"
+                                        data-testid="account-select"
+                                    >
                                         <SelectValue placeholder="Select account" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -776,7 +779,11 @@ export function EditTransactionDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting} data-testid="submit-transaction">
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            data-testid="submit-transaction"
+                        >
                             {isSubmitting
                                 ? 'Saving...'
                                 : mode === 'create'

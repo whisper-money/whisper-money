@@ -66,7 +66,9 @@ export function ImportTransactionsButton() {
                             aria-label="Import transactions"
                         >
                             <Upload className="h-5 w-5" />
-                            <span className="">{loading ? 'Loading...' : 'Import'}</span>
+                            <span className="">
+                                {loading ? 'Loading...' : 'Import'}
+                            </span>
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>

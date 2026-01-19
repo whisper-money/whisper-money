@@ -206,7 +206,11 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting} data-testid="submit-account">
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            data-testid="submit-account"
+                        >
                             {isSubmitting ? 'Creating...' : 'Create'}
                         </Button>
                     </div>
