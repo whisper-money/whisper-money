@@ -1,5 +1,4 @@
-import { index } from '@/actions/App/Http/Controllers/AccountBalanceController';
-import { store } from '@/actions/App/Http/Controllers/Sync/AccountBalanceSyncController';
+import { index, store } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import type { Account, AccountBalance } from '@/types/account';
 import { useEffect, useRef, useState } from 'react';
 
