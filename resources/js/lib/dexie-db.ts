@@ -6,52 +6,67 @@ export interface SyncMetadata {
     value: string;
 }
 
-const db = new Dexie('whisper_money') as Dexie & {
+type WhisperMoneyDB = Dexie & {
     transactions: EntityTable<Transaction, 'id'>;
     sync_metadata: EntityTable<SyncMetadata, 'key'>;
 };
 
-db.version(5).stores({
-    transactions: 'id, user_id, account_id, updated_at',
-    accounts: 'id, user_id, bank_id, updated_at',
-    categories: 'id, user_id, updated_at',
-    banks: 'id, user_id, updated_at',
-    automation_rules: 'id, user_id, priority, updated_at',
-    account_balances: 'id, account_id, balance_date, updated_at',
-    sync_metadata: 'key',
-    pending_changes: '++id, store, timestamp',
-});
+let dbInstance: WhisperMoneyDB | null = null;
 
-db.version(6).stores({
-    transactions: 'id, user_id, account_id, updated_at',
-    accounts: 'id, user_id, bank_id, updated_at',
-    categories: 'id, user_id, updated_at',
-    labels: 'id, user_id, updated_at',
-    banks: 'id, user_id, updated_at',
-    automation_rules: 'id, user_id, priority, updated_at',
-    account_balances: 'id, account_id, balance_date, updated_at',
-    sync_metadata: 'key',
-    pending_changes: '++id, store, timestamp',
-});
+function initializeDatabase(): WhisperMoneyDB {
+    const database = new Dexie('whisper_money') as WhisperMoneyDB;
 
-// Version 7: Remove all tables except transactions and sync_metadata
-db.version(7).stores({
-    transactions: 'id, user_id, account_id, updated_at',
-    sync_metadata: 'key',
-    // Delete removed tables
-    accounts: null,
-    categories: null,
-    labels: null,
-    banks: null,
-    automation_rules: null,
-    account_balances: null,
-    pending_changes: null,
-});
+    database.version(5).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        accounts: 'id, user_id, bank_id, updated_at',
+        categories: 'id, user_id, updated_at',
+        banks: 'id, user_id, updated_at',
+        automation_rules: 'id, user_id, priority, updated_at',
+        account_balances: 'id, account_id, balance_date, updated_at',
+        sync_metadata: 'key',
+        pending_changes: '++id, store, timestamp',
+    });
 
-// Version 8: Ensure clean state (no schema changes, just trigger upgrade)
-db.version(8).stores({
-    transactions: 'id, user_id, account_id, updated_at',
-    sync_metadata: 'key',
-});
+    database.version(6).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        accounts: 'id, user_id, bank_id, updated_at',
+        categories: 'id, user_id, updated_at',
+        labels: 'id, user_id, updated_at',
+        banks: 'id, user_id, updated_at',
+        automation_rules: 'id, user_id, priority, updated_at',
+        account_balances: 'id, account_id, balance_date, updated_at',
+        sync_metadata: 'key',
+        pending_changes: '++id, store, timestamp',
+    });
 
-export { db };
+    // Version 7: Remove all tables except transactions and sync_metadata
+    database.version(7).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        sync_metadata: 'key',
+        // Delete removed tables
+        accounts: null,
+        categories: null,
+        labels: null,
+        banks: null,
+        automation_rules: null,
+        account_balances: null,
+        pending_changes: null,
+    });
+
+    // Version 8: Ensure clean state (no schema changes, just trigger upgrade)
+    database.version(8).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        sync_metadata: 'key',
+    });
+
+    return database;
+}
+
+export const db = new Proxy({} as WhisperMoneyDB, {
+    get(_target, prop) {
+        if (!dbInstance) {
+            dbInstance = initializeDatabase();
+        }
+        return dbInstance[prop as keyof WhisperMoneyDB];
+    },
+});
