@@ -209,12 +209,6 @@ export function CreateAutomationRuleDialog({
                                     labels={labels}
                                     placeholder="Select labels (optional)"
                                     allowCreate={true}
-                                    onLabelCreated={(newLabel) => {
-                                        setLabels((prev) => [
-                                            ...prev,
-                                            newLabel,
-                                        ]);
-                                    }}
                                 />
                             </div>
                         </div>

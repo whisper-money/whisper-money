@@ -27,7 +27,7 @@ class AutomationRuleController extends Controller
             ->get(['id', 'title', 'priority', 'rules_json', 'action_category_id', 'action_note', 'action_note_iv']);
 
         return Inertia::render('settings/automation-rules', [
-            'rules' => $rules,
+            'automationRules' => $rules,
         ]);
     }
 

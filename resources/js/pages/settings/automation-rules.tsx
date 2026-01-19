@@ -61,7 +61,15 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
+function AutomationRuleActions({
+    rule,
+    categories,
+    labels,
+}: {
+    rule: AutomationRule;
+    categories: any[];
+    labels: any[];
+}) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -90,6 +98,8 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
 
             <EditAutomationRuleDialog
                 rule={rule}
+                categories={categories}
+                labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
             />
@@ -102,7 +112,15 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
     );
 }
 
-function AutomationRuleRow({ row }: { row: Row<AutomationRule> }) {
+function AutomationRuleRow({
+    row,
+    categories,
+    labels,
+}: {
+    row: Row<AutomationRule>;
+    categories: any[];
+    labels: any[];
+}) {
     const rule = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -146,6 +164,8 @@ function AutomationRuleRow({ row }: { row: Row<AutomationRule> }) {
 
             <EditAutomationRuleDialog
                 rule={rule}
+                categories={categories}
+                labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
             />
@@ -163,6 +183,10 @@ export default function AutomationRules() {
     const { automationRules: rawRules } = usePage<{
         automationRules: AutomationRule[];
     }>().props;
+
+    // Get categories and labels from globally shared Inertia data
+    const categories = usePage().props.categories as any[];
+    const labels = usePage().props.labels as any[];
     const rules = useMemo(
         () =>
             rawRules.map((rule) => ({
@@ -275,7 +299,13 @@ export default function AutomationRules() {
         {
             id: 'actions',
             enableHiding: false,
-            cell: ({ row }) => <AutomationRuleActions rule={row.original} />,
+            cell: ({ row }) => (
+                <AutomationRuleActions
+                    rule={row.original}
+                    categories={categories}
+                    labels={labels}
+                />
+            ),
         },
     ];
 
@@ -322,7 +352,11 @@ export default function AutomationRules() {
                                 }
                                 className="max-w-sm"
                             />
-                            <CreateAutomationRuleDialog disabled={!isKeySet} />
+                            <CreateAutomationRuleDialog
+                                categories={categories}
+                                labels={labels}
+                                disabled={!isKeySet}
+                            />
                         </div>
 
                         <div className="overflow-hidden rounded-md border">
@@ -362,6 +396,8 @@ export default function AutomationRules() {
                                                 <AutomationRuleRow
                                                     key={row.id}
                                                     row={row}
+                                                    categories={categories}
+                                                    labels={labels}
                                                 />
                                             ))
                                     ) : (
