@@ -1,4 +1,5 @@
-import { store } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { index } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import { store } from '@/actions/App/Http/Controllers/Sync/AccountBalanceSyncController';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,8 +12,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Account } from '@/types/account';
-import { useState } from 'react';
+import { accountBalanceSyncService } from '@/services/account-balance-sync';
+import type { Account, AccountBalance } from '@/types/account';
+import { useEffect, useState } from 'react';
 
 interface UpdateBalanceDialogProps {
     account: Account;
@@ -26,6 +28,10 @@ function getTodayDate(): string {
     return today.toISOString().split('T')[0];
 }
 
+interface PaginatedBalanceResponse {
+    data: AccountBalance[];
+}
+
 export function UpdateBalanceDialog({
     account,
     open,
@@ -36,6 +42,40 @@ export function UpdateBalanceDialog({
     const [balance, setBalance] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isLoadingLastBalance, setIsLoadingLastBalance] = useState(false);
+
+    useEffect(() => {
+        async function fetchLastBalance() {
+            if (!open) return;
+
+            setIsLoadingLastBalance(true);
+            try {
+                const response = await fetch(
+                    index.url(account.id, { query: { page: '1' } }),
+                    {
+                        headers: {
+                            Accept: 'application/json',
+                        },
+                    },
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch last balance');
+                }
+
+                const data: PaginatedBalanceResponse = await response.json();
+                if (data.data.length > 0) {
+                    setBalance(data.data[0].balance);
+                }
+            } catch (err) {
+                console.error('Failed to fetch last balance:', err);
+            } finally {
+                setIsLoadingLastBalance(false);
+            }
+        }
+
+        fetchLastBalance();
+    }, [open, account.id]);
 
     function handleOpenChange(newOpen: boolean) {
         if (!newOpen) {
@@ -130,12 +170,19 @@ export function UpdateBalanceDialog({
                             type="button"
                             variant="outline"
                             onClick={() => handleOpenChange(false)}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || isLoadingLastBalance}
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? 'Saving...' : 'Save'}
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting || isLoadingLastBalance}
+                        >
+                            {isSubmitting
+                                ? 'Saving...'
+                                : isLoadingLastBalance
+                                  ? 'Loading...'
+                                  : 'Save'}
                         </Button>
                     </DialogFooter>
                 </form>
