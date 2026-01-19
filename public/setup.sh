@@ -148,11 +148,21 @@ check_project_version() {
         return 0
     fi
 
-    # Fetch latest changes without merging
-    git fetch origin >/dev/null 2>&1 || return 0
+    # Skip check if DEV_MODE is enabled
+    if [ -f .env ] && grep -q "^DEV_MODE=true" .env 2>/dev/null; then
+        return 0
+    fi
 
     # Get current branch
     local current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
+    # Skip check if not on main branch
+    if [ "$current_branch" != "main" ]; then
+        return 0
+    fi
+
+    # Fetch latest changes without merging
+    git fetch origin >/dev/null 2>&1 || return 0
 
     # Compare local and remote commits
     local local_commit=$(git rev-parse HEAD 2>/dev/null)
