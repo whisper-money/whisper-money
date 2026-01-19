@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import type { Account, AccountBalance } from '@/types/account';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface UpdateBalanceDialogProps {
     account: Account;
@@ -43,6 +43,7 @@ export function UpdateBalanceDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoadingLastBalance, setIsLoadingLastBalance] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         async function fetchLastBalance() {
@@ -66,23 +67,40 @@ export function UpdateBalanceDialog({
                 const data: PaginatedBalanceResponse = await response.json();
                 if (data.data.length > 0) {
                     setBalance(data.data[0].balance);
+                } else {
+                    setBalance(0);
                 }
             } catch (err) {
                 console.error('Failed to fetch last balance:', err);
+                setBalance(0);
             } finally {
                 setIsLoadingLastBalance(false);
             }
         }
 
-        fetchLastBalance();
+        if (open) {
+            setDate(getTodayDate());
+            setError(null);
+            fetchLastBalance();
+        }
     }, [open, account.id]);
 
-    function handleOpenChange(newOpen: boolean) {
-        if (!newOpen) {
-            setDate(getTodayDate());
-            setBalance(0);
-            setError(null);
+    useEffect(() => {
+        if (open && !isLoadingLastBalance && inputRef.current) {
+            setTimeout(() => {
+                const input = inputRef.current;
+                if (input) {
+                    input.focus();
+                    // Use requestAnimationFrame to ensure selection happens after focus events
+                    requestAnimationFrame(() => {
+                        input.setSelectionRange(0, input.value.length);
+                    });
+                }
+            }, 100);
         }
+    }, [open, isLoadingLastBalance]);
+
+    function handleOpenChange(newOpen: boolean) {
         onOpenChange(newOpen);
     }
 
@@ -139,14 +157,21 @@ export function UpdateBalanceDialog({
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="balance-amount">Balance</Label>
-                        <AmountInput
-                            id="balance-amount"
-                            className="mt-1"
-                            value={balance}
-                            onChange={setBalance}
-                            currencyCode={account.currency_code}
-                            required
-                        />
+                        {isLoadingLastBalance ? (
+                            <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                                Loading last balance...
+                            </div>
+                        ) : (
+                            <AmountInput
+                                ref={inputRef}
+                                id="balance-amount"
+                                className="mt-1"
+                                value={balance}
+                                onChange={setBalance}
+                                currencyCode={account.currency_code}
+                                required
+                            />
+                        )}
                     </div>
 
                     <div className="space-y-2">
