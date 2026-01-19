@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { Check, ChevronsUpDown, Tag, X } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { EncryptedText } from '@/components/encrypted-text';
 import { Badge } from '@/components/ui/badge';
@@ -51,9 +51,33 @@ export function TransactionFilters({
     const [isOpen, setIsOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
     const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+    const [searchText, setSearchText] = useState(filters.searchText);
     const isUncategorizedSelected = filters.categoryIds.includes(
         UNCATEGORIZED_CATEGORY_ID,
     );
+
+    // Debounce search text updates
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchText !== filters.searchText) {
+                onFiltersChange({
+                    ...filters,
+                    searchText,
+                });
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchText]);
+
+    // Sync local state when filters change externally
+    useEffect(() => {
+        if (filters.searchText !== searchText) {
+            setSearchText(filters.searchText);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters.searchText]);
 
     function handleCategoryToggle(categoryId: number) {
         const newCategoryIds = filters.categoryIds.includes(categoryId)
@@ -80,6 +104,7 @@ export function TransactionFilters({
     }
 
     function clearFilters() {
+        setSearchText('');
         onFiltersChange({
             dateFrom: null,
             dateTo: null,
@@ -111,13 +136,8 @@ export function TransactionFilters({
                                 ? 'Search description or notes...'
                                 : 'Search disabled (encryption key not set)'
                         }
-                        value={filters.searchText}
-                        onChange={(e) =>
-                            onFiltersChange({
-                                ...filters,
-                                searchText: e.target.value,
-                            })
-                        }
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
                         disabled={!isKeySet}
                         className="max-w-sm flex-1 md:max-w-full md:min-w-[350px]"
                     />
