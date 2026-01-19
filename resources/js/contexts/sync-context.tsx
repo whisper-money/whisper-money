@@ -169,7 +169,7 @@ export function SyncProvider({
             transactionSyncService.clearAll();
         }
         lastUserIdRef.current = currentUser.id;
-    }, [isAuthenticated, currentUser?.id]);
+    }, [isAuthenticated, currentUser]);
 
     return (
         <SyncContext.Provider

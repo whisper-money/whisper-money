@@ -52,7 +52,8 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
 import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
-import { getCategoryColorClasses } from '@/types/category';
+import { type Category, getCategoryColorClasses } from '@/types/category';
+import { type Label } from '@/types/label';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -67,8 +68,8 @@ function AutomationRuleActions({
     labels,
 }: {
     rule: AutomationRule;
-    categories: any[];
-    labels: any[];
+    categories: Category[];
+    labels: Label[];
 }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -118,8 +119,8 @@ function AutomationRuleRow({
     labels,
 }: {
     row: Row<AutomationRule>;
-    categories: any[];
-    labels: any[];
+    categories: Category[];
+    labels: Label[];
 }) {
     const rule = row.original;
     const [editOpen, setEditOpen] = useState(false);
@@ -185,8 +186,8 @@ export default function AutomationRules() {
     }>().props;
 
     // Get categories and labels from globally shared Inertia data
-    const categories = usePage().props.categories as any[];
-    const labels = usePage().props.labels as any[];
+    const categories = usePage().props.categories as Category[];
+    const labels = usePage().props.labels as Label[];
     const rules = useMemo(
         () =>
             rawRules.map((rule) => ({
