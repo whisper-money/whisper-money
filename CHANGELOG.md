@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.6](https://github.com/whisper-money/whisper-money/compare/v0.1.5...v0.1.6) (2026-01-19)
+
+
+### Bug Fixes
+
+* MYSQL_EXTRA_OPTIONS env var ([49ed94c](https://github.com/whisper-money/whisper-money/commit/49ed94cbc7f0d55bf3fef38ce1a620449fe51e1e))
+
+
+### Features
+
+* Better, easier, and faster account balance update modal ([#65](https://github.com/whisper-money/whisper-money/issues/65)) ([f4ab918](https://github.com/whisper-money/whisper-money/commit/f4ab9181e1235885f0f8158d67de2cd719bfb0d3))
+* Don't check upgrades if not in main branch or in DEV_MODE ([16a331a](https://github.com/whisper-money/whisper-money/commit/16a331ab5f654e332bfd0625f3621b99c13f61dd))
+
 ## [0.1.5](https://github.com/whisper-money/whisper-money/compare/v0.1.3...v0.1.5) (2026-01-17)
 
 ### Bug Fixes
