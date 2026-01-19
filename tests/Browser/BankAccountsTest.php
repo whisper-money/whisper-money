@@ -18,9 +18,6 @@ it('can view bank accounts page', function () {
         ->assertNoJavascriptErrors();
 });
 
-/**
- * @timeout 30
- */
 it('shows existing accounts in list', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
@@ -110,9 +107,6 @@ it('shows empty state when no accounts exist', function () {
         ->assertNoJavascriptErrors();
 });
 
-/**
- * @timeout 30
- */
 it('can filter accounts by name', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
@@ -141,9 +135,6 @@ it('can filter accounts by name', function () {
         ->assertNoJavascriptErrors();
 });
 
-/**
- * @timeout 60
- */
 it('can edit an existing account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Edit Bank']);
@@ -175,9 +166,6 @@ it('can edit an existing account via dropdown menu', function () {
         ->assertNoJavascriptErrors();
 });
 
-/**
- * @timeout 60
- */
 it('can delete an account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Delete Bank']);
