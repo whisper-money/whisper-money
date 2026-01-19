@@ -69,6 +69,23 @@ class HandleInertiaRequests extends Middleware
             'features' => [
                 'cashflow' => true,
             ],
+            'accounts' => fn () => $user ? $user->accounts()
+                ->with('bank:id,name,logo')
+                ->orderBy('name')
+                ->get(['id', 'name', 'name_iv', 'bank_id', 'type', 'currency_code']) : [],
+            'categories' => fn () => $user ? $user->categories()
+                ->orderBy('name')
+                ->get(['id', 'name', 'icon', 'color']) : [],
+            'banks' => fn () => $user ? $user->banks()
+                ->orderBy('name')
+                ->get(['id', 'name', 'logo']) : [],
+            'automationRules' => fn () => $user ? $user->automationRules()
+                ->with('category:id,name,icon,color')
+                ->orderBy('priority')
+                ->get() : [],
+            'labels' => fn () => $user ? $user->labels()
+                ->orderBy('name')
+                ->get(['id', 'name', 'color']) : [],
         ];
     }
 }

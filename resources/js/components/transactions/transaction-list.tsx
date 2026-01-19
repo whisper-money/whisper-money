@@ -58,9 +58,9 @@ import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
@@ -216,6 +216,7 @@ export interface TransactionListProps {
     accounts: Account[];
     banks: Bank[];
     labels?: Label[];
+    automationRules?: AutomationRule[];
     accountId?: UUID;
     pageSize?: number;
     hideAccountFilter?: boolean;
@@ -230,6 +231,7 @@ export function TransactionList({
     accounts,
     banks,
     labels: initialLabels = [],
+    automationRules = [],
     accountId,
     pageSize = 25,
     hideAccountFilter = false,
@@ -252,7 +254,7 @@ export function TransactionList({
         '',
     );
 
-    const labels = useLiveQuery(() => db.labels.toArray(), [], initialLabels);
+    const labels = initialLabels;
 
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
@@ -664,10 +666,11 @@ export function TransactionList({
                 consoleDebug('✓ Encryption key found');
 
                 const key = await importKey(keyString);
-                const rules = await automationRuleSyncService.getAll();
-                consoleDebug(`Found ${rules.length} automation rules`);
+                consoleDebug(
+                    `Found ${automationRules.length} automation rules`,
+                );
 
-                if (rules.length === 0) {
+                if (automationRules.length === 0) {
                     consoleDebug('❌ No rules to evaluate');
                     return;
                 }
@@ -675,7 +678,7 @@ export function TransactionList({
                 consoleDebug('Evaluating rules against transaction...');
                 const result = await evaluateRules(
                     transaction,
-                    rules,
+                    automationRules,
                     categories,
                     accounts,
                     banks,
@@ -765,7 +768,14 @@ export function TransactionList({
                 consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [isKeySet, categories, accounts, banks, updateTransaction],
+        [
+            isKeySet,
+            categories,
+            accounts,
+            banks,
+            updateTransaction,
+            automationRules,
+        ],
     );
 
     async function handleBulkReEvaluateRules() {
@@ -792,10 +802,9 @@ export function TransactionList({
             consoleDebug('✓ Encryption key found');
 
             const key = await importKey(keyString);
-            const rules = await automationRuleSyncService.getAll();
-            consoleDebug(`Found ${rules.length} automation rules`);
+            consoleDebug(`Found ${automationRules.length} automation rules`);
 
-            if (rules.length === 0) {
+            if (automationRules.length === 0) {
                 consoleDebug('❌ No rules to evaluate');
                 return;
             }
@@ -825,7 +834,7 @@ export function TransactionList({
                 consoleDebug(`\nEvaluating transaction ${transaction.id}...`);
                 const result = await evaluateRules(
                     transaction,
-                    rules,
+                    automationRules,
                     categories,
                     accounts,
                     banks,

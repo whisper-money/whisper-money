@@ -12,9 +12,10 @@ test('user can view their automation rules', function () {
     $response = $this->actingAs($user)->get(route('automation-rules.index'));
 
     $response->assertSuccessful();
-    $response->assertInertia(fn ($page) => $page
-        ->component('settings/automation-rules')
-        ->has('rules', 1)
+    $response->assertInertia(
+        fn ($page) => $page
+            ->component('settings/automation-rules')
+            ->has('automationRules', 1)
     );
 });
 
@@ -196,11 +197,12 @@ test('rules are ordered by priority', function () {
     $response = $this->actingAs($user)->get(route('automation-rules.index'));
 
     $response->assertSuccessful();
-    $response->assertInertia(fn ($page) => $page
-        ->has('rules', 3)
-        ->where('rules.0.priority', 10)
-        ->where('rules.1.priority', 20)
-        ->where('rules.2.priority', 30)
+    $response->assertInertia(
+        fn ($page) => $page
+            ->has('automationRules', 3)
+            ->where('automationRules.0.priority', 10)
+            ->where('automationRules.1.priority', 20)
+            ->where('automationRules.2.priority', 30)
     );
 });
 

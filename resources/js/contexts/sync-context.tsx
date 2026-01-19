@@ -1,18 +1,8 @@
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { checkDatabaseVersion } from '@/lib/db-migration-helper';
-import { db, type PendingChange } from '@/lib/dexie-db';
-import { handleUserChange } from '@/lib/user-session-storage';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
-import { accountSyncService } from '@/services/account-sync';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
-import { bankSyncService } from '@/services/bank-sync';
-import { categorySyncService } from '@/services/category-sync';
-import { labelSyncService } from '@/services/label-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { User } from '@/types/index.d';
 import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import {
     createContext,
     useCallback,
@@ -32,9 +22,6 @@ interface SyncContextType {
     isAuthenticated: boolean;
     sync: () => Promise<void>;
     error: string | null;
-    pendingOperationsCount: number;
-    pendingOperations: PendingChange[];
-    refreshPendingOperations: () => Promise<void>;
 }
 
 const SyncContext = createContext<SyncContextType | undefined>(undefined);
@@ -64,9 +51,6 @@ function formatErrorMessage(error: string): string {
     return 'Sync failed. Please try again.';
 }
 
-const SYNC_INTERVAL = 5 * 60 * 1000;
-const AUTO_SYNC_DEBOUNCE = 500; // Auto-sync 500ms after pending changes detected
-
 interface SyncProviderProps {
     children: ReactNode;
     initialIsAuthenticated: boolean;
@@ -88,16 +72,7 @@ export function SyncProvider({
     const [error, setError] = useState<string | null>(null);
     const [wasOffline, setWasOffline] = useState(!isOnline);
     const syncInProgressRef = useRef(false);
-    const userChangeCheckedRef = useRef(false);
-    const autoSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    const pendingOperations =
-        useLiveQuery(() => db.pending_changes.toArray(), []) || [];
-    const pendingOperationsCount = pendingOperations.length;
-
-    const refreshPendingOperations = useCallback(async () => {
-        // No-op: useLiveQuery handles reactivity automatically
-    }, []);
+    const lastUserIdRef = useRef<string | null>(null);
 
     useEffect(() => {
         const unsubscribe = router.on('navigate', (event) => {
@@ -146,37 +121,11 @@ export function SyncProvider({
         setError(null);
 
         try {
-            const [
-                categoriesResult,
-                accountsResult,
-                accountBalancesResult,
-                banksResult,
-                automationRulesResult,
-                labelsResult,
-                transactionsResult,
-            ] = await Promise.all([
-                categorySyncService.sync(),
-                accountSyncService.sync(),
-                accountBalanceSyncService.sync(),
-                bankSyncService.sync(),
-                automationRuleSyncService.sync(),
-                labelSyncService.sync(),
-                transactionSyncService.sync(),
-            ]);
+            const result = await transactionSyncService.sync();
 
-            const allErrors = [
-                ...categoriesResult.errors,
-                ...accountsResult.errors,
-                ...accountBalancesResult.errors,
-                ...banksResult.errors,
-                ...automationRulesResult.errors,
-                ...labelsResult.errors,
-                ...transactionsResult.errors,
-            ];
-
-            if (allErrors.length > 0) {
+            if (result.errors.length > 0) {
                 const uniqueFormattedErrors = [
-                    ...new Set(allErrors.map(formatErrorMessage)),
+                    ...new Set(result.errors.map(formatErrorMessage)),
                 ];
                 setError(uniqueFormattedErrors.join(' '));
                 setSyncStatus('error');
@@ -211,76 +160,16 @@ export function SyncProvider({
     }, [isAuthenticated, isOnline, wasOffline, sync]);
 
     useEffect(() => {
-        if (!isOnline || !isAuthenticated) {
-            return;
-        }
-
-        const interval = setInterval(() => {
-            sync();
-        }, SYNC_INTERVAL);
-
-        return () => clearInterval(interval);
-    }, [isAuthenticated, isOnline, sync]);
-
-    useEffect(() => {
         if (!isAuthenticated || !currentUser) {
             return;
         }
 
-        const checkUserAndSync = async () => {
-            if (userChangeCheckedRef.current) {
-                return;
-            }
-
-            userChangeCheckedRef.current = true;
-
-            const wasCleared = await handleUserChange(currentUser.id);
-
-            if (wasCleared) {
-                window.location.reload();
-                return;
-            }
-
-            const { needsRefresh, missingStores } =
-                await checkDatabaseVersion();
-
-            if (needsRefresh) {
-                console.warn(
-                    'Database needs update. Missing stores:',
-                    missingStores,
-                    '\nPlease refresh the page with Ctrl+Shift+R (or Cmd+Shift+R on Mac)',
-                );
-            }
-
-            sync();
-        };
-
-        checkUserAndSync();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // If user changed, clear transactions
+        if (lastUserIdRef.current && lastUserIdRef.current !== currentUser.id) {
+            transactionSyncService.clearAll();
+        }
+        lastUserIdRef.current = currentUser.id;
     }, [isAuthenticated, currentUser]);
-
-    // Auto-sync when pending changes are detected
-    useEffect(() => {
-        if (!isAuthenticated || !isOnline || pendingOperationsCount === 0) {
-            return;
-        }
-
-        // Clear any existing timeout
-        if (autoSyncTimeoutRef.current) {
-            clearTimeout(autoSyncTimeoutRef.current);
-        }
-
-        // Debounce sync to avoid too many calls
-        autoSyncTimeoutRef.current = setTimeout(() => {
-            sync();
-        }, AUTO_SYNC_DEBOUNCE);
-
-        return () => {
-            if (autoSyncTimeoutRef.current) {
-                clearTimeout(autoSyncTimeoutRef.current);
-            }
-        };
-    }, [isAuthenticated, isOnline, pendingOperationsCount, sync]);
 
     return (
         <SyncContext.Provider
@@ -291,9 +180,6 @@ export function SyncProvider({
                 isAuthenticated,
                 sync,
                 error,
-                pendingOperationsCount,
-                pendingOperations,
-                refreshPendingOperations,
             }}
         >
             {children}

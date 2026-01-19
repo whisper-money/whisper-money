@@ -17,7 +17,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { labelSyncService } from '@/services/label-sync';
 import {
     getLabelColorClasses,
     LABEL_COLORS,
@@ -49,8 +48,7 @@ export function EditLabelDialog({
                 </DialogHeader>
                 <Form
                     {...update.form.patch(label.id)}
-                    onSuccess={async () => {
-                        await labelSyncService.sync();
+                    onSuccess={() => {
                         onOpenChange(false);
                         onSuccess?.();
                     }}

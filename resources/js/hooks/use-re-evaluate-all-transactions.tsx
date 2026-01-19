@@ -2,9 +2,9 @@ import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { Account, Bank } from '@/types/account';
+import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
 import type { DecryptedTransaction } from '@/types/transaction';
 import { useCallback } from 'react';
@@ -26,6 +26,7 @@ export function useReEvaluateAllTransactions() {
             categories: Category[],
             accounts: Account[],
             banks: Bank[],
+            automationRules: AutomationRule[],
             options?: ReEvaluateAllOptions,
         ) => {
             if (!transactions.length) {
@@ -40,9 +41,8 @@ export function useReEvaluateAllTransactions() {
             }
 
             const key = await importKey(keyString);
-            const rules = await automationRuleSyncService.getAll();
 
-            if (!rules.length) {
+            if (!automationRules.length) {
                 toast.error('No automation rules found');
                 return;
             }
@@ -67,7 +67,7 @@ export function useReEvaluateAllTransactions() {
 
                     const result = await evaluateRules(
                         transaction,
-                        rules,
+                        automationRules,
                         categories,
                         accounts,
                         banks,

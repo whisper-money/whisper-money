@@ -1,8 +1,8 @@
 import {
     destroy,
     index,
+    store,
 } from '@/actions/App/Http/Controllers/AccountBalanceController';
-import { store } from '@/actions/App/Http/Controllers/Sync/AccountBalanceSyncController';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -33,7 +33,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
 import type { Account, AccountBalance } from '@/types/account';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -135,7 +134,7 @@ export function BalancesModal({
 
         setIsEditSubmitting(true);
         try {
-            const response = await fetch(store.url(), {
+            const response = await fetch(store.url(account.id), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -148,7 +147,6 @@ export function BalancesModal({
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
-                    account_id: account.id,
                     balance_date: editDate,
                     balance: editAmount,
                 }),
@@ -157,8 +155,6 @@ export function BalancesModal({
             if (!response.ok) {
                 throw new Error('Failed to update balance');
             }
-
-            await accountBalanceSyncService.sync();
 
             setEditingBalance(null);
             fetchBalances(currentPage);
@@ -197,8 +193,6 @@ export function BalancesModal({
             if (!response.ok) {
                 throw new Error('Failed to delete balance');
             }
-
-            await accountBalanceSyncService.sync();
 
             setDeletingBalance(null);
             fetchBalances(currentPage);

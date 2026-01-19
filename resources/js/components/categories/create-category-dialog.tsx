@@ -19,7 +19,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { categorySyncService } from '@/services/category-sync';
 import {
     CATEGORY_COLORS,
     CATEGORY_ICONS,
@@ -53,8 +52,7 @@ export function CreateCategoryDialog({
                 </DialogHeader>
                 <Form
                     {...store.form()}
-                    onSuccess={async () => {
-                        await categorySyncService.sync();
+                    onSuccess={() => {
                         setOpen(false);
                         onSuccess?.();
                     }}

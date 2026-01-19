@@ -8,7 +8,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { labelSyncService } from '@/services/label-sync';
 import { type Label } from '@/types/label';
 import { Form } from '@inertiajs/react';
 
@@ -37,8 +36,7 @@ export function DeleteLabelDialog({
                 </DialogHeader>
                 <Form
                     {...destroy.form.delete(label.id)}
-                    onSuccess={async () => {
-                        await labelSyncService.delete(label.id);
+                    onSuccess={() => {
                         onOpenChange(false);
                         onSuccess?.();
                     }}

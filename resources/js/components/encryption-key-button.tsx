@@ -33,7 +33,7 @@ export function EncryptionKeyButton() {
         if (!encryptedMessageData) {
             fetchEncryptedMessage();
         }
-    }, []);
+    }, [encryptedMessageData, fetchEncryptedMessage]);
 
     function handleClick() {
         if (isKeySet) {

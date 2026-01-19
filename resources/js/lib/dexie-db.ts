@@ -1,8 +1,4 @@
-import type { Transaction } from '@/services/transaction-sync';
-import type { Account, AccountBalance, Bank } from '@/types/account';
-import type { AutomationRule } from '@/types/automation-rule';
-import type { Category } from '@/types/category';
-import type { Label } from '@/types/label';
+import type { Transaction } from '@/types/transaction';
 import Dexie, { type EntityTable } from 'dexie';
 
 export interface SyncMetadata {
@@ -10,47 +6,67 @@ export interface SyncMetadata {
     value: string;
 }
 
-export interface PendingChange {
-    id?: number;
-    store: string;
-    operation: 'create' | 'update' | 'delete';
-    data: Record<string, unknown>;
-    timestamp: string;
-}
-
-const db = new Dexie('whisper_money') as Dexie & {
+type WhisperMoneyDB = Dexie & {
     transactions: EntityTable<Transaction, 'id'>;
-    accounts: EntityTable<Account, 'id'>;
-    categories: EntityTable<Category, 'id'>;
-    labels: EntityTable<Label, 'id'>;
-    banks: EntityTable<Bank, 'id'>;
-    automation_rules: EntityTable<AutomationRule, 'id'>;
-    account_balances: EntityTable<AccountBalance, 'id'>;
     sync_metadata: EntityTable<SyncMetadata, 'key'>;
-    pending_changes: EntityTable<PendingChange, 'id'>;
 };
 
-db.version(5).stores({
-    transactions: 'id, user_id, account_id, updated_at',
-    accounts: 'id, user_id, bank_id, updated_at',
-    categories: 'id, user_id, updated_at',
-    banks: 'id, user_id, updated_at',
-    automation_rules: 'id, user_id, priority, updated_at',
-    account_balances: 'id, account_id, balance_date, updated_at',
-    sync_metadata: 'key',
-    pending_changes: '++id, store, timestamp',
-});
+let dbInstance: WhisperMoneyDB | null = null;
 
-db.version(6).stores({
-    transactions: 'id, user_id, account_id, updated_at',
-    accounts: 'id, user_id, bank_id, updated_at',
-    categories: 'id, user_id, updated_at',
-    labels: 'id, user_id, updated_at',
-    banks: 'id, user_id, updated_at',
-    automation_rules: 'id, user_id, priority, updated_at',
-    account_balances: 'id, account_id, balance_date, updated_at',
-    sync_metadata: 'key',
-    pending_changes: '++id, store, timestamp',
-});
+function initializeDatabase(): WhisperMoneyDB {
+    const database = new Dexie('whisper_money') as WhisperMoneyDB;
 
-export { db };
+    database.version(5).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        accounts: 'id, user_id, bank_id, updated_at',
+        categories: 'id, user_id, updated_at',
+        banks: 'id, user_id, updated_at',
+        automation_rules: 'id, user_id, priority, updated_at',
+        account_balances: 'id, account_id, balance_date, updated_at',
+        sync_metadata: 'key',
+        pending_changes: '++id, store, timestamp',
+    });
+
+    database.version(6).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        accounts: 'id, user_id, bank_id, updated_at',
+        categories: 'id, user_id, updated_at',
+        labels: 'id, user_id, updated_at',
+        banks: 'id, user_id, updated_at',
+        automation_rules: 'id, user_id, priority, updated_at',
+        account_balances: 'id, account_id, balance_date, updated_at',
+        sync_metadata: 'key',
+        pending_changes: '++id, store, timestamp',
+    });
+
+    // Version 7: Remove all tables except transactions and sync_metadata
+    database.version(7).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        sync_metadata: 'key',
+        // Delete removed tables
+        accounts: null,
+        categories: null,
+        labels: null,
+        banks: null,
+        automation_rules: null,
+        account_balances: null,
+        pending_changes: null,
+    });
+
+    // Version 8: Ensure clean state (no schema changes, just trigger upgrade)
+    database.version(8).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        sync_metadata: 'key',
+    });
+
+    return database;
+}
+
+export const db = new Proxy({} as WhisperMoneyDB, {
+    get(_target, prop) {
+        if (!dbInstance) {
+            dbInstance = initializeDatabase();
+        }
+        return dbInstance[prop as keyof WhisperMoneyDB];
+    },
+});

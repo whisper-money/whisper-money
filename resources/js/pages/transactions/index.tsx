@@ -49,6 +49,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useSyncContext } from '@/contexts/sync-context';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
@@ -56,10 +57,10 @@ import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent, cn } from '@/lib/utils';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
@@ -79,6 +80,7 @@ interface Props {
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
+    automationRules: AutomationRule[];
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
@@ -357,8 +359,15 @@ export default function Transactions({
     accounts,
     banks,
     labels: initialLabels,
+    automationRules,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
+    const { sync } = useSyncContext();
+
+    // Sync transactions when page loads
+    useEffect(() => {
+        sync();
+    }, [sync]);
 
     const transactionIds = useLiveQuery(
         async () => {
@@ -387,7 +396,7 @@ export default function Transactions({
     const [filters, setFilters] = useState<Filters>(() =>
         parseFiltersFromURL(),
     );
-    const labels = useLiveQuery(() => db.labels.toArray(), [], initialLabels);
+    const labels = initialLabels;
     const [editTransaction, setEditTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -816,7 +825,7 @@ export default function Transactions({
                 consoleDebug('✓ Encryption key found');
 
                 const key = await importKey(keyString);
-                const rules = await automationRuleSyncService.getAll();
+                const rules = automationRules;
                 consoleDebug(`Found ${rules.length} automation rules`);
 
                 if (rules.length === 0) {
@@ -917,7 +926,14 @@ export default function Transactions({
                 consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [isKeySet, categories, accounts, banks, updateTransaction],
+        [
+            isKeySet,
+            categories,
+            accounts,
+            banks,
+            updateTransaction,
+            automationRules,
+        ],
     );
 
     async function handleBulkReEvaluateRules() {
@@ -944,7 +960,7 @@ export default function Transactions({
             consoleDebug('✓ Encryption key found');
 
             const key = await importKey(keyString);
-            const rules = await automationRuleSyncService.getAll();
+            const rules = automationRules;
             consoleDebug(`Found ${rules.length} automation rules`);
 
             if (rules.length === 0) {
@@ -1211,6 +1227,9 @@ export default function Transactions({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
+
+            // Sync to update IndexedDB
+            sync();
         } catch (error) {
             console.error('Failed to delete transaction:', error);
         } finally {
@@ -1282,6 +1301,9 @@ export default function Transactions({
 
             setRowSelection({});
             setIsSelectingAll(false);
+
+            // Sync to update IndexedDB
+            sync();
         } catch (error) {
             console.error('Failed to update transactions:', error);
             toast.error('Failed to update transactions');
@@ -1329,6 +1351,9 @@ export default function Transactions({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
+
+            // Sync to update IndexedDB
+            sync();
         } catch (error) {
             console.error('Failed to delete transactions:', error);
         } finally {
@@ -1430,6 +1455,9 @@ export default function Transactions({
 
             setRowSelection({});
             setIsSelectingAll(false);
+
+            // Sync to update IndexedDB
+            sync();
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
             toast.error('Failed to update transactions with labels');

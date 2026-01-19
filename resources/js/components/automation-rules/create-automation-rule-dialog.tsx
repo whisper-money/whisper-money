@@ -19,26 +19,25 @@ import {
     isValidRuleStructure,
     type RuleStructure,
 } from '@/lib/rule-builder-utils';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
-import { categorySyncService } from '@/services/category-sync';
-import { labelSyncService } from '@/services/label-sync';
 import type { Category } from '@/types/category';
 import type { Label } from '@/types/label';
 import { router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface CreateAutomationRuleDialogProps {
+    categories: Category[];
+    labels: Label[];
     disabled?: boolean;
     onSuccess?: () => void;
 }
 
 export function CreateAutomationRuleDialog({
+    categories,
+    labels,
     disabled = false,
     onSuccess,
 }: CreateAutomationRuleDialogProps) {
     const [open, setOpen] = useState(false);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [labels, setLabels] = useState<Label[]>([]);
     const [title, setTitle] = useState('');
     const [priority, setPriority] = useState('10');
     const [ruleStructure, setRuleStructure] = useState<RuleStructure>({
@@ -49,18 +48,6 @@ export function CreateAutomationRuleDialog({
     const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-
-    useEffect(() => {
-        const loadData = async () => {
-            const [categoriesData, labelsData] = await Promise.all([
-                categorySyncService.getAll(),
-                labelSyncService.getAll(),
-            ]);
-            setCategories(categoriesData);
-            setLabels(labelsData);
-        };
-        loadData();
-    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -107,7 +94,7 @@ export function CreateAutomationRuleDialog({
                 {
                     preserveState: true,
                     preserveScroll: true,
-                    onSuccess: async () => {
+                    onSuccess: () => {
                         setOpen(false);
                         setTitle('');
                         setPriority('10');
@@ -118,7 +105,6 @@ export function CreateAutomationRuleDialog({
                         setCategoryId('');
                         setSelectedLabelIds([]);
                         setErrors({});
-                        await automationRuleSyncService.sync();
                         onSuccess?.();
                     },
                     onError: (errors) => {
@@ -223,12 +209,6 @@ export function CreateAutomationRuleDialog({
                                     labels={labels}
                                     placeholder="Select labels (optional)"
                                     allowCreate={true}
-                                    onLabelCreated={(newLabel) => {
-                                        setLabels((prev) => [
-                                            ...prev,
-                                            newLabel,
-                                        ]);
-                                    }}
                                 />
                             </div>
                         </div>
@@ -256,7 +236,11 @@ export function CreateAutomationRuleDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting} data-testid="submit-automation-rule">
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            data-testid="submit-automation-rule"
+                        >
                             {isSubmitting ? 'Creating...' : 'Create'}
                         </Button>
                     </div>

@@ -1,6 +1,5 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { EncryptionKeyButton } from '@/components/encryption-key-button';
-import { SyncStatusButton } from '@/components/sync-status-button';
 import { ImportTransactionsButton } from '@/components/transactions/import-transactions-button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -28,7 +27,6 @@ export function AppSidebarHeader({
                     orientation="vertical"
                     className="data-[orientation=vertical]:h-6"
                 />
-                <SyncStatusButton />
                 <EncryptionKeyButton />
                 <Separator
                     orientation="vertical"

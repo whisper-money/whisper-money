@@ -6,23 +6,51 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
+import { type Category } from '@/types/category';
 import { Upload } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
 
+interface ImportData {
+    accounts: Account[];
+    categories: Category[];
+    banks: Bank[];
+    automationRules: AutomationRule[];
+}
+
 export function ImportTransactionsButton() {
     const { isKeySet } = useEncryptionKey();
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [importData, setImportData] = useState<ImportData | null>(null);
+    const [loading, setLoading] = useState(false);
 
-    const handleOpenDrawer = () => {
+    const handleOpenDrawer = async () => {
         if (!isKeySet) {
             toast.error(
                 'Please unlock your encryption key to import transactions',
             );
             return;
         }
-        setDrawerOpen(true);
+
+        // Fetch data on-demand when drawer opens
+        setLoading(true);
+        try {
+            const response = await fetch('/api/import/data');
+            if (!response.ok) {
+                throw new Error('Failed to load import data');
+            }
+            const data = await response.json();
+            setImportData(data);
+            setDrawerOpen(true);
+        } catch (error) {
+            toast.error('Failed to load import data');
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -32,12 +60,15 @@ export function ImportTransactionsButton() {
                     <TooltipTrigger asChild>
                         <Button
                             variant="ghost"
-                            className={`h-9 ${!isKeySet ? 'cursor-not-allowed opacity-50' : ''}`}
+                            className={`h-9 ${!isKeySet || loading ? 'cursor-not-allowed opacity-50' : ''}`}
                             onClick={handleOpenDrawer}
+                            disabled={loading}
                             aria-label="Import transactions"
                         >
                             <Upload className="h-5 w-5" />
-                            <span className="">Import</span>
+                            <span className="">
+                                {loading ? 'Loading...' : 'Import'}
+                            </span>
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -48,10 +79,16 @@ export function ImportTransactionsButton() {
                 </Tooltip>
             </TooltipProvider>
 
-            <ImportTransactionsDrawer
-                open={drawerOpen}
-                onOpenChange={setDrawerOpen}
-            />
+            {importData && (
+                <ImportTransactionsDrawer
+                    open={drawerOpen}
+                    onOpenChange={setDrawerOpen}
+                    accounts={importData.accounts}
+                    categories={importData.categories}
+                    banks={importData.banks}
+                    automationRules={importData.automationRules}
+                />
+            )}
         </>
     );
 }

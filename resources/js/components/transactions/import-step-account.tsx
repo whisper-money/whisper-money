@@ -2,58 +2,33 @@ import { EncryptedText } from '@/components/encrypted-text';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { accountSyncService } from '@/services/account-sync';
 import { filterTransactionalAccounts, type Account } from '@/types/account';
 import type { UUID } from '@/types/uuid';
 import { Building2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 interface ImportStepAccountProps {
+    accounts?: Account[];
     selectedAccountId: UUID | null;
     onAccountSelect: (accountId: UUID) => void;
     onNext: () => void;
 }
 
 export function ImportStepAccount({
+    accounts: rawAccounts = [],
     selectedAccountId,
     onAccountSelect,
     onNext,
 }: ImportStepAccountProps) {
-    const [accounts, setAccounts] = useState<Account[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const loadAccounts = async () => {
-            try {
-                const data = await accountSyncService.getAll();
-                setAccounts(filterTransactionalAccounts(data));
-            } catch (error) {
-                console.error('Failed to load accounts:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadAccounts();
-    }, []);
+    const accounts = filterTransactionalAccounts(rawAccounts);
 
     // If there is only one account, auto-select it, and proceed to next step
     useEffect(() => {
-        if (!loading && accounts.length === 1) {
+        if (accounts.length === 1) {
             onAccountSelect(accounts[0].id);
             onNext();
         }
-    }, [loading, accounts, onAccountSelect, onNext]);
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-8">
-                <p className="text-sm text-muted-foreground">
-                    Loading accounts...
-                </p>
-            </div>
-        );
-    }
+    }, [accounts, onAccountSelect, onNext]);
 
     if (accounts.length === 0) {
         return (

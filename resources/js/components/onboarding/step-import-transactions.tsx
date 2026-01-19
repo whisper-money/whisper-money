@@ -2,6 +2,10 @@ import { StepHeader } from '@/components/onboarding/step-header';
 import { ImportTransactionsDrawer } from '@/components/transactions/import-transactions-drawer';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
+import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
+import { type Category } from '@/types/category';
+import { usePage } from '@inertiajs/react';
 import { ArrowRight, FileSpreadsheet, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -16,6 +20,12 @@ export function StepImportTransactions({
 }: StepImportTransactionsProps) {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [hasImported, setHasImported] = useState(false);
+    const { accounts, categories, banks, automationRules } = usePage<{
+        accounts: Account[];
+        categories: Category[];
+        banks: Bank[];
+        automationRules: AutomationRule[];
+    }>().props;
 
     const handleDrawerClose = (open: boolean) => {
         setIsDrawerOpen(open);
@@ -113,6 +123,10 @@ export function StepImportTransactions({
             <ImportTransactionsDrawer
                 open={isDrawerOpen}
                 onOpenChange={handleDrawerClose}
+                accounts={accounts}
+                categories={categories}
+                banks={banks}
+                automationRules={automationRules}
             />
         </div>
     );

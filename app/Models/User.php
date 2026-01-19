@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\DripEmailType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -82,6 +83,15 @@ class User extends Authenticatable
     public function categories(): HasMany
     {
         return $this->hasMany(Category::class);
+    }
+
+    public function banks(): HasMany
+    {
+        return $this->hasMany(Bank::class)
+            ->where(function (Builder $query) {
+                $query->whereNull('user_id')
+                    ->orWhere('banks.user_id', $this->id);
+            });
     }
 
     public function automationRules(): HasMany

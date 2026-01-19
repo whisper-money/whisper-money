@@ -9,7 +9,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import type { AutomationRule } from '@/types/automation-rule';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
@@ -29,14 +28,13 @@ export function DeleteAutomationRuleDialog({
 }: DeleteAutomationRuleDialogProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         setIsDeleting(true);
         router.delete(destroy(rule.id).url, {
             preserveState: true,
             preserveScroll: true,
-            onSuccess: async () => {
+            onSuccess: () => {
                 onOpenChange(false);
-                await automationRuleSyncService.sync();
                 onSuccess?.();
             },
             onFinish: () => {

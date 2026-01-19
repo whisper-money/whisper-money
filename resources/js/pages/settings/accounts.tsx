@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     Cell,
     ColumnDef,
@@ -13,7 +13,6 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
@@ -50,8 +49,6 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { db } from '@/lib/dexie-db';
-import { accountSyncService } from '@/services/account-sync';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, formatAccountType } from '@/types/account';
 
@@ -76,7 +73,11 @@ function AccountActions({
         <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Open menu">
+                    <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        aria-label="Open menu"
+                    >
                         <span className="sr-only">Open menu</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
@@ -175,16 +176,19 @@ function AccountRow({
     );
 }
 
-export default function Accounts() {
-    const accounts = useLiveQuery(() => db.accounts.toArray(), []) || [];
+interface AccountsPageProps {
+    accounts: Account[];
+}
+
+export default function Accounts({ accounts }: AccountsPageProps) {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
 
-    const handleAccountCreated = async () => {
-        await accountSyncService.sync();
+    const handleAccountCreated = () => {
+        router.reload({ only: ['accounts'] });
     };
 
     const columns: ColumnDef<Account>[] = [

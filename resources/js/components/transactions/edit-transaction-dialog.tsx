@@ -1,3 +1,7 @@
+import {
+    index as indexBalances,
+    store as storeBalance,
+} from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AmountInput } from '@/components/ui/amount-input';
@@ -22,12 +26,11 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useSyncContext } from '@/contexts/sync-context';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
 import {
     filterTransactionalAccounts,
@@ -48,6 +51,7 @@ interface EditTransactionDialogProps {
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
+    automationRules?: AutomationRule[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
@@ -60,6 +64,7 @@ export function EditTransactionDialog({
     accounts,
     banks,
     labels,
+    automationRules = [],
     open,
     onOpenChange,
     onSuccess,
@@ -69,6 +74,7 @@ export function EditTransactionDialog({
         'whisper_money_update_balance_on_transaction';
 
     const { isKeySet } = useEncryptionKey();
+    const { sync } = useSyncContext();
     const [transactionDate, setTransactionDate] = useState('');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState<number>(0);
@@ -80,9 +86,6 @@ export function EditTransactionDialog({
     const [decryptedAccountNames, setDecryptedAccountNames] = useState<
         Map<string, string>
     >(new Map());
-    const [automationRules, setAutomationRules] = useState<AutomationRule[]>(
-        [],
-    );
     const [updateAccountBalance, setUpdateAccountBalance] = useState(() => {
         if (typeof window !== 'undefined') {
             const stored = localStorage.getItem(STORAGE_KEY_UPDATE_BALANCE);
@@ -160,21 +163,6 @@ export function EditTransactionDialog({
 
         decryptAccountNames();
     }, [open, mode, accounts]);
-
-    useEffect(() => {
-        if (!open || mode !== 'create') return;
-
-        async function loadAutomationRules() {
-            try {
-                const rules = await automationRuleSyncService.getAll();
-                setAutomationRules(rules);
-            } catch (error) {
-                console.error('Failed to load automation rules:', error);
-            }
-        }
-
-        loadAutomationRules();
-    }, [open, mode]);
 
     async function checkAndApplyAutomationRules() {
         if (mode !== 'create' || automationRules.length === 0) {
@@ -256,26 +244,60 @@ export function EditTransactionDialog({
         transactionDateStr: string,
         transactionAmount: number,
     ) {
+        const xsrfToken = decodeURIComponent(
+            document.cookie
+                .split('; ')
+                .find((row) => row.startsWith('XSRF-TOKEN='))
+                ?.split('=')[1] || '',
+        );
+
         try {
-            const allBalances = await accountBalanceSyncService.getAll();
-            const accountBalances = allBalances
-                .filter((b) => b.account_id === accountIdToUpdate)
-                .sort(
-                    (a, b) =>
-                        new Date(b.balance_date).getTime() -
-                        new Date(a.balance_date).getTime(),
-                );
+            // Fetch balances from backend
+            const balancesResponse = await fetch(
+                indexBalances.url(accountIdToUpdate),
+                {
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                },
+            );
+
+            if (!balancesResponse.ok) {
+                throw new Error('Failed to fetch balances');
+            }
+
+            const balancesData = await balancesResponse.json();
+            const accountBalances = (balancesData.data || []).sort(
+                (a: { balance_date: string }, b: { balance_date: string }) =>
+                    new Date(b.balance_date).getTime() -
+                    new Date(a.balance_date).getTime(),
+            );
 
             const latestBalance =
                 accountBalances.length > 0 ? accountBalances[0].balance : 0;
 
             const newBalance = latestBalance + transactionAmount;
 
-            await accountBalanceSyncService.updateOrCreate(
-                accountIdToUpdate as unknown as number,
-                transactionDateStr,
-                newBalance,
+            // Store new balance via backend
+            const storeResponse = await fetch(
+                storeBalance.url(accountIdToUpdate),
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': xsrfToken,
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        balance_date: transactionDateStr,
+                        balance: newBalance,
+                    }),
+                },
             );
+
+            if (!storeResponse.ok) {
+                throw new Error('Failed to store balance');
+            }
         } catch (error) {
             console.error('Failed to update account balance:', error);
             toast.error('Transaction created, but failed to update balance');
@@ -408,6 +430,9 @@ export function EditTransactionDialog({
 
                 onSuccess(newTransaction);
                 onOpenChange(false);
+
+                // Sync to update IndexedDB
+                sync();
             } else {
                 if (!transaction) {
                     return;
@@ -493,6 +518,9 @@ export function EditTransactionDialog({
                 toast.success('Transaction updated successfully');
                 onSuccess(updatedTransaction);
                 onOpenChange(false);
+
+                // Sync to update IndexedDB
+                sync();
             }
         } catch (error) {
             console.error('Failed to save transaction:', error);
@@ -679,7 +707,10 @@ export function EditTransactionDialog({
                                     onValueChange={setAccountId}
                                     disabled={isSubmitting}
                                 >
-                                    <SelectTrigger id="account" data-testid="account-select">
+                                    <SelectTrigger
+                                        id="account"
+                                        data-testid="account-select"
+                                    >
                                         <SelectValue placeholder="Select account" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -748,7 +779,11 @@ export function EditTransactionDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isSubmitting} data-testid="submit-transaction">
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            data-testid="submit-transaction"
+                        >
                             {isSubmitting
                                 ? 'Saving...'
                                 : mode === 'create'

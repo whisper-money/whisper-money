@@ -33,6 +33,7 @@ it('shows existing accounts in list', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -125,6 +126,7 @@ it('can filter accounts by name', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -140,12 +142,13 @@ it('can edit an existing account via dropdown menu', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $page->wait(1);
     $this->setupEncryptionKey($page);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Old Account Name', 'Edit Bank', 'Checking', 'USD');
 
-    $page->navigate('/settings/accounts')->wait(1);
+    $page->navigate('/settings/accounts')->wait(3);
 
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
@@ -157,7 +160,7 @@ it('can edit an existing account via dropdown menu', function () {
         ->click('button[type="submit"]:has-text("Update")')
         ->wait(2);
 
-    $page->navigate('/settings/accounts')->wait(1);
+    $page->navigate('/settings/accounts')->wait(3);
 
     $page->assertSee('Updated Account Name')
         ->assertNoJavascriptErrors();
@@ -170,12 +173,13 @@ it('can delete an account via dropdown menu', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $page->wait(1);
     $this->setupEncryptionKey($page);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Account To Delete', 'Delete Bank', 'Checking', 'USD');
 
-    $page->navigate('/settings/accounts')->wait(1);
+    $page->navigate('/settings/accounts')->wait(3);
 
     $page->assertSee('Bank accounts')
         ->assertSee('Account To Delete')
@@ -189,7 +193,7 @@ it('can delete an account via dropdown menu', function () {
         ->click('button[type="submit"]:has-text("Delete")')
         ->wait(2);
 
-    $page->navigate('/settings/accounts')->wait(1);
+    $page->navigate('/settings/accounts')->wait(3);
 
     $page->assertDontSee('Account To Delete')
         ->assertNoJavascriptErrors();

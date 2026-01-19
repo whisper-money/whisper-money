@@ -1,3 +1,4 @@
+import { store as storeBalance } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import AlertError from '@/components/alert-error';
 import {
     Drawer,
@@ -22,13 +23,10 @@ import {
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { useTrackEvent } from '@/lib/track-event';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
-import { accountSyncService } from '@/services/account-sync';
-import { automationRuleSyncService } from '@/services/automation-rule-sync';
-import { bankSyncService } from '@/services/bank-sync';
-import { categorySyncService } from '@/services/category-sync';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type Account } from '@/types/account';
+import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
+import { type Category } from '@/types/category';
 import {
     DateFormat,
     ImportStep,
@@ -44,6 +42,10 @@ import { ImportStepPreview } from './import-step-preview';
 import { ImportStepUpload } from './import-step-upload';
 
 interface ImportTransactionsDrawerProps {
+    accounts?: Account[];
+    categories?: Category[];
+    banks?: Bank[];
+    automationRules?: AutomationRule[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -67,6 +69,10 @@ type ImportFunnelStep =
     | 'Finish';
 
 export function ImportTransactionsDrawer({
+    accounts = [],
+    categories = [],
+    banks = [],
+    automationRules = [],
     open,
     onOpenChange,
 }: ImportTransactionsDrawerProps) {
@@ -100,15 +106,14 @@ export function ImportTransactionsDrawer({
 
     useEffect(() => {
         if (state.selectedAccountId) {
-            accountSyncService
-                .getById(state.selectedAccountId)
-                .then((account) => {
-                    if (account) {
-                        setSelectedAccount(account);
-                    }
-                });
+            const account = accounts.find(
+                (a) => a.id === state.selectedAccountId,
+            );
+            if (account) {
+                setSelectedAccount(account);
+            }
         }
-    }, [state.selectedAccountId]);
+    }, [state.selectedAccountId, accounts]);
 
     const trackFunnelStep = useCallback(
         (step: ImportFunnelStep) => {
@@ -281,8 +286,8 @@ export function ImportTransactionsDrawer({
                 state.dateFormat,
             );
 
-            const account = await accountSyncService.getById(
-                state.selectedAccountId!,
+            const account = accounts.find(
+                (a) => a.id === state.selectedAccountId,
             );
 
             if (!account) {
@@ -352,11 +357,7 @@ export function ImportTransactionsDrawer({
         const errors: ImportError[] = [];
         const keyString = getStoredKey();
         const key = keyString ? await importKey(keyString) : null;
-        const rules = key ? await automationRuleSyncService.getAll() : [];
-
-        const freshAccounts = await accountSyncService.getAll();
-        const freshBanks = await bankSyncService.getAll();
-        const freshCategories = await categorySyncService.getAll();
+        const rules = key ? automationRules : [];
 
         const BATCH_SIZE = 20;
         let processedCount = 0;
@@ -387,9 +388,9 @@ export function ImportTransactionsDrawer({
                                 account_id: selectedAccount.id,
                             },
                             rules,
-                            freshCategories,
-                            freshAccounts,
-                            freshBanks,
+                            categories,
+                            accounts,
+                            banks,
                             key,
                         );
 
@@ -488,15 +489,29 @@ export function ImportTransactionsDrawer({
 
         if (balancesToImport.size > 0) {
             try {
-                const balanceRecords = Array.from(
-                    balancesToImport.entries(),
-                ).map(([date, balance]) => ({
-                    account_id: selectedAccount.id,
-                    balance_date: date,
-                    balance,
-                }));
+                const xsrfToken = decodeURIComponent(
+                    document.cookie
+                        .split('; ')
+                        .find((row) => row.startsWith('XSRF-TOKEN='))
+                        ?.split('=')[1] || '',
+                );
 
-                await accountBalanceSyncService.createMany(balanceRecords);
+                const balanceRecords = Array.from(balancesToImport.entries());
+
+                for (const [date, balance] of balanceRecords) {
+                    await fetch(storeBalance.url(selectedAccount.id), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-XSRF-TOKEN': xsrfToken,
+                            Accept: 'application/json',
+                        },
+                        body: JSON.stringify({
+                            balance_date: date,
+                            balance,
+                        }),
+                    });
+                }
             } catch (err) {
                 console.error('Failed to import balances:', err);
             }
@@ -571,10 +586,6 @@ export function ImportTransactionsDrawer({
                 syncError,
             );
         });
-
-        accountBalanceSyncService.sync().catch((syncError) => {
-            console.error('Failed to sync balances with backend:', syncError);
-        });
     };
 
     const handleSelectionChange = (index: number, selected: boolean) => {
@@ -645,6 +656,7 @@ export function ImportTransactionsDrawer({
             case ImportStep.SelectAccount:
                 return (
                     <ImportStepAccount
+                        accounts={accounts}
                         selectedAccountId={state.selectedAccountId}
                         onAccountSelect={handleAccountSelect}
                         onNext={() => {

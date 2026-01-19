@@ -2,51 +2,23 @@ import { EncryptedText } from '@/components/encrypted-text';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { accountSyncService } from '@/services/account-sync';
 import { type Account } from '@/types/account';
 import type { UUID } from '@/types/uuid';
 import { Building2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface ImportBalanceStepAccountProps {
+    accounts?: Account[];
     selectedAccountId: UUID | null;
     onAccountSelect: (accountId: UUID) => void;
     onNext: () => void;
 }
 
 export function ImportBalanceStepAccount({
+    accounts = [],
     selectedAccountId,
     onAccountSelect,
     onNext,
 }: ImportBalanceStepAccountProps) {
-    const [accounts, setAccounts] = useState<Account[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const loadAccounts = async () => {
-            try {
-                const data = await accountSyncService.getAll();
-                setAccounts(data);
-            } catch (error) {
-                console.error('Failed to load accounts:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadAccounts();
-    }, []);
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-8">
-                <p className="text-sm text-muted-foreground">
-                    Loading accounts...
-                </p>
-            </div>
-        );
-    }
-
     if (accounts.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-8 text-center">

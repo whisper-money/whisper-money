@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnDef,
@@ -11,7 +12,6 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
 import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -53,16 +53,24 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { db } from '@/lib/dexie-db';
 import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
-import { getCategoryColorClasses } from '@/types/category';
+import { type Category, getCategoryColorClasses } from '@/types/category';
+import { type Label } from '@/types/label';
 
 interface AutomationRulesDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
-function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
+function AutomationRuleActions({
+    rule,
+    categories,
+    labels,
+}: {
+    rule: AutomationRule;
+    categories: Category[];
+    labels: Label[];
+}) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -70,7 +78,11 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
         <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Actions">
+                    <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        aria-label="Actions"
+                    >
                         <span className="sr-only">Open menu</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
@@ -91,6 +103,8 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
 
             <EditAutomationRuleDialog
                 rule={rule}
+                categories={categories}
+                labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
             />
@@ -103,7 +117,15 @@ function AutomationRuleActions({ rule }: { rule: AutomationRule }) {
     );
 }
 
-function AutomationRuleRow({ row }: { row: Row<AutomationRule> }) {
+function AutomationRuleRow({
+    row,
+    categories,
+    labels,
+}: {
+    row: Row<AutomationRule>;
+    categories: Category[];
+    labels: Label[];
+}) {
     const rule = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -147,6 +169,8 @@ function AutomationRuleRow({ row }: { row: Row<AutomationRule> }) {
 
             <EditAutomationRuleDialog
                 rule={rule}
+                categories={categories}
+                labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
             />
@@ -164,8 +188,13 @@ export function AutomationRulesDialog({
     onOpenChange,
 }: AutomationRulesDialogProps) {
     const { isKeySet } = useEncryptionKey();
-    const rawRules =
-        useLiveQuery(() => db.automation_rules.toArray(), []) || [];
+    const { automationRules: rawRules } = usePage<{
+        automationRules: AutomationRule[];
+    }>().props;
+
+    // Get categories and labels from globally shared Inertia data
+    const categories = usePage().props.categories as Category[];
+    const labels = usePage().props.labels as Label[];
     const rules = useMemo(
         () =>
             rawRules.map((rule) => ({
@@ -278,7 +307,13 @@ export function AutomationRulesDialog({
         {
             id: 'actions',
             enableHiding: false,
-            cell: ({ row }) => <AutomationRuleActions rule={row.original} />,
+            cell: ({ row }) => (
+                <AutomationRuleActions
+                    rule={row.original}
+                    categories={categories}
+                    labels={labels}
+                />
+            ),
         },
     ];
 
@@ -325,7 +360,11 @@ export function AutomationRulesDialog({
                             }
                             className="max-w-sm"
                         />
-                        <CreateAutomationRuleDialog disabled={!isKeySet} />
+                        <CreateAutomationRuleDialog
+                            categories={categories}
+                            labels={labels}
+                            disabled={!isKeySet}
+                        />
                     </div>
 
                     <div className="max-h-[75vh] overflow-y-auto rounded-md border">
@@ -358,6 +397,8 @@ export function AutomationRulesDialog({
                                             <AutomationRuleRow
                                                 key={row.id}
                                                 row={row}
+                                                categories={categories}
+                                                labels={labels}
                                             />
                                         ))
                                 ) : (

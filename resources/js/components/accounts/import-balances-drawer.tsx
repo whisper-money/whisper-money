@@ -1,3 +1,4 @@
+import { store } from '@/actions/App/Http/Controllers/AccountBalanceController';
 import AlertError from '@/components/alert-error';
 import {
     Drawer,
@@ -17,8 +18,6 @@ import {
     parseDate,
     parseFile,
 } from '@/lib/file-parser';
-import { accountBalanceSyncService } from '@/services/account-balance-sync';
-import { accountSyncService } from '@/services/account-sync';
 import { type Account } from '@/types/account';
 import {
     BalanceImportStep,
@@ -39,6 +38,7 @@ import { ImportBalanceStepUpload } from './import-balances/import-balance-step-u
 interface ImportBalancesDrawerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    accounts?: Account[];
     accountId?: UUID;
     onSuccess?: () => void;
 }
@@ -55,6 +55,7 @@ interface ImportError {
 export function ImportBalancesDrawer({
     open,
     onOpenChange,
+    accounts = [],
     accountId,
     onSuccess,
 }: ImportBalancesDrawerProps) {
@@ -89,15 +90,14 @@ export function ImportBalancesDrawer({
 
     useEffect(() => {
         if (state.selectedAccountId) {
-            accountSyncService
-                .getById(state.selectedAccountId)
-                .then((account) => {
-                    if (account) {
-                        setSelectedAccount(account);
-                    }
-                });
+            const account = accounts.find(
+                (a) => a.id === state.selectedAccountId,
+            );
+            if (account) {
+                setSelectedAccount(account);
+            }
         }
-    }, [state.selectedAccountId]);
+    }, [state.selectedAccountId, accounts]);
 
     useEffect(() => {
         if (!open) {
@@ -381,6 +381,13 @@ export function ImportBalancesDrawer({
         const BATCH_SIZE = 50;
         let processedCount = 0;
 
+        const xsrfToken = decodeURIComponent(
+            document.cookie
+                .split('; ')
+                .find((row) => row.startsWith('XSRF-TOKEN='))
+                ?.split('=')[1] || '',
+        );
+
         for (let i = 0; i < state.balances.length; i += BATCH_SIZE) {
             const batch = state.balances.slice(i, i + BATCH_SIZE);
 
@@ -388,16 +395,33 @@ export function ImportBalancesDrawer({
                 batch.map(async (balance, batchIndex) => {
                     const rowNumber = i + batchIndex + 1;
 
-                    const createdBalance =
-                        await accountBalanceSyncService.updateOrCreate(
-                            selectedAccount.id,
-                            balance.balance_date,
-                            balance.balance,
-                        );
+                    const response = await fetch(
+                        store.url(selectedAccount.id),
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-XSRF-TOKEN': xsrfToken,
+                                Accept: 'application/json',
+                            },
+                            body: JSON.stringify({
+                                balance_date: balance.balance_date,
+                                balance: balance.balance,
+                            }),
+                        },
+                    );
 
+                    if (!response.ok) {
+                        const data = await response.json();
+                        throw new Error(
+                            data.message || 'Failed to create balance',
+                        );
+                    }
+
+                    const data = await response.json();
                     return {
                         success: true,
-                        balance: createdBalance,
+                        balance: data.data,
                         rowNumber,
                     };
                 }),
@@ -462,10 +486,6 @@ export function ImportBalancesDrawer({
         } else {
             toast.error('All balances failed to import');
         }
-
-        accountBalanceSyncService.sync().catch((syncError) => {
-            console.error('Failed to sync balances with backend:', syncError);
-        });
     };
 
     const moveToStep = (step: BalanceImportStep) => {

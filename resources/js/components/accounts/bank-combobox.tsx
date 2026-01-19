@@ -1,3 +1,4 @@
+import { index as indexBanks } from '@/actions/App/Http/Controllers/Settings/BankController';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -14,7 +15,6 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { bankSyncService } from '@/services/bank-sync';
 import { type Bank } from '@/types/account';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -58,7 +58,19 @@ export function BankCombobox({
 
             setIsLoading(true);
             try {
-                const results = await bankSyncService.search(query);
+                const response = await fetch(
+                    indexBanks.url({ query: { search: query } }),
+                    {
+                        headers: {
+                            Accept: 'application/json',
+                        },
+                    },
+                );
+                if (!response.ok) {
+                    throw new Error('Failed to search banks');
+                }
+                const data = await response.json();
+                const results = data.data || data;
                 bankCache.set(query, results);
                 setBanks(results);
             } catch (error) {
