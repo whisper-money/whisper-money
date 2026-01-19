@@ -1,8 +1,10 @@
 import { useOnlineStatus } from '@/hooks/use-online-status';
+import { db } from '@/lib/dexie-db';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { User } from '@/types/index.d';
 import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
     createContext,
     useCallback,
@@ -77,6 +79,7 @@ export function SyncProvider({
     const syncInProgressRef = useRef(false);
     const userChangeCheckedRef = useRef(false);
     const autoSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastUserIdRef = useRef<string | null>(null);
 
     const pendingOperations =
         useLiveQuery(() => db.pending_changes.toArray(), []) || [];
