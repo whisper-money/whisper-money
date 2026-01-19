@@ -63,6 +63,87 @@ const parseInputValue = (input: string): number => {
     return isNegative ? -cents : cents;
 };
 
+const evaluateMathExpression = (input: string): number | null => {
+    // Check for leading minus (negative result)
+    const trimmed = input.trim();
+    const isNegativeResult = trimmed.startsWith('-');
+    const withoutLeadingMinus = isNegativeResult ? trimmed.substring(1) : trimmed;
+
+    // Check if input contains math operators (excluding leading minus)
+    if (!/[+\-*/]/.test(withoutLeadingMinus)) {
+        return null; // No math operation found
+    }
+
+    try {
+        // Remove spaces
+        const cleaned = withoutLeadingMinus.replace(/\s/g, '');
+
+        // Helper to convert parsed cents to dollars for calculation
+        const parseToDollars = (str: string): number => {
+            return parseInputValue(str) / 100;
+        };
+
+        // Split into tokens (numbers and operators)
+        const tokens: (number | string)[] = [];
+        let currentNumber = '';
+
+        for (let i = 0; i < cleaned.length; i++) {
+            const char = cleaned[i];
+            if (['+', '-', '*', '/'].includes(char) && currentNumber) {
+                tokens.push(parseToDollars(currentNumber));
+                tokens.push(char);
+                currentNumber = '';
+            } else {
+                currentNumber += char;
+            }
+        }
+        if (currentNumber) {
+            tokens.push(parseToDollars(currentNumber));
+        }
+
+        if (tokens.length < 3) {
+            return null; // Need at least: number operator number
+        }
+
+        // Handle multiplication and division first (operator precedence)
+        let i = 1;
+        while (i < tokens.length) {
+            if (tokens[i] === '*' || tokens[i] === '/') {
+                const left = tokens[i - 1] as number;
+                const op = tokens[i] as string;
+                const right = tokens[i + 1] as number;
+
+                const result = op === '*' ? left * right : left / right;
+                tokens.splice(i - 1, 3, result);
+            } else {
+                i += 2;
+            }
+        }
+
+        // Handle addition and subtraction
+        let result = tokens[0] as number;
+        for (let i = 1; i < tokens.length; i += 2) {
+            const op = tokens[i] as string;
+            const right = tokens[i + 1] as number;
+
+            if (op === '+') {
+                result += right;
+            } else if (op === '-') {
+                result -= right;
+            }
+        }
+
+        // Apply negative sign if the input started with minus
+        if (isNegativeResult) {
+            result = -result;
+        }
+
+        return Math.round(result * 100);
+    } catch {
+        return null;
+    }
+};
+
 export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
     (
         {
@@ -102,7 +183,11 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
 
         const handleBlur = () => {
             setIsFocused(false);
-            const valueInCents = parseInputValue(displayValue);
+
+            // Try to evaluate as math expression first
+            const mathResult = evaluateMathExpression(displayValue);
+            const valueInCents = mathResult !== null ? mathResult : parseInputValue(displayValue);
+
             onChange(valueInCents);
         };
 
@@ -112,7 +197,10 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
 
         const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
-                const valueInCents = parseInputValue(displayValue);
+                // Try to evaluate as math expression first
+                const mathResult = evaluateMathExpression(displayValue);
+                const valueInCents = mathResult !== null ? mathResult : parseInputValue(displayValue);
+
                 onChange(valueInCents);
             }
         };
