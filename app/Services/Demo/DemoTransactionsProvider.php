@@ -187,7 +187,7 @@ class DemoTransactionsProvider
             }
         }
 
-        usort($transactions, fn($a, $b) => strcmp($b['transaction_date'], $a['transaction_date']));
+        usort($transactions, fn ($a, $b) => strcmp($b['transaction_date'], $a['transaction_date']));
 
         return $transactions;
     }
@@ -244,6 +244,6 @@ class DemoTransactionsProvider
                 break;
         }
 
-        return array_filter($dates, fn($date) => $date->lte($endDate) && $date->gte($startDate));
+        return array_filter($dates, fn ($date) => $date->lte($endDate) && $date->gte($startDate));
     }
 }
