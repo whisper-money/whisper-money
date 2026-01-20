@@ -13,11 +13,7 @@ import {
     TrendingUp,
 } from 'lucide-react';
 
-<<<<<<< HEAD
 export function getMainNavItems(features: Features): NavItem[] {
-=======
-export const getMainNavItems = (features: { budgets: boolean }): NavItem[] => {
->>>>>>> 80e9936 (Add a feature flag for budgets using pennant)
     const items: NavItem[] = [
         {
             type: 'nav-item',
@@ -25,7 +21,6 @@ export const getMainNavItems = (features: { budgets: boolean }): NavItem[] => {
             href: dashboard(),
             icon: LayoutGrid,
         },
-<<<<<<< HEAD
     ];
 
     if (features.cashflow) {
@@ -38,52 +33,31 @@ export const getMainNavItems = (features: { budgets: boolean }): NavItem[] => {
     }
 
     items.push(
-=======
->>>>>>> 80e9936 (Add a feature flag for budgets using pennant)
         {
             type: 'nav-item',
             title: 'Accounts',
             href: accountsIndex(),
             icon: CreditCard,
         },
-<<<<<<< HEAD
         {
             type: 'nav-item',
             title: 'Transactions',
             href: transactionsIndex(),
             icon: Receipt,
         },
-        {
-=======
-    ];
+    );
 
     if (features.budgets) {
         items.push({
->>>>>>> 80e9936 (Add a feature flag for budgets using pennant)
             type: 'nav-item',
             title: 'Budgets',
             href: budgetsIndex(),
             icon: PiggyBank,
-<<<<<<< HEAD
-        },
-    );
-
-    return items;
-}
-=======
         });
     }
 
-    items.push({
-        type: 'nav-item',
-        title: 'Transactions',
-        href: transactionsIndex(),
-        icon: Receipt,
-    });
-
     return items;
-};
->>>>>>> 80e9936 (Add a feature flag for budgets using pennant)
+}
 
 export const footerNavItems: NavItem[] = [
     {

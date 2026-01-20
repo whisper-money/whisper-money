@@ -26,8 +26,6 @@ let dbInstance: WhisperMoneyDB | null = null;
 function initializeDatabase(): WhisperMoneyDB {
     const database = new Dexie('whisper_money') as WhisperMoneyDB;
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     database.version(5).stores({
         transactions: 'id, user_id, account_id, updated_at',
         accounts: 'id, user_id, bank_id, updated_at',
@@ -38,24 +36,6 @@ function initializeDatabase(): WhisperMoneyDB {
         sync_metadata: 'key',
         pending_changes: '++id, store, timestamp',
     });
-=======
-db.version(7).stores({
-    transactions: 'id, user_id, account_id, updated_at',
-    accounts: 'id, user_id, bank_id, updated_at',
-    categories: 'id, user_id, updated_at',
-    labels: 'id, user_id, updated_at',
-    banks: 'id, user_id, updated_at',
-    automation_rules: 'id, user_id, priority, updated_at',
-    account_balances: 'id, account_id, balance_date, updated_at',
-    budgets: 'id, user_id, updated_at',
-    budget_categories: 'id, budget_id, updated_at',
-    budget_periods: 'id, budget_id, start_date, updated_at',
-    budget_period_allocations:
-        'id, budget_period_id, budget_category_id, updated_at',
-    sync_metadata: 'key',
-    pending_changes: '++id, store, timestamp',
-});
->>>>>>> 80e9936 (Add a feature flag for budgets using pennant)
 
     database.version(6).stores({
         transactions: 'id, user_id, account_id, updated_at',
