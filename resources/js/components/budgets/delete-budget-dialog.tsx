@@ -61,7 +61,7 @@ export function DeleteBudgetDialog({
                     <AlertDialogAction
                         onClick={handleDelete}
                         disabled={isDeleting}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        variant="destructive"
                     >
                         {isDeleting ? 'Deleting...' : 'Delete'}
                     </AlertDialogAction>
