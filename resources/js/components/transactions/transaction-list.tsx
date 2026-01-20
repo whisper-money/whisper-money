@@ -531,7 +531,15 @@ export function TransactionList({
         }
 
         processTransactions();
-    }, [refreshKey, accounts, banks, categories, isKeySet, accountId, providedTransactions]);
+    }, [
+        refreshKey,
+        accounts,
+        banks,
+        categories,
+        isKeySet,
+        accountId,
+        providedTransactions,
+    ]);
 
     useEffect(() => {
         try {
