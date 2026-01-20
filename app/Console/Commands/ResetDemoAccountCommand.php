@@ -4,18 +4,23 @@ namespace App\Console\Commands;
 
 use App\Actions\CreateDefaultCategories;
 use App\Enums\AccountType;
+use App\Enums\BudgetPeriodType;
+use App\Enums\RolloverType;
 use App\Models\Account;
 use App\Models\Bank;
+use App\Models\Budget;
 use App\Models\Category;
 use App\Models\EncryptedMessage;
 use App\Models\Label;
 use App\Models\User;
+use App\Services\BudgetPeriodService;
 use App\Services\Demo\DemoAutomationRulesProvider;
 use App\Services\Demo\DemoEncryptionService;
 use App\Services\Demo\DemoLabelsProvider;
 use App\Services\Demo\DemoTransactionsProvider;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
+use Laravel\Pennant\Feature;
 
 class ResetDemoAccountCommand extends Command
 {
@@ -32,6 +37,7 @@ class ResetDemoAccountCommand extends Command
         private DemoLabelsProvider $labelsProvider,
         private DemoAutomationRulesProvider $rulesProvider,
         private DemoEncryptionService $encryptionService,
+        private BudgetPeriodService $budgetPeriodService,
     ) {
         parent::__construct();
     }
@@ -66,6 +72,10 @@ class ResetDemoAccountCommand extends Command
         $this->createAccountsWithTransactions($user, $labels);
 
         $this->createAutomationRules($user, $labels);
+
+        $this->createBudgets($user);
+
+        $this->enableBudgetsFeature($user);
 
         $this->createSubscription($user);
 
@@ -102,6 +112,7 @@ class ResetDemoAccountCommand extends Command
         $user->labels()->forceDelete();
         $user->automationRules()->forceDelete();
         $user->categories()->forceDelete();
+        $user->budgets()->forceDelete();
         $user->encryptedMessage()?->delete();
 
         $this->info('  Deleted existing data');
@@ -376,6 +387,49 @@ class ResetDemoAccountCommand extends Command
     private function accountTypeHasTransactions(AccountType $type): bool
     {
         return $type !== AccountType::Investment && $type !== AccountType::Retirement;
+    }
+
+    private function createBudgets(User $user): void
+    {
+        $categories = $user->categories()->get()->keyBy('name');
+
+        $groceriesCategory = $categories->get('Groceries');
+        $diningCategory = $categories->get('Cafes, restaurants, bars');
+
+        if (! $groceriesCategory || ! $diningCategory) {
+            $this->warn('  Skipping budget creation - required categories not found');
+
+            return;
+        }
+
+        $budget1 = Budget::create([
+            'user_id' => $user->id,
+            'name' => 'Monthly Groceries',
+            'period_type' => BudgetPeriodType::Monthly,
+            'period_start_day' => 1,
+            'category_id' => $groceriesCategory->id,
+            'rollover_type' => RolloverType::CarryOver,
+        ]);
+
+        $this->budgetPeriodService->generatePeriod($budget1, 50000);
+
+        $budget2 = Budget::create([
+            'user_id' => $user->id,
+            'name' => 'Weekly Dining Out',
+            'period_type' => BudgetPeriodType::Weekly,
+            'period_start_day' => 0,
+            'category_id' => $diningCategory->id,
+            'rollover_type' => RolloverType::Reset,
+        ]);
+
+        $this->budgetPeriodService->generatePeriod($budget2, 10000);
+
+        $this->info('  Created 2 budgets');
+    }
+
+    private function enableBudgetsFeature(User $user): void
+    {
+        Feature::for($user)->activate('budgets');
     }
 
     private function createSubscription(User $user): void
