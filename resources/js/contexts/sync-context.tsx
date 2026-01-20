@@ -1,4 +1,5 @@
 import { useOnlineStatus } from '@/hooks/use-online-status';
+import { identifyUser, resetPostHog } from '@/lib/posthog';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { User } from '@/types/index.d';
 import type { Page } from '@inertiajs/core';
@@ -161,6 +162,7 @@ export function SyncProvider({
 
     useEffect(() => {
         if (!isAuthenticated || !currentUser) {
+            resetPostHog();
             return;
         }
 
@@ -169,6 +171,11 @@ export function SyncProvider({
             transactionSyncService.clearAll();
         }
         lastUserIdRef.current = currentUser.id;
+
+        identifyUser(currentUser.id, {
+            email: currentUser.email,
+            name: currentUser.name,
+        });
     }, [isAuthenticated, currentUser]);
 
     return (

@@ -1,4 +1,7 @@
-import { index, store } from '@/actions/App/Http/Controllers/AccountBalanceController';
+import {
+    index,
+    store,
+} from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
