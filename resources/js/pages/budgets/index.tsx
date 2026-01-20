@@ -44,9 +44,11 @@ export default function BudgetsIndex({ budgets, currencyCode }: Props) {
                         <CreateBudgetDialog currencyCode={currencyCode} />
                     </div>
                 ) : (
-                    <div className="flex h-[300px] flex-col items-center justify-center gap-4 text-muted-foreground">
-                        <p>No budgets found.</p>
-                        <CreateBudgetDialog currencyCode={currencyCode} />
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        <CreateBudgetDialog
+                            className="min-h-[260px]"
+                            currencyCode={currencyCode}
+                        />
                     </div>
                 )}
             </div>

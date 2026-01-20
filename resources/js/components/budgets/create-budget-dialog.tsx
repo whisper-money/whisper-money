@@ -11,7 +11,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label as UILabel } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -19,7 +19,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { db } from '@/lib/dexie-db';
+import { cn } from '@/lib/utils';
+import { SharedData } from '@/types';
 import {
     BUDGET_PERIOD_TYPES,
     BudgetPeriodType,
@@ -28,17 +29,23 @@ import {
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
-import { router } from '@inertiajs/react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { Category } from '@/types/category';
+import { Label } from '@/types/label';
+import { router, usePage } from '@inertiajs/react';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 
 interface Props {
+    className?: string;
     currencyCode?: string;
 }
 
-export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
+export function CreateBudgetDialog({
+    className = '',
+    currencyCode = 'USD',
+}: Props) {
+    const page = usePage<SharedData>();
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
@@ -52,8 +59,8 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const allCategories = useLiveQuery(() => db.categories.toArray(), []) || [];
-    const allLabels = useLiveQuery(() => db.labels.toArray(), []) || [];
+    const allCategories = (page.props.categories as Category[]) || [];
+    const allLabels = (page.props.labels as Label[]) || [];
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -109,7 +116,12 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Card className="cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100">
+                <Card
+                    className={cn(
+                        'cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100',
+                        className,
+                    )}
+                >
                     <CardContent className="flex h-full items-center justify-center">
                         <div className="flex flex-row items-center justify-center gap-1">
                             <Plus className="mr-2 h-4 w-4" />
@@ -129,7 +141,7 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
 
                     <div className="space-y-6 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Budget Name</Label>
+                            <UILabel htmlFor="name">Budget Name</UILabel>
                             <Input
                                 id="name"
                                 value={name}
@@ -140,7 +152,7 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="period-type">Period Type</Label>
+                            <UILabel htmlFor="period-type">Period Type</UILabel>
                             <Select
                                 value={periodType}
                                 onValueChange={(value) =>
@@ -162,9 +174,9 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
 
                         {periodType === 'custom' && (
                             <div className="space-y-2">
-                                <Label htmlFor="period-duration">
+                                <UILabel htmlFor="period-duration">
                                     Period Duration (days)
-                                </Label>
+                                </UILabel>
                                 <Input
                                     id="period-duration"
                                     type="number"
@@ -184,11 +196,11 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="period-start-day">
+                            <UILabel htmlFor="period-start-day">
                                 {periodType === 'monthly'
                                     ? 'Start Day of Month'
                                     : 'Start Day'}
-                            </Label>
+                            </UILabel>
                             <Input
                                 id="period-start-day"
                                 type="number"
@@ -217,9 +229,9 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
                             )}
 
                             <div className="space-y-2">
-                                <Label htmlFor="category">
+                                <UILabel htmlFor="category">
                                     Category (Optional)
-                                </Label>
+                                </UILabel>
                                 <div className="flex gap-2">
                                     <Select
                                         value={selectedCategoryId || undefined}
@@ -258,7 +270,9 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="label">Label (Optional)</Label>
+                                <UILabel htmlFor="label">
+                                    Label (Optional)
+                                </UILabel>
                                 <div className="flex gap-2">
                                     <Select
                                         value={selectedLabelId || undefined}
@@ -303,9 +317,9 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="allocated-amount">
+                                <UILabel htmlFor="allocated-amount">
                                     Allocated Amount
-                                </Label>
+                                </UILabel>
                                 <AmountInput
                                     id="allocated-amount"
                                     value={allocatedAmount}
@@ -320,7 +334,9 @@ export function CreateBudgetDialog({ currencyCode = 'USD' }: Props) {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="rollover">Rollover Type</Label>
+                                <UILabel htmlFor="rollover">
+                                    Rollover Type
+                                </UILabel>
                                 <Select
                                     value={rolloverType}
                                     onValueChange={(value) =>
