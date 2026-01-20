@@ -17,6 +17,7 @@ import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
+import { initializePostHog } from './lib/posthog';
 import type { SharedData } from './types';
 
 Sentry.init({
@@ -26,6 +27,8 @@ Sentry.init({
     tracesSampleRate: 0,
     enabled: import.meta.env.PROD,
 });
+
+initializePostHog();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
