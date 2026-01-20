@@ -13,9 +13,9 @@ import {
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import { format, getYear, isWithinInterval, parse, parseISO } from 'date-fns';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import axios from 'axios';
 
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import HeadingSmall from '@/components/heading-small';
@@ -66,6 +66,7 @@ import { type Label } from '@/types/label';
 import {
     type DecryptedTransaction,
     type TransactionFilters as Filters,
+    type Transaction,
 } from '@/types/transaction';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -364,27 +365,11 @@ export default function Transactions({
     const { isKeySet } = useEncryptionKey();
     const { sync } = useSyncContext();
 
-    // Sync transactions when page loads
-    useEffect(() => {
-        sync();
-    }, [sync]);
-
-    const transactionIds = useLiveQuery(
-        async () => {
-            const txs = await db.transactions.toArray();
-            return txs
-                .map((t) => `${t.id}:${t.updated_at}`)
-                .sort()
-                .join(',');
-        },
-        [],
-        '',
-    );
-
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
     );
     const [isLoading, setIsLoading] = useState(true);
+    const [refreshKey, setRefreshKey] = useState(0);
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'transaction_date', desc: true },
     ]);
@@ -442,15 +427,15 @@ export default function Transactions({
     );
 
     useEffect(() => {
-        async function processTransactions() {
-            if (transactionIds === undefined) {
-                setIsLoading(true);
-                return;
-            }
-
+        async function fetchTransactions() {
             setIsLoading(true);
             try {
-                const rawTransactions = await db.transactions.toArray();
+                const response = await axios.get('/api/sync/transactions');
+                const serverData = response.data.data || response.data;
+
+                if (!Array.isArray(serverData)) {
+                    throw new Error('Invalid server response format');
+                }
 
                 const accountsMap = new Map(
                     accounts.map((account) => [account.id, account]),
@@ -474,8 +459,23 @@ export default function Transactions({
                     }
                 }
 
+                const transformedTransactions = serverData.map((serverRecord) => {
+                    const label_ids = serverRecord.labels?.map(
+                        (l: { id: string }) => l.id,
+                    );
+                    const { labels: _labels, ...rest } = serverRecord;
+                    return {
+                        ...rest,
+                        transaction_date: String(serverRecord.transaction_date).slice(
+                            0,
+                            10,
+                        ),
+                        label_ids: label_ids || [],
+                    } as Transaction;
+                });
+
                 const decrypted = await Promise.all(
-                    rawTransactions.map(async (transaction) => {
+                    transformedTransactions.map(async (transaction) => {
                         try {
                             let decryptedDescription = '';
                             let decryptedNotes: string | null = null;
@@ -517,7 +517,6 @@ export default function Transactions({
                                 ? banksMap.get(account.bank.id)
                                 : undefined;
 
-                            // Map label_ids to Label objects
                             const transactionLabels =
                                 transaction.label_ids
                                     ?.map((labelId) =>
@@ -567,8 +566,8 @@ export default function Transactions({
             }
         }
 
-        processTransactions();
-    }, [transactionIds, accounts, banks, categories, labels, isKeySet]);
+        fetchTransactions();
+    }, [refreshKey, accounts, banks, categories, labels, isKeySet]);
 
     useEffect(() => {
         try {
@@ -677,8 +676,93 @@ export default function Transactions({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isKeySet]);
 
+    const [searchMatchedIds, setSearchMatchedIds] = useState<Set<string>>(
+        new Set(),
+    );
+    const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+        async function searchInIndexedDB() {
+            if (!filters.searchText || !isKeySet) {
+                setSearchMatchedIds(new Set());
+                setIsSearching(false);
+                return;
+            }
+
+            setIsSearching(true);
+            try {
+                const keyString = getStoredKey();
+                if (!keyString) {
+                    setSearchMatchedIds(new Set());
+                    return;
+                }
+
+                const key = await importKey(keyString);
+                const searchLower = filters.searchText.toLowerCase();
+
+                const allIndexedTransactions = await db.transactions.toArray();
+                const matchedIds = new Set<string>();
+
+                for (const tx of allIndexedTransactions) {
+                    try {
+                        let decryptedDescription = '';
+                        let decryptedNotes: string | null = null;
+
+                        try {
+                            decryptedDescription = await decrypt(
+                                tx.description,
+                                key,
+                                tx.description_iv,
+                            );
+
+                            if (tx.notes && tx.notes_iv) {
+                                decryptedNotes = await decrypt(
+                                    tx.notes,
+                                    key,
+                                    tx.notes_iv,
+                                );
+                            }
+                        } catch {
+                            continue;
+                        }
+
+                        const matchesDescription = decryptedDescription
+                            .toLowerCase()
+                            .includes(searchLower);
+                        const matchesNotes =
+                            decryptedNotes?.toLowerCase().includes(searchLower) ||
+                            false;
+
+                        if (matchesDescription || matchesNotes) {
+                            matchedIds.add(tx.id);
+                        }
+                    } catch {
+                        continue;
+                    }
+                }
+
+                setSearchMatchedIds(matchedIds);
+            } catch (error) {
+                console.error('Failed to search in IndexedDB:', error);
+                setSearchMatchedIds(new Set());
+            } finally {
+                setIsSearching(false);
+            }
+        }
+
+        searchInIndexedDB();
+    }, [filters.searchText, isKeySet]);
+
     const filteredTransactions = useMemo(() => {
         return transactions.filter((transaction) => {
+            if (filters.searchText && isKeySet) {
+                if (!searchMatchedIds.has(transaction.id)) {
+                    return false;
+                }
+            } else if (filters.searchText && !isKeySet) {
+                return false;
+            }
+
             if (filters.dateFrom || filters.dateTo) {
                 const transactionDate = parseISO(transaction.transaction_date);
                 if (
@@ -737,24 +821,9 @@ export default function Transactions({
                 }
             }
 
-            if (filters.searchText && isKeySet) {
-                const searchLower = filters.searchText.toLowerCase();
-                const matchesDescription = transaction.decryptedDescription
-                    .toLowerCase()
-                    .includes(searchLower);
-                const matchesNotes =
-                    transaction.decryptedNotes
-                        ?.toLowerCase()
-                        .includes(searchLower) || false;
-
-                if (!matchesDescription && !matchesNotes) {
-                    return false;
-                }
-            }
-
             return true;
         });
-    }, [transactions, filters, isKeySet]);
+    }, [transactions, filters, isKeySet, searchMatchedIds]);
 
     const sortedTransactions = useMemo(() => {
         if (sorting.length === 0) {
@@ -935,6 +1004,12 @@ export default function Transactions({
             automationRules,
         ],
     );
+
+    useEffect(() => {
+        if (refreshKey > 0) {
+            sync();
+        }
+    }, [refreshKey, sync]);
 
     async function handleBulkReEvaluateRules() {
         const BATCH_SIZE = 25;
@@ -1228,8 +1303,7 @@ export default function Transactions({
             setIsBulkDeleteMode(false);
             setRowSelection({});
 
-            // Sync to update IndexedDB
-            sync();
+            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to delete transaction:', error);
         } finally {
@@ -1302,8 +1376,7 @@ export default function Transactions({
             setRowSelection({});
             setIsSelectingAll(false);
 
-            // Sync to update IndexedDB
-            sync();
+            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to update transactions:', error);
             toast.error('Failed to update transactions');
@@ -1352,8 +1425,7 @@ export default function Transactions({
             setIsBulkDeleteMode(false);
             setRowSelection({});
 
-            // Sync to update IndexedDB
-            sync();
+            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to delete transactions:', error);
         } finally {
@@ -1456,8 +1528,7 @@ export default function Transactions({
             setRowSelection({});
             setIsSelectingAll(false);
 
-            // Sync to update IndexedDB
-            sync();
+            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
             toast.error('Failed to update transactions with labels');
@@ -1547,7 +1618,7 @@ export default function Transactions({
                         }
                     />
 
-                    {isLoading ? (
+                    {isLoading || isSearching ? (
                         <div className="space-y-4">
                             <div className="overflow-hidden rounded-md border">
                                 <div className="grid grid-cols-4 gap-4 border-b p-4">
