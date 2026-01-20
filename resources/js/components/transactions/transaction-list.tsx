@@ -11,6 +11,7 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
+import axios from 'axios';
 import { format, getYear, isWithinInterval, parseISO } from 'date-fns';
 import {
     type ReactNode,
@@ -20,7 +21,6 @@ import {
     useState,
 } from 'react';
 import { toast } from 'sonner';
-import axios from 'axios';
 
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
@@ -356,7 +356,10 @@ export function TransactionList({
                         const label_ids = serverRecord.labels?.map(
                             (l: { id: string }) => l.id,
                         );
+
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
                         const { labels: _labels, ...rest } = serverRecord;
+
                         return {
                             ...rest,
                             transaction_date: String(
@@ -596,8 +599,9 @@ export function TransactionList({
                             .toLowerCase()
                             .includes(searchLower);
                         const matchesNotes =
-                            decryptedNotes?.toLowerCase().includes(searchLower) ||
-                            false;
+                            decryptedNotes
+                                ?.toLowerCase()
+                                .includes(searchLower) || false;
 
                         if (matchesDescription || matchesNotes) {
                             matchedIds.add(tx.id);

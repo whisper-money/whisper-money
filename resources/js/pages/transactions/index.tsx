@@ -12,10 +12,10 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
+import axios from 'axios';
 import { format, getYear, isWithinInterval, parse, parseISO } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import axios from 'axios';
 
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import HeadingSmall from '@/components/heading-small';
@@ -459,20 +459,24 @@ export default function Transactions({
                     }
                 }
 
-                const transformedTransactions = serverData.map((serverRecord) => {
-                    const label_ids = serverRecord.labels?.map(
-                        (l: { id: string }) => l.id,
-                    );
-                    const { labels: _labels, ...rest } = serverRecord;
-                    return {
-                        ...rest,
-                        transaction_date: String(serverRecord.transaction_date).slice(
-                            0,
-                            10,
-                        ),
-                        label_ids: label_ids || [],
-                    } as Transaction;
-                });
+                const transformedTransactions = serverData.map(
+                    (serverRecord) => {
+                        const label_ids = serverRecord.labels?.map(
+                            (l: { id: string }) => l.id,
+                        );
+
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { labels: _labels, ...rest } = serverRecord;
+
+                        return {
+                            ...rest,
+                            transaction_date: String(
+                                serverRecord.transaction_date,
+                            ).slice(0, 10),
+                            label_ids: label_ids || [],
+                        } as Transaction;
+                    },
+                );
 
                 const decrypted = await Promise.all(
                     transformedTransactions.map(async (transaction) => {
@@ -730,8 +734,9 @@ export default function Transactions({
                             .toLowerCase()
                             .includes(searchLower);
                         const matchesNotes =
-                            decryptedNotes?.toLowerCase().includes(searchLower) ||
-                            false;
+                            decryptedNotes
+                                ?.toLowerCase()
+                                .includes(searchLower) || false;
 
                         if (matchesDescription || matchesNotes) {
                             matchedIds.add(tx.id);
