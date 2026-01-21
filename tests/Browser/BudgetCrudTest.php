@@ -26,19 +26,27 @@ test('user can create a budget with category', function () {
         ->wait(1) // Wait for form to be ready
         ->fill('name', 'Monthly Groceries')
         ->wait(1)
-        ->select('period_type', 'monthly')
+        ->click('#period-type')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Monthly")')
         ->wait(1)
-        ->select('category_id', $category->id)
+        ->click('button:has-text("Select a category")')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("' . $category->name . '")')
         ->wait(1)
-        ->select('rollover_type', 'reset')
+        ->click('button:has-text("Carry Over")')
+        ->wait(0.5)
+        ->click('[role="option"]:has-text("Reset/Pool")')
         ->wait(1)
-        ->fill('allocated_amount', '50000')
-        ->wait(2)
-        ->click('button[type="submit"]')
+        ->fill('#allocated-amount', '500')
+        ->click('label:has-text("Rollover Type")') // Click elsewhere to blur the amount input
+        ->wait(2) // Wait for state to update
+        ->click('[role="dialog"] button[type="submit"]')
         ->wait(4) // Wait for form submission
-        ->assertPathIs('/budgets')
+        ->assertPathBeginsWith('/budgets/')
         ->wait(2) // Wait for page to update
         ->waitForText('Monthly Groceries', 15)
+        ->assertSee('Budget Spending')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('budgets', [
@@ -64,15 +72,17 @@ test('user can update budget name', function () {
 
     $page->assertSee('Old Name')
         ->wait(2)
-        ->waitForText('Edit', 10)
+        ->waitForText('Edit budget', 10)
         ->wait(1) // Extra wait before clicking
-        ->click('Edit')
+        ->click('Edit budget')
         ->wait(3) // Wait for dialog to open
         ->assertSee('Edit Budget')
         ->wait(1) // Wait for form to be ready
         ->fill('name', 'New Budget Name')
+        ->wait(1)
+        ->fill('#allocated-amount', '500')
         ->wait(2)
-        ->click('button[type="submit"]')
+        ->click('button:has-text("Save Changes")')
         ->wait(4) // Wait for form submission
         ->waitForText('New Budget Name', 15)
         ->assertDontSee('Old Name')
@@ -100,14 +110,16 @@ test('user can delete a budget', function () {
 
     $page->assertSee('Budget to Delete')
         ->wait(2)
-        ->waitForText('Delete', 10)
+        ->waitForText('Edit budget', 10)
         ->wait(1) // Extra wait before clicking
+        ->click('[aria-label="More options"]')
+        ->wait(1) // Wait for dropdown to open
         ->click('Delete')
         ->wait(3) // Wait for dialog to open
         ->assertSee('Delete Budget')
         ->assertSee('Are you sure')
         ->wait(2)
-        ->click('button[type="submit"]')
+        ->click('button:has-text("Delete")')
         ->wait(4) // Wait for deletion
         ->assertPathIs('/budgets')
         ->wait(2) // Wait for page to update
@@ -133,9 +145,7 @@ test('budget creation validates required fields', function () {
         ->wait(3) // Wait for dialog to open
         ->assertSee('Create Budget')
         ->wait(2) // Wait for form to be ready
-        ->click('button[type="submit"]')
-        ->wait(3) // Wait for validation
-        ->assertSee('The name field is required')
+        ->assertAttribute('button[type="submit"]:has-text("Create Budget")', 'disabled', '')
         ->assertNoJavascriptErrors();
 });
 
@@ -173,7 +183,7 @@ test('user can navigate back to budgets list from budget detail', function () {
         ->wait(2)
         ->waitForText('Budgets', 10)
         ->wait(1) // Extra wait before clicking
-        ->click('Budgets')
+        ->click('nav[aria-label="breadcrumb"] a:has-text("Budgets")')
         ->wait(4) // Wait for navigation
         ->assertPathIs('/budgets')
         ->assertNoJavascriptErrors();

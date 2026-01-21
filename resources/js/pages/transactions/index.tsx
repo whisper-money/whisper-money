@@ -1719,7 +1719,9 @@ export default function Transactions({
                 labels={labels}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
-                onSuccess={() => {}}
+                onSuccess={(transaction) => {
+                    setTransactions((prev) => [transaction, ...prev]);
+                }}
                 mode="create"
             />
 
