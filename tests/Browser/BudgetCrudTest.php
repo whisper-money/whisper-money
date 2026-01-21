@@ -32,7 +32,7 @@ test('user can create a budget with category', function () {
         ->wait(1)
         ->click('button:has-text("Select a category")')
         ->wait(0.5)
-        ->click('[role="option"]:has-text("' . $category->name . '")')
+        ->click('[role="option"]:has-text("'.$category->name.'")')
         ->wait(1)
         ->click('button:has-text("Carry Over")')
         ->wait(0.5)
