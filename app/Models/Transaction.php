@@ -3,17 +3,28 @@
 namespace App\Models;
 
 use App\Enums\TransactionSource;
+use App\Events\TransactionCreated;
+use App\Events\TransactionDeleted;
+use App\Events\TransactionUpdated;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
 {
     /** @use HasFactory<\Database\Factories\TransactionFactory> */
     use HasFactory, HasUuids, SoftDeletes;
+
+    /** @var array<string, class-string> */
+    protected $dispatchesEvents = [
+        'created' => TransactionCreated::class,
+        'updated' => TransactionUpdated::class,
+        'deleted' => TransactionDeleted::class,
+    ];
 
     protected $fillable = [
         'user_id',
@@ -58,5 +69,10 @@ class Transaction extends Model
         return $this->belongsToMany(Label::class)
             ->using(LabelTransaction::class)
             ->withTimestamps();
+    }
+
+    public function budgetTransactions(): HasMany
+    {
+        return $this->hasMany(BudgetTransaction::class);
     }
 }

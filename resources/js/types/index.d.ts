@@ -40,6 +40,7 @@ export interface NavDivider {
 
 export interface Features {
     cashflow: boolean;
+    budgets: boolean;
 }
 
 export interface SharedData {
@@ -63,6 +64,7 @@ export interface User {
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
+    currency_code?: string | null;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

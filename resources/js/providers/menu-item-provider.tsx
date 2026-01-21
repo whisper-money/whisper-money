@@ -1,4 +1,5 @@
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountController';
+import { index as budgetsIndex } from '@/actions/App/Http/Controllers/BudgetController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import DiscordIcon from '@/components/icons/DiscordIcon';
 import { cashflow, dashboard } from '@/routes';
@@ -7,6 +8,7 @@ import {
     CreditCard,
     Github,
     LayoutGrid,
+    PiggyBank,
     Receipt,
     TrendingUp,
 } from 'lucide-react';
@@ -44,6 +46,15 @@ export function getMainNavItems(features: Features): NavItem[] {
             icon: Receipt,
         },
     );
+
+    if (features.budgets) {
+        items.push({
+            type: 'nav-item',
+            title: 'Budgets',
+            href: budgetsIndex(),
+            icon: PiggyBank,
+        });
+    }
 
     return items;
 }

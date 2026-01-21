@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('currency_code', 3)->default('USD')->after('email');
+            if (! Schema::hasColumn('users', 'currency_code')) {
+                $table->string('currency_code', 3)->default('USD')->after('email');
+            }
         });
     }
 

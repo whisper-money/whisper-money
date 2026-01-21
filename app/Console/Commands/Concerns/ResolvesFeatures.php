@@ -14,24 +14,41 @@ trait ResolvesFeatures
             return $featureClass;
         }
 
+        if ($this->isStringBasedFeature($name)) {
+            return $name;
+        }
+
         return null;
     }
 
     private function getAvailableFeatures(): string
     {
-        $featuresPath = app_path('Features');
-
-        if (! File::isDirectory($featuresPath)) {
-            return 'None';
-        }
-
-        $files = File::files($featuresPath);
         $features = [];
 
-        foreach ($files as $file) {
-            $features[] = $file->getFilenameWithoutExtension();
+        $featuresPath = app_path('Features');
+
+        if (File::isDirectory($featuresPath)) {
+            $files = File::files($featuresPath);
+
+            foreach ($files as $file) {
+                $features[] = $file->getFilenameWithoutExtension();
+            }
         }
 
-        return implode(', ', $features) ?: 'None';
+        $stringFeatures = $this->getStringBasedFeatures();
+
+        $allFeatures = array_merge($features, $stringFeatures);
+
+        return implode(', ', array_unique($allFeatures)) ?: 'None';
+    }
+
+    private function isStringBasedFeature(string $name): bool
+    {
+        return in_array($name, $this->getStringBasedFeatures(), true);
+    }
+
+    private function getStringBasedFeatures(): array
+    {
+        return ['budgets'];
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureBudgetsFeature;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
             'block-demo' => \App\Http\Middleware\BlockDemoAccountActions::class,
+            'budgets' => EnsureBudgetsFeature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

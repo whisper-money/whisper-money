@@ -219,6 +219,7 @@ export interface TransactionListProps {
     labels?: Label[];
     automationRules?: AutomationRule[];
     accountId?: UUID;
+    transactions?: Transaction[]; // Optional: if provided, use these instead of fetching from Dexie
     pageSize?: number;
     hideAccountFilter?: boolean;
     showActionsMenu?: boolean;
@@ -234,6 +235,7 @@ export function TransactionList({
     labels: initialLabels = [],
     automationRules = [],
     accountId,
+    transactions: providedTransactions,
     pageSize = 25,
     hideAccountFilter = false,
     showActionsMenu = true,
@@ -312,7 +314,84 @@ export function TransactionList({
     );
 
     useEffect(() => {
-        async function fetchTransactions() {
+        async function processTransactions() {
+            // If transactions are provided directly, use them as-is (already decrypted from backend)
+            if (providedTransactions) {
+                setIsLoading(true);
+                try {
+                    const keyString = getStoredKey();
+                    let key: CryptoKey | null = null;
+
+                    if (keyString && isKeySet) {
+                        try {
+                            key = await importKey(keyString);
+                        } catch (error) {
+                            console.error(
+                                'Failed to import encryption key:',
+                                error,
+                            );
+                        }
+                    }
+
+                    const decrypted = await Promise.all(
+                        providedTransactions.map(async (transaction) => {
+                            try {
+                                let decryptedDescription = '';
+                                let decryptedNotes: string | null = null;
+
+                                if (key) {
+                                    try {
+                                        decryptedDescription = await decrypt(
+                                            transaction.description,
+                                            key,
+                                            transaction.description_iv,
+                                        );
+                                        if (
+                                            transaction.notes &&
+                                            transaction.notes_iv
+                                        ) {
+                                            decryptedNotes = await decrypt(
+                                                transaction.notes,
+                                                key,
+                                                transaction.notes_iv,
+                                            );
+                                        }
+                                    } catch (error) {
+                                        console.error(
+                                            'Failed to decrypt transaction:',
+                                            error,
+                                        );
+                                    }
+                                }
+
+                                return {
+                                    ...transaction,
+                                    decryptedDescription,
+                                    decryptedNotes,
+                                } as DecryptedTransaction;
+                            } catch (error) {
+                                console.error(
+                                    'Error processing transaction:',
+                                    error,
+                                );
+                                return null;
+                            }
+                        }),
+                    );
+
+                    const validTransactions = decrypted.filter(
+                        (t): t is DecryptedTransaction => t !== null,
+                    );
+
+                    setTransactions(validTransactions);
+                } catch (error) {
+                    console.error('Error processing transactions:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+                return;
+            }
+
             setIsLoading(true);
             try {
                 const response = await axios.get('/api/sync/transactions');
@@ -451,8 +530,16 @@ export function TransactionList({
             }
         }
 
-        fetchTransactions();
-    }, [refreshKey, accounts, banks, categories, isKeySet, accountId]);
+        processTransactions();
+    }, [
+        refreshKey,
+        accounts,
+        banks,
+        categories,
+        isKeySet,
+        accountId,
+        providedTransactions,
+    ]);
 
     useEffect(() => {
         try {

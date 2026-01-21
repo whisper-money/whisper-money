@@ -11,7 +11,7 @@ class FeatureEnableCommand extends Command
 {
     use ResolvesFeatures;
 
-    protected $signature = 'feature:enable {feature : The feature class name} {target : User email or "all" for everyone}';
+    protected $signature = 'feature:enable {feature : The feature name (class name or string-based feature)} {target : User email or "all" for everyone}';
 
     protected $description = 'Enable a feature for a specific user or all users';
 
