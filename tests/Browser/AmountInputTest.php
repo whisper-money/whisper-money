@@ -56,7 +56,6 @@ it('can create a transaction with amount input', function () {
     actingAs($user);
 
     $page = $this->visitWithEncryptionKey('/transactions');
-    $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -72,10 +71,8 @@ it('can create a transaction with amount input', function () {
         ->click($category->name)
         ->wait(1)
         ->click('[data-testid="submit-transaction"]')
-        ->wait(4) // Wait for form submission and navigation
-        ->assertPathIs('/transactions')
-        ->wait(2) // Extra wait for IndexedDB sync after creation
-        ->waitForText('Test Transaction', 15)
+        ->wait(3)
+        ->waitForText('Test Transaction')
         ->assertSee('$123.45')
         ->wait(1)
         ->assertNoJavascriptErrors();
@@ -99,7 +96,6 @@ it('formats amount when pressing enter', function () {
 
     $page = visit('/transactions');
     $this->setupEncryptionKey($page);
-    $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -112,10 +108,8 @@ it('formats amount when pressing enter', function () {
         ->click($category->name)
         ->wait(0.5)
         ->click('[data-testid="submit-transaction"]')
-        ->wait(4) // Wait for form submission and navigation
-        ->assertPathIs('/transactions')
-        ->wait(2) // Extra wait for IndexedDB sync after creation
-        ->waitForText('Test Transaction Enter', 15)
+        ->wait(2)
+        ->waitForText('Test Transaction Enter')
         ->wait(1)
         ->assertNoJavascriptErrors();
 
@@ -138,7 +132,6 @@ it('accepts negative amounts', function () {
 
     $page = visit('/transactions');
     $this->setupEncryptionKey($page);
-    $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -150,10 +143,8 @@ it('accepts negative amounts', function () {
         ->click($category->name)
         ->wait(0.5)
         ->click('[data-testid="submit-transaction"]')
-        ->wait(4) // Wait for form submission and navigation
-        ->assertPathIs('/transactions')
-        ->wait(2) // Extra wait for IndexedDB sync after creation
-        ->waitForText('Test Negative Amount', 15)
+        ->wait(3)
+        ->waitForText('Test Negative Amount')
         ->wait(1)
         ->assertNoJavascriptErrors();
 
