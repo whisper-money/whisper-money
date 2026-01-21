@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.7](https://github.com/whisper-money/whisper-money/compare/v0.1.6...v0.1.7) (2026-01-21)
+
+
+### Bug Fixes
+
+* Error showing randomg transactions from local browser DB ([a7c8544](https://github.com/whisper-money/whisper-money/commit/a7c8544249a887bb96f256d9d336a9b8e13090f1))
+* unused vars ([f1a2d78](https://github.com/whisper-money/whisper-money/commit/f1a2d787e5be6c096703f27a5463696f6095f72c))
+
+
+### Features
+
+* Add PostHog ([#70](https://github.com/whisper-money/whisper-money/issues/70)) ([f5d09eb](https://github.com/whisper-money/whisper-money/commit/f5d09eb2475dc3c1c76dd6a7c23fadb771576fdb))
+
 ## [0.1.6](https://github.com/whisper-money/whisper-money/compare/v0.1.5...v0.1.6) (2026-01-19)
 
 
