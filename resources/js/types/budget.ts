@@ -41,6 +41,7 @@ export interface BudgetPeriod {
     end_date: string;
     allocated_amount: number;
     carried_over_amount: number;
+    processing_historical: boolean;
     created_at: string;
     updated_at: string;
     budget_transactions?: BudgetTransaction[];

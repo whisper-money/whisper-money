@@ -39,7 +39,7 @@ abstract class TestCase extends BaseTestCase
         }
         if ($reload) {
             $currentUrl = $page->url();
-            $page->navigate($currentUrl)->wait(0.5);
+            $page->navigate($currentUrl)->wait(1);
         }
     }
 

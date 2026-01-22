@@ -18,6 +18,7 @@ class BudgetPeriod extends Model
         'end_date',
         'allocated_amount',
         'carried_over_amount',
+        'processing_historical',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class BudgetPeriod extends Model
             'end_date' => 'date',
             'allocated_amount' => 'integer',
             'carried_over_amount' => 'integer',
+            'processing_historical' => 'boolean',
         ];
     }
 

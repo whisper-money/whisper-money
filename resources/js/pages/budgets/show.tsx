@@ -12,14 +12,15 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Account, Bank } from '@/types/account';
 import { Budget, BudgetPeriod, getBudgetPeriodTypeLabel } from '@/types/budget';
 import { Category } from '@/types/category';
-import { Head } from '@inertiajs/react';
-import { ChevronDown } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Head, router } from '@inertiajs/react';
+import { ChevronDown, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface Props {
     budget: Budget;
@@ -40,6 +41,22 @@ export default function BudgetShow({
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+
+    // Poll for updates when processing historical transactions
+    useEffect(() => {
+        if (!currentPeriod.processing_historical) {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            router.reload({
+                only: ['currentPeriod'],
+                preserveScroll: true,
+            });
+        }, 3000); // Poll every 3 seconds
+
+        return () => clearInterval(interval);
+    }, [currentPeriod.processing_historical]);
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -154,15 +171,39 @@ export default function BudgetShow({
                     currencyCode={currencyCode}
                 />
 
-                <TransactionList
-                    categories={categories}
-                    accounts={accounts}
-                    banks={banks}
-                    transactions={periodTransactions}
-                    pageSize={10}
-                    showActionsMenu={false}
-                    maxHeight={600}
-                />
+                {currentPeriod.processing_historical ? (
+                    <div className="space-y-4 rounded-lg border border-border bg-card p-6">
+                        <div className="flex items-center gap-3">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            <div>
+                                <h3 className="text-sm font-medium">
+                                    Finding historical transactions
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    We're looking through your transaction
+                                    history to find expenses that match this
+                                    budget. This usually takes a few seconds.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <Skeleton className="h-16 w-full" />
+                            <Skeleton className="h-16 w-full" />
+                            <Skeleton className="h-16 w-full" />
+                        </div>
+                    </div>
+                ) : (
+                    <TransactionList
+                        categories={categories}
+                        accounts={accounts}
+                        banks={banks}
+                        transactions={periodTransactions}
+                        pageSize={10}
+                        showActionsMenu={false}
+                        maxHeight={600}
+                    />
+                )}
             </div>
 
             <EditBudgetDialog

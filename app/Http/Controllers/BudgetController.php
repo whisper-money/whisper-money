@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
+use App\Jobs\AssignHistoricalTransactionsToBudget;
 use App\Models\Budget;
 use App\Services\BudgetPeriodService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -87,7 +88,7 @@ class BudgetController extends Controller
 
     public function store(StoreBudgetRequest $request): \Illuminate\Http\RedirectResponse
     {
-        $budget = DB::transaction(function () use ($request) {
+        $result = DB::transaction(function () use ($request) {
             $budget = $request->user()->budgets()->create([
                 'name' => $request->name,
                 'period_type' => $request->period_type,
@@ -98,12 +99,15 @@ class BudgetController extends Controller
                 'rollover_type' => $request->rollover_type,
             ]);
 
-            $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount);
+            $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount, null, true);
 
-            return $budget;
+            return ['budget' => $budget, 'period' => $period];
         });
 
-        return redirect()->route('budgets.show', $budget);
+        // Dispatch job to assign historical transactions
+        AssignHistoricalTransactionsToBudget::dispatch($result['budget'], $result['period']);
+
+        return redirect()->route('budgets.show', $result['budget']);
     }
 
     public function update(UpdateBudgetRequest $request, Budget $budget): \Illuminate\Http\RedirectResponse
