@@ -24,6 +24,8 @@ import { disable, enable } from '@/routes/two-factor';
 import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { CURRENCY_OPTIONS } from '@/types/account';
+import { LANGUAGE_OPTIONS } from '@/types/language';
+import { __ } from '@/utils/i18n';
 import { Transition } from '@headlessui/react';
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ShieldBan, ShieldCheck } from 'lucide-react';
@@ -47,7 +49,8 @@ export default function Account({
     requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;
 }) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, locale } = usePage<SharedData>().props;
+    const t = __();
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
@@ -70,8 +73,8 @@ export default function Account({
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Profile information"
-                        description="Update your name and email address"
+                        title={t('Profile information')}
+                        description={t('Update your name and email address')}
                     />
 
                     <Form
@@ -84,7 +87,7 @@ export default function Account({
                         {({ processing, recentlySuccessful, errors }) => (
                             <>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="name">Name</Label>
+                                    <Label htmlFor="name">{t('Name')}</Label>
 
                                     <Input
                                         id="name"
@@ -93,7 +96,7 @@ export default function Account({
                                         name="name"
                                         required
                                         autoComplete="name"
-                                        placeholder="Full name"
+                                        placeholder={t('Name')}
                                     />
 
                                     <InputError
@@ -103,7 +106,9 @@ export default function Account({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="email">Email address</Label>
+                                    <Label htmlFor="email">
+                                        {t('Email address')}
+                                    </Label>
 
                                     <Input
                                         id="email"
@@ -113,7 +118,7 @@ export default function Account({
                                         name="email"
                                         required
                                         autoComplete="username"
-                                        placeholder="Email address"
+                                        placeholder={t('Email address')}
                                     />
 
                                     <InputError
@@ -124,7 +129,7 @@ export default function Account({
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="currency_code">
-                                        Currency
+                                        {t('Currency')}
                                     </Label>
 
                                     <Select
@@ -133,7 +138,11 @@ export default function Account({
                                         required
                                     >
                                         <SelectTrigger className="mt-1 w-full">
-                                            <SelectValue placeholder="Select currency" />
+                                            <SelectValue
+                                                placeholder={__(
+                                                    'Select currency',
+                                                )}
+                                            />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {CURRENCY_OPTIONS.map(
@@ -155,12 +164,56 @@ export default function Account({
                                     />
                                 </div>
 
+                                <div className="grid gap-2">
+                                    <Label htmlFor="locale">
+                                        {t('Language')}
+                                    </Label>
+
+                                    <Select
+                                        name="locale"
+                                        defaultValue={auth.user.locale ?? ''}
+                                    >
+                                        <SelectTrigger className="mt-1 w-full">
+                                            <SelectValue
+                                                placeholder={__(
+                                                    'Select language',
+                                                )}
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="">
+                                                {t('Auto-detect')} (
+                                                {locale === 'es'
+                                                    ? 'Español'
+                                                    : 'English'}
+                                                )
+                                            </SelectItem>
+                                            {LANGUAGE_OPTIONS.map(
+                                                (language) => (
+                                                    <SelectItem
+                                                        key={language.code}
+                                                        value={language.code}
+                                                    >
+                                                        {language.label}
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <InputError
+                                        className="mt-2"
+                                        message={errors.locale}
+                                    />
+                                </div>
+
                                 {mustVerifyEmail &&
                                     auth.user.email_verified_at === null && (
                                         <div>
                                             <p className="-mt-4 text-sm text-muted-foreground">
-                                                Your email address is
-                                                unverified.{' '}
+                                                {__(
+                                                    'Your email address is unverified.',
+                                                )}{' '}
                                                 <Link
                                                     href={send()}
                                                     as="button"
@@ -187,7 +240,7 @@ export default function Account({
                                         disabled={processing}
                                         data-test="update-profile-button"
                                     >
-                                        Save
+                                        {t('Save')}
                                     </Button>
 
                                     <Transition
@@ -198,7 +251,7 @@ export default function Account({
                                         leaveTo="opacity-0"
                                     >
                                         <p className="text-sm text-neutral-600">
-                                            Saved
+                                            {t('Saved')}
                                         </p>
                                     </Transition>
                                 </div>
@@ -211,8 +264,10 @@ export default function Account({
 
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Update password"
-                        description="Ensure your account is using a long, random password to stay secure"
+                        title={t('Update password')}
+                        description={__(
+                            'Ensure your account is using a long, random password to stay secure.',
+                        )}
                     />
 
                     <Form
@@ -241,7 +296,7 @@ export default function Account({
                             <>
                                 <div className="grid gap-2">
                                     <Label htmlFor="current_password">
-                                        Current password
+                                        {t('Current password')}
                                     </Label>
 
                                     <Input
@@ -251,7 +306,7 @@ export default function Account({
                                         type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="current-password"
-                                        placeholder="Current password"
+                                        placeholder={t('Current password')}
                                     />
 
                                     <InputError
@@ -261,7 +316,7 @@ export default function Account({
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="password">
-                                        New password
+                                        {t('New password')}
                                     </Label>
 
                                     <Input
@@ -271,7 +326,7 @@ export default function Account({
                                         type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="new-password"
-                                        placeholder="New password"
+                                        placeholder={t('New password')}
                                     />
 
                                     <InputError message={errors.password} />
@@ -279,7 +334,7 @@ export default function Account({
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="password_confirmation">
-                                        Confirm password
+                                        {t('Confirm password')}
                                     </Label>
 
                                     <Input
@@ -288,7 +343,7 @@ export default function Account({
                                         type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="new-password"
-                                        placeholder="Confirm password"
+                                        placeholder={t('Confirm password')}
                                     />
 
                                     <InputError
@@ -301,7 +356,7 @@ export default function Account({
                                         disabled={processing}
                                         data-test="update-password-button"
                                     >
-                                        Save password
+                                        {t('Save password')}
                                     </Button>
 
                                     <Transition
@@ -312,7 +367,7 @@ export default function Account({
                                         leaveTo="opacity-0"
                                     >
                                         <p className="text-sm text-neutral-600">
-                                            Saved
+                                            {t('Saved')}
                                         </p>
                                     </Transition>
                                 </div>

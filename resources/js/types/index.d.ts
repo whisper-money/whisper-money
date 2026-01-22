@@ -53,6 +53,8 @@ export interface SharedData {
     pricing: PricingConfig;
     sidebarOpen: boolean;
     features: Features;
+    locale: string;
+    translations: Record<string, string>;
     [key: string]: unknown;
 }
 
@@ -61,6 +63,7 @@ export interface User {
     name: string;
     email: string;
     currency_code: CurrencyCode;
+    locale: string | null;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;

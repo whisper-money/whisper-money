@@ -33,6 +33,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'encryption_salt',
         'onboarded_at',
         'currency_code',
+        'locale',
     ];
 
     /**
