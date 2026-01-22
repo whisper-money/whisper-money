@@ -252,7 +252,8 @@ class TransactionController extends Controller
                     $mergedLabelIds = array_unique(array_merge($existingLabelIds, $labelIds));
                     $transaction->labels()->sync($mergedLabelIds);
                 }
-                $transaction->touch();
+
+                $transaction->save();
             }
         }
 
