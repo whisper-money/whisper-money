@@ -171,7 +171,9 @@ export default function Account({
 
                                     <Select
                                         name="locale"
-                                        defaultValue={auth.user.locale ?? ''}
+                                        defaultValue={
+                                            auth.user.locale || 'auto-detect'
+                                        }
                                     >
                                         <SelectTrigger className="mt-1 w-full">
                                             <SelectValue
@@ -181,7 +183,7 @@ export default function Account({
                                             />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">
+                                            <SelectItem value="auto-detect">
                                                 {t('Auto-detect')} (
                                                 {locale === 'es'
                                                     ? 'Español'
