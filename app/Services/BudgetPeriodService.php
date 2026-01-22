@@ -9,7 +9,7 @@ use Carbon\Carbon;
 
 class BudgetPeriodService
 {
-    public function generatePeriod(Budget $budget, ?int $allocatedAmount = null, ?Carbon $startDate = null): BudgetPeriod
+    public function generatePeriod(Budget $budget, ?int $allocatedAmount = null, ?Carbon $startDate = null, bool $processHistorical = false): BudgetPeriod
     {
         if ($startDate === null) {
             $startDate = $this->calculateNextPeriodStartDate($budget);
@@ -29,6 +29,7 @@ class BudgetPeriodService
             'end_date' => $periodEnd,
             'allocated_amount' => $allocatedAmount,
             'carried_over_amount' => 0,
+            'processing_historical' => $processHistorical,
         ]);
     }
 

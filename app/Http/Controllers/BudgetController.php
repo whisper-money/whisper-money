@@ -99,7 +99,7 @@ class BudgetController extends Controller
                 'rollover_type' => $request->rollover_type,
             ]);
 
-            $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount);
+            $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount, null, true);
 
             return ['budget' => $budget, 'period' => $period];
         });

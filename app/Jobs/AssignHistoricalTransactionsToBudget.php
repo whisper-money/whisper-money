@@ -36,7 +36,18 @@ class AssignHistoricalTransactionsToBudget implements ShouldQueue
      */
     public function handle(BudgetTransactionService $service): void
     {
+        Log::info('Starting historical transaction assignment', [
+            'budget_id' => $this->budget->id,
+            'budget_period_id' => $this->period->id,
+            'period_start' => $this->period->start_date,
+            'period_end' => $this->period->end_date,
+            'user_id' => $this->budget->user_id,
+        ]);
+
         $count = $service->assignHistoricalTransactionsToPeriod($this->period);
+
+        // Mark processing as complete
+        $this->period->update(['processing_historical' => false]);
 
         Log::info("Assigned {$count} historical transactions to budget period", [
             'budget_id' => $this->budget->id,

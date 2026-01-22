@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\Log;
 
 class BudgetTransactionService
 {
@@ -83,6 +84,14 @@ class BudgetTransactionService
 
         $assignedCount = 0;
 
+        Log::info('Building query for historical transactions', [
+            'user_id' => $budget->user_id,
+            'category_id' => $budget->category_id,
+            'label_id' => $budget->label_id,
+            'start_date' => $period->start_date->toDateString(),
+            'end_date' => $period->end_date->toDateString(),
+        ]);
+
         // Build the query for matching transactions
         $query = Transaction::query()
             ->where('user_id', $budget->user_id)
@@ -101,6 +110,9 @@ class BudgetTransactionService
                 });
             }
         });
+
+        $totalCount = $query->count();
+        Log::info("Found {$totalCount} transactions to process in date range");
 
         // Process in chunks to prevent memory issues
         $query->chunk(500, function ($transactions) use ($period, &$assignedCount) {
