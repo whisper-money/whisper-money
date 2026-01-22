@@ -30,7 +30,16 @@ Sentry.init({
 
 initializePostHog();
 
+// Initialize theme before creating the app so progress bar color is correct
+initializeTheme();
+
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+// Determine progress bar color based on current theme
+const getProgressBarColor = () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    return isDark ? '#EEE' : '#4B5563'; // gray-400 for dark mode, gray-600 for light mode
+};
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
@@ -80,9 +89,6 @@ createInertiaApp({
         );
     },
     progress: {
-        color: '#4B5563',
+        color: getProgressBarColor(),
     },
 });
-
-// This will set light / dark mode on load...
-initializeTheme();
