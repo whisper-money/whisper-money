@@ -31,6 +31,7 @@ import {
 } from '@/types/budget';
 import { Category } from '@/types/category';
 import { Label } from '@/types/label';
+import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
@@ -125,7 +126,7 @@ export function CreateBudgetDialog({
                     <CardContent className="flex h-full items-center justify-center">
                         <div className="flex flex-row items-center justify-center gap-1">
                             <Plus className="mr-2 h-4 w-4" />
-                            Create Budget
+                            {__('Create Budget')}
                         </div>
                     </CardContent>
                 </Card>
@@ -133,26 +134,32 @@ export function CreateBudgetDialog({
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>Create Budget</DialogTitle>
+                        <DialogTitle>{__('Create Budget')}</DialogTitle>
                         <DialogDescription>
-                            Set up a spending limit for a category or label.
+                            {__(
+                                'Set up a spending limit for a category or label.',
+                            )}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-6 py-4">
                         <div className="space-y-2">
-                            <UILabel htmlFor="name">Budget Name</UILabel>
+                            <UILabel htmlFor="name">
+                                {__('Budget Name')}
+                            </UILabel>
                             <Input
                                 id="name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g., Padel Budget"
+                                placeholder={__('e.g., Padel Budget')}
                                 required
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <UILabel htmlFor="period-type">Period Type</UILabel>
+                            <UILabel htmlFor="period-type">
+                                {__('Period Type')}
+                            </UILabel>
                             <Select
                                 value={periodType}
                                 onValueChange={(value) =>
@@ -175,7 +182,7 @@ export function CreateBudgetDialog({
                         {periodType === 'custom' && (
                             <div className="space-y-2">
                                 <UILabel htmlFor="period-duration">
-                                    Period Duration (days)
+                                    {__('Period Duration (days)')}
                                 </UILabel>
                                 <Input
                                     id="period-duration"
@@ -211,6 +218,7 @@ export function CreateBudgetDialog({
                                     setPeriodStartDay(parseInt(e.target.value))
                                 }
                             />
+
                             <p className="text-sm text-muted-foreground">
                                 {periodType === 'monthly'
                                     ? 'Day of the month when the period starts (1-31)'
@@ -230,7 +238,7 @@ export function CreateBudgetDialog({
 
                             <div className="space-y-2">
                                 <UILabel htmlFor="category">
-                                    Category (Optional)
+                                    {__('Category (Optional)')}
                                 </UILabel>
                                 <div className="flex gap-2">
                                     <Select
@@ -241,7 +249,11 @@ export function CreateBudgetDialog({
                                             id="category"
                                             className="flex-1"
                                         >
-                                            <SelectValue placeholder="Select a category" />
+                                            <SelectValue
+                                                placeholder={__(
+                                                    'Select a category',
+                                                )}
+                                            />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {allCategories.map((category) => (
@@ -271,7 +283,7 @@ export function CreateBudgetDialog({
 
                             <div className="space-y-2">
                                 <UILabel htmlFor="label">
-                                    Label (Optional)
+                                    {__('Label (Optional)')}
                                 </UILabel>
                                 <div className="flex gap-2">
                                     <Select
@@ -284,7 +296,11 @@ export function CreateBudgetDialog({
                                             id="label"
                                             className="flex-1"
                                         >
-                                            <SelectValue placeholder="Select a label" />
+                                            <SelectValue
+                                                placeholder={__(
+                                                    'Select a label',
+                                                )}
+                                            />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {allLabels.map((label) => (
@@ -311,14 +327,15 @@ export function CreateBudgetDialog({
                                     )}
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    Select at least a category or a label to
-                                    track.
+                                    {__(
+                                        'Select at least a category or a label to\n                                    track.',
+                                    )}
                                 </p>
                             </div>
 
                             <div className="space-y-2">
                                 <UILabel htmlFor="allocated-amount">
-                                    Allocated Amount
+                                    {__('Allocated Amount')}
                                 </UILabel>
                                 <AmountInput
                                     id="allocated-amount"
@@ -328,14 +345,17 @@ export function CreateBudgetDialog({
                                     placeholder="0.00"
                                     required
                                 />
+
                                 <p className="text-sm text-muted-foreground">
-                                    How much do you want to budget per period?
+                                    {__(
+                                        'How much do you want to budget per period?',
+                                    )}
                                 </p>
                             </div>
 
                             <div className="space-y-2">
                                 <UILabel htmlFor="rollover">
-                                    Rollover Type
+                                    {__('Rollover Type')}
                                 </UILabel>
                                 <Select
                                     value={rolloverType}
@@ -369,7 +389,7 @@ export function CreateBudgetDialog({
                             variant="outline"
                             onClick={() => setOpen(false)}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
                         <Button
                             type="submit"

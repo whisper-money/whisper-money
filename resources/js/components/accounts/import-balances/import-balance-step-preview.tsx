@@ -8,6 +8,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { type ParsedBalance } from '@/types/balance-import';
+import { __ } from '@/utils/i18n';
 
 interface ImportBalanceStepPreviewProps {
     balances: ParsedBalance[];
@@ -46,8 +47,8 @@ export function ImportBalanceStepPreview({
         <div className="flex flex-col gap-6">
             <div className="rounded-lg border bg-muted/50 p-4">
                 <p className="text-sm text-muted-foreground">
-                    {total} balance{total !== 1 ? 's' : ''} will be updated or
-                    created.
+                    {total} balance{total !== 1 ? 's' : ''}
+                    {__('will be updated or\n                    created.')}
                 </p>
             </div>
 
@@ -55,9 +56,9 @@ export function ImportBalanceStepPreview({
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Date</TableHead>
+                            <TableHead>{__('Date')}</TableHead>
                             <TableHead className="text-right">
-                                Balance
+                                {__('Balance')}
                             </TableHead>
                         </TableRow>
                     </TableHeader>
@@ -93,7 +94,7 @@ export function ImportBalanceStepPreview({
                     onClick={onBack}
                     disabled={isImporting}
                 >
-                    Back
+                    {__('Back')}
                 </Button>
                 <Button
                     onClick={onConfirm}

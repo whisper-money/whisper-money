@@ -31,6 +31,7 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -647,6 +648,7 @@ export function ImportTransactionsDrawer({
                         }}
                     />
                 );
+
             case ImportStep.UploadFile:
                 return (
                     <ImportStepUpload
@@ -658,6 +660,7 @@ export function ImportTransactionsDrawer({
                         onBack={() => moveToStep(ImportStep.SelectAccount)}
                     />
                 );
+
             case ImportStep.MapColumns:
                 return (
                     <ImportStepMapping
@@ -673,6 +676,7 @@ export function ImportTransactionsDrawer({
                         onBack={() => moveToStep(ImportStep.UploadFile)}
                     />
                 );
+
             case ImportStep.Preview:
                 return (
                     <ImportStepPreview
@@ -686,6 +690,7 @@ export function ImportTransactionsDrawer({
                         isImporting={isImporting}
                     />
                 );
+
             default:
                 return null;
         }
@@ -700,8 +705,10 @@ export function ImportTransactionsDrawer({
                 <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
-                            {importProgress} of {importTotal} transactions
-                            imported
+                            {importProgress} of {importTotal}
+                            {__(
+                                'transactions\n                            imported',
+                            )}
                         </span>
                         <span>{Math.round(percentage)}%</span>
                     </div>
@@ -712,7 +719,8 @@ export function ImportTransactionsDrawer({
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-destructive">
-                                Errors ({importErrors.length})
+                                {__('Errors (')}
+                                {importErrors.length})
                             </h3>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto rounded-lg border">
@@ -720,19 +728,19 @@ export function ImportTransactionsDrawer({
                                 <thead className="sticky top-0 bg-muted">
                                     <tr className="border-b">
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Row
+                                            {__('Row')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Date
+                                            {__('Date')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Description
+                                            {__('Description')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Amount
+                                            {__('Amount')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Error
+                                            {__('Error')}
                                         </th>
                                     </tr>
                                 </thead>

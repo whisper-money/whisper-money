@@ -1,5 +1,6 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepHeader } from '@/components/onboarding/step-header';
+import { __ } from '@/utils/i18n';
 import { Eye, EyeOff, Lock, Server, Shield, User } from 'lucide-react';
 
 interface StepEncryptionExplainedProps {
@@ -14,30 +15,38 @@ export function StepEncryptionExplained({
             <StepHeader
                 icon={Shield}
                 iconContainerClassName="bg-gradient-to-br from-blue-500 to-indigo-600"
-                title="Your Data, Your Privacy"
-                description="Whisper Money uses end-to-end encryption to protect your financial data. Here's how it works:"
+                title={__('Your Data, Your Privacy')}
+                description={__(
+                    "Whisper Money uses end-to-end encryption to protect your financial data. Here's how it works:",
+                )}
             />
 
             <div className="mb-5 grid w-full max-w-xl gap-4 sm:mb-4">
                 <Item
-                    title="Create a Password"
-                    description="Only you know this password. It never leaves your device."
+                    title={__('Create a Password')}
+                    description={__(
+                        'Only you know this password. It never leaves your device.',
+                    )}
                     icon={
                         <User className="size-4 text-emerald-600 dark:text-emerald-400" />
                     }
                 />
 
                 <Item
-                    title="Data is Encrypted"
-                    description="Your data is encrypted before it leaves your browser."
+                    title={__('Data is Encrypted')}
+                    description={__(
+                        'Your data is encrypted before it leaves your browser.',
+                    )}
                     icon={
                         <Lock className="size-4 text-blue-600 dark:text-blue-400" />
                     }
                 />
 
                 <Item
-                    title="We Can't Read It"
-                    description="Even we can't access your data. It's truly private."
+                    title={__("We Can't Read It")}
+                    description={__(
+                        "Even we can't access your data. It's truly private.",
+                    )}
                     icon={
                         <Server className="size-4 text-violet-600 dark:text-violet-400" />
                     }
@@ -47,22 +56,24 @@ export function StepEncryptionExplained({
             <div className="mb-8 flex w-full max-w-xl flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-muted-foreground/20 p-4">
                 <div className="flex items-center gap-2">
                     <Eye className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">You see:</span>
+                    <span className="text-sm font-medium">
+                        {__('You see:')}
+                    </span>
                     <span className="font-mono text-emerald-600 dark:text-emerald-400">
-                        STARBUCKS@TEKKA PLC
+                        {__('STARBUCKS@TEKKA PLC')}
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
                     <EyeOff className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm font-medium">We see:</span>
+                    <span className="text-sm font-medium">{__('We see:')}</span>
                     <span className="font-mono text-muted-foreground">
-                        $KO!F6LMHU1W%TAEQFZMD9
+                        {__('$KO!F6LMHU1W%TAEQFZMD9')}
                     </span>
                 </div>
             </div>
 
             <StepButton
-                text="I Understand, Continue"
+                text={__('I Understand, Continue')}
                 onClick={onContinue}
                 data-testid="encryption-continue-button"
             />

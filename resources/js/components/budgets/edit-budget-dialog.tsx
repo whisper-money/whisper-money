@@ -27,6 +27,7 @@ import {
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -102,28 +103,31 @@ export function EditBudgetDialog({
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>Edit Budget</DialogTitle>
+                        <DialogTitle>{__('Edit Budget')}</DialogTitle>
                         <DialogDescription>
-                            Update your budget settings. To change the allocated
-                            amount or tracking, use the budget page directly.
+                            {__(
+                                'Update your budget settings. To change the allocated\n                            amount or tracking, use the budget page directly.',
+                            )}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Budget Name</Label>
+                            <Label htmlFor="name">{__('Budget Name')}</Label>
                             <Input
                                 id="name"
                                 value={name}
                                 className="mt-1"
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g., Monthly Budget"
+                                placeholder={__('e.g., Monthly Budget')}
                                 required
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="period-type">Period Type</Label>
+                            <Label htmlFor="period-type">
+                                {__('Period Type')}
+                            </Label>
                             <div className="mt-1">
                                 <Select
                                     value={periodType}
@@ -149,7 +153,7 @@ export function EditBudgetDialog({
                         {periodType === 'custom' && (
                             <div className="space-y-2">
                                 <Label htmlFor="period-duration">
-                                    Period Duration (days)
+                                    {__('Period Duration (days)')}
                                 </Label>
                                 <Input
                                     disabled
@@ -189,6 +193,7 @@ export function EditBudgetDialog({
                                     setPeriodStartDay(parseInt(e.target.value))
                                 }
                             />
+
                             <p className="text-sm text-muted-foreground">
                                 {periodType === 'monthly'
                                     ? 'Day of the month when the period starts (1-31)'
@@ -201,7 +206,7 @@ export function EditBudgetDialog({
 
                         <div className="space-y-2">
                             <Label htmlFor="allocated-amount">
-                                Allocated Amount
+                                {__('Allocated Amount')}
                             </Label>
                             <AmountInput
                                 id="allocated-amount"
@@ -211,14 +216,18 @@ export function EditBudgetDialog({
                                 placeholder="0.00"
                                 required
                             />
+
                             <p className="text-sm text-muted-foreground">
-                                This will update the allocated amount for the
-                                current and future periods.
+                                {__(
+                                    'This will update the allocated amount for the\n                                current and future periods.',
+                                )}
                             </p>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="rollover">Rollover Type</Label>
+                            <Label htmlFor="rollover">
+                                {__('Rollover Type')}
+                            </Label>
                             <div className="mt-1">
                                 <Select
                                     disabled
@@ -253,7 +262,7 @@ export function EditBudgetDialog({
                             variant="outline"
                             onClick={() => onOpenChange(false)}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
                         <Button type="submit" disabled={isSubmitting || !name}>
                             {isSubmitting ? 'Saving...' : 'Save Changes'}

@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/card';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
 import { ArrowDown, ArrowUp, TrendingDown, TrendingUp } from 'lucide-react';
 
 interface NetCashflowCardProps {
@@ -28,7 +29,7 @@ export function NetCashflowCard({
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">
-                        Net Cashflow
+                        {__('Net Cashflow')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -47,9 +48,9 @@ export function NetCashflowCard({
         <Card>
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                    Net Cashflow
+                    {__('Net Cashflow')}
                 </CardTitle>
-                <CardDescription>Income minus expenses</CardDescription>
+                <CardDescription>{__('Income minus expenses')}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex items-baseline gap-2">
@@ -109,13 +110,15 @@ export function NetCashflowCard({
                             />
                         </span>
                         <span className="text-muted-foreground">
-                            vs last period
+                            {__('vs last period')}
                         </span>
                     </div>
                 )}
                 <div className="mt-3 grid grid-cols-2 gap-4 border-t pt-3">
                     <div>
-                        <p className="text-xs text-muted-foreground">Income</p>
+                        <p className="text-xs text-muted-foreground">
+                            {__('Income')}
+                        </p>
                         <AmountDisplay
                             amountInCents={current.income}
                             currencyCode={currency}
@@ -127,7 +130,7 @@ export function NetCashflowCard({
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground">
-                            Expenses
+                            {__('Expenses')}
                         </p>
                         <AmountDisplay
                             amountInCents={current.expense}

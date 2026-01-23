@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { __ } from '@/utils/i18n';
 import { addMonths, format, isSameMonth, subMonths } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -32,7 +33,7 @@ export function PeriodNavigation({
                 variant="outline"
                 size="icon-sm"
                 onClick={handlePrevMonth}
-                aria-label="Previous month"
+                aria-label={__('Previous month')}
             >
                 <ChevronLeft className="size-4" />
             </Button>
@@ -49,7 +50,7 @@ export function PeriodNavigation({
                 size="icon-sm"
                 onClick={handleNextMonth}
                 disabled={isCurrentMonth}
-                aria-label="Next month"
+                aria-label={__('Next month')}
             >
                 <ChevronRight className="size-4" />
             </Button>

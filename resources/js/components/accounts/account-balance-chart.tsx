@@ -24,6 +24,7 @@ import {
     useChartViews,
 } from '@/hooks/use-chart-views';
 import { Account } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { format, subMonths } from 'date-fns';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bar, BarChart, XAxis } from 'recharts';
@@ -181,6 +182,7 @@ export function AccountBalanceChart({
                     length={{ min: 5, max: 20 }}
                 />
             ),
+
             color: 'var(--color-chart-2)',
         },
     };
@@ -204,7 +206,7 @@ export function AccountBalanceChart({
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Balance evolution</CardTitle>
+                    <CardTitle>{__('Balance evolution')}</CardTitle>
                     <CardDescription>
                         <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                     </CardDescription>
@@ -220,11 +222,11 @@ export function AccountBalanceChart({
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Balance evolution</CardTitle>
+                    <CardTitle>{__('Balance evolution')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                        No balance data available
+                        {__('No balance data available')}
                     </div>
                 </CardContent>
             </Card>
@@ -236,7 +238,7 @@ export function AccountBalanceChart({
             <CardHeader>
                 <div className="flex flex-row items-start justify-between">
                     <div className="flex flex-col gap-1 sm:gap-2">
-                        <CardTitle>Balance evolution</CardTitle>
+                        <CardTitle>{__('Balance evolution')}</CardTitle>
                         <button
                             type="button"
                             onClick={onBalanceClick}
@@ -252,14 +254,15 @@ export function AccountBalanceChart({
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
                                 trend={monthlyTrend?.percentage ?? null}
-                                label="this month"
+                                label={__('this month')}
                                 previousAmount={monthlyTrend?.previousValue}
                                 currentAmount={monthlyTrend?.currentValue}
                                 currencyCode={account.currency_code}
                             />
+
                             <PercentageTrendIndicator
                                 trend={yearlyTrend?.percentage ?? null}
-                                label="for the last 12 months"
+                                label={__('for the last 12 months')}
                                 previousAmount={yearlyTrend?.previousValue}
                                 currentAmount={yearlyTrend?.currentValue}
                                 currencyCode={account.currency_code}
@@ -295,6 +298,7 @@ export function AccountBalanceChart({
                                     axisLine={false}
                                     tickFormatter={formatXAxisLabel}
                                 />
+
                                 <ChartTooltip
                                     content={
                                         <ChartTooltipContent
@@ -303,6 +307,7 @@ export function AccountBalanceChart({
                                         />
                                     }
                                 />
+
                                 <Bar
                                     dataKey="value"
                                     fill="var(--color-chart-2)"

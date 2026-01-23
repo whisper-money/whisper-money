@@ -18,6 +18,7 @@ import {
 import { isAdmin } from '@/hooks/use-admin';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
+import { __ } from '@/utils/i18n';
 import {
     CheckCheck,
     MoreHorizontal,
@@ -74,7 +75,8 @@ export function BulkActionsBar({
                 <div className="flex items-center gap-2 pl-2 text-sm">
                     {isSelectingAll ? (
                         <>
-                            All {displayCount} transaction
+                            {__('All')}
+                            {displayCount} transaction
                             {displayCount !== 1 ? 's' : ''} selected
                         </>
                     ) : (
@@ -96,12 +98,15 @@ export function BulkActionsBar({
                                             className="h-auto px-0 py-1 text-xs text-primary hover:text-primary/80"
                                         >
                                             <CheckCheck className="mr-1 h-3 w-3" />
-                                            Select all
+                                            {__('Select all')}
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        Select all {totalFilteredCount}{' '}
-                                        transactions matching current filter
+                                        {__('Select all')}
+                                        {totalFilteredCount}{' '}
+                                        {__(
+                                            'transactions matching current filter',
+                                        )}
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -129,7 +134,7 @@ export function BulkActionsBar({
                                     variant="outline"
                                     size="icon"
                                     disabled={isUpdating}
-                                    aria-label="More actions"
+                                    aria-label={__('More actions')}
                                 >
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
@@ -141,7 +146,7 @@ export function BulkActionsBar({
                                         disabled={isUpdating}
                                     >
                                         <WandSparkles className="h-4 w-4" />
-                                        Re-evaluate rules
+                                        {__('Re-evaluate rules')}
                                     </DropdownMenuItem>
 
                                     {isDeleteEnabled && (
@@ -150,7 +155,7 @@ export function BulkActionsBar({
                                             onSelect={onDelete}
                                         >
                                             <Trash2 />
-                                            Delete
+                                            {__('Delete')}
                                         </DropdownMenuItem>
                                     )}
                                 </DropdownMenuGroup>
@@ -164,7 +169,7 @@ export function BulkActionsBar({
                             size="icon"
                             onClick={onClear}
                             disabled={isUpdating}
-                            aria-label="Clear selection"
+                            aria-label={__('Clear selection')}
                         >
                             <X className="h-4 w-4" />
                         </Button>

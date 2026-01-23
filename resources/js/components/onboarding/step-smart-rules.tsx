@@ -1,5 +1,6 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepHeader } from '@/components/onboarding/step-header';
+import { __ } from '@/utils/i18n';
 import { Bot, Eye, EyeOff, Sparkles, Zap } from 'lucide-react';
 
 interface StepSmartRulesProps {
@@ -12,8 +13,10 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
             <StepHeader
                 icon={Zap}
                 iconContainerClassName="bg-gradient-to-br from-yellow-400 to-amber-500"
-                title="Smart Automation Rules"
-                description="Create rules to automatically categorize your transactions based on patterns you define."
+                title={__('Smart Automation Rules')}
+                description={__(
+                    'Create rules to automatically categorize your transactions based on patterns you define.',
+                )}
             />
 
             <div className="mb-5 grid w-full max-w-2xl gap-4 md:grid-cols-2">
@@ -22,11 +25,14 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                         <div className="mb-3 flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
                             <Sparkles className="size-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
-                        <h3 className="mb-2 font-semibold">Pattern Matching</h3>
+                        <h3 className="mb-2 font-semibold">
+                            {__('Pattern Matching')}
+                        </h3>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Create rules like "If description contains 'AMAZON',
-                        categorize as Shopping"
+                        {__(
+                            'Create rules like "If description contains \'AMAZON\',\n                        categorize as Shopping"',
+                        )}
                     </p>
                 </div>
 
@@ -36,12 +42,13 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                             <Zap className="size-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <h3 className="mb-2 font-semibold">
-                            Instant Application
+                            {__('Instant Application')}
                         </h3>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Rules apply automatically when you import new
-                        transactions
+                        {__(
+                            'Rules apply automatically when you import new\n                        transactions',
+                        )}
                     </p>
                 </div>
             </div>
@@ -50,10 +57,10 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                 <div className="mb-4 flex items-center gap-3">
                     <div>
                         <h3 className="font-semibold text-amber-900 dark:text-amber-100">
-                            Why No AI Auto-Categorization?
+                            {__('Why No AI Auto-Categorization?')}
                         </h3>
                         <p className="text-sm text-amber-800 dark:text-amber-200">
-                            Privacy comes first
+                            {__('Privacy comes first')}
                         </p>
                     </div>
                 </div>
@@ -65,12 +72,14 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                                AI requires sending your data to external
-                                servers
+                                {__(
+                                    'AI requires sending your data to external\n                                servers',
+                                )}
                             </p>
                             <p className="text-xs text-amber-700 dark:text-amber-300">
-                                This would break our end-to-end encryption
-                                promise
+                                {__(
+                                    'This would break our end-to-end encryption\n                                promise',
+                                )}
                             </p>
                         </div>
                     </div>
@@ -81,10 +90,12 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                                Your rules run entirely in your browser
+                                {__('Your rules run entirely in your browser')}
                             </p>
                             <p className="text-xs text-amber-700 dark:text-amber-300">
-                                We never see your transaction descriptions
+                                {__(
+                                    'We never see your transaction descriptions',
+                                )}
                             </p>
                         </div>
                     </div>
@@ -95,17 +106,17 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                                You're in complete control
+                                {__("You're in complete control")}
                             </p>
                             <p className="text-xs text-amber-700 dark:text-amber-300">
-                                Create, edit, and delete rules anytime
+                                {__('Create, edit, and delete rules anytime')}
                             </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <StepButton text="Continue to Import" onClick={onContinue} />
+            <StepButton text={__('Continue to Import')} onClick={onContinue} />
         </div>
     );
 }

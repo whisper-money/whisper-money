@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import {
     Cell,
@@ -76,22 +77,22 @@ function AccountActions({
                     <Button
                         variant="ghost"
                         className="h-8 w-8 p-0"
-                        aria-label="Open menu"
+                        aria-label={__('Open menu')}
                     >
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{__('Open menu')}</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>{__('Actions')}</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         className="text-red-600"
                     >
-                        Delete
+                        {__('Delete')}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -102,6 +103,7 @@ function AccountActions({
                 onOpenChange={setEditOpen}
                 onSuccess={onSuccess}
             />
+
             <DeleteAccountDialog
                 account={account}
                 open={deleteOpen}
@@ -147,15 +149,15 @@ function AccountRow({
                     </TableRow>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                    <ContextMenuLabel>Actions</ContextMenuLabel>
+                    <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </ContextMenuItem>
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
                         className="text-red-600"
                     >
-                        Delete
+                        {__('Delete')}
                     </ContextMenuItem>
                 </ContextMenuContent>
             </ContextMenu>
@@ -166,6 +168,7 @@ function AccountRow({
                 onOpenChange={setEditOpen}
                 onSuccess={onSuccess}
             />
+
             <DeleteAccountDialog
                 account={account}
                 open={deleteOpen}
@@ -202,7 +205,8 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                             column.toggleSorting(column.getIsSorted() === 'asc')
                         }
                     >
-                        Name
+                        {__('Name')}
+
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 );
@@ -293,19 +297,19 @@ export default function Accounts({ accounts }: AccountsPageProps) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Bank accounts" />
+            <Head title={__('Bank accounts')} />
 
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Bank accounts"
-                        description="Manage your bank accounts"
+                        title={__('Bank accounts')}
+                        description={__('Manage your bank accounts')}
                     />
 
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <Input
-                                placeholder="Filter accounts..."
+                                placeholder={__('Filter accounts...')}
                                 value={
                                     (table
                                         .getColumn('name')
@@ -318,6 +322,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                                 }
                                 className="max-w-sm"
                             />
+
                             <CreateAccountDialog
                                 onSuccess={handleAccountCreated}
                             />
@@ -371,7 +376,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                                                 colSpan={columns.length}
                                                 className="h-24 text-center"
                                             >
-                                                No accounts found.
+                                                {__('No accounts found.')}
                                             </TableCell>
                                         </TableRow>
                                     )}

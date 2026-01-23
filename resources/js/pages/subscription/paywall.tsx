@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
+import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
     CheckIcon,
@@ -179,7 +180,9 @@ function BalanceDisplay({
                     </span>
                 ))}
             </div>
-            <span className="text-xs text-muted-foreground">Balance</span>
+            <span className="text-xs text-muted-foreground">
+                {__('Balance')}
+            </span>
         </div>
     );
 }
@@ -201,7 +204,7 @@ function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
                     <StatItem
                         icon={PiggyBankIcon}
                         value={stats.accountsCount}
-                        label="Accounts"
+                        label={__('Accounts')}
                         delay={100}
                     />
                 )}
@@ -209,7 +212,7 @@ function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
                     <StatItem
                         icon={ReceiptIcon}
                         value={stats.transactionsCount}
-                        label="Transactions"
+                        label={__('Transactions')}
                         delay={200}
                     />
                 )}
@@ -217,7 +220,7 @@ function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
                     <StatItem
                         icon={FolderIcon}
                         value={stats.categoriesCount}
-                        label="Categories"
+                        label={__('Categories')}
                         delay={300}
                     />
                 )}
@@ -266,7 +269,8 @@ function CompactPlanCard({
                 </span>
                 {savingsPercent && savingsPercent > 0 && (
                     <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        Save {savingsPercent}%
+                        {__('Save')}
+                        {savingsPercent}%
                     </span>
                 )}
             </div>
@@ -278,7 +282,8 @@ function CompactPlanCard({
             </div>
             {plan.billing_period === 'year' && (
                 <span className="mt-2 text-xs text-muted-foreground">
-                    Billed annually at ${plan.price}
+                    {__('Billed annually at $')}
+                    {plan.price}
                 </span>
             )}
         </button>
@@ -315,7 +320,7 @@ function PricingSection({
                     className="w-full bg-emerald-600 py-6 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
                     size="lg"
                 >
-                    Start My Financial Journey
+                    {__('Start My Financial Journey')}
                 </Button>
             </a>
 
@@ -338,7 +343,7 @@ function PricingSection({
 function PromoSection() {
     return (
         <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-            <span>Your data is ready</span>
+            <span>{__('Your data is ready')}</span>
             <span>•</span>
             <TooltipProvider>
                 <Tooltip>
@@ -349,11 +354,11 @@ function PromoSection() {
                             rel="noopener noreferrer"
                             className="font-medium text-[#5865F2] underline-offset-2 hover:underline"
                         >
-                            Discord for 80% off
+                            {__('Discord for 80% off')}
                         </a>
                     </TooltipTrigger>
                     <TooltipContent>
-                        You'll receive an exclusive promo code via DM!
+                        {__("You'll receive an exclusive promo code via DM!")}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
@@ -371,7 +376,7 @@ export default function Paywall() {
 
     return (
         <>
-            <Head title="Start Your Financial Journey" />
+            <Head title={__('Start Your Financial Journey')} />
 
             <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
                 <div className="flex w-full max-w-md flex-col gap-6">

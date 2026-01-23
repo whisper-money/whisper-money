@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { type Bank } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -132,10 +133,11 @@ export function BankCombobox({
             >
                 <Command filter={() => 1}>
                     <CommandInput
-                        placeholder="Search bank..."
+                        placeholder={__('Search bank...')}
                         value={searchQuery}
                         onValueChange={setSearchQuery}
                     />
+
                     <CommandList>
                         <CommandEmpty>
                             {isLoading
@@ -190,7 +192,8 @@ export function BankCombobox({
                                         >
                                             <Plus className="mr-2 h-4 w-4" />
                                             <span>
-                                                Create &quot;{searchQuery}&quot;
+                                                {__('Create "')}
+                                                {searchQuery}&quot;
                                             </span>
                                         </CommandItem>
                                     </CommandGroup>

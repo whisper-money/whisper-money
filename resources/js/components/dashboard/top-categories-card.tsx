@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import { Category, getCategoryColorClasses } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
@@ -50,7 +51,7 @@ export function TopCategoriesCard({
         return (
             <Card className="w-full">
                 <CardHeader>
-                    <CardTitle>Top Spending Categories</CardTitle>
+                    <CardTitle>{__('Top Spending Categories')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
@@ -73,8 +74,8 @@ export function TopCategoriesCard({
     return (
         <Card className="w-full">
             <CardHeader className="gap-2">
-                <CardTitle>Top spending categories</CardTitle>
-                <CardDescription>on the last 30 days</CardDescription>
+                <CardTitle>{__('Top spending categories')}</CardTitle>
+                <CardDescription>{__('on the last 30 days')}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
@@ -147,7 +148,7 @@ export function TopCategoriesCard({
                     })}
                     {categories.length === 0 && (
                         <div className="py-8 text-center text-muted-foreground">
-                            No spending data this month
+                            {__('No spending data this month')}
                         </div>
                     )}
                 </div>

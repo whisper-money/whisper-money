@@ -8,6 +8,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useSyncContext } from '@/contexts/sync-context';
+import { __ } from '@/utils/i18n';
 import { formatDistanceToNow } from 'date-fns';
 import { CloudAlert, CloudCheck, CloudOff, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
@@ -83,7 +84,7 @@ export function SyncStatusButton() {
                     <RefreshCw
                         className={`mr-2 h-4 w-4 ${syncStatus === 'syncing' ? 'animate-spin' : ''}`}
                     />
-                    Sync now
+                    {__('Sync now')}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

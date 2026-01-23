@@ -1,5 +1,6 @@
 import { CategorySelect } from '@/components/transactions/category-select';
 import { type Category } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { useState } from 'react';
 
 interface BulkCategorySelectProps {
@@ -27,7 +28,7 @@ export function BulkCategorySelect({
             onValueChange={handleChange}
             categories={categories}
             disabled={disabled}
-            placeholder="Change category"
+            placeholder={__('Change category')}
             triggerClassName="h-9 w-[180px]"
             showUncategorized={true}
         />

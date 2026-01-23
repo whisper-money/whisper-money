@@ -1,5 +1,6 @@
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { type Label } from '@/types/label';
+import { __ } from '@/utils/i18n';
 import { useState } from 'react';
 
 interface BulkLabelSelectProps {
@@ -26,7 +27,7 @@ export function BulkLabelSelect({
             onValueChange={handleChange}
             labels={labels}
             disabled={disabled}
-            placeholder="Add labels"
+            placeholder={__('Add labels')}
             triggerClassName="h-9 w-[180px] min-h-9"
             allowCreate={true}
             allowRemoveAll={true}

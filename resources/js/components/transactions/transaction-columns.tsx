@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { ColumnDef } from '@tanstack/react-table';
 import { format, getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
@@ -55,18 +56,20 @@ export function createTransactionColumns({
                     onCheckedChange={(value) =>
                         table.toggleAllPageRowsSelected(!!value)
                     }
-                    aria-label="Select all"
+                    aria-label={__('Select all')}
                 />
             ),
+
             cell: ({ row }) => (
                 <Checkbox
                     checked={row.getIsSelected()}
                     className="ml-2"
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
                     onClick={(e) => e.stopPropagation()}
-                    aria-label="Select row"
+                    aria-label={__('Select row')}
                 />
             ),
+
             enableSorting: false,
             enableHiding: false,
         },
@@ -85,7 +88,8 @@ export function createTransactionColumns({
                             column.toggleSorting(column.getIsSorted() === 'asc')
                         }
                     >
-                        Date
+                        {__('Date')}
+
                         <ArrowDown className="h-2 w-2 opacity-25" />
                     </Button>
                 );
@@ -231,7 +235,7 @@ export function createTransactionColumns({
             accessorKey: 'amount',
             meta: { label: 'Amount' },
             header: () => {
-                return <div className="w-full text-right">Amount</div>;
+                return <div className="w-full text-right">{__('Amount')}</div>;
             },
             cell: ({ row }) => {
                 const amountInCents = row.getValue('amount') as number;
@@ -271,29 +275,33 @@ export function createTransactionColumns({
                                     className="h-[24px] w-8 p-0"
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <span className="sr-only">Open menu</span>
+                                    <span className="sr-only">
+                                        {__('Open menu')}
+                                    </span>
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel>
+                                    {__('Actions')}
+                                </DropdownMenuLabel>
                                 <DropdownMenuItem
                                     onClick={() => onEdit(transaction)}
                                 >
-                                    Edit
+                                    {__('Edit')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() =>
                                         onReEvaluateRules(transaction)
                                     }
                                 >
-                                    Re-evaluate rules
+                                    {__('Re-evaluate rules')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     variant="destructive"
                                     onClick={() => onDelete(transaction)}
                                 >
-                                    Delete
+                                    {__('Delete')}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>

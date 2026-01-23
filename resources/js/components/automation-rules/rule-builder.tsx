@@ -19,6 +19,7 @@ import {
     OPERATOR_LABELS,
     type RuleStructure,
 } from '@/lib/rule-builder-utils';
+import { __ } from '@/utils/i18n';
 import { ChevronDown, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -76,7 +77,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <Label>Conditions</Label>
+                <Label>{__('Conditions')}</Label>
                 {structure.groups.length > 1 && (
                     <Button
                         type="button"
@@ -85,7 +86,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                         onClick={toggleGroupOperator}
                         className="px-1.5 py-4"
                     >
-                        Groups joined by:{' '}
+                        {__('Groups joined by:')}{' '}
                         <Badge variant="secondary" className="ml-2">
                             {structure.groupOperator.toUpperCase()}
                             <ChevronDown className="-mr-1 inline-block h-3 w-3" />
@@ -120,7 +121,9 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                                                 data-testid="toggle-condition-operator"
                                             >
                                                 <span className="text-sm">
-                                                    Conditions joined by:{' '}
+                                                    {__(
+                                                        'Conditions joined by:',
+                                                    )}{' '}
                                                 </span>
                                                 <Badge
                                                     variant="secondary"
@@ -204,7 +207,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                                 }}
                             >
                                 <Plus className="mr-2 h-4 w-4" />
-                                Add Condition
+                                {__('Add Condition')}
                             </Button>
                         </Card>
                     </div>
@@ -219,7 +222,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                 onClick={addGroup}
             >
                 <Plus className="mr-2 h-4 w-4" />
-                Add Group
+                {__('Add Group')}
             </Button>
 
             {error && <p className="text-sm text-red-500">{error}</p>}
@@ -314,7 +317,7 @@ function ConditionRow({
                     onChange={(e) =>
                         onChange({ ...condition, value: e.target.value })
                     }
-                    placeholder="Value"
+                    placeholder={__('Value')}
                     className="w-full sm:flex-1"
                     step={inputType === 'number' ? 'any' : undefined}
                 />

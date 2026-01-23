@@ -21,6 +21,15 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+Route::get('/es', function () {
+    app()->setLocale('es');
+
+    return Inertia::render('welcome', [
+        'canRegister' => Features::enabled(Features::registration()),
+        'hideAuthButtons' => config('landing.hide_auth_buttons', false),
+    ]);
+})->name('home.es');
+
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('robots.txt', [RobotsController::class, 'index'])->name('robots');
 

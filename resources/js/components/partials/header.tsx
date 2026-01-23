@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { type SharedData } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import { BirdIcon, Github, StarIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -50,6 +51,61 @@ export default function Header({
                     <span className="text-sm font-medium">Whisper Money</span>
                 </div>
                 <nav className="flex items-center gap-2">
+                    {!hideExternalButtons && (
+                        <>
+                            <a
+                                href="https://github.com/whisper-money/whisper-money"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <Button
+                                    variant={'ghost'}
+                                    className={cn([
+                                        'cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100',
+                                        { 'hidden sm:flex': !hideAuthButtons },
+                                    ])}
+                                >
+                                    <Github className="size-5" />
+                                    <span className="hidden sm:inline">
+                                        {__('Github')}
+                                    </span>
+                                    {stars !== null && (
+                                        <span className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
+                                            <StarIcon className="size-3 fill-amber-400 text-amber-400" />
+                                            {stars}
+                                        </span>
+                                    )}
+                                </Button>
+                            </a>
+                            <a
+                                href="https://discord.gg/9UQWZECDDv"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <Button
+                                    variant={'ghost'}
+                                    className={cn([
+                                        'cursor-pointer opacity-70 transition-all duration-200 hover:opacity-100',
+                                        { 'hidden sm:flex': !hideAuthButtons },
+                                    ])}
+                                >
+                                    <DiscordIcon className="size-5" />
+                                    <span className="hidden sm:inline">
+                                        Discord
+                                    </span>
+                                </Button>
+                            </a>
+                        </>
+                    )}
+                    {!hideAuthButtons && !hideExternalButtons && (
+                        <Separator
+                            orientation="vertical"
+                            className={cn([
+                                'data-[orientation=vertical]:h-6 data-[orientation=vertical]:w-[1px] data-[orientation=vertical]:bg-border',
+                                { 'hidden sm:block': !hideAuthButtons },
+                            ])}
+                        />
+                    )}
                     {!hideAuthButtons && (
                         <>
                             {auth.user ? (
@@ -58,7 +114,7 @@ export default function Header({
                                         size="sm"
                                         className="cursor-pointer rounded-full"
                                     >
-                                        Dashboard
+                                        {__('Dashboard')}
                                     </Button>
                                 </Link>
                             ) : (
@@ -69,7 +125,7 @@ export default function Header({
                                             size="sm"
                                             className="cursor-pointer rounded-full"
                                         >
-                                            Log in
+                                            {__('Log in')}
                                         </Button>
                                     </Link>
                                     {canRegister && (
@@ -79,7 +135,7 @@ export default function Header({
                                                 size="sm"
                                                 className="cursor-pointer rounded-full"
                                             >
-                                                Register
+                                                {__('Register')}
                                             </Button>
                                         </Link>
                                     )}

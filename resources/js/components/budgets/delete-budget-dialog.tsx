@@ -10,6 +10,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Budget } from '@/types/budget';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -46,17 +47,18 @@ export function DeleteBudgetDialog({
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Budget</AlertDialogTitle>
+                    <AlertDialogTitle>{__('Delete Budget')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Are you sure you want to delete "{budget.name}"? This
-                        action cannot be undone. All budget periods,
-                        allocations, and transaction assignments will be
-                        permanently removed.
+                        {__('Are you sure you want to delete "')}
+                        {budget.name}
+                        {__(
+                            '"? This\n                        action cannot be undone. All budget periods,\n                        allocations, and transaction assignments will be\n                        permanently removed.',
+                        )}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel disabled={isDeleting}>
-                        Cancel
+                        {__('Cancel')}
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleDelete}

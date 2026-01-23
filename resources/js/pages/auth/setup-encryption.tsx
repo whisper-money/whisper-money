@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
 import { useState } from 'react';
@@ -115,14 +116,18 @@ export default function SetupEncryption() {
 
     return (
         <AuthLayout
-            title="Setup Encryption"
-            description="Create a strong encryption password to secure your data"
+            title={__('Setup Encryption')}
+            description={__(
+                'Create a strong encryption password to secure your data',
+            )}
         >
-            <Head title="Setup Encryption" />
+            <Head title={__('Setup Encryption')} />
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <div className="grid gap-6">
                     <div className="grid gap-2">
-                        <Label htmlFor="password">Encryption Password</Label>
+                        <Label htmlFor="password">
+                            {__('Encryption Password')}
+                        </Label>
                         <Input
                             id="password"
                             type="password"
@@ -132,12 +137,16 @@ export default function SetupEncryption() {
                             autoComplete="new-password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter a strong encryption password"
+                            placeholder={__(
+                                'Enter a strong encryption password',
+                            )}
                             disabled={processing}
                         />
+
                         <p className="text-xs text-muted-foreground">
-                            Use a strong password (minimum 12 characters). This
-                            password will encrypt your data.
+                            {__(
+                                'Use a strong password (minimum 12 characters). This\n                            password will encrypt your data.',
+                            )}
                         </p>
                         <InputError
                             message={errors.password}
@@ -147,7 +156,7 @@ export default function SetupEncryption() {
 
                     <div className="grid gap-2">
                         <Label htmlFor="confirmPassword">
-                            Confirm Password
+                            {__('Confirm Password')}
                         </Label>
                         <Input
                             id="confirmPassword"
@@ -157,15 +166,16 @@ export default function SetupEncryption() {
                             autoComplete="new-password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Confirm your encryption password"
+                            placeholder={__('Confirm your encryption password')}
                             disabled={processing}
                         />
+
                         <InputError message={errors.confirmPassword} />
                     </div>
 
                     <div className="grid gap-2">
                         <Label htmlFor="storagePreference">
-                            Storage Preference
+                            {__('Storage Preference')}
                         </Label>
                         <Select
                             value={storagePreference}
@@ -181,10 +191,10 @@ export default function SetupEncryption() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="session">
-                                    Session only (more secure)
+                                    {__('Session only (more secure)')}
                                 </SelectItem>
                                 <SelectItem value="persistent">
-                                    Keep me logged in (less secure)
+                                    {__('Keep me logged in (less secure)')}
                                 </SelectItem>
                             </SelectContent>
                         </Select>
@@ -208,7 +218,7 @@ export default function SetupEncryption() {
                         disabled={processing || !cryptoAvailable}
                     >
                         {processing && <Spinner />}
-                        Setup Encryption
+                        {__('Setup Encryption')}
                     </Button>
                 </div>
             </form>

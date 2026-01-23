@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import * as Icons from 'lucide-react';
 import {
     Check,
@@ -117,7 +118,7 @@ export function CategoryCombobox({
                                 <HelpCircle className="h-3 w-3 text-zinc-500" />
                             </div>
                             <span className="truncate text-zinc-500">
-                                Uncategorized
+                                {__('Uncategorized')}
                             </span>
                         </div>
                     ) : (
@@ -133,12 +134,13 @@ export function CategoryCombobox({
             <PopoverContent className="p-0" align="start">
                 <Command>
                     <CommandInput
-                        placeholder="Search categories..."
+                        placeholder={__('Search categories...')}
                         value={filterValue}
                         onValueChange={setFilterValue}
                     />
+
                     <CommandList ref={listRef}>
-                        <CommandEmpty>No category found.</CommandEmpty>
+                        <CommandEmpty>{__('No category found.')}</CommandEmpty>
                         {showUncategorized && (
                             <CommandItem
                                 value="uncategorized"
@@ -151,7 +153,7 @@ export function CategoryCombobox({
                                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
                                         <HelpCircle className="h-3 w-3 text-zinc-500" />
                                     </div>
-                                    <span>Uncategorized</span>
+                                    <span>{__('Uncategorized')}</span>
                                 </div>
                                 <Check
                                     className={cn(

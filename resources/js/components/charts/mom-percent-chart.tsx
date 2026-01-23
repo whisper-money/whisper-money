@@ -1,6 +1,7 @@
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { formatPercentValue, PercentDataPoint } from '@/lib/chart-calculations';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
 import { useEffect, useRef } from 'react';
 import {
     Bar,
@@ -51,7 +52,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
         <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
             <div className="font-medium">{data.month}</div>
             <div className="mt-1 flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Change</span>
+                <span className="text-muted-foreground">{__('Change')}</span>
                 <span
                     className={cn(
                         'font-mono font-medium tabular-nums',
@@ -105,6 +106,7 @@ export function MoMPercentChart({
                         axisLine={false}
                         tickFormatter={xAxisFormatter}
                     />
+
                     <YAxis
                         tickLine={false}
                         axisLine={false}
@@ -113,15 +115,18 @@ export function MoMPercentChart({
                         }
                         width={50}
                     />
+
                     <ReferenceLine
                         y={0}
                         stroke="var(--color-border)"
                         strokeDasharray="3 3"
                     />
+
                     <Tooltip
                         content={<CustomTooltip />}
                         cursor={{ fill: 'var(--color-muted)', opacity: 0.3 }}
                     />
+
                     <Bar dataKey="displayValue" radius={[4, 4, 0, 0]}>
                         {chartData.map((entry, index) => {
                             const value = entry.displayValue;

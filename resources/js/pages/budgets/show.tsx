@@ -18,6 +18,7 @@ import { BreadcrumbItem } from '@/types';
 import { Account, Bank } from '@/types/account';
 import { Budget, BudgetPeriod, getBudgetPeriodTypeLabel } from '@/types/budget';
 import { Category } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -112,13 +113,13 @@ export default function BudgetShow({
                                         {trackingLabel !== null ? (
                                             <>
                                                 <span className="opacity-50">
-                                                    Tracking{' '}
+                                                    {__('Tracking')}{' '}
                                                 </span>
                                                 <span>{trackingLabel}</span>
                                             </>
                                         ) : (
                                             <span className="opacity-50">
-                                                No tracking
+                                                {__('No tracking')}
                                             </span>
                                         )}
                                     </div>
@@ -143,14 +144,14 @@ export default function BudgetShow({
                             variant="outline"
                             onClick={() => setEditOpen(true)}
                         >
-                            Edit budget
+                            {__('Edit budget')}
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="outline"
                                     size="icon"
-                                    aria-label="More options"
+                                    aria-label={__('More options')}
                                 >
                                     <ChevronDown className="h-4 w-4" />
                                 </Button>
@@ -160,7 +161,7 @@ export default function BudgetShow({
                                     onClick={() => setDeleteOpen(true)}
                                     variant="destructive"
                                 >
-                                    Delete
+                                    {__('Delete')}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -180,12 +181,12 @@ export default function BudgetShow({
                             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                             <div>
                                 <h3 className="text-sm font-medium">
-                                    Finding historical transactions
+                                    {__('Finding historical transactions')}
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
-                                    We're looking through your transaction
-                                    history to find expenses that match this
-                                    budget. This usually takes a few seconds.
+                                    {__(
+                                        "We're looking through your transaction\n                                    history to find expenses that match this\n                                    budget. This usually takes a few seconds.",
+                                    )}
                                 </p>
                             </div>
                         </div>

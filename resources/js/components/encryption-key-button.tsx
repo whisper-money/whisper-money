@@ -1,5 +1,6 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
 import { LockKeyhole, LockKeyholeOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
@@ -103,7 +104,7 @@ export function EncryptionKeyButton() {
             <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Clear Encryption Key?</DialogTitle>
+                        <DialogTitle>{__('Clear Encryption Key?')}</DialogTitle>
                         <DialogDescription>
                             This will remove your encryption key from this
                             browser session. You'll need to enter your password
@@ -115,9 +116,11 @@ export function EncryptionKeyButton() {
                             variant="outline"
                             onClick={() => setShowClearDialog(false)}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
-                        <Button onClick={handleClearKey}>Clear Key</Button>
+                        <Button onClick={handleClearKey}>
+                            {__('Clear Key')}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

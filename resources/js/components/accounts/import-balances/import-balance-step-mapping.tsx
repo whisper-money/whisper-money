@@ -15,6 +15,7 @@ import type {
     ParsedRow,
 } from '@/types/balance-import';
 import { DateFormat } from '@/types/import';
+import { __ } from '@/utils/i18n';
 
 interface ImportBalanceStepMappingProps {
     columnOptions: ColumnOption[];
@@ -77,7 +78,8 @@ export function ImportBalanceStepMapping({
             <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="date-column">
-                        Balance Date <span className="text-destructive">*</span>
+                        {__('Balance Date')}
+                        <span className="text-destructive">*</span>
                     </Label>
                     <Select
                         value={columnMapping.balance_date || ''}
@@ -86,7 +88,9 @@ export function ImportBalanceStepMapping({
                         }
                     >
                         <SelectTrigger id="date-column">
-                            <SelectValue placeholder="Select date column" />
+                            <SelectValue
+                                placeholder={__('Select date column')}
+                            />
                         </SelectTrigger>
                         <SelectContent>
                             {columnOptions.map((option, index) => (
@@ -105,7 +109,8 @@ export function ImportBalanceStepMapping({
 
                 <div className="space-y-2">
                     <Label htmlFor="balance-column">
-                        Balance <span className="text-destructive">*</span>
+                        {__('Balance')}
+                        <span className="text-destructive">*</span>
                     </Label>
                     <Select
                         value={columnMapping.balance || ''}
@@ -114,7 +119,9 @@ export function ImportBalanceStepMapping({
                         }
                     >
                         <SelectTrigger id="balance-column">
-                            <SelectValue placeholder="Select balance column" />
+                            <SelectValue
+                                placeholder={__('Select balance column')}
+                            />
                         </SelectTrigger>
                         <SelectContent>
                             {columnOptions.map((option, index) => (
@@ -132,7 +139,7 @@ export function ImportBalanceStepMapping({
                 {isValid && previewBalances.length > 0 && (
                     <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
                         <Label className="pl-2 text-xs font-light tracking-widest uppercase opacity-50">
-                            Preview (first 3 rows)
+                            {__('Preview (first 3 rows)')}
                         </Label>
                         <div className="space-y-2 pt-2">
                             {previewBalances.map((balance, index) => (
@@ -154,7 +161,7 @@ export function ImportBalanceStepMapping({
 
                 {!dateFormatDetected && (
                     <div className="space-y-3 rounded-lg border p-4">
-                        <Label>Date Format</Label>
+                        <Label>{__('Date Format')}</Label>
                         <RadioGroup
                             value={dateFormat}
                             onValueChange={(value) =>
@@ -166,11 +173,12 @@ export function ImportBalanceStepMapping({
                                     value={DateFormat.YearMonthDay}
                                     id="format-ymd"
                                 />
+
                                 <Label
                                     htmlFor="format-ymd"
                                     className="cursor-pointer font-normal"
                                 >
-                                    YYYY-MM-DD (e.g., 2024-12-31)
+                                    {__('YYYY-MM-DD (e.g., 2024-12-31)')}
                                 </Label>
                             </div>
                             <div className="flex items-center space-x-2">
@@ -178,11 +186,12 @@ export function ImportBalanceStepMapping({
                                     value={DateFormat.MonthDayYear}
                                     id="format-mdy"
                                 />
+
                                 <Label
                                     htmlFor="format-mdy"
                                     className="cursor-pointer font-normal"
                                 >
-                                    MM-DD-YYYY (e.g., 12-31-2024)
+                                    {__('MM-DD-YYYY (e.g., 12-31-2024)')}
                                 </Label>
                             </div>
                             <div className="flex items-center space-x-2">
@@ -190,11 +199,12 @@ export function ImportBalanceStepMapping({
                                     value={DateFormat.DayMonthYear}
                                     id="format-dmy"
                                 />
+
                                 <Label
                                     htmlFor="format-dmy"
                                     className="cursor-pointer font-normal"
                                 >
-                                    DD-MM-YYYY (e.g., 31-12-2024)
+                                    {__('DD-MM-YYYY (e.g., 31-12-2024)')}
                                 </Label>
                             </div>
                         </RadioGroup>
@@ -204,10 +214,10 @@ export function ImportBalanceStepMapping({
 
             <div className="flex justify-between">
                 <Button variant="outline" onClick={onBack}>
-                    Back
+                    {__('Back')}
                 </Button>
                 <Button onClick={onNext} disabled={!isValid}>
-                    Preview Balances
+                    {__('Preview Balances')}
                 </Button>
             </div>
         </div>

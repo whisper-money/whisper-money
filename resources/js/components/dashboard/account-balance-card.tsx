@@ -4,6 +4,7 @@ import { EncryptedText } from '@/components/encrypted-text';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
@@ -27,7 +28,7 @@ export function AccountBalanceCard({
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                        Loading...
+                        {__('Loading...')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -87,7 +88,7 @@ export function AccountBalanceCard({
                         <AmountTrendIndicator
                             isPositive={isPositive}
                             trend={Math.abs(account.diff)}
-                            label="vs last month"
+                            label={__('vs last month')}
                             className="text-sm"
                             previousAmount={account.previousBalance}
                             currentAmount={account.currentBalance}
@@ -125,6 +126,7 @@ export function AccountBalanceCard({
                                         );
                                     }}
                                 />
+
                                 <Line
                                     type="monotone"
                                     dataKey="value"

@@ -10,6 +10,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { AutomationRule } from '@/types/automation-rule';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -47,15 +48,20 @@ export function DeleteAutomationRuleDialog({
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Automation Rule</AlertDialogTitle>
+                    <AlertDialogTitle>
+                        {__('Delete Automation Rule')}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                        Are you sure you want to delete "{rule.title}"? This
-                        action cannot be undone.
+                        {__('Are you sure you want to delete "')}
+                        {rule.title}
+                        {__(
+                            '"? This\n                        action cannot be undone.',
+                        )}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel disabled={isDeleting}>
-                        Cancel
+                        {__('Cancel')}
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleDelete}

@@ -1,5 +1,6 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepHeader } from '@/components/onboarding/step-header';
+import { __ } from '@/utils/i18n';
 import {
     Banknote,
     Building2,
@@ -65,8 +66,10 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
             <StepHeader
                 icon={Banknote}
                 iconContainerClassName="bg-gradient-to-br from-cyan-400 to-blue-500"
-                title="Account Types"
-                description="There are different account types. Some track transactions, others just track balance over time."
+                title={__('Account Types')}
+                description={__(
+                    'There are different account types. Some track transactions, others just track balance over time.',
+                )}
             />
 
             <div className="grid w-full max-w-2xl gap-3 sm:grid-cols-2">
@@ -81,6 +84,7 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
                                     <account.icon
                                         className={`size-4 stroke-muted-foreground`}
                                     />
+
                                     <h3 className="font-semibold">
                                         {account.name}
                                     </h3>
@@ -108,7 +112,7 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
 
             <div className="mt-8 w-full sm:w-auto">
                 <StepButton
-                    text="Create Your First Account"
+                    text={__('Create Your First Account')}
                     onClick={onContinue}
                 />
             </div>

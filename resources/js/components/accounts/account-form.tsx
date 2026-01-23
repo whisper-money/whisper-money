@@ -15,6 +15,7 @@ import {
     type Bank,
     type CurrencyCode,
 } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { BankCombobox } from './bank-combobox';
 import { CustomBankData, CustomBankForm } from './custom-bank-form';
@@ -112,20 +113,20 @@ export function AccountForm({
     return (
         <>
             <div className="space-y-2">
-                <Label htmlFor="display_name">Name</Label>
+                <Label htmlFor="display_name">{__('Name')}</Label>
                 <Input
                     id="display_name"
                     className="mt-1"
                     name="display_name"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Account name"
+                    placeholder={__('Account name')}
                     required
                 />
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="bank_id">Bank</Label>
+                <Label htmlFor="bank_id">{__('Bank')}</Label>
                 <div className="mt-1">
                     {isCreatingCustomBank ? (
                         <CustomBankForm
@@ -142,6 +143,7 @@ export function AccountForm({
                                 value={selectedBankId ?? ''}
                                 required
                             />
+
                             <BankCombobox
                                 value={selectedBankId}
                                 onValueChange={setSelectedBankId}
@@ -154,7 +156,7 @@ export function AccountForm({
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="type">Account Type</Label>
+                <Label htmlFor="type">{__('Account Type')}</Label>
                 <div className="mt-1">
                     <Select
                         name="type"
@@ -166,7 +168,9 @@ export function AccountForm({
                         required
                     >
                         <SelectTrigger name="type">
-                            <SelectValue placeholder="Select account type" />
+                            <SelectValue
+                                placeholder={__('Select account type')}
+                            />
                         </SelectTrigger>
                         <SelectContent>
                             {ACCOUNT_TYPES.map((type) => (
@@ -180,14 +184,15 @@ export function AccountForm({
                 {(selectedType === 'investment' ||
                     selectedType === 'retirement') && (
                     <p className="pl-1 text-xs text-muted-foreground">
-                        This account type is for balance tracking only and
-                        doesn't support transactions.
+                        {__(
+                            "This account type is for balance tracking only and\n                        doesn't support transactions.",
+                        )}
                     </p>
                 )}
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="currency_code">Currency</Label>
+                <Label htmlFor="currency_code">{__('Currency')}</Label>
                 <div className="mt-1">
                     <Select
                         name="currency_code"
@@ -198,7 +203,7 @@ export function AccountForm({
                         required
                     >
                         <SelectTrigger name="currency_code">
-                            <SelectValue placeholder="Select currency" />
+                            <SelectValue placeholder={__('Select currency')} />
                         </SelectTrigger>
                         <SelectContent>
                             {CURRENCY_OPTIONS.map((currency) => (

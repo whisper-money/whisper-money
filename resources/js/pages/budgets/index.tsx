@@ -5,6 +5,7 @@ import HeadingSmall from '@/components/heading-small';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Budget } from '@/types/budget';
+import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -22,13 +23,15 @@ interface Props {
 export default function BudgetsIndex({ budgets, currencyCode }: Props) {
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
-            <Head title="Budgets" />
+            <Head title={__('Budgets')} />
 
             <div className="space-y-8 p-6">
                 <div className="flex items-center justify-between">
                     <HeadingSmall
-                        title="Budgets"
-                        description="Track your spending with flexible budgets"
+                        title={__('Budgets')}
+                        description={__(
+                            'Track your spending with flexible budgets',
+                        )}
                     />
                 </div>
 

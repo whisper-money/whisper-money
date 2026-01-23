@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import {
     Cell,
@@ -293,18 +294,18 @@ function TransactionRowComponent({
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>
-                <ContextMenuLabel>Actions</ContextMenuLabel>
+                <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                 <ContextMenuItem onClick={() => onEdit(transaction)}>
-                    Edit
+                    {__('Edit')}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => onReEvaluateRules(transaction)}>
-                    Re-evaluate rules
+                    {__('Re-evaluate rules')}
                 </ContextMenuItem>
                 <ContextMenuItem
                     onClick={() => onDelete(transaction)}
                     variant="destructive"
                 >
-                    Delete
+                    {__('Delete')}
                 </ContextMenuItem>
             </ContextMenuContent>
         </ContextMenu>
@@ -1585,12 +1586,12 @@ export default function Transactions({
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
-            <Head title="Transactions" />
+            <Head title={__('Transactions')} />
 
             <div className="space-y-6 p-6">
                 <HeadingSmall
-                    title="Transactions"
-                    description="View and manage your transactions"
+                    title={__('Transactions')}
+                    description={__('View and manage your transactions')}
                 />
 
                 <div className="space-y-4">
@@ -1622,6 +1623,7 @@ export default function Transactions({
                                         setRefreshKey((prev) => prev + 1)
                                     }
                                 />
+
                                 <DataTableViewOptions table={table} />
                             </div>
                         }
@@ -1690,10 +1692,10 @@ export default function Transactions({
                                         {isLoadingMore ? (
                                             <>
                                                 <Spinner />
-                                                Loading
+                                                {__('Loading')}
                                             </>
                                         ) : (
-                                            <>Load more</>
+                                            <>{__('Load more')}</>
                                         )}
                                     </Button>
                                 )}
@@ -1742,7 +1744,8 @@ export default function Transactions({
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Delete Transaction
+                            {__('Delete Transaction')}
+
                             {isBulkDeleteMode ? 's' : ''}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
@@ -1755,7 +1758,7 @@ export default function Transactions({
                         <AlertDialogCancel
                             disabled={isDeleting || isBulkDeleting}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={

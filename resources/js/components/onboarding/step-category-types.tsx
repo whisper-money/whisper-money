@@ -1,5 +1,6 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepHeader } from '@/components/onboarding/step-header';
+import { __ } from '@/utils/i18n';
 import { ArrowDownLeft, ArrowUpRight, Repeat, Tag } from 'lucide-react';
 
 interface StepCategoryTypesProps {
@@ -48,8 +49,10 @@ export function StepCategoryTypes({ onContinue }: StepCategoryTypesProps) {
             <StepHeader
                 icon={Tag}
                 iconContainerClassName="bg-gradient-to-br from-violet-400 to-purple-500"
-                title="Understanding Categories"
-                description="Every transaction belongs to one of three types:"
+                title={__('Understanding Categories')}
+                description={__(
+                    'Every transaction belongs to one of three types:',
+                )}
             />
 
             <div className="mb-8 grid w-full max-w-3xl gap-4 md:grid-cols-3">
@@ -76,7 +79,7 @@ export function StepCategoryTypes({ onContinue }: StepCategoryTypesProps) {
                 ))}
             </div>
 
-            <StepButton text="Continue" onClick={onContinue} />
+            <StepButton text={__('Continue')} onClick={onContinue} />
         </div>
     );
 }

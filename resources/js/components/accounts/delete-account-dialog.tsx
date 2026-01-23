@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type Account } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { Form, router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -44,28 +45,30 @@ export function DeleteAccountDialog({
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Delete Account</DialogTitle>
+                    <DialogTitle>{__('Delete Account')}</DialogTitle>
                     <DialogDescription className="space-y-2">
                         <p>
-                            This action is irreversible. All transactions in
-                            this account will also be permanently deleted.
+                            {__(
+                                'This action is irreversible. All transactions in\n                            this account will also be permanently deleted.',
+                            )}
                         </p>
                         <p className="font-semibold">
-                            Type <span className="text-red-600">DELETE</span> to
-                            confirm.
+                            {__('Type')}
+                            <span className="text-red-600">DELETE</span>
+                            {__('to\n                            confirm.')}
                         </p>
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="confirm">Confirmation</Label>
+                        <Label htmlFor="confirm">{__('Confirmation')}</Label>
                         <Input
                             id="confirm"
                             className="mt-1"
                             value={confirmText}
                             onChange={(e) => setConfirmText(e.target.value)}
-                            placeholder="Type DELETE"
+                            placeholder={__('Type DELETE')}
                             autoComplete="off"
                         />
                     </div>
@@ -89,7 +92,7 @@ export function DeleteAccountDialog({
                                     onClick={() => handleOpenChange(false)}
                                     disabled={processing}
                                 >
-                                    Cancel
+                                    {__('Cancel')}
                                 </Button>
                                 <Button
                                     type="submit"

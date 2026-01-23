@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/chart';
 import { BudgetPeriod } from '@/types/budget';
 import { formatCurrency } from '@/utils/currency';
+import { __ } from '@/utils/i18n';
 import { useMemo } from 'react';
 import { Area, AreaChart, Line, XAxis } from 'recharts';
 
@@ -72,13 +73,17 @@ function CustomTooltip({
             </p>
             <div className="space-y-1 text-sm">
                 <div className="flex items-center justify-between gap-8">
-                    <span className="text-muted-foreground">Allocated:</span>
+                    <span className="text-muted-foreground">
+                        {__('Allocated:')}
+                    </span>
                     <span className="font-medium">
                         {formatCurrency(allocated, currencyCode)}
                     </span>
                 </div>
                 <div className="flex items-center justify-between gap-8">
-                    <span className="text-muted-foreground">Spent:</span>
+                    <span className="text-muted-foreground">
+                        {__('Spent:')}
+                    </span>
                     <span className="font-medium">
                         {formatCurrency(spent, currencyCode)}
                     </span>
@@ -95,7 +100,7 @@ function CustomTooltip({
                 )}
                 <div className="border-t pt-1">
                     <div className="flex items-center justify-between gap-8">
-                        <span className="font-medium">Available:</span>
+                        <span className="font-medium">{__('Available:')}</span>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xs text-muted-foreground">
                                 {percentage}% /
@@ -226,9 +231,10 @@ export function BudgetSpendingChart({
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Budget Spending</CardTitle>
+                <CardTitle>{__('Budget Spending')}</CardTitle>
                 <CardDescription>
-                    Tracking spending for {budgetName} · {periodLabel}
+                    {__('Tracking spending for')}
+                    {budgetName} · {periodLabel}
                 </CardDescription>
             </CardHeader>
             <CardContent className="px-6 pt-0">
@@ -254,11 +260,13 @@ export function BudgetSpendingChart({
                                     stopColor="var(--color-spent)"
                                     stopOpacity={0.8}
                                 />
+
                                 <stop
                                     offset="50%"
                                     stopColor="var(--color-spent)"
                                     stopOpacity={0.4}
                                 />
+
                                 <stop
                                     offset="100%"
                                     stopColor="var(--color-spent)"
@@ -277,11 +285,13 @@ export function BudgetSpendingChart({
                                     stopColor="var(--color-allocated)"
                                     stopOpacity={0.4}
                                 />
+
                                 <stop
                                     offset="50%"
                                     stopColor="var(--color-allocated)"
                                     stopOpacity={0.2}
                                 />
+
                                 <stop
                                     offset="100%"
                                     stopColor="var(--color-allocated)"
@@ -305,6 +315,7 @@ export function BudgetSpendingChart({
                                 });
                             }}
                         />
+
                         <ChartTooltip
                             content={
                                 <CustomTooltip
@@ -313,6 +324,7 @@ export function BudgetSpendingChart({
                                 />
                             }
                         />
+
                         <Area
                             dataKey="allocated"
                             type="basis"
@@ -323,6 +335,7 @@ export function BudgetSpendingChart({
                             activeDot={{ r: 6 }}
                             fillOpacity={1}
                         />
+
                         <Area
                             dataKey="spent"
                             type="basis"

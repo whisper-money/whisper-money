@@ -41,6 +41,7 @@ import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
+import { __ } from '@/utils/i18n';
 import { format, getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -585,7 +586,7 @@ export function EditTransactionDialog({
                                         : ''
                                 }
                             >
-                                Date
+                                {__('Date')}
                             </FormLabel>
                             {mode === 'create' ? (
                                 <Input
@@ -630,7 +631,7 @@ export function EditTransactionDialog({
                                         : ''
                                 }
                             >
-                                Description
+                                {__('Description')}
                             </FormLabel>
                             {mode === 'create' ||
                             (mode === 'edit' &&
@@ -641,7 +642,7 @@ export function EditTransactionDialog({
                                     onChange={(e) =>
                                         setDescription(e.target.value)
                                     }
-                                    placeholder="Transaction description"
+                                    placeholder={__('Transaction description')}
                                     disabled={isSubmitting}
                                     required
                                     rows={3}
@@ -658,10 +659,11 @@ export function EditTransactionDialog({
                                         className="bg-muted"
                                         rows={3}
                                     />
+
                                     <p className="text-xs text-muted-foreground">
-                                        This transaction was imported from a
-                                        file. The description cannot be
-                                        modified.
+                                        {__(
+                                            'This transaction was imported from a\n                                        file. The description cannot be\n                                        modified.',
+                                        )}
                                     </p>
                                 </div>
                             )}
@@ -676,7 +678,7 @@ export function EditTransactionDialog({
                                         : ''
                                 }
                             >
-                                Amount
+                                {__('Amount')}
                             </FormLabel>
                             {mode === 'create' ? (
                                 <>
@@ -703,11 +705,12 @@ export function EditTransactionDialog({
                                             }
                                             disabled={isSubmitting}
                                         />
+
                                         <FormLabel
                                             htmlFor="update-balance"
                                             className="cursor-pointer font-normal"
                                         >
-                                            Update account balance
+                                            {__('Update account balance')}
                                         </FormLabel>
                                     </div>
                                 </>
@@ -724,7 +727,9 @@ export function EditTransactionDialog({
 
                         {mode === 'create' && (
                             <div className="space-y-2">
-                                <FormLabel htmlFor="account">Account</FormLabel>
+                                <FormLabel htmlFor="account">
+                                    {__('Account')}
+                                </FormLabel>
                                 <Select
                                     value={accountId}
                                     onValueChange={setAccountId}
@@ -734,7 +739,9 @@ export function EditTransactionDialog({
                                         id="account"
                                         data-testid="account-select"
                                     >
-                                        <SelectValue placeholder="Select account" />
+                                        <SelectValue
+                                            placeholder={__('Select account')}
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {transactionalAccounts.map(
@@ -755,13 +762,15 @@ export function EditTransactionDialog({
                         )}
 
                         <div className="space-y-2">
-                            <FormLabel htmlFor="category">Category</FormLabel>
+                            <FormLabel htmlFor="category">
+                                {__('Category')}
+                            </FormLabel>
                             <CategorySelect
                                 value={categoryId}
                                 onValueChange={setCategoryId}
                                 categories={categories}
                                 disabled={isSubmitting}
-                                placeholder="Uncategorized"
+                                placeholder={__('Uncategorized')}
                                 triggerClassName="w-full"
                                 showUncategorized={true}
                                 data-testid="category-select"
@@ -769,22 +778,22 @@ export function EditTransactionDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <FormLabel>Labels</FormLabel>
+                            <FormLabel>{__('Labels')}</FormLabel>
                             <LabelCombobox
                                 value={selectedLabelIds}
                                 onValueChange={setSelectedLabelIds}
                                 labels={labels}
                                 disabled={isSubmitting}
-                                placeholder="Add labels..."
+                                placeholder={__('Add labels...')}
                                 allowCreate={true}
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <FormLabel htmlFor="notes">Notes</FormLabel>
+                            <FormLabel htmlFor="notes">{__('Notes')}</FormLabel>
                             <Textarea
                                 id="notes"
-                                placeholder="Add notes..."
+                                placeholder={__('Add notes...')}
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 rows={3}
@@ -800,7 +809,7 @@ export function EditTransactionDialog({
                             onClick={() => onOpenChange(false)}
                             disabled={isSubmitting}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
                         <Button
                             type="submit"

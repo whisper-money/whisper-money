@@ -11,6 +11,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Budget, getBudgetPeriodTypeLabel } from '@/types/budget';
 import { formatCurrency } from '@/utils/currency';
+import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { ArrowRight, Calendar } from 'lucide-react';
 import { useMemo } from 'react';
@@ -100,7 +101,9 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Spent</span>
+                        <span className="text-muted-foreground">
+                            {__('Spent')}
+                        </span>
                         <span className={statusColor}>
                             {formatCurrency(stats.totalSpent, currencyCode)} of{' '}
                             {formatCurrency(stats.totalAllocated, currencyCode)}
@@ -110,8 +113,11 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                         value={Math.min(stats.percentageUsed, 100)}
                         className="h-2"
                     />
+
                     <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Remaining</span>
+                        <span className="text-muted-foreground">
+                            {__('Remaining')}
+                        </span>
                         <span className={statusColor}>
                             {formatCurrency(stats.remaining, currencyCode)}
                         </span>
@@ -120,7 +126,8 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
 
                 <div className="flex items-center justify-between border-t pt-4">
                     <span className="text-sm text-muted-foreground">
-                        Tracking: {trackingLabel}
+                        {__('Tracking:')}
+                        {trackingLabel}
                     </span>
                     <Link href={show({ budget: budget.id }).url}>
                         <Button
@@ -128,7 +135,8 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                             variant="ghost"
                             size="sm"
                         >
-                            View Details
+                            {__('View Details')}
+
                             <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </Link>

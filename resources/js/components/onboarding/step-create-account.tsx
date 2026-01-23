@@ -10,6 +10,7 @@ import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { type AccountType, formatAccountType } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { AlertCircle, CheckCircle2, CreditCard } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { StepButton } from './step-button';
@@ -256,7 +257,7 @@ export function StepCreateAccount({
                     </div>
 
                     <StepButton
-                        text="Continue"
+                        text={__('Continue')}
                         className="w-full sm:w-full"
                         onClick={() =>
                             onAccountCreated({
@@ -285,8 +286,9 @@ export function StepCreateAccount({
                     {isFirstAccount && (
                         <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
                             <p className="text-center">
-                                Your first account must be a{' '}
-                                <strong>Checking</strong> account.
+                                {__('Your first account must be a')}{' '}
+                                <strong>{__('Checking')}</strong>
+                                {__('account.')}
                             </p>
                         </div>
                     )}
@@ -304,7 +306,7 @@ export function StepCreateAccount({
                         disabled={isSubmitting}
                         loading={isSubmitting}
                         loadingText="Creating..."
-                        text="Create Account"
+                        text={__('Create Account')}
                     />
 
                     {!isFirstAccount && onSkip && (
@@ -315,7 +317,7 @@ export function StepCreateAccount({
                             disabled={isSubmitting}
                             onClick={() => onSkip()}
                         >
-                            Ignore
+                            {__('Ignore')}
                         </Button>
                     )}
                 </form>

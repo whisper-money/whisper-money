@@ -9,6 +9,7 @@ import {
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { TrendDataPoint } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
 import { useEffect, useRef } from 'react';
 import {
     Bar,
@@ -87,7 +88,7 @@ function CustomTooltip({
                 <div className="flex items-center justify-between gap-4">
                     <span className="flex items-center gap-2">
                         <span className="size-2 rounded-full bg-[var(--color-chart-2)]" />
-                        Income
+                        {__('Income')}
                     </span>
                     <AmountDisplay
                         amountInCents={data.income}
@@ -100,7 +101,7 @@ function CustomTooltip({
                 <div className="flex items-center justify-between gap-4">
                     <span className="flex items-center gap-2">
                         <span className="size-2 rounded-full bg-[var(--color-chart-5)]" />
-                        Expenses
+                        {__('Expenses')}
                     </span>
                     <AmountDisplay
                         amountInCents={data.expense}
@@ -113,7 +114,7 @@ function CustomTooltip({
                 <div className="flex items-center justify-between gap-4 border-t pt-1">
                     <span className="flex items-center gap-2">
                         <span className="size-2 rounded-full bg-[var(--color-chart-1)]" />
-                        Net
+                        {__('Net')}
                     </span>
                     <AmountDisplay
                         amountInCents={data.net}
@@ -151,7 +152,9 @@ export function CashflowTrendChart({
         return (
             <Card className={className}>
                 <CardHeader>
-                    <CardTitle className="text-base">Cashflow Trend</CardTitle>
+                    <CardTitle className="text-base">
+                        {__('Cashflow Trend')}
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="h-[250px] animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
@@ -163,10 +166,13 @@ export function CashflowTrendChart({
     return (
         <Card className={className}>
             <CardHeader className="gap-1 pb-4">
-                <CardTitle className="text-base">Cashflow Trend</CardTitle>
+                <CardTitle className="text-base">
+                    {__('Cashflow Trend')}
+                </CardTitle>
                 <CardDescription>
-                    Monthly income, expenses, and net cashflow over the last 12
-                    months
+                    {__(
+                        'Monthly income, expenses, and net cashflow over the last 12\n                    months',
+                    )}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -183,6 +189,7 @@ export function CashflowTrendChart({
                                 stroke="var(--color-border)"
                                 opacity={0.3}
                             />
+
                             <XAxis
                                 dataKey="month"
                                 tickLine={false}
@@ -190,6 +197,7 @@ export function CashflowTrendChart({
                                 axisLine={false}
                                 tickFormatter={formatMonth}
                             />
+
                             <YAxis
                                 tickLine={false}
                                 axisLine={false}
@@ -205,11 +213,13 @@ export function CashflowTrendChart({
                                 }}
                                 width={60}
                             />
+
                             <ReferenceLine
                                 y={0}
                                 stroke="var(--color-border)"
                                 strokeDasharray="3 3"
                             />
+
                             <Tooltip
                                 content={<CustomTooltip currency={currency} />}
                                 cursor={{
@@ -217,6 +227,7 @@ export function CashflowTrendChart({
                                     opacity: 0.3,
                                 }}
                             />
+
                             <Bar
                                 dataKey="income"
                                 fill="var(--color-chart-2)"
@@ -224,6 +235,7 @@ export function CashflowTrendChart({
                                 stackId="a"
                                 name="Income"
                             />
+
                             <Bar
                                 dataKey="expense"
                                 fill="var(--color-chart-5)"
@@ -231,6 +243,7 @@ export function CashflowTrendChart({
                                 stackId="b"
                                 name="Expenses"
                             />
+
                             <Line
                                 type="monotone"
                                 dataKey="net"
@@ -250,15 +263,15 @@ export function CashflowTrendChart({
                 <div className="mt-4 flex items-center justify-center gap-6 text-xs">
                     <div className="flex items-center gap-2">
                         <span className="size-3 rounded bg-[var(--color-chart-2)]" />
-                        <span>Income</span>
+                        <span>{__('Income')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="size-3 rounded bg-[var(--color-chart-5)]" />
-                        <span>Expenses</span>
+                        <span>{__('Expenses')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="size-3 rounded-full bg-[var(--color-chart-1)]" />
-                        <span>Net</span>
+                        <span>{__('Net')}</span>
                     </div>
                 </div>
             </CardContent>

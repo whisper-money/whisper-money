@@ -3,6 +3,7 @@ import { StepHeader } from '@/components/onboarding/step-header';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Label } from '@/components/ui/label';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
+import { __ } from '@/utils/i18n';
 import { AlertCircle, TrendingUp, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -51,7 +52,7 @@ export function StepImportBalances({
             <StepHeader
                 icon={TrendingUp}
                 iconContainerClassName="bg-gradient-to-br from-amber-400 to-orange-500"
-                title="Set Account Balance"
+                title={__('Set Account Balance')}
                 description={description}
             />
 
@@ -61,10 +62,13 @@ export function StepImportBalances({
                         <Wallet className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
-                        <h3 className="font-semibold">Balance Tracking</h3>
+                        <h3 className="font-semibold">
+                            {__('Balance Tracking')}
+                        </h3>
                         <p className="text-sm text-muted-foreground">
-                            Perfect for investment portfolios and retirement
-                            accounts
+                            {__(
+                                'Perfect for investment portfolios and retirement\n                            accounts',
+                            )}
                         </p>
                     </div>
                 </div>
@@ -72,22 +76,22 @@ export function StepImportBalances({
                 <ul className="space-y-2 text-sm text-muted-foreground">
                     <li className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        Update balances periodically to track growth
+                        {__('Update balances periodically to track growth')}
                     </li>
                     <li className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        Import balance history from CSV files
+                        {__('Import balance history from CSV files')}
                     </li>
                     <li className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        View balance evolution over time
+                        {__('View balance evolution over time')}
                     </li>
                 </ul>
             </div>
 
             <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
                 <div className="space-y-2">
-                    <Label htmlFor="balance">Current Balance</Label>
+                    <Label htmlFor="balance">{__('Current Balance')}</Label>
                     <AmountInput
                         id="balance"
                         value={balanceInCents}
@@ -108,7 +112,7 @@ export function StepImportBalances({
                 <StepButton
                     type="submit"
                     className="w-full sm:w-full"
-                    text="Save Balance"
+                    text={__('Save Balance')}
                     loading={isSubmitting}
                     loadingText="Saving..."
                 />

@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import {
     Cell,
     ColumnFiltersState,
@@ -150,18 +151,18 @@ function TransactionRowComponent({
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>
-                <ContextMenuLabel>Actions</ContextMenuLabel>
+                <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                 <ContextMenuItem onClick={() => onEdit(transaction)}>
-                    Edit
+                    {__('Edit')}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => onReEvaluateRules(transaction)}>
-                    Re-evaluate rules
+                    {__('Re-evaluate rules')}
                 </ContextMenuItem>
                 <ContextMenuItem
                     onClick={() => onDelete(transaction)}
                     variant="destructive"
                 >
-                    Delete
+                    {__('Delete')}
                 </ContextMenuItem>
             </ContextMenuContent>
         </ContextMenu>
@@ -1443,10 +1444,10 @@ export function TransactionList({
                                     {isLoadingMore ? (
                                         <>
                                             <Spinner />
-                                            Loading
+                                            {__('Loading')}
                                         </>
                                     ) : (
-                                        <>Load more</>
+                                        <>{__('Load more')}</>
                                     )}
                                 </Button>
                             )}
@@ -1489,7 +1490,8 @@ export function TransactionList({
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Delete Transaction
+                            {__('Delete Transaction')}
+
                             {isBulkDeleteMode ? 's' : ''}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
@@ -1502,7 +1504,7 @@ export function TransactionList({
                         <AlertDialogCancel
                             disabled={isDeleting || isBulkDeleting}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={
