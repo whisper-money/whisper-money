@@ -61,8 +61,8 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                                 <Eye className="mr-2" />
                             )}
                             {isPrivacyModeEnabled
-                                ? 'Disable privacy mode'
-                                : 'Enable privacy mode'}
+                                ? __('Disable privacy mode')
+                                : __('Enable privacy mode')}
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
                 </>

@@ -31,7 +31,7 @@ export function ImportTransactionsButton() {
     const handleOpenDrawer = async () => {
         if (!isKeySet) {
             toast.error(
-                'Please unlock your encryption key to import transactions',
+                __('Please unlock your encryption key to import transactions'),
             );
             return;
         }
@@ -68,14 +68,14 @@ export function ImportTransactionsButton() {
                         >
                             <Upload className="h-5 w-5" />
                             <span className="">
-                                {loading ? 'Loading...' : 'Import'}
+                                {loading ? __('Loading...') : __('Import')}
                             </span>
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                         {!isKeySet
-                            ? `Unlock encryption to import transactions`
-                            : `Import transactions from CSV/Excel`}
+                            ? __('Unlock encryption to import transactions')
+                            : __('Import transactions from CSV/Excel')}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>

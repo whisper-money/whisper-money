@@ -71,8 +71,8 @@ export function EncryptionKeyButton() {
                             onClick={handleClick}
                             aria-label={
                                 isKeySet
-                                    ? 'Lock encryption key'
-                                    : 'Unlock encryption key'
+                                    ? __('Lock encryption key')
+                                    : __('Unlock encryption key')
                             }
                         >
                             {isKeySet ? (
@@ -84,8 +84,8 @@ export function EncryptionKeyButton() {
                     </TooltipTrigger>
                     <TooltipContent>
                         {isKeySet
-                            ? 'Click to lock encryption key'
-                            : 'Click to unlock encryption key'}
+                            ? __('Click to lock encryption key')
+                            : __('Click to unlock encryption key')}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
@@ -106,9 +106,9 @@ export function EncryptionKeyButton() {
                     <DialogHeader>
                         <DialogTitle>{__('Clear Encryption Key?')}</DialogTitle>
                         <DialogDescription>
-                            This will remove your encryption key from this
-                            browser session. You'll need to enter your password
-                            again to unlock encrypted content.
+                            {__(
+                                "This will remove your encryption key from this browser session. You'll need to enter your password again to unlock encrypted content.",
+                            )}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
