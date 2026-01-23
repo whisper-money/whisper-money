@@ -40,7 +40,7 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
-        $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local', 'testing') ?? false;
+        $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local') ?? false;
         $isDemoQuery = $request->query('demo') === '1';
 
         return [
