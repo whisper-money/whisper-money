@@ -13,13 +13,6 @@ import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard().url,
-    },
-];
-
 interface DashboardProps extends SharedData {
     showEncryptionPrompt: boolean;
 }
@@ -36,6 +29,13 @@ export default function Dashboard() {
     const { isKeySet, encryptedMessageData, fetchEncryptedMessage } =
         useEncryptionKey();
     const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: __('Dashboard'),
+            href: dashboard().url,
+        },
+    ];
 
     useEffect(() => {
         // Fetch encrypted message data if not already loaded
