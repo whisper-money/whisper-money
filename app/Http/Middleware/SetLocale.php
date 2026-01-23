@@ -28,17 +28,26 @@ class SetLocale
      */
     protected function determineLocale(Request $request): string
     {
-        // Priority 1: Check authenticated user's locale preference
+        // Priority 1: Check for lang query parameter (user override on welcome page)
+        if ($request->has('lang') && in_array($request->get('lang'), ['en', 'es'])) {
+            $locale = $request->get('lang');
+            // Store in session so subsequent requests remember this choice
+            $request->session()->put('locale', $locale);
+
+            return $locale;
+        }
+
+        // Priority 2: Check authenticated user's locale preference
         if ($request->user() && $request->user()->locale) {
             return $request->user()->locale;
         }
 
-        // Priority 2: Check session for previously detected locale
+        // Priority 3: Check session for previously detected locale
         if ($request->session()->has('locale')) {
             return $request->session()->get('locale');
         }
 
-        // Priority 3: Detect from Accept-Language header
+        // Priority 4: Detect from Accept-Language header
         $detected = $this->detectLocaleFromHeader($request);
 
         // Store in session for subsequent requests

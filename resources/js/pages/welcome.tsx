@@ -159,10 +159,37 @@ export default function Welcome({
     canRegister?: boolean;
     hideAuthButtons?: boolean;
 }) {
-    const { appUrl, subscriptionsEnabled, pricing } =
+    const { appUrl, subscriptionsEnabled, pricing, locale } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
+
+    // Handle localStorage for language preference
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+
+        if (langParam && ['en', 'es'].includes(langParam)) {
+            // Store the preference in localStorage
+            localStorage.setItem('whisper_landing_locale', langParam);
+        } else {
+            // No query param - check if we have a stored preference
+            const storedLocale = localStorage.getItem('whisper_landing_locale');
+
+            if (
+                storedLocale &&
+                storedLocale !== locale &&
+                ['en', 'es'].includes(storedLocale)
+            ) {
+                // Redirect to stored preference
+                window.location.href = `/?lang=${storedLocale}`;
+                return;
+            } else if (!storedLocale && locale) {
+                // First visit - store the detected locale from session/header
+                localStorage.setItem('whisper_landing_locale', locale);
+            }
+        }
+    }, [locale]);
 
     const [isPwa] = useState(() => {
         if (typeof window === 'undefined') {
@@ -1234,6 +1261,12 @@ export default function Welcome({
                             >
                                 {__('Terms of Service')}
                             </Link>
+                            <a
+                                href={`/?lang=${locale === 'es' ? 'en' : 'es'}`}
+                                className="cursor-pointer hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
+                            >
+                                {locale === 'es' ? 'English' : 'Español'}
+                            </a>
                         </div>
                     </div>
                 </footer>

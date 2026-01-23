@@ -2,14 +2,14 @@ import type { SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 
 /**
- * Translation function - use directly in components.
+ * Translation hook - use directly in components.
  * This must be called from within a React component.
  *
  * Usage:
  * import { __ } from '@/utils/i18n';
  * return <div>{__('Save')}</div>
  */
-export function __(
+export function useTranslation(
     key: string,
     replacements?: Record<string, string | number>,
 ): string {
@@ -27,3 +27,6 @@ export function __(
 
     return translation;
 }
+
+// Alias for shorter usage (still follows React hooks rules)
+export const __ = useTranslation;

@@ -15,36 +15,11 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
-    // Detect user's preferred language from Accept-Language header
-    $acceptLanguage = request()->header('Accept-Language', '');
-
-    // Parse the Accept-Language header to get the preferred language
-    // Format: "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7"
-    preg_match_all('/([a-z]{2})(?:-[A-Z]{2})?(?:;q=([0-9.]+))?/', $acceptLanguage, $matches);
-
-    // Check if Spanish is in the preferred languages
-    if (! empty($matches[1])) {
-        $languages = $matches[1];
-        // If the first preferred language is Spanish, redirect to /es
-        if (isset($languages[0]) && $languages[0] === 'es') {
-            return redirect('/es');
-        }
-    }
-
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
         'hideAuthButtons' => config('landing.hide_auth_buttons', false),
     ]);
 })->name('home');
-
-Route::get('/es', function () {
-    app()->setLocale('es');
-
-    return Inertia::render('welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
-        'hideAuthButtons' => config('landing.hide_auth_buttons', false),
-    ]);
-})->name('home.es');
 
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('robots.txt', [RobotsController::class, 'index'])->name('robots');
