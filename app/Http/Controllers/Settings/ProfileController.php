@@ -47,8 +47,10 @@ class ProfileController extends Controller
     {
         $data = $request->validated();
 
-        // Update locale if auto-detect
-        $data['locale'] = $data['locale'] === 'auto-detect' ? '' : $data['locale'];
+        // Update locale if auto-detect (only if locale is present in the request)
+        if (isset($data['locale'])) {
+            $data['locale'] = $data['locale'] === 'auto-detect' ? '' : $data['locale'];
+        }
 
         $request->user()->fill($data);
 
