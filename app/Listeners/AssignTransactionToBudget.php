@@ -21,6 +21,9 @@ class AssignTransactionToBudget implements ShouldQueue
             return;
         }
 
+        // Ensure labels are loaded fresh (they're not preserved during queue serialization)
+        $transaction->load('labels');
+
         $this->budgetTransactionService->assignTransaction($transaction);
     }
 }
