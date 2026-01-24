@@ -9,7 +9,10 @@ import {
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { TrendDataPoint } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
+import { SharedData } from '@/types';
+import { formatCompactNumber, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import {
     Bar,
@@ -29,21 +32,6 @@ interface CashflowTrendChartProps {
     currency?: string;
 }
 
-const chartConfig: ChartConfig = {
-    income: {
-        label: 'Income',
-        color: 'var(--color-chart-2)',
-    },
-    expense: {
-        label: 'Expenses',
-        color: 'var(--color-chart-5)',
-    },
-    net: {
-        label: 'Net',
-        color: 'var(--color-chart-1)',
-    },
-};
-
 interface TooltipPayloadItem {
     dataKey?: string;
     value?: number;
@@ -56,25 +44,14 @@ interface CustomTooltipProps {
     active?: boolean;
     payload?: TooltipPayloadItem[];
     currency?: string;
-}
-
-function formatMonth(yearMonth: string): string {
-    const [year, month] = yearMonth.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    const isCurrentYear = date.getFullYear() === new Date().getFullYear();
-
-    return date.toLocaleDateString(
-        'en-US',
-        isCurrentYear
-            ? { month: 'short' }
-            : { year: '2-digit', month: 'short' },
-    );
+    locale?: string;
 }
 
 function CustomTooltip({
     active,
     payload,
     currency = 'USD',
+    locale = 'en-US',
 }: CustomTooltipProps) {
     if (!active || !payload?.length) return null;
 
@@ -83,7 +60,9 @@ function CustomTooltip({
 
     return (
         <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
-            <div className="mb-2 font-medium">{formatMonth(data.month)}</div>
+            <div className="mb-2 font-medium">
+                {formatMonthFromYearMonth(data.month, locale)}
+            </div>
             <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
                     <span className="flex items-center gap-2">
@@ -138,8 +117,24 @@ export function CashflowTrendChart({
     className,
     currency = 'USD',
 }: CashflowTrendChartProps) {
+    const { locale } = usePage<SharedData>().props;
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
+
+    const chartConfig: ChartConfig = {
+        income: {
+            label: __('Income'),
+            color: 'var(--color-chart-2)',
+        },
+        expense: {
+            label: __('Expenses'),
+            color: 'var(--color-chart-5)',
+        },
+        net: {
+            label: __('Net'),
+            color: 'var(--color-chart-1)',
+        },
+    };
 
     useEffect(() => {
         if (scrollContainerRef.current) {
@@ -171,7 +166,7 @@ export function CashflowTrendChart({
                 </CardTitle>
                 <CardDescription>
                     {__(
-                        'Monthly income, expenses, and net cashflow over the last 12\n                    months',
+                        'Monthly income, expenses, and net cashflow over the last 12 months',
                     )}
                 </CardDescription>
             </CardHeader>
@@ -195,22 +190,21 @@ export function CashflowTrendChart({
                                 tickLine={false}
                                 tickMargin={10}
                                 axisLine={false}
-                                tickFormatter={formatMonth}
+                                tickFormatter={(value) =>
+                                    formatMonthFromYearMonth(value, locale)
+                                }
                             />
 
                             <YAxis
                                 tickLine={false}
                                 axisLine={false}
-                                tickFormatter={(value: number) => {
-                                    return new Intl.NumberFormat('en-US', {
-                                        notation: 'compact',
-                                        compactDisplay: 'short',
-                                        style: 'currency',
-                                        currency: currency,
-                                        minimumFractionDigits: 0,
-                                        maximumFractionDigits: 0,
-                                    }).format(value / 100);
-                                }}
+                                tickFormatter={(value: number) =>
+                                    formatCompactNumber(
+                                        value / 100,
+                                        locale,
+                                        currency,
+                                    )
+                                }
                                 width={60}
                             />
 
@@ -221,7 +215,12 @@ export function CashflowTrendChart({
                             />
 
                             <Tooltip
-                                content={<CustomTooltip currency={currency} />}
+                                content={
+                                    <CustomTooltip
+                                        currency={currency}
+                                        locale={locale}
+                                    />
+                                }
                                 cursor={{
                                     fill: 'var(--color-muted)',
                                     opacity: 0.3,

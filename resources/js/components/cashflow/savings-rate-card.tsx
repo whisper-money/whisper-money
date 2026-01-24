@@ -86,12 +86,12 @@ export function SavingsRateCard({
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                     {current.savings_rate >= 20
-                        ? "Great job! You're saving well."
+                        ? __("Great job! You're saving well.")
                         : current.savings_rate >= 10
-                          ? 'Good progress on your savings.'
+                          ? __('Good progress on your savings.')
                           : current.savings_rate >= 0
-                            ? 'Consider saving more if possible.'
-                            : 'Spending exceeds income this period.'}
+                            ? __('Consider saving more if possible.')
+                            : __('Spending exceeds income this period.')}
                 </p>
             </CardContent>
         </Card>

@@ -204,7 +204,7 @@ export function SankeyChart({
             );
             const otherNode: NodeData = {
                 id: 'income-other',
-                label: 'Other',
+                label: __('Other'),
                 value: groupedIncome.other.total,
                 color: 'var(--color-muted)',
                 y: incomeY,
@@ -226,7 +226,7 @@ export function SankeyChart({
         const centerY = (height - centerHeight) / 2;
         const centerNode: NodeData = {
             id: 'center',
-            label: 'Cashflow',
+            label: __('Cashflow'),
             value: total_income - total_expense,
             color: 'var(--color-chart-1)',
             y: centerY,
@@ -270,7 +270,7 @@ export function SankeyChart({
             );
             const otherNode: NodeData = {
                 id: 'expense-other',
-                label: 'Other',
+                label: __('Other'),
                 value: groupedExpense.other.total,
                 color: 'var(--color-muted)',
                 y: expenseY,
