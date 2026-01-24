@@ -124,10 +124,35 @@ class TransactionController extends Controller
     {
         $this->authorize('update', $transaction);
 
-        $transaction->update($request->validated());
+        $data = $request->validated();
+        $labelIds = $data['label_ids'] ?? null;
+        $hasLabelUpdate = $request->has('label_ids');
+        unset($data['label_ids']);
+
+        // Update attributes directly without firing events yet
+        if (! empty($data)) {
+            $transaction->fill($data);
+        }
+
+        // Sync labels if provided
+        if ($hasLabelUpdate) {
+            $transaction->labels()->sync($labelIds ?? []);
+            // Reload labels so the event listener has fresh data
+            $transaction->load('labels');
+        }
+
+        // Save to fire the updated event if there are any changes
+        // We need to save even if just labels changed (isDirty won't detect pivot changes)
+        if ($transaction->isDirty() || $hasLabelUpdate) {
+            // Touch the model to ensure it's marked as changed for the event
+            if (! $transaction->isDirty() && $hasLabelUpdate) {
+                $transaction->touch();
+            }
+            $transaction->save();
+        }
 
         return response()->json([
-            'data' => $transaction->fresh(),
+            'data' => $transaction->fresh(['labels']),
         ]);
     }
 
