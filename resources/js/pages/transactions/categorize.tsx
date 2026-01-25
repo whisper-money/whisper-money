@@ -15,13 +15,13 @@ import {
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useLocale } from '@/hooks/use-locale';
 import { decrypt, importKey } from '@/lib/crypto';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
@@ -100,11 +100,10 @@ export default function CategorizeTransactions({
     banks,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
-    const { automationRules: sharedAutomationRules, locale } = usePage<
-        SharedData & {
-            automationRules: AutomationRule[];
-        }
-    >().props;
+    const { automationRules: sharedAutomationRules } = usePage<{
+        automationRules: AutomationRule[];
+    }>().props;
+    const locale = useLocale();
 
     const transactionIds = useLiveQuery(
         async () => {

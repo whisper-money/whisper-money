@@ -1,8 +1,7 @@
 import { Button } from '@/components/ui/button';
-import { SharedData } from '@/types';
+import { useLocale } from '@/hooks/use-locale';
 import { formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { addMonths, isSameMonth, subMonths } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -15,7 +14,7 @@ export function PeriodNavigation({
     currentDate,
     onDateChange,
 }: PeriodNavigationProps) {
-    const { locale } = usePage<SharedData>().props;
+    const locale = useLocale();
     const now = new Date();
     const isCurrentMonth = isSameMonth(currentDate, now);
 

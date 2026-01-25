@@ -27,6 +27,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useSyncContext } from '@/contexts/sync-context';
+import { useLocale } from '@/hooks/use-locale';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
@@ -58,7 +59,6 @@ interface EditTransactionDialogProps {
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
     mode: 'create' | 'edit';
-    locale: string;
 }
 
 export function EditTransactionDialog({
@@ -72,8 +72,8 @@ export function EditTransactionDialog({
     onOpenChange,
     onSuccess,
     mode,
-    locale,
 }: EditTransactionDialogProps) {
+    const locale = useLocale();
     const STORAGE_KEY_UPDATE_BALANCE =
         'whisper_money_update_balance_on_transaction';
 

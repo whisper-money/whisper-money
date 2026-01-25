@@ -8,11 +8,10 @@ import {
 } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { TrendDataPoint } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
-import { SharedData } from '@/types';
 import { formatCompactNumber, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import {
     Bar,
@@ -44,15 +43,15 @@ interface CustomTooltipProps {
     active?: boolean;
     payload?: TooltipPayloadItem[];
     currency?: string;
-    locale?: string;
 }
 
 function CustomTooltip({
     active,
     payload,
     currency = 'USD',
-    locale = 'en-US',
 }: CustomTooltipProps) {
+    const locale = useLocale();
+
     if (!active || !payload?.length) return null;
 
     const data = payload[0].payload;
@@ -117,7 +116,7 @@ export function CashflowTrendChart({
     className,
     currency = 'USD',
 }: CashflowTrendChartProps) {
-    const { locale } = usePage<SharedData>().props;
+    const locale = useLocale();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
 
@@ -215,12 +214,7 @@ export function CashflowTrendChart({
                             />
 
                             <Tooltip
-                                content={
-                                    <CustomTooltip
-                                        currency={currency}
-                                        locale={locale}
-                                    />
-                                }
+                                content={<CustomTooltip currency={currency} />}
                                 cursor={{
                                     fill: 'var(--color-muted)',
                                     opacity: 0.3,

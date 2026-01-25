@@ -16,10 +16,9 @@ import { ChartConfig } from '@/components/ui/chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { useChartViews } from '@/hooks/use-chart-views';
 import { NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
+import { useLocale } from '@/hooks/use-locale';
 import { AccountInfo } from '@/lib/chart-calculations';
-import { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
 
@@ -141,7 +140,7 @@ export function NetWorthChart({
     loading,
     showLegend = false,
 }: NetWorthChartProps) {
-    const { locale } = usePage<SharedData>().props;
+    const locale = useLocale();
     const {
         chartData,
         dataKeys,

@@ -1,5 +1,6 @@
+import { useLocale } from '@/hooks/use-locale';
 import { __ } from '@/utils/i18n';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -59,7 +60,7 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent, cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type BreadcrumbItem, type SharedData } from '@/types';
+import { type BreadcrumbItem } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -365,7 +366,7 @@ export default function Transactions({
 }: Props) {
     const { isKeySet } = useEncryptionKey();
     const { sync } = useSyncContext();
-    const { locale } = usePage<SharedData>().props;
+    const locale = useLocale();
 
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
@@ -1719,7 +1720,6 @@ export default function Transactions({
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
                 mode="edit"
-                locale={locale}
             />
 
             <EditTransactionDialog
@@ -1735,7 +1735,6 @@ export default function Transactions({
                     setTransactions((prev) => [transaction, ...prev]);
                 }}
                 mode="create"
-                locale={locale}
             />
 
             <AlertDialog

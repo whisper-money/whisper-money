@@ -1,5 +1,5 @@
+import { useLocale } from '@/hooks/use-locale';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -61,7 +61,6 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -247,7 +246,7 @@ export function TransactionList({
     hideColumns = [],
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
-    const { locale } = usePage<SharedData>().props;
+    const locale = useLocale();
 
     const labels = initialLabels;
 
@@ -1472,7 +1471,6 @@ export function TransactionList({
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
                 mode="edit"
-                locale={locale}
             />
 
             <EditTransactionDialog
@@ -1486,7 +1484,6 @@ export function TransactionList({
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={() => {}}
                 mode="create"
-                locale={locale}
             />
 
             <AlertDialog

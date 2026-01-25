@@ -17,15 +17,14 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useLocale } from '@/hooks/use-locale';
 import {
     transactionSyncService,
     type Transaction,
 } from '@/services/transaction-sync';
-import { type SharedData } from '@/types';
 import { type ParsedTransaction } from '@/types/import';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -51,7 +50,7 @@ export function ImportStepPreview({
     isImporting,
 }: ImportStepPreviewProps) {
     const { isKeySet } = useEncryptionKey();
-    const { locale } = usePage<SharedData>().props;
+    const locale = useLocale();
     const [existingTransactions, setExistingTransactions] = useState<
         Transaction[]
     >([]);
