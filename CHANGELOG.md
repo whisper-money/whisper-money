@@ -1,30 +1,40 @@
 # Changelog
 
-## [0.1.7](https://github.com/whisper-money/whisper-money/compare/v0.1.6...v0.1.7) (2026-01-21)
-
+## [0.1.8](https://github.com/whisper-money/whisper-money/compare/v0.1.7...v0.1.8) (2026-01-25)
 
 ### Bug Fixes
 
-* Error showing randomg transactions from local browser DB ([a7c8544](https://github.com/whisper-money/whisper-money/commit/a7c8544249a887bb96f256d9d336a9b8e13090f1))
-* unused vars ([f1a2d78](https://github.com/whisper-money/whisper-money/commit/f1a2d787e5be6c096703f27a5463696f6095f72c))
-
+- Fire transaction updated event after a label change ([#73](https://github.com/whisper-money/whisper-money/issues/73)) ([134a292](https://github.com/whisper-money/whisper-money/commit/134a292ddb5d58b7428c4a50becee8dd957e4c09))
+- Progress bar color on dark scheme ([d216d0c](https://github.com/whisper-money/whisper-money/commit/d216d0c071e8ff380627122f8f70e947bb7f667b))
+- Typo in composer dev command ([f30e600](https://github.com/whisper-money/whisper-money/commit/f30e600b75fb71f28e63ee88ec1bc414038adba5))
+- Update transactions ([91dd23e](https://github.com/whisper-money/whisper-money/commit/91dd23edc05e3efa72723347ac5b010ebea5c479))
 
 ### Features
 
-* Add PostHog ([#70](https://github.com/whisper-money/whisper-money/issues/70)) ([f5d09eb](https://github.com/whisper-money/whisper-money/commit/f5d09eb2475dc3c1c76dd6a7c23fadb771576fdb))
+- Add label support to single transaction update endpoint ([#75](https://github.com/whisper-money/whisper-money/issues/75)) ([e5eca1e](https://github.com/whisper-money/whisper-money/commit/e5eca1eacb86aec87f6aee8a9a685400778d2583))
+- Load transactions history on budget created ([#72](https://github.com/whisper-money/whisper-money/issues/72)) ([fee7ad3](https://github.com/whisper-money/whisper-money/commit/fee7ad36abd899d63b220a9d7ad0b670d9feec7f))
+
+## [0.1.7](https://github.com/whisper-money/whisper-money/compare/v0.1.6...v0.1.7) (2026-01-21)
+
+### Bug Fixes
+
+- Error showing randomg transactions from local browser DB ([a7c8544](https://github.com/whisper-money/whisper-money/commit/a7c8544249a887bb96f256d9d336a9b8e13090f1))
+- unused vars ([f1a2d78](https://github.com/whisper-money/whisper-money/commit/f1a2d787e5be6c096703f27a5463696f6095f72c))
+
+### Features
+
+- Add PostHog ([#70](https://github.com/whisper-money/whisper-money/issues/70)) ([f5d09eb](https://github.com/whisper-money/whisper-money/commit/f5d09eb2475dc3c1c76dd6a7c23fadb771576fdb))
 
 ## [0.1.6](https://github.com/whisper-money/whisper-money/compare/v0.1.5...v0.1.6) (2026-01-19)
 
-
 ### Bug Fixes
 
-* MYSQL_EXTRA_OPTIONS env var ([49ed94c](https://github.com/whisper-money/whisper-money/commit/49ed94cbc7f0d55bf3fef38ce1a620449fe51e1e))
-
+- MYSQL_EXTRA_OPTIONS env var ([49ed94c](https://github.com/whisper-money/whisper-money/commit/49ed94cbc7f0d55bf3fef38ce1a620449fe51e1e))
 
 ### Features
 
-* Better, easier, and faster account balance update modal ([#65](https://github.com/whisper-money/whisper-money/issues/65)) ([f4ab918](https://github.com/whisper-money/whisper-money/commit/f4ab9181e1235885f0f8158d67de2cd719bfb0d3))
-* Don't check upgrades if not in main branch or in DEV_MODE ([16a331a](https://github.com/whisper-money/whisper-money/commit/16a331ab5f654e332bfd0625f3621b99c13f61dd))
+- Better, easier, and faster account balance update modal ([#65](https://github.com/whisper-money/whisper-money/issues/65)) ([f4ab918](https://github.com/whisper-money/whisper-money/commit/f4ab9181e1235885f0f8158d67de2cd719bfb0d3))
+- Don't check upgrades if not in main branch or in DEV_MODE ([16a331a](https://github.com/whisper-money/whisper-money/commit/16a331ab5f654e332bfd0625f3621b99c13f61dd))
 
 ## [0.1.5](https://github.com/whisper-money/whisper-money/compare/v0.1.3...v0.1.5) (2026-01-17)
 
