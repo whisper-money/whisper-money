@@ -53,13 +53,6 @@ import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, formatAccountType } from '@/types/account';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Bank accounts',
-        href: accountsIndex.url(),
-    },
-];
-
 function AccountActions({
     account,
     onSuccess,
@@ -190,6 +183,13 @@ export default function Accounts({ accounts }: AccountsPageProps) {
         {},
     );
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: __('Bank accounts'),
+            href: accountsIndex.url(),
+        },
+    ];
+
     const handleAccountCreated = () => {
         router.reload({ only: ['accounts'] });
     };
@@ -225,7 +225,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
         },
         {
             accessorKey: 'bank',
-            header: 'Bank',
+            header: () => __('Bank'),
             cell: ({ row }) => {
                 const bank = row.original.bank;
                 return (
@@ -246,7 +246,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
         },
         {
             accessorKey: 'type',
-            header: 'Type',
+            header: () => __('Type'),
             cell: ({ row }) => {
                 return (
                     <Badge variant="outline">
@@ -257,7 +257,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
         },
         {
             accessorKey: 'currency_code',
-            header: 'Currency',
+            header: () => __('Currency'),
             cell: ({ row }) => {
                 return (
                     <div className="font-medium">

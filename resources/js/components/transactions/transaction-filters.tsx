@@ -134,8 +134,8 @@ export function TransactionFilters({
                     <Input
                         placeholder={
                             isKeySet
-                                ? 'Search description or notes...'
-                                : 'Search disabled (encryption key not set)'
+                                ? __('Search description or notes...')
+                                : __('Search disabled (encryption key not set)')
                         }
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}

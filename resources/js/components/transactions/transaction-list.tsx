@@ -1,4 +1,5 @@
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -69,6 +70,7 @@ import {
     type TransactionFilters as Filters,
     type Transaction,
 } from '@/types/transaction';
+import { type SharedData } from '@/types';
 import { UUID } from '@/types/uuid';
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
@@ -245,6 +247,7 @@ export function TransactionList({
     hideColumns = [],
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
+    const { locale } = usePage<SharedData>().props;
 
     const labels = initialLabels;
 
@@ -1141,6 +1144,7 @@ export function TransactionList({
             accounts,
             banks,
             labels,
+            locale,
             onEdit: setEditTransaction,
             onDelete: setDeleteTransaction,
             onUpdate: updateTransaction,
@@ -1161,6 +1165,7 @@ export function TransactionList({
         banks,
         categories,
         labels,
+        locale,
         updateTransaction,
         handleReEvaluateRules,
         hideColumns,
@@ -1433,7 +1438,7 @@ export function TransactionList({
                         <DataTablePagination
                             displayedCount={displayedCount}
                             total={sortedTransactions.length}
-                            rowCountLabel="transactions total"
+                            rowCountLabel={__('transactions total')}
                         >
                             {displayedCount < sortedTransactions.length && (
                                 <Button

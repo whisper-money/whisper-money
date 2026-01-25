@@ -42,6 +42,7 @@ import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
+import { formatDate } from '@/utils/date';
 import { format, getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -57,6 +58,7 @@ interface EditTransactionDialogProps {
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
     mode: 'create' | 'edit';
+    locale: string;
 }
 
 export function EditTransactionDialog({
@@ -70,6 +72,7 @@ export function EditTransactionDialog({
     onOpenChange,
     onSuccess,
     mode,
+    locale,
 }: EditTransactionDialogProps) {
     const STORAGE_KEY_UPDATE_BALANCE =
         'whisper_money_update_balance_on_transaction';
@@ -565,13 +568,13 @@ export function EditTransactionDialog({
                 <DialogHeader>
                     <DialogTitle>
                         {mode === 'create'
-                            ? 'Add Transaction'
-                            : 'Edit Transaction'}
+                            ? __('Add Transaction')
+                            : __('Edit Transaction')}
                     </DialogTitle>
                     <DialogDescription>
                         {mode === 'create'
-                            ? 'Create a new transaction.'
-                            : 'Update the category and notes for this transaction.'}
+                            ? __('Create a new transaction.')
+                            : __('Update the category and notes for this transaction.')}
                     </DialogDescription>
                 </DialogHeader>
 

@@ -208,10 +208,10 @@ export function UpdateBalanceDialog({
                             disabled={isSubmitting || isLoadingLastBalance}
                         >
                             {isSubmitting
-                                ? 'Saving...'
+                                ? __('Saving...')
                                 : isLoadingLastBalance
-                                  ? 'Loading...'
-                                  : 'Save'}
+                                  ? __('Loading...')
+                                  : __('Save')}
                         </Button>
                     </DialogFooter>
                 </form>

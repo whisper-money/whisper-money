@@ -318,9 +318,7 @@ export function BalancesModal({
                     {lastPage > 1 && (
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">
-                                {total}
-                                {__('balance record')}
-                                {total !== 1 ? 's' : ''}
+                                {total} {total === 1 ? __('balance record') : __('balance records')}
                             </span>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -334,8 +332,7 @@ export function BalancesModal({
                                     {__('Previous')}
                                 </Button>
                                 <span className="text-sm">
-                                    {__('Page')}
-                                    {currentPage} of {lastPage}
+                                    {__('Page')} {currentPage} {__('of')} {lastPage}
                                 </span>
                                 <Button
                                     variant="outline"
@@ -402,7 +399,7 @@ export function BalancesModal({
                                 {__('Cancel')}
                             </Button>
                             <Button type="submit" disabled={isEditSubmitting}>
-                                {isEditSubmitting ? 'Saving...' : 'Save'}
+                                {isEditSubmitting ? __('Saving...') : __('Save')}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -420,7 +417,7 @@ export function BalancesModal({
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             {__(
-                                'Are you sure you want to delete this balance record?\n                            This action cannot be undone.',
+                                'Are you sure you want to delete this balance record? This action cannot be undone.',
                             )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -433,7 +430,7 @@ export function BalancesModal({
                             onClick={handleDelete}
                             disabled={isDeleting}
                         >
-                            {isDeleting ? 'Deleting...' : 'Delete'}
+                            {isDeleting ? __('Deleting...') : __('Delete')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

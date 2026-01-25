@@ -1,4 +1,5 @@
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { Head, router } from '@inertiajs/react';
 import {
     Cell,
@@ -59,7 +60,7 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent, cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -365,6 +366,7 @@ export default function Transactions({
 }: Props) {
     const { isKeySet } = useEncryptionKey();
     const { sync } = useSyncContext();
+    const { locale } = usePage<SharedData>().props;
 
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
@@ -1239,6 +1241,7 @@ export default function Transactions({
                 accounts,
                 banks,
                 labels,
+                locale,
                 onEdit: setEditTransaction,
                 onDelete: setDeleteTransaction,
                 onUpdate: updateTransaction,
@@ -1249,6 +1252,7 @@ export default function Transactions({
             banks,
             categories,
             labels,
+            locale,
             updateTransaction,
             handleReEvaluateRules,
         ],
@@ -1681,7 +1685,7 @@ export default function Transactions({
                             <DataTablePagination
                                 displayedCount={displayedCount}
                                 total={sortedTransactions.length}
-                                rowCountLabel="transactions total"
+                                rowCountLabel={__('transactions total')}
                             >
                                 {displayedCount < sortedTransactions.length && (
                                     <Button

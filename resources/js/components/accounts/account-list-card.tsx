@@ -170,7 +170,7 @@ export function AccountListCard({
 
                         <Link href={show.url(account.id)}>
                             <Button className="cursor-pointer" variant="ghost">
-                                {__('Details \u2192')}
+                                {__('Details')} &rarr;
                             </Button>
                         </Link>
                     </div>
