@@ -83,3 +83,33 @@ export function formatCompactNumber(
 
     return new Intl.NumberFormat(locale, options).format(value);
 }
+
+/**
+ * Format a date with day, month, and year (e.g., "Jan 23, 2025" or "23 ene 2025")
+ * Capitalizes the first letter
+ */
+export function formatDateMedium(
+    dateStr: string,
+    locale: string = 'en-US',
+): string {
+    const date = new Date(dateStr);
+    const formatted = formatDate(date, 'MMM d, yyyy', locale);
+
+    // Capitalize first letter (important for Spanish dates)
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
+/**
+ * Format a date with weekday, day, month, and year (e.g., "Thu, Jan 23, 2025" or "Jue, 23 ene 2025")
+ * Capitalizes the first letter
+ */
+export function formatDateLong(
+    dateStr: string,
+    locale: string = 'en-US',
+): string {
+    const date = new Date(dateStr);
+    const formatted = formatDate(date, 'EEE, MMM d, yyyy', locale);
+
+    // Capitalize first letter (important for Spanish dates)
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}

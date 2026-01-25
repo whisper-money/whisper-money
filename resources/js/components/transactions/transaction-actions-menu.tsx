@@ -164,8 +164,8 @@ export function TransactionActionsMenu({
                         </TooltipTrigger>
                         <TooltipContent>
                             {!isKeySet
-                                ? 'Unlock encryption to add transactions'
-                                : 'Create a new transaction'}
+                                ? __('Unlock encryption to add transactions')
+                                : __('Create a new transaction')}
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>

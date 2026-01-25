@@ -1715,10 +1715,12 @@ export default function Transactions({
                 accounts={accounts}
                 banks={banks}
                 labels={labels}
+                automationRules={automationRules}
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
                 mode="edit"
+                locale={locale}
             />
 
             <EditTransactionDialog
@@ -1734,6 +1736,7 @@ export default function Transactions({
                     setTransactions((prev) => [transaction, ...prev]);
                 }}
                 mode="create"
+                locale={locale}
             />
 
             <AlertDialog

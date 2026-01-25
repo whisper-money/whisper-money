@@ -1466,10 +1466,13 @@ export function TransactionList({
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
+                labels={labels}
+                automationRules={automationRules}
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
                 mode="edit"
+                locale={locale}
             />
 
             <EditTransactionDialog
@@ -1477,10 +1480,13 @@ export function TransactionList({
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
+                labels={labels}
+                automationRules={automationRules}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={() => {}}
                 mode="create"
+                locale={locale}
             />
 
             <AlertDialog

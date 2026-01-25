@@ -312,7 +312,7 @@ export function EditTransactionDialog({
             }
         } catch (error) {
             console.error('Failed to update account balance:', error);
-            toast.error('Transaction created, but failed to update balance');
+            toast.error(__('Transaction created, but failed to update balance'));
         }
     }
 
@@ -321,26 +321,26 @@ export function EditTransactionDialog({
 
         if (!isKeySet) {
             toast.error(
-                'Please unlock your encryption key to save transactions',
+                __('Please unlock your encryption key to save transactions'),
             );
             return;
         }
 
         if (mode === 'create') {
             if (!description.trim()) {
-                toast.error('Description is required');
+                toast.error(__('Description is required'));
                 return;
             }
             if (amount === 0) {
-                toast.error('Amount is required');
+                toast.error(__('Amount is required'));
                 return;
             }
             if (!accountId) {
-                toast.error('Account is required');
+                toast.error(__('Account is required'));
                 return;
             }
             if (!transactionDate) {
-                toast.error('Date is required');
+                toast.error(__('Date is required'));
                 return;
             }
         } else if (
@@ -348,7 +348,7 @@ export function EditTransactionDialog({
             transaction?.source === 'manually_created'
         ) {
             if (!description.trim()) {
-                toast.error('Description is required');
+                toast.error(__('Description is required'));
                 return;
             }
         }
@@ -358,7 +358,7 @@ export function EditTransactionDialog({
             const trimmedDescription = description.trim();
             const keyString = getStoredKey();
             if (!keyString) {
-                throw new Error('Encryption key not available');
+                throw new Error(__('Encryption key not available'));
             }
             const key = await importKey(keyString);
 
@@ -400,7 +400,7 @@ export function EditTransactionDialog({
                     (acc) => acc.id === accountId,
                 );
                 if (!selectedAccount) {
-                    throw new Error('Selected account not found');
+                    throw new Error(__('Selected account not found'));
                 }
 
                 const createdTransaction = await transactionSyncService.create({
@@ -450,9 +450,9 @@ export function EditTransactionDialog({
                     );
                 }
 
-                toast.success('Transaction created successfully');
+                toast.success(__('Transaction created successfully'));
                 if (ruleResult.ruleName) {
-                    toast.success(`Rule "${ruleResult.ruleName}" applied`);
+                    toast.success(__('Rule ":rule" applied', { rule: ruleResult.ruleName }));
                 }
 
                 onSuccess(newTransaction);
@@ -542,7 +542,7 @@ export function EditTransactionDialog({
                         updatedRecord?.updated_at ?? transaction.updated_at,
                 };
 
-                toast.success('Transaction updated successfully');
+                toast.success(__('Transaction updated successfully'));
                 onSuccess(updatedTransaction);
                 onOpenChange(false);
 
@@ -552,7 +552,9 @@ export function EditTransactionDialog({
         } catch (error) {
             console.error('Failed to save transaction:', error);
             toast.error(
-                `Failed to ${mode === 'create' ? 'create' : 'update'} transaction`,
+                mode === 'create'
+                    ? __('Failed to create transaction')
+                    : __('Failed to update transaction'),
             );
         } finally {
             setIsSubmitting(false);
@@ -618,7 +620,9 @@ export function EditTransactionDialog({
                                                 transactionYear === currentYear
                                                     ? 'MMMM d'
                                                     : 'MMMM d, yyyy';
-                                            return format(date, formatString);
+                                            const formatted = formatDate(date, formatString, locale);
+                                            // Capitalize first letter
+                                            return formatted.charAt(0).toUpperCase() + formatted.slice(1);
                                         })()}
                                 </div>
                             )}
@@ -755,7 +759,7 @@ export function EditTransactionDialog({
                                                 >
                                                     {decryptedAccountNames.get(
                                                         account.id,
-                                                    ) || '[Loading...]'}
+                                                    ) || __('[Loading...]')}
                                                 </SelectItem>
                                             ),
                                         )}
@@ -820,10 +824,10 @@ export function EditTransactionDialog({
                             data-testid="submit-transaction"
                         >
                             {isSubmitting
-                                ? 'Saving...'
+                                ? __('Saving...')
                                 : mode === 'create'
-                                  ? 'Create Transaction'
-                                  : 'Save Changes'}
+                                  ? __('Create Transaction')
+                                  : __('Save Changes')}
                         </Button>
                     </DialogFooter>
                 </form>
