@@ -21,8 +21,11 @@ import {
     transactionSyncService,
     type Transaction,
 } from '@/services/transaction-sync';
+import { type SharedData } from '@/types';
 import { type ParsedTransaction } from '@/types/import';
+import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -48,6 +51,7 @@ export function ImportStepPreview({
     isImporting,
 }: ImportStepPreviewProps) {
     const { isKeySet } = useEncryptionKey();
+    const { locale } = usePage<SharedData>().props;
     const [existingTransactions, setExistingTransactions] = useState<
         Transaction[]
     >([]);
@@ -88,15 +92,6 @@ export function ImportStepPreview({
             someSelected,
         };
     }, [transactions]);
-
-    const formatDate = (dateStr: string): string => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    };
 
     const handleHeaderCheckboxChange = (checked: boolean) => {
         onSelectAll(checked);
@@ -215,8 +210,9 @@ export function ImportStepPreview({
                                         )}
                                     </TableCell>
                                     <TableCell className="whitespace-nowrap">
-                                        {formatDate(
+                                        {formatDateMedium(
                                             transaction.transaction_date,
+                                            locale,
                                         )}
                                     </TableCell>
                                     <TableCell className="max-w-[200px] truncate">

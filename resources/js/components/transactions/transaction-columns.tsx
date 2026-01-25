@@ -1,5 +1,5 @@
-import { __ } from '@/utils/i18n';
 import { formatDate } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { ColumnDef } from '@tanstack/react-table';
 import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
@@ -106,12 +106,11 @@ export function createTransactionColumns({
 
                 const formatted = formatDate(date, formatString, locale);
                 // Capitalize first letter (important for Spanish dates)
-                const capitalized = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                const capitalized =
+                    formatted.charAt(0).toUpperCase() + formatted.slice(1);
 
                 return (
-                    <div className="pl-3 whitespace-nowrap">
-                        {capitalized}
-                    </div>
+                    <div className="pl-3 whitespace-nowrap">{capitalized}</div>
                 );
             },
             enableHiding: true,

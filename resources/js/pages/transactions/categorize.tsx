@@ -21,13 +21,13 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
-import { type SharedData } from '@/types';
-import { __ } from '@/utils/i18n';
 import { formatDateLong } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { parseISO } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -100,9 +100,11 @@ export default function CategorizeTransactions({
     banks,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
-    const { automationRules: sharedAutomationRules } = usePage<{
-        automationRules: AutomationRule[];
-    }>().props;
+    const { automationRules: sharedAutomationRules, locale } = usePage<
+        SharedData & {
+            automationRules: AutomationRule[];
+        }
+    >().props;
 
     const transactionIds = useLiveQuery(
         async () => {
@@ -476,16 +478,6 @@ export default function CategorizeTransactions({
         rulesDialogOpen,
     ]);
 
-    const formatDate = (dateStr: string): string => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    };
-
     if (isLoading) {
         return (
             <>
@@ -695,8 +687,9 @@ export default function CategorizeTransactions({
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex flex-1 flex-col gap-4">
                                                         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                            {formatDate(
+                                                            {formatDateLong(
                                                                 currentTransaction.transaction_date,
+                                                                locale,
                                                             )}
                                                         </p>
 

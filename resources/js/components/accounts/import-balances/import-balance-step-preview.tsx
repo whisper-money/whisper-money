@@ -7,8 +7,11 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { type SharedData } from '@/types';
 import { type ParsedBalance } from '@/types/balance-import';
+import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 
 interface ImportBalanceStepPreviewProps {
     balances: ParsedBalance[];
@@ -25,22 +28,14 @@ export function ImportBalanceStepPreview({
     onBack,
     isImporting,
 }: ImportBalanceStepPreviewProps) {
+    const { locale } = usePage<SharedData>().props;
     const total = balances.length;
 
     const formatBalance = (balance: number): string => {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: currencyCode,
         }).format(balance / 100);
-    };
-
-    const formatDate = (dateStr: string): string => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
     };
 
     return (
@@ -76,7 +71,10 @@ export function ImportBalanceStepPreview({
                             balances.map((balance, index) => (
                                 <TableRow key={index}>
                                     <TableCell className="whitespace-nowrap">
-                                        {formatDate(balance.balance_date)}
+                                        {formatDateMedium(
+                                            balance.balance_date,
+                                            locale,
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right font-mono">
                                         {formatBalance(balance.balance)}

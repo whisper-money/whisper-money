@@ -1,6 +1,5 @@
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,

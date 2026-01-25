@@ -61,6 +61,7 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -70,7 +71,6 @@ import {
     type TransactionFilters as Filters,
     type Transaction,
 } from '@/types/transaction';
-import { type SharedData } from '@/types';
 import { UUID } from '@/types/uuid';
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';

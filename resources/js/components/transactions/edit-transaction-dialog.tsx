@@ -41,9 +41,9 @@ import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
-import { __ } from '@/utils/i18n';
 import { formatDate } from '@/utils/date';
-import { format, getYear, parseISO } from 'date-fns';
+import { __ } from '@/utils/i18n';
+import { getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -312,7 +312,9 @@ export function EditTransactionDialog({
             }
         } catch (error) {
             console.error('Failed to update account balance:', error);
-            toast.error(__('Transaction created, but failed to update balance'));
+            toast.error(
+                __('Transaction created, but failed to update balance'),
+            );
         }
     }
 
@@ -452,7 +454,11 @@ export function EditTransactionDialog({
 
                 toast.success(__('Transaction created successfully'));
                 if (ruleResult.ruleName) {
-                    toast.success(__('Rule ":rule" applied', { rule: ruleResult.ruleName }));
+                    toast.success(
+                        __('Rule ":rule" applied', {
+                            rule: ruleResult.ruleName,
+                        }),
+                    );
                 }
 
                 onSuccess(newTransaction);
@@ -576,7 +582,9 @@ export function EditTransactionDialog({
                     <DialogDescription>
                         {mode === 'create'
                             ? __('Create a new transaction.')
-                            : __('Update the category and notes for this transaction.')}
+                            : __(
+                                  'Update the category and notes for this transaction.',
+                              )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -620,9 +628,18 @@ export function EditTransactionDialog({
                                                 transactionYear === currentYear
                                                     ? 'MMMM d'
                                                     : 'MMMM d, yyyy';
-                                            const formatted = formatDate(date, formatString, locale);
+                                            const formatted = formatDate(
+                                                date,
+                                                formatString,
+                                                locale,
+                                            );
                                             // Capitalize first letter
-                                            return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                                            return (
+                                                formatted
+                                                    .charAt(0)
+                                                    .toUpperCase() +
+                                                formatted.slice(1)
+                                            );
                                         })()}
                                 </div>
                             )}

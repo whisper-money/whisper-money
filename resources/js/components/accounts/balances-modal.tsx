@@ -318,7 +318,10 @@ export function BalancesModal({
                     {lastPage > 1 && (
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">
-                                {total} {total === 1 ? __('balance record') : __('balance records')}
+                                {total}{' '}
+                                {total === 1
+                                    ? __('balance record')
+                                    : __('balance records')}
                             </span>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -332,7 +335,8 @@ export function BalancesModal({
                                     {__('Previous')}
                                 </Button>
                                 <span className="text-sm">
-                                    {__('Page')} {currentPage} {__('of')} {lastPage}
+                                    {__('Page')} {currentPage} {__('of')}{' '}
+                                    {lastPage}
                                 </span>
                                 <Button
                                     variant="outline"
@@ -399,7 +403,9 @@ export function BalancesModal({
                                 {__('Cancel')}
                             </Button>
                             <Button type="submit" disabled={isEditSubmitting}>
-                                {isEditSubmitting ? __('Saving...') : __('Save')}
+                                {isEditSubmitting
+                                    ? __('Saving...')
+                                    : __('Save')}
                             </Button>
                         </DialogFooter>
                     </form>
