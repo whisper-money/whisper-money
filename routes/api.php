@@ -16,12 +16,9 @@ Route::middleware(['web', 'auth'])->group(function () {
     // Import Data (for import drawers)
     Route::get('import/data', [ImportDataController::class, 'index']);
 
-    // Transaction Sync (for IndexedDB client-side search)
+    // Transaction Sync (read-only, for IndexedDB client-side sync)
     Route::prefix('sync')->group(function () {
         Route::get('transactions', [TransactionSyncController::class, 'index']);
-        Route::post('transactions', [TransactionSyncController::class, 'store']);
-        Route::patch('transactions/{transaction}', [TransactionSyncController::class, 'update']);
-        Route::delete('transactions/{transaction}', [TransactionSyncController::class, 'destroy']);
     });
 
     // Account Balances

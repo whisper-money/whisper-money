@@ -229,6 +229,41 @@ it('can bulk update transactions with labels by IDs', function () {
     }
 });
 
+it('bulk update replaces labels instead of merging them', function () {
+    $label1 = Label::factory()->create(['user_id' => $this->user->id, 'name' => 'Old Label 1']);
+    $label2 = Label::factory()->create(['user_id' => $this->user->id, 'name' => 'Old Label 2']);
+    $label3 = Label::factory()->create(['user_id' => $this->user->id, 'name' => 'New Label']);
+
+    $transactions = Transaction::factory()
+        ->count(2)
+        ->create([
+            'user_id' => $this->user->id,
+            'account_id' => $this->account->id,
+        ]);
+
+    // Attach existing labels
+    foreach ($transactions as $transaction) {
+        $transaction->labels()->attach([$label1->id, $label2->id]);
+    }
+
+    // Bulk update with new label should replace, not merge
+    $response = $this->actingAs($this->user)->patchJson('/transactions/bulk', [
+        'transaction_ids' => $transactions->pluck('id')->toArray(),
+        'label_ids' => [$label3->id],
+    ]);
+
+    $response->assertSuccessful();
+
+    // Verify labels were replaced, not merged
+    foreach ($transactions as $transaction) {
+        $labelIds = $transaction->fresh()->labels->pluck('id')->toArray();
+        expect($labelIds)->toHaveCount(1);
+        expect($labelIds)->toEqual([$label3->id]);
+        expect($labelIds)->not->toContain($label1->id);
+        expect($labelIds)->not->toContain($label2->id);
+    }
+});
+
 it('can update all transactions when no filters or IDs are provided', function () {
     Transaction::factory()
         ->count(3)

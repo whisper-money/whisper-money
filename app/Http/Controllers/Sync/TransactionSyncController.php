@@ -3,14 +3,16 @@
 namespace App\Http\Controllers\Sync;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreTransactionRequest;
-use App\Http\Requests\UpdateTransactionSyncRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TransactionSyncController extends Controller
 {
+    /**
+     * Fetch transactions for client-side IndexedDB sync.
+     * Supports delta sync via 'since' parameter.
+     */
     public function index(Request $request): JsonResponse
     {
         $query = Transaction::query()
@@ -28,89 +30,6 @@ class TransactionSyncController extends Controller
 
         return response()->json([
             'data' => $transactions,
-        ]);
-    }
-
-    public function store(StoreTransactionRequest $request): JsonResponse
-    {
-        $data = $request->validated();
-        $labelIds = $data['label_ids'] ?? [];
-        unset($data['label_ids']);
-
-        // Create transaction with provided ID if available
-        $transaction = new Transaction([
-            ...$data,
-            'user_id' => $request->user()->id,
-        ]);
-
-        // If ID is provided, check if transaction already exists (idempotent create)
-        if (isset($data['id'])) {
-            $existing = Transaction::query()
-                ->where('id', $data['id'])
-                ->where('user_id', $request->user()->id)
-                ->first();
-
-            if ($existing) {
-                // Transaction already exists, return it as success (idempotent)
-                return response()->json([
-                    'data' => $existing->load('labels:id,name,color'),
-                ], 200);
-            }
-        }
-
-        // If ID is provided, use it; otherwise Laravel will generate UUID v7
-        if (isset($data['id'])) {
-            $transaction->id = $data['id'];
-            $transaction->exists = false;
-        }
-
-        $transaction->save();
-
-        if (! empty($labelIds)) {
-            $transaction->labels()->sync($labelIds);
-        }
-
-        return response()->json([
-            'data' => $transaction->load('labels:id,name,color'),
-        ], 201);
-    }
-
-    public function update(UpdateTransactionSyncRequest $request, Transaction $transaction): JsonResponse
-    {
-        // Ensure user owns this transaction
-        if ($transaction->user_id !== $request->user()->id) {
-            abort(403, 'Unauthorized');
-        }
-
-        $data = $request->validated();
-        $labelIds = $data['label_ids'] ?? null;
-        $hasLabelUpdate = $request->has('label_ids');
-        unset($data['label_ids']);
-
-        if (! empty($data)) {
-            $transaction->update($data);
-        }
-
-        if ($hasLabelUpdate) {
-            $transaction->labels()->sync($labelIds ?? []);
-        }
-
-        return response()->json([
-            'data' => $transaction->fresh()->load('labels:id,name,color'),
-        ]);
-    }
-
-    public function destroy(Transaction $transaction): JsonResponse
-    {
-        // Ensure user owns this transaction
-        if ($transaction->user_id !== request()->user()->id) {
-            abort(403, 'Unauthorized');
-        }
-
-        $transaction->delete();
-
-        return response()->json([
-            'message' => 'Transaction deleted successfully',
         ]);
     }
 }

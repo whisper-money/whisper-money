@@ -116,7 +116,7 @@ class TransactionController extends Controller
         $transaction->save();
 
         return response()->json([
-            'data' => $transaction,
+            'data' => $transaction->load('labels:id,name,color'),
         ], 201);
     }
 
@@ -152,7 +152,7 @@ class TransactionController extends Controller
         }
 
         return response()->json([
-            'data' => $transaction->fresh(['labels']),
+            'data' => $transaction->fresh()->load('labels:id,name,color'),
         ]);
     }
 
@@ -268,16 +268,8 @@ class TransactionController extends Controller
 
         if ($hasLabelUpdate) {
             foreach ($transactions as $transaction) {
-                if (empty($labelIds)) {
-                    // If labelIds is empty, remove all labels
-                    $transaction->labels()->sync([]);
-                } else {
-                    // Otherwise, merge with existing labels (don't detach existing ones)
-                    $existingLabelIds = $transaction->labels()->pluck('labels.id')->toArray();
-                    $mergedLabelIds = array_unique(array_merge($existingLabelIds, $labelIds));
-                    $transaction->labels()->sync($mergedLabelIds);
-                }
-
+                // Replace labels (consistent with single update behavior)
+                $transaction->labels()->sync($labelIds ?? []);
                 $transaction->save();
             }
         }

@@ -1,10 +1,9 @@
 <?php
 
 use App\Models\Account;
-use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
-use Illuminate\Support\Str;
 
 it('can fetch user transactions', function () {
     $user = User::factory()->create();
@@ -49,7 +48,7 @@ it('only returns user own transactions', function () {
         ->assertJsonCount(1, 'data');
 });
 
-it('can filter transactions by updated_at', function () {
+it('can filter transactions by updated_at for delta sync', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();
 
@@ -68,218 +67,31 @@ it('can filter transactions by updated_at', function () {
         ->assertJsonPath('data.0.id', $newTransaction->id);
 });
 
-it('can create a transaction', function () {
+it('includes labels with id, name, and color', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();
-    $category = Category::factory()->for($user)->create();
+    $label1 = Label::factory()->create(['user_id' => $user->id, 'name' => 'Important', 'color' => '#ff0000']);
+    $label2 = Label::factory()->create(['user_id' => $user->id, 'name' => 'Work', 'color' => '#00ff00']);
 
-    $transactionData = [
-        'account_id' => $account->id,
-        'category_id' => $category->id,
-        'description' => 'encrypted_description',
-        'description_iv' => '1234567890123456',
-        'transaction_date' => now()->toDateString(),
-        'amount' => 10050,
-        'currency_code' => 'USD',
-        'notes' => null,
-        'notes_iv' => null,
-        'source' => 'manually_created',
-    ];
+    $transaction = Transaction::factory()->for($user)->for($account)->create();
+    $transaction->labels()->attach([$label1->id, $label2->id]);
 
-    $response = $this->actingAs($user)->postJson('/api/sync/transactions', $transactionData);
+    $response = $this->actingAs($user)->getJson('/api/sync/transactions');
 
-    $response->assertCreated()
+    $response->assertSuccessful()
+        ->assertJsonCount(1, 'data')
         ->assertJsonStructure([
             'data' => [
-                'id',
-                'user_id',
-                'account_id',
-                'category_id',
-                'description',
-                'description_iv',
-                'transaction_date',
-                'amount',
-                'currency_code',
-                'source',
-                'created_at',
-                'updated_at',
+                '*' => [
+                    'id',
+                    'labels' => [
+                        '*' => ['id', 'name', 'color'],
+                    ],
+                ],
             ],
-        ]);
-
-    $this->assertDatabaseHas('transactions', [
-        'user_id' => $user->id,
-        'account_id' => $account->id,
-        'category_id' => $category->id,
-        'description' => 'encrypted_description',
-        'amount' => 10050,
-        'source' => 'manually_created',
-    ]);
-});
-
-it('can create a transaction with a UUID', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
-    $uuid = (string) Str::uuid7();
-
-    $transactionData = [
-        'id' => $uuid,
-        'account_id' => $account->id,
-        'category_id' => null,
-        'description' => 'encrypted_description',
-        'description_iv' => '1234567890123456',
-        'transaction_date' => now()->toDateString(),
-        'amount' => 10050,
-        'currency_code' => 'USD',
-        'notes' => null,
-        'notes_iv' => null,
-        'source' => 'imported',
-    ];
-
-    $response = $this->actingAs($user)->postJson('/api/sync/transactions', $transactionData);
-
-    $response->assertCreated()
-        ->assertJsonPath('data.id', $uuid);
-
-    $this->assertDatabaseHas('transactions', [
-        'id' => $uuid,
-        'user_id' => $user->id,
-        'source' => 'imported',
-    ]);
-});
-
-it('validates required fields when creating a transaction', function () {
-    $user = User::factory()->create();
-
-    $response = $this->actingAs($user)->postJson('/api/sync/transactions', []);
-
-    $response->assertUnprocessable()
-        ->assertJsonValidationErrors(['account_id', 'description', 'description_iv', 'transaction_date', 'amount', 'currency_code', 'source']);
-});
-
-it('can update a transaction', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
-    $transaction = Transaction::factory()->for($user)->for($account)->create([
-        'amount' => 10000,
-        'description' => 'old_description',
-    ]);
-
-    $updateData = [
-        'account_id' => $account->id,
-        'category_id' => null,
-        'description' => 'new_description',
-        'description_iv' => $transaction->description_iv,
-        'transaction_date' => $transaction->transaction_date->toDateString(),
-        'amount' => 20000,
-        'currency_code' => $transaction->currency_code,
-        'notes' => null,
-        'notes_iv' => null,
-        'source' => 'manually_created',
-    ];
-
-    $response = $this->actingAs($user)->patchJson("/api/sync/transactions/{$transaction->id}", $updateData);
-
-    $response->assertSuccessful()
-        ->assertJsonPath('data.amount', 20000)
-        ->assertJsonPath('data.description', 'new_description');
-
-    $this->assertDatabaseHas('transactions', [
-        'id' => $transaction->id,
-        'amount' => 20000,
-        'description' => 'new_description',
-    ]);
-});
-
-it('cannot update another user transaction', function () {
-    $user = User::factory()->create();
-    $userAccount = Account::factory()->for($user)->create();
-    $otherUser = User::factory()->create();
-    $otherAccount = Account::factory()->for($otherUser)->create();
-    $transaction = Transaction::factory()->for($otherUser)->for($otherAccount)->create();
-
-    $updateData = [
-        'account_id' => $userAccount->id,
-        'category_id' => null,
-        'description' => 'hacked',
-        'description_iv' => $transaction->description_iv,
-        'transaction_date' => $transaction->transaction_date->toDateString(),
-        'amount' => 99999,
-        'currency_code' => $transaction->currency_code,
-        'notes' => null,
-        'notes_iv' => null,
-        'source' => 'manually_created',
-    ];
-
-    $response = $this->actingAs($user)->patchJson("/api/sync/transactions/{$transaction->id}", $updateData);
-
-    $response->assertForbidden();
-
-    $this->assertDatabaseHas('transactions', [
-        'id' => $transaction->id,
-        'user_id' => $otherUser->id,
-        'account_id' => $otherAccount->id,
-    ]);
-});
-
-it('can delete a transaction', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
-    $transaction = Transaction::factory()->for($user)->for($account)->create();
-
-    $response = $this->actingAs($user)->deleteJson("/api/sync/transactions/{$transaction->id}");
-
-    $response->assertSuccessful();
-
-    $this->assertSoftDeleted('transactions', [
-        'id' => $transaction->id,
-    ]);
-});
-
-it('cannot delete another user transaction', function () {
-    $user = User::factory()->create();
-    $otherUser = User::factory()->create();
-    $account = Account::factory()->for($otherUser)->create();
-    $transaction = Transaction::factory()->for($otherUser)->for($account)->create();
-
-    $response = $this->actingAs($user)->deleteJson("/api/sync/transactions/{$transaction->id}");
-
-    $response->assertForbidden();
-
-    $this->assertDatabaseHas('transactions', [
-        'id' => $transaction->id,
-    ]);
-});
-
-it('can partially update a transaction with only category and notes', function () {
-    $user = User::factory()->create();
-    $account = Account::factory()->for($user)->create();
-    $category = Category::factory()->for($user)->create();
-    $transaction = Transaction::factory()->for($user)->for($account)->create([
-        'amount' => 10000,
-        'description' => 'original_description',
-        'category_id' => null,
-        'notes' => null,
-    ]);
-
-    $updateData = [
-        'category_id' => $category->id,
-        'notes' => 'encrypted_notes',
-        'notes_iv' => str_repeat('n', 16),
-    ];
-
-    $response = $this->actingAs($user)->patchJson("/api/sync/transactions/{$transaction->id}", $updateData);
-
-    $response->assertSuccessful()
-        ->assertJsonPath('data.category_id', $category->id)
-        ->assertJsonPath('data.notes', 'encrypted_notes')
-        ->assertJsonPath('data.amount', 10000)
-        ->assertJsonPath('data.description', 'original_description');
-
-    $this->assertDatabaseHas('transactions', [
-        'id' => $transaction->id,
-        'category_id' => $category->id,
-        'notes' => 'encrypted_notes',
-        'amount' => 10000,
-        'description' => 'original_description',
-    ]);
+        ])
+        ->assertJsonPath('data.0.labels.0.name', 'Important')
+        ->assertJsonPath('data.0.labels.0.color', '#ff0000')
+        ->assertJsonPath('data.0.labels.1.name', 'Work')
+        ->assertJsonPath('data.0.labels.1.color', '#00ff00');
 });

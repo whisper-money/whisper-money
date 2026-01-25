@@ -20,15 +20,6 @@ interface TransactionFilters {
     searchText?: string;
 }
 
-function getCsrfToken(): string {
-    return decodeURIComponent(
-        document.cookie
-            .split('; ')
-            .find((row) => row.startsWith('XSRF-TOKEN='))
-            ?.split('=')[1] || '',
-    );
-}
-
 class TransactionSyncService {
     private syncManager: TransactionSyncManager;
 
@@ -70,7 +61,7 @@ class TransactionSyncService {
     async create(
         data: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>,
     ): Promise<Transaction> {
-        const response = await axios.post('/api/sync/transactions', data);
+        const response = await axios.post('/transactions', data);
         const serverData = response.data.data;
 
         const label_ids = serverData.labels?.map((l: { id: string }) => l.id);
@@ -103,27 +94,12 @@ class TransactionSyncService {
     ): Promise<Transaction> {
         const { label_ids, ...transactionData } = data;
 
-        const response = await fetch(`/api/sync/transactions/${id}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': getCsrfToken(),
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                ...transactionData,
-                label_ids,
-            }),
+        const response = await axios.patch(`/transactions/${id}`, {
+            ...transactionData,
+            label_ids,
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to update transaction');
-        }
-
-        const result = await response.json();
-        const serverData = result.data;
+        const serverData = response.data.data;
 
         const serverLabelIds = serverData.labels?.map(
             (l: { id: string }) => l.id,
@@ -144,25 +120,11 @@ class TransactionSyncService {
     ): Promise<void> {
         const { label_ids, ...transactionData } = data;
 
-        const response = await fetch('/transactions/bulk', {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': getCsrfToken(),
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                transaction_ids: ids,
-                label_ids: label_ids,
-                ...transactionData,
-            }),
+        await axios.patch('/transactions/bulk', {
+            transaction_ids: ids,
+            label_ids: label_ids,
+            ...transactionData,
         });
-
-        if (!response.ok) {
-            throw new Error('Failed to bulk update transactions');
-        }
     }
 
     async updateByFilters(
@@ -196,32 +158,17 @@ class TransactionSyncService {
             requestFilters.label_ids = filters.labelIds;
         }
 
-        const response = await fetch('/transactions/bulk', {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': getCsrfToken(),
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                filters: requestFilters,
-                label_ids: label_ids,
-                ...transactionData,
-            }),
+        const response = await axios.patch('/transactions/bulk', {
+            filters: requestFilters,
+            label_ids: label_ids,
+            ...transactionData,
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to bulk update transactions by filters');
-        }
-
-        const result = await response.json();
-        return result.count || 0;
+        return response.data.count || 0;
     }
 
     async delete(id: string): Promise<void> {
-        await axios.delete(`/api/sync/transactions/${id}`);
+        await axios.delete(`/transactions/${id}`);
     }
 
     async updateManyIndividual(
