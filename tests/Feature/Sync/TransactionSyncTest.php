@@ -249,3 +249,37 @@ it('cannot delete another user transaction', function () {
         'id' => $transaction->id,
     ]);
 });
+
+it('can partially update a transaction with only category and notes', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+    $category = Category::factory()->for($user)->create();
+    $transaction = Transaction::factory()->for($user)->for($account)->create([
+        'amount' => 10000,
+        'description' => 'original_description',
+        'category_id' => null,
+        'notes' => null,
+    ]);
+
+    $updateData = [
+        'category_id' => $category->id,
+        'notes' => 'encrypted_notes',
+        'notes_iv' => str_repeat('n', 16),
+    ];
+
+    $response = $this->actingAs($user)->patchJson("/api/sync/transactions/{$transaction->id}", $updateData);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('data.category_id', $category->id)
+        ->assertJsonPath('data.notes', 'encrypted_notes')
+        ->assertJsonPath('data.amount', 10000)
+        ->assertJsonPath('data.description', 'original_description');
+
+    $this->assertDatabaseHas('transactions', [
+        'id' => $transaction->id,
+        'category_id' => $category->id,
+        'notes' => 'encrypted_notes',
+        'amount' => 10000,
+        'description' => 'original_description',
+    ]);
+});

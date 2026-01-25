@@ -101,12 +101,6 @@ class TransactionSyncService {
         id: string,
         data: TransactionUpdateData,
     ): Promise<Transaction> {
-        const existing = await this.getById(id);
-
-        if (!existing) {
-            throw new Error('Transaction not found');
-        }
-
         const { label_ids, ...transactionData } = data;
 
         const response = await fetch(`/api/sync/transactions/${id}`, {
@@ -119,7 +113,6 @@ class TransactionSyncService {
             },
             credentials: 'same-origin',
             body: JSON.stringify({
-                ...existing,
                 ...transactionData,
                 label_ids,
             }),

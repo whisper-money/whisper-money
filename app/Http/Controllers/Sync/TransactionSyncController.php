@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sync;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTransactionRequest;
+use App\Http\Requests\UpdateTransactionSyncRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -74,7 +75,7 @@ class TransactionSyncController extends Controller
         ], 201);
     }
 
-    public function update(StoreTransactionRequest $request, Transaction $transaction): JsonResponse
+    public function update(UpdateTransactionSyncRequest $request, Transaction $transaction): JsonResponse
     {
         // Ensure user owns this transaction
         if ($transaction->user_id !== $request->user()->id) {
@@ -82,15 +83,16 @@ class TransactionSyncController extends Controller
         }
 
         $data = $request->validated();
-        unset($data['id']); // Don't allow ID changes
-
         $labelIds = $data['label_ids'] ?? null;
+        $hasLabelUpdate = $request->has('label_ids');
         unset($data['label_ids']);
 
-        $transaction->update($data);
+        if (! empty($data)) {
+            $transaction->update($data);
+        }
 
-        if ($labelIds !== null) {
-            $transaction->labels()->sync($labelIds);
+        if ($hasLabelUpdate) {
+            $transaction->labels()->sync($labelIds ?? []);
         }
 
         return response()->json([
