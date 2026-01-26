@@ -365,18 +365,17 @@ export function EditTransactionDialog({
                 let finalNotes = notes.trim();
                 let finalLabelIds = [...selectedLabelIds];
 
-                if (ruleResult.categoryId) {
+                if (ruleResult.categoryId && !finalCategoryId) {
                     finalCategoryId = ruleResult.categoryId;
                 }
                 if (ruleResult.notes) {
                     finalNotes = ruleResult.notes;
                 }
-                if (ruleResult.labelIds.length > 0) {
-                    const mergedIds = new Set([
-                        ...finalLabelIds,
-                        ...ruleResult.labelIds,
-                    ]);
-                    finalLabelIds = [...mergedIds];
+                if (
+                    ruleResult.labelIds.length > 0 &&
+                    finalLabelIds.length === 0
+                ) {
+                    finalLabelIds = [...ruleResult.labelIds];
                 }
 
                 let encryptedNotes: string | null = null;
