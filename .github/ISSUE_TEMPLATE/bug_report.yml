@@ -1,0 +1,58 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below to help us reproduce and fix the issue.
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provide details about your environment.
+      placeholder: |
+        OS: macOS 15.2 / Ubuntu 24.04 / Windows 11
+        Docker version: 28.5.2
+        Docker Compose version: v2.40.3
+        Whisper Money version: (commit hash or release tag)
+        Setup method: docker-compose / local
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the steps to reproduce the issue.
+      placeholder: |
+        1. Clone the repo and checkout main branch.
+        2. Run `docker compose up -d`
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include any error messages or logs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context, screenshots, or log output that might help.
+    validations:
+      required: false
