@@ -29,6 +29,14 @@ export interface TransactionData {
 
 function normalizeRuleJson(rulesJson: unknown): unknown {
     if (typeof rulesJson === 'string') {
+        try {
+            const parsed = JSON.parse(rulesJson);
+            if (typeof parsed === 'object' && parsed !== null) {
+                return normalizeRuleJson(parsed);
+            }
+        } catch {
+            // Not JSON, treat as a plain string value
+        }
         return rulesJson.toLowerCase();
     }
 

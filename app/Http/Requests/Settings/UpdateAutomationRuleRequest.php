@@ -54,6 +54,16 @@ class UpdateAutomationRuleRequest extends FormRequest
     }
 
     /**
+     * Decode the rules_json string into an array so the model's array cast doesn't double-encode it.
+     */
+    protected function passedValidation(): void
+    {
+        $this->merge([
+            'rules_json' => json_decode($this->rules_json, true),
+        ]);
+    }
+
+    /**
      * Configure the validator instance.
      */
     public function withValidator($validator): void
