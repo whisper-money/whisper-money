@@ -167,6 +167,10 @@ The template includes:
 | `STRIPE_SECRET`         | -       | Stripe secret key                                  |
 | `STRIPE_WEBHOOK_SECRET` | -       | Stripe webhook signing secret                      |
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=whisper-money/whisper-money&type=date&legend=top-left)](https://www.star-history.com/#whisper-money/whisper-money&type=date&legend=top-left)
+
 ## License
 
 This work is licensed under a
