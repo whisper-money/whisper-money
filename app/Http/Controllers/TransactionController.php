@@ -51,6 +51,7 @@ class TransactionController extends Controller
 
         $automationRules = AutomationRule::query()
             ->where('user_id', $user->id)
+            ->with(['category:id,name,icon,color', 'labels:id,name,color'])
             ->orderBy('priority')
             ->get();
 
@@ -102,6 +103,8 @@ class TransactionController extends Controller
     public function store(StoreTransactionRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $labelIds = $data['label_ids'] ?? null;
+        unset($data['label_ids']);
 
         $transaction = new Transaction([
             ...$data,
@@ -114,6 +117,10 @@ class TransactionController extends Controller
         }
 
         $transaction->save();
+
+        if ($labelIds !== null) {
+            $transaction->labels()->sync($labelIds);
+        }
 
         return response()->json([
             'data' => $transaction->load('labels:id,name,color'),

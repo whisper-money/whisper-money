@@ -378,6 +378,7 @@ export function ImportTransactionsDrawer({
                     let categoryId: string | null = null;
                     let notes: string | null = null;
                     let notesIv: string | null = null;
+                    let labelIds: string[] = [];
 
                     if (key && rules.length > 0) {
                         const ruleMatch = await evaluateRulesForNewTransaction(
@@ -402,6 +403,12 @@ export function ImportTransactionsDrawer({
                                 notes = ruleMatch.note;
                                 notesIv = ruleMatch.noteIv;
                             }
+                            if (
+                                ruleMatch.labelIds &&
+                                ruleMatch.labelIds.length > 0
+                            ) {
+                                labelIds = ruleMatch.labelIds;
+                            }
                         }
                     }
 
@@ -419,6 +426,7 @@ export function ImportTransactionsDrawer({
                         notes: notes,
                         notes_iv: notesIv,
                         source: 'imported' as const,
+                        label_ids: labelIds.length > 0 ? labelIds : undefined,
                     };
 
                     const createdTransaction =

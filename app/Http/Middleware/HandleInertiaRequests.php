@@ -82,7 +82,7 @@ class HandleInertiaRequests extends Middleware
                 ->orderBy('name')
                 ->get(['id', 'name', 'logo']) : [],
             'automationRules' => fn () => $user ? $user->automationRules()
-                ->with('category:id,name,icon,color')
+                ->with(['category:id,name,icon,color', 'labels:id,name,color'])
                 ->orderBy('priority')
                 ->get() : [],
             'labels' => fn () => $user ? $user->labels()

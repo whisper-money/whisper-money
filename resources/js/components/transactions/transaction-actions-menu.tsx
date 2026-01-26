@@ -16,6 +16,7 @@ import {
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useReEvaluateAllTransactions } from '@/hooks/use-re-evaluate-all-transactions';
 import { type Account, type Bank } from '@/types/account';
+import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { Link } from '@inertiajs/react';
@@ -28,6 +29,7 @@ interface TransactionActionsMenuProps {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    automationRules?: AutomationRule[];
     onAddTransaction: () => void;
     transactions: DecryptedTransaction[];
     onReEvaluateComplete?: () => void;
@@ -37,6 +39,7 @@ export function TransactionActionsMenu({
     categories,
     accounts,
     banks,
+    automationRules = [],
     onAddTransaction,
     transactions,
     onReEvaluateComplete,
@@ -81,7 +84,13 @@ export function TransactionActionsMenu({
 
         setIsReEvaluating(true);
         try {
-            await reEvaluateAll(transactions, categories, accounts, banks);
+            await reEvaluateAll(
+                transactions,
+                categories,
+                accounts,
+                banks,
+                automationRules,
+            );
             onReEvaluateComplete?.();
         } finally {
             setIsReEvaluating(false);
@@ -203,6 +212,7 @@ export function TransactionActionsMenu({
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
+                automationRules={automationRules}
             />
         </>
     );
