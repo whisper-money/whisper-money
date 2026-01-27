@@ -1607,6 +1607,7 @@ export default function Transactions({
                                     categories={categories}
                                     accounts={accounts}
                                     banks={banks}
+                                    automationRules={automationRules}
                                     onAddTransaction={() =>
                                         setCreateDialogOpen(true)
                                     }
@@ -1717,6 +1718,7 @@ export default function Transactions({
                 accounts={accounts}
                 banks={banks}
                 labels={labels}
+                automationRules={automationRules}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={(transaction) => {

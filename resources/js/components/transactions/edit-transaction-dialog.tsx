@@ -168,6 +168,8 @@ export function EditTransactionDialog({
         if (mode !== 'create' || automationRules.length === 0) {
             return {
                 categoryId: null,
+                labelIds: [] as string[],
+                matchedLabels: [] as Label[],
                 notes: null,
                 notesIv: null,
                 ruleName: null,
@@ -178,6 +180,8 @@ export function EditTransactionDialog({
         if (!keyString) {
             return {
                 categoryId: null,
+                labelIds: [] as string[],
+                matchedLabels: [] as Label[],
                 notes: null,
                 notesIv: null,
                 ruleName: null,
@@ -204,6 +208,8 @@ export function EditTransactionDialog({
         if (!result) {
             return {
                 categoryId: null,
+                labelIds: [] as string[],
+                matchedLabels: [] as Label[],
                 notes: null,
                 notesIv: null,
                 ruleName: null,
@@ -228,6 +234,8 @@ export function EditTransactionDialog({
 
         return {
             categoryId: result.categoryId,
+            labelIds: result.labelIds || [],
+            matchedLabels: result.labels || [],
             notes: finalNotes || null,
             notesIv: finalNotesIv,
             ruleName: result.rule.title,
@@ -355,12 +363,19 @@ export function EditTransactionDialog({
 
                 let finalCategoryId = categoryId === 'null' ? null : categoryId;
                 let finalNotes = notes.trim();
+                let finalLabelIds = [...selectedLabelIds];
 
-                if (ruleResult.categoryId) {
+                if (ruleResult.categoryId && !finalCategoryId) {
                     finalCategoryId = ruleResult.categoryId;
                 }
                 if (ruleResult.notes) {
                     finalNotes = ruleResult.notes;
+                }
+                if (
+                    ruleResult.labelIds.length > 0 &&
+                    finalLabelIds.length === 0
+                ) {
+                    finalLabelIds = [...ruleResult.labelIds];
                 }
 
                 let encryptedNotes: string | null = null;
@@ -396,6 +411,8 @@ export function EditTransactionDialog({
                     notes: encryptedNotes,
                     notes_iv: notesIv,
                     source: 'manually_created' as const,
+                    label_ids:
+                        finalLabelIds.length > 0 ? finalLabelIds : undefined,
                 });
 
                 const updatedCategory = finalCategoryId
@@ -403,6 +420,10 @@ export function EditTransactionDialog({
                           (category) => category.id === finalCategoryId,
                       ) || null
                     : null;
+
+                const transactionLabels = labels.filter((l) =>
+                    finalLabelIds.includes(l.id),
+                );
 
                 const newTransaction: DecryptedTransaction = {
                     ...createdTransaction,
@@ -413,6 +434,8 @@ export function EditTransactionDialog({
                     bank: selectedAccount.bank?.id
                         ? banks.find((b) => b.id === selectedAccount.bank?.id)
                         : undefined,
+                    labels: transactionLabels,
+                    label_ids: finalLabelIds,
                 };
 
                 if (updateAccountBalance) {

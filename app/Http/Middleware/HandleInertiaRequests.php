@@ -81,10 +81,16 @@ class HandleInertiaRequests extends Middleware
             'banks' => fn () => $user ? $user->banks()
                 ->orderBy('name')
                 ->get(['id', 'name', 'logo']) : [],
-            'automationRules' => fn () => $user ? $user->automationRules()
-                ->with('category:id,name,icon,color')
-                ->orderBy('priority')
-                ->get() : [],
+            'automationRules' => function () use ($user) {
+                if (! $user) {
+                    return [];
+                }
+
+                return $user->automationRules()
+                    ->with(['category:id,name,icon,color', 'labels:id,name,color'])
+                    ->orderBy('priority')
+                    ->get();
+            },
             'labels' => fn () => $user ? $user->labels()
                 ->orderBy('name')
                 ->get(['id', 'name', 'color']) : [],
