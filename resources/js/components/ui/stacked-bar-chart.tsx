@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Bar, BarChart, XAxis } from 'recharts';
+import { Bar, BarChart, Rectangle, XAxis } from 'recharts';
 
 import {
     ChartConfig,
@@ -108,6 +108,14 @@ function StackedBarShape({
     return <path d={path} fill={fill} />;
 }
 
+const CustomCursor = (props) => (
+  <Rectangle
+    {...props}
+    fillOpacity={0.25}
+    radius={5}
+  />
+);
+
 export interface StackedBarChartProps<T extends Record<string, unknown>> {
     data: T[];
     dataKeys: string[];
@@ -189,6 +197,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                         tickFormatter={xAxisFormatter}
                     />
                     <ChartTooltip
+                        cursor={<CustomCursor/>}
                         content={
                             <ChartTooltipContent
                                 hideLabel
