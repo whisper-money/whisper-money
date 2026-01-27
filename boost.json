@@ -1,13 +1,21 @@
 {
     "agents": [
         "claude_code",
-        "cursor"
+        "cursor",
+        "opencode"
     ],
-    "editors": [
-        "claude_code",
-        "cursor"
-    ],
-    "guidelines": [
+    "guidelines": true,
+    "herd_mcp": false,
+    "mcp": true,
+    "packages": [
         "laravel/fortify"
+    ],
+    "sail": false,
+    "skills": [
+        "pennant-development",
+        "wayfinder-development",
+        "pest-testing",
+        "inertia-react-development",
+        "tailwindcss-development"
     ]
 }
