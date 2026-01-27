@@ -72,7 +72,9 @@ whispermoney install
 
 ### Available Commands
 
-Once installed, you can use the `wispermoney` command for common tasks:
+> **Important:** You must run `whispermoney install` before using any other command. If you skip the install step, commands like `start` will not work.
+
+Once installed, you can use the `whispermoney` command for common tasks:
 
 ```bash
 # Start all services
