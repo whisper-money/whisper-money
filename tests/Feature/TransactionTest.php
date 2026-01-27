@@ -431,6 +431,34 @@ test('currency_code is required when creating transaction', function () {
     $response->assertJsonValidationErrors(['currency_code']);
 });
 
+test('users can create a transaction with labels', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $label1 = Label::factory()->create(['user_id' => $user->id]);
+    $label2 = Label::factory()->create(['user_id' => $user->id]);
+
+    $transactionData = [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'description_iv' => str_repeat('d', 16),
+        'transaction_date' => '2025-11-11',
+        'amount' => 5000,
+        'currency_code' => 'USD',
+        'source' => 'imported',
+        'label_ids' => [$label1->id, $label2->id],
+    ];
+
+    $response = actingAs($user)->postJson(route('transactions.store'), $transactionData);
+
+    $response->assertCreated();
+
+    $transaction = Transaction::latest()->first();
+    expect($transaction->labels)->toHaveCount(2);
+    expect($transaction->labels->pluck('id')->toArray())->toContain($label1->id, $label2->id);
+
+    $response->assertJsonCount(2, 'data.labels');
+});
+
 test('users can add labels to a transaction', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
