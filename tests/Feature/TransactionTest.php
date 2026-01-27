@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Account;
+use App\Models\AutomationRule;
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\Category;
@@ -28,6 +29,30 @@ test('authenticated users can access transactions page', function () {
         ->has('categories')
         ->has('accounts')
         ->has('banks')
+    );
+});
+
+test('transactions page includes automation rules with labels', function () {
+    $user = User::factory()->onboarded()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    $label = Label::factory()->create(['user_id' => $user->id]);
+
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $user->id,
+        'action_category_id' => $category->id,
+    ]);
+    $rule->labels()->attach($label->id);
+
+    $response = actingAs($user)->get(route('transactions.index'));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('transactions/index')
+        ->has('automationRules', 1)
+        ->has('automationRules.0.labels', 1)
+        ->where('automationRules.0.labels.0.id', $label->id)
+        ->where('automationRules.0.labels.0.name', $label->name)
+        ->where('automationRules.0.category.id', $category->id)
     );
 });
 

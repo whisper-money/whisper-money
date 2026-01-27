@@ -26,7 +26,7 @@ class ImportDataController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'logo']),
             'automationRules' => $user->automationRules()
-                ->with('category:id,name,icon,color')
+                ->with(['category:id,name,icon,color', 'labels:id,name,color'])
                 ->orderBy('priority')
                 ->get(),
         ]);
