@@ -1,4 +1,5 @@
 import { encrypt, importKey } from '@/lib/crypto';
+import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { TransactionSyncManager } from '@/lib/sync-manager';
 import type { Transaction } from '@/types/transaction';
@@ -169,6 +170,7 @@ class TransactionSyncService {
 
     async delete(id: string): Promise<void> {
         await axios.delete(`/transactions/${id}`);
+        await db.transactions.delete(id);
     }
 
     async updateManyIndividual(
