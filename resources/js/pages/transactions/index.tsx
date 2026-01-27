@@ -1618,6 +1618,9 @@ export default function Transactions({
                                             window.location.reload();
                                         }, 500);
                                     }}
+                                    onImportComplete={() =>
+                                        setRefreshKey((prev) => prev + 1)
+                                    }
                                 />
                                 <DataTableViewOptions table={table} />
                             </div>

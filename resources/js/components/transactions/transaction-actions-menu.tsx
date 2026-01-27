@@ -33,6 +33,7 @@ interface TransactionActionsMenuProps {
     onAddTransaction: () => void;
     transactions: DecryptedTransaction[];
     onReEvaluateComplete?: () => void;
+    onImportComplete?: () => void;
 }
 
 export function TransactionActionsMenu({
@@ -43,6 +44,7 @@ export function TransactionActionsMenu({
     onAddTransaction,
     transactions,
     onReEvaluateComplete,
+    onImportComplete,
 }: TransactionActionsMenuProps) {
     const { isKeySet } = useEncryptionKey();
     const [importDrawerOpen, setImportDrawerOpen] = useState(false);
@@ -213,6 +215,7 @@ export function TransactionActionsMenu({
                 accounts={accounts}
                 banks={banks}
                 automationRules={automationRules}
+                onImportComplete={onImportComplete}
             />
         </>
     );

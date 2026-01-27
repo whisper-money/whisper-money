@@ -48,6 +48,7 @@ interface ImportTransactionsDrawerProps {
     automationRules?: AutomationRule[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    onImportComplete?: () => void;
 }
 
 interface ImportError {
@@ -75,6 +76,7 @@ export function ImportTransactionsDrawer({
     automationRules = [],
     open,
     onOpenChange,
+    onImportComplete,
 }: ImportTransactionsDrawerProps) {
     const { isKeySet } = useEncryptionKey();
     const trackEvent = useTrackEvent();
@@ -588,12 +590,17 @@ export function ImportTransactionsDrawer({
             toast.error('All transactions failed to import');
         }
 
-        transactionSyncService.sync().catch((syncError) => {
-            console.error(
-                'Failed to sync transactions with backend:',
-                syncError,
-            );
-        });
+        transactionSyncService
+            .sync()
+            .then(() => {
+                onImportComplete?.();
+            })
+            .catch((syncError) => {
+                console.error(
+                    'Failed to sync transactions with backend:',
+                    syncError,
+                );
+            });
     };
 
     const handleSelectionChange = (index: number, selected: boolean) => {
