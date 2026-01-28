@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FeatureActivationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
@@ -33,6 +34,8 @@ Route::get('privacy', function () {
 Route::get('terms', function () {
     return Inertia::render('terms');
 })->name('terms');
+
+Route::get('enable/{feature}', FeatureActivationController::class)->name('features.activate');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('subscribe', [SubscriptionController::class, 'index'])->name('subscribe');
