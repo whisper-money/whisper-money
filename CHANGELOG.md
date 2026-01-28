@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.9](https://github.com/whisper-money/whisper-money/compare/v0.1.8...v0.1.9) (2026-01-28)
+
+
+### Bug Fixes
+
+* Apply automation rule labels on transaction creation and import ([#79](https://github.com/whisper-money/whisper-money/issues/79)) ([a6a2a0d](https://github.com/whisper-money/whisper-money/commit/a6a2a0d58cd1f2dee3dd524567e7ccf6a074c02a)), closes [#61](https://github.com/whisper-money/whisper-money/issues/61)
+* Delete transactions on local browser DB after deleting it on the backend ([d1f69a2](https://github.com/whisper-money/whisper-money/commit/d1f69a284a28386b124bbbea295ce8064ab2a362))
+
+
+### Features
+
+* Print sponsor message on whispermoney script ([f03fcf5](https://github.com/whisper-money/whisper-money/commit/f03fcf5ac61517b20b82bffd3277a6ab66098d89))
+* Release budgets feature to all users ([#84](https://github.com/whisper-money/whisper-money/issues/84)) ([a9b889b](https://github.com/whisper-money/whisper-money/commit/a9b889b1459ba9dd5f857ce30c837a183f77dc79))
+* Reload transactions table on import proccess complete ([bbc3027](https://github.com/whisper-money/whisper-money/commit/bbc302754541f4c61080284f8ca729fe5aea4ecf))
+* Sync new users to Resend contacts ([#85](https://github.com/whisper-money/whisper-money/issues/85)) ([952a5d4](https://github.com/whisper-money/whisper-money/commit/952a5d4be784634ba1b2095621fabed3fd86d56d))
+
 ## [0.1.8](https://github.com/whisper-money/whisper-money/compare/v0.1.7...v0.1.8) (2026-01-25)
 
 ### Bug Fixes
