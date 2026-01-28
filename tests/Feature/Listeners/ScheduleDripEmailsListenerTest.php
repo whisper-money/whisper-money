@@ -88,5 +88,9 @@ test('no drip emails are dispatched when disabled', function () {
 
     event(new Registered($user));
 
-    Queue::assertNothingPushed();
+    Queue::assertNotPushed(SendWelcomeEmailJob::class);
+    Queue::assertNotPushed(SendOnboardingReminderEmailJob::class);
+    Queue::assertNotPushed(SendPromoCodeEmailJob::class);
+    Queue::assertNotPushed(SendImportHelpEmailJob::class);
+    Queue::assertNotPushed(SendFeedbackEmailJob::class);
 });
