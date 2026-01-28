@@ -39,6 +39,6 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perSecond(30);
         });
 
-        Feature::define('budgets', fn (User $user) => false);
+        Feature::define('budgets', fn (User $user) => true);
     }
 }
