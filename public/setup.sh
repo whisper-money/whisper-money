@@ -30,7 +30,6 @@ check_and_setup_repo() {
     fi
 
     # Not in repo and repo directory doesn't exist - prompt to clone
-    print_header
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${YELLOW}Repository Setup${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -99,17 +98,43 @@ check_and_setup_repo() {
     fi
 }
 
+# First-time sponsor message (small and interactive)
+print_sponsor_message() {
+    local sponsor_url="https://github.com/sponsors/victor-falcon"
+
+    echo ""
+    echo -e "${YELLOW}☕ Psst!${NC} If Whisper Money saves you from spreadsheet hell,"
+    echo -e "   consider buying the developer a coffee. No pressure!"
+    echo ""
+    read -p "   Open sponsor page? (y/n) " -n 1 -r
+    echo ""
+
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${GREEN}   Opening ${sponsor_url}...${NC}"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            open "$sponsor_url"
+        elif command_exists xdg-open; then
+            xdg-open "$sponsor_url"
+        elif command_exists wslview; then
+            wslview "$sponsor_url"
+        else
+            echo -e "${BLUE}   Visit: ${sponsor_url}${NC}"
+        fi
+        echo -e "${GREEN}   You're awesome. Thanks for the support! 🎉${NC}"
+    fi
+    echo ""
+}
+
 # ASCII Art Header
 print_header() {
     echo -e "${BLUE}"
     cat <<"EOF"
-██╗    ██╗██╗  ██╗██╗███████╗██████╗ ███████╗██████╗     ███╗   ███╗ ██████╗ ███╗   ██╗███████╗██╗   ██╗
-██║    ██║██║  ██║██║██╔════╝██╔══██╗██╔════╝██╔══██╗    ████╗ ████║██╔═══██╗████╗  ██║██╔════╝╚██╗ ██╔╝
-██║ █╗ ██║███████║██║███████╗██████╔╝█████╗  ██████╔╝    ██╔████╔██║██║   ██║██╔██╗ ██║█████╗   ╚████╔╝
-██║███╗██║██╔══██║██║╚════██║██╔═══╝ ██╔══╝  ██╔══██╗    ██║╚██╔╝██║██║   ██║██║╚██╗██║██╔══╝    ╚██╔╝
-╚███╔███╔╝██║  ██║██║███████║██║     ███████╗██║  ██║    ██║ ╚═╝ ██║╚██████╔╝██║ ╚████║███████╗   ██║
- ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝    ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝   ╚═╝
-
+██╗    ██╗██╗  ██╗██╗███████╗██████╗ ███████╗██████╗   ███╗   ███╗ ██████╗ ███╗   ██╗███████╗██╗   ██╗
+██║    ██║██║  ██║██║██╔════╝██╔══██╗██╔════╝██╔══██╗  ████╗ ████║██╔═══██╗████╗  ██║██╔════╝╚██╗ ██╔╝
+██║ █╗ ██║███████║██║███████╗██████╔╝█████╗  ██████╔╝  ██╔████╔██║██║   ██║██╔██╗ ██║█████╗   ╚████╔╝
+██║███╗██║██╔══██║██║╚════██║██╔═══╝ ██╔══╝  ██╔══██╗  ██║╚██╔╝██║██║   ██║██║╚██╗██║██╔══╝    ╚██╔╝
+╚███╔███╔╝██║  ██║██║███████║██║     ███████╗██║  ██║  ██║ ╚═╝ ██║╚██████╔╝██║ ╚████║███████╗   ██║
+ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝  ╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝   ╚═╝
 EOF
     echo -e "${NC}"
     echo -e "${GREEN}Whisper Money - Privacy-First Personal Finance App${NC}"
@@ -915,8 +940,6 @@ show_logs() {
 
 # Install function
 install() {
-    print_header
-
     echo -e "${BLUE}Starting Whisper Money installation...${NC}"
     echo ""
 
@@ -1169,12 +1192,13 @@ install() {
     echo -e "${YELLOW}To start services again:${NC}"
     echo -e "  ${YELLOW}whispermoney start${NC}"
     echo ""
+
+    # Show sponsor message on first install
+    print_sponsor_message
 }
 
 # Upgrade function
 upgrade() {
-    print_header
-
     echo -e "${BLUE}Upgrading Whisper Money...${NC}"
     echo ""
 
@@ -1298,8 +1322,6 @@ upgrade() {
 
 # Interactive menu
 ask_for_action() {
-    print_header
-
     echo -e "${BLUE}What would you like to do?${NC}"
     echo ""
     echo "  1) Install"
@@ -1336,6 +1358,8 @@ ask_for_action() {
 
 # Main script logic
 main() {
+    print_header
+
     # Check and setup repository first (only for install command or interactive mode)
     # This will re-execute the script if cloning was needed
     if [ "${1:-}" = "install" ] || [ -z "${1:-}" ]; then
