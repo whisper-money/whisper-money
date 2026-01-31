@@ -56,6 +56,7 @@ import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type Label } from '@/types/label';
+import { __ } from '@/utils/i18n';
 
 interface AutomationRulesDialogProps {
     open: boolean;
@@ -81,22 +82,22 @@ function AutomationRuleActions({
                     <Button
                         variant="ghost"
                         className="h-8 w-8 p-0"
-                        aria-label="Actions"
+                        aria-label={__('Actions')}
                     >
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{__('Open menu')}</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>{__('Actions')}</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
                     >
-                        Delete
+                        {__('Delete')}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -154,15 +155,15 @@ function AutomationRuleRow({
                     </TableRow>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                    <ContextMenuLabel>Actions</ContextMenuLabel>
+                    <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </ContextMenuItem>
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
                     >
-                        Delete
+                        {__('Delete')}
                     </ContextMenuItem>
                 </ContextMenuContent>
             </ContextMenu>
@@ -220,7 +221,7 @@ export function AutomationRulesDialog({
     const columns: ColumnDef<AutomationRule>[] = [
         {
             accessorKey: 'priority',
-            header: 'Priority',
+            header: __('Priority'),
             cell: ({ row }) => {
                 return (
                     <div className="font-medium">
@@ -231,7 +232,7 @@ export function AutomationRulesDialog({
         },
         {
             accessorKey: 'title',
-            header: 'Title',
+            header: __('Title'),
             cell: ({ row }) => {
                 return (
                     <div className="font-medium">{row.getValue('title')}</div>
@@ -240,7 +241,7 @@ export function AutomationRulesDialog({
         },
         {
             id: 'actions_display',
-            header: 'Actions',
+            header: __('Actions'),
             cell: ({ row }) => {
                 const rule = row.original;
                 const actions = getRuleActions(rule);
@@ -299,7 +300,7 @@ export function AutomationRulesDialog({
 
                 return (
                     <span className="text-sm text-muted-foreground">
-                        Add note
+                        {__('Add note')}
                     </span>
                 );
             },
@@ -337,17 +338,18 @@ export function AutomationRulesDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
-                    <DialogTitle>Automation Rules</DialogTitle>
+                    <DialogTitle>{__('Automation Rules')}</DialogTitle>
                     <DialogDescription>
-                        Manage your transaction automation rules. Rules will be
-                        applied to categorize transactions automatically.
+                        {__(
+                            'Manage your transaction automation rules. Rules will be applied to categorize transactions automatically.',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <Input
-                            placeholder="Filter rules...."
+                            placeholder={__('Filter rules...')}
                             value={
                                 (table
                                     .getColumn('title')
@@ -407,7 +409,7 @@ export function AutomationRulesDialog({
                                             colSpan={columns.length}
                                             className="h-24 text-center"
                                         >
-                                            No automation rules found.
+                                            {__('No automation rules found.')}
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -417,8 +419,8 @@ export function AutomationRulesDialog({
 
                     <div className="flex items-center justify-end">
                         <div className="text-sm text-muted-foreground">
-                            {table.getFilteredRowModel().rows.length} rule(s)
-                            total.
+                            {table.getFilteredRowModel().rows.length}{' '}
+                            {__('rule(s) total.')}
                         </div>
                     </div>
                 </div>

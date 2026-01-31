@@ -85,7 +85,7 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
                                                         <Badge
                                                             className={`${colorClasses.bg} ${colorClasses.text}`}
                                                         >
-                                                            {color}
+                                                            {__(color)}
                                                         </Badge>
                                                     </div>
                                                 </SelectItem>

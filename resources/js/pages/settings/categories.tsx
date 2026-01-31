@@ -208,7 +208,7 @@ export default function Categories() {
         },
         {
             accessorKey: 'color',
-            header: 'Color',
+            header: __('Color'),
             cell: ({ row }) => {
                 const color = row.getValue('color') as Category['color'];
                 if (!color) {
@@ -222,29 +222,29 @@ export default function Categories() {
                     <Badge
                         className={`${colorClasses.bg} ${colorClasses.text} text-[10px] tracking-widest`}
                     >
-                        {color.toLocaleUpperCase()}
+                        {__(color).toLocaleUpperCase()}
                     </Badge>
                 );
             },
         },
         {
             accessorKey: 'type',
-            header: 'Type',
+            header: __('Type'),
             cell: ({ row }) => {
                 const type = row.getValue('type') as Category['type'];
                 const typeConfig = {
                     income: {
-                        label: 'Income',
+                        label: __('Income'),
                         className:
                             'bg-green-50 text-green-700 dark:bg-green-700 dark:text-green-100',
                     },
                     expense: {
-                        label: 'Expense',
+                        label: __('Expense'),
                         className:
                             'bg-red-50 text-red-700 dark:bg-red-700 dark:text-red-100',
                     },
                     transfer: {
-                        label: 'Transfer',
+                        label: __('Transfer'),
                         className:
                             'bg-zinc-50 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100',
                     },

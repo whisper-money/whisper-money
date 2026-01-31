@@ -131,7 +131,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                         key={`section-header-${index}`}
                                         className="px-3 pt-2 pb-1.5 text-sm font-medium text-muted-foreground"
                                     >
-                                        {item.title}
+                                        {__(item.title)}
                                     </h2>
                                 );
                             }
@@ -153,7 +153,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                         {item.icon && (
                                             <item.icon className="h-4 w-4" />
                                         )}
-                                        {item.title}
+                                        {__(item.title)}
                                     </Link>
                                 </Button>
                             );

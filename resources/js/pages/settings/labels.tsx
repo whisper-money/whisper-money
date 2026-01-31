@@ -201,7 +201,7 @@ export default function Labels() {
         },
         {
             accessorKey: 'color',
-            header: 'Color',
+            header: __('Color'),
             cell: ({ row }) => {
                 const color = row.getValue('color') as Label['color'];
                 if (!color) {
@@ -212,7 +212,7 @@ export default function Labels() {
                     <Badge
                         className={`${colorClasses.bg} ${colorClasses.text} text-[10px] tracking-widest`}
                     >
-                        {color.toLocaleUpperCase()}
+                        {__(color).toLocaleUpperCase()}
                     </Badge>
                 );
             },

@@ -145,7 +145,7 @@ export function EditCategoryDialog({
                                                         <Badge
                                                             className={`${colorClasses.bg} ${colorClasses.text}`}
                                                         >
-                                                            {color}
+                                                            {__(color)}
                                                         </Badge>
                                                     </div>
                                                 </SelectItem>
@@ -209,7 +209,9 @@ export function EditCategoryDialog({
                                     {__('Cancel')}
                                 </Button>
                                 <Button type="submit" disabled={processing}>
-                                    {processing ? 'Updating...' : 'Update'}
+                                    {processing
+                                        ? __('Updating...')
+                                        : __('Update')}
                                 </Button>
                             </div>
                         </>

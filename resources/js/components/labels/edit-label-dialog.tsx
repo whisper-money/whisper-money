@@ -99,7 +99,7 @@ export function EditLabelDialog({
                                                         <Badge
                                                             className={`${colorClasses.bg} ${colorClasses.text}`}
                                                         >
-                                                            {color}
+                                                            {__(color)}
                                                         </Badge>
                                                     </div>
                                                 </SelectItem>
