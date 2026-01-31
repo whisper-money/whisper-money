@@ -223,14 +223,14 @@ test('cashflow trend returns monthly data for specified months', function () {
             'account_id' => $account->id,
             'category_id' => $incomeCategory->id,
             'amount' => 100000 + ($i * 10000),
-            'transaction_date' => now()->subMonths($i),
+            'transaction_date' => now()->subMonthsNoOverflow($i),
         ]);
         Transaction::factory()->create([
             'user_id' => $this->user->id,
             'account_id' => $account->id,
             'category_id' => $expenseCategory->id,
             'amount' => -(50000 + ($i * 5000)),
-            'transaction_date' => now()->subMonths($i),
+            'transaction_date' => now()->subMonthsNoOverflow($i),
         ]);
     }
 

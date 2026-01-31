@@ -276,7 +276,7 @@ class ResetDemoAccountCommand extends Command
         $balances = [];
 
         for ($i = 0; $i <= 12; $i++) {
-            $date = now()->subMonths($i)->endOfMonth();
+            $date = now()->subMonthsNoOverflow($i)->endOfMonth();
 
             if ($i === 0) {
                 $date = now();
