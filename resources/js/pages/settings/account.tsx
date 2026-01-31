@@ -16,7 +16,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { useLocale } from '@/hooks/use-locale';
 import { useTwoFactorAuth } from '@/hooks/use-two-factor-auth';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -51,7 +50,6 @@ export default function Account({
     twoFactorEnabled?: boolean;
 }) {
     const { auth } = usePage<SharedData>().props;
-    const locale = useLocale();
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
