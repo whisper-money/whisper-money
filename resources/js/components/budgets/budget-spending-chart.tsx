@@ -10,8 +10,10 @@ import {
     ChartTooltip,
     type ChartConfig,
 } from '@/components/ui/chart';
+import { useLocale } from '@/hooks/use-locale';
 import { BudgetPeriod } from '@/types/budget';
 import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { useMemo } from 'react';
 import { Area, AreaChart, Line, XAxis } from 'recharts';
@@ -41,6 +43,7 @@ interface CustomTooltipProps {
     label?: string | number;
     currencyCode: string;
     hasPreviousPeriod: boolean;
+    locale: string;
 }
 
 function CustomTooltip({
@@ -48,6 +51,7 @@ function CustomTooltip({
     payload,
     currencyCode,
     hasPreviousPeriod,
+    locale,
 }: CustomTooltipProps) {
     if (!active || !payload || !payload.length) {
         return null;
@@ -65,11 +69,7 @@ function CustomTooltip({
             <p className="mb-2 text-sm font-medium">
                 {hasPreviousPeriod
                     ? `Day ${data.day}`
-                    : new Date(data.date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                      })}
+                    : formatDate(data.date, 'MMM d, yyyy', locale)}
             </p>
             <div className="space-y-1 text-sm">
                 <div className="flex items-center justify-between gap-8">
@@ -91,7 +91,7 @@ function CustomTooltip({
                 {hasPreviousPeriod && data.prevSpent !== undefined && (
                     <div className="flex items-center justify-between gap-8">
                         <span className="text-muted-foreground">
-                            Last period:
+                            {__('Last period:')}
                         </span>
                         <span className="font-medium text-muted-foreground">
                             {formatCurrency(data.prevSpent, currencyCode)}
@@ -140,6 +140,7 @@ export function BudgetSpendingChart({
     budgetName,
     currencyCode,
 }: Props) {
+    const locale = useLocale();
     const hasPreviousPeriod = !!previousPeriod;
 
     const chartData = useMemo(() => {
@@ -217,16 +218,10 @@ export function BudgetSpendingChart({
     } satisfies ChartConfig;
 
     const periodLabel = useMemo(() => {
-        const start = new Date(currentPeriod.start_date).toLocaleDateString(
-            'en-US',
-            { month: 'short', day: 'numeric' },
-        );
-        const end = new Date(currentPeriod.end_date).toLocaleDateString(
-            'en-US',
-            { month: 'short', day: 'numeric', year: 'numeric' },
-        );
+        const start = formatDate(currentPeriod.start_date, 'MMM d', locale);
+        const end = formatDate(currentPeriod.end_date, 'MMM d, yyyy', locale);
         return `${start} - ${end}`;
-    }, [currentPeriod]);
+    }, [currentPeriod, locale]);
 
     return (
         <Card>
@@ -308,11 +303,7 @@ export function BudgetSpendingChart({
                                 if (hasPreviousPeriod) {
                                     return `Day ${value}`;
                                 }
-                                const date = new Date(value);
-                                return date.toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                });
+                                return formatDate(value, 'MMM d', locale);
                             }}
                         />
 
@@ -321,6 +312,7 @@ export function BudgetSpendingChart({
                                 <CustomTooltip
                                     currencyCode={currencyCode}
                                     hasPreviousPeriod={hasPreviousPeriod}
+                                    locale={locale}
                                 />
                             }
                         />

@@ -13,11 +13,13 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Account, Bank } from '@/types/account';
 import { Budget, BudgetPeriod, getBudgetPeriodTypeLabel } from '@/types/budget';
 import { Category } from '@/types/category';
+import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import { ChevronDown, Loader2 } from 'lucide-react';
@@ -42,6 +44,7 @@ export default function BudgetShow({
     banks,
     currencyCode,
 }: Props) {
+    const locale = useLocale();
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -73,16 +76,14 @@ export default function BudgetShow({
     ];
 
     const periodLabel = useMemo(() => {
-        const start = new Date(currentPeriod.start_date).toLocaleDateString(
-            'en-US',
-            { month: 'short', day: 'numeric', year: '2-digit' },
+        const start = formatDate(
+            currentPeriod.start_date,
+            "MMM d, ''yy",
+            locale,
         );
-        const end = new Date(currentPeriod.end_date).toLocaleDateString(
-            'en-US',
-            { month: 'short', day: 'numeric', year: '2-digit' },
-        );
+        const end = formatDate(currentPeriod.end_date, "MMM d, ''yy", locale);
         return `${start} - ${end}`;
-    }, [currentPeriod]);
+    }, [currentPeriod, locale]);
 
     const trackingLabel = useMemo((): string | null => {
         if (budget.category) return budget.category.name;
@@ -128,8 +129,10 @@ export default function BudgetShow({
                                         <span>{periodLabel} </span>
                                         <span className="opacity-50">
                                             (
-                                            {getBudgetPeriodTypeLabel(
-                                                budget.period_type,
+                                            {__(
+                                                getBudgetPeriodTypeLabel(
+                                                    budget.period_type,
+                                                ),
                                             )}
                                             )
                                         </span>

@@ -23,7 +23,9 @@ import {
     convertSingleAccountData,
     useChartViews,
 } from '@/hooks/use-chart-views';
+import { useLocale } from '@/hooks/use-locale';
 import { Account } from '@/types/account';
+import { formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { format, subMonths } from 'date-fns';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -53,21 +55,18 @@ interface AccountBalanceChartProps {
     onBalanceClick?: () => void;
 }
 
-function formatXAxisLabel(value: string): string {
-    const [year, month] = value.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    const monthName = date.toLocaleString('en-US', { month: 'short' });
-    const currentYear = new Date().getFullYear();
-
-    if (parseInt(year) === currentYear) {
-        return monthName;
-    }
-
-    return `${monthName} ${year.slice(-2)}`;
+function createXAxisFormatter(locale: string) {
+    return function formatXAxisLabel(value: string): string {
+        return formatMonthFromYearMonth(value, locale);
+    };
 }
 
-function formatCurrency(value: number, currencyCode: string): string {
-    return new Intl.NumberFormat('en-US', {
+function formatChartCurrency(
+    value: number,
+    currencyCode: string,
+    locale: string,
+): string {
+    return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: currencyCode,
         minimumFractionDigits: 0,
@@ -105,6 +104,7 @@ export function AccountBalanceChart({
     refreshKey,
     onBalanceClick,
 }: AccountBalanceChartProps) {
+    const locale = useLocale();
     const [balanceData, setBalanceData] = useState<AccountBalanceData | null>(
         null,
     );
@@ -187,8 +187,13 @@ export function AccountBalanceChart({
         },
     };
 
+    const formatXAxisLabel = useMemo(
+        () => createXAxisFormatter(locale),
+        [locale],
+    );
+
     const valueFormatter = (value: number): string => {
-        return formatCurrency(value, account.currency_code);
+        return formatChartCurrency(value, account.currency_code, locale);
     };
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);

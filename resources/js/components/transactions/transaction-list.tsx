@@ -1425,7 +1425,7 @@ export function TransactionList({
                         <DataTable
                             table={table}
                             columns={columns}
-                            emptyMessage="No transactions found."
+                            emptyMessage={__('No transactions found.')}
                             renderRow={renderTransactionRow}
                             maxHeight={maxHeight}
                             getRowDate={(row) => row.transaction_date}

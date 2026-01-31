@@ -1674,7 +1674,7 @@ export default function Transactions({
                             <DataTable
                                 table={table}
                                 columns={columns}
-                                emptyMessage="No transactions found."
+                                emptyMessage={__('No transactions found.')}
                                 renderRow={renderTransactionRow}
                                 getRowDate={(row) => row.transaction_date}
                                 renderDateHeader={(date, colSpan) => (
