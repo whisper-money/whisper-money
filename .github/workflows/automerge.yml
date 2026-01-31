@@ -1,19 +1,40 @@
 name: Automerge
 
 on:
-  pull_request:
-    types: [labeled]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 jobs:
   automerge:
-    if: github.event.label.name == 'Automerge'
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Enable auto-merge
-        run: gh pr merge --auto --squash "$PR_URL"
+      - name: Merge PR with Automerge label
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
+
+          PR_NUMBER=$(gh pr list --repo "$REPO" --head "$HEAD_BRANCH" --state open --json number --jq '.[0].number')
+
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
+            echo "No open PR found for branch $HEAD_BRANCH"
+            exit 0
+          fi
+
+          HAS_LABEL=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '[.labels[].name] | map(select(. == "Automerge")) | length')
+
+          if [ "$HAS_LABEL" -eq 0 ]; then
+            echo "PR #$PR_NUMBER does not have Automerge label, skipping"
+            exit 0
+          fi
+
+          echo "PR #$PR_NUMBER has Automerge label and CI passed. Merging..."
+          gh pr merge "$PR_NUMBER" --squash --repo "$REPO" --delete-branch
