@@ -36,18 +36,18 @@ class GenerateBudgetPeriods extends Command
             }
 
             $completedPeriods = BudgetPeriod::where('budget_id', $budget->id)
-                ->where('end_date', '<', now()->subDay())
+                ->where('end_date', '<', today())
                 ->get();
 
             foreach ($completedPeriods as $period) {
-                if ($period->end_date < now()->subDay()) {
+                if ($period->end_date < today()) {
                     $this->budgetPeriodService->closePeriod($period);
                     $closedCount++;
                 }
             }
 
             $futurePeriods = $budget->periods()
-                ->where('start_date', '>', now())
+                ->where('start_date', '>', today())
                 ->count();
 
             if ($futurePeriods < 2) {

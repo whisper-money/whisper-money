@@ -59,8 +59,8 @@ class Budget extends Model
     public function getCurrentPeriod(): ?BudgetPeriod
     {
         return $this->periods()
-            ->where('start_date', '<=', now())
-            ->where('end_date', '>=', now())
+            ->where('start_date', '<=', today())
+            ->where('end_date', '>=', today())
             ->first();
     }
 }

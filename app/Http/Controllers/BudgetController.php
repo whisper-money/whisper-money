@@ -25,8 +25,8 @@ class BudgetController extends Controller
         $budgets = $user
             ->budgets()
             ->with(['category', 'label', 'periods' => function ($query) {
-                $query->where('start_date', '<=', now())
-                    ->where('end_date', '>=', now())
+                $query->where('start_date', '<=', today())
+                    ->where('end_date', '>=', today())
                     ->with(['budgetTransactions']);
             }])
             ->get();
