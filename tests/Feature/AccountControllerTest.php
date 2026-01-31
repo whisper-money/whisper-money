@@ -167,7 +167,7 @@ test('account balance evolution returns data for single account', function () {
     ]);
 
     $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
-        'from' => now()->subMonths(2)->startOfMonth()->toDateString(),
+        'from' => now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString(),
         'to' => now()->endOfMonth()->toDateString(),
     ]));
 
