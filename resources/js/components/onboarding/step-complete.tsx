@@ -75,7 +75,7 @@ export function StepComplete() {
                 text={__('Go to Dashboard')}
                 onClick={handleComplete}
                 loading={isRedirecting}
-                loadingText="Redirecting..."
+                loadingText={__('Redirecting...')}
             />
         </div>
     );

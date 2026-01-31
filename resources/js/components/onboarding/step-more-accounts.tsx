@@ -4,7 +4,6 @@ import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { formatAccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Check, CheckCircle2, Plus, Wallet } from 'lucide-react';
-import { useMemo } from 'react';
 import { StepButton } from './step-button';
 
 interface ExistingAccount {
@@ -34,11 +33,9 @@ export function StepMoreAccounts({
     onAddMore,
     onFinish,
 }: StepMoreAccountsProps) {
-    const totalAccounts = createdAccounts.length + existingAccounts.length;
-
-    const description = useMemo(() => {
-        return `You've set up ${totalAccounts} account${totalAccounts !== 1 ? 's' : ''}. Would you like to add more or continue to the dashboard?`;
-    }, [totalAccounts]);
+    const description = __(
+        'Would you like to add more accounts or continue to the dashboard?',
+    );
 
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">

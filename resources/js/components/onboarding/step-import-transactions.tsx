@@ -43,8 +43,12 @@ export function StepImportTransactions({
 
     const description = useMemo(() => {
         return account
-            ? `Import transactions for "${account.name}". You can export transaction history from your bank's website.`
-            : 'Import your transaction history to start tracking your finances.';
+            ? __(
+                  "Import transactions for your account. You can export transaction history from your bank's website.",
+              )
+            : __(
+                  'Import your transaction history to start tracking your finances.',
+              );
     }, [account]);
 
     return (

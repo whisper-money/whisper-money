@@ -100,23 +100,25 @@ export function StepCreateAccount({
         const keyString = getStoredKey();
         if (!keyString) {
             setError(
-                'Encryption key not available. Please go back and set up encryption.',
+                __(
+                    'Encryption key not available. Please go back and set up encryption.',
+                ),
             );
             return;
         }
 
         if (!displayName.trim()) {
-            setError('Please enter an account name.');
+            setError(__('Please enter an account name.'));
             return;
         }
 
         if (!type || !currencyCode) {
-            setError('Please fill in all required fields.');
+            setError(__('Please fill in all required fields.'));
             return;
         }
 
         if (isFirstAccount && type !== 'checking') {
-            setError('Your first account must be a checking account.');
+            setError(__('Your first account must be a checking account.'));
             return;
         }
 
@@ -127,7 +129,7 @@ export function StepCreateAccount({
 
             if (customBank) {
                 if (!customBank.name.trim()) {
-                    setError('Please enter a bank name.');
+                    setError(__('Please enter a bank name.'));
                     setIsSubmitting(false);
                     return;
                 }
@@ -138,7 +140,7 @@ export function StepCreateAccount({
                 finalBankId = createdBankId;
             } else {
                 if (!bankId) {
-                    setError('Please select a bank.');
+                    setError(__('Please select a bank.'));
                     setIsSubmitting(false);
                     return;
                 }
@@ -192,7 +194,7 @@ export function StepCreateAccount({
             setError(
                 err instanceof Error
                     ? err.message
-                    : 'Failed to create account. Please try again.',
+                    : __('Failed to create account. Please try again.'),
             );
             setIsSubmitting(false);
         }
@@ -203,21 +205,25 @@ export function StepCreateAccount({
     const { title, description } = useMemo(() => {
         if (hasExistingAccounts) {
             return {
-                title: 'Your Accounts',
-                description:
+                title: __('Your Accounts'),
+                description: __(
                     "You already have accounts set up. Let's continue with the onboarding.",
+                ),
             };
         }
         if (isFirstAccount) {
             return {
-                title: 'Create an Account',
-                description:
+                title: __('Create an Account'),
+                description: __(
                     "Let's start with your main checking account. You can add more accounts later.",
+                ),
             };
         }
         return {
-            title: 'Add Another Account',
-            description: 'Add another account to track more of your finances.',
+            title: __('Add Another Account'),
+            description: __(
+                'Add another account to track more of your finances.',
+            ),
         };
     }, [hasExistingAccounts, isFirstAccount]);
 
@@ -287,7 +293,7 @@ export function StepCreateAccount({
                         <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
                             <p className="text-center">
                                 {__('Your first account must be a')}{' '}
-                                <strong>{__('Checking')}</strong>
+                                <strong>{__('Checking')}</strong>{' '}
                                 {__('account.')}
                             </p>
                         </div>
@@ -305,7 +311,7 @@ export function StepCreateAccount({
                         className="w-full sm:w-full"
                         disabled={isSubmitting}
                         loading={isSubmitting}
-                        loadingText="Creating..."
+                        loadingText={__('Creating...')}
                         text={__('Create Account')}
                     />
 

@@ -7,6 +7,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useCountUp } from '@/hooks/use-count-up';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
@@ -37,9 +38,13 @@ interface PaywallPageProps extends SharedData {
     stats: PaywallStats;
 }
 
-function formatCurrency(amount: number, currencyCode: string): string {
+function formatCurrency(
+    amount: number,
+    currencyCode: string,
+    locale: string,
+): string {
     const absAmount = Math.abs(amount) / 100;
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: currencyCode,
         minimumFractionDigits: 0,
@@ -47,38 +52,41 @@ function formatCurrency(amount: number, currencyCode: string): string {
     }).format(absAmount);
 }
 
-function getEquivalentBillingLabel(billingPeriod: string | null): string {
+function getEquivalentBillingLabel(
+    billingPeriod: string | null,
+    t: typeof __,
+): string {
     if (!billingPeriod) {
-        return 'one-time';
+        return t('one-time');
     }
 
     if (billingPeriod === 'year') {
-        return '/month';
+        return t('/month');
     }
 
-    return `/${billingPeriod}`;
+    return t('/month');
 }
 
 const socialProofs = [
     {
         icon: TrendingUpIcon,
-        highlight: '15% more savings',
-        text: 'after 3 months with Whisper Money',
+        highlightKey: '15% more savings',
+        textKey: 'after 3 months with Whisper Money',
     },
     {
         icon: PiggyBankIcon,
-        highlight: '23% better',
-        text: 'spending awareness reported',
+        highlightKey: '23% better',
+        textKey: 'spending awareness reported',
     },
     {
         icon: LockIcon,
-        highlight: '100% private',
-        text: '- we never sell your data',
+        highlightKey: '100% private',
+        textKey: '- we never sell your data',
     },
     {
         icon: UsersIcon,
-        highlight: '1,200+ users',
-        text: 'taking control of their finances',
+        highlightKey: '1,200+ users',
+        textKey: 'taking control of their finances',
     },
 ];
 
@@ -110,10 +118,10 @@ function SocialProofSlider() {
                     className="animate-in text-lg text-balance duration-500 fade-in slide-in-from-right-4"
                 >
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        {currentProof.highlight}
+                        {__(currentProof.highlightKey)}
                     </span>{' '}
                     <span className="text-muted-foreground">
-                        {currentProof.text}
+                        {__(currentProof.textKey)}
                     </span>
                 </p>
             </div>
@@ -164,6 +172,7 @@ function BalanceDisplay({
 }: {
     balancesByCurrency: Record<string, number>;
 }) {
+    const locale = useLocale();
     const entries = Object.entries(balancesByCurrency);
 
     if (entries.length === 0) {
@@ -176,7 +185,7 @@ function BalanceDisplay({
             <div className="flex flex-col items-center">
                 {entries.map(([currency, amount]) => (
                     <span key={currency} className="text-xl font-bold">
-                        {formatCurrency(amount, currency)}
+                        {formatCurrency(amount, currency, locale)}
                     </span>
                 ))}
             </div>
@@ -265,25 +274,25 @@ function CompactPlanCard({
         >
             <div className="flex items-center gap-2">
                 <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    {plan.billing_period === 'year' ? 'Annual' : 'Monthly'}
+                    {plan.billing_period === 'year'
+                        ? __('Annual')
+                        : __('Monthly')}
                 </span>
                 {savingsPercent && savingsPercent > 0 && (
                     <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        {__('Save')}
-                        {savingsPercent}%
+                        {__('Saving')} {savingsPercent}%
                     </span>
                 )}
             </div>
             <div className="mt-1 flex items-baseline gap-1">
                 <span className="text-xl font-bold">${monthlyEquivalent}</span>
                 <span className="text-sm text-muted-foreground">
-                    {getEquivalentBillingLabel(plan.billing_period)}
+                    {getEquivalentBillingLabel(plan.billing_period, __)}
                 </span>
             </div>
             {plan.billing_period === 'year' && (
                 <span className="mt-2 text-xs text-muted-foreground">
-                    {__('Billed annually at $')}
-                    {plan.price}
+                    {__('Billed annually at')} ${plan.price}
                 </span>
             )}
         </button>
@@ -330,7 +339,7 @@ function PricingSection({
                         <li key={feature} className="flex items-center gap-1.5">
                             <CheckIcon className="size-3 shrink-0 text-emerald-500" />
                             <span className="text-xs text-muted-foreground">
-                                {feature}
+                                {__(feature)}
                             </span>
                         </li>
                     ))}

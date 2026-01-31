@@ -30,14 +30,14 @@ export function StepCustomizeCategories({
                 </h3>
                 <div className="space-y-2">
                     {[
-                        'Food & Dining (Groceries, Restaurants, Delivery)',
-                        'Housing (Rent, Utilities, Maintenance)',
-                        'Transportation (Fuel, Public Transit, Parking)',
-                        'Shopping (Clothing, Electronics, Gifts)',
-                        'Entertainment (Movies, Sports, Hobbies)',
-                        'Health & Wellness (Medical, Pharmacy, Fitness)',
-                        'Income (Salary, Freelance, Investments)',
-                        'Transfers (Between accounts, Savings)',
+                        __('Food & Dining (Groceries, Restaurants, Delivery)'),
+                        __('Housing (Rent, Utilities, Maintenance)'),
+                        __('Transportation (Fuel, Public Transit, Parking)'),
+                        __('Shopping (Clothing, Electronics, Gifts)'),
+                        __('Entertainment (Movies, Sports, Hobbies)'),
+                        __('Health & Wellness (Medical, Pharmacy, Fitness)'),
+                        __('Income (Salary, Freelance, Investments)'),
+                        __('Transfers (Between accounts, Savings)'),
                     ].map((category) => (
                         <div
                             key={category}

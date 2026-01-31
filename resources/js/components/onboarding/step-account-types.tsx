@@ -18,44 +18,44 @@ interface StepAccountTypesProps {
 const accountTypes = [
     {
         type: 'checking',
-        name: 'Checking',
+        nameKey: 'Checking',
         icon: Wallet,
-        description: 'Daily spending and transactions',
+        descriptionKey: 'Daily spending and transactions',
         hasTransactions: true,
     },
     {
         type: 'savings',
-        name: 'Savings',
+        nameKey: 'Savings',
         icon: PiggyBank,
-        description: 'Save money for goals',
+        descriptionKey: 'Save money for goals',
         hasTransactions: true,
     },
     {
         type: 'credit_card',
-        name: 'Credit Card',
+        nameKey: 'Credit Card',
         icon: CreditCard,
-        description: 'Track credit card spending',
+        descriptionKey: 'Track credit card spending',
         hasTransactions: true,
     },
     {
         type: 'investment',
-        name: 'Investment',
+        nameKey: 'Investment',
         icon: LineChart,
-        description: 'Stocks, ETFs, and portfolios',
+        descriptionKey: 'Stocks, ETFs, and portfolios',
         hasTransactions: false,
     },
     {
         type: 'retirement',
-        name: 'Retirement',
+        nameKey: 'Retirement',
         icon: TrendingUp,
-        description: '401k, IRA, pension funds',
+        descriptionKey: '401k, IRA, pension funds',
         hasTransactions: false,
     },
     {
         type: 'loan',
-        name: 'Loan',
+        nameKey: 'Loan',
         icon: Building2,
-        description: 'Mortgages and loans',
+        descriptionKey: 'Mortgages and loans',
         hasTransactions: false,
     },
 ];
@@ -86,7 +86,7 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
                                     />
 
                                     <h3 className="font-semibold">
-                                        {account.name}
+                                        {__(account.nameKey)}
                                     </h3>
                                 </div>
 
@@ -98,12 +98,12 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
                                     }`}
                                 >
                                     {account.hasTransactions
-                                        ? 'Transactions + Balance'
-                                        : 'Balance'}
+                                        ? __('Transactions + Balance')
+                                        : __('Balance')}
                                 </span>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                {account.description}
+                                {__(account.descriptionKey)}
                             </p>
                         </div>
                     </div>

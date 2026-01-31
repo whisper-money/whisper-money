@@ -122,7 +122,7 @@ export function BankCombobox({
                             <span>{selectedBank.name}</span>
                         </div>
                     ) : (
-                        'Select bank...'
+                        __('Select bank...')
                     )}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -141,10 +141,10 @@ export function BankCombobox({
                     <CommandList>
                         <CommandEmpty>
                             {isLoading
-                                ? 'Searching...'
+                                ? __('Searching...')
                                 : searchQuery.length < 3
-                                  ? 'Type at least 3 characters to search'
-                                  : 'No bank found.'}
+                                  ? __('Type at least 3 characters to search')
+                                  : __('No bank found.')}
                         </CommandEmpty>
                         <CommandGroup>
                             {banks.map((bank) => (

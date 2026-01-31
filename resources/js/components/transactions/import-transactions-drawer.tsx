@@ -598,39 +598,45 @@ export function ImportTransactionsDrawer({
         switch (state.step) {
             case ImportStep.SelectAccount:
                 return {
-                    title: 'Select Account',
-                    description:
+                    title: __('Select Account'),
+                    description: __(
                         'Choose the account where transactions will be imported',
+                    ),
                 };
             case ImportStep.UploadFile:
                 return {
-                    title: 'Upload File',
-                    description:
+                    title: __('Upload File'),
+                    description: __(
                         'Drop your CSV or Excel file here, or click to browse',
+                    ),
                 };
             case ImportStep.MapColumns:
                 return {
-                    title: 'Map Columns',
-                    description:
+                    title: __('Map Columns'),
+                    description: __(
                         'Match your file columns to transaction fields',
+                    ),
                 };
             case ImportStep.Preview:
                 return {
-                    title: 'Preview Transactions',
-                    description: 'Review transactions before importing',
+                    title: __('Preview Transactions'),
+                    description: __('Review transactions before importing'),
                 };
             default:
                 if (isImporting) {
                     return {
-                        title: 'Importing Transactions',
-                        description:
+                        title: __('Importing Transactions'),
+                        description: __(
                             'Please wait while we import your transactions',
+                        ),
                     };
                 }
 
                 return {
-                    title: 'Import Transactions',
-                    description: 'Import transactions from CSV or Excel files',
+                    title: __('Import Transactions'),
+                    description: __(
+                        'Import transactions from CSV or Excel files',
+                    ),
                 };
         }
     };

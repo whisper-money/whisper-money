@@ -16,11 +16,11 @@ export default function Success() {
 
     return (
         <AuthLayout
-            title={loading ? 'Creating subscripiton...' : 'Welcome to Pro!'}
+            title={loading ? __('Creating subscription...') : __('Welcome to Pro!')}
             description={
                 loading
-                    ? 'We are proccessing your payment...'
-                    : 'Your subscription is now active'
+                    ? __('We are processing your payment...')
+                    : __('Your subscription is now active')
             }
         >
             <Head title={__('Welcome to Pro!')} />
@@ -29,7 +29,7 @@ export default function Success() {
                 {!loading && (
                     <p className="text-center text-muted-foreground">
                         {__(
-                            'You now have full access to all Whisper Money features.\n                        Thank you for supporting us!',
+                            'You now have full access to all Whisper Money features. Thank you for supporting us!',
                         )}
                     </p>
                 )}
@@ -42,7 +42,7 @@ export default function Success() {
                                 {__('Setting things up...')}
                             </>
                         ) : (
-                            'Go to Dashboard'
+                            __('Go to Dashboard')
                         )}
                     </Button>
                 </Link>

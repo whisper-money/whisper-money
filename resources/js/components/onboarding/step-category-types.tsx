@@ -10,33 +10,30 @@ interface StepCategoryTypesProps {
 const categoryTypes = [
     {
         type: 'expense',
-        name: 'Expense',
+        nameKey: 'Expense',
         icon: ArrowUpRight,
-        description:
+        descriptionKey:
             'Money going out of an account to pay for something (e.g., groceries, rent, subscriptions). Decreases your balance.',
-        examples: ['Food', 'Rent', 'Entertainment', 'Transport'],
         color: 'from-red-500 to-rose-500',
         bgColor: 'bg-red-50 dark:bg-red-900/20',
         textColor: 'text-red-700 dark:text-red-400',
     },
     {
         type: 'income',
-        name: 'Income',
+        nameKey: 'Income',
         icon: ArrowDownLeft,
-        description:
+        descriptionKey:
             'Money coming into an account from a source (e.g., salary, refunds, interest). Increases your balance.',
-        examples: ['Salary', 'Freelance', 'Investments', 'Refunds'],
         color: 'from-emerald-500 to-green-500',
         bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
         textColor: 'text-emerald-700 dark:text-emerald-400',
     },
     {
         type: 'transfer',
-        name: 'Transfer',
+        nameKey: 'Transfer',
         icon: Repeat,
-        description:
+        descriptionKey:
             'Moving money between accounts. It does not count in expenses or income charts.',
-        examples: ['To savings', 'Credit card payment', 'Between banks'],
         color: 'from-blue-500 to-cyan-500',
         bgColor: 'bg-blue-50 dark:bg-blue-900/20',
         textColor: 'text-blue-700 dark:text-blue-400',
@@ -68,12 +65,12 @@ export function StepCategoryTypes({ onContinue }: StepCategoryTypesProps) {
                                 <category.icon className="size-4 text-white" />
                             </div>
                             <h3 className="text-base font-semibold">
-                                {category.name}
+                                {__(category.nameKey)}
                             </h3>
                         </div>
 
                         <p className="w-full text-left text-muted-foreground/75">
-                            {category.description}
+                            {__(category.descriptionKey)}
                         </p>
                     </div>
                 ))}

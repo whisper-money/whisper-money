@@ -25,7 +25,7 @@ export function StepImportBalances({
         setError(null);
 
         if (balanceInCents === 0) {
-            setError('Please enter a balance');
+            setError(__('Please enter a balance'));
             return;
         }
 
@@ -36,15 +36,17 @@ export function StepImportBalances({
             onComplete();
         } catch (err) {
             console.error('Failed to set balance:', err);
-            setError('Failed to set balance. Please try again.');
+            setError(__('Failed to set balance. Please try again.'));
             setIsSubmitting(false);
         }
     }
 
     const description = useMemo(() => {
         return account
-            ? `"${account.name}" is a ${account.type} account. These accounts track balance changes over time instead of individual transactions.`
-            : 'Set the current balance for this account to start tracking.';
+            ? __(
+                  'This account tracks balance changes over time instead of individual transactions.',
+              )
+            : __('Set the current balance for this account to start tracking.');
     }, [account]);
 
     return (
@@ -114,7 +116,7 @@ export function StepImportBalances({
                     className="w-full sm:w-full"
                     text={__('Save Balance')}
                     loading={isSubmitting}
-                    loadingText="Saving..."
+                    loadingText={__('Saving...')}
                 />
             </form>
         </div>

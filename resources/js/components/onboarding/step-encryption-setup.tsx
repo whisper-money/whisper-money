@@ -45,12 +45,12 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
         setError(null);
 
         if (password.length < 12) {
-            setError('Password must be at least 12 characters');
+            setError(__('Password must be at least 12 characters'));
             return;
         }
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            setError(__('Passwords do not match'));
             return;
         }
 
@@ -74,7 +74,7 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
             onComplete();
         } catch (err) {
             console.error('Encryption setup error:', err);
-            setError('Failed to setup encryption. Please try again.');
+            setError(__('Failed to setup encryption. Please try again.'));
             setProcessing(false);
         }
     }
@@ -122,7 +122,7 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                                 ))}
                             </div>
                             <span className="text-xs text-muted-foreground">
-                                {passwordStrength.label}
+                                {__(passwordStrength.label)}
                             </span>
                         </div>
                         <span
@@ -184,8 +184,10 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                     </Select>
                     <p className="text-xs text-muted-foreground">
                         {storagePreference === 'session'
-                            ? 'Your key will be cleared when you close the browser.'
-                            : 'Your key will be stored until you log out.'}
+                            ? __(
+                                  'Your key will be cleared when you close the browser.',
+                              )
+                            : __('Your key will be stored until you log out.')}
                     </p>
                 </div>
 
@@ -200,8 +202,8 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                     type="submit"
                     disabled={processing || password.length < 12}
                     loading={processing}
-                    loadingText="Setting up encryption..."
-                    text={'Setup Encryption'}
+                    loadingText={__('Setting up encryption...')}
+                    text={__('Setup Encryption')}
                     className="w-full sm:w-full"
                 />
             </form>
