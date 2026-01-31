@@ -47,7 +47,7 @@ class CreateNewUser implements CreatesNewUsers
     /**
      * Detect locale from Accept-Language header.
      */
-    protected function detectLocaleFromRequest(): ?string
+    protected function detectLocaleFromRequest(): string
     {
         $acceptLanguage = request()->header('Accept-Language', '');
 
@@ -56,6 +56,6 @@ class CreateNewUser implements CreatesNewUsers
             return 'es';
         }
 
-        return null;
+        return 'en';
     }
 }

@@ -42,6 +42,19 @@ class SetLocale
             return $request->user()->locale;
         }
 
+        // Priority 2b: Authenticated user without locale — detect and persist
+        if ($request->user()) {
+            $detected = $this->detectLocaleFromHeader($request);
+
+            if (in_array($request->session()->get('locale'), ['en', 'es'])) {
+                $detected = $request->session()->get('locale');
+            }
+
+            $request->user()->update(['locale' => $detected]);
+
+            return $detected;
+        }
+
         // Priority 3: Check session for previously detected locale
         if ($request->session()->has('locale')) {
             return $request->session()->get('locale');
