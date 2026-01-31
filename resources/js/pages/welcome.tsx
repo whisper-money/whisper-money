@@ -334,17 +334,17 @@ export default function Welcome({
                                 <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
                                     <LockIcon className="size-3.5 opacity-75" />
                                     <span className="text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__('E2E Encryption')}
+                                        {__('Free & Private')}
                                     </span>
                                 </span>
                                 <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
                                     {__(
-                                        'The most secure way to understand your\n                                    finances',
+                                        'All your money in one place. No spreadsheets. Free.',
                                     )}
                                 </h1>
                                 <p className="mb-4 max-w-[840px] text-lg leading-8 font-medium text-[#706f6c] lg:text-xl lg:leading-8 dark:text-[#A1A09A]">
                                     {__(
-                                        'Your financial data stays private with\n                                    end-to-end encryption. Track expenses,\n                                    create budgets, and achieve your goals\u2014all\n                                    while keeping your information completely\n                                    secure.',
+                                        'Understand your finances and make better decisions without the friction. Track expenses, create budgets, and achieve your goals\u2014all in one place.',
                                     )}
                                 </p>
                                 <div className="flex w-full max-w-lg flex-col gap-4">
@@ -373,7 +373,7 @@ export default function Welcome({
                                     )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'Your data is yours alone. Sign up to get\n                                        started.',
+                                            'No credit card required. Your data stays private with E2E encryption.',
                                         )}
                                     </p>
                                 </div>
