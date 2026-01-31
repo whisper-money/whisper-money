@@ -67,7 +67,7 @@ class CashflowAnalyticsController extends Controller
         $userId = $request->user()->id;
 
         $end = Carbon::now()->endOfMonth();
-        $start = Carbon::now()->subMonths($months - 1)->startOfMonth();
+        $start = Carbon::now()->subMonthsNoOverflow($months - 1)->startOfMonth();
 
         $data = [];
         $current = $start->copy();
