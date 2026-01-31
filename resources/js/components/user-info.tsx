@@ -2,54 +2,29 @@ import { cn } from '@/lib/utils';
 import { type User } from '@/types';
 import { Facehash } from 'facehash';
 
-export const tailwindColors500 = [
-    'var(--color-slate-500)',
-    'var(--color-gray-500)',
-    'var(--color-zinc-500)',
-    'var(--color-neutral-500)',
-    'var(--color-stone-500)',
-    'var(--color-red-500)',
-    'var(--color-orange-500)',
-    'var(--color-amber-500)',
-    'var(--color-yellow-500)',
-    'var(--color-lime-500)',
-    'var(--color-green-500)',
-    'var(--color-emerald-500)',
-    'var(--color-teal-500)',
-    'var(--color-cyan-500)',
-    'var(--color-sky-500)',
-    'var(--color-blue-500)',
-    'var(--color-indigo-500)',
-    'var(--color-violet-500)',
-    'var(--color-purple-500)',
-    'var(--color-fuchsia-500)',
-    'var(--color-pink-500)',
-    'var(--color-rose-500)',
-];
-
-export const tailwindColors200 = [
-    'var(--color-slate-200)',
-    'var(--color-gray-200)',
-    'var(--color-zinc-200)',
-    'var(--color-neutral-200)',
-    'var(--color-stone-200)',
-    'var(--color-red-200)',
-    'var(--color-orange-200)',
-    'var(--color-amber-200)',
-    'var(--color-yellow-200)',
-    'var(--color-lime-200)',
-    'var(--color-green-200)',
-    'var(--color-emerald-200)',
-    'var(--color-teal-200)',
-    'var(--color-cyan-200)',
-    'var(--color-sky-200)',
-    'var(--color-blue-200)',
-    'var(--color-indigo-200)',
-    'var(--color-violet-200)',
-    'var(--color-purple-200)',
-    'var(--color-fuchsia-200)',
-    'var(--color-pink-200)',
-    'var(--color-rose-200)',
+export const tailwindColorClasses = [
+    'bg-slate-200 dark:bg-slate-800',
+    'bg-gray-200 dark:bg-gray-800',
+    'bg-zinc-200 dark:bg-zinc-800',
+    'bg-neutral-200 dark:bg-neutral-800',
+    'bg-stone-200 dark:bg-stone-800',
+    'bg-red-200 dark:bg-red-800',
+    'bg-orange-200 dark:bg-orange-800',
+    'bg-amber-200 dark:bg-amber-800',
+    'bg-yellow-200 dark:bg-yellow-800',
+    'bg-lime-200 dark:bg-lime-800',
+    'bg-green-200 dark:bg-green-800',
+    'bg-emerald-200 dark:bg-emerald-800',
+    'bg-teal-200 dark:bg-teal-800',
+    'bg-cyan-200 dark:bg-cyan-800',
+    'bg-sky-200 dark:bg-sky-800',
+    'bg-blue-200 dark:bg-blue-800',
+    'bg-indigo-200 dark:bg-indigo-800',
+    'bg-violet-200 dark:bg-violet-800',
+    'bg-purple-200 dark:bg-purple-800',
+    'bg-fuchsia-200 dark:bg-fuchsia-800',
+    'bg-pink-200 dark:bg-pink-800',
+    'bg-rose-200 dark:bg-rose-800',
 ];
 
 export function UserInfo({
@@ -66,7 +41,7 @@ export function UserInfo({
             <Facehash
                 name={user.name}
                 size={32}
-                colors={[...tailwindColors200, ...tailwindColors500]}
+                colorClasses={tailwindColorClasses}
                 intensity3d="dramatic"
                 className="rounded-full"
             />
