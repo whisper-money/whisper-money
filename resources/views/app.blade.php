@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
         <meta name="theme-color" content="#383838" media="(prefers-color-scheme: dark)">
 
@@ -62,5 +62,11 @@
             event-uuid="696e6c66-33e0-482c-aa4a-a21410ec38c8"
             src="https://tracker.metricswave.com/js/visits.js"
         ></script>
+
+        <script>
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' });
+            }
+        </script>
     </body>
 </html>

@@ -2,7 +2,7 @@
   "name": "Whisper Money",
   "short_name": "Whisper Money",
   "description": "Track your finances privately and securely",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
   "id": "/",
   "display": "standalone",
