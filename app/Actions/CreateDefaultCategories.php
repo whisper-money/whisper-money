@@ -11,7 +11,8 @@ class CreateDefaultCategories
      */
     public function handle(User $user): void
     {
-        $defaultCategories = self::getDefaultCategories();
+        $locale = $user->locale ?? app()->getLocale();
+        $defaultCategories = self::getDefaultCategories($locale);
 
         foreach ($defaultCategories as $category) {
             $user->categories()->firstOrCreate(
@@ -22,11 +23,33 @@ class CreateDefaultCategories
     }
 
     /**
-     * Get the default categories configuration.
+     * Get the default categories configuration for a given locale.
      *
      * @return array<int, array{name: string, icon: string, color: string, type: string}>
      */
-    public static function getDefaultCategories(): array
+    public static function getDefaultCategories(string $locale = 'en'): array
+    {
+        $categories = self::getBaseCategories();
+
+        if ($locale === 'es') {
+            $translations = self::getSpanishTranslations();
+
+            return array_map(function (array $category) use ($translations) {
+                $category['name'] = $translations[$category['name']] ?? $category['name'];
+
+                return $category;
+            }, $categories);
+        }
+
+        return $categories;
+    }
+
+    /**
+     * Get the base (English) categories configuration.
+     *
+     * @return array<int, array{name: string, icon: string, color: string, type: string}>
+     */
+    private static function getBaseCategories(): array
     {
         return [
             [
@@ -407,6 +430,80 @@ class CreateDefaultCategories
                 'color' => 'green',
                 'type' => 'income',
             ],
+        ];
+    }
+
+    /**
+     * Get the Spanish translations for category names.
+     *
+     * @return array<string, string>
+     */
+    private static function getSpanishTranslations(): array
+    {
+        return [
+            'Food' => 'Alimentación',
+            'Cafes, restaurants, bars' => 'Cafeterías, restaurantes, bares',
+            'Groceries' => 'Supermercado',
+            'Tobacco and alcohol' => 'Tabaco y alcohol',
+            'Other groceries' => 'Otras compras de alimentación',
+            'Food delivery' => 'Comida a domicilio',
+            'Utility services' => 'Servicios del hogar',
+            'Electricity' => 'Electricidad',
+            'Natural gas' => 'Gas natural',
+            'Rent and maintanence' => 'Alquiler y mantenimiento',
+            'Telephone, internet, TV, computer' => 'Teléfono, internet, TV, ordenador',
+            'Water' => 'Agua',
+            'Other utility expenses' => 'Otros gastos del hogar',
+            'Household goods' => 'Artículos del hogar',
+            'Transportation' => 'Transporte',
+            'Parking' => 'Aparcamiento',
+            'Fuel' => 'Combustible',
+            'Transportation expenses' => 'Gastos de transporte',
+            'Vehicle purchase, maintenance' => 'Compra y mantenimiento de vehículo',
+            'Clothing and shoes' => 'Ropa y calzado',
+            'Leisure activities, traveling' => 'Ocio y viajes',
+            'Gifts' => 'Regalos',
+            'Books, newspapers, magazines' => 'Libros, periódicos, revistas',
+            'Accommodation, travel expenses' => 'Alojamiento y gastos de viaje',
+            'Sport and sports goods' => 'Deporte y artículos deportivos',
+            'Theatre, music, cinema' => 'Teatro, música, cine',
+            'Hobbies and other leisure time activites' => 'Hobbies y otras actividades de ocio',
+            'Education, health and beauty' => 'Educación, salud y belleza',
+            'Education and courses' => 'Educación y cursos',
+            'Beauty, cosmetics' => 'Belleza y cosmética',
+            'Health and pharmaceuticals' => 'Salud y farmacia',
+            'Online transactions' => 'Transacciones en línea',
+            'Online services' => 'Servicios en línea',
+            'Insurance' => 'Seguros',
+            'Investments' => 'Inversiones',
+            'Savings' => 'Ahorros',
+            'Other investments' => 'Otras inversiones',
+            'Financial services and commission' => 'Servicios financieros y comisiones',
+            'Fines' => 'Multas',
+            'Mortgage' => 'Hipoteca',
+            'Credit card repayment' => 'Pago de tarjeta de crédito',
+            'Cash withdrawal' => 'Retiro de efectivo',
+            'Gambling' => 'Apuestas',
+            'Lottery' => 'Lotería',
+            'Taxes and government fees' => 'Impuestos y tasas',
+            'Invoices' => 'Facturas',
+            'Personal transfers' => 'Transferencias personales',
+            'Other personal transfers' => 'Otras transferencias personales',
+            'Administrative violations' => 'Infracciones administrativas',
+            'Other transfers' => 'Otras transferencias',
+            'Other payments' => 'Otros pagos',
+            'Salary' => 'Salario',
+            'Regular income' => 'Ingresos regulares',
+            'Work on demand' => 'Trabajo por encargo',
+            'Income from rent' => 'Ingresos por alquiler',
+            'Unemployment benefit' => 'Prestación por desempleo',
+            'Tax return' => 'Devolución de impuestos',
+            'Return debit' => 'Devolución de débito',
+            'Own account' => 'Cuenta propia',
+            'From account of relatives' => 'Desde cuenta de familiares',
+            'Returned payments' => 'Pagos devueltos',
+            'Credit cards' => 'Tarjetas de crédito',
+            'Other incoming payments' => 'Otros ingresos',
         ];
     }
 }
