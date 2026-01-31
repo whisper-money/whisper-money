@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { type User } from '@/types';
 import { Facehash } from 'facehash';
+import { Avatar } from './ui/avatar';
 
 export const tailwindColorClasses = [
     'bg-slate-200 dark:bg-slate-800',
@@ -38,13 +39,16 @@ export function UserInfo({
 }) {
     return (
         <>
-            <Facehash
-                name={user.name}
-                size={32}
-                colorClasses={tailwindColorClasses}
-                intensity3d="dramatic"
-                className="rounded-full"
-            />
+            <Avatar>
+                <Facehash
+                    name={user.name}
+                    size={32}
+                    colorClasses={tailwindColorClasses}
+                    intensity3d="dramatic"
+                    className="rounded-full"
+                />
+            </Avatar>
+
             <div
                 className={cn([
                     'grid flex-1 text-left text-sm leading-tight',
