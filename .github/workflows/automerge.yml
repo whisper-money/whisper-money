@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Merge PR with Automerge label
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.MERGE_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
