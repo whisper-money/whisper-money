@@ -91,8 +91,8 @@ export default function Header({
             </header>
 
             {/* Desktop header */}
-            <header className="fixed top-0 z-50 hidden w-full bg-background/50 backdrop-blur-xl sm:block">
-                <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 lg:py-6">
+            <header className="fixed top-0 z-50 hidden w-full bg-background/5 backdrop-blur-lg sm:block">
+                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 lg:py-6">
                     <div className="flex items-center gap-4 font-mono">
                         <BirdIcon className="size-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
                         <span className="font-medium">Whisper Money</span>
