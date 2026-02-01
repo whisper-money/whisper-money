@@ -13,35 +13,42 @@ import {
 import { BudgetPeriod } from '@/types/budget';
 import { formatCurrency } from '@/utils/currency';
 import { useMemo } from 'react';
-import { Area, AreaChart, XAxis } from 'recharts';
+import { Area, AreaChart, Line, XAxis } from 'recharts';
 
 interface Props {
     currentPeriod: BudgetPeriod;
+    previousPeriod?: BudgetPeriod | null;
     budgetName: string;
     currencyCode: string;
+}
+
+interface ChartDataPoint {
+    day: number;
+    date: string;
+    spent: number;
+    allocated: number;
+    remaining: number;
+    prevSpent?: number;
+    prevDate?: string;
 }
 
 interface CustomTooltipProps {
     active?: boolean;
     payload?: Array<{
-        payload: {
-            date: string;
-            spent: number;
-            allocated: number;
-            remaining: number;
-        };
+        payload: ChartDataPoint;
     }>;
-    label?: string;
+    label?: string | number;
     currencyCode: string;
+    hasPreviousPeriod: boolean;
 }
 
 function CustomTooltip({
     active,
     payload,
-    label,
     currencyCode,
+    hasPreviousPeriod,
 }: CustomTooltipProps) {
-    if (!active || !payload || !payload.length || !label) {
+    if (!active || !payload || !payload.length) {
         return null;
     }
 
@@ -55,11 +62,13 @@ function CustomTooltip({
     return (
         <div className="rounded-lg border bg-background p-3 shadow-lg">
             <p className="mb-2 text-sm font-medium">
-                {new Date(label).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                })}
+                {hasPreviousPeriod
+                    ? `Day ${data.day}`
+                    : new Date(data.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                      })}
             </p>
             <div className="space-y-1 text-sm">
                 <div className="flex items-center justify-between gap-8">
@@ -74,6 +83,16 @@ function CustomTooltip({
                         {formatCurrency(spent, currencyCode)}
                     </span>
                 </div>
+                {hasPreviousPeriod && data.prevSpent !== undefined && (
+                    <div className="flex items-center justify-between gap-8">
+                        <span className="text-muted-foreground">
+                            Last period:
+                        </span>
+                        <span className="font-medium text-muted-foreground">
+                            {formatCurrency(data.prevSpent, currencyCode)}
+                        </span>
+                    </div>
+                )}
                 <div className="border-t pt-1">
                     <div className="flex items-center justify-between gap-8">
                         <span className="font-medium">Available:</span>
@@ -92,51 +111,88 @@ function CustomTooltip({
     );
 }
 
+function buildCumulativeSpending(period: BudgetPeriod): Map<string, number> {
+    const transactions = period.budget_transactions || [];
+    const transactionsByDate = new Map<string, number>();
+
+    transactions.forEach((t) => {
+        if (!t.transaction) return;
+        const date = new Date(t.transaction.transaction_date)
+            .toISOString()
+            .split('T')[0];
+        transactionsByDate.set(
+            date,
+            (transactionsByDate.get(date) || 0) + t.amount,
+        );
+    });
+
+    return transactionsByDate;
+}
+
 export function BudgetSpendingChart({
     currentPeriod,
+    previousPeriod,
     budgetName,
     currencyCode,
 }: Props) {
+    const hasPreviousPeriod = !!previousPeriod;
+
     const chartData = useMemo(() => {
-        const transactions = currentPeriod.budget_transactions || [];
+        const currentByDate = buildCumulativeSpending(currentPeriod);
+        const prevByDate = previousPeriod
+            ? buildCumulativeSpending(previousPeriod)
+            : null;
+
         const startDate = new Date(currentPeriod.start_date);
         const endDate = new Date(currentPeriod.end_date);
 
-        // Group transactions by date (using the actual transaction date, not when it was assigned)
-        const transactionsByDate = new Map<string, number>();
-        transactions.forEach((t) => {
-            if (!t.transaction) return;
-            const date = new Date(t.transaction.transaction_date)
-                .toISOString()
-                .split('T')[0];
-            transactionsByDate.set(
-                date,
-                (transactionsByDate.get(date) || 0) + t.amount,
-            );
-        });
+        const prevStartDate = previousPeriod
+            ? new Date(previousPeriod.start_date)
+            : null;
+        const prevEndDate = previousPeriod
+            ? new Date(previousPeriod.end_date)
+            : null;
 
-        // Generate daily data points
-        const data = [];
+        const data: ChartDataPoint[] = [];
         let cumulativeSpent = 0;
+        let prevCumulativeSpent = 0;
         const currentDate = new Date(startDate);
+        let dayIndex = 1;
 
-        while (currentDate <= endDate && currentDate <= new Date()) {
+        while (currentDate <= endDate) {
             const dateStr = currentDate.toISOString().split('T')[0];
-            const dailySpent = transactionsByDate.get(dateStr) || 0;
+            const dailySpent = currentByDate.get(dateStr) || 0;
             cumulativeSpent += dailySpent;
 
-            data.push({
+            const point: ChartDataPoint = {
+                day: dayIndex,
                 date: dateStr,
                 spent: cumulativeSpent,
                 allocated: currentPeriod.allocated_amount,
                 remaining: currentPeriod.allocated_amount - cumulativeSpent,
-            });
+            };
 
+            // Map to the same day index in the previous period
+            if (prevByDate && prevStartDate && prevEndDate) {
+                const prevDate = new Date(prevStartDate);
+                prevDate.setDate(prevDate.getDate() + dayIndex - 1);
+
+                if (prevDate <= prevEndDate) {
+                    const prevDateStr = prevDate.toISOString().split('T')[0];
+                    const prevDailySpent = prevByDate.get(prevDateStr) || 0;
+                    prevCumulativeSpent += prevDailySpent;
+                    point.prevSpent = prevCumulativeSpent;
+                    point.prevDate = prevDateStr;
+                }
+            }
+
+            data.push(point);
             currentDate.setDate(currentDate.getDate() + 1);
+            dayIndex++;
         }
 
         return data;
-    }, [currentPeriod]);
+    }, [currentPeriod, previousPeriod]);
 
     const chartConfig = {
         spent: {
@@ -147,6 +203,12 @@ export function BudgetSpendingChart({
             label: 'Budget',
             color: 'var(--allocated)',
         },
+        ...(hasPreviousPeriod && {
+            prevSpent: {
+                label: 'Last Period',
+                color: 'var(--spent-prev)',
+            },
+        }),
     } satisfies ChartConfig;
 
     const periodLabel = useMemo(() => {
@@ -228,11 +290,14 @@ export function BudgetSpendingChart({
                             </linearGradient>
                         </defs>
                         <XAxis
-                            dataKey="date"
+                            dataKey={hasPreviousPeriod ? 'day' : 'date'}
                             tickLine={false}
                             axisLine={false}
                             tickMargin={8}
                             tickFormatter={(value) => {
+                                if (hasPreviousPeriod) {
+                                    return `Day ${value}`;
+                                }
                                 const date = new Date(value);
                                 return date.toLocaleDateString('en-US', {
                                     month: 'short',
@@ -242,7 +307,10 @@ export function BudgetSpendingChart({
                         />
                         <ChartTooltip
                             content={
-                                <CustomTooltip currencyCode={currencyCode} />
+                                <CustomTooltip
+                                    currencyCode={currencyCode}
+                                    hasPreviousPeriod={hasPreviousPeriod}
+                                />
                             }
                         />
                         <Area
@@ -265,6 +333,18 @@ export function BudgetSpendingChart({
                             activeDot={{ r: 6 }}
                             fillOpacity={1}
                         />
+                        {hasPreviousPeriod && (
+                            <Line
+                                dataKey="prevSpent"
+                                type="basis"
+                                stroke="var(--color-prevSpent)"
+                                strokeWidth={2}
+                                strokeDasharray="6 4"
+                                dot={false}
+                                activeDot={{ r: 4 }}
+                                connectNulls={false}
+                            />
+                        )}
                     </AreaChart>
                 </ChartContainer>
             </CardContent>
