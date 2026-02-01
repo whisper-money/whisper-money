@@ -25,6 +25,7 @@ import { useEffect, useMemo, useState } from 'react';
 interface Props {
     budget: Budget;
     currentPeriod: BudgetPeriod;
+    previousPeriod: BudgetPeriod | null;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
@@ -34,6 +35,7 @@ interface Props {
 export default function BudgetShow({
     budget,
     currentPeriod,
+    previousPeriod,
     categories,
     accounts,
     banks,
@@ -167,6 +169,7 @@ export default function BudgetShow({
 
                 <BudgetSpendingChart
                     currentPeriod={currentPeriod}
+                    previousPeriod={previousPeriod}
                     budgetName={budget.name}
                     currencyCode={currencyCode}
                 />

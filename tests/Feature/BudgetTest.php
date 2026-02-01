@@ -115,6 +115,69 @@ test('user can delete their budget', function () {
     ]);
 });
 
+test('budget show returns previous period when it exists', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    Feature::for($user)->activate('budgets');
+
+    $budget = Budget::factory()->monthly()->create([
+        'user_id' => $user->id,
+        'period_start_day' => 1,
+    ]);
+
+    // Create a previous period (last month)
+    $budget->periods()->create([
+        'start_date' => now()->subMonth()->startOfMonth(),
+        'end_date' => now()->subMonth()->endOfMonth(),
+        'allocated_amount' => 30000,
+        'carried_over_amount' => 0,
+    ]);
+
+    // Create the current period
+    $budget->periods()->create([
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+        'allocated_amount' => 30000,
+        'carried_over_amount' => 0,
+    ]);
+
+    $response = $this->actingAs($user)->get("/budgets/{$budget->id}");
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('budgets/show')
+        ->has('currentPeriod')
+        ->has('previousPeriod')
+        ->where('previousPeriod.start_date', now()->subMonth()->startOfMonth()->toJSON())
+    );
+});
+
+test('budget show returns null previous period when it is the first period', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    Feature::for($user)->activate('budgets');
+
+    $budget = Budget::factory()->monthly()->create([
+        'user_id' => $user->id,
+        'period_start_day' => 1,
+    ]);
+
+    // Create only the current period
+    $budget->periods()->create([
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+        'allocated_amount' => 30000,
+        'carried_over_amount' => 0,
+    ]);
+
+    $response = $this->actingAs($user)->get("/budgets/{$budget->id}");
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('budgets/show')
+        ->has('currentPeriod')
+        ->where('previousPeriod', null)
+    );
+});
+
 test('budget period is automatically generated', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     Feature::for($user)->activate('budgets');

@@ -55,6 +55,12 @@ class BudgetController extends Controller
             'budgetTransactions.transaction.labels',
         ]);
 
+        $previousPeriod = $budget->periods()
+            ->where('end_date', '<', $currentPeriod->start_date)
+            ->orderBy('end_date', 'desc')
+            ->with(['budgetTransactions.transaction'])
+            ->first();
+
         $budget->load(['category', 'label']);
 
         $categories = \App\Models\Category::query()
@@ -79,6 +85,7 @@ class BudgetController extends Controller
         return Inertia::render('budgets/show', [
             'budget' => $budget,
             'currentPeriod' => $currentPeriod,
+            'previousPeriod' => $previousPeriod,
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
