@@ -44,7 +44,7 @@ export default function Header({
     return (
         <>
             {/* Mobile pill header */}
-            <header className="fixed top-4 right-4 left-4 z-50 flex items-center justify-between rounded-full border border-border/50 bg-background/70 px-4 py-2 shadow-lg shadow-black/10 backdrop-blur-xl sm:hidden dark:border-border/30 dark:shadow-black/30">
+            <header className="fixed top-4 right-4 left-4 z-50 flex items-center justify-between rounded-full border border-border/50 bg-background/70 px-4 py-3.5 shadow-lg shadow-black/10 backdrop-blur-xl sm:hidden dark:border-border/30 dark:shadow-black/30">
                 <div className="flex items-center gap-2.5 font-mono">
                     <BirdIcon className="size-4 text-[#1b1b18] dark:text-[#EDEDEC]" />
                     <span className="text-sm font-medium">Whisper Money</span>
