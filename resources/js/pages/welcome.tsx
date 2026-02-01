@@ -12,7 +12,7 @@ import { trackEvent } from '@/lib/track-event';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     BellIcon,
     BrainIcon,
@@ -161,6 +161,16 @@ export default function Welcome({
     const visitTrackedRef = useRef(false);
 
     useEffect(() => {
+        const isStandalone =
+            window.matchMedia('(display-mode: standalone)').matches ||
+            ('standalone' in navigator &&
+                (navigator as Navigator & { standalone: boolean }).standalone);
+
+        if (isStandalone) {
+            router.visit('/dashboard');
+            return;
+        }
+
         if (visitTrackedRef.current) {
             return;
         }

@@ -36,18 +36,18 @@ test('budget creation dispatches the historical assignment job', function () {
 test('historical transactions matching by category are assigned', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    // Create historical transactions
+    // Create historical transactions within the current month period
     $transaction1 = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category->id,
-        'transaction_date' => now()->subDays(10),
+        'transaction_date' => now()->startOfMonth(),
         'amount' => -5000,
     ]);
 
     $transaction2 = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category->id,
-        'transaction_date' => now()->subDays(5),
+        'transaction_date' => now()->startOfMonth()->addDays(1),
         'amount' => -3000,
     ]);
 
@@ -79,10 +79,10 @@ test('historical transactions matching by category are assigned', function () {
 test('historical transactions matching by label are assigned', function () {
     $label = Label::factory()->create(['user_id' => $this->user->id]);
 
-    // Create historical transaction with label
+    // Create historical transaction with label within the current month period
     $transaction = Transaction::factory()->create([
         'user_id' => $this->user->id,
-        'transaction_date' => now()->subDays(7),
+        'transaction_date' => now()->startOfMonth(),
         'amount' => -2500,
     ]);
 
@@ -124,7 +124,7 @@ test('transactions outside the period date range are not assigned', function () 
     $currentTransaction = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category->id,
-        'transaction_date' => now()->subDays(5),
+        'transaction_date' => now()->startOfMonth(),
         'amount' => -3000,
     ]);
 
@@ -204,11 +204,11 @@ test('transactions on boundary dates are assigned', function () {
 test('soft deleted transactions are not assigned', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    // Create and soft delete a transaction
+    // Create and soft delete a transaction within the current month period
     $deletedTransaction = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category->id,
-        'transaction_date' => now()->subDays(3),
+        'transaction_date' => now()->startOfMonth(),
         'amount' => -5000,
     ]);
 
@@ -241,7 +241,7 @@ test('duplicate assignments are prevented', function () {
     $transaction = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category->id,
-        'transaction_date' => now()->subDays(3),
+        'transaction_date' => now()->startOfMonth(),
         'amount' => -5000,
     ]);
 
@@ -285,18 +285,18 @@ test('multiple budgets assign independently', function () {
     $category1 = Category::factory()->create(['user_id' => $this->user->id]);
     $category2 = Category::factory()->create(['user_id' => $this->user->id]);
 
-    // Create transactions for each category
+    // Create transactions for each category within the current month period
     $transaction1 = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category1->id,
-        'transaction_date' => now()->subDays(5),
+        'transaction_date' => now()->startOfMonth(),
         'amount' => -3000,
     ]);
 
     $transaction2 = Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category2->id,
-        'transaction_date' => now()->subDays(4),
+        'transaction_date' => now()->startOfMonth()->addDays(1),
         'amount' => -2000,
     ]);
 
