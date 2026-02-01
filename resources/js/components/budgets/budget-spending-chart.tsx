@@ -159,7 +159,7 @@ export function BudgetSpendingChart({
         const currentDate = new Date(startDate);
         let dayIndex = 1;
 
-        while (currentDate <= endDate && currentDate <= new Date()) {
+        while (currentDate <= endDate) {
             const dateStr = currentDate.toISOString().split('T')[0];
             const dailySpent = currentByDate.get(dateStr) || 0;
             cumulativeSpent += dailySpent;
