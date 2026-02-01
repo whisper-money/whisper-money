@@ -318,7 +318,9 @@ export default function Welcome({
                                     <div
                                         key={image.key}
                                         className={cn(
-                                            'relative z-10 rotate-[-24deg] skew-y-12 transition-all delay-200 duration-700 ease-in-out group-hover:rotate-[-12deg] group-hover:skew-y-6',
+                                            'relative z-10 transition-all delay-200 duration-700 ease-in-out',
+                                            'rotate-[-24deg] skew-y-12 group-hover:rotate-[-12deg] group-hover:skew-y-6',
+                                            'max-sm:rotate-[-16deg] max-sm:skew-y-8 max-sm:group-hover:rotate-[-8deg] max-sm:group-hover:skew-y-4',
                                             index < LANDING_IMAGES.length - 1 &&
                                                 'h-[24px]',
                                             image.className,
@@ -330,12 +332,12 @@ export default function Welcome({
                                                     <img
                                                         src={image.light}
                                                         alt={image.alt}
-                                                        className="h-full w-auto rounded-lg dark:hidden"
+                                                        className="w-full rounded-lg dark:hidden"
                                                     />
                                                     <img
                                                         src={image.dark}
                                                         alt={image.alt}
-                                                        className="hidden h-full w-auto rounded-lg dark:block"
+                                                        className="hidden w-full rounded-lg dark:block"
                                                     />
                                                 </div>
                                             </div>
