@@ -1,19 +1,19 @@
 import type { SharedData } from '@/types';
-import { usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 
 /**
- * Translation hook - use directly in components.
- * This must be called from within a React component.
+ * Translation function - can be used anywhere (components, event handlers, callbacks).
  *
  * Usage:
  * import { __ } from '@/utils/i18n';
  * return <div>{__('Save')}</div>
  */
-export function useTranslation(
+export function __(
     key: string,
     replacements?: Record<string, string | number>,
 ): string {
-    const { translations } = usePage<SharedData>().props;
+    const translations =
+        (router.page?.props as SharedData | undefined)?.translations ?? {};
 
     // Get translation from shared props (returns Spanish if locale is 'es', otherwise returns key)
     let translation = translations[key] ?? key;
@@ -27,6 +27,3 @@ export function useTranslation(
 
     return translation;
 }
-
-// Alias for shorter usage (still follows React hooks rules)
-export const __ = useTranslation;

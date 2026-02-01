@@ -16,7 +16,9 @@ export default function Success() {
 
     return (
         <AuthLayout
-            title={loading ? __('Creating subscription...') : __('Welcome to Pro!')}
+            title={
+                loading ? __('Creating subscription...') : __('Welcome to Pro!')
+            }
             description={
                 loading
                     ? __('We are processing your payment...')
