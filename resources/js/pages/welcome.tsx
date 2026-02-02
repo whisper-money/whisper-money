@@ -1,6 +1,7 @@
 import EncryptionVideoPlayer from '@/components/landing/encryption-video-player';
 import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
@@ -28,7 +29,7 @@ import {
     TrendingUpIcon,
     ZapIcon,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const LANDING_IMAGES = [
     {
@@ -160,13 +161,20 @@ export default function Welcome({
     const planEntries = Object.entries(pricing.plans);
     const visitTrackedRef = useRef(false);
 
-    useEffect(() => {
-        const isStandalone =
+    const [isPwa] = useState(() => {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+
+        return (
             window.matchMedia('(display-mode: standalone)').matches ||
             ('standalone' in navigator &&
-                (navigator as Navigator & { standalone: boolean }).standalone);
+                (navigator as Navigator & { standalone: boolean }).standalone)
+        );
+    });
 
-        if (isStandalone) {
+    useEffect(() => {
+        if (isPwa) {
             router.visit('/dashboard');
             return;
         }
@@ -178,7 +186,15 @@ export default function Welcome({
         trackEvent(LEAD_FUNNEL_EVENT_UUID, {
             step: 'Visit',
         });
-    }, []);
+    }, [isPwa]);
+
+    if (isPwa) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Spinner className="size-8" />
+            </div>
+        );
+    }
 
     return (
         <>
