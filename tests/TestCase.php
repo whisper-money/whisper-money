@@ -29,7 +29,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function setupEncryptionKey($page, ?string $key = null, bool $reload = true): void
     {
-        $key = $key ?? $this->generateTestEncryptionKey();
+        $key ??= $this->generateTestEncryptionKey();
         try {
             $page->script("localStorage.setItem('encryption_key', ".json_encode($key).')');
         } catch (\Exception) {
@@ -39,7 +39,7 @@ abstract class TestCase extends BaseTestCase
         }
         if ($reload) {
             $currentUrl = $page->url();
-            $page->navigate($currentUrl)->wait(1);
+            $page->navigate($currentUrl)->wait(1.5);
         }
     }
 
@@ -48,7 +48,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function visitWithEncryptionKey(string $url, ?string $key = null)
     {
-        $key = $key ?? $this->generateTestEncryptionKey();
+        $key ??= $this->generateTestEncryptionKey();
         $page = visit($url);
         $page->script("localStorage.setItem('encryption_key', ".json_encode($key).')');
         $page->navigate($url)->wait(1);
