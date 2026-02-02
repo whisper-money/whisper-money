@@ -48,7 +48,7 @@ export function TopCategoriesCard({
 
     if (loading || !auth?.user) {
         return (
-            <Card className="col-span-3">
+            <Card>
                 <CardHeader>
                     <CardTitle>Top Spending Categories</CardTitle>
                 </CardHeader>
@@ -71,7 +71,7 @@ export function TopCategoriesCard({
     }
 
     return (
-        <Card className="col-span-3">
+        <Card>
             <CardHeader className="gap-2">
                 <CardTitle>Top spending categories</CardTitle>
                 <CardDescription>on the last 30 days</CardDescription>
