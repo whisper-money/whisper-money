@@ -105,7 +105,7 @@ export default function Dashboard() {
                           ))}
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4">
                     <TopCategoriesCard
                         categories={topCategories}
                         loading={isLoading}
