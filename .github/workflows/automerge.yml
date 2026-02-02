@@ -36,5 +36,22 @@ jobs:
             exit 0
           fi
 
-          echo "PR #$PR_NUMBER has Automerge label and CI passed. Merging..."
+          # Ensure the CI run matches the PR's latest commit to avoid merging stale results
+          CI_SHA="${{ github.event.workflow_run.head_sha }}"
+          PR_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
+
+          if [ "$CI_SHA" != "$PR_SHA" ]; then
+            echo "CI ran on $CI_SHA but PR head is $PR_SHA, skipping"
+            exit 0
+          fi
+
+          # Ensure no checks have failed on the PR
+          FAILED=$(gh pr checks "$PR_NUMBER" --repo "$REPO" --json state --jq '[.[] | select(.state == "FAILURE")] | length')
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo "PR #$PR_NUMBER has $FAILED failed check(s), skipping merge"
+            exit 0
+          fi
+
+          echo "PR #$PR_NUMBER has Automerge label and all checks passed. Merging..."
           gh pr merge "$PR_NUMBER" --squash --repo "$REPO" --delete-branch
