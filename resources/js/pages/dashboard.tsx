@@ -105,7 +105,7 @@ export default function Dashboard() {
                           ))}
                 </div>
 
-                <div className="grid gap-4">
+                <div className="flex flex-col gap-6">
                     <TopCategoriesCard
                         categories={topCategories}
                         loading={isLoading}
