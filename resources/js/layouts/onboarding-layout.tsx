@@ -24,7 +24,7 @@ export default function OnboardingLayout({
 
     return (
         <div className="flex min-h-svh flex-col bg-background">
-            <header className="flex items-center justify-between p-4 md:p-6">
+            <header className="pt-safe flex items-center justify-between p-4 md:p-6">
                 <AppLogoIcon
                     className={cn([
                         'size-6 fill-current text-[var(--foreground)] sm:opacity-75 dark:text-white',

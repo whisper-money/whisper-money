@@ -164,6 +164,10 @@
         @apply bg-background text-foreground;
     }
 
+    .pt-safe {
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+
     .bg-radial {
         background-image: radial-gradient(ellipse, var(--tw-gradient-stops));
     }
