@@ -8,7 +8,7 @@ use App\Models\User;
 // Basic Redirect Tests
 // =============================================================================
 
-it('redirects new registration to onboarding page', function () {
+it('redirects new registration to email verification', function () {
     $page = visit('/register');
 
     $page->assertSee('Create an account')
@@ -18,7 +18,7 @@ it('redirects new registration to onboarding page', function () {
         ->fill('password_confirmation', 'password123456')
         ->click('@register-user-button')
         ->wait(3)
-        ->assertPathIs('/onboarding')
+        ->assertPathIs('/email/verify')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('users', [
@@ -365,17 +365,15 @@ it('completes onboarding flow through account creation', function () {
     // Create a bank for the account creation step
     Bank::factory()->create(['name' => 'Chase Bank']);
 
-    $page = visit('/register');
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
 
-    // Step 1: Register
-    $page->assertSee('Create an account')
-        ->fill('name', 'E2E Test User')
-        ->fill('email', 'e2e-onboarding@example.com')
-        ->fill('password', 'SecurePassword123!')
-        ->fill('password_confirmation', 'SecurePassword123!')
-        ->click('@register-user-button')
-        ->wait(3)
-        ->assertPathIs('/onboarding')
+    $this->actingAs($user);
+
+    $page = visit('/onboarding');
+
+    $page->assertPathIs('/onboarding')
         ->assertNoJavascriptErrors();
 
     // Step 2: Welcome
@@ -428,7 +426,7 @@ it('completes onboarding flow through account creation', function () {
         ->assertNoJavascriptErrors();
 
     // Verify user's encryption was set up
-    $user = User::where('email', 'e2e-onboarding@example.com')->first();
+    $user->refresh();
     expect($user->encryption_salt)->not->toBeNull();
 
     // Verify account was created
