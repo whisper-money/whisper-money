@@ -14,4 +14,8 @@ If you didn't create a Whisper Money account, you can safely ignore this email.
 Best,<br>
 Víctor F,<br>
 Founder of Whisper Money
+
+<x-mail::subcopy>
+If you're having trouble clicking the "Verify Email Address" button, copy and paste the URL below into your web browser: <span class="break-all">[{{ $verificationUrl }}]({{ $verificationUrl }})</span>
+</x-mail::subcopy>
 </x-mail::message>
