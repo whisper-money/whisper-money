@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DripEmailType;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -132,5 +133,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isDemoAccount(): bool
     {
         return $this->email === config('app.demo.email');
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification);
     }
 }
