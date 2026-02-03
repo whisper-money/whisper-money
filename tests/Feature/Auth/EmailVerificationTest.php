@@ -10,7 +10,7 @@ test('email verification screen can be rendered', function () {
 
     $response = $this->actingAs($user)->get(route('verification.notice'));
 
-    $response->assertStatus(200);
+    $response->assertSuccessful();
 });
 
 test('email can be verified', function () {
@@ -89,4 +89,24 @@ test('already verified user visiting verification link is redirected without fir
 
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     Event::assertNotDispatched(Verified::class);
+});
+
+test('unverified user is redirected to verification notice from protected routes', function (string $route) {
+    $user = User::factory()->unverified()->onboarded()->create();
+
+    $this->actingAs($user)->get(route($route))
+        ->assertRedirect(route('verification.notice'));
+})->with([
+    'subscribe',
+    'onboarding',
+    'dashboard',
+]);
+
+test('verified user is not redirected to verification notice', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $response = $this->actingAs($user)->get(route('subscribe'));
+
+    expect($response->headers->get('Location'))
+        ->not->toBe(route('verification.notice'));
 });

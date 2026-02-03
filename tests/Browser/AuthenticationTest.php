@@ -12,9 +12,7 @@ it('can register a new user', function () {
         ->fill('password_confirmation', 'password123')
         ->click('@register-user-button')
         ->wait(2)
-        ->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
-        ->assertPathIs('/onboarding')
+        ->assertPathIs('/email/verify')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('users', [
