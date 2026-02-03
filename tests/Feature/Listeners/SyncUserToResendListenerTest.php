@@ -3,7 +3,7 @@
 use App\Listeners\SyncUserToResendListener;
 use App\Models\User;
 use App\Services\ResendService;
-use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Log;
 
 use function Pest\Laravel\mock;
@@ -21,7 +21,7 @@ test('user is synced to resend contacts', function () {
         ->once()
         ->with(Mockery::on(fn ($u) => $u->id === $user->id));
 
-    (new SyncUserToResendListener($resendService))->handle(new Registered($user));
+    (new SyncUserToResendListener($resendService))->handle(new Verified($user));
 });
 
 test('listener skips sync when api key is not configured', function () {
@@ -36,5 +36,5 @@ test('listener skips sync when api key is not configured', function () {
 
     $user = User::factory()->create();
 
-    (new SyncUserToResendListener($resendService))->handle(new Registered($user));
+    (new SyncUserToResendListener($resendService))->handle(new Verified($user));
 });
