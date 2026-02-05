@@ -37,7 +37,7 @@ class SubscriptionCancelledEmail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "We're sorry to see you go",
+            subject: __("We're sorry to see you go"),
         )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 

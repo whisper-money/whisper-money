@@ -37,7 +37,7 @@ class WelcomeEmail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Welcome to Whisper Money - Your Privacy-First Finance App',
+            subject: __('Welcome to Whisper Money - Your Privacy-First Finance App'),
         )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 

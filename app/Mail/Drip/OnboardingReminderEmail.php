@@ -37,7 +37,7 @@ class OnboardingReminderEmail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Need Help Getting Started?',
+            subject: __('Need Help Getting Started?'),
         )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 
