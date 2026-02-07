@@ -996,6 +996,10 @@ install() {
 
     echo ""
 
+    # Update hosts file early so the domain resolves before services start
+    update_hosts_file
+    echo ""
+
     # Install Composer dependencies BEFORE starting Docker services
     # (Docker Compose mounts files from vendor/laravel/sail that need to exist)
     echo -e "${BLUE}Installing Composer dependencies...${NC}"
@@ -1019,10 +1023,34 @@ install() {
     echo ""
 
     # Generate APP_KEY if not set (after Composer dependencies are installed)
-    if ! grep -q "APP_KEY=base64:" .env 2>/dev/null || grep -q "APP_KEY=$" .env 2>/dev/null; then
+    local current_key=$(grep "^APP_KEY=" .env 2>/dev/null | cut -d '=' -f2-)
+    if [ -z "$current_key" ]; then
         echo -e "${YELLOW}Generating application key...${NC}"
-        php artisan key:generate --no-interaction
-        echo -e "${GREEN}Application key generated.${NC}"
+        if php artisan key:generate --no-interaction 2>/dev/null; then
+            # Verify the key was actually written
+            local new_key=$(grep "^APP_KEY=" .env 2>/dev/null | cut -d '=' -f2-)
+            if [ -n "$new_key" ]; then
+                echo -e "${GREEN}Application key generated.${NC}"
+            else
+                echo -e "${RED}✗ key:generate ran but APP_KEY is still empty. Generating manually...${NC}"
+                local generated_key="base64:$(openssl rand -base64 32)"
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    sed -i '' "s|^APP_KEY=.*|APP_KEY=${generated_key}|g" .env
+                else
+                    sed -i "s|^APP_KEY=.*|APP_KEY=${generated_key}|g" .env
+                fi
+                echo -e "${GREEN}Application key generated (manual fallback).${NC}"
+            fi
+        else
+            echo -e "${YELLOW}php artisan key:generate failed. Generating key manually...${NC}"
+            local generated_key="base64:$(openssl rand -base64 32)"
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s|^APP_KEY=.*|APP_KEY=${generated_key}|g" .env
+            else
+                sed -i "s|^APP_KEY=.*|APP_KEY=${generated_key}|g" .env
+            fi
+            echo -e "${GREEN}Application key generated (manual fallback).${NC}"
+        fi
     else
         echo -e "${GREEN}Application key already exists.${NC}"
     fi
@@ -1054,11 +1082,11 @@ install() {
     # Install Bun/Node dependencies
     if command_exists bun; then
         echo -e "${BLUE}Installing Bun dependencies...${NC}"
-        bun install --frozen-lockfile
+        bun install
         echo -e "${GREEN}Bun dependencies installed.${NC}"
     elif command_exists npm; then
         echo -e "${BLUE}Installing npm dependencies...${NC}"
-        npm ci
+        npm install
         echo -e "${GREEN}npm dependencies installed.${NC}"
     fi
     echo ""
@@ -1141,15 +1169,13 @@ install() {
 
     # Run database migrations
     echo -e "${BLUE}Running database migrations...${NC}"
-    docker compose exec -T php php artisan migrate --force
-    echo -e "${GREEN}Database migrations completed.${NC}"
+    if docker compose exec -T php php artisan migrate --force; then
+        echo -e "${GREEN}Database migrations completed.${NC}"
+    else
+        echo -e "${RED}✗ Database migrations failed.${NC}"
+        echo -e "${YELLOW}Try running manually: docker compose exec php php artisan migrate --force${NC}"
+    fi
     echo ""
-
-    # Update hosts file
-    update_hosts_file
-
-    # Generate SSL certificates using mkcert
-    setup_ssl_certificates
 
     # Success message
     echo ""
