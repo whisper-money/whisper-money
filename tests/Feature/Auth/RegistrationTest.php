@@ -27,6 +27,7 @@ test('new users can register', function () {
 
 test('new users receive a verification email on registration', function () {
     Notification::fake();
+    config(['mail.email_verification_enabled' => true]);
 
     $this->post(route('register.store'), [
         'name' => 'Test User',
@@ -42,6 +43,7 @@ test('new users receive a verification email on registration', function () {
 
 test('new users are not verified after registration', function () {
     Queue::fake();
+    config(['mail.email_verification_enabled' => true]);
 
     $this->post(route('register.store'), [
         'name' => 'Test User',
