@@ -173,11 +173,6 @@ check_project_version() {
         return 0
     fi
 
-    # Skip check if DEV_MODE is enabled
-    if [ -f .env ] && grep -q "^DEV_MODE=true" .env 2>/dev/null; then
-        return 0
-    fi
-
     # Get current branch
     local current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 
@@ -815,120 +810,6 @@ stop_services() {
     echo -e "${GREEN}Services stopped.${NC}"
 }
 
-# Development mode - enable/disable
-dev_mode() {
-    local action="${1:-toggle}"
-
-    case "$action" in
-    on | start | enable)
-        echo -e "${BLUE}Enabling development mode...${NC}"
-        echo ""
-
-        # Update .env to enable DEV_MODE
-        if grep -q "^DEV_MODE=" .env; then
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                sed -i '' 's/^DEV_MODE=.*/DEV_MODE=true/' .env
-            else
-                sed -i 's/^DEV_MODE=.*/DEV_MODE=true/' .env
-            fi
-        else
-            echo "DEV_MODE=true" >>.env
-        fi
-
-        # Restart PHP container to pick up the change
-        echo -e "${YELLOW}Restarting PHP container...${NC}"
-        docker compose restart php
-
-        # Wait for it to be ready
-        sleep 3
-        wait_for_service "php"
-
-        echo ""
-        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${GREEN}  ✓ Development mode enabled!${NC}"
-        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo ""
-        echo -e "${BLUE}PHP container is now running:${NC}"
-        echo -e "  • ${GREEN}php artisan serve${NC} - Development server"
-        echo -e "  • ${GREEN}php artisan queue:listen${NC} - Queue worker"
-        echo -e "  • ${GREEN}php artisan pail${NC} - Log viewer"
-        echo ""
-        echo -e "${YELLOW}To start Vite for hot-reload, run in a separate terminal:${NC}"
-        echo -e "  ${GREEN}bun run dev${NC}"
-        echo ""
-        echo -e "${BLUE}View PHP logs:${NC}"
-        echo -e "  ${YELLOW}whispermoney logs${NC}"
-        echo ""
-        echo -e "${BLUE}To disable development mode:${NC}"
-        echo -e "  ${YELLOW}whispermoney dev off${NC}"
-        echo ""
-        ;;
-
-    off | stop | disable)
-        echo -e "${BLUE}Disabling development mode...${NC}"
-        echo ""
-
-        # Update .env to disable DEV_MODE
-        if grep -q "^DEV_MODE=" .env; then
-            if [[ "$OSTYPE" == "darwin"* ]]; then
-                sed -i '' 's/^DEV_MODE=.*/DEV_MODE=false/' .env
-            else
-                sed -i 's/^DEV_MODE=.*/DEV_MODE=false/' .env
-            fi
-        fi
-
-        # Restart PHP container
-        echo -e "${YELLOW}Restarting PHP container...${NC}"
-        docker compose restart php
-
-        # Wait for it to be ready
-        sleep 3
-        wait_for_service "php"
-
-        echo ""
-        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo -e "${GREEN}  ✓ Development mode disabled!${NC}"
-        echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo ""
-        echo -e "${BLUE}PHP container is now running in production mode.${NC}"
-        echo ""
-        ;;
-
-    status)
-        if [ ! -f .env ]; then
-            echo -e "${RED}.env file not found${NC}"
-            exit 1
-        fi
-
-        if grep -q "^DEV_MODE=true" .env 2>/dev/null; then
-            echo -e "${GREEN}Development mode: ${GREEN}ENABLED${NC}"
-            echo ""
-            echo -e "${BLUE}Running processes in PHP container:${NC}"
-            echo -e "  • php artisan serve"
-            echo -e "  • php artisan queue:listen"
-            echo -e "  • php artisan pail"
-        else
-            echo -e "${BLUE}Development mode: ${YELLOW}DISABLED${NC}"
-            echo ""
-            echo -e "${BLUE}To enable:${NC}"
-            echo -e "  ${YELLOW}whispermoney dev on${NC}"
-        fi
-        echo ""
-        ;;
-
-    *)
-        echo -e "${RED}Invalid dev mode action: $action${NC}"
-        echo ""
-        echo -e "${YELLOW}Usage:${NC}"
-        echo -e "  ${GREEN}whispermoney dev on${NC}     - Enable development mode"
-        echo -e "  ${GREEN}whispermoney dev off${NC}    - Disable development mode"
-        echo -e "  ${GREEN}whispermoney dev status${NC} - Check development mode status"
-        echo ""
-        exit 1
-        ;;
-    esac
-}
-
 # Show logs
 show_logs() {
     local service="${1:-php}"
@@ -1410,9 +1291,6 @@ main() {
     upgrade)
         upgrade
         ;;
-    dev)
-        dev_mode "${2:-on}"
-        ;;
     logs)
         show_logs "${2:-php}"
         ;;
@@ -1422,20 +1300,16 @@ main() {
     *)
         echo -e "${RED}Unknown command: $1${NC}"
         echo ""
-        echo "Usage: $0 [install|start|stop|upgrade|dev|logs]"
+        echo "Usage: $0 [install|start|stop|upgrade|logs]"
         echo ""
         echo "Commands:"
         echo "  install         - Install Whisper Money"
         echo "  start           - Start Docker services"
         echo "  stop            - Stop Docker services"
         echo "  upgrade         - Upgrade Whisper Money"
-        echo "  dev [on|off]    - Enable/disable development mode"
         echo "  logs [service]  - Show logs (default: php)"
         echo ""
         echo "Examples:"
-        echo "  whispermoney dev on      - Enable dev mode (queue, pail)"
-        echo "  whispermoney dev off     - Disable dev mode"
-        echo "  whispermoney dev status  - Check dev mode status"
         echo "  whispermoney logs php    - Show PHP logs"
         echo "  whispermoney logs mysql  - Show MySQL logs"
         echo ""
