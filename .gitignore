@@ -31,3 +31,4 @@ yarn-error.log
 /docker/caddy/certs/*.pem
 /docker/caddy/certs/*-key.pem
 .claude/settings.local.json
+.php-version
