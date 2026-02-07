@@ -1,4 +1,5 @@
 import EncryptionVideoPlayer from '@/components/landing/encryption-video-player';
+import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -8,6 +9,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { LEAD_FUNNEL_EVENT_UUID } from '@/lib/constants';
 import { trackEvent } from '@/lib/track-event';
 import { cn } from '@/lib/utils';
@@ -160,6 +162,7 @@ export default function Welcome({
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
     const visitTrackedRef = useRef(false);
+    const { isMobile } = usePwaInstall();
 
     const [isPwa] = useState(() => {
         if (typeof window === 'undefined') {
@@ -303,25 +306,29 @@ export default function Welcome({
                                     secure.
                                 </p>
                                 <div className="flex w-full max-w-lg flex-col gap-4">
-                                    <div className="flex w-full flex-row gap-4">
-                                        <Link
-                                            href="/register"
-                                            className="w-full"
-                                        >
-                                            <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
-                                                Get Started
-                                            </Button>
-                                        </Link>
-                                        <Link href="/login?demo=1">
-                                            <Button
-                                                variant={'secondary'}
-                                                size={'lg'}
-                                                className="h-14"
+                                    {isMobile ? (
+                                        <InstallAppButton />
+                                    ) : (
+                                        <div className="flex w-full flex-row gap-4">
+                                            <Link
+                                                href="/register"
+                                                className="w-full"
                                             >
-                                                Check Demo
-                                            </Button>
-                                        </Link>
-                                    </div>
+                                                <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
+                                                    Get Started
+                                                </Button>
+                                            </Link>
+                                            <Link href="/login?demo=1">
+                                                <Button
+                                                    variant={'secondary'}
+                                                    size={'lg'}
+                                                    className="h-14"
+                                                >
+                                                    Check Demo
+                                                </Button>
+                                            </Link>
+                                        </div>
+                                    )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
                                         Your data is yours alone. Sign up to get
                                         started.
