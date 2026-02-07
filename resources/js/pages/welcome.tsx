@@ -10,8 +10,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
-import { LEAD_FUNNEL_EVENT_UUID } from '@/lib/constants';
-import { trackEvent } from '@/lib/track-event';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
@@ -31,7 +29,7 @@ import {
     TrendingUpIcon,
     ZapIcon,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const LANDING_IMAGES = [
     {
@@ -161,7 +159,6 @@ export default function Welcome({
     const { appUrl, subscriptionsEnabled, pricing } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
-    const visitTrackedRef = useRef(false);
     const { isMobile } = usePwaInstall();
 
     const [isPwa] = useState(() => {
@@ -179,16 +176,7 @@ export default function Welcome({
     useEffect(() => {
         if (isPwa) {
             router.visit('/dashboard');
-            return;
         }
-
-        if (visitTrackedRef.current) {
-            return;
-        }
-        visitTrackedRef.current = true;
-        trackEvent(LEAD_FUNNEL_EVENT_UUID, {
-            step: 'Visit',
-        });
     }, [isPwa]);
 
     if (isPwa) {
