@@ -1,5 +1,12 @@
-import type { SharedData } from '@/types';
-import { router } from '@inertiajs/react';
+let currentTranslations: Record<string, string> = {};
+
+/**
+ * Sync translations from Inertia page props.
+ * Called from app.tsx on initial load and on every navigation.
+ */
+export function setTranslations(translations: Record<string, string>): void {
+    currentTranslations = translations;
+}
 
 /**
  * Translation function - can be used anywhere (components, event handlers, callbacks).
@@ -12,11 +19,7 @@ export function __(
     key: string,
     replacements?: Record<string, string | number>,
 ): string {
-    const translations =
-        (router.page?.props as SharedData | undefined)?.translations ?? {};
-
-    // Get translation from shared props (returns Spanish if locale is 'es', otherwise returns key)
-    let translation = translations[key] ?? key;
+    let translation = currentTranslations[key] ?? key;
 
     // Replace :placeholders with values
     if (replacements) {
