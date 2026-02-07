@@ -7,6 +7,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
+import { __ } from '@/utils/i18n';
 import { DownloadIcon, PlusSquareIcon, ShareIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -26,7 +27,7 @@ export default function InstallAppButton() {
                 className="text-shadow h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md"
             >
                 <DownloadIcon className="size-5" />
-                Install App
+                {__('Install App')}
             </Button>
         );
     }
@@ -39,16 +40,19 @@ export default function InstallAppButton() {
                     className="text-shadow h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md"
                 >
                     <DownloadIcon className="size-5" />
-                    Install App
+                    {__('Install App')}
                 </Button>
 
                 <Dialog open={showIosDialog} onOpenChange={setShowIosDialog}>
                     <DialogContent className="max-w-sm">
                         <DialogHeader>
-                            <DialogTitle>Install Whisper Money</DialogTitle>
+                            <DialogTitle>
+                                {__('Install Whisper Money')}
+                            </DialogTitle>
                             <DialogDescription>
-                                Add the app to your home screen for the best
-                                experience.
+                                {__(
+                                    'Add the app to your home screen for the best experience.',
+                                )}
                             </DialogDescription>
                         </DialogHeader>
 
@@ -58,11 +62,11 @@ export default function InstallAppButton() {
                                     <ShareIcon className="size-5 text-zinc-600 dark:text-zinc-400" />
                                 </span>
                                 <span className="text-sm">
-                                    Tap the{' '}
+                                    {__('Tap the')}{' '}
                                     <strong className="font-semibold">
-                                        Share
+                                        {__('Share')}
                                     </strong>{' '}
-                                    button in your browser toolbar
+                                    {__('button in your browser toolbar')}
                                 </span>
                             </li>
                             <li className="flex items-center gap-4">
@@ -70,9 +74,9 @@ export default function InstallAppButton() {
                                     <PlusSquareIcon className="size-5 text-zinc-600 dark:text-zinc-400" />
                                 </span>
                                 <span className="text-sm">
-                                    Tap{' '}
+                                    {__('Tap')}{' '}
                                     <strong className="font-semibold">
-                                        Add to Home Screen
+                                        {__('Add to Home Screen')}
                                     </strong>
                                 </span>
                             </li>
@@ -83,7 +87,7 @@ export default function InstallAppButton() {
                             className="mt-2 w-full"
                             onClick={() => setShowIosDialog(false)}
                         >
-                            Got it
+                            {__('Got it')}
                         </Button>
                     </DialogContent>
                 </Dialog>
