@@ -17,6 +17,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | When disabled, new users are automatically verified at registration.
+    | This is useful for local development where emails are not delivered.
+    | Enabled by default for production environments.
+    |
+    */
+
+    'email_verification_enabled' => env('EMAIL_VERIFICATION_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Mailer
     |--------------------------------------------------------------------------
     |

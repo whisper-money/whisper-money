@@ -54,3 +54,20 @@ test('new users are not verified after registration', function () {
 
     expect($user->hasVerifiedEmail())->toBeFalse();
 });
+
+test('new users are auto-verified when email verification is disabled', function () {
+    Queue::fake();
+
+    config(['mail.email_verification_enabled' => false]);
+
+    $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $user = User::where('email', 'test@example.com')->first();
+
+    expect($user->hasVerifiedEmail())->toBeTrue();
+});
