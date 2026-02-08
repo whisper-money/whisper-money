@@ -18,10 +18,8 @@ import {
 } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useLocale } from '@/hooks/use-locale';
-import {
-    transactionSyncService,
-    type Transaction,
-} from '@/services/transaction-sync';
+import { transactionSyncService } from '@/services/transaction-sync';
+import { type Transaction } from '@/types/transaction';
 import { type ParsedTransaction } from '@/types/import';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -269,8 +267,9 @@ export function ImportStepPreview({
                                     {existingTransactions.map((tx) => (
                                         <TableRow key={tx.id}>
                                             <TableCell className="whitespace-nowrap">
-                                                {formatDate(
+                                                {formatDateMedium(
                                                     tx.transaction_date,
+                                                    locale,
                                                 )}
                                             </TableCell>
                                             <TableCell className="max-w-[200px] truncate">
@@ -287,10 +286,7 @@ export function ImportStepPreview({
                                             </TableCell>
                                             <TableCell className="text-right font-mono">
                                                 <AmountDisplay
-                                                    amountInCents={parseInt(
-                                                        tx.amount,
-                                                        10,
-                                                    )}
+                                                    amountInCents={tx.amount}
                                                     currencyCode={
                                                         tx.currency_code
                                                     }
