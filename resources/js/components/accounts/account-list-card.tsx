@@ -4,6 +4,7 @@ import { EncryptedText } from '@/components/encrypted-text';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
@@ -108,7 +109,7 @@ export function AccountListCard({
                             <AmountTrendIndicator
                                 isPositive={isPositive}
                                 trend={Math.abs(account.diff)}
-                                label="vs last month"
+                                label={__('vs last month')}
                                 className="text-sm"
                                 previousAmount={account.previousBalance}
                                 currentAmount={account.currentBalance}
@@ -147,6 +148,7 @@ export function AccountListCard({
                                         );
                                     }}
                                 />
+
                                 <Line
                                     type="monotone"
                                     dataKey="value"
@@ -163,12 +165,12 @@ export function AccountListCard({
                             variant="secondary"
                             onClick={() => setUpdateBalanceOpen(true)}
                         >
-                            Update balance
+                            {__('Update balance')}
                         </Button>
 
                         <Link href={show.url(account.id)}>
                             <Button className="cursor-pointer" variant="ghost">
-                                Details &rarr;
+                                {__('Details')} &rarr;
                             </Button>
                         </Link>
                     </div>

@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { Check, ChevronsUpDown, Tag, X } from 'lucide-react';
@@ -133,8 +134,8 @@ export function TransactionFilters({
                     <Input
                         placeholder={
                             isKeySet
-                                ? 'Search description or notes...'
-                                : 'Search disabled (encryption key not set)'
+                                ? __('Search description or notes...')
+                                : __('Search disabled (encryption key not set)')
                         }
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
@@ -145,7 +146,8 @@ export function TransactionFilters({
                     <Popover open={isOpen} onOpenChange={setIsOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline">
-                                Filters
+                                {__('Filters')}
+
                                 {activeFilterCount > 0 && (
                                     <Badge
                                         variant="secondary"
@@ -162,11 +164,13 @@ export function TransactionFilters({
                         >
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <h4 className="font-medium">Filters</h4>
+                                    <h4 className="font-medium">
+                                        {__('Filters')}
+                                    </h4>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <FormLabel>Date</FormLabel>
+                                    <FormLabel>{__('Date')}</FormLabel>
                                     <div className="grid grid-cols-2 gap-2 pt-2">
                                         <Input
                                             type="date"
@@ -188,8 +192,9 @@ export function TransactionFilters({
                                                         : null,
                                                 })
                                             }
-                                            placeholder="From"
+                                            placeholder={__('From')}
                                         />
+
                                         <Input
                                             type="date"
                                             value={
@@ -210,13 +215,13 @@ export function TransactionFilters({
                                                         : null,
                                                 })
                                             }
-                                            placeholder="To"
+                                            placeholder={__('To')}
                                         />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <FormLabel>Amount</FormLabel>
+                                    <FormLabel>{__('Amount')}</FormLabel>
                                     <div className="grid grid-cols-2 gap-2 pt-2">
                                         <Input
                                             type="number"
@@ -232,8 +237,9 @@ export function TransactionFilters({
                                                         : null,
                                                 })
                                             }
-                                            placeholder="Min"
+                                            placeholder={__('Min')}
                                         />
+
                                         <Input
                                             type="number"
                                             step="0.01"
@@ -248,13 +254,13 @@ export function TransactionFilters({
                                                         : null,
                                                 })
                                             }
-                                            placeholder="Max"
+                                            placeholder={__('Max')}
                                         />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <FormLabel>Categories</FormLabel>
+                                    <FormLabel>{__('Categories')}</FormLabel>
                                     <div className="pt-2">
                                         <Popover
                                             open={categoryDropdownOpen}
@@ -280,7 +286,9 @@ export function TransactionFilters({
                                                         </span>
                                                     ) : (
                                                         <span className="text-muted-foreground">
-                                                            Select categories...
+                                                            {__(
+                                                                'Select categories...',
+                                                            )}
                                                         </span>
                                                     )}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -291,10 +299,16 @@ export function TransactionFilters({
                                                 align="start"
                                             >
                                                 <Command>
-                                                    <CommandInput placeholder="Search categories..." />
+                                                    <CommandInput
+                                                        placeholder={__(
+                                                            'Search categories...',
+                                                        )}
+                                                    />
                                                     <CommandList>
                                                         <CommandEmpty>
-                                                            No category found.
+                                                            {__(
+                                                                'No category found.',
+                                                            )}
                                                         </CommandEmpty>
                                                         <CommandItem
                                                             onSelect={() =>
@@ -317,7 +331,9 @@ export function TransactionFilters({
                                                                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
                                                                     <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
                                                                 </div>
-                                                                Uncategorized
+                                                                {__(
+                                                                    'Uncategorized',
+                                                                )}
                                                             </div>
                                                         </CommandItem>
                                                         {categories.map(
@@ -385,7 +401,7 @@ export function TransactionFilters({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <FormLabel>Labels</FormLabel>
+                                    <FormLabel>{__('Labels')}</FormLabel>
                                     <div className="pt-2">
                                         <Popover
                                             open={labelDropdownOpen}
@@ -408,7 +424,9 @@ export function TransactionFilters({
                                                         </span>
                                                     ) : (
                                                         <span className="text-muted-foreground">
-                                                            Select labels...
+                                                            {__(
+                                                                'Select labels...',
+                                                            )}
                                                         </span>
                                                     )}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -419,10 +437,16 @@ export function TransactionFilters({
                                                 align="start"
                                             >
                                                 <Command>
-                                                    <CommandInput placeholder="Search labels..." />
+                                                    <CommandInput
+                                                        placeholder={__(
+                                                            'Search labels...',
+                                                        )}
+                                                    />
                                                     <CommandList>
                                                         <CommandEmpty>
-                                                            No labels found.
+                                                            {__(
+                                                                'No labels found.',
+                                                            )}
                                                         </CommandEmpty>
                                                         {labels.map((label) => {
                                                             const isSelected =
@@ -486,7 +510,7 @@ export function TransactionFilters({
 
                                 {!hideAccountFilter && (
                                     <div className="space-y-2">
-                                        <FormLabel>Accounts</FormLabel>
+                                        <FormLabel>{__('Accounts')}</FormLabel>
                                         <div className="flex flex-wrap gap-2 pt-2">
                                             {accounts.map((account) => {
                                                 const isSelected =
@@ -537,7 +561,7 @@ export function TransactionFilters({
                         className="h-9"
                     >
                         <X className="mr-1 h-4 w-4" />
-                        Clear
+                        {__('Clear')}
                     </Button>
                 )}
                 {actions ? <div className="w-full">{actions}</div> : null}

@@ -1,10 +1,10 @@
-// Components
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import { send } from '@/routes/verification';
+import { __ } from '@/utils/i18n';
 import { Form, Head, Link } from '@inertiajs/react';
 
 export default function VerifyEmail({ status }: { status?: string }) {
@@ -14,15 +14,18 @@ export default function VerifyEmail({ status }: { status?: string }) {
 
     return (
         <AuthLayout
-            title="Verify email"
-            description="Please verify your email address by clicking on the link we just emailed to you."
+            title={__('Verify email')}
+            description={__(
+                'Please verify your email address by clicking on the link we just emailed to you.',
+            )}
         >
-            <Head title="Email verification" />
+            <Head title={__('Email verification')} />
 
             {status === 'verification-link-sent' && (
                 <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    A new verification link has been sent to the email address
-                    you provided during registration.
+                    {__(
+                        'A new verification link has been sent to the email address you provided during registration.',
+                    )}
                 </div>
             )}
 
@@ -31,7 +34,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
                     <>
                         <Button disabled={processing} variant="secondary">
                             {processing && <Spinner />}
-                            Resend verification email
+                            {__('Resend verification email')}
                         </Button>
 
                         <Link
@@ -40,7 +43,7 @@ export default function VerifyEmail({ status }: { status?: string }) {
                             onClick={handleLogout}
                             className="mx-auto block text-sm text-blue-600 underline hover:text-blue-800"
                         >
-                            Log out
+                            {__('Log out')}
                         </Link>
                     </>
                 )}

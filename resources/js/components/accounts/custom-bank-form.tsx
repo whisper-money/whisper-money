@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { __ } from '@/utils/i18n';
 import { ImagePlus, X } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
@@ -112,10 +113,10 @@ export function CustomBankForm({
 
             <div className="mt-1 space-y-2 rounded-sm border border-border p-3">
                 <div className="space-y-2">
-                    <Label htmlFor="bank_name">Bank name</Label>
+                    <Label htmlFor="bank_name">{__('Bank name')}</Label>
                     <Input
                         id="bank_name"
-                        placeholder="Bank name"
+                        placeholder={__('Bank name')}
                         defaultValue={defaultName}
                         value={value.name}
                         className="mt-1"
@@ -125,7 +126,7 @@ export function CustomBankForm({
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="bank_logo">Logo</Label>
+                    <Label htmlFor="bank_logo">{__('Logo')}</Label>
                     <div className="mt-1 flex items-center gap-2">
                         <Input
                             ref={fileInputRef}
@@ -134,6 +135,7 @@ export function CustomBankForm({
                             accept="image/png,image/jpeg,image/webp"
                             onChange={handleFileChange}
                         />
+
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
@@ -142,7 +144,7 @@ export function CustomBankForm({
                             {value.logoPreview ? (
                                 <img
                                     src={value.logoPreview}
-                                    alt="Bank logo preview"
+                                    alt={__('Bank logo preview')}
                                     className="size-5 rounded-full object-contain"
                                 />
                             ) : (
@@ -152,8 +154,11 @@ export function CustomBankForm({
                     </div>
                     <div className="text-xs text-muted-foreground">
                         <p>
-                            Square images only (max {MAX_DIMENSIONS}x
-                            {MAX_DIMENSIONS}px) / {MAX_FILE_SIZE / 1024}KB max.
+                            {__('Square images only (max')}
+                            {MAX_DIMENSIONS}x{MAX_DIMENSIONS}
+                            {__('px) /')}
+                            {MAX_FILE_SIZE / 1024}
+                            {__('KB max.')}
                         </p>
                     </div>
                     {error && (

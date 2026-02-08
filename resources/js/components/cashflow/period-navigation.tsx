@@ -1,5 +1,8 @@
 import { Button } from '@/components/ui/button';
-import { addMonths, format, isSameMonth, subMonths } from 'date-fns';
+import { useLocale } from '@/hooks/use-locale';
+import { formatMonthYear } from '@/utils/date';
+import { __ } from '@/utils/i18n';
+import { addMonths, isSameMonth, subMonths } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PeriodNavigationProps {
@@ -11,6 +14,7 @@ export function PeriodNavigation({
     currentDate,
     onDateChange,
 }: PeriodNavigationProps) {
+    const locale = useLocale();
     const now = new Date();
     const isCurrentMonth = isSameMonth(currentDate, now);
 
@@ -32,7 +36,7 @@ export function PeriodNavigation({
                 variant="outline"
                 size="icon-sm"
                 onClick={handlePrevMonth}
-                aria-label="Previous month"
+                aria-label={__('Previous month')}
             >
                 <ChevronLeft className="size-4" />
             </Button>
@@ -41,7 +45,7 @@ export function PeriodNavigation({
                 onClick={handleCurrentMonth}
                 className="min-w-[140px] rounded-md px-3 py-1.5 text-center text-sm font-medium hover:bg-accent"
             >
-                {format(currentDate, 'MMMM yyyy')}
+                {formatMonthYear(currentDate, locale)}
             </button>
 
             <Button
@@ -49,7 +53,7 @@ export function PeriodNavigation({
                 size="icon-sm"
                 onClick={handleNextMonth}
                 disabled={isCurrentMonth}
-                aria-label="Next month"
+                aria-label={__('Next month')}
             >
                 <ChevronRight className="size-4" />
             </Button>

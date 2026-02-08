@@ -34,6 +34,7 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
+            'locale' => $this->detectLocaleFromRequest(),
         ]);
 
         if (! config('mail.email_verification_enabled')) {
@@ -41,5 +42,20 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         return $user;
+    }
+
+    /**
+     * Detect locale from Accept-Language header.
+     */
+    protected function detectLocaleFromRequest(): string
+    {
+        $acceptLanguage = request()->header('Accept-Language', '');
+
+        // Check if Spanish is preferred
+        if (preg_match('/^es(-|,|;)/i', $acceptLanguage) || $acceptLanguage === 'es') {
+            return 'es';
+        }
+
+        return 'en';
     }
 }

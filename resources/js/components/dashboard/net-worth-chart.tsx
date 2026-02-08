@@ -16,7 +16,9 @@ import { ChartConfig } from '@/components/ui/chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { useChartViews } from '@/hooks/use-chart-views';
 import { NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
+import { useLocale } from '@/hooks/use-locale';
 import { AccountInfo } from '@/lib/chart-calculations';
+import { __ } from '@/utils/i18n';
 import { useMemo } from 'react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
 
@@ -32,10 +34,10 @@ interface TrendData {
     currentAmount: number;
 }
 
-function formatXAxisLabel(value: string): string {
+function formatXAxisLabel(value: string, locale: string = 'en'): string {
     const [year, month] = value.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1);
-    const monthName = date.toLocaleString('en-US', { month: 'short' });
+    const monthName = date.toLocaleString(locale, { month: 'short' });
     const currentYear = new Date().getFullYear();
 
     if (parseInt(year) === currentYear) {
@@ -138,6 +140,7 @@ export function NetWorthChart({
     loading,
     showLegend = false,
 }: NetWorthChartProps) {
+    const locale = useLocale();
     const {
         chartData,
         dataKeys,
@@ -240,7 +243,7 @@ export function NetWorthChart({
         return (
             <Card className="col-span-3">
                 <CardHeader>
-                    <CardTitle>Net Worth Evolution</CardTitle>
+                    <CardTitle>{__('Net Worth Evolution')}</CardTitle>
                     <CardDescription>
                         <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                     </CardDescription>
@@ -256,11 +259,11 @@ export function NetWorthChart({
         return (
             <Card className="col-span-3">
                 <CardHeader>
-                    <CardTitle>Net Worth Evolution</CardTitle>
+                    <CardTitle>{__('Net Worth Evolution')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                        No account data available
+                        {__('No account data available')}
                     </div>
                 </CardContent>
             </Card>
@@ -272,21 +275,22 @@ export function NetWorthChart({
             <CardHeader>
                 <div className="flex flex-row items-start justify-between gap-4">
                     <div className="flex min-w-0 flex-col gap-2">
-                        <CardTitle>Net Worth Evolution</CardTitle>
+                        <CardTitle>{__('Net Worth Evolution')}</CardTitle>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <div className="text-foreground">
                                 <TotalDisplay totals={currencyTotals} />
                             </div>
                             <PercentageTrendIndicator
                                 trend={monthlyTrend?.percentage ?? null}
-                                label="this month"
+                                label={__('this month')}
                                 previousAmount={monthlyTrend?.previousAmount}
                                 currentAmount={monthlyTrend?.currentAmount}
                                 currencyCode={primaryCurrency}
                             />
+
                             <PercentageTrendIndicator
                                 trend={yearlyTrend?.percentage ?? null}
-                                label="for the last 12 months"
+                                label={__('for the last 12 months')}
                                 previousAmount={yearlyTrend?.previousAmount}
                                 currentAmount={yearlyTrend?.currentAmount}
                                 currencyCode={primaryCurrency}
@@ -308,7 +312,9 @@ export function NetWorthChart({
                         dataKeys={dataKeys}
                         config={chartConfig}
                         xAxisKey="month"
-                        xAxisFormatter={formatXAxisLabel}
+                        xAxisFormatter={(value) =>
+                            formatXAxisLabel(value, locale)
+                        }
                         valueFormatter={valueFormatter}
                         accountCurrencies={accountCurrencies}
                         className="h-[300px] w-full"
@@ -319,14 +325,18 @@ export function NetWorthChart({
                     <MoMChart
                         data={chartViews.deltaSeries}
                         currencyCode={primaryCurrency}
-                        xAxisFormatter={formatXAxisLabel}
+                        xAxisFormatter={(value) =>
+                            formatXAxisLabel(value, locale)
+                        }
                         className="h-[300px] w-full"
                     />
                 )}
                 {chartViews.currentView === 'mom_percent' && (
                     <MoMPercentChart
                         data={chartViews.momPercentSeries}
-                        xAxisFormatter={formatXAxisLabel}
+                        xAxisFormatter={(value) =>
+                            formatXAxisLabel(value, locale)
+                        }
                         className="h-[300px] w-full"
                     />
                 )}

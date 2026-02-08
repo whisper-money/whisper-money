@@ -8,7 +8,6 @@ import { Separator } from '@/components/ui/separator';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAccount } from '@/routes/account';
 import { edit as editAppearance } from '@/routes/appearance';
-import { settings as budgetsSettings } from '@/routes/budgets';
 import { edit as editDeleteAccount } from '@/routes/delete-account';
 import { billing } from '@/routes/settings';
 import {
@@ -17,6 +16,7 @@ import {
     SharedData,
     type NavItem,
 } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
@@ -46,12 +46,6 @@ const getNavItems = (
         type: 'nav-item',
         title: 'Labels',
         href: labelsIndex(),
-        icon: null,
-    },
-    {
-        type: 'nav-item',
-        title: 'Budgets',
-        href: budgetsSettings(),
         icon: null,
     },
     { type: 'divider' },
@@ -113,8 +107,8 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     return (
         <div className="px-4 py-6">
             <Heading
-                title="Settings"
-                description="Manage your profile and account settings"
+                title={__('Settings')}
+                description={__('Manage your profile and account settings')}
             />
 
             <div className="flex flex-col lg:flex-row lg:space-x-12">
@@ -137,7 +131,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                         key={`section-header-${index}`}
                                         className="px-3 pt-2 pb-1.5 text-sm font-medium text-muted-foreground"
                                     >
-                                        {item.title}
+                                        {__(item.title)}
                                     </h2>
                                 );
                             }
@@ -159,7 +153,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                         {item.icon && (
                                             <item.icon className="h-4 w-4" />
                                         )}
-                                        {item.title}
+                                        {__(item.title)}
                                     </Link>
                                 </Button>
                             );

@@ -5,6 +5,7 @@ import { useDashboardData } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Account, AccountType } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
 import { useMemo } from 'react';
 
@@ -70,12 +71,12 @@ export default function AccountsIndex({ accounts }: Props) {
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
-            <Head title="Accounts" />
+            <Head title={__('Accounts')} />
 
             <div className="space-y-8 p-6">
                 <HeadingSmall
-                    title="Accounts"
-                    description="View and manage your bank accounts"
+                    title={__('Accounts')}
+                    description={__('View and manage your bank accounts')}
                 />
 
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -96,7 +97,9 @@ export default function AccountsIndex({ accounts }: Props) {
 
                 {accounts.length === 0 && !isLoading && (
                     <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                        No accounts found. Add your first account in Settings.
+                        {__(
+                            'No accounts found. Add your first account in Settings.',
+                        )}
                     </div>
                 )}
             </div>

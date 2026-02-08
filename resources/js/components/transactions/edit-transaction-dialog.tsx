@@ -27,6 +27,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useSyncContext } from '@/contexts/sync-context';
+import { useLocale } from '@/hooks/use-locale';
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
@@ -41,7 +42,9 @@ import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
-import { format, getYear, parseISO } from 'date-fns';
+import { formatDate } from '@/utils/date';
+import { __ } from '@/utils/i18n';
+import { getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -70,6 +73,7 @@ export function EditTransactionDialog({
     onSuccess,
     mode,
 }: EditTransactionDialogProps) {
+    const locale = useLocale();
     const STORAGE_KEY_UPDATE_BALANCE =
         'whisper_money_update_balance_on_transaction';
 
@@ -308,7 +312,9 @@ export function EditTransactionDialog({
             }
         } catch (error) {
             console.error('Failed to update account balance:', error);
-            toast.error('Transaction created, but failed to update balance');
+            toast.error(
+                __('Transaction created, but failed to update balance'),
+            );
         }
     }
 
@@ -317,26 +323,26 @@ export function EditTransactionDialog({
 
         if (!isKeySet) {
             toast.error(
-                'Please unlock your encryption key to save transactions',
+                __('Please unlock your encryption key to save transactions'),
             );
             return;
         }
 
         if (mode === 'create') {
             if (!description.trim()) {
-                toast.error('Description is required');
+                toast.error(__('Description is required'));
                 return;
             }
             if (amount === 0) {
-                toast.error('Amount is required');
+                toast.error(__('Amount is required'));
                 return;
             }
             if (!accountId) {
-                toast.error('Account is required');
+                toast.error(__('Account is required'));
                 return;
             }
             if (!transactionDate) {
-                toast.error('Date is required');
+                toast.error(__('Date is required'));
                 return;
             }
         } else if (
@@ -344,7 +350,7 @@ export function EditTransactionDialog({
             transaction?.source === 'manually_created'
         ) {
             if (!description.trim()) {
-                toast.error('Description is required');
+                toast.error(__('Description is required'));
                 return;
             }
         }
@@ -354,7 +360,7 @@ export function EditTransactionDialog({
             const trimmedDescription = description.trim();
             const keyString = getStoredKey();
             if (!keyString) {
-                throw new Error('Encryption key not available');
+                throw new Error(__('Encryption key not available'));
             }
             const key = await importKey(keyString);
 
@@ -396,7 +402,7 @@ export function EditTransactionDialog({
                     (acc) => acc.id === accountId,
                 );
                 if (!selectedAccount) {
-                    throw new Error('Selected account not found');
+                    throw new Error(__('Selected account not found'));
                 }
 
                 const createdTransaction = await transactionSyncService.create({
@@ -446,9 +452,13 @@ export function EditTransactionDialog({
                     );
                 }
 
-                toast.success('Transaction created successfully');
+                toast.success(__('Transaction created successfully'));
                 if (ruleResult.ruleName) {
-                    toast.success(`Rule "${ruleResult.ruleName}" applied`);
+                    toast.success(
+                        __('Rule ":rule" applied', {
+                            rule: ruleResult.ruleName,
+                        }),
+                    );
                 }
 
                 onSuccess(newTransaction);
@@ -538,7 +548,7 @@ export function EditTransactionDialog({
                         updatedRecord?.updated_at ?? transaction.updated_at,
                 };
 
-                toast.success('Transaction updated successfully');
+                toast.success(__('Transaction updated successfully'));
                 onSuccess(updatedTransaction);
                 onOpenChange(false);
 
@@ -548,7 +558,9 @@ export function EditTransactionDialog({
         } catch (error) {
             console.error('Failed to save transaction:', error);
             toast.error(
-                `Failed to ${mode === 'create' ? 'create' : 'update'} transaction`,
+                mode === 'create'
+                    ? __('Failed to create transaction')
+                    : __('Failed to update transaction'),
             );
         } finally {
             setIsSubmitting(false);
@@ -564,13 +576,15 @@ export function EditTransactionDialog({
                 <DialogHeader>
                     <DialogTitle>
                         {mode === 'create'
-                            ? 'Add Transaction'
-                            : 'Edit Transaction'}
+                            ? __('Add Transaction')
+                            : __('Edit Transaction')}
                     </DialogTitle>
                     <DialogDescription>
                         {mode === 'create'
-                            ? 'Create a new transaction.'
-                            : 'Update the category and notes for this transaction.'}
+                            ? __('Create a new transaction.')
+                            : __(
+                                  'Update the category and notes for this transaction.',
+                              )}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -585,7 +599,7 @@ export function EditTransactionDialog({
                                         : ''
                                 }
                             >
-                                Date
+                                {__('Date')}
                             </FormLabel>
                             {mode === 'create' ? (
                                 <Input
@@ -614,7 +628,18 @@ export function EditTransactionDialog({
                                                 transactionYear === currentYear
                                                     ? 'MMMM d'
                                                     : 'MMMM d, yyyy';
-                                            return format(date, formatString);
+                                            const formatted = formatDate(
+                                                date,
+                                                formatString,
+                                                locale,
+                                            );
+                                            // Capitalize first letter
+                                            return (
+                                                formatted
+                                                    .charAt(0)
+                                                    .toUpperCase() +
+                                                formatted.slice(1)
+                                            );
                                         })()}
                                 </div>
                             )}
@@ -630,7 +655,7 @@ export function EditTransactionDialog({
                                         : ''
                                 }
                             >
-                                Description
+                                {__('Description')}
                             </FormLabel>
                             {mode === 'create' ||
                             (mode === 'edit' &&
@@ -641,7 +666,7 @@ export function EditTransactionDialog({
                                     onChange={(e) =>
                                         setDescription(e.target.value)
                                     }
-                                    placeholder="Transaction description"
+                                    placeholder={__('Transaction description')}
                                     disabled={isSubmitting}
                                     required
                                     rows={3}
@@ -658,10 +683,11 @@ export function EditTransactionDialog({
                                         className="bg-muted"
                                         rows={3}
                                     />
+
                                     <p className="text-xs text-muted-foreground">
-                                        This transaction was imported from a
-                                        file. The description cannot be
-                                        modified.
+                                        {__(
+                                            'This transaction was imported from a\n                                        file. The description cannot be\n                                        modified.',
+                                        )}
                                     </p>
                                 </div>
                             )}
@@ -676,7 +702,7 @@ export function EditTransactionDialog({
                                         : ''
                                 }
                             >
-                                Amount
+                                {__('Amount')}
                             </FormLabel>
                             {mode === 'create' ? (
                                 <>
@@ -703,11 +729,12 @@ export function EditTransactionDialog({
                                             }
                                             disabled={isSubmitting}
                                         />
+
                                         <FormLabel
                                             htmlFor="update-balance"
                                             className="cursor-pointer font-normal"
                                         >
-                                            Update account balance
+                                            {__('Update account balance')}
                                         </FormLabel>
                                     </div>
                                 </>
@@ -724,7 +751,9 @@ export function EditTransactionDialog({
 
                         {mode === 'create' && (
                             <div className="space-y-2">
-                                <FormLabel htmlFor="account">Account</FormLabel>
+                                <FormLabel htmlFor="account">
+                                    {__('Account')}
+                                </FormLabel>
                                 <Select
                                     value={accountId}
                                     onValueChange={setAccountId}
@@ -734,7 +763,9 @@ export function EditTransactionDialog({
                                         id="account"
                                         data-testid="account-select"
                                     >
-                                        <SelectValue placeholder="Select account" />
+                                        <SelectValue
+                                            placeholder={__('Select account')}
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {transactionalAccounts.map(
@@ -745,7 +776,7 @@ export function EditTransactionDialog({
                                                 >
                                                     {decryptedAccountNames.get(
                                                         account.id,
-                                                    ) || '[Loading...]'}
+                                                    ) || __('[Loading...]')}
                                                 </SelectItem>
                                             ),
                                         )}
@@ -755,13 +786,15 @@ export function EditTransactionDialog({
                         )}
 
                         <div className="space-y-2">
-                            <FormLabel htmlFor="category">Category</FormLabel>
+                            <FormLabel htmlFor="category">
+                                {__('Category')}
+                            </FormLabel>
                             <CategorySelect
                                 value={categoryId}
                                 onValueChange={setCategoryId}
                                 categories={categories}
                                 disabled={isSubmitting}
-                                placeholder="Uncategorized"
+                                placeholder={__('Uncategorized')}
                                 triggerClassName="w-full"
                                 showUncategorized={true}
                                 data-testid="category-select"
@@ -769,22 +802,22 @@ export function EditTransactionDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <FormLabel>Labels</FormLabel>
+                            <FormLabel>{__('Labels')}</FormLabel>
                             <LabelCombobox
                                 value={selectedLabelIds}
                                 onValueChange={setSelectedLabelIds}
                                 labels={labels}
                                 disabled={isSubmitting}
-                                placeholder="Add labels..."
+                                placeholder={__('Add labels...')}
                                 allowCreate={true}
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <FormLabel htmlFor="notes">Notes</FormLabel>
+                            <FormLabel htmlFor="notes">{__('Notes')}</FormLabel>
                             <Textarea
                                 id="notes"
-                                placeholder="Add notes..."
+                                placeholder={__('Add notes...')}
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 rows={3}
@@ -800,7 +833,7 @@ export function EditTransactionDialog({
                             onClick={() => onOpenChange(false)}
                             disabled={isSubmitting}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
                         <Button
                             type="submit"
@@ -808,10 +841,10 @@ export function EditTransactionDialog({
                             data-testid="submit-transaction"
                         >
                             {isSubmitting
-                                ? 'Saving...'
+                                ? __('Saving...')
                                 : mode === 'create'
-                                  ? 'Create Transaction'
-                                  : 'Save Changes'}
+                                  ? __('Create Transaction')
+                                  : __('Save Changes')}
                         </Button>
                     </DialogFooter>
                 </form>

@@ -12,6 +12,7 @@ import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
 import { type SharedData, type User } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import {
     Eye,
@@ -60,8 +61,8 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                                 <Eye className="mr-2" />
                             )}
                             {isPrivacyModeEnabled
-                                ? 'Disable privacy mode'
-                                : 'Enable privacy mode'}
+                                ? __('Disable privacy mode')
+                                : __('Enable privacy mode')}
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
                 </>
@@ -76,7 +77,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         onClick={cleanup}
                     >
                         <Settings className="mr-2" />
-                        Settings
+                        {__('Settings')}
                     </Link>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -91,7 +92,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         onClick={cleanup}
                     >
                         <MessageSquare className="mr-2" />
-                        Feedback
+                        {__('Feedback')}
                     </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -103,7 +104,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         onClick={cleanup}
                     >
                         <Map className="mr-2" />
-                        Roadmap
+                        {__('Roadmap')}
                     </a>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -117,12 +118,12 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                     data-test="logout-button"
                 >
                     <LogOut className="mr-2" />
-                    Log out
+                    {__('Log out')}
                 </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <div className="flex items-center justify-between px-2 py-1.5 text-xs text-muted-foreground">
-                <span>Version:</span>
+                <span>{__('Version:')}</span>
                 <span>{version}</span>
             </div>
         </>

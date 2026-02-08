@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { billing } from '@/routes/settings';
 import { type BreadcrumbItem, type SharedData } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
     CheckIcon,
@@ -53,21 +54,24 @@ export default function Billing() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Manage Plan" />
+            <Head title={__('Manage Plan')} />
 
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Your Pro Plan"
-                        description="You're enjoying all the benefits of Whisper Money Pro"
+                        title={__('Your Pro Plan')}
+                        description={__(
+                            "You're enjoying all the benefits of Whisper Money Pro",
+                        )}
                     />
 
                     {isDemoAccount && (
                         <Alert>
                             <InfoIcon className="h-4 w-4" />
                             <AlertDescription>
-                                Billing management is not available on the demo
-                                account.
+                                {__(
+                                    'Billing management is not available on the demo\n                                account.',
+                                )}
                             </AlertDescription>
                         </Alert>
                     )}
@@ -96,20 +100,23 @@ export default function Billing() {
                     <div className="rounded-lg border bg-card p-5">
                         <div className="flex items-center gap-2">
                             <CheckIcon className="size-5 text-emerald-500" />
-                            <span className="font-medium">Pro Plan Active</span>
+                            <span className="font-medium">
+                                {__('Pro Plan Active')}
+                            </span>
                             <span className="text-muted-foreground">
-                                — $9/month
+                                {__('\u2014 $9/month')}
                             </span>
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">
-                            Manage your subscription, update payment methods, or
-                            view invoices through the Stripe billing portal.
+                            {__(
+                                'Manage your subscription, update payment methods, or\n                            view invoices through the Stripe billing portal.',
+                            )}
                         </p>
                         {!isDemoAccount && (
                             <a href={billing.portal.url()}>
                                 <Button className="mt-4">
                                     <CreditCardIcon className="size-4" />
-                                    Manage Subscription
+                                    {__('Manage Subscription')}
                                 </Button>
                             </a>
                         )}

@@ -1,3 +1,5 @@
+import { __ } from '@/utils/i18n';
+
 interface DataTablePaginationProps {
     rowCountLabel?: string;
     displayedCount?: number;
@@ -8,14 +10,14 @@ interface DataTablePaginationProps {
 export function DataTablePagination({
     displayedCount = undefined,
     total = undefined,
-    rowCountLabel = 'row(s) total',
+    rowCountLabel = __('row(s) total'),
     children,
 }: DataTablePaginationProps) {
     return (
         <div className="flex items-center justify-end space-x-2">
             {displayedCount && total && (
                 <div className="text-muted-foreground flex-1 text-sm">
-                    {Math.min(total, displayedCount)} of {total} {rowCountLabel}
+                    {Math.min(total, displayedCount)} {__('of')} {total} {rowCountLabel}
                 </div>
             )}
             {displayedCount && total === undefined && (

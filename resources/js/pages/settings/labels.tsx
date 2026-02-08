@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
     Cell,
@@ -66,20 +67,20 @@ function LabelActions({ label }: { label: Label }) {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{__('Open menu')}</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>{__('Actions')}</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
                     >
-                        Delete
+                        {__('Delete')}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -90,6 +91,7 @@ function LabelActions({ label }: { label: Label }) {
                 onOpenChange={setEditOpen}
                 onSuccess={() => {}}
             />
+
             <DeleteLabelDialog
                 label={label}
                 open={deleteOpen}
@@ -129,15 +131,15 @@ function LabelRow({ row }: { row: Row<Label> }) {
                     </TableRow>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                    <ContextMenuLabel>Actions</ContextMenuLabel>
+                    <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </ContextMenuItem>
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
                     >
-                        Delete
+                        {__('Delete')}
                     </ContextMenuItem>
                 </ContextMenuContent>
             </ContextMenu>
@@ -148,6 +150,7 @@ function LabelRow({ row }: { row: Row<Label> }) {
                 onOpenChange={setEditOpen}
                 onSuccess={() => {}}
             />
+
             <DeleteLabelDialog
                 label={label}
                 open={deleteOpen}
@@ -179,7 +182,8 @@ export default function Labels() {
                             column.toggleSorting(column.getIsSorted() === 'asc')
                         }
                     >
-                        Name
+                        {__('Name')}
+
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 );
@@ -197,7 +201,7 @@ export default function Labels() {
         },
         {
             accessorKey: 'color',
-            header: 'Color',
+            header: __('Color'),
             cell: ({ row }) => {
                 const color = row.getValue('color') as Label['color'];
                 if (!color) {
@@ -208,7 +212,7 @@ export default function Labels() {
                     <Badge
                         className={`${colorClasses.bg} ${colorClasses.text} text-[10px] tracking-widest`}
                     >
-                        {color.toLocaleUpperCase()}
+                        {__(color).toLocaleUpperCase()}
                     </Badge>
                 );
             },
@@ -238,19 +242,19 @@ export default function Labels() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Labels settings" />
+            <Head title={__('Labels settings')} />
 
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Labels settings"
-                        description="Manage your transaction labels"
+                        title={__('Labels settings')}
+                        description={__('Manage your transaction labels')}
                     />
 
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <Input
-                                placeholder="Filter labels..."
+                                placeholder={__('Filter labels...')}
                                 value={
                                     (table
                                         .getColumn('name')
@@ -263,6 +267,7 @@ export default function Labels() {
                                 }
                                 className="max-w-sm"
                             />
+
                             <CreateLabelDialog onSuccess={() => {}} />
                         </div>
 
@@ -311,7 +316,7 @@ export default function Labels() {
                                                 colSpan={columns.length}
                                                 className="h-24 text-center"
                                             >
-                                                No labels found.
+                                                {__('No labels found.')}
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -322,7 +327,7 @@ export default function Labels() {
                         <div className="flex items-center justify-end">
                             <div className="text-sm text-muted-foreground">
                                 {table.getFilteredRowModel().rows.length}{' '}
-                                label(s) total.
+                                {__('label(s) total.')}
                             </div>
                         </div>
                     </div>

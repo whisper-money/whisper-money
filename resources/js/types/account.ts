@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { UUID } from './uuid';
 
 export const ACCOUNT_TYPES = [
@@ -54,13 +55,13 @@ export interface AccountBalance {
 
 export function formatAccountType(type: AccountType): string {
     const typeMap: Record<AccountType, string> = {
-        checking: 'Checking',
-        credit_card: 'Credit Card',
-        investment: 'Investment',
-        loan: 'Loan',
-        retirement: 'Retirement / Pension',
-        savings: 'Savings',
-        others: 'Others',
+        checking: __('Checking'),
+        credit_card: __('Credit Card'),
+        investment: __('Investment'),
+        loan: __('Loan'),
+        retirement: __('Retirement / Pension'),
+        savings: __('Savings'),
+        others: __('Others'),
     };
     return typeMap[type] || type;
 }

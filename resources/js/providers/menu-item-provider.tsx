@@ -6,7 +6,6 @@ import { cashflow, dashboard } from '@/routes';
 import { Features, NavItem } from '@/types';
 import {
     CreditCard,
-    Github,
     LayoutGrid,
     PiggyBank,
     Receipt,
@@ -60,12 +59,6 @@ export function getMainNavItems(features: Features): NavItem[] {
 }
 
 export const footerNavItems: NavItem[] = [
-    {
-        type: 'nav-item',
-        title: 'Github',
-        href: 'https://github.com/whisper-money/whisper-money',
-        icon: Github,
-    },
     {
         type: 'nav-item',
         title: 'Community',

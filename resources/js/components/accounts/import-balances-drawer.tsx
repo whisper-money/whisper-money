@@ -27,6 +27,7 @@ import {
 } from '@/types/balance-import';
 import { DateFormat } from '@/types/import';
 import type { UUID } from '@/types/uuid';
+import { __ } from '@/utils/i18n';
 import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -155,6 +156,7 @@ export function ImportBalancesDrawer({
             'balance_date',
             'f. valor',
         ];
+
         const balancePatterns = [
             'balance',
             'saldo',
@@ -554,6 +556,7 @@ export function ImportBalancesDrawer({
                         onNext={() => moveToStep(BalanceImportStep.UploadFile)}
                     />
                 );
+
             case BalanceImportStep.UploadFile:
                 return (
                     <ImportBalanceStepUpload
@@ -563,6 +566,7 @@ export function ImportBalancesDrawer({
                         onBack={handleBack}
                     />
                 );
+
             case BalanceImportStep.MapColumns:
                 return (
                     <ImportBalanceStepMapping
@@ -578,6 +582,7 @@ export function ImportBalancesDrawer({
                         onBack={handleBack}
                     />
                 );
+
             case BalanceImportStep.Preview:
                 return (
                     <ImportBalanceStepPreview
@@ -588,6 +593,7 @@ export function ImportBalancesDrawer({
                         isImporting={isImporting}
                     />
                 );
+
             default:
                 return null;
         }
@@ -602,7 +608,8 @@ export function ImportBalancesDrawer({
                 <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
-                            {importProgress} of {importTotal} balances imported
+                            {importProgress} of {importTotal}
+                            {__('balances imported')}
                         </span>
                         <span>{Math.round(percentage)}%</span>
                     </div>
@@ -613,7 +620,8 @@ export function ImportBalancesDrawer({
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-destructive">
-                                Errors ({importErrors.length})
+                                {__('Errors (')}
+                                {importErrors.length})
                             </h3>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto rounded-lg border">
@@ -621,16 +629,16 @@ export function ImportBalancesDrawer({
                                 <thead className="sticky top-0 bg-muted">
                                     <tr className="border-b">
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Row
+                                            {__('Row')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Date
+                                            {__('Date')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Balance
+                                            {__('Balance')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Error
+                                            {__('Error')}
                                         </th>
                                     </tr>
                                 </thead>

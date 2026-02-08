@@ -19,6 +19,7 @@ import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
+import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { ChevronDown, Plus, Upload, WandSparkles } from 'lucide-react';
 import { useState } from 'react';
@@ -121,7 +122,8 @@ export function TransactionActionsMenu({
                             >
                                 {isKeySet && uncategorizedCount > 0 ? (
                                     <Link href={categorize.url()}>
-                                        Categorize
+                                        {__('Categorize')}
+
                                         {uncategorizedCount > 0 && (
                                             <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                                                 {uncategorizedCount}
@@ -129,7 +131,7 @@ export function TransactionActionsMenu({
                                         )}
                                     </Link>
                                 ) : (
-                                    <>Categorize</>
+                                    <>{__('Categorize')}</>
                                 )}
                             </Button>
                         </TooltipTrigger>
@@ -154,16 +156,16 @@ export function TransactionActionsMenu({
                                         : ''
                                 }
                                 onClick={handleAddTransaction}
-                                aria-label="Add transaction"
+                                aria-label={__('Add transaction')}
                             >
                                 <Plus className="h-5 w-5" />
-                                Add Transaction
+                                {__('Add Transaction')}
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
                             {!isKeySet
-                                ? 'Unlock encryption to add transactions'
-                                : 'Create a new transaction'}
+                                ? __('Unlock encryption to add transactions')
+                                : __('Create a new transaction')}
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -176,13 +178,15 @@ export function TransactionActionsMenu({
                                     <Button
                                         variant="outline"
                                         size="icon"
-                                        aria-label="More actions"
+                                        aria-label={__('More actions')}
                                     >
                                         <ChevronDown className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
                             </TooltipTrigger>
-                            <TooltipContent>More actions</TooltipContent>
+                            <TooltipContent>
+                                {__('More actions')}
+                            </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                     <DropdownMenuContent align="end">
@@ -191,7 +195,7 @@ export function TransactionActionsMenu({
                             disabled={!isKeySet}
                         >
                             <Upload className="mr-2 h-4 w-4" />
-                            Import Transactions
+                            {__('Import Transactions')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={handleReEvaluateAll}
@@ -202,7 +206,7 @@ export function TransactionActionsMenu({
                             }
                         >
                             <WandSparkles className="mr-2 h-4 w-4" />
-                            Re-evaluate All Expenses
+                            {__('Re-evaluate All Expenses')}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

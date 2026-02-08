@@ -11,6 +11,7 @@ import {
 import { decrypt, encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import type { Account } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
@@ -202,9 +203,9 @@ export function EditAccountDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Account</DialogTitle>
+                    <DialogTitle>{__('Edit Account')}</DialogTitle>
                     <DialogDescription>
-                        Update the account information.
+                        {__('Update the account information.')}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-2">
@@ -229,7 +230,7 @@ export function EditAccountDialog({
                             onClick={() => onOpenChange(false)}
                             disabled={isSubmitting}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
                         <Button
                             type="submit"

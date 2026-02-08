@@ -7,6 +7,7 @@ import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
+import { __ } from '@/utils/i18n';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -102,7 +103,7 @@ export function CategoryCell({
             onValueChange={handleCategoryChange}
             categories={categories}
             disabled={isUpdating}
-            placeholder="Uncategorized"
+            placeholder={__('Uncategorized')}
             triggerClassName={cn(
                 'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
                 className || '',

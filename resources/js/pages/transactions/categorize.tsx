@@ -15,6 +15,7 @@ import {
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useLocale } from '@/hooks/use-locale';
 import { decrypt, importKey } from '@/lib/crypto';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
@@ -25,6 +26,8 @@ import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
+import { formatDateLong } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { parseISO } from 'date-fns';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -100,6 +103,7 @@ export default function CategorizeTransactions({
     const { automationRules: sharedAutomationRules } = usePage<{
         automationRules: AutomationRule[];
     }>().props;
+    const locale = useLocale();
 
     const transactionIds = useLiveQuery(
         async () => {
@@ -473,20 +477,10 @@ export default function CategorizeTransactions({
         rulesDialogOpen,
     ]);
 
-    const formatDate = (dateStr: string): string => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    };
-
     if (isLoading) {
         return (
             <>
-                <Head title="Categorize Transactions" />
+                <Head title={__('Categorize Transactions')} />
                 <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4 dark:bg-zinc-950">
                     <div className="w-full max-w-lg space-y-6">
                         <Skeleton className="mx-auto h-6 w-32" />
@@ -505,7 +499,7 @@ export default function CategorizeTransactions({
     if (isComplete) {
         return (
             <>
-                <Head title="All Done!" />
+                <Head title={__('All Done!')} />
                 <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4 dark:bg-zinc-950">
                     <div className="animate-bounce-in flex flex-col items-center gap-6 text-center">
                         <div className="relative">
@@ -516,10 +510,12 @@ export default function CategorizeTransactions({
                         </div>
                         <div className="space-y-2">
                             <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                                All Done!
+                                {__('All Done!')}
                             </h1>
                             <p className="text-lg text-zinc-600 dark:text-zinc-400">
-                                You've categorized all your transactions.
+                                {__(
+                                    "You've categorized all your transactions.",
+                                )}
                             </p>
                         </div>
                         <Link
@@ -529,7 +525,7 @@ export default function CategorizeTransactions({
                         >
                             <Button size="lg" className="mt-4">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back to Transactions
+                                {__('Back to Transactions')}
                             </Button>
                         </Link>
                     </div>
@@ -541,7 +537,7 @@ export default function CategorizeTransactions({
     if (uncategorizedTransactions.length === 0) {
         return (
             <>
-                <Head title="Categorize Transactions" />
+                <Head title={__('Categorize Transactions')} />
                 <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4 dark:bg-zinc-950">
                     <div className="flex flex-col items-center gap-6 text-center">
                         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
@@ -549,10 +545,12 @@ export default function CategorizeTransactions({
                         </div>
                         <div className="space-y-2">
                             <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                No Uncategorized Transactions
+                                {__('No Uncategorized Transactions')}
                             </h1>
                             <p className="text-zinc-600 dark:text-zinc-400">
-                                All your transactions are already categorized.
+                                {__(
+                                    'All your transactions are already categorized.',
+                                )}
                             </p>
                         </div>
                         <Link
@@ -562,7 +560,7 @@ export default function CategorizeTransactions({
                         >
                             <Button>
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back to Transactions
+                                {__('Back to Transactions')}
                             </Button>
                         </Link>
                     </div>
@@ -573,7 +571,7 @@ export default function CategorizeTransactions({
 
     return (
         <>
-            <Head title="Categorize Transactions" />
+            <Head title={__('Categorize Transactions')} />
 
             <div className="flex min-h-screen flex-col bg-white dark:bg-zinc-950">
                 <header className="flex items-center justify-between gap-6 px-4 py-3 dark:border-zinc-800">
@@ -583,7 +581,7 @@ export default function CategorizeTransactions({
                     >
                         <ArrowLeft className="h-4 w-4" />
                         <div className="hidden text-nowrap sm:block">
-                            Back to Transactions
+                            {__('Back to Transactions')}
                         </div>
                     </Link>
                     <div className="flex w-full items-center justify-end gap-6 sm:justify-center">
@@ -595,8 +593,9 @@ export default function CategorizeTransactions({
                                 className="gap-2 pr-2"
                             >
                                 <Settings2 className="h-4 w-4" />
-                                Rules
-                                <Kbd>Ctrl+R</Kbd>
+                                {__('Rules')}
+
+                                <Kbd>{__('Ctrl+R')}</Kbd>
                             </Button>
                         </div>
                         <div className="flex items-center gap-3">
@@ -611,8 +610,8 @@ export default function CategorizeTransactions({
                                 className="gap-2 pr-2 text-muted-foreground"
                             >
                                 <SkipBack className="h-4 w-4" />
-                                <span className="">Prev</span>
-                                <Kbd>Ctrl+B</Kbd>
+                                <span className="">{__('Prev')}</span>
+                                <Kbd>{__('Ctrl+B')}</Kbd>
                             </Button>
                             <Button
                                 variant="ghost"
@@ -625,8 +624,8 @@ export default function CategorizeTransactions({
                                 className="gap-2 pr-2 text-muted-foreground"
                             >
                                 <SkipForward className="h-4 w-4" />
-                                <span className="">Skip</span>
-                                <Kbd>Ctrl+N</Kbd>
+                                <span className="">{__('Skip')}</span>
+                                <Kbd>{__('Ctrl+N')}</Kbd>
                             </Button>
                         </div>
                     </div>
@@ -687,8 +686,9 @@ export default function CategorizeTransactions({
                                                 <div className="flex items-start justify-between">
                                                     <div className="flex flex-1 flex-col gap-4">
                                                         <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                            {formatDate(
+                                                            {formatDateLong(
                                                                 currentTransaction.transaction_date,
+                                                                locale,
                                                             )}
                                                         </p>
 
@@ -781,17 +781,18 @@ export default function CategorizeTransactions({
                             >
                                 <div className="flex flex-col gap-1">
                                     <h3 className="font-medium">
-                                        Assign a new category
+                                        {__('Assign a new category')}
                                     </h3>
                                     <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                                        Search, move{' '}
+                                        {__('Search, move')}{' '}
                                         <Kbd>
                                             <ArrowUp className="size-3" />
                                         </Kbd>
                                         <Kbd>
                                             <ArrowDown className="size-3" />
                                         </Kbd>
-                                        , and press <Kbd>⏎</Kbd>
+                                        {__(', and press')}
+                                        <Kbd>⏎</Kbd>
                                     </p>
                                 </div>
                                 <Command
@@ -800,14 +801,15 @@ export default function CategorizeTransactions({
                                 >
                                     <CommandInput
                                         ref={commandInputRef}
-                                        placeholder="Search categories..."
+                                        placeholder={__('Search categories...')}
                                         value={searchValue}
                                         onValueChange={setSearchValue}
                                         disabled={animationState !== 'idle'}
                                     />
+
                                     <CommandList className="max-h-64">
                                         <CommandEmpty>
-                                            No categories found.
+                                            {__('No categories found.')}
                                         </CommandEmpty>
                                         <CommandGroup>
                                             {sortedCategories.map(

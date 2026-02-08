@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { type Account } from '@/types/account';
 import type { UUID } from '@/types/uuid';
+import { __ } from '@/utils/i18n';
 import { Building2 } from 'lucide-react';
 
 interface ImportBalanceStepAccountProps {
@@ -23,7 +24,7 @@ export function ImportBalanceStepAccount({
         return (
             <div className="flex flex-col items-center justify-center py-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                    No accounts found. Please create an account first.
+                    {__('No accounts found. Please create an account first.')}
                 </p>
             </div>
         );
@@ -46,6 +47,7 @@ export function ImportBalanceStepAccount({
                                 value={account.id}
                                 id={`account-${account.id}`}
                             />
+
                             {account.bank.logo ? (
                                 <img
                                     src={account.bank.logo}
@@ -77,7 +79,7 @@ export function ImportBalanceStepAccount({
 
             <div className="flex justify-end">
                 <Button onClick={onNext} disabled={!selectedAccountId}>
-                    Next
+                    {__('Next')}
                 </Button>
             </div>
         </div>

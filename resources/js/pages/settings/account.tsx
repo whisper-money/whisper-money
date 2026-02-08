@@ -24,6 +24,8 @@ import { disable, enable } from '@/routes/two-factor';
 import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { CURRENCY_OPTIONS } from '@/types/account';
+import { LANGUAGE_OPTIONS } from '@/types/language';
+import { __ } from '@/utils/i18n';
 import { Transition } from '@headlessui/react';
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ShieldBan, ShieldCheck } from 'lucide-react';
@@ -65,13 +67,13 @@ export default function Account({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Bank accounts" />
+            <Head title={__('Bank accounts')} />
 
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Profile information"
-                        description="Update your name and email address"
+                        title={__('Profile information')}
+                        description={__('Update your name and email address')}
                     />
 
                     <Form
@@ -84,7 +86,7 @@ export default function Account({
                         {({ processing, recentlySuccessful, errors }) => (
                             <>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="name">Name</Label>
+                                    <Label htmlFor="name">{__('Name')}</Label>
 
                                     <Input
                                         id="name"
@@ -93,7 +95,7 @@ export default function Account({
                                         name="name"
                                         required
                                         autoComplete="name"
-                                        placeholder="Full name"
+                                        placeholder={__('Name')}
                                     />
 
                                     <InputError
@@ -103,7 +105,9 @@ export default function Account({
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="email">Email address</Label>
+                                    <Label htmlFor="email">
+                                        {__('Email address')}
+                                    </Label>
 
                                     <Input
                                         id="email"
@@ -113,7 +117,7 @@ export default function Account({
                                         name="email"
                                         required
                                         autoComplete="username"
-                                        placeholder="Email address"
+                                        placeholder={__('Email address')}
                                     />
 
                                     <InputError
@@ -124,7 +128,7 @@ export default function Account({
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="currency_code">
-                                        Currency
+                                        {__('Currency')}
                                     </Label>
 
                                     <Select
@@ -133,7 +137,11 @@ export default function Account({
                                         required
                                     >
                                         <SelectTrigger className="mt-1 w-full">
-                                            <SelectValue placeholder="Select currency" />
+                                            <SelectValue
+                                                placeholder={__(
+                                                    'Select currency',
+                                                )}
+                                            />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {CURRENCY_OPTIONS.map(
@@ -155,28 +163,66 @@ export default function Account({
                                     />
                                 </div>
 
+                                <div className="grid gap-2">
+                                    <Label htmlFor="locale">
+                                        {__('Language')}
+                                    </Label>
+
+                                    <Select
+                                        name="locale"
+                                        defaultValue={auth.user.locale}
+                                    >
+                                        <SelectTrigger className="mt-1 w-full">
+                                            <SelectValue
+                                                placeholder={__(
+                                                    'Select language',
+                                                )}
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {LANGUAGE_OPTIONS.map(
+                                                (language) => (
+                                                    <SelectItem
+                                                        key={language.code}
+                                                        value={language.code}
+                                                    >
+                                                        {language.label}
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <InputError
+                                        className="mt-2"
+                                        message={errors.locale}
+                                    />
+                                </div>
+
                                 {mustVerifyEmail &&
                                     auth.user.email_verified_at === null && (
                                         <div>
                                             <p className="-mt-4 text-sm text-muted-foreground">
-                                                Your email address is
-                                                unverified.{' '}
+                                                {__(
+                                                    'Your email address is unverified.',
+                                                )}{' '}
                                                 <Link
                                                     href={send()}
                                                     as="button"
                                                     className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
                                                 >
-                                                    Click here to resend the
-                                                    verification email.
+                                                    {__(
+                                                        'Click here to resend the\n                                                    verification email.',
+                                                    )}
                                                 </Link>
                                             </p>
 
                                             {status ===
                                                 'verification-link-sent' && (
                                                 <div className="mt-2 text-sm font-medium text-green-600">
-                                                    A new verification link has
-                                                    been sent to your email
-                                                    address.
+                                                    {__(
+                                                        'A new verification link has\n                                                    been sent to your email\n                                                    address.',
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -187,7 +233,7 @@ export default function Account({
                                         disabled={processing}
                                         data-test="update-profile-button"
                                     >
-                                        Save
+                                        {__('Save')}
                                     </Button>
 
                                     <Transition
@@ -198,7 +244,7 @@ export default function Account({
                                         leaveTo="opacity-0"
                                     >
                                         <p className="text-sm text-neutral-600">
-                                            Saved
+                                            {__('Saved')}
                                         </p>
                                     </Transition>
                                 </div>
@@ -211,8 +257,10 @@ export default function Account({
 
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Update password"
-                        description="Ensure your account is using a long, random password to stay secure"
+                        title={__('Update password')}
+                        description={__(
+                            'Ensure your account is using a long, random password to stay secure.',
+                        )}
                     />
 
                     <Form
@@ -241,7 +289,7 @@ export default function Account({
                             <>
                                 <div className="grid gap-2">
                                     <Label htmlFor="current_password">
-                                        Current password
+                                        {__('Current password')}
                                     </Label>
 
                                     <Input
@@ -251,7 +299,7 @@ export default function Account({
                                         type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="current-password"
-                                        placeholder="Current password"
+                                        placeholder={__('Current password')}
                                     />
 
                                     <InputError
@@ -261,7 +309,7 @@ export default function Account({
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="password">
-                                        New password
+                                        {__('New password')}
                                     </Label>
 
                                     <Input
@@ -271,7 +319,7 @@ export default function Account({
                                         type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="new-password"
-                                        placeholder="New password"
+                                        placeholder={__('New password')}
                                     />
 
                                     <InputError message={errors.password} />
@@ -279,7 +327,7 @@ export default function Account({
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="password_confirmation">
-                                        Confirm password
+                                        {__('Confirm password')}
                                     </Label>
 
                                     <Input
@@ -288,7 +336,7 @@ export default function Account({
                                         type="password"
                                         className="mt-1 block w-full"
                                         autoComplete="new-password"
-                                        placeholder="Confirm password"
+                                        placeholder={__('Confirm password')}
                                     />
 
                                     <InputError
@@ -301,7 +349,7 @@ export default function Account({
                                         disabled={processing}
                                         data-test="update-password-button"
                                     >
-                                        Save password
+                                        {__('Save password')}
                                     </Button>
 
                                     <Transition
@@ -312,7 +360,7 @@ export default function Account({
                                         leaveTo="opacity-0"
                                     >
                                         <p className="text-sm text-neutral-600">
-                                            Saved
+                                            {__('Saved')}
                                         </p>
                                     </Transition>
                                 </div>
@@ -325,17 +373,19 @@ export default function Account({
 
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Two-Factor Authentication"
-                        description="Manage your two-factor authentication settings"
+                        title={__('Two-Factor Authentication')}
+                        description={__(
+                            'Manage your two-factor authentication settings',
+                        )}
                     />
+
                     {twoFactorEnabled ? (
                         <div className="flex flex-col items-start justify-start space-y-4">
-                            <Badge variant="default">Enabled</Badge>
+                            <Badge variant="default">{__('Enabled')}</Badge>
                             <p className="text-muted-foreground">
-                                With two-factor authentication enabled, you will
-                                be prompted for a secure, random pin during
-                                login, which you can retrieve from the
-                                TOTP-supported application on your phone.
+                                {__(
+                                    'With two-factor authentication enabled, you will\n                                be prompted for a secure, random pin during\n                                login, which you can retrieve from the\n                                TOTP-supported application on your phone.',
+                                )}
                             </p>
 
                             <TwoFactorRecoveryCodes
@@ -352,7 +402,8 @@ export default function Account({
                                             type="submit"
                                             disabled={processing}
                                         >
-                                            <ShieldBan /> Disable 2FA
+                                            <ShieldBan />
+                                            {__('Disable 2FA')}
                                         </Button>
                                     )}
                                 </Form>
@@ -360,12 +411,13 @@ export default function Account({
                         </div>
                     ) : (
                         <div className="flex flex-col items-start justify-start space-y-4">
-                            <Badge variant="destructive">Disabled</Badge>
+                            <Badge variant="destructive">
+                                {__('Disabled')}
+                            </Badge>
                             <p className="text-muted-foreground">
-                                When you enable two-factor authentication, you
-                                will be prompted for a secure pin during login.
-                                This pin can be retrieved from a TOTP-supported
-                                application on your phone.
+                                {__(
+                                    'When you enable two-factor authentication, you\n                                will be prompted for a secure pin during login.\n                                This pin can be retrieved from a TOTP-supported\n                                application on your phone.',
+                                )}
                             </p>
 
                             <div>
@@ -374,7 +426,7 @@ export default function Account({
                                         onClick={() => setShowSetupModal(true)}
                                     >
                                         <ShieldCheck />
-                                        Continue Setup
+                                        {__('Continue Setup')}
                                     </Button>
                                 ) : (
                                     <Form
@@ -389,7 +441,7 @@ export default function Account({
                                                 disabled={processing}
                                             >
                                                 <ShieldCheck />
-                                                Enable 2FA
+                                                {__('Enable 2FA')}
                                             </Button>
                                         )}
                                     </Form>

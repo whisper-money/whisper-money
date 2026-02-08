@@ -13,7 +13,7 @@ class VerifyEmailNotification extends VerifyEmail
 
         return (new MailMessage)
             ->from(config('mail.from.address', 'hello@example.com'), 'Victor')
-            ->subject('Verify Your Email - Whisper Money')
+            ->subject(__('Verify Your Email - Whisper Money'))
             ->markdown('mail.verify-email', [
                 'userName' => $notifiable->name,
                 'verificationUrl' => $verificationUrl,

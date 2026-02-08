@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
     Cell,
@@ -67,20 +68,20 @@ function CategoryActions({ category }: { category: Category }) {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{__('Open menu')}</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>{__('Actions')}</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
                     >
-                        Delete
+                        {__('Delete')}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -91,6 +92,7 @@ function CategoryActions({ category }: { category: Category }) {
                 onOpenChange={setEditOpen}
                 onSuccess={() => {}}
             />
+
             <DeleteCategoryDialog
                 category={category}
                 open={deleteOpen}
@@ -130,15 +132,15 @@ function CategoryRow({ row }: { row: Row<Category> }) {
                     </TableRow>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                    <ContextMenuLabel>Actions</ContextMenuLabel>
+                    <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </ContextMenuItem>
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
                     >
-                        Delete
+                        {__('Delete')}
                     </ContextMenuItem>
                 </ContextMenuContent>
             </ContextMenu>
@@ -149,6 +151,7 @@ function CategoryRow({ row }: { row: Row<Category> }) {
                 onOpenChange={setEditOpen}
                 onSuccess={() => {}}
             />
+
             <DeleteCategoryDialog
                 category={category}
                 open={deleteOpen}
@@ -180,7 +183,8 @@ export default function Categories() {
                             column.toggleSorting(column.getIsSorted() === 'asc')
                         }
                     >
-                        Name
+                        {__('Name')}
+
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 );
@@ -204,7 +208,7 @@ export default function Categories() {
         },
         {
             accessorKey: 'color',
-            header: 'Color',
+            header: __('Color'),
             cell: ({ row }) => {
                 const color = row.getValue('color') as Category['color'];
                 if (!color) {
@@ -218,29 +222,29 @@ export default function Categories() {
                     <Badge
                         className={`${colorClasses.bg} ${colorClasses.text} text-[10px] tracking-widest`}
                     >
-                        {color.toLocaleUpperCase()}
+                        {__(color).toLocaleUpperCase()}
                     </Badge>
                 );
             },
         },
         {
             accessorKey: 'type',
-            header: 'Type',
+            header: __('Type'),
             cell: ({ row }) => {
                 const type = row.getValue('type') as Category['type'];
                 const typeConfig = {
                     income: {
-                        label: 'Income',
+                        label: __('Income'),
                         className:
                             'bg-green-50 text-green-700 dark:bg-green-700 dark:text-green-100',
                     },
                     expense: {
-                        label: 'Expense',
+                        label: __('Expense'),
                         className:
                             'bg-red-50 text-red-700 dark:bg-red-700 dark:text-red-100',
                     },
                     transfer: {
-                        label: 'Transfer',
+                        label: __('Transfer'),
                         className:
                             'bg-zinc-50 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100',
                     },
@@ -280,19 +284,19 @@ export default function Categories() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Categories settings" />
+            <Head title={__('Categories settings')} />
 
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Categories settings"
-                        description="Manage your transaction categories"
+                        title={__('Categories settings')}
+                        description={__('Manage your transaction categories')}
                     />
 
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <Input
-                                placeholder="Filter categories..."
+                                placeholder={__('Filter categories...')}
                                 value={
                                     (table
                                         .getColumn('name')
@@ -305,6 +309,7 @@ export default function Categories() {
                                 }
                                 className="max-w-sm"
                             />
+
                             <CreateCategoryDialog onSuccess={() => {}} />
                         </div>
 
@@ -353,7 +358,7 @@ export default function Categories() {
                                                 colSpan={columns.length}
                                                 className="h-24 text-center"
                                             >
-                                                No categories found.
+                                                {__('No categories found.')}
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -364,7 +369,7 @@ export default function Categories() {
                         <div className="flex items-center justify-end">
                             <div className="text-sm text-muted-foreground">
                                 {table.getFilteredRowModel().rows.length}{' '}
-                                category(ies) total.
+                                {__('category(ies) total.')}
                             </div>
                         </div>
                     </div>

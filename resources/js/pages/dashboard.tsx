@@ -9,15 +9,9 @@ import { useDashboardData } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { dashboard } from '@/routes';
 import { BreadcrumbItem, SharedData } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard().url,
-    },
-];
 
 interface DashboardProps extends SharedData {
     showEncryptionPrompt: boolean;
@@ -35,6 +29,13 @@ export default function Dashboard() {
     const { isKeySet, encryptedMessageData, fetchEncryptedMessage } =
         useEncryptionKey();
     const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: __('Dashboard'),
+            href: dashboard().url,
+        },
+    ];
 
     useEffect(() => {
         // Fetch encrypted message data if not already loaded
@@ -62,7 +63,7 @@ export default function Dashboard() {
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
-            <Head title="Dashboard" />
+            <Head title={__('Dashboard')} />
 
             {encryptedMessageData && (
                 <UnlockMessageDialog
@@ -77,8 +78,8 @@ export default function Dashboard() {
 
             <div className="space-y-6 p-6">
                 <HeadingSmall
-                    title="Dashboard"
-                    description="Overview of your financial health"
+                    title={__('Dashboard')}
+                    description={__('Overview of your financial health')}
                 />
 
                 <NetWorthChartComponent
@@ -110,6 +111,7 @@ export default function Dashboard() {
                         categories={topCategories}
                         loading={isLoading}
                     />
+
                     {props.features.cashflow && (
                         <CashflowSummaryCard loading={isLoading} />
                     )}

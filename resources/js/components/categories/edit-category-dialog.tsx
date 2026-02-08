@@ -25,6 +25,7 @@ import {
     getCategoryColorClasses,
     type Category,
 } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
 import { Info } from 'lucide-react';
@@ -49,9 +50,9 @@ export function EditCategoryDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Category</DialogTitle>
+                    <DialogTitle>{__('Edit Category')}</DialogTitle>
                     <DialogDescription>
-                        Update the category information.
+                        {__('Update the category information.')}
                     </DialogDescription>
                 </DialogHeader>
                 <Form
@@ -65,14 +66,15 @@ export function EditCategoryDialog({
                     {({ errors, processing }) => (
                         <>
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">{__('Name')}</Label>
                                 <Input
                                     id="name"
                                     name="name"
                                     defaultValue={category.name}
-                                    placeholder="Category name"
+                                    placeholder={__('Category name')}
                                     required
                                 />
+
                                 {errors.name && (
                                     <p className="text-sm text-red-500">
                                         {errors.name}
@@ -81,14 +83,16 @@ export function EditCategoryDialog({
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="icon">Icon</Label>
+                                <Label htmlFor="icon">{__('Icon')}</Label>
                                 <Select
                                     name="icon"
                                     defaultValue={category.icon}
                                     required
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select an icon" />
+                                        <SelectValue
+                                            placeholder={__('Select an icon')}
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {CATEGORY_ICONS.map((iconName) => {
@@ -117,14 +121,16 @@ export function EditCategoryDialog({
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="color">Color</Label>
+                                <Label htmlFor="color">{__('Color')}</Label>
                                 <Select
                                     name="color"
                                     defaultValue={category.color}
                                     required
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select a color" />
+                                        <SelectValue
+                                            placeholder={__('Select a color')}
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {CATEGORY_COLORS.map((color) => {
@@ -139,7 +145,7 @@ export function EditCategoryDialog({
                                                         <Badge
                                                             className={`${colorClasses.bg} ${colorClasses.text}`}
                                                         >
-                                                            {color}
+                                                            {__(color)}
                                                         </Badge>
                                                     </div>
                                                 </SelectItem>
@@ -155,7 +161,7 @@ export function EditCategoryDialog({
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="type">Type</Label>
+                                <Label htmlFor="type">{__('Type')}</Label>
                                 <Select
                                     name="type"
                                     defaultValue={category.type}
@@ -163,7 +169,9 @@ export function EditCategoryDialog({
                                     onValueChange={setSelectedType}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select a type" />
+                                        <SelectValue
+                                            placeholder={__('Select a type')}
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {CATEGORY_TYPES.map((type) => (
@@ -183,11 +191,9 @@ export function EditCategoryDialog({
                                     <Alert>
                                         <Info className="h-4 w-4 opacity-50" />
                                         <AlertDescription className="text-sm">
-                                            Transactions in this category will
-                                            not be counted in top expenses or
-                                            income. Transfer categories are
-                                            mainly used for transactions between
-                                            accounts.
+                                            {__(
+                                                'Transactions in this category will\n                                            not be counted in top expenses or\n                                            income. Transfer categories are\n                                            mainly used for transactions between\n                                            accounts.',
+                                            )}
                                         </AlertDescription>
                                     </Alert>
                                 )}
@@ -200,10 +206,12 @@ export function EditCategoryDialog({
                                     onClick={() => onOpenChange(false)}
                                     disabled={processing}
                                 >
-                                    Cancel
+                                    {__('Cancel')}
                                 </Button>
                                 <Button type="submit" disabled={processing}>
-                                    {processing ? 'Updating...' : 'Update'}
+                                    {processing
+                                        ? __('Updating...')
+                                        : __('Update')}
                                 </Button>
                             </div>
                         </>

@@ -22,6 +22,7 @@ import {
     LABEL_COLORS,
     type Label as LabelType,
 } from '@/types/label';
+import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
 
 interface EditLabelDialogProps {
@@ -41,9 +42,9 @@ export function EditLabelDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Label</DialogTitle>
+                    <DialogTitle>{__('Edit Label')}</DialogTitle>
                     <DialogDescription>
-                        Update the label information.
+                        {__('Update the label information.')}
                     </DialogDescription>
                 </DialogHeader>
                 <Form
@@ -57,14 +58,15 @@ export function EditLabelDialog({
                     {({ errors, processing }) => (
                         <>
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">{__('Name')}</Label>
                                 <Input
                                     id="name"
                                     name="name"
                                     defaultValue={label.name}
-                                    placeholder="Label name"
+                                    placeholder={__('Label name')}
                                     required
                                 />
+
                                 {errors.name && (
                                     <p className="text-sm text-red-500">
                                         {errors.name}
@@ -73,14 +75,16 @@ export function EditLabelDialog({
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="color">Color</Label>
+                                <Label htmlFor="color">{__('Color')}</Label>
                                 <Select
                                     name="color"
                                     defaultValue={label.color}
                                     required
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select a color" />
+                                        <SelectValue
+                                            placeholder={__('Select a color')}
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {LABEL_COLORS.map((color) => {
@@ -95,7 +99,7 @@ export function EditLabelDialog({
                                                         <Badge
                                                             className={`${colorClasses.bg} ${colorClasses.text}`}
                                                         >
-                                                            {color}
+                                                            {__(color)}
                                                         </Badge>
                                                     </div>
                                                 </SelectItem>
@@ -117,7 +121,7 @@ export function EditLabelDialog({
                                     onClick={() => onOpenChange(false)}
                                     disabled={processing}
                                 >
-                                    Cancel
+                                    {__('Cancel')}
                                 </Button>
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Updating...' : 'Update'}

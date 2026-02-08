@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { type Table as TableType } from '@tanstack/react-table';
 import { SlidersHorizontal } from 'lucide-react';
 
+import { __ } from '@/utils/i18n';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -39,7 +40,7 @@ export function DataTableViewOptions<TData>({
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline" className='flex gap-2'>
-                    <span className={cn({ 'hidden sm:inline': hideColumnTextOnMobile })}>Columns</span>
+                    <span className={cn({ 'hidden sm:inline': hideColumnTextOnMobile })}>{__('Columns')}</span>
                     <SlidersHorizontal className="h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>

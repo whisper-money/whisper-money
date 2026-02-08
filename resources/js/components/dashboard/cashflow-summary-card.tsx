@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import { cashflow } from '@/routes';
 import { SharedData } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
@@ -61,7 +62,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
         return (
             <Card className="col-span-3">
                 <CardHeader>
-                    <CardTitle>Cashflow</CardTitle>
+                    <CardTitle>{__('Cashflow')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-3 gap-4">
@@ -88,24 +89,27 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
         <Card className="col-span-3">
             <CardHeader className="gap-1">
                 <div className="flex items-center justify-between">
-                    <CardTitle>Cashflow</CardTitle>
+                    <CardTitle>{__('Cashflow')}</CardTitle>
                     <Link
                         href={cashflow().url}
                         className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
                     >
-                        View details
+                        {__('View details')}
+
                         <ArrowRight className="size-4" />
                     </Link>
                 </div>
                 <CardDescription>
-                    This month's income and expenses
+                    {__("This month's income and expenses")}
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-3 gap-4">
                     {/* Income */}
                     <div>
-                        <p className="text-xs text-muted-foreground">Income</p>
+                        <p className="text-xs text-muted-foreground">
+                            {__('Income')}
+                        </p>
                         <AmountDisplay
                             amountInCents={current.income}
                             currencyCode={auth.user.currency_code}
@@ -119,7 +123,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                     {/* Expenses */}
                     <div>
                         <p className="text-xs text-muted-foreground">
-                            Expenses
+                            {__('Expenses')}
                         </p>
                         <AmountDisplay
                             amountInCents={current.expense}
@@ -132,7 +136,9 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
 
                     {/* Net */}
                     <div>
-                        <p className="text-xs text-muted-foreground">Net</p>
+                        <p className="text-xs text-muted-foreground">
+                            {__('Net')}
+                        </p>
                         <div className="flex items-center gap-1">
                             {isPositiveNet ? (
                                 <TrendingUp className="size-4 text-green-600 dark:text-green-400" />
@@ -154,7 +160,7 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                 {/* Savings rate footer */}
                 <div className="mt-4 flex items-center justify-between border-t pt-3">
                     <span className="text-xs text-muted-foreground">
-                        Savings rate
+                        {__('Savings rate')}
                     </span>
                     <span
                         className={cn(

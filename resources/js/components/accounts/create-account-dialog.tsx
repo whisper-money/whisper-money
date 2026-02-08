@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { encrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
@@ -163,7 +164,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
     }
 
     const createButton = (
-        <Button disabled={!isKeyAvailable}>Create Account</Button>
+        <Button disabled={!isKeyAvailable}>{__('Create Account')}</Button>
     );
 
     return (
@@ -189,9 +190,11 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
             </DialogTrigger>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Create Account</DialogTitle>
+                    <DialogTitle>{__('Create Account')}</DialogTitle>
                     <DialogDescription>
-                        Add a new bank account to track your transactions.
+                        {__(
+                            'Add a new bank account to track your transactions.',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-2">
@@ -204,7 +207,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                             onClick={() => setOpen(false)}
                             disabled={isSubmitting}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
                         <Button
                             type="submit"

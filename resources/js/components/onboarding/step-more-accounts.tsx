@@ -2,8 +2,8 @@ import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { formatAccountType } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { Check, CheckCircle2, Plus, Wallet } from 'lucide-react';
-import { useMemo } from 'react';
 import { StepButton } from './step-button';
 
 interface ExistingAccount {
@@ -33,24 +33,22 @@ export function StepMoreAccounts({
     onAddMore,
     onFinish,
 }: StepMoreAccountsProps) {
-    const totalAccounts = createdAccounts.length + existingAccounts.length;
-
-    const description = useMemo(() => {
-        return `You've set up ${totalAccounts} account${totalAccounts !== 1 ? 's' : ''}. Would you like to add more or continue to the dashboard?`;
-    }, [totalAccounts]);
+    const description = __(
+        'Would you like to add more accounts or continue to the dashboard?',
+    );
 
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
             <StepHeader
                 icon={Wallet}
                 iconContainerClassName="bg-gradient-to-br from-teal-400 to-cyan-500"
-                title="Great Progress!"
+                title={__('Great Progress!')}
                 description={description}
             />
 
             <div className="mb-8 w-full max-w-md">
                 <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-                    Your Accounts
+                    {__('Your Accounts')}
                 </h3>
                 <div className="space-y-2">
                     {createdAccounts.map((account) => (
@@ -96,10 +94,13 @@ export function StepMoreAccounts({
 
             <div className="mb-6 w-full max-w-md rounded-xl border-2 border-dashed border-muted-foreground/20 p-6">
                 <div className="text-center">
-                    <h3 className="mb-1 font-semibold">Add More Accounts?</h3>
+                    <h3 className="mb-1 font-semibold">
+                        {__('Add More Accounts?')}
+                    </h3>
                     <p className="mb-4 text-sm text-muted-foreground">
-                        Track all your finances in one place — checking,
-                        savings, credit cards, investments, and more.
+                        {__(
+                            'Track all your finances in one place \u2014 checking,\n                        savings, credit cards, investments, and more.',
+                        )}
                     </p>
                     <Button
                         variant="outline"
@@ -107,12 +108,12 @@ export function StepMoreAccounts({
                         className="w-full gap-2 !py-6"
                     >
                         <Plus className="h-4 w-4" />
-                        Add Another Account
+                        {__('Add Another Account')}
                     </Button>
                 </div>
             </div>
 
-            <StepButton text="Finish Setup" onClick={onFinish} />
+            <StepButton text={__('Finish Setup')} onClick={onFinish} />
         </div>
     );
 }

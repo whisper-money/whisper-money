@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { BreakdownData } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
 import { getCategoryColorClasses } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
@@ -38,13 +39,16 @@ export function BreakdownCard({
     loading,
     currency = 'USD',
 }: BreakdownCardProps) {
-    const title = type === 'income' ? 'Income Sources' : 'Expense Categories';
+    const title =
+        type === 'income' ? __('Income Sources') : __('Expense Categories');
     const description =
         type === 'income'
-            ? 'Where your money comes from'
-            : 'Where your money goes';
+            ? __('Where your money comes from')
+            : __('Where your money goes');
     const emptyMessage =
-        type === 'income' ? 'No income this period' : 'No expenses this period';
+        type === 'income'
+            ? __('No income this period')
+            : __('No expenses this period');
 
     if (loading) {
         return (

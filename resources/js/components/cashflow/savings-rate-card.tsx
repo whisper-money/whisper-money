@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/card';
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 
 interface SavingsRateCardProps {
@@ -25,7 +26,7 @@ export function SavingsRateCard({
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">
-                        Savings Rate
+                        {__('Savings Rate')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -53,9 +54,11 @@ export function SavingsRateCard({
         <Card>
             <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
-                    Savings Rate
+                    {__('Savings Rate')}
                 </CardTitle>
-                <CardDescription>Percentage of income saved</CardDescription>
+                <CardDescription>
+                    {__('Percentage of income saved')}
+                </CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex items-baseline gap-2">
@@ -83,12 +86,12 @@ export function SavingsRateCard({
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">
                     {current.savings_rate >= 20
-                        ? "Great job! You're saving well."
+                        ? __("Great job! You're saving well.")
                         : current.savings_rate >= 10
-                          ? 'Good progress on your savings.'
+                          ? __('Good progress on your savings.')
                           : current.savings_rate >= 0
-                            ? 'Consider saving more if possible.'
-                            : 'Spending exceeds income this period.'}
+                            ? __('Consider saving more if possible.')
+                            : __('Spending exceeds income this period.')}
                 </p>
             </CardContent>
         </Card>

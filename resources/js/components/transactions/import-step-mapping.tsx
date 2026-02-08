@@ -15,6 +15,7 @@ import {
     type ColumnOption,
     type ParsedRow,
 } from '@/types/import';
+import { __ } from '@/utils/i18n';
 
 interface ImportStepMappingProps {
     columnOptions: ColumnOption[];
@@ -135,7 +136,7 @@ export function ImportStepMapping({
             <div className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="date-column">
-                        Transaction Date{' '}
+                        {__('Transaction Date')}{' '}
                         <span className="text-destructive">*</span>
                     </Label>
                     <Select
@@ -145,7 +146,9 @@ export function ImportStepMapping({
                         }
                     >
                         <SelectTrigger id="date-column">
-                            <SelectValue placeholder="Select date column" />
+                            <SelectValue
+                                placeholder={__('Select date column')}
+                            />
                         </SelectTrigger>
                         <SelectContent>
                             {columnOptions.map((option, index) => (
@@ -164,7 +167,8 @@ export function ImportStepMapping({
 
                 <div className="space-y-2">
                     <Label htmlFor="description-column-0">
-                        Description <span className="text-destructive">*</span>
+                        {__('Description')}
+                        <span className="text-destructive">*</span>
                     </Label>
                     {descriptionColumns.length === 0 ? (
                         <Select
@@ -174,7 +178,11 @@ export function ImportStepMapping({
                             }
                         >
                             <SelectTrigger id="description-column-0">
-                                <SelectValue placeholder="Select description column" />
+                                <SelectValue
+                                    placeholder={__(
+                                        'Select description column',
+                                    )}
+                                />
                             </SelectTrigger>
                             <SelectContent>
                                 {columnOptions.map((option, index) => (
@@ -219,7 +227,7 @@ export function ImportStepMapping({
                                         <SelectContent>
                                             {columnIndex > 0 && (
                                                 <SelectItem value="__none__">
-                                                    None (Remove)
+                                                    {__('None (Remove)')}
                                                 </SelectItem>
                                             )}
                                             {columnOptions.map(
@@ -252,7 +260,7 @@ export function ImportStepMapping({
                                         onClick={addDescriptionColumn}
                                         className="ml-4"
                                     >
-                                        + Add another column
+                                        {__('+ Add another column')}
                                     </Button>
                                 )}
                         </div>
@@ -261,7 +269,8 @@ export function ImportStepMapping({
 
                 <div className="space-y-2">
                     <Label htmlFor="amount-column">
-                        Amount <span className="text-destructive">*</span>
+                        {__('Amount')}
+                        <span className="text-destructive">*</span>
                     </Label>
                     <Select
                         value={columnMapping.amount || ''}
@@ -270,7 +279,9 @@ export function ImportStepMapping({
                         }
                     >
                         <SelectTrigger id="amount-column">
-                            <SelectValue placeholder="Select amount column" />
+                            <SelectValue
+                                placeholder={__('Select amount column')}
+                            />
                         </SelectTrigger>
                         <SelectContent>
                             {columnOptions.map((option, index) => (
@@ -286,7 +297,9 @@ export function ImportStepMapping({
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="balance-column">Balance (Optional)</Label>
+                    <Label htmlFor="balance-column">
+                        {__('Balance (Optional)')}
+                    </Label>
                     <Select
                         value={columnMapping.balance || '__none__'}
                         onValueChange={(value) =>
@@ -297,10 +310,16 @@ export function ImportStepMapping({
                         }
                     >
                         <SelectTrigger id="balance-column">
-                            <SelectValue placeholder="Select balance column (optional)" />
+                            <SelectValue
+                                placeholder={__(
+                                    'Select balance column (optional)',
+                                )}
+                            />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="__none__">None</SelectItem>
+                            <SelectItem value="__none__">
+                                {__('None')}
+                            </SelectItem>
                             {columnOptions.map((option, index) => (
                                 <SelectItem
                                     key={`balance-${option.value}-${index}`}
@@ -316,7 +335,7 @@ export function ImportStepMapping({
                 {isValid && previewTransactions.length > 0 && (
                     <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
                         <Label className="pl-2 text-xs font-light tracking-widest uppercase opacity-50">
-                            Preview (first 3 rows)
+                            {__('Preview (first 3 rows)')}
                         </Label>
                         <div className="space-y-2 pt-2">
                             {previewTransactions.map((transaction, index) => (
@@ -343,7 +362,7 @@ export function ImportStepMapping({
 
                 {!dateFormatDetected && (
                     <div className="space-y-3 rounded-lg border p-4">
-                        <Label>Date Format</Label>
+                        <Label>{__('Date Format')}</Label>
                         <RadioGroup
                             value={dateFormat}
                             onValueChange={(value) =>
@@ -355,11 +374,12 @@ export function ImportStepMapping({
                                     value={DateFormat.YearMonthDay}
                                     id="format-ymd"
                                 />
+
                                 <Label
                                     htmlFor="format-ymd"
                                     className="cursor-pointer font-normal"
                                 >
-                                    YYYY-MM-DD (e.g., 2024-12-31)
+                                    {__('YYYY-MM-DD (e.g., 2024-12-31)')}
                                 </Label>
                             </div>
                             <div className="flex items-center space-x-2">
@@ -367,11 +387,12 @@ export function ImportStepMapping({
                                     value={DateFormat.MonthDayYear}
                                     id="format-mdy"
                                 />
+
                                 <Label
                                     htmlFor="format-mdy"
                                     className="cursor-pointer font-normal"
                                 >
-                                    MM-DD-YYYY (e.g., 12-31-2024)
+                                    {__('MM-DD-YYYY (e.g., 12-31-2024)')}
                                 </Label>
                             </div>
                             <div className="flex items-center space-x-2">
@@ -379,11 +400,12 @@ export function ImportStepMapping({
                                     value={DateFormat.DayMonthYear}
                                     id="format-dmy"
                                 />
+
                                 <Label
                                     htmlFor="format-dmy"
                                     className="cursor-pointer font-normal"
                                 >
-                                    DD-MM-YYYY (e.g., 31-12-2024)
+                                    {__('DD-MM-YYYY (e.g., 31-12-2024)')}
                                 </Label>
                             </div>
                         </RadioGroup>
@@ -393,10 +415,10 @@ export function ImportStepMapping({
 
             <div className="flex justify-between">
                 <Button variant="outline" onClick={onBack}>
-                    Back
+                    {__('Back')}
                 </Button>
                 <Button onClick={onNext} disabled={!isValid}>
-                    Preview Transactions
+                    {__('Preview Transactions')}
                 </Button>
             </div>
         </div>

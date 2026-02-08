@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DripEmailType;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,7 +17,7 @@ use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Pennant\Concerns\HasFeatures;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use Billable, HasFactory, HasFeatures, HasUuids, Notifiable, TwoFactorAuthenticatable;
@@ -33,6 +34,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'encryption_salt',
         'onboarded_at',
         'currency_code',
+        'locale',
     ];
 
     /**
@@ -133,6 +135,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isDemoAccount(): bool
     {
         return $this->email === config('app.demo.email');
+    }
+
+    public function preferredLocale(): string
+    {
+        return $this->locale ?? 'en';
     }
 
     public function sendEmailVerificationNotification(): void

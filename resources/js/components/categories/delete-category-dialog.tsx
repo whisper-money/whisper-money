@@ -9,6 +9,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { type Category } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
 
 interface DeleteCategoryDialogProps {
@@ -28,10 +29,13 @@ export function DeleteCategoryDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Delete Category</DialogTitle>
+                    <DialogTitle>{__('Delete Category')}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete "{category.name}"? This
-                        action cannot be undone.
+                        {__('Are you sure you want to delete "')}
+                        {category.name}
+                        {__(
+                            '"? This\n                        action cannot be undone.',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
                 <Form
@@ -49,7 +53,7 @@ export function DeleteCategoryDialog({
                                 onClick={() => onOpenChange(false)}
                                 disabled={processing}
                             >
-                                Cancel
+                                {__('Cancel')}
                             </Button>
                             <Button
                                 type="submit"

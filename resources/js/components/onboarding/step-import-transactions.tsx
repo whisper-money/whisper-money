@@ -5,6 +5,7 @@ import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { ArrowRight, FileSpreadsheet, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -42,8 +43,12 @@ export function StepImportTransactions({
 
     const description = useMemo(() => {
         return account
-            ? `Import transactions for "${account.name}". You can export transaction history from your bank's website.`
-            : 'Import your transaction history to start tracking your finances.';
+            ? __(
+                  "Import transactions for your account. You can export transaction history from your bank's website.",
+              )
+            : __(
+                  'Import your transaction history to start tracking your finances.',
+              );
     }, [account]);
 
     return (
@@ -51,38 +56,44 @@ export function StepImportTransactions({
             <StepHeader
                 icon={Upload}
                 iconContainerClassName="bg-gradient-to-br from-indigo-400 to-purple-500"
-                title="Import Your Transactions"
+                title={__('Import Your Transactions')}
                 description={description}
             />
 
             <div className="mb-4 w-full max-w-md rounded-xl border bg-card p-6">
                 <h3 className="mb-4 font-semibold">
-                    How to Export from Your Bank:
+                    {__('How to Export from Your Bank:')}
                 </h3>
                 <ol className="space-y-3 text-sm text-muted-foreground">
                     <li className="flex gap-3">
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                             1
                         </span>
-                        <span>Log in to your bank's website or app</span>
+                        <span>
+                            {__("Log in to your bank's website or app")}
+                        </span>
                     </li>
                     <li className="flex gap-3">
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                             2
                         </span>
-                        <span>Go to your account's transaction history</span>
+                        <span>
+                            {__("Go to your account's transaction history")}
+                        </span>
                     </li>
                     <li className="flex gap-3">
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                             3
                         </span>
-                        <span>Look for "Export" or "Download" option</span>
+                        <span>
+                            {__('Look for "Export" or "Download" option')}
+                        </span>
                     </li>
                     <li className="flex gap-3">
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                             4
                         </span>
-                        <span>Download as CSV or Excel format</span>
+                        <span>{__('Download as CSV or Excel format')}</span>
                     </li>
                 </ol>
             </div>
@@ -90,9 +101,11 @@ export function StepImportTransactions({
             <div className="mb-6 flex w-full max-w-md items-center gap-4 rounded-lg border border-dashed border-muted-foreground/30 p-4">
                 <FileSpreadsheet className="size-10 rounded-full bg-muted p-2.5 text-muted-foreground" />
                 <div className="flex flex-col gap-0.5">
-                    <p className="text-sm font-medium">Supported formats</p>
+                    <p className="text-sm font-medium">
+                        {__('Supported formats')}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                        CSV, XLS, XLSX files
+                        {__('CSV, XLS, XLSX files')}
                     </p>
                 </div>
             </div>
@@ -104,7 +117,7 @@ export function StepImportTransactions({
                     className="group w-full gap-2 !px-8 py-6 sm:w-auto"
                 >
                     <Upload className="h-4 w-4" />
-                    Import Transactions
+                    {__('Import Transactions')}
                 </Button>
 
                 {hasImported && (
@@ -114,7 +127,8 @@ export function StepImportTransactions({
                         onClick={onComplete}
                         className="group gap-2"
                     >
-                        Continue
+                        {__('Continue')}
+
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Button>
                 )}

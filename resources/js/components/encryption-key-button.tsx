@@ -1,5 +1,6 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
 import { LockKeyhole, LockKeyholeOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
@@ -70,8 +71,8 @@ export function EncryptionKeyButton() {
                             onClick={handleClick}
                             aria-label={
                                 isKeySet
-                                    ? 'Lock encryption key'
-                                    : 'Unlock encryption key'
+                                    ? __('Lock encryption key')
+                                    : __('Unlock encryption key')
                             }
                         >
                             {isKeySet ? (
@@ -83,8 +84,8 @@ export function EncryptionKeyButton() {
                     </TooltipTrigger>
                     <TooltipContent>
                         {isKeySet
-                            ? 'Click to lock encryption key'
-                            : 'Click to unlock encryption key'}
+                            ? __('Click to lock encryption key')
+                            : __('Click to unlock encryption key')}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
@@ -103,11 +104,11 @@ export function EncryptionKeyButton() {
             <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Clear Encryption Key?</DialogTitle>
+                        <DialogTitle>{__('Clear Encryption Key?')}</DialogTitle>
                         <DialogDescription>
-                            This will remove your encryption key from this
-                            browser session. You'll need to enter your password
-                            again to unlock encrypted content.
+                            {__(
+                                "This will remove your encryption key from this browser session. You'll need to enter your password again to unlock encrypted content.",
+                            )}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -115,9 +116,11 @@ export function EncryptionKeyButton() {
                             variant="outline"
                             onClick={() => setShowClearDialog(false)}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
-                        <Button onClick={handleClearKey}>Clear Key</Button>
+                        <Button onClick={handleClearKey}>
+                            {__('Clear Key')}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

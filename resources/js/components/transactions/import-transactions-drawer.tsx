@@ -31,6 +31,7 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -597,39 +598,45 @@ export function ImportTransactionsDrawer({
         switch (state.step) {
             case ImportStep.SelectAccount:
                 return {
-                    title: 'Select Account',
-                    description:
+                    title: __('Select Account'),
+                    description: __(
                         'Choose the account where transactions will be imported',
+                    ),
                 };
             case ImportStep.UploadFile:
                 return {
-                    title: 'Upload File',
-                    description:
+                    title: __('Upload File'),
+                    description: __(
                         'Drop your CSV or Excel file here, or click to browse',
+                    ),
                 };
             case ImportStep.MapColumns:
                 return {
-                    title: 'Map Columns',
-                    description:
+                    title: __('Map Columns'),
+                    description: __(
                         'Match your file columns to transaction fields',
+                    ),
                 };
             case ImportStep.Preview:
                 return {
-                    title: 'Preview Transactions',
-                    description: 'Review transactions before importing',
+                    title: __('Preview Transactions'),
+                    description: __('Review transactions before importing'),
                 };
             default:
                 if (isImporting) {
                     return {
-                        title: 'Importing Transactions',
-                        description:
+                        title: __('Importing Transactions'),
+                        description: __(
                             'Please wait while we import your transactions',
+                        ),
                     };
                 }
 
                 return {
-                    title: 'Import Transactions',
-                    description: 'Import transactions from CSV or Excel files',
+                    title: __('Import Transactions'),
+                    description: __(
+                        'Import transactions from CSV or Excel files',
+                    ),
                 };
         }
     };
@@ -647,6 +654,7 @@ export function ImportTransactionsDrawer({
                         }}
                     />
                 );
+
             case ImportStep.UploadFile:
                 return (
                     <ImportStepUpload
@@ -658,6 +666,7 @@ export function ImportTransactionsDrawer({
                         onBack={() => moveToStep(ImportStep.SelectAccount)}
                     />
                 );
+
             case ImportStep.MapColumns:
                 return (
                     <ImportStepMapping
@@ -673,6 +682,7 @@ export function ImportTransactionsDrawer({
                         onBack={() => moveToStep(ImportStep.UploadFile)}
                     />
                 );
+
             case ImportStep.Preview:
                 return (
                     <ImportStepPreview
@@ -686,6 +696,7 @@ export function ImportTransactionsDrawer({
                         isImporting={isImporting}
                     />
                 );
+
             default:
                 return null;
         }
@@ -700,8 +711,10 @@ export function ImportTransactionsDrawer({
                 <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
-                            {importProgress} of {importTotal} transactions
-                            imported
+                            {importProgress} of {importTotal}
+                            {__(
+                                'transactions\n                            imported',
+                            )}
                         </span>
                         <span>{Math.round(percentage)}%</span>
                     </div>
@@ -712,7 +725,8 @@ export function ImportTransactionsDrawer({
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-destructive">
-                                Errors ({importErrors.length})
+                                {__('Errors (')}
+                                {importErrors.length})
                             </h3>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto rounded-lg border">
@@ -720,19 +734,19 @@ export function ImportTransactionsDrawer({
                                 <thead className="sticky top-0 bg-muted">
                                     <tr className="border-b">
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Row
+                                            {__('Row')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Date
+                                            {__('Date')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Description
+                                            {__('Description')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Amount
+                                            {__('Amount')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            Error
+                                            {__('Error')}
                                         </th>
                                     </tr>
                                 </thead>

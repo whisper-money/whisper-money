@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
+import { __ } from '@/utils/i18n';
 import { Check, ChevronsUpDown, Plus, Tag, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -190,13 +191,16 @@ export function LabelCombobox({
             <PopoverContent className="w-[300px] p-0" align="start">
                 <Command shouldFilter={false}>
                     <CommandInput
-                        placeholder="Search or create labels..."
+                        placeholder={__('Search or create labels...')}
                         value={inputValue}
                         onValueChange={setInputValue}
                     />
+
                     <CommandList>
                         {sortedLabels.length === 0 && !showCreateOption && (
-                            <CommandEmpty>No labels found.</CommandEmpty>
+                            <CommandEmpty>
+                                {__('No labels found.')}
+                            </CommandEmpty>
                         )}
                         {allowRemoveAll && (
                             <CommandItem
@@ -207,7 +211,7 @@ export function LabelCombobox({
                                 className="gap-2"
                             >
                                 <X className="h-4 w-4" />
-                                Remove all labels
+                                {__('Remove all labels')}
                             </CommandItem>
                         )}
                         {showCreateOption && (

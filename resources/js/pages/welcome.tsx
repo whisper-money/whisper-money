@@ -13,6 +13,7 @@ import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
+import { __ } from '@/utils/i18n';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     BellIcon,
@@ -84,12 +85,12 @@ function LandingPlanCard({
         >
             {isDefault && (
                 <div className="bg-emerald-500 p-3 text-center text-xs font-semibold text-white uppercase">
-                    Most Popular
+                    {__('Most Popular')}
                 </div>
             )}
             {isBestValue && (
                 <div className="bg-blue-50 p-3 text-center text-xs font-semibold text-blue-500 uppercase">
-                    Best Value
+                    {__('Best Value')}
                 </div>
             )}
             <div
@@ -101,7 +102,7 @@ function LandingPlanCard({
 
             <div className="relative flex flex-1 flex-col p-6">
                 <div className="flex items-center gap-3">
-                    <h3 className="text-xl font-semibold">{plan.name}</h3>
+                    <h3 className="text-xl font-semibold">{__(plan.name)}</h3>
                 </div>
 
                 <div className="mt-4 flex items-baseline gap-2">
@@ -119,14 +120,16 @@ function LandingPlanCard({
                 </div>
 
                 <p className="mt-3 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                    Everything you need to manage your finances securely.
+                    {__(
+                        'Everything you need to manage your finances securely.',
+                    )}
                 </p>
 
                 <ul className="mt-5 flex-1 space-y-2.5">
                     {plan.features.map((feature) => (
                         <li key={feature} className="flex items-center gap-2.5">
                             <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                            <span className="text-sm">{feature}</span>
+                            <span className="text-sm">{__(feature)}</span>
                         </li>
                     ))}
                 </ul>
@@ -141,7 +144,7 @@ function LandingPlanCard({
                         )}
                         variant={isDefault ? 'default' : 'outline'}
                     >
-                        Get Started
+                        {__('Get Started')}
                     </Button>
                 </Link>
             </div>
@@ -150,16 +153,43 @@ function LandingPlanCard({
 }
 
 export default function Welcome({
-    canRegister = true,
-    hideAuthButtons = false,
+    canRegister,
+    hideAuthButtons,
 }: {
     canRegister?: boolean;
     hideAuthButtons?: boolean;
 }) {
-    const { appUrl, subscriptionsEnabled, pricing } =
+    const { appUrl, subscriptionsEnabled, pricing, locale } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
+
+    // Handle localStorage for language preference
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+
+        if (langParam && ['en', 'es'].includes(langParam)) {
+            // Store the preference in localStorage
+            localStorage.setItem('whisper_landing_locale', langParam);
+        } else {
+            // No query param - check if we have a stored preference
+            const storedLocale = localStorage.getItem('whisper_landing_locale');
+
+            if (
+                storedLocale &&
+                storedLocale !== locale &&
+                ['en', 'es'].includes(storedLocale)
+            ) {
+                // Redirect to stored preference
+                window.location.href = `/?lang=${storedLocale}`;
+                return;
+            } else if (!storedLocale && locale) {
+                // First visit - store the detected locale from session/header
+                localStorage.setItem('whisper_landing_locale', locale);
+            }
+        }
+    }, [locale]);
 
     const [isPwa] = useState(() => {
         if (typeof window === 'undefined') {
@@ -189,56 +219,81 @@ export default function Welcome({
 
     return (
         <>
-            <Head title="Whisper Money - The Most Secure Personal Finance App">
+            <Head
+                title={__(
+                    'Whisper Money - The Most Secure Personal Finance App',
+                )}
+            >
                 <meta
                     name="description"
-                    content="The most secure personal finance app with end-to-end encryption. Track expenses, create budgets, and manage your money privately."
+                    content={__(
+                        'The most secure personal finance app with end-to-end encryption. Track expenses, create budgets, and manage your money privately.',
+                    )}
                 />
+
                 <meta
                     name="keywords"
-                    content="finance app, budgeting, expense tracking, end-to-end encryption, secure finance, personal finance, money management, privacy, encrypted finance app"
+                    content={__(
+                        'finance app, budgeting, expense tracking, end-to-end encryption, secure finance, personal finance, money management, privacy, encrypted finance app',
+                    )}
                 />
+
                 <link rel="canonical" href={appUrl} />
 
                 <meta property="og:site_name" content="Whisper Money" />
                 <meta
                     property="og:title"
-                    content="Whisper Money - The Most Secure Personal Finance App"
+                    content={__(
+                        'Whisper Money - The Most Secure Personal Finance App',
+                    )}
                 />
+
                 <meta
                     property="og:description"
-                    content="Your financial data stays private with end-to-end encryption. The most secure way to manage your personal finances."
+                    content={__(
+                        'Your financial data stays private with end-to-end encryption. The most secure way to manage your personal finances.',
+                    )}
                 />
+
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={appUrl} />
                 <meta
                     property="og:image"
                     content={`${appUrl}/images/og_whisper_money.png`}
                 />
+
                 <meta property="og:image:width" content="1200" />
                 <meta property="og:image:height" content="630" />
                 <meta
                     property="og:image:alt"
-                    content="Whisper Money - Secure Personal Finance App"
+                    content={__('Whisper Money - Secure Personal Finance App')}
                 />
-                <meta property="og:locale" content="en_US" />
 
-                <meta name="twitter:card" content="summary_large_image" />
+                <meta property="og:locale" content={__('en_US')} />
+
+                <meta name="twitter:card" content={__('summary_large_image')} />
                 <meta
                     name="twitter:title"
-                    content="Whisper Money - The Most Secure Personal Finance App"
+                    content={__(
+                        'Whisper Money - The Most Secure Personal Finance App',
+                    )}
                 />
+
                 <meta
                     name="twitter:description"
-                    content="Your financial data stays private with end-to-end encryption. The most secure way to manage your personal finances."
+                    content={__(
+                        'Your financial data stays private with end-to-end encryption. The most secure way to manage your personal finances.',
+                    )}
                 />
+
                 <meta
                     name="twitter:image"
                     content={`${appUrl}/images/og_whisper_money.png`}
                 />
+
                 <meta
                     name="twitter:image:alt"
-                    content="Whisper Money - Secure Personal Finance App"
+                    content={__('Whisper Money - Secure Personal Finance App')}
                 />
 
                 <script type="application/ld+json">
@@ -279,19 +334,18 @@ export default function Welcome({
                                 <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
                                     <LockIcon className="size-3.5 opacity-75" />
                                     <span className="text-[#706f6c] dark:text-[#A1A09A]">
-                                        E2E Encryption
+                                        {__('Free & Private')}
                                     </span>
                                 </span>
                                 <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
-                                    The most secure way to understand your
-                                    finances
+                                    {__(
+                                        'All your money in one place. No spreadsheets. Free.',
+                                    )}
                                 </h1>
                                 <p className="mb-4 max-w-[840px] text-lg leading-8 font-medium text-[#706f6c] lg:text-xl lg:leading-8 dark:text-[#A1A09A]">
-                                    Your financial data stays private with
-                                    end-to-end encryption. Track expenses,
-                                    create budgets, and achieve your goals—all
-                                    while keeping your information completely
-                                    secure.
+                                    {__(
+                                        'Understand your finances and make better decisions without the friction. Track expenses, create budgets, and achieve your goals\u2014all in one place.',
+                                    )}
                                 </p>
                                 <div className="flex w-full max-w-lg flex-col gap-4">
                                     {isMobile ? (
@@ -303,7 +357,7 @@ export default function Welcome({
                                                 className="w-full"
                                             >
                                                 <Button className="text-shadow duration h-14 w-full cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:bg-[#eeeeec] dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:bg-white hover:dark:from-zinc-50 dark:hover:shadow-md">
-                                                    Get Started
+                                                    {__('Get Started')}
                                                 </Button>
                                             </Link>
                                             <Link href="/login?demo=1">
@@ -312,14 +366,15 @@ export default function Welcome({
                                                     size={'lg'}
                                                     className="h-14"
                                                 >
-                                                    Check Demo
+                                                    {__('Check Demo')}
                                                 </Button>
                                             </Link>
                                         </div>
                                     )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                        Your data is yours alone. Sign up to get
-                                        started.
+                                        {__(
+                                            'No credit card required. Your data stays private with E2E encryption.',
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -345,6 +400,7 @@ export default function Welcome({
                                                         alt={image.alt}
                                                         className="w-full rounded-lg dark:hidden"
                                                     />
+
                                                     <img
                                                         src={image.dark}
                                                         alt={image.alt}
@@ -371,11 +427,12 @@ export default function Welcome({
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 sm:gap-12">
                             <div className="flex flex-col items-center gap-4 text-center">
                                 <h2 className="max-w-[720px] text-3xl leading-tight font-semibold text-balance sm:text-5xl sm:leading-tight">
-                                    How End-to-End Encryption Works
+                                    {__('How End-to-End Encryption Works')}
                                 </h2>
                                 <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-xl dark:text-[#A1A09A]">
-                                    Your financial data is encrypted on your
-                                    device before it ever reaches our servers.
+                                    {__(
+                                        'Your financial data is encrypted on your\n                                    device before it ever reaches our servers.',
+                                    )}
                                 </p>
                             </div>
 
@@ -386,13 +443,14 @@ export default function Welcome({
                                         darkSrc="/images/landing_videos/Whisper Money - Dark - Encryption.mp4"
                                         className="w-full max-w-4xl"
                                     />
+
                                     <h3 className="text-xl font-semibold">
-                                        Your Private Key
+                                        {__('Your Private Key')}
                                     </h3>
                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        A unique encryption key is generated on
-                                        your device. Only you have access to
-                                        it—we never see or store it.
+                                        {__(
+                                            'A unique encryption key is generated on your device. Only you have access to it—we never see or store it.',
+                                        )}
                                     </p>
                                 </div>
 
@@ -400,15 +458,19 @@ export default function Welcome({
                                     {[
                                         {
                                             icon: LockIcon,
-                                            title: 'Client-Side Encryption',
-                                            description:
+                                            title: __('Client-Side Encryption'),
+                                            description: __(
                                                 'Your transactions, accounts, and budgets are encrypted on your device before syncing to the cloud.',
+                                            ),
                                         },
                                         {
                                             icon: ShieldCheckIcon,
-                                            title: 'Zero-Knowledge Architecture',
-                                            description:
+                                            title: __(
+                                                'Zero-Knowledge Architecture',
+                                            ),
+                                            description: __(
                                                 "We store encrypted data we can't read. Even if our servers were compromised, your data stays secure.",
+                                            ),
                                         },
                                     ].map((item) => (
                                         <div
@@ -435,11 +497,12 @@ export default function Welcome({
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 sm:gap-12">
                             <div className="flex flex-col items-center gap-4 text-center">
                                 <h2 className="max-w-[720px] text-3xl leading-tight font-semibold sm:text-5xl sm:leading-tight">
-                                    Privacy by Design
+                                    {__('Privacy by Design')}
                                 </h2>
                                 <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-xl dark:text-[#A1A09A]">
-                                    No AI. No bank connections. Your privacy is
-                                    our priority.
+                                    {__(
+                                        'No AI. No bank connections. Your privacy is\n                                    our priority.',
+                                    )}
                                 </p>
                             </div>
 
@@ -450,15 +513,13 @@ export default function Welcome({
                                             <BrainIcon className="size-6 text-red-600 dark:text-red-400" />
                                         </div>
                                         <h3 className="text-2xl font-semibold">
-                                            No AI Snooping
+                                            {__('No AI Snooping')}
                                         </h3>
                                     </div>
                                     <p className="text-[#706f6c] dark:text-[#A1A09A]">
-                                        AI can't help you with your transactions
-                                        because they're end-to-end encrypted.
-                                        This is intentional—we believe your
-                                        financial data should never be fed into
-                                        AI systems that you don't control.
+                                        {__(
+                                            "AI can't help you with your transactions\n                                        because they're end-to-end encrypted.\n                                        This is intentional\u2014we believe your\n                                        financial data should never be fed into\n                                        AI systems that you don't control.",
+                                        )}
                                     </p>
                                 </div>
 
@@ -468,15 +529,13 @@ export default function Welcome({
                                             <Building2Icon className="size-6 text-red-600 dark:text-red-400" />
                                         </div>
                                         <h3 className="text-2xl font-semibold">
-                                            No Bank Access Required
+                                            {__('No Bank Access Required')}
                                         </h3>
                                     </div>
                                     <p className="text-[#706f6c] dark:text-[#A1A09A]">
-                                        We don't need direct access to your bank
-                                        accounts. No sharing credentials, no
-                                        third-party integrations, no security
-                                        risks. You stay in complete control of
-                                        your financial data.
+                                        {__(
+                                            "We don't need direct access to your bank\n                                        accounts. No sharing credentials, no\n                                        third-party integrations, no security\n                                        risks. You stay in complete control of\n                                        your financial data.",
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -487,11 +546,12 @@ export default function Welcome({
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 sm:gap-12">
                             <div className="flex flex-col items-center gap-4 text-center">
                                 <h2 className="max-w-[720px] text-3xl leading-tight font-semibold text-balance sm:text-5xl sm:leading-tight">
-                                    Import Your Transactions in Seconds
+                                    {__('Import Your Transactions in Seconds')}
                                 </h2>
                                 <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-xl dark:text-[#A1A09A]">
-                                    Get started quickly with your existing
-                                    financial data.
+                                    {__(
+                                        'Get started quickly with your existing\n                                    financial data.',
+                                    )}
                                 </p>
                             </div>
 
@@ -502,14 +562,12 @@ export default function Welcome({
 
                                 <div className="flex flex-col gap-6 text-center">
                                     <h3 className="text-2xl font-semibold">
-                                        Lightning-Fast CSV/XLS Import
+                                        {__('Lightning-Fast CSV/XLS Import')}
                                     </h3>
                                     <p className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
-                                        Import a year's worth of transactions in
-                                        under 10 seconds. Simply export a CSV or
-                                        XLS file from your bank and drag it into
-                                        Whisper Money. All data is encrypted
-                                        locally before upload.
+                                        {__(
+                                            "Import a year's worth of transactions in\n                                        under 10 seconds. Simply export a CSV or\n                                        XLS file from your bank and drag it into\n                                        Whisper Money. All data is encrypted\n                                        locally before upload.",
+                                        )}
                                     </p>
                                 </div>
 
@@ -517,19 +575,19 @@ export default function Welcome({
                                     <div className="flex items-center gap-3 rounded-lg border border-[#e3e3e0] bg-background p-4 dark:border-[#3E3E3A]">
                                         <CheckIcon className="size-5 shrink-0 text-emerald-500" />
                                         <span className="text-sm font-medium">
-                                            Export from any bank
+                                            {__('Export from any bank')}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3 rounded-lg border border-[#e3e3e0] bg-background p-4 dark:border-[#3E3E3A]">
                                         <CheckIcon className="size-5 shrink-0 text-emerald-500" />
                                         <span className="text-sm font-medium">
-                                            Encrypted on your device
+                                            {__('Encrypted on your device')}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3 rounded-lg border border-[#e3e3e0] bg-background p-4 dark:border-[#3E3E3A]">
                                         <CheckIcon className="size-5 shrink-0 text-emerald-500" />
                                         <span className="text-sm font-medium">
-                                            Import in seconds
+                                            {__('Import in seconds')}
                                         </span>
                                     </div>
                                 </div>
@@ -540,7 +598,7 @@ export default function Welcome({
                     <section className="px-4 py-12 sm:py-24 md:py-32 dark:border-[#3E3E3A]">
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 sm:gap-20">
                             <h2 className="max-w-[560px] text-center text-3xl leading-tight font-semibold sm:text-5xl sm:leading-tight">
-                                Everything you need. Nothing you don't.
+                                {__("Everything you need. Nothing you don't.")}
                             </h2>
                             <div className="grid auto-rows-fr grid-cols-2 gap-0 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
@@ -548,11 +606,12 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <ShieldCheckIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        End-to-end encryption
+                                        {__('End-to-end encryption')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
-                                        Your financial data is encrypted on your
-                                        device. Only you can access it.
+                                        {__(
+                                            'Your financial data is encrypted on your\n                                        device. Only you can access it.',
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
@@ -560,11 +619,12 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <TrendingUpIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        Smart budgeting
+                                        {__('Smart budgeting')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
-                                        Create budgets that adapt to your
-                                        spending habits and goals.
+                                        {__(
+                                            'Create budgets that adapt to your\n                                        spending habits and goals.',
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
@@ -572,11 +632,12 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <BellIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        Intelligent insights
+                                        {__('Intelligent insights')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
-                                        Are you overspending? Know exactly where
-                                        you stand.
+                                        {__(
+                                            'Are you overspending? Know exactly where\n                                        you stand.',
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
@@ -584,11 +645,12 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <PieChartIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        Visual insights
+                                        {__('Visual insights')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
-                                        Understand your spending with beautiful
-                                        charts and reports.
+                                        {__(
+                                            'Understand your spending with beautiful\n                                        charts and reports.',
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
@@ -596,11 +658,12 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <SmartphoneIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        Works everywhere
+                                        {__('Works everywhere')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
-                                        Access your finances on any device,
-                                        anytime, anywhere.
+                                        {__(
+                                            'Access your finances on any device,\n                                        anytime, anywhere.',
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
@@ -608,11 +671,12 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <ZapIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        Lightning fast
+                                        {__('Lightning fast')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
-                                        Built for speed with instant sync and
-                                        smooth interactions.
+                                        {__(
+                                            'Built for speed with instant sync and\n                                        smooth interactions.',
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
@@ -620,11 +684,12 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <EyeOffIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        Zero tracking
+                                        {__('Zero tracking')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
-                                        We don't track, sell, or share your
-                                        data. Ever.
+                                        {__(
+                                            "We don't track, sell, or share your\n                                        data. Ever.",
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 p-4 text-[#1b1b18] dark:text-[#EDEDEC]">
@@ -632,11 +697,12 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <CodeIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        Open source
+                                        {__('Open source')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
-                                        Fully transparent and open source.
-                                        Review the code yourself.
+                                        {__(
+                                            'Fully transparent and open source.\n                                        Review the code yourself.',
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -653,10 +719,12 @@ export default function Welcome({
                                 <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 sm:gap-12">
                                     <div className="flex flex-col items-center gap-4 text-center">
                                         <p className="max-w-[600px] text-sm tracking-wider text-[#706f6c] uppercase dark:text-[#A1A09A]">
-                                            Choose the plan that works for you
+                                            {__(
+                                                'Choose the plan that works for you',
+                                            )}
                                         </p>
                                         <h2 className="text-2xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
-                                            Simple, transparent pricing
+                                            {__('Simple, transparent pricing')}
                                         </h2>
                                     </div>
 
@@ -692,7 +760,9 @@ export default function Welcome({
 
                                     {pricing.promo.enabled && (
                                         <p className="text-center text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                            🎉 Get a founder discount •{' '}
+                                            {__(
+                                                '\uD83C\uDF89 Get a founder discount \u2022',
+                                            )}{' '}
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
@@ -702,13 +772,15 @@ export default function Welcome({
                                                             rel="noopener noreferrer"
                                                             className="font-semibold text-[#5865F2] underline-offset-2 hover:underline"
                                                         >
-                                                            Join our Discord
+                                                            {__(
+                                                                'Join our Discord',
+                                                            )}
                                                         </a>
                                                     </TooltipTrigger>
                                                     <TooltipContent>
-                                                        You'll receive an
-                                                        exclusive promo code via
-                                                        DM!
+                                                        {__(
+                                                            "You'll receive an\n                                                        exclusive promo code via\n                                                        DM!",
+                                                        )}
                                                     </TooltipContent>
                                                 </Tooltip>
                                             </TooltipProvider>
@@ -722,12 +794,14 @@ export default function Welcome({
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-1 text-center sm:gap-16">
                             <div className="flex flex-col items-center gap-4 px-4 sm:gap-4">
                                 <h2 className="max-w-[720px] text-2xl leading-tight font-semibold sm:text-3xl sm:leading-tight">
-                                    Trusted by people who value their privacy
+                                    {__(
+                                        'Trusted by people who value their privacy',
+                                    )}
                                 </h2>
                                 <p className="text-md max-w-[600px] font-medium text-[#706f6c] sm:text-xl dark:text-[#A1A09A]">
-                                    Join thousands of users who have taken
-                                    control of their finances without
-                                    compromising their privacy.
+                                    {__(
+                                        'Join thousands of users who have taken\n                                    control of their finances without\n                                    compromising their privacy.',
+                                    )}
                                 </p>
                             </div>
                             <div className="relative flex w-full flex-col items-center justify-center overflow-hidden">
@@ -737,108 +811,51 @@ export default function Welcome({
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Sarah M.
+                                                        {__('Sarah M.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @sarahm_finance
+                                                        {__('@sarahm_finance')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Finally, a finance app that
-                                                respects my privacy. The
-                                                encryption gives me peace of
-                                                mind.
+                                                {__(
+                                                    'Finally, a finance app that\n                                                respects my privacy. The\n                                                encryption gives me peace of\n                                                mind.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Michael R.
+                                                        {__('Michael R.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @mike_tech
+                                                        {__('@mike_tech')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                The budgeting features are
-                                                intuitive and the dark mode is
-                                                gorgeous. Best finance app I've
-                                                used.
+                                                {__(
+                                                    "The budgeting features are\n                                                intuitive and the dark mode is\n                                                gorgeous. Best finance app I've\n                                                used.",
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Emma L.
+                                                        {__('Emma L.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @emmalou
+                                                        {__('@emmalou')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Love that my financial data is
-                                                encrypted. No more worrying
-                                                about data breaches!
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="animate-marquee flex shrink-0 flex-row justify-around [gap:var(--gap)] group-hover:[animation-play-state:paused]">
-                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-start">
-                                                    <h3 className="text-md leading-none font-semibold">
-                                                        Sarah M.
-                                                    </h3>
-                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @sarahm_finance
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Finally, a finance app that
-                                                respects my privacy. The
-                                                encryption gives me peace of
-                                                mind.
-                                            </p>
-                                        </div>
-                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-start">
-                                                    <h3 className="text-md leading-none font-semibold">
-                                                        Michael R.
-                                                    </h3>
-                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @mike_tech
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                The budgeting features are
-                                                intuitive and the dark mode is
-                                                gorgeous. Best finance app I've
-                                                used.
-                                            </p>
-                                        </div>
-                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-start">
-                                                    <h3 className="text-md leading-none font-semibold">
-                                                        Emma L.
-                                                    </h3>
-                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @emmalou
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Love that my financial data is
-                                                encrypted. No more worrying
-                                                about data breaches!
+                                                {__(
+                                                    'Love that my financial data is\n                                                encrypted. No more worrying\n                                                about data breaches!',
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -847,53 +864,51 @@ export default function Welcome({
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Sarah M.
+                                                        {__('Sarah M.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @sarahm_finance
+                                                        {__('@sarahm_finance')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Finally, a finance app that
-                                                respects my privacy. The
-                                                encryption gives me peace of
-                                                mind.
+                                                {__(
+                                                    'Finally, a finance app that\n                                                respects my privacy. The\n                                                encryption gives me peace of\n                                                mind.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Michael R.
+                                                        {__('Michael R.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @mike_tech
+                                                        {__('@mike_tech')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                The budgeting features are
-                                                intuitive and the dark mode is
-                                                gorgeous. Best finance app I've
-                                                used.
+                                                {__(
+                                                    "The budgeting features are\n                                                intuitive and the dark mode is\n                                                gorgeous. Best finance app I've\n                                                used.",
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Emma L.
+                                                        {__('Emma L.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @emmalou
+                                                        {__('@emmalou')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Love that my financial data is
-                                                encrypted. No more worrying
-                                                about data breaches!
+                                                {__(
+                                                    'Love that my financial data is\n                                                encrypted. No more worrying\n                                                about data breaches!',
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -902,53 +917,104 @@ export default function Welcome({
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Sarah M.
+                                                        {__('Sarah M.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @sarahm_finance
+                                                        {__('@sarahm_finance')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Finally, a finance app that
-                                                respects my privacy. The
-                                                encryption gives me peace of
-                                                mind.
+                                                {__(
+                                                    'Finally, a finance app that\n                                                respects my privacy. The\n                                                encryption gives me peace of\n                                                mind.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Michael R.
+                                                        {__('Michael R.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @mike_tech
+                                                        {__('@mike_tech')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                The budgeting features are
-                                                intuitive and the dark mode is
-                                                gorgeous. Best finance app I've
-                                                used.
+                                                {__(
+                                                    "The budgeting features are\n                                                intuitive and the dark mode is\n                                                gorgeous. Best finance app I've\n                                                used.",
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Emma L.
+                                                        {__('Emma L.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @emmalou
+                                                        {__('@emmalou')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Love that my financial data is
-                                                encrypted. No more worrying
-                                                about data breaches!
+                                                {__(
+                                                    'Love that my financial data is\n                                                encrypted. No more worrying\n                                                about data breaches!',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="animate-marquee flex shrink-0 flex-row justify-around [gap:var(--gap)] group-hover:[animation-play-state:paused]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md leading-none font-semibold">
+                                                        {__('Sarah M.')}
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        {__('@sarahm_finance')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'Finally, a finance app that\n                                                respects my privacy. The\n                                                encryption gives me peace of\n                                                mind.',
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md leading-none font-semibold">
+                                                        {__('Michael R.')}
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        {__('@mike_tech')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    "The budgeting features are\n                                                intuitive and the dark mode is\n                                                gorgeous. Best finance app I've\n                                                used.",
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md leading-none font-semibold">
+                                                        {__('Emma L.')}
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        {__('@emmalou')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'Love that my financial data is\n                                                encrypted. No more worrying\n                                                about data breaches!',
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -967,100 +1033,43 @@ export default function Welcome({
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                As a developer, I appreciate the
-                                                security architecture. This is
-                                                how finance apps should be
-                                                built.
+                                                {__(
+                                                    'As a developer, I appreciate the\n                                                security architecture. This is\n                                                how finance apps should be\n                                                built.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Jessica P.
+                                                        {__('Jessica P.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @jessicap
+                                                        {__('@jessicap')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                The automation rules save me so
-                                                much time. And knowing my data
-                                                is private? Priceless.
+                                                {__(
+                                                    'The automation rules save me so\n                                                much time. And knowing my data\n                                                is private? Priceless.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Alex T.
+                                                        {__('Alex T.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @alext_money
+                                                        {__('@alext_money')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Clean interface, powerful
-                                                features, and zero compromise on
-                                                privacy. What more could you
-                                                want?
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="animate-marquee flex shrink-0 flex-row justify-around [gap:var(--gap)] [animation-direction:reverse] group-hover:[animation-play-state:paused]">
-                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-start">
-                                                    <h3 className="text-md leading-none font-semibold">
-                                                        David K.
-                                                    </h3>
-                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @davidk_dev
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                As a developer, I appreciate the
-                                                security architecture. This is
-                                                how finance apps should be
-                                                built.
-                                            </p>
-                                        </div>
-                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-start">
-                                                    <h3 className="text-md leading-none font-semibold">
-                                                        Jessica P.
-                                                    </h3>
-                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @jessicap
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                The automation rules save me so
-                                                much time. And knowing my data
-                                                is private? Priceless.
-                                            </p>
-                                        </div>
-                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex flex-col items-start">
-                                                    <h3 className="text-md leading-none font-semibold">
-                                                        Alex T.
-                                                    </h3>
-                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @alext_money
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Clean interface, powerful
-                                                features, and zero compromise on
-                                                privacy. What more could you
-                                                want?
+                                                {__(
+                                                    'Clean interface, powerful\n                                                features, and zero compromise on\n                                                privacy. What more could you\n                                                want?',
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -1077,45 +1086,43 @@ export default function Welcome({
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                As a developer, I appreciate the
-                                                security architecture. This is
-                                                how finance apps should be
-                                                built.
+                                                {__(
+                                                    'As a developer, I appreciate the\n                                                security architecture. This is\n                                                how finance apps should be\n                                                built.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Jessica P.
+                                                        {__('Jessica P.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @jessicap
+                                                        {__('@jessicap')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                The automation rules save me so
-                                                much time. And knowing my data
-                                                is private? Priceless.
+                                                {__(
+                                                    'The automation rules save me so\n                                                much time. And knowing my data\n                                                is private? Priceless.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Alex T.
+                                                        {__('Alex T.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @alext_money
+                                                        {__('@alext_money')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Clean interface, powerful
-                                                features, and zero compromise on
-                                                privacy. What more could you
-                                                want?
+                                                {__(
+                                                    'Clean interface, powerful\n                                                features, and zero compromise on\n                                                privacy. What more could you\n                                                want?',
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -1132,45 +1139,96 @@ export default function Welcome({
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                As a developer, I appreciate the
-                                                security architecture. This is
-                                                how finance apps should be
-                                                built.
+                                                {__(
+                                                    'As a developer, I appreciate the\n                                                security architecture. This is\n                                                how finance apps should be\n                                                built.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Jessica P.
+                                                        {__('Jessica P.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @jessicap
+                                                        {__('@jessicap')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                The automation rules save me so
-                                                much time. And knowing my data
-                                                is private? Priceless.
+                                                {__(
+                                                    'The automation rules save me so\n                                                much time. And knowing my data\n                                                is private? Priceless.',
+                                                )}
                                             </p>
                                         </div>
                                         <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-start">
                                                     <h3 className="text-md leading-none font-semibold">
-                                                        Alex T.
+                                                        {__('Alex T.')}
                                                     </h3>
                                                     <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                        @alext_money
+                                                        {__('@alext_money')}
                                                     </p>
                                                 </div>
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                Clean interface, powerful
-                                                features, and zero compromise on
-                                                privacy. What more could you
-                                                want?
+                                                {__(
+                                                    'Clean interface, powerful\n                                                features, and zero compromise on\n                                                privacy. What more could you\n                                                want?',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="animate-marquee flex shrink-0 flex-row justify-around [gap:var(--gap)] [animation-direction:reverse] group-hover:[animation-play-state:paused]">
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md leading-none font-semibold">
+                                                        David K.
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        @davidk_dev
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'As a developer, I appreciate the\n                                                security architecture. This is\n                                                how finance apps should be\n                                                built.',
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md leading-none font-semibold">
+                                                        {__('Jessica P.')}
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        {__('@jessicap')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'The automation rules save me so\n                                                much time. And knowing my data\n                                                is private? Priceless.',
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="glass-3 flex max-w-[320px] flex-col rounded-lg p-4 text-start shadow-md sm:max-w-[420px] sm:p-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-start">
+                                                    <h3 className="text-md leading-none font-semibold">
+                                                        {__('Alex T.')}
+                                                    </h3>
+                                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                        {__('@alext_money')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'Clean interface, powerful\n                                                features, and zero compromise on\n                                                privacy. What more could you\n                                                want?',
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -1185,22 +1243,30 @@ export default function Welcome({
                 <footer className="py-8 dark:border-[#3E3E3A]">
                     <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#706f6c] sm:flex-row lg:px-8 dark:text-[#A1A09A]">
                         <p>
-                            © {new Date().getFullYear()} Whisper Money. All
-                            rights reserved.
+                            © {new Date().getFullYear()}
+                            {__(
+                                'Whisper Money. All\n                            rights reserved.',
+                            )}
                         </p>
                         <div className="flex gap-6">
                             <Link
                                 href="/privacy"
                                 className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
                             >
-                                Privacy Policy
+                                {__('Privacy Policy')}
                             </Link>
                             <Link
                                 href="/terms"
                                 className="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
                             >
-                                Terms of Service
+                                {__('Terms of Service')}
                             </Link>
+                            <a
+                                href={`/?lang=${locale === 'es' ? 'en' : 'es'}`}
+                                className="cursor-pointer hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
+                            >
+                                {locale === 'es' ? 'English' : 'Español'}
+                            </a>
                         </div>
                     </div>
                 </footer>

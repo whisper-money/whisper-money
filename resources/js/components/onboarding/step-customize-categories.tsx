@@ -1,6 +1,7 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
+import { __ } from '@/utils/i18n';
 import { Check, Settings, SkipForward } from 'lucide-react';
 
 interface StepCustomizeCategoriesProps {
@@ -17,22 +18,26 @@ export function StepCustomizeCategories({
             <StepHeader
                 icon={Settings}
                 iconContainerClassName="bg-gradient-to-br from-pink-400 to-rose-500"
-                title="Customize Your Categories"
-                description="We've created a comprehensive set of categories for you. You can customize them now or adjust them later in settings."
+                title={__('Customize Your Categories')}
+                description={__(
+                    "We've created a comprehensive set of categories for you. You can customize them now or adjust them later in settings.",
+                )}
             />
 
             <div className="mb-8 w-full max-w-md rounded-xl border bg-card p-6">
-                <h3 className="mb-4 font-semibold">Your Categories Include:</h3>
+                <h3 className="mb-4 font-semibold">
+                    {__('Your Categories Include:')}
+                </h3>
                 <div className="space-y-2">
                     {[
-                        'Food & Dining (Groceries, Restaurants, Delivery)',
-                        'Housing (Rent, Utilities, Maintenance)',
-                        'Transportation (Fuel, Public Transit, Parking)',
-                        'Shopping (Clothing, Electronics, Gifts)',
-                        'Entertainment (Movies, Sports, Hobbies)',
-                        'Health & Wellness (Medical, Pharmacy, Fitness)',
-                        'Income (Salary, Freelance, Investments)',
-                        'Transfers (Between accounts, Savings)',
+                        __('Food & Dining (Groceries, Restaurants, Delivery)'),
+                        __('Housing (Rent, Utilities, Maintenance)'),
+                        __('Transportation (Fuel, Public Transit, Parking)'),
+                        __('Shopping (Clothing, Electronics, Gifts)'),
+                        __('Entertainment (Movies, Sports, Hobbies)'),
+                        __('Health & Wellness (Medical, Pharmacy, Fitness)'),
+                        __('Income (Salary, Freelance, Investments)'),
+                        __('Transfers (Between accounts, Savings)'),
                     ].map((category) => (
                         <div
                             key={category}
@@ -43,7 +48,7 @@ export function StepCustomizeCategories({
                         </div>
                     ))}
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span className="ml-6">...and 40+ more</span>
+                        <span className="ml-6">{__('...and 40+ more')}</span>
                     </div>
                 </div>
             </div>
@@ -56,14 +61,15 @@ export function StepCustomizeCategories({
                     className="group gap-2"
                 >
                     <SkipForward className="h-4 w-4" />
-                    Use Defaults
+                    {__('Use Defaults')}
                 </Button>
-                <StepButton text="Continue" onClick={onContinue} />
+                <StepButton text={__('Continue')} onClick={onContinue} />
             </div>
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
-                You can always customize categories later in Settings →
-                Categories
+                {__(
+                    'You can always customize categories later in Settings \u2192\n                Categories',
+                )}
             </p>
         </div>
     );

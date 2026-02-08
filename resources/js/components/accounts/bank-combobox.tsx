@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { type Bank } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -121,7 +122,7 @@ export function BankCombobox({
                             <span>{selectedBank.name}</span>
                         </div>
                     ) : (
-                        'Select bank...'
+                        __('Select bank...')
                     )}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -132,17 +133,18 @@ export function BankCombobox({
             >
                 <Command filter={() => 1}>
                     <CommandInput
-                        placeholder="Search bank..."
+                        placeholder={__('Search bank...')}
                         value={searchQuery}
                         onValueChange={setSearchQuery}
                     />
+
                     <CommandList>
                         <CommandEmpty>
                             {isLoading
-                                ? 'Searching...'
+                                ? __('Searching...')
                                 : searchQuery.length < 3
-                                  ? 'Type at least 3 characters to search'
-                                  : 'No bank found.'}
+                                  ? __('Type at least 3 characters to search')
+                                  : __('No bank found.')}
                         </CommandEmpty>
                         <CommandGroup>
                             {banks.map((bank) => (
@@ -190,7 +192,8 @@ export function BankCombobox({
                                         >
                                             <Plus className="mr-2 h-4 w-4" />
                                             <span>
-                                                Create &quot;{searchQuery}&quot;
+                                                {__('Create "')}
+                                                {searchQuery}&quot;
                                             </span>
                                         </CommandItem>
                                     </CommandGroup>

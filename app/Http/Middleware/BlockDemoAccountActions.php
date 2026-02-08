@@ -18,7 +18,7 @@ class BlockDemoAccountActions
 
     public function handle(Request $request, Closure $next, ?string $mode = null): Response
     {
-        if (! $request->user()?->isDemoAccount()) {
+        if (! $request->user()?->isDemoAccount() || app()->environment('local')) {
             return $next($request);
         }
 

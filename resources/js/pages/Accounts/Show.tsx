@@ -26,6 +26,7 @@ import {
     isTransactionalAccount,
 } from '@/types/account';
 import { Category } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
@@ -67,13 +68,14 @@ export default function AccountShow({
                     length={{ min: 5, max: 20 }}
                 />
             ),
+
             href: show.url(account.id),
         },
     ];
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
-            <Head title="Account Details" />
+            <Head title={__('Account Details')} />
 
             <div className="space-y-6 p-6">
                 <div className="sm flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -109,7 +111,7 @@ export default function AccountShow({
                                 variant="outline"
                                 onClick={() => setUpdateBalanceOpen(true)}
                             >
-                                Update balance
+                                {__('Update balance')}
                             </Button>
                         </ButtonGroup>
                         <ButtonGroup>
@@ -117,14 +119,14 @@ export default function AccountShow({
                                 variant="outline"
                                 onClick={() => setImportBalancesOpen(true)}
                             >
-                                Import balances
+                                {__('Import balances')}
                             </Button>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         variant="outline"
                                         size="icon"
-                                        aria-label="More options"
+                                        aria-label={__('More options')}
                                     >
                                         <ChevronDown className="h-4 w-4" />
                                     </Button>
@@ -133,19 +135,19 @@ export default function AccountShow({
                                     <DropdownMenuItem
                                         onClick={() => setBalancesOpen(true)}
                                     >
-                                        See balances
+                                        {__('See balances')}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={() => setEditOpen(true)}
                                     >
-                                        Edit account
+                                        {__('Edit account')}
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                         onClick={() => setDeleteOpen(true)}
                                         variant="destructive"
                                     >
-                                        Delete
+                                        {__('Delete')}
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>

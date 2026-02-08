@@ -22,6 +22,7 @@ import {
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
 import type { Label as LabelType } from '@/types/label';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
@@ -133,22 +134,24 @@ export function EditAutomationRuleDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="overflow-x-hidden sm:max-w-[600px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Automation Rule</DialogTitle>
+                    <DialogTitle>{__('Edit Automation Rule')}</DialogTitle>
                     <DialogDescription>
-                        Update the rule to automatically categorize transactions
-                        and add labels.
+                        {__(
+                            'Update the rule to automatically categorize transactions\n                        and add labels.',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="title">Title</Label>
+                        <Label htmlFor="title">{__('Title')}</Label>
                         <Input
                             id="title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Rule title"
+                            placeholder={__('Rule title')}
                             required
                         />
+
                         {errors.title && (
                             <p className="text-sm text-red-500">
                                 {errors.title}
@@ -157,7 +160,7 @@ export function EditAutomationRuleDialog({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="priority">Priority</Label>
+                        <Label htmlFor="priority">{__('Priority')}</Label>
                         <Input
                             id="priority"
                             type="number"
@@ -167,8 +170,9 @@ export function EditAutomationRuleDialog({
                             placeholder="0"
                             required
                         />
+
                         <p className="text-xs text-muted-foreground">
-                            Lower numbers execute first
+                            {__('Lower numbers execute first')}
                         </p>
                         {errors.priority && (
                             <p className="text-sm text-red-500">
@@ -184,30 +188,32 @@ export function EditAutomationRuleDialog({
                     />
 
                     <div className="space-y-4 rounded-md border p-4">
-                        <h4 className="font-medium">Actions</h4>
+                        <h4 className="font-medium">{__('Actions')}</h4>
                         <p className="text-sm text-muted-foreground">
-                            At least one action is required
+                            {__('At least one action is required')}
                         </p>
 
                         <div className="space-y-2">
-                            <Label htmlFor="category">Set Category</Label>
+                            <Label htmlFor="category">
+                                {__('Set Category')}
+                            </Label>
                             <CategoryCombobox
                                 value={categoryId}
                                 onValueChange={setCategoryId}
                                 categories={categories}
-                                placeholder="Select a category (optional)"
+                                placeholder={__('Select a category (optional)')}
                                 showUncategorized={false}
                                 data-testid="action-category-select"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label>Add Labels</Label>
+                            <Label>{__('Add Labels')}</Label>
                             <LabelCombobox
                                 value={selectedLabelIds}
                                 onValueChange={setSelectedLabelIds}
                                 labels={labels}
-                                placeholder="Select labels (optional)"
+                                placeholder={__('Select labels (optional)')}
                                 allowCreate={true}
                             />
                         </div>
@@ -233,7 +239,7 @@ export function EditAutomationRuleDialog({
                             onClick={() => onOpenChange(false)}
                             disabled={isSubmitting}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
                         <Button
                             type="submit"

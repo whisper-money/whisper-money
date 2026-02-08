@@ -40,7 +40,7 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
-        $isDemoAccount = $user?->isDemoAccount() ?? false;
+        $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local') ?? false;
         $isDemoQuery = $request->query('demo') === '1';
 
         return [
@@ -94,6 +94,25 @@ class HandleInertiaRequests extends Middleware
             'labels' => fn () => $user ? $user->labels()
                 ->orderBy('name')
                 ->get(['id', 'name', 'color']) : [],
+            'locale' => app()->getLocale(),
+            'translations' => $this->getTranslations(),
         ];
+    }
+
+    /**
+     * Get all translations for the current locale as a flat key-value array.
+     *
+     * @return array<string, string>
+     */
+    protected function getTranslations(): array
+    {
+        $locale = app()->getLocale();
+        $translationFile = lang_path("{$locale}.json");
+
+        if (! file_exists($translationFile)) {
+            return [];
+        }
+
+        return json_decode(file_get_contents($translationFile), true) ?? [];
     }
 }

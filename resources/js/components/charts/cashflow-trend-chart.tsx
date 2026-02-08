@@ -8,7 +8,10 @@ import {
 } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { TrendDataPoint } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { formatCompactNumber, formatMonthFromYearMonth } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { useEffect, useRef } from 'react';
 import {
     Bar,
@@ -28,21 +31,6 @@ interface CashflowTrendChartProps {
     currency?: string;
 }
 
-const chartConfig: ChartConfig = {
-    income: {
-        label: 'Income',
-        color: 'var(--color-chart-2)',
-    },
-    expense: {
-        label: 'Expenses',
-        color: 'var(--color-chart-5)',
-    },
-    net: {
-        label: 'Net',
-        color: 'var(--color-chart-1)',
-    },
-};
-
 interface TooltipPayloadItem {
     dataKey?: string;
     value?: number;
@@ -57,24 +45,13 @@ interface CustomTooltipProps {
     currency?: string;
 }
 
-function formatMonth(yearMonth: string): string {
-    const [year, month] = yearMonth.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-    const isCurrentYear = date.getFullYear() === new Date().getFullYear();
-
-    return date.toLocaleDateString(
-        'en-US',
-        isCurrentYear
-            ? { month: 'short' }
-            : { year: '2-digit', month: 'short' },
-    );
-}
-
 function CustomTooltip({
     active,
     payload,
     currency = 'USD',
 }: CustomTooltipProps) {
+    const locale = useLocale();
+
     if (!active || !payload?.length) return null;
 
     const data = payload[0].payload;
@@ -82,12 +59,14 @@ function CustomTooltip({
 
     return (
         <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
-            <div className="mb-2 font-medium">{formatMonth(data.month)}</div>
+            <div className="mb-2 font-medium">
+                {formatMonthFromYearMonth(data.month, locale)}
+            </div>
             <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
                     <span className="flex items-center gap-2">
                         <span className="size-2 rounded-full bg-[var(--color-chart-2)]" />
-                        Income
+                        {__('Income')}
                     </span>
                     <AmountDisplay
                         amountInCents={data.income}
@@ -100,7 +79,7 @@ function CustomTooltip({
                 <div className="flex items-center justify-between gap-4">
                     <span className="flex items-center gap-2">
                         <span className="size-2 rounded-full bg-[var(--color-chart-5)]" />
-                        Expenses
+                        {__('Expenses')}
                     </span>
                     <AmountDisplay
                         amountInCents={data.expense}
@@ -113,7 +92,7 @@ function CustomTooltip({
                 <div className="flex items-center justify-between gap-4 border-t pt-1">
                     <span className="flex items-center gap-2">
                         <span className="size-2 rounded-full bg-[var(--color-chart-1)]" />
-                        Net
+                        {__('Net')}
                     </span>
                     <AmountDisplay
                         amountInCents={data.net}
@@ -137,8 +116,24 @@ export function CashflowTrendChart({
     className,
     currency = 'USD',
 }: CashflowTrendChartProps) {
+    const locale = useLocale();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
+
+    const chartConfig: ChartConfig = {
+        income: {
+            label: __('Income'),
+            color: 'var(--color-chart-2)',
+        },
+        expense: {
+            label: __('Expenses'),
+            color: 'var(--color-chart-5)',
+        },
+        net: {
+            label: __('Net'),
+            color: 'var(--color-chart-1)',
+        },
+    };
 
     useEffect(() => {
         if (scrollContainerRef.current) {
@@ -151,7 +146,9 @@ export function CashflowTrendChart({
         return (
             <Card className={className}>
                 <CardHeader>
-                    <CardTitle className="text-base">Cashflow Trend</CardTitle>
+                    <CardTitle className="text-base">
+                        {__('Cashflow Trend')}
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="h-[250px] animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
@@ -163,10 +160,13 @@ export function CashflowTrendChart({
     return (
         <Card className={className}>
             <CardHeader className="gap-1 pb-4">
-                <CardTitle className="text-base">Cashflow Trend</CardTitle>
+                <CardTitle className="text-base">
+                    {__('Cashflow Trend')}
+                </CardTitle>
                 <CardDescription>
-                    Monthly income, expenses, and net cashflow over the last 12
-                    months
+                    {__(
+                        'Monthly income, expenses, and net cashflow over the last 12 months',
+                    )}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -183,33 +183,36 @@ export function CashflowTrendChart({
                                 stroke="var(--color-border)"
                                 opacity={0.3}
                             />
+
                             <XAxis
                                 dataKey="month"
                                 tickLine={false}
                                 tickMargin={10}
                                 axisLine={false}
-                                tickFormatter={formatMonth}
+                                tickFormatter={(value) =>
+                                    formatMonthFromYearMonth(value, locale)
+                                }
                             />
+
                             <YAxis
                                 tickLine={false}
                                 axisLine={false}
-                                tickFormatter={(value: number) => {
-                                    return new Intl.NumberFormat('en-US', {
-                                        notation: 'compact',
-                                        compactDisplay: 'short',
-                                        style: 'currency',
-                                        currency: currency,
-                                        minimumFractionDigits: 0,
-                                        maximumFractionDigits: 0,
-                                    }).format(value / 100);
-                                }}
+                                tickFormatter={(value: number) =>
+                                    formatCompactNumber(
+                                        value / 100,
+                                        locale,
+                                        currency,
+                                    )
+                                }
                                 width={60}
                             />
+
                             <ReferenceLine
                                 y={0}
                                 stroke="var(--color-border)"
                                 strokeDasharray="3 3"
                             />
+
                             <Tooltip
                                 content={<CustomTooltip currency={currency} />}
                                 cursor={{
@@ -217,6 +220,7 @@ export function CashflowTrendChart({
                                     opacity: 0.3,
                                 }}
                             />
+
                             <Bar
                                 dataKey="income"
                                 fill="var(--color-chart-2)"
@@ -224,6 +228,7 @@ export function CashflowTrendChart({
                                 stackId="a"
                                 name="Income"
                             />
+
                             <Bar
                                 dataKey="expense"
                                 fill="var(--color-chart-5)"
@@ -231,6 +236,7 @@ export function CashflowTrendChart({
                                 stackId="b"
                                 name="Expenses"
                             />
+
                             <Line
                                 type="monotone"
                                 dataKey="net"
@@ -250,15 +256,15 @@ export function CashflowTrendChart({
                 <div className="mt-4 flex items-center justify-center gap-6 text-xs">
                     <div className="flex items-center gap-2">
                         <span className="size-3 rounded bg-[var(--color-chart-2)]" />
-                        <span>Income</span>
+                        <span>{__('Income')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="size-3 rounded bg-[var(--color-chart-5)]" />
-                        <span>Expenses</span>
+                        <span>{__('Expenses')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="size-3 rounded-full bg-[var(--color-chart-1)]" />
-                        <span>Net</span>
+                        <span>{__('Net')}</span>
                     </div>
                 </div>
             </CardContent>

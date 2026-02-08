@@ -12,6 +12,7 @@ import {
 } from '@/lib/sankey-utils';
 import { cn } from '@/lib/utils';
 import { Category } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { useMemo, useState } from 'react';
 
 interface SankeyChartProps {
@@ -75,10 +76,11 @@ function OtherCategoriesBreakdown({
             <div className="space-y-3">
                 <div>
                     <h4 className="text-sm font-medium">
-                        Other Categories ({categories.length})
+                        {__('Other Categories (')}
+                        {categories.length})
                     </h4>
                     <p className="text-xs text-muted-foreground">
-                        Categories below 5% of total
+                        {__('Categories below 5% of total')}
                     </p>
                 </div>
 
@@ -102,6 +104,7 @@ function OtherCategoriesBreakdown({
                                                 'var(--color-chart-4)',
                                         }}
                                     />
+
                                     <span className="truncate">
                                         {item.category.name}
                                     </span>
@@ -122,7 +125,7 @@ function OtherCategoriesBreakdown({
                 <Separator />
 
                 <div className="flex items-center justify-between text-sm font-medium">
-                    <span>Total</span>
+                    <span>{__('Total')}</span>
                     <span>{formatAmount(total, currency)}</span>
                 </div>
             </div>
@@ -201,7 +204,7 @@ export function SankeyChart({
             );
             const otherNode: NodeData = {
                 id: 'income-other',
-                label: 'Other',
+                label: __('Other'),
                 value: groupedIncome.other.total,
                 color: 'var(--color-muted)',
                 y: incomeY,
@@ -223,7 +226,7 @@ export function SankeyChart({
         const centerY = (height - centerHeight) / 2;
         const centerNode: NodeData = {
             id: 'center',
-            label: 'Cashflow',
+            label: __('Cashflow'),
             value: total_income - total_expense,
             color: 'var(--color-chart-1)',
             y: centerY,
@@ -267,7 +270,7 @@ export function SankeyChart({
             );
             const otherNode: NodeData = {
                 id: 'expense-other',
-                label: 'Other',
+                label: __('Other'),
                 value: groupedExpense.other.total,
                 color: 'var(--color-muted)',
                 y: expenseY,
@@ -334,7 +337,7 @@ export function SankeyChart({
                 )}
                 style={{ height }}
             >
-                No cashflow data for this period
+                {__('No cashflow data for this period')}
             </div>
         );
     }
@@ -453,6 +456,7 @@ export function SankeyChart({
                                     strokeWidth={isOtherNode ? 1 : 0}
                                     className="transition-all duration-200"
                                 />
+
                                 {/* Label */}
                                 <text
                                     x={

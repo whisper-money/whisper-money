@@ -9,6 +9,7 @@ import { useCashflowData } from '@/hooks/use-cashflow-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import { endOfMonth, format, parse, startOfMonth } from 'date-fns';
 import { useEffect, useState } from 'react';
@@ -78,14 +79,17 @@ export default function CashflowPage() {
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
-            <Head title="Cashflow" />
+            <Head title={__('Cashflow')} />
 
             <div className="space-y-6 p-6">
                 <div className="flex items-center justify-between">
                     <HeadingSmall
-                        title="Cashflow"
-                        description="Track your income, expenses, and savings"
+                        title={__('Cashflow')}
+                        description={__(
+                            'Track your income, expenses, and savings',
+                        )}
                     />
+
                     <PeriodNavigation
                         currentDate={currentDate}
                         onDateChange={setCurrentDate}
@@ -100,6 +104,7 @@ export default function CashflowPage() {
                         loading={isLoading}
                         currency={auth.user.currency_code}
                     />
+
                     <SavingsRateCard
                         current={summary.current}
                         previous={summary.previous}
@@ -110,7 +115,9 @@ export default function CashflowPage() {
                 {/* Sankey Diagram */}
                 <Card>
                     <CardHeader className="pb-4">
-                        <CardTitle className="text-base">Money Flow</CardTitle>
+                        <CardTitle className="text-base">
+                            {__('Money Flow')}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
@@ -133,6 +140,7 @@ export default function CashflowPage() {
                         loading={isLoading}
                         currency={auth.user.currency_code}
                     />
+
                     <BreakdownCard
                         type="expense"
                         data={expenseBreakdown}

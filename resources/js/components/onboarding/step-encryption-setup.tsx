@@ -18,6 +18,7 @@ import {
     getKeyFromPassword,
 } from '@/lib/crypto';
 import { storeKey } from '@/lib/key-storage';
+import { __ } from '@/utils/i18n';
 import axios from 'axios';
 import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
 import { useState } from 'react';
@@ -44,12 +45,12 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
         setError(null);
 
         if (password.length < 12) {
-            setError('Password must be at least 12 characters');
+            setError(__('Password must be at least 12 characters'));
             return;
         }
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            setError(__('Passwords do not match'));
             return;
         }
 
@@ -73,7 +74,7 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
             onComplete();
         } catch (err) {
             console.error('Encryption setup error:', err);
-            setError('Failed to setup encryption. Please try again.');
+            setError(__('Failed to setup encryption. Please try again.'));
             setProcessing(false);
         }
     }
@@ -83,24 +84,29 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
             <StepHeader
                 icon={KeyRound}
                 iconContainerClassName="bg-gradient-to-br from-amber-400 to-orange-500"
-                title="Create Your Encryption Password"
-                description="This password will encrypt all your financial data. Make it strong and memorable — we can't recover it for you."
+                title={__('Create Your Encryption Password')}
+                description={__(
+                    "This password will encrypt all your financial data. Make it strong and memorable \u2014 we can't recover it for you.",
+                )}
             />
 
             <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
                 <div className="space-y-2">
-                    <Label htmlFor="password">Encryption Password</Label>
+                    <Label htmlFor="password">
+                        {__('Encryption Password')}
+                    </Label>
                     <Input
                         id="password"
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter a strong password"
+                        placeholder={__('Enter a strong password')}
                         disabled={processing}
                         autoComplete="new-password"
                         required
                         minLength={12}
                     />
+
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex flex-1 items-center gap-2">
                             <div className="flex flex-1 gap-1">
@@ -116,39 +122,45 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                                 ))}
                             </div>
                             <span className="text-xs text-muted-foreground">
-                                {passwordStrength.label}
+                                {__(passwordStrength.label)}
                             </span>
                         </div>
                         <span
                             className={`text-xs ${password.length >= 12 ? 'text-emerald-600' : 'text-muted-foreground'}`}
                         >
-                            {password.length}/12 min
+                            {password.length}
+                            {__('/12 min')}
                         </span>
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword">
+                        {__('Confirm Password')}
+                    </Label>
                     <Input
                         id="confirmPassword"
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm your password"
+                        placeholder={__('Confirm your password')}
                         disabled={processing}
                         autoComplete="new-password"
                         required
                     />
+
                     {confirmPassword && password === confirmPassword && (
                         <div className="flex items-center gap-1 text-xs text-emerald-600">
                             <CheckCircle2 className="h-3 w-3" />
-                            Passwords match
+                            {__('Passwords match')}
                         </div>
                     )}
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="storagePreference">Key Storage</Label>
+                    <Label htmlFor="storagePreference">
+                        {__('Key Storage')}
+                    </Label>
                     <Select
                         value={storagePreference}
                         onValueChange={(value) =>
@@ -163,17 +175,19 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="session">
-                                Session only (more secure)
+                                {__('Session only (more secure)')}
                             </SelectItem>
                             <SelectItem value="persistent">
-                                Keep me logged in (convenient)
+                                {__('Keep me logged in (convenient)')}
                             </SelectItem>
                         </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
                         {storagePreference === 'session'
-                            ? 'Your key will be cleared when you close the browser.'
-                            : 'Your key will be stored until you log out.'}
+                            ? __(
+                                  'Your key will be cleared when you close the browser.',
+                              )
+                            : __('Your key will be stored until you log out.')}
                     </p>
                 </div>
 
@@ -188,8 +202,8 @@ export function StepEncryptionSetup({ onComplete }: StepEncryptionSetupProps) {
                     type="submit"
                     disabled={processing || password.length < 12}
                     loading={processing}
-                    loadingText="Setting up encryption..."
-                    text={'Setup Encryption'}
+                    loadingText={__('Setting up encryption...')}
+                    text={__('Setup Encryption')}
                     className="w-full sm:w-full"
                 />
             </form>

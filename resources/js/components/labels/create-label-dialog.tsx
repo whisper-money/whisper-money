@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { getLabelColorClasses, LABEL_COLORS } from '@/types/label';
+import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -28,13 +29,13 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>Create Label</Button>
+                <Button>{__('Create Label')}</Button>
             </DialogTrigger>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Create Label</DialogTitle>
+                    <DialogTitle>{__('Create Label')}</DialogTitle>
                     <DialogDescription>
-                        Add a new label to tag your transactions.
+                        {__('Add a new label to tag your transactions.')}
                     </DialogDescription>
                 </DialogHeader>
                 <Form
@@ -48,13 +49,14 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
                     {({ errors, processing }) => (
                         <>
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">{__('Name')}</Label>
                                 <Input
                                     id="name"
                                     name="name"
-                                    placeholder="Label name"
+                                    placeholder={__('Label name')}
                                     required
                                 />
+
                                 {errors.name && (
                                     <p className="text-sm text-red-500">
                                         {errors.name}
@@ -63,10 +65,12 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="color">Color</Label>
+                                <Label htmlFor="color">{__('Color')}</Label>
                                 <Select name="color" required>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select a color" />
+                                        <SelectValue
+                                            placeholder={__('Select a color')}
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {LABEL_COLORS.map((color) => {
@@ -81,7 +85,7 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
                                                         <Badge
                                                             className={`${colorClasses.bg} ${colorClasses.text}`}
                                                         >
-                                                            {color}
+                                                            {__(color)}
                                                         </Badge>
                                                     </div>
                                                 </SelectItem>
@@ -103,7 +107,7 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
                                     onClick={() => setOpen(false)}
                                     disabled={processing}
                                 >
-                                    Cancel
+                                    {__('Cancel')}
                                 </Button>
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Creating...' : 'Create'}

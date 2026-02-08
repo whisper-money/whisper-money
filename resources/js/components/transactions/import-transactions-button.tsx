@@ -9,6 +9,7 @@ import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
+import { __ } from '@/utils/i18n';
 import { Upload } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -30,7 +31,7 @@ export function ImportTransactionsButton() {
     const handleOpenDrawer = async () => {
         if (!isKeySet) {
             toast.error(
-                'Please unlock your encryption key to import transactions',
+                __('Please unlock your encryption key to import transactions'),
             );
             return;
         }
@@ -63,18 +64,18 @@ export function ImportTransactionsButton() {
                             className={`h-9 ${!isKeySet || loading ? 'cursor-not-allowed opacity-50' : ''}`}
                             onClick={handleOpenDrawer}
                             disabled={loading}
-                            aria-label="Import transactions"
+                            aria-label={__('Import transactions')}
                         >
                             <Upload className="h-5 w-5" />
                             <span className="">
-                                {loading ? 'Loading...' : 'Import'}
+                                {loading ? __('Loading...') : __('Import')}
                             </span>
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                         {!isKeySet
-                            ? `Unlock encryption to import transactions`
-                            : `Import transactions from CSV/Excel`}
+                            ? __('Unlock encryption to import transactions')
+                            : __('Import transactions from CSV/Excel')}
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>

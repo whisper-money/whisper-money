@@ -1,4 +1,5 @@
 import { type SharedData } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Head, Link, usePage } from '@inertiajs/react';
 
 export default function Terms() {
@@ -6,22 +7,29 @@ export default function Terms() {
 
     return (
         <>
-            <Head title="Terms of Service - Whisper Money">
+            <Head title={__('Terms of Service - Whisper Money')}>
                 <meta
                     name="description"
-                    content="Terms of service for Whisper Money. Review the rules and regulations for using our secure personal finance platform."
+                    content={__(
+                        'Terms of service for Whisper Money. Review the rules and regulations for using our secure personal finance platform.',
+                    )}
                 />
+
                 <link rel="canonical" href={`${appUrl}/terms`} />
-                <meta name="robots" content="index, follow" />
+                <meta name="robots" content={__('index, follow')} />
 
                 <meta
                     property="og:title"
-                    content="Terms of Service - Whisper Money"
+                    content={__('Terms of Service - Whisper Money')}
                 />
+
                 <meta
                     property="og:description"
-                    content="Terms of service for Whisper Money. Review the rules and regulations for using our platform."
+                    content={__(
+                        'Terms of service for Whisper Money. Review the rules and regulations for using our platform.',
+                    )}
                 />
+
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={`${appUrl}/terms`} />
             </Head>
@@ -31,16 +39,17 @@ export default function Terms() {
                         href="/"
                         className="mb-8 inline-block text-sm text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
                     >
-                        ← Back to home
+                        {__('\u2190 Back to home')}
                     </Link>
 
                     <h1 className="mb-8 text-4xl font-semibold">
-                        Terms of Service
+                        {__('Terms of Service')}
                     </h1>
 
                     <div className="prose prose-neutral dark:prose-invert max-w-none">
                         <p className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
-                            Last updated: {new Date().toLocaleDateString()}
+                            {__('Last updated:')}
+                            {new Date().toLocaleDateString()}
                         </p>
 
                         <section className="mt-8">
@@ -48,84 +57,88 @@ export default function Terms() {
                                 1. Service Provider
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                These Terms of Service govern your use of the
-                                Whisper Money personal finance platform.
+                                {__(
+                                    'These Terms of Service govern your use of the\n                                Whisper Money personal finance platform.',
+                                )}
                             </p>
                             <div className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 <p>
-                                    <strong>Company Name:</strong> Whisper Money
+                                    <strong>{__('Company Name:')}</strong>{' '}
+                                    Whisper Money
                                 </p>
                                 <p>
-                                    <strong>Address:</strong> Calle Oca, Madrid
-                                    - 28025, Spain
+                                    <strong>{__('Address:')}</strong> Calle Oca,
+                                    Madrid - 28025, Spain
                                 </p>
                                 <p>
-                                    <strong>Email:</strong> victor@whisper.money
+                                    <strong>{__('Email:')}</strong>
+                                    {__('victor@whisper.money')}
                                 </p>
                             </div>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                2. Acceptance of Terms
+                                {__('2. Acceptance of Terms')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                By creating an account or using Whisper Money,
-                                you agree to be bound by these Terms of Service
-                                and our Privacy Policy. If you do not agree to
-                                these terms, you may not use our service. These
-                                terms constitute a legally binding agreement
-                                between you and Whisper Money.
+                                {__(
+                                    'By creating an account or using Whisper Money,\n                                you agree to be bound by these Terms of Service\n                                and our Privacy Policy. If you do not agree to\n                                these terms, you may not use our service. These\n                                terms constitute a legally binding agreement\n                                between you and Whisper Money.',
+                                )}
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                You must be at least 16 years old to use this
-                                service. By using Whisper Money, you represent
-                                and warrant that you meet this age requirement.
+                                {__(
+                                    'You must be at least 16 years old to use this\n                                service. By using Whisper Money, you represent\n                                and warrant that you meet this age requirement.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                3. Service Description
+                                {__('3. Service Description')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                Whisper Money is a personal finance tracking
-                                application that allows you to:
+                                {__(
+                                    'Whisper Money is a personal finance tracking\n                                application that allows you to:',
+                                )}
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
-                                    Manually record and track your financial
-                                    transactions, budgets, and expenses
+                                    {__(
+                                        'Manually record and track your financial\n                                    transactions, budgets, and expenses',
+                                    )}
                                 </li>
                                 <li>
-                                    Organize financial data with categories and
-                                    custom labels
+                                    {__(
+                                        'Organize financial data with categories and\n                                    custom labels',
+                                    )}
                                 </li>
                                 <li>
-                                    Sync your encrypted financial data across
-                                    multiple devices via cloud storage
+                                    {__(
+                                        'Sync your encrypted financial data across\n                                    multiple devices via cloud storage',
+                                    )}
                                 </li>
                                 <li>
-                                    Access your data with end-to-end encryption
-                                    to ensure privacy and security
+                                    {__(
+                                        'Access your data with end-to-end encryption\n                                    to ensure privacy and security',
+                                    )}
                                 </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We reserve the right to modify, suspend, or
-                                discontinue any part of the service at any time,
-                                with or without notice. We will not be liable to
-                                you or any third party for any modification,
-                                suspension, or discontinuation of the service.
+                                {__(
+                                    'We reserve the right to modify, suspend, or\n                                discontinue any part of the service at any time,\n                                with or without notice. We will not be liable to\n                                you or any third party for any modification,\n                                suspension, or discontinuation of the service.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                4. User Accounts and Responsibilities
+                                {__('4. User Accounts and Responsibilities')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                When you create an account with Whisper Money,
-                                you agree to:
+                                {__(
+                                    'When you create an account with Whisper Money,\n                                you agree to:',
+                                )}
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
@@ -133,45 +146,46 @@ export default function Terms() {
                                     information during registration
                                 </li>
                                 <li>
-                                    Maintain and promptly update your account
-                                    information
+                                    {__(
+                                        'Maintain and promptly update your account\n                                    information',
+                                    )}
                                 </li>
                                 <li>
                                     Maintain the security and confidentiality of
                                     your account credentials
                                 </li>
                                 <li>
-                                    Accept responsibility for all activities
-                                    that occur under your account
+                                    {__(
+                                        'Accept responsibility for all activities\n                                    that occur under your account',
+                                    )}
                                 </li>
                                 <li>
-                                    Notify us immediately of any unauthorized
-                                    access or security breach
+                                    {__(
+                                        'Notify us immediately of any unauthorized\n                                    access or security breach',
+                                    )}
                                 </li>
                                 <li>
-                                    Use the service only for lawful purposes and
-                                    in compliance with all applicable laws
+                                    {__(
+                                        'Use the service only for lawful purposes and\n                                    in compliance with all applicable laws',
+                                    )}
                                 </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                You may not use the service to engage in any
-                                illegal activity, transmit malicious code,
-                                attempt to gain unauthorized access to our
-                                systems, or interfere with the proper
-                                functioning of the service.
+                                {__(
+                                    'You may not use the service to engage in any\n                                illegal activity, transmit malicious code,\n                                attempt to gain unauthorized access to our\n                                systems, or interfere with the proper\n                                functioning of the service.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                5. Data Ownership and License
+                                {__('5. Data Ownership and License')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                <strong>Your Data:</strong> You retain all
-                                ownership rights to the financial data and
-                                information you enter into Whisper Money. We do
-                                not claim any ownership over your personal
-                                financial information.
+                                <strong>{__('Your Data:')}</strong>
+                                {__(
+                                    'You retain all\n                                ownership rights to the financial data and\n                                information you enter into Whisper Money. We do\n                                not claim any ownership over your personal\n                                financial information.',
+                                )}
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 By using our service, you grant us a limited
@@ -181,38 +195,31 @@ export default function Terms() {
                                 delete your data or close your account.
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                You are responsible for maintaining backups of
-                                your data. While we implement reasonable backup
-                                procedures, we recommend you export and save
-                                copies of important data regularly.
+                                {__(
+                                    'You are responsible for maintaining backups of\n                                your data. While we implement reasonable backup\n                                procedures, we recommend you export and save\n                                copies of important data regularly.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                6. Intellectual Property Rights
+                                {__('6. Intellectual Property Rights')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                The Whisper Money platform, including its
-                                software, design, text, graphics, logos, and
-                                other content (excluding your personal data), is
-                                owned by Whisper Money and protected by
-                                copyright, trademark, and other intellectual
-                                property laws. You may not copy, modify,
-                                distribute, sell, or lease any part of our
-                                service or software without our explicit written
-                                permission.
+                                {__(
+                                    'The Whisper Money platform, including its\n                                software, design, text, graphics, logos, and\n                                other content (excluding your personal data), is\n                                owned by Whisper Money and protected by\n                                copyright, trademark, and other intellectual\n                                property laws. You may not copy, modify,\n                                distribute, sell, or lease any part of our\n                                service or software without our explicit written\n                                permission.',
+                                )}
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                The Whisper Money name and logo are trademarks
-                                of Whisper Money. You may not use these
-                                trademarks without our prior written consent.
+                                {__(
+                                    'The Whisper Money name and logo are trademarks\n                                of Whisper Money. You may not use these\n                                trademarks without our prior written consent.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                7. Payment Terms
+                                {__('7. Payment Terms')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 If you subscribe to a paid plan or purchase
@@ -220,50 +227,51 @@ export default function Terms() {
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
-                                    You agree to pay all applicable fees as
-                                    described at the time of purchase
+                                    {__(
+                                        'You agree to pay all applicable fees as\n                                    described at the time of purchase',
+                                    )}
                                 </li>
                                 <li>
-                                    Payments are processed by third-party
-                                    payment processors and subject to their
-                                    terms
+                                    {__(
+                                        'Payments are processed by third-party\n                                    payment processors and subject to their\n                                    terms',
+                                    )}
                                 </li>
                                 <li>
-                                    Subscription fees are billed in advance on a
-                                    recurring basis until cancelled
+                                    {__(
+                                        'Subscription fees are billed in advance on a\n                                    recurring basis until cancelled',
+                                    )}
                                 </li>
                                 <li>
-                                    All fees are non-refundable except as
-                                    required by law or explicitly stated
-                                    otherwise
+                                    {__(
+                                        'All fees are non-refundable except as\n                                    required by law or explicitly stated\n                                    otherwise',
+                                    )}
                                 </li>
                                 <li>
-                                    We reserve the right to change our pricing
-                                    with 30 days advance notice to subscribers
+                                    {__(
+                                        'We reserve the right to change our pricing\n                                    with 30 days advance notice to subscribers',
+                                    )}
                                 </li>
                                 <li>
-                                    You are responsible for all taxes associated
-                                    with your purchase
+                                    {__(
+                                        'You are responsible for all taxes associated\n                                    with your purchase',
+                                    )}
                                 </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                You may cancel your subscription at any time.
-                                Upon cancellation, you will retain access until
-                                the end of your current billing period, after
-                                which your subscription will not renew.
+                                {__(
+                                    'You may cancel your subscription at any time.\n                                Upon cancellation, you will retain access until\n                                the end of your current billing period, after\n                                which your subscription will not renew.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                8. Termination
+                                {__('8. Termination')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                You may terminate your account at any time by
-                                deleting your account through the application
-                                settings or by contacting us. Upon termination,
-                                your right to use the service will immediately
-                                cease.
+                                {__(
+                                    'You may terminate your account at any time by\n                                deleting your account through the application\n                                settings or by contacting us. Upon termination,\n                                your right to use the service will immediately\n                                cease.',
+                                )}
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 We may suspend or terminate your account if you
@@ -275,18 +283,20 @@ export default function Terms() {
                                 serious violations or legal requirements.
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                Upon termination, we will delete your personal
-                                data in accordance with our Privacy Policy and
-                                applicable law, typically within 30 days.
+                                {__(
+                                    'Upon termination, we will delete your personal\n                                data in accordance with our Privacy Policy and\n                                applicable law, typically within 30 days.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                9. Disclaimers and Warranties
+                                {__('9. Disclaimers and Warranties')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                <strong>Financial Advice Disclaimer:</strong>{' '}
+                                <strong>
+                                    {__('Financial Advice Disclaimer:')}
+                                </strong>{' '}
                                 Whisper Money is a tool for tracking and
                                 organizing your financial information. It does
                                 not provide financial, investment, tax, or legal
@@ -296,17 +306,17 @@ export default function Terms() {
                                 based on data in the application.
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                <strong>Service Availability:</strong> The
-                                service is provided "as is" and "as available"
-                                without warranties of any kind. We do not
-                                guarantee that the service will be
+                                <strong>{__('Service Availability:')}</strong>{' '}
+                                The service is provided "as is" and "as
+                                available" without warranties of any kind. We do
+                                not guarantee that the service will be
                                 uninterrupted, error-free, or completely secure.
                                 We strive to maintain high availability but do
                                 not warrant that the service will meet your
                                 specific requirements.
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                <strong>Data Accuracy:</strong> You are
+                                <strong>{__('Data Accuracy:')}</strong> You are
                                 responsible for the accuracy of the data you
                                 enter. We do not verify or guarantee the
                                 accuracy of your financial information. Any
@@ -317,7 +327,7 @@ export default function Terms() {
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                10. Limitation of Liability
+                                {__('10. Limitation of Liability')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 To the maximum extent permitted by applicable
@@ -330,27 +340,34 @@ export default function Terms() {
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
-                                    Your use or inability to use the service
+                                    {__(
+                                        'Your use or inability to use the service',
+                                    )}
                                 </li>
                                 <li>
-                                    Any unauthorized access to or use of our
-                                    servers and/or personal information
+                                    {__(
+                                        'Any unauthorized access to or use of our\n                                    servers and/or personal information',
+                                    )}
                                 </li>
                                 <li>
-                                    Any interruption or cessation of
-                                    transmission to or from the service
+                                    {__(
+                                        'Any interruption or cessation of\n                                    transmission to or from the service',
+                                    )}
                                 </li>
                                 <li>
-                                    Any bugs, viruses, or similar harmful
-                                    components transmitted through the service
+                                    {__(
+                                        'Any bugs, viruses, or similar harmful\n                                    components transmitted through the service',
+                                    )}
                                 </li>
                                 <li>
-                                    Any errors or omissions in content or any
-                                    loss or damage incurred from using content
+                                    {__(
+                                        'Any errors or omissions in content or any\n                                    loss or damage incurred from using content',
+                                    )}
                                 </li>
                                 <li>
-                                    Financial decisions made based on data in
-                                    the application
+                                    {__(
+                                        'Financial decisions made based on data in\n                                    the application',
+                                    )}
                                 </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
@@ -361,32 +378,26 @@ export default function Terms() {
                                 greater.
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                Nothing in these Terms excludes or limits our
-                                liability for death or personal injury caused by
-                                negligence, fraud, or any liability that cannot
-                                be excluded or limited under applicable law.
+                                {__(
+                                    'Nothing in these Terms excludes or limits our\n                                liability for death or personal injury caused by\n                                negligence, fraud, or any liability that cannot\n                                be excluded or limited under applicable law.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                11. Indemnification
+                                {__('11. Indemnification')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                You agree to indemnify, defend, and hold
-                                harmless Whisper Money and its officers,
-                                directors, employees, and agents from any
-                                claims, liabilities, damages, losses, and
-                                expenses, including reasonable legal fees,
-                                arising out of or related to your use of the
-                                service, violation of these Terms, or violation
-                                of any rights of another party.
+                                {__(
+                                    'You agree to indemnify, defend, and hold\n                                harmless Whisper Money and its officers,\n                                directors, employees, and agents from any\n                                claims, liabilities, damages, losses, and\n                                expenses, including reasonable legal fees,\n                                arising out of or related to your use of the\n                                service, violation of these Terms, or violation\n                                of any rights of another party.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                12. Governing Law and Dispute Resolution
+                                {__('12. Governing Law and Dispute Resolution')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 These Terms shall be governed by and construed
@@ -404,15 +415,15 @@ export default function Terms() {
                                 your country of residence.
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We encourage you to contact us directly at
-                                victor@whisper.money to resolve any disputes
-                                before initiating legal proceedings.
+                                {__(
+                                    'We encourage you to contact us directly at\n                                victor@whisper.money to resolve any disputes\n                                before initiating legal proceedings.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                13. Changes to Terms
+                                {__('13. Changes to Terms')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 We reserve the right to modify or replace these
@@ -423,17 +434,15 @@ export default function Terms() {
                                 our website.
                             </p>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                Your continued use of the service after the
-                                effective date of revised Terms constitutes your
-                                acceptance of the changes. If you do not agree
-                                to the new terms, you must stop using the
-                                service and may delete your account.
+                                {__(
+                                    'Your continued use of the service after the\n                                effective date of revised Terms constitutes your\n                                acceptance of the changes. If you do not agree\n                                to the new terms, you must stop using the\n                                service and may delete your account.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                14. Severability
+                                {__('14. Severability')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 If any provision of these Terms is found to be
@@ -447,32 +456,32 @@ export default function Terms() {
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                15. Entire Agreement
+                                {__('15. Entire Agreement')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                These Terms, together with our Privacy Policy,
-                                constitute the entire agreement between you and
-                                Whisper Money regarding the use of our service
-                                and supersede any prior agreements or
-                                understandings, whether written or oral.
+                                {__(
+                                    'These Terms, together with our Privacy Policy,\n                                constitute the entire agreement between you and\n                                Whisper Money regarding the use of our service\n                                and supersede any prior agreements or\n                                understandings, whether written or oral.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                16. Contact Us
+                                {__('16. Contact Us')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                If you have any questions, concerns, or feedback
-                                about these Terms of Service, please contact us:
+                                {__(
+                                    'If you have any questions, concerns, or feedback\n                                about these Terms of Service, please contact us:',
+                                )}
                             </p>
                             <div className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 <p>
-                                    <strong>Email:</strong> victor@whisper.money
+                                    <strong>{__('Email:')}</strong>
+                                    {__('victor@whisper.money')}
                                 </p>
                                 <p>
-                                    <strong>Address:</strong> Whisper Money,
-                                    Calle Oca, Madrid - 28025, Spain
+                                    <strong>{__('Address:')}</strong> Whisper
+                                    Money, Calle Oca, Madrid - 28025, Spain
                                 </p>
                             </div>
                         </section>

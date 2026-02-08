@@ -9,6 +9,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { type Label } from '@/types/label';
+import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
 
 interface DeleteLabelDialogProps {
@@ -28,10 +29,13 @@ export function DeleteLabelDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Delete Label</DialogTitle>
+                    <DialogTitle>{__('Delete Label')}</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to delete "{label.name}"? This
-                        action cannot be undone.
+                        {__('Are you sure you want to delete "')}
+                        {label.name}
+                        {__(
+                            '"? This\n                        action cannot be undone.',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
                 <Form
@@ -49,7 +53,7 @@ export function DeleteLabelDialog({
                                 onClick={() => onOpenChange(false)}
                                 disabled={processing}
                             >
-                                Cancel
+                                {__('Cancel')}
                             </Button>
                             <Button
                                 type="submit"

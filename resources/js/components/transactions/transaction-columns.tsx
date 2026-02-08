@@ -1,5 +1,7 @@
+import { formatDate } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { ColumnDef } from '@tanstack/react-table';
-import { format, getYear, parseISO } from 'date-fns';
+import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
 import { EncryptedText } from '@/components/encrypted-text';
@@ -26,6 +28,7 @@ interface CreateColumnsOptions {
     accounts: Account[];
     banks: Bank[];
     labels: Label[];
+    locale: string;
     onEdit: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
     onUpdate: (transaction: DecryptedTransaction) => void;
@@ -37,6 +40,7 @@ export function createTransactionColumns({
     accounts,
     banks,
     labels,
+    locale,
     onEdit,
     onDelete,
     onUpdate,
@@ -55,18 +59,20 @@ export function createTransactionColumns({
                     onCheckedChange={(value) =>
                         table.toggleAllPageRowsSelected(!!value)
                     }
-                    aria-label="Select all"
+                    aria-label={__('Select all')}
                 />
             ),
+
             cell: ({ row }) => (
                 <Checkbox
                     checked={row.getIsSelected()}
                     className="ml-2"
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
                     onClick={(e) => e.stopPropagation()}
-                    aria-label="Select row"
+                    aria-label={__('Select row')}
                 />
             ),
+
             enableSorting: false,
             enableHiding: false,
         },
@@ -74,7 +80,7 @@ export function createTransactionColumns({
             id: 'transaction_date',
             accessorKey: 'transaction_date',
             meta: {
-                label: 'Date',
+                label: __('Date'),
                 cellClassName: 'max-w-[95px] whitespace-normal',
             },
             header: ({ column }) => {
@@ -85,7 +91,8 @@ export function createTransactionColumns({
                             column.toggleSorting(column.getIsSorted() === 'asc')
                         }
                     >
-                        Date
+                        {__('Date')}
+
                         <ArrowDown className="h-2 w-2 opacity-25" />
                     </Button>
                 );
@@ -97,10 +104,13 @@ export function createTransactionColumns({
                 const formatString =
                     transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
 
+                const formatted = formatDate(date, formatString, locale);
+                // Capitalize first letter (important for Spanish dates)
+                const capitalized =
+                    formatted.charAt(0).toUpperCase() + formatted.slice(1);
+
                 return (
-                    <div className="pl-3 whitespace-nowrap">
-                        {format(date, formatString)}
-                    </div>
+                    <div className="pl-3 whitespace-nowrap">{capitalized}</div>
                 );
             },
             enableHiding: true,
@@ -108,11 +118,11 @@ export function createTransactionColumns({
         {
             accessorKey: 'category_id',
             meta: {
-                label: 'Category',
+                label: __('Category'),
                 cellClassName:
                     'max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
             },
-            header: 'Category',
+            header: () => __('Category'),
             cell: ({ row }) => {
                 return (
                     <CategoryCell
@@ -131,9 +141,9 @@ export function createTransactionColumns({
         {
             id: 'account',
             accessorKey: 'account',
-            header: 'Account',
+            header: () => __('Account'),
             meta: {
-                label: 'Account',
+                label: __('Account'),
                 cellClassName: '!min-w-[125px] whitespace-normal',
             },
             cell: ({ row }) => {
@@ -165,11 +175,11 @@ export function createTransactionColumns({
         {
             accessorKey: 'decryptedDescription',
             meta: {
-                label: 'Description',
+                label: __('Description'),
                 cellClassName:
                     'max-w-[200px] sm:max-w-[400px] md:max-w-[400px] lg:max-w-[550px] xl:max-w-full xl:w-full',
             },
-            header: 'Description',
+            header: () => __('Description'),
             cell: ({ row, table }) => {
                 const transaction = row.original;
                 const columnVisibility = table.getState().columnVisibility;
@@ -229,9 +239,9 @@ export function createTransactionColumns({
         },
         {
             accessorKey: 'amount',
-            meta: { label: 'Amount' },
+            meta: { label: __('Amount') },
             header: () => {
-                return <div className="w-full text-right">Amount</div>;
+                return <div className="w-full text-right">{__('Amount')}</div>;
             },
             cell: ({ row }) => {
                 const amountInCents = row.getValue('amount') as number;
@@ -271,29 +281,33 @@ export function createTransactionColumns({
                                     className="h-[24px] w-8 p-0"
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <span className="sr-only">Open menu</span>
+                                    <span className="sr-only">
+                                        {__('Open menu')}
+                                    </span>
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel>
+                                    {__('Actions')}
+                                </DropdownMenuLabel>
                                 <DropdownMenuItem
                                     onClick={() => onEdit(transaction)}
                                 >
-                                    Edit
+                                    {__('Edit')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     onClick={() =>
                                         onReEvaluateRules(transaction)
                                     }
                                 >
-                                    Re-evaluate rules
+                                    {__('Re-evaluate rules')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                     variant="destructive"
                                     onClick={() => onDelete(transaction)}
                                 >
-                                    Delete
+                                    {__('Delete')}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -305,7 +319,7 @@ export function createTransactionColumns({
         {
             id: 'labels',
             accessorKey: 'label_ids',
-            meta: { label: 'Labels', isVirtual: true },
+            meta: { label: __('Labels'), isVirtual: true },
             header: () => null,
             cell: () => null,
             enableHiding: true,
@@ -313,7 +327,7 @@ export function createTransactionColumns({
         {
             id: 'notes',
             accessorKey: 'decryptedNotes',
-            meta: { label: 'Notes', isVirtual: true },
+            meta: { label: __('Notes'), isVirtual: true },
             header: () => null,
             cell: () => null,
             enableHiding: true,

@@ -17,11 +17,14 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useLocale } from '@/hooks/use-locale';
 import {
     transactionSyncService,
     type Transaction,
 } from '@/services/transaction-sync';
 import { type ParsedTransaction } from '@/types/import';
+import { formatDateMedium } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -47,6 +50,7 @@ export function ImportStepPreview({
     isImporting,
 }: ImportStepPreviewProps) {
     const { isKeySet } = useEncryptionKey();
+    const locale = useLocale();
     const [existingTransactions, setExistingTransactions] = useState<
         Transaction[]
     >([]);
@@ -88,15 +92,6 @@ export function ImportStepPreview({
         };
     }, [transactions]);
 
-    const formatDate = (dateStr: string): string => {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    };
-
     const handleHeaderCheckboxChange = (checked: boolean) => {
         onSelectAll(checked);
     };
@@ -105,17 +100,23 @@ export function ImportStepPreview({
         <div className="flex flex-col gap-6">
             <div className="flex gap-4 rounded-lg border bg-muted/50 p-4">
                 <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Total</p>
+                    <p className="text-sm text-muted-foreground">
+                        {__('Total')}
+                    </p>
                     <p className="text-2xl font-bold">{stats.total}</p>
                 </div>
                 <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Selected</p>
+                    <p className="text-sm text-muted-foreground">
+                        {__('Selected')}
+                    </p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {stats.selectedCount}
                     </p>
                 </div>
                 <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Duplicates</p>
+                    <p className="text-sm text-muted-foreground">
+                        {__('Duplicates')}
+                    </p>
                     <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
                         {stats.duplicateCount}
                     </p>
@@ -125,8 +126,9 @@ export function ImportStepPreview({
             {stats.selectableCount === 0 && stats.duplicateCount > 0 && (
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
                     <p className="text-sm text-amber-700 dark:text-amber-300">
-                        All transactions appear to be duplicates. No new
-                        transactions will be imported.
+                        {__(
+                            'All transactions appear to be duplicates. No new\n                        transactions will be imported.',
+                        )}
                     </p>
                 </div>
             )}
@@ -144,15 +146,17 @@ export function ImportStepPreview({
                                     }
                                     onCheckedChange={handleHeaderCheckboxChange}
                                     disabled={stats.selectableCount === 0}
-                                    aria-label="Select all transactions"
+                                    aria-label={__('Select all transactions')}
                                 />
                             </TableHead>
                             <TableHead className="text-center">
-                                Status
+                                {__('Status')}
                             </TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead>{__('Date')}</TableHead>
+                            <TableHead>{__('Description')}</TableHead>
+                            <TableHead className="text-right">
+                                {__('Amount')}
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -193,20 +197,21 @@ export function ImportStepPreview({
                                     <TableCell className="text-center">
                                         {transaction.isDuplicate ? (
                                             <Badge variant="secondary">
-                                                Duplicate
+                                                {__('Duplicate')}
                                             </Badge>
                                         ) : (
                                             <Badge
                                                 variant="secondary"
                                                 className="bg-green-50 text-green-600 dark:bg-green-900 dark:text-green-600"
                                             >
-                                                New
+                                                {__('New')}
                                             </Badge>
                                         )}
                                     </TableCell>
                                     <TableCell className="whitespace-nowrap">
-                                        {formatDate(
+                                        {formatDateMedium(
                                             transaction.transaction_date,
+                                            locale,
                                         )}
                                     </TableCell>
                                     <TableCell className="max-w-[200px] truncate">
@@ -237,7 +242,7 @@ export function ImportStepPreview({
                             className="flex w-full cursor-pointer items-center justify-between hover:bg-transparent"
                         >
                             <span className="text-sm text-muted-foreground">
-                                Latest transactions in this account
+                                {__('Latest transactions in this account')}
                             </span>
                             <ChevronDown
                                 className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
@@ -251,10 +256,12 @@ export function ImportStepPreview({
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Description</TableHead>
+                                        <TableHead>{__('Date')}</TableHead>
+                                        <TableHead>
+                                            {__('Description')}
+                                        </TableHead>
                                         <TableHead className="text-right">
-                                            Amount
+                                            {__('Amount')}
                                         </TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -304,7 +311,7 @@ export function ImportStepPreview({
                     onClick={onBack}
                     disabled={isImporting}
                 >
-                    Back
+                    {__('Back')}
                 </Button>
                 <Button
                     onClick={onConfirm}

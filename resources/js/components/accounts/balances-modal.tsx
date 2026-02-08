@@ -34,6 +34,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import type { Account, AccountBalance } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -218,9 +219,11 @@ export function BalancesModal({
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle>Balance History</DialogTitle>
+                        <DialogTitle>{__('Balance History')}</DialogTitle>
                         <DialogDescription>
-                            View and manage balance records for this account.
+                            {__(
+                                'View and manage balance records for this account.',
+                            )}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -235,12 +238,12 @@ export function BalancesModal({
                             <Table>
                                 <TableHeader className="sticky top-0 z-10 bg-background">
                                     <TableRow>
-                                        <TableHead>Date</TableHead>
+                                        <TableHead>{__('Date')}</TableHead>
                                         <TableHead className="text-right">
-                                            Balance
+                                            {__('Balance')}
                                         </TableHead>
                                         <TableHead className="w-[100px] text-right">
-                                            Actions
+                                            {__('Actions')}
                                         </TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -251,7 +254,7 @@ export function BalancesModal({
                                                 colSpan={3}
                                                 className="h-24 text-center"
                                             >
-                                                Loading...
+                                                {__('Loading...')}
                                             </TableCell>
                                         </TableRow>
                                     ) : balances.length === 0 ? (
@@ -260,7 +263,9 @@ export function BalancesModal({
                                                 colSpan={3}
                                                 className="h-24 text-center"
                                             >
-                                                No balance records found.
+                                                {__(
+                                                    'No balance records found.',
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -313,7 +318,10 @@ export function BalancesModal({
                     {lastPage > 1 && (
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">
-                                {total} balance record{total !== 1 ? 's' : ''}
+                                {total}{' '}
+                                {total === 1
+                                    ? __('balance record')
+                                    : __('balance records')}
                             </span>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -324,10 +332,11 @@ export function BalancesModal({
                                     }
                                     disabled={currentPage <= 1 || isLoading}
                                 >
-                                    Previous
+                                    {__('Previous')}
                                 </Button>
                                 <span className="text-sm">
-                                    Page {currentPage} of {lastPage}
+                                    {__('Page')} {currentPage} {__('of')}{' '}
+                                    {lastPage}
                                 </span>
                                 <Button
                                     variant="outline"
@@ -339,7 +348,7 @@ export function BalancesModal({
                                         currentPage >= lastPage || isLoading
                                     }
                                 >
-                                    Next
+                                    {__('Next')}
                                 </Button>
                             </div>
                         </div>
@@ -353,15 +362,15 @@ export function BalancesModal({
             >
                 <DialogContent className="sm:max-w-[400px]">
                     <DialogHeader>
-                        <DialogTitle>Edit Balance</DialogTitle>
+                        <DialogTitle>{__('Edit Balance')}</DialogTitle>
                         <DialogDescription>
-                            Update the balance record.
+                            {__('Update the balance record.')}
                         </DialogDescription>
                     </DialogHeader>
 
                     <form onSubmit={handleEditSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="edit-amount">Balance</Label>
+                            <Label htmlFor="edit-amount">{__('Balance')}</Label>
                             <AmountInput
                                 id="edit-amount"
                                 className="mt-1"
@@ -373,7 +382,7 @@ export function BalancesModal({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="edit-date">Date</Label>
+                            <Label htmlFor="edit-date">{__('Date')}</Label>
                             <Input
                                 id="edit-date"
                                 className="mt-1"
@@ -391,10 +400,12 @@ export function BalancesModal({
                                 onClick={() => setEditingBalance(null)}
                                 disabled={isEditSubmitting}
                             >
-                                Cancel
+                                {__('Cancel')}
                             </Button>
                             <Button type="submit" disabled={isEditSubmitting}>
-                                {isEditSubmitting ? 'Saving...' : 'Save'}
+                                {isEditSubmitting
+                                    ? __('Saving...')
+                                    : __('Save')}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -407,22 +418,25 @@ export function BalancesModal({
             >
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete balance</AlertDialogTitle>
+                        <AlertDialogTitle>
+                            {__('Delete balance')}
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Are you sure you want to delete this balance record?
-                            This action cannot be undone.
+                            {__(
+                                'Are you sure you want to delete this balance record? This action cannot be undone.',
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>
-                            Cancel
+                            {__('Cancel')}
                         </AlertDialogCancel>
                         <AlertDialogAction
                             variant={'destructive'}
                             onClick={handleDelete}
                             disabled={isDeleting}
                         >
-                            {isDeleting ? 'Deleting...' : 'Delete'}
+                            {isDeleting ? __('Deleting...') : __('Delete')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -1,6 +1,6 @@
 import '../css/app.css';
 
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import * as Sentry from '@sentry/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import {
@@ -19,6 +19,7 @@ import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
 import { initializePostHog } from './lib/posthog';
 import type { SharedData } from './types';
+import { setTranslations } from './utils/i18n';
 
 Sentry.init({
     dsn: 'https://47f7a823afae4c2f93ab3159ca7c0a3a@bugsink.whisper.money/2',
@@ -55,6 +56,19 @@ createInertiaApp({
             | undefined;
         const initialUser = initialPageProps?.auth?.user ?? null;
         const initialIsAuthenticated = Boolean(initialUser);
+
+        // Initialize translations from server-rendered page data
+        setTranslations(
+            (initialPageProps?.translations as Record<string, string>) ?? {},
+        );
+
+        // Keep translations in sync on every Inertia navigation
+        router.on('navigate', (event) => {
+            const pageProps = event.detail.page.props as SharedData;
+            setTranslations(
+                (pageProps?.translations as Record<string, string>) ?? {},
+            );
+        });
 
         root.render(
             <StrictMode>

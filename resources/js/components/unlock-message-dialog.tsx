@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -110,17 +111,18 @@ export default function UnlockMessageDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent hasKeyboard>
                 <DialogHeader>
-                    <DialogTitle>Unlock Encrypted Data</DialogTitle>
+                    <DialogTitle>{__('Unlock Encrypted Data')}</DialogTitle>
                     <DialogDescription>
-                        Enter your encryption password to decrypt transactions
-                        information and accounts name.
+                        {__(
+                            'Enter your encryption password to decrypt transactions information and accounts name.',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleUnlock}>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
                             <Label htmlFor="unlock-password">
-                                Encryption Password
+                                {__('Encryption Password')}
                             </Label>
                             <Input
                                 id="unlock-password"
@@ -129,12 +131,17 @@ export default function UnlockMessageDialog({
                                 autoFocus
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Enter your encryption password"
+                                placeholder={__(
+                                    'Enter your encryption password',
+                                )}
                                 disabled={processing}
                             />
+
                             {isDemoAccount && demoEncryptionKey && (
                                 <p className="text-sm text-red-600 dark:text-red-400">
-                                    <span>Demo encryption password:</span>
+                                    <span>
+                                        {__('Demo encryption password:')}
+                                    </span>
                                     <code>{demoEncryptionKey}</code>
                                 </p>
                             )}
@@ -142,7 +149,7 @@ export default function UnlockMessageDialog({
 
                         <div className="grid gap-2">
                             <Label htmlFor="unlock-storage">
-                                Storage Preference
+                                {__('Storage Preference')}
                             </Label>
                             <Select
                                 value={storagePreference}
@@ -158,10 +165,10 @@ export default function UnlockMessageDialog({
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="session">
-                                        Session only
+                                        {__('Session only')}
                                     </SelectItem>
                                     <SelectItem value="persistent">
-                                        Keep me logged in
+                                        {__('Keep me logged in')}
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
@@ -176,7 +183,7 @@ export default function UnlockMessageDialog({
                     <DialogFooter>
                         <Button type="submit" disabled={processing}>
                             {processing && <Spinner />}
-                            Unlock
+                            {__('Unlock')}
                         </Button>
                     </DialogFooter>
                 </form>

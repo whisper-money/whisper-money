@@ -37,7 +37,7 @@ class ImportHelpEmail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Let's Import Your Transactions",
+            subject: __("Let's Import Your Transactions"),
         )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
     }
 

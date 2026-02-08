@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { __ } from '@/utils/i18n';
 import { FileSpreadsheet, Upload, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -89,14 +90,15 @@ export function ImportStepUpload({
                     <>
                         <Upload className="mb-4 h-12 w-12 text-muted-foreground" />
                         <p className="mb-2 text-sm font-medium">
-                            Drop your file here, or click to browse
+                            {__('Drop your file here, or click to browse')}
                         </p>
                         <p className="mb-4 text-xs text-muted-foreground">
-                            Supports CSV, XLS, and XLSX files
+                            {__('Supports CSV, XLS, and XLSX files')}
                         </p>
                         <Button asChild variant="secondary">
                             <label className="cursor-pointer">
-                                Browse Files
+                                {__('Browse Files')}
+
                                 <input
                                     type="file"
                                     className="hidden"
@@ -135,10 +137,10 @@ export function ImportStepUpload({
 
             <div className="flex justify-between">
                 <Button variant="outline" onClick={onBack}>
-                    Back
+                    {__('Back')}
                 </Button>
                 <Button onClick={onNext} disabled={!file}>
-                    Next
+                    {__('Next')}
                 </Button>
             </div>
         </div>

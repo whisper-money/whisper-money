@@ -18,6 +18,7 @@ import {
 } from '@/hooks/use-onboarding-state';
 import OnboardingLayout from '@/layouts/onboarding-layout';
 import { type Bank } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 
@@ -190,18 +191,18 @@ export default function Onboarding({
 
     const getStepTitle = (step: OnboardingStep): string => {
         const titles: Record<OnboardingStep, string> = {
-            welcome: 'Welcome',
-            'encryption-explained': 'End-to-End Encryption',
-            'encryption-setup': 'Setup Encryption',
-            'account-types': 'Account Types',
-            'create-account': 'Create Account',
-            'category-types': 'Categories',
-            'customize-categories': 'Customize Categories',
-            'smart-rules': 'Smart Rules',
-            'import-transactions': 'Import Transactions',
-            'import-balances': 'Set Balance',
-            'more-accounts': 'Add More Accounts',
-            complete: 'All Set!',
+            welcome: __('Welcome'),
+            'encryption-explained': __('End-to-End Encryption'),
+            'encryption-setup': __('Setup Encryption'),
+            'account-types': __('Account Types'),
+            'create-account': __('Create Account'),
+            'category-types': __('Categories'),
+            'customize-categories': __('Customize Categories'),
+            'smart-rules': __('Smart Rules'),
+            'import-transactions': __('Import Transactions'),
+            'import-balances': __('Set Balance'),
+            'more-accounts': __('Add More Accounts'),
+            complete: __('All Set!'),
         };
         return titles[step];
     };

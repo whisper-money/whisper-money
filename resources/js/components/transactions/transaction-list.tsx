@@ -1,3 +1,5 @@
+import { useLocale } from '@/hooks/use-locale';
+import { __ } from '@/utils/i18n';
 import {
     Cell,
     ColumnFiltersState,
@@ -150,18 +152,18 @@ function TransactionRowComponent({
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>
-                <ContextMenuLabel>Actions</ContextMenuLabel>
+                <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                 <ContextMenuItem onClick={() => onEdit(transaction)}>
-                    Edit
+                    {__('Edit')}
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => onReEvaluateRules(transaction)}>
-                    Re-evaluate rules
+                    {__('Re-evaluate rules')}
                 </ContextMenuItem>
                 <ContextMenuItem
                     onClick={() => onDelete(transaction)}
                     variant="destructive"
                 >
-                    Delete
+                    {__('Delete')}
                 </ContextMenuItem>
             </ContextMenuContent>
         </ContextMenu>
@@ -244,6 +246,7 @@ export function TransactionList({
     hideColumns = [],
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
+    const locale = useLocale();
 
     const labels = initialLabels;
 
@@ -1140,6 +1143,7 @@ export function TransactionList({
             accounts,
             banks,
             labels,
+            locale,
             onEdit: setEditTransaction,
             onDelete: setDeleteTransaction,
             onUpdate: updateTransaction,
@@ -1160,6 +1164,7 @@ export function TransactionList({
         banks,
         categories,
         labels,
+        locale,
         updateTransaction,
         handleReEvaluateRules,
         hideColumns,
@@ -1420,7 +1425,7 @@ export function TransactionList({
                         <DataTable
                             table={table}
                             columns={columns}
-                            emptyMessage="No transactions found."
+                            emptyMessage={__('No transactions found.')}
                             renderRow={renderTransactionRow}
                             maxHeight={maxHeight}
                             getRowDate={(row) => row.transaction_date}
@@ -1432,7 +1437,7 @@ export function TransactionList({
                         <DataTablePagination
                             displayedCount={displayedCount}
                             total={sortedTransactions.length}
-                            rowCountLabel="transactions total"
+                            rowCountLabel={__('transactions total')}
                         >
                             {displayedCount < sortedTransactions.length && (
                                 <Button
@@ -1443,10 +1448,10 @@ export function TransactionList({
                                     {isLoadingMore ? (
                                         <>
                                             <Spinner />
-                                            Loading
+                                            {__('Loading')}
                                         </>
                                     ) : (
-                                        <>Load more</>
+                                        <>{__('Load more')}</>
                                     )}
                                 </Button>
                             )}
@@ -1460,6 +1465,8 @@ export function TransactionList({
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
+                labels={labels}
+                automationRules={automationRules}
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
@@ -1471,6 +1478,8 @@ export function TransactionList({
                 categories={categories}
                 accounts={accounts}
                 banks={banks}
+                labels={labels}
+                automationRules={automationRules}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={() => {}}
@@ -1489,7 +1498,8 @@ export function TransactionList({
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            Delete Transaction
+                            {__('Delete Transaction')}
+
                             {isBulkDeleteMode ? 's' : ''}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
@@ -1502,7 +1512,7 @@ export function TransactionList({
                         <AlertDialogCancel
                             disabled={isDeleting || isBulkDeleting}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={

@@ -1,4 +1,5 @@
 import { type SharedData } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Head, Link, usePage } from '@inertiajs/react';
 
 export default function Privacy() {
@@ -6,22 +7,29 @@ export default function Privacy() {
 
     return (
         <>
-            <Head title="Privacy Policy - Whisper Money">
+            <Head title={__('Privacy Policy - Whisper Money')}>
                 <meta
                     name="description"
-                    content="Privacy policy for Whisper Money. Learn how we collect, use, and protect your personal information with end-to-end encryption."
+                    content={__(
+                        'Privacy policy for Whisper Money. Learn how we collect, use, and protect your personal information with end-to-end encryption.',
+                    )}
                 />
+
                 <link rel="canonical" href={`${appUrl}/privacy`} />
-                <meta name="robots" content="index, follow" />
+                <meta name="robots" content={__('index, follow')} />
 
                 <meta
                     property="og:title"
-                    content="Privacy Policy - Whisper Money"
+                    content={__('Privacy Policy - Whisper Money')}
                 />
+
                 <meta
                     property="og:description"
-                    content="Privacy policy for Whisper Money. Learn how we collect, use, and protect your personal information."
+                    content={__(
+                        'Privacy policy for Whisper Money. Learn how we collect, use, and protect your personal information.',
+                    )}
                 />
+
                 <meta property="og:type" content="website" />
                 <meta property="og:url" content={`${appUrl}/privacy`} />
             </Head>
@@ -31,79 +39,93 @@ export default function Privacy() {
                         href="/"
                         className="mb-8 inline-block text-sm text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]"
                     >
-                        ← Back to home
+                        {__('\u2190 Back to home')}
                     </Link>
 
                     <h1 className="mb-8 text-4xl font-semibold">
-                        Privacy Policy
+                        {__('Privacy Policy')}
                     </h1>
 
                     <div className="prose prose-neutral dark:prose-invert max-w-none">
                         <p className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
-                            Last updated: {new Date().toLocaleDateString()}
+                            {__('Last updated:')}
+                            {new Date().toLocaleDateString()}
                         </p>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                1. Data Controller
+                                {__('1. Data Controller')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                Whisper Money is the data controller responsible
-                                for your personal information.
+                                {__(
+                                    'Whisper Money is the data controller responsible\n                                for your personal information.',
+                                )}
                             </p>
                             <div className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 <p>
-                                    <strong>Company Name:</strong> Whisper Money
+                                    <strong>{__('Company Name:')}</strong>{' '}
+                                    Whisper Money
                                 </p>
                                 <p>
-                                    <strong>Address:</strong> Calle Oca, Madrid
-                                    - 28025, Spain
+                                    <strong>{__('Address:')}</strong> Calle Oca,
+                                    Madrid - 28025, Spain
                                 </p>
                                 <p>
-                                    <strong>Email:</strong> victor@whisper.money
+                                    <strong>{__('Email:')}</strong>
+                                    {__('victor@whisper.money')}
                                 </p>
                             </div>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                2. Information We Collect
+                                {__('2. Information We Collect')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We collect the following types of personal
-                                information:
+                                {__(
+                                    'We collect the following types of personal\n                                information:',
+                                )}
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
-                                    <strong>Account Information:</strong> Email
-                                    address, name, and password (encrypted)
+                                    <strong>
+                                        {__('Account Information:')}
+                                    </strong>
+                                    {__(
+                                        'Email\n                                    address, name, and password (encrypted)',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Financial Data:</strong> Transaction
-                                    details, budgets, categories, and other
-                                    financial information you manually enter
-                                    into the application
+                                    <strong>{__('Financial Data:')}</strong>
+                                    {__(
+                                        'Transaction\n                                    details, budgets, categories, and other\n                                    financial information you manually enter\n                                    into the application',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Usage Information:</strong>{' '}
-                                    Information about how you use our service,
-                                    including access times and features used
+                                    <strong>{__('Usage Information:')}</strong>{' '}
+                                    {__(
+                                        'Information about how you use our service,\n                                    including access times and features used',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Technical Information:</strong> IP
-                                    address, browser type, device information,
-                                    and operating system
+                                    <strong>
+                                        {__('Technical Information:')}
+                                    </strong>
+                                    {__(
+                                        'IP\n                                    address, browser type, device information,\n                                    and operating system',
+                                    )}
                                 </li>
                             </ul>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                3. How We Use Your Information
+                                {__('3. How We Use Your Information')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We process your personal data for the following
-                                purposes:
+                                {__(
+                                    'We process your personal data for the following\n                                purposes:',
+                                )}
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
@@ -111,114 +133,122 @@ export default function Privacy() {
                                     tracking service
                                 </li>
                                 <li>
-                                    To enable cloud synchronization of your
-                                    encrypted financial data across devices
+                                    {__(
+                                        'To enable cloud synchronization of your\n                                    encrypted financial data across devices',
+                                    )}
                                 </li>
                                 <li>
-                                    To authenticate your access and protect your
-                                    account security
+                                    {__(
+                                        'To authenticate your access and protect your\n                                    account security',
+                                    )}
                                 </li>
                                 <li>
-                                    To process payments for premium features or
-                                    subscriptions
+                                    {__(
+                                        'To process payments for premium features or\n                                    subscriptions',
+                                    )}
                                 </li>
                                 <li>
-                                    To send you service-related notifications,
-                                    updates, and security alerts via email
+                                    {__(
+                                        'To send you service-related notifications,\n                                    updates, and security alerts via email',
+                                    )}
                                 </li>
                                 <li>
-                                    To improve and optimize our service based on
-                                    usage patterns
+                                    {__(
+                                        'To improve and optimize our service based on\n                                    usage patterns',
+                                    )}
                                 </li>
                                 <li>
-                                    To comply with legal obligations and enforce
-                                    our terms
+                                    {__(
+                                        'To comply with legal obligations and enforce\n                                    our terms',
+                                    )}
                                 </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                The legal basis for processing your data
-                                includes: performance of our contract with you,
-                                your consent, our legitimate interests in
-                                improving the service, and compliance with legal
-                                obligations.
+                                {__(
+                                    'The legal basis for processing your data\n                                includes: performance of our contract with you,\n                                your consent, our legitimate interests in\n                                improving the service, and compliance with legal\n                                obligations.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                4. Data Security and Encryption
+                                {__('4. Data Security and Encryption')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We implement robust security measures to protect
-                                your personal information:
+                                {__(
+                                    'We implement robust security measures to protect\n                                your personal information:',
+                                )}
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
-                                    <strong>End-to-End Encryption:</strong> Your
-                                    financial data is encrypted on your device
-                                    before being transmitted to our servers,
-                                    ensuring that only you can access your
-                                    information
+                                    <strong>
+                                        {__('End-to-End Encryption:')}
+                                    </strong>
+                                    {__(
+                                        'Your\n                                    financial data is encrypted on your device\n                                    before being transmitted to our servers,\n                                    ensuring that only you can access your\n                                    information',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Secure Storage:</strong> All data is
-                                    stored on secure servers with encryption at
-                                    rest
+                                    <strong>{__('Secure Storage:')}</strong>
+                                    {__(
+                                        'All data is\n                                    stored on secure servers with encryption at\n                                    rest',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Access Controls:</strong> Strict
-                                    access controls and authentication
-                                    mechanisms protect against unauthorized
-                                    access
+                                    <strong>{__('Access Controls:')}</strong>
+                                    {__(
+                                        'Strict\n                                    access controls and authentication\n                                    mechanisms protect against unauthorized\n                                    access',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Regular Security Audits:</strong> We
-                                    regularly review and update our security
-                                    practices
+                                    <strong>
+                                        {__('Regular Security Audits:')}
+                                    </strong>
+                                    {__(
+                                        'We\n                                    regularly review and update our security\n                                    practices',
+                                    )}
                                 </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                While we use industry-standard security
-                                measures, no method of transmission over the
-                                internet or electronic storage is 100% secure.
-                                We cannot guarantee absolute security but
-                                continuously work to protect your data.
+                                {__(
+                                    'While we use industry-standard security\n                                measures, no method of transmission over the\n                                internet or electronic storage is 100% secure.\n                                We cannot guarantee absolute security but\n                                continuously work to protect your data.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                5. Third-Party Services
+                                {__('5. Third-Party Services')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We use the following third-party services to
-                                operate our platform:
+                                {__(
+                                    'We use the following third-party services to\n                                operate our platform:',
+                                )}
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
-                                    <strong>Payment Processors:</strong> To
-                                    process subscription payments and
-                                    transactions. These processors have access
-                                    only to the information necessary to perform
-                                    their functions and are obligated to protect
-                                    your data
+                                    <strong>{__('Payment Processors:')}</strong>
+                                    {__(
+                                        'To\n                                    process subscription payments and\n                                    transactions. These processors have access\n                                    only to the information necessary to perform\n                                    their functions and are obligated to protect\n                                    your data',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Email Service Providers:</strong> To
-                                    send transactional emails, password resets,
-                                    and service notifications
+                                    <strong>Email Service Providers:</strong>
+                                    {__(
+                                        'To\n                                    send transactional emails, password resets,\n                                    and service notifications',
+                                    )}
                                 </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We do not sell, trade, or rent your personal
-                                information to third parties for marketing
-                                purposes.
+                                {__(
+                                    'We do not sell, trade, or rent your personal\n                                information to third parties for marketing\n                                purposes.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                6. Data Retention
+                                {__('6. Data Retention')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 We retain your personal information for as long
@@ -233,7 +263,7 @@ export default function Privacy() {
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                7. International Data Transfers
+                                {__('7. International Data Transfers')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 Your data is primarily stored and processed
@@ -248,121 +278,130 @@ export default function Privacy() {
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                8. Your Rights Under GDPR
+                                {__('8. Your Rights Under GDPR')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                As a user in the European Union, you have the
-                                following rights regarding your personal data:
+                                {__(
+                                    'As a user in the European Union, you have the\n                                following rights regarding your personal data:',
+                                )}
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
-                                    <strong>Right of Access:</strong> You can
-                                    request a copy of the personal data we hold
-                                    about you
+                                    <strong>{__('Right of Access:')}</strong>
+                                    {__(
+                                        'You can\n                                    request a copy of the personal data we hold\n                                    about you',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Right to Rectification:</strong> You
-                                    can request correction of inaccurate or
-                                    incomplete data
+                                    <strong>
+                                        {__('Right to Rectification:')}
+                                    </strong>
+                                    {__(
+                                        'You\n                                    can request correction of inaccurate or\n                                    incomplete data',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Right to Erasure:</strong> You can
-                                    request deletion of your personal data
-                                    (right to be forgotten)
+                                    <strong>{__('Right to Erasure:')}</strong>
+                                    {__(
+                                        'You can\n                                    request deletion of your personal data\n                                    (right to be forgotten)',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Right to Data Portability:</strong>{' '}
-                                    You can request your data in a structured,
-                                    machine-readable format
+                                    <strong>
+                                        {__('Right to Data Portability:')}
+                                    </strong>{' '}
+                                    {__(
+                                        'You can request your data in a structured,\n                                    machine-readable format',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Right to Restriction:</strong> You
-                                    can request restriction of processing in
-                                    certain circumstances
+                                    <strong>
+                                        {__('Right to Restriction:')}
+                                    </strong>
+                                    {__(
+                                        'You\n                                    can request restriction of processing in\n                                    certain circumstances',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Right to Object:</strong> You can
-                                    object to processing of your data based on
-                                    legitimate interests
+                                    <strong>{__('Right to Object:')}</strong>
+                                    {__(
+                                        'You can\n                                    object to processing of your data based on\n                                    legitimate interests',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Right to Withdraw Consent:</strong>{' '}
-                                    Where processing is based on consent, you
-                                    can withdraw it at any time
+                                    <strong>
+                                        {__('Right to Withdraw Consent:')}
+                                    </strong>{' '}
+                                    {__(
+                                        'Where processing is based on consent, you\n                                    can withdraw it at any time',
+                                    )}
                                 </li>
                                 <li>
-                                    <strong>Right to Lodge a Complaint:</strong>{' '}
-                                    You can file a complaint with your local
-                                    data protection authority
+                                    <strong>
+                                        {__('Right to Lodge a Complaint:')}
+                                    </strong>{' '}
+                                    {__(
+                                        'You can file a complaint with your local\n                                    data protection authority',
+                                    )}
                                 </li>
                             </ul>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                To exercise any of these rights, please contact
-                                us at victor@whisper.money. We will respond to
-                                your request within 30 days.
+                                {__(
+                                    'To exercise any of these rights, please contact\n                                us at victor@whisper.money. We will respond to\n                                your request within 30 days.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                9. Cookies and Tracking
+                                {__('9. Cookies and Tracking')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We use essential cookies to maintain your
-                                session and ensure the proper functioning of our
-                                service. These cookies are necessary for the
-                                service to work and cannot be disabled. We do
-                                not use tracking cookies or analytics cookies
-                                without your explicit consent.
+                                {__(
+                                    'We use essential cookies to maintain your\n                                session and ensure the proper functioning of our\n                                service. These cookies are necessary for the\n                                service to work and cannot be disabled. We do\n                                not use tracking cookies or analytics cookies\n                                without your explicit consent.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                10. Children's Privacy
+                                {__("10. Children's Privacy")}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                Our service is not intended for users under the
-                                age of 16. We do not knowingly collect personal
-                                information from children. If you believe we
-                                have collected information from a child, please
-                                contact us immediately, and we will delete it.
+                                {__(
+                                    'Our service is not intended for users under the\n                                age of 16. We do not knowingly collect personal\n                                information from children. If you believe we\n                                have collected information from a child, please\n                                contact us immediately, and we will delete it.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                11. Changes to This Privacy Policy
+                                {__('11. Changes to This Privacy Policy')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                We may update this Privacy Policy from time to
-                                time to reflect changes in our practices or for
-                                legal, operational, or regulatory reasons. When
-                                we make material changes, we will notify you by
-                                email and/or by posting a notice on our website
-                                at least 30 days before the changes take effect.
-                                Your continued use of the service after changes
-                                become effective constitutes acceptance of the
-                                updated policy.
+                                {__(
+                                    'We may update this Privacy Policy from time to\n                                time to reflect changes in our practices or for\n                                legal, operational, or regulatory reasons. When\n                                we make material changes, we will notify you by\n                                email and/or by posting a notice on our website\n                                at least 30 days before the changes take effect.\n                                Your continued use of the service after changes\n                                become effective constitutes acceptance of the\n                                updated policy.',
+                                )}
                             </p>
                         </section>
 
                         <section className="mt-8">
                             <h2 className="mb-4 text-2xl font-semibold">
-                                12. Contact Us
+                                {__('12. Contact Us')}
                             </h2>
                             <p className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                If you have any questions, concerns, or requests
-                                regarding this Privacy Policy or our data
-                                practices, please contact us:
+                                {__(
+                                    'If you have any questions, concerns, or requests\n                                regarding this Privacy Policy or our data\n                                practices, please contact us:',
+                                )}
                             </p>
                             <div className="mb-4 text-[#706f6c] dark:text-[#A1A09A]">
                                 <p>
-                                    <strong>Email:</strong> victor@whisper.money
+                                    <strong>{__('Email:')}</strong>
+                                    {__('victor@whisper.money')}
                                 </p>
                                 <p>
-                                    <strong>Address:</strong> Whisper Money,
-                                    Calle Oca, Madrid - 28025, Spain
+                                    <strong>{__('Address:')}</strong> Whisper
+                                    Money, Calle Oca, Madrid - 28025, Spain
                                 </p>
                             </div>
                         </section>

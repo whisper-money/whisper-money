@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/sidebar';
 import { resolveUrl } from '@/lib/utils';
 import { type NavItem } from '@/types';
+import { __ } from '@/utils/i18n';
 import { LucideIcon } from 'lucide-react';
 import { isValidElement, type ComponentPropsWithoutRef } from 'react';
 
@@ -37,7 +38,7 @@ export function NavFooter({
                                     rel="noopener noreferrer"
                                 >
                                     <IconOrComponent icon={item.icon} />
-                                    <span>{item.title}</span>
+                                    <span>{__(item.title)}</span>
                                 </a>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

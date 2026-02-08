@@ -33,5 +33,6 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="EMAIL_VERIFICATION_ENABLED" value="true"/>
     </php>
 </phpunit>

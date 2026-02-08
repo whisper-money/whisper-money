@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Account, AccountBalance } from '@/types/account';
+import { __ } from '@/utils/i18n';
 import { useEffect, useRef, useState } from 'react';
 
 interface UpdateBalanceDialogProps {
@@ -149,18 +150,20 @@ export function UpdateBalanceDialog({
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent hasKeyboard className="sm:max-w-[400px]">
                 <DialogHeader>
-                    <DialogTitle>Update balance</DialogTitle>
+                    <DialogTitle>{__('Update balance')}</DialogTitle>
                     <DialogDescription>
-                        Set the balance for this account on a specific date.
+                        {__(
+                            'Set the balance for this account on a specific date.',
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="balance-amount">Balance</Label>
+                        <Label htmlFor="balance-amount">{__('Balance')}</Label>
                         {isLoadingLastBalance ? (
                             <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                                Loading last balance...
+                                {__('Loading last balance...')}
                             </div>
                         ) : (
                             <AmountInput
@@ -176,7 +179,7 @@ export function UpdateBalanceDialog({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="balance-date">Date</Label>
+                        <Label htmlFor="balance-date">{__('Date')}</Label>
                         <Input
                             id="balance-date"
                             type="date"
@@ -198,17 +201,17 @@ export function UpdateBalanceDialog({
                             onClick={() => handleOpenChange(false)}
                             disabled={isSubmitting || isLoadingLastBalance}
                         >
-                            Cancel
+                            {__('Cancel')}
                         </Button>
                         <Button
                             type="submit"
                             disabled={isSubmitting || isLoadingLastBalance}
                         >
                             {isSubmitting
-                                ? 'Saving...'
+                                ? __('Saving...')
                                 : isLoadingLastBalance
-                                  ? 'Loading...'
-                                  : 'Save'}
+                                  ? __('Loading...')
+                                  : __('Save')}
                         </Button>
                     </DialogFooter>
                 </form>

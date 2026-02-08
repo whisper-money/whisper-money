@@ -1,5 +1,6 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepHeader } from '@/components/onboarding/step-header';
+import { __ } from '@/utils/i18n';
 import {
     Banknote,
     Building2,
@@ -17,44 +18,44 @@ interface StepAccountTypesProps {
 const accountTypes = [
     {
         type: 'checking',
-        name: 'Checking',
+        nameKey: 'Checking',
         icon: Wallet,
-        description: 'Daily spending and transactions',
+        descriptionKey: 'Daily spending and transactions',
         hasTransactions: true,
     },
     {
         type: 'savings',
-        name: 'Savings',
+        nameKey: 'Savings',
         icon: PiggyBank,
-        description: 'Save money for goals',
+        descriptionKey: 'Save money for goals',
         hasTransactions: true,
     },
     {
         type: 'credit_card',
-        name: 'Credit Card',
+        nameKey: 'Credit Card',
         icon: CreditCard,
-        description: 'Track credit card spending',
+        descriptionKey: 'Track credit card spending',
         hasTransactions: true,
     },
     {
         type: 'investment',
-        name: 'Investment',
+        nameKey: 'Investment',
         icon: LineChart,
-        description: 'Stocks, ETFs, and portfolios',
+        descriptionKey: 'Stocks, ETFs, and portfolios',
         hasTransactions: false,
     },
     {
         type: 'retirement',
-        name: 'Retirement',
+        nameKey: 'Retirement',
         icon: TrendingUp,
-        description: '401k, IRA, pension funds',
+        descriptionKey: '401k, IRA, pension funds',
         hasTransactions: false,
     },
     {
         type: 'loan',
-        name: 'Loan',
+        nameKey: 'Loan',
         icon: Building2,
-        description: 'Mortgages and loans',
+        descriptionKey: 'Mortgages and loans',
         hasTransactions: false,
     },
 ];
@@ -65,8 +66,10 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
             <StepHeader
                 icon={Banknote}
                 iconContainerClassName="bg-gradient-to-br from-cyan-400 to-blue-500"
-                title="Account Types"
-                description="There are different account types. Some track transactions, others just track balance over time."
+                title={__('Account Types')}
+                description={__(
+                    'There are different account types. Some track transactions, others just track balance over time.',
+                )}
             />
 
             <div className="grid w-full max-w-2xl gap-3 sm:grid-cols-2">
@@ -81,8 +84,9 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
                                     <account.icon
                                         className={`size-4 stroke-muted-foreground`}
                                     />
+
                                     <h3 className="font-semibold">
-                                        {account.name}
+                                        {__(account.nameKey)}
                                     </h3>
                                 </div>
 
@@ -94,12 +98,12 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
                                     }`}
                                 >
                                     {account.hasTransactions
-                                        ? 'Transactions + Balance'
-                                        : 'Balance'}
+                                        ? __('Transactions + Balance')
+                                        : __('Balance')}
                                 </span>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                {account.description}
+                                {__(account.descriptionKey)}
                             </p>
                         </div>
                     </div>
@@ -108,7 +112,7 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
 
             <div className="mt-8 w-full sm:w-auto">
                 <StepButton
-                    text="Create Your First Account"
+                    text={__('Create Your First Account')}
                     onClick={onContinue}
                 />
             </div>

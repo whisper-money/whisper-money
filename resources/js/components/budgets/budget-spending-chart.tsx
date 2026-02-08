@@ -10,8 +10,11 @@ import {
     ChartTooltip,
     type ChartConfig,
 } from '@/components/ui/chart';
+import { useLocale } from '@/hooks/use-locale';
 import { BudgetPeriod } from '@/types/budget';
 import { formatCurrency } from '@/utils/currency';
+import { formatDate } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { useMemo } from 'react';
 import { Area, AreaChart, Line, XAxis } from 'recharts';
 
@@ -40,6 +43,7 @@ interface CustomTooltipProps {
     label?: string | number;
     currencyCode: string;
     hasPreviousPeriod: boolean;
+    locale: string;
 }
 
 function CustomTooltip({
@@ -47,6 +51,7 @@ function CustomTooltip({
     payload,
     currencyCode,
     hasPreviousPeriod,
+    locale,
 }: CustomTooltipProps) {
     if (!active || !payload || !payload.length) {
         return null;
@@ -64,21 +69,21 @@ function CustomTooltip({
             <p className="mb-2 text-sm font-medium">
                 {hasPreviousPeriod
                     ? `Day ${data.day}`
-                    : new Date(data.date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                      })}
+                    : formatDate(data.date, 'MMM d, yyyy', locale)}
             </p>
             <div className="space-y-1 text-sm">
                 <div className="flex items-center justify-between gap-8">
-                    <span className="text-muted-foreground">Allocated:</span>
+                    <span className="text-muted-foreground">
+                        {__('Allocated:')}
+                    </span>
                     <span className="font-medium">
                         {formatCurrency(allocated, currencyCode)}
                     </span>
                 </div>
                 <div className="flex items-center justify-between gap-8">
-                    <span className="text-muted-foreground">Spent:</span>
+                    <span className="text-muted-foreground">
+                        {__('Spent:')}
+                    </span>
                     <span className="font-medium">
                         {formatCurrency(spent, currencyCode)}
                     </span>
@@ -86,7 +91,7 @@ function CustomTooltip({
                 {hasPreviousPeriod && data.prevSpent !== undefined && (
                     <div className="flex items-center justify-between gap-8">
                         <span className="text-muted-foreground">
-                            Last period:
+                            {__('Last period:')}
                         </span>
                         <span className="font-medium text-muted-foreground">
                             {formatCurrency(data.prevSpent, currencyCode)}
@@ -95,7 +100,7 @@ function CustomTooltip({
                 )}
                 <div className="border-t pt-1">
                     <div className="flex items-center justify-between gap-8">
-                        <span className="font-medium">Available:</span>
+                        <span className="font-medium">{__('Available:')}</span>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xs text-muted-foreground">
                                 {percentage}% /
@@ -135,6 +140,7 @@ export function BudgetSpendingChart({
     budgetName,
     currencyCode,
 }: Props) {
+    const locale = useLocale();
     const hasPreviousPeriod = !!previousPeriod;
 
     const chartData = useMemo(() => {
@@ -212,23 +218,18 @@ export function BudgetSpendingChart({
     } satisfies ChartConfig;
 
     const periodLabel = useMemo(() => {
-        const start = new Date(currentPeriod.start_date).toLocaleDateString(
-            'en-US',
-            { month: 'short', day: 'numeric' },
-        );
-        const end = new Date(currentPeriod.end_date).toLocaleDateString(
-            'en-US',
-            { month: 'short', day: 'numeric', year: 'numeric' },
-        );
+        const start = formatDate(currentPeriod.start_date, 'MMM d', locale);
+        const end = formatDate(currentPeriod.end_date, 'MMM d, yyyy', locale);
         return `${start} - ${end}`;
-    }, [currentPeriod]);
+    }, [currentPeriod, locale]);
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Budget Spending</CardTitle>
+                <CardTitle>{__('Budget Spending')}</CardTitle>
                 <CardDescription>
-                    Tracking spending for {budgetName} · {periodLabel}
+                    {__('Tracking spending for')}
+                    {budgetName} · {periodLabel}
                 </CardDescription>
             </CardHeader>
             <CardContent className="px-6 pt-0">
@@ -254,11 +255,13 @@ export function BudgetSpendingChart({
                                     stopColor="var(--color-spent)"
                                     stopOpacity={0.8}
                                 />
+
                                 <stop
                                     offset="50%"
                                     stopColor="var(--color-spent)"
                                     stopOpacity={0.4}
                                 />
+
                                 <stop
                                     offset="100%"
                                     stopColor="var(--color-spent)"
@@ -277,11 +280,13 @@ export function BudgetSpendingChart({
                                     stopColor="var(--color-allocated)"
                                     stopOpacity={0.4}
                                 />
+
                                 <stop
                                     offset="50%"
                                     stopColor="var(--color-allocated)"
                                     stopOpacity={0.2}
                                 />
+
                                 <stop
                                     offset="100%"
                                     stopColor="var(--color-allocated)"
@@ -298,21 +303,20 @@ export function BudgetSpendingChart({
                                 if (hasPreviousPeriod) {
                                     return `Day ${value}`;
                                 }
-                                const date = new Date(value);
-                                return date.toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                });
+                                return formatDate(value, 'MMM d', locale);
                             }}
                         />
+
                         <ChartTooltip
                             content={
                                 <CustomTooltip
                                     currencyCode={currencyCode}
                                     hasPreviousPeriod={hasPreviousPeriod}
+                                    locale={locale}
                                 />
                             }
                         />
+
                         <Area
                             dataKey="allocated"
                             type="basis"
@@ -323,6 +327,7 @@ export function BudgetSpendingChart({
                             activeDot={{ r: 6 }}
                             fillOpacity={1}
                         />
+
                         <Area
                             dataKey="spent"
                             type="basis"

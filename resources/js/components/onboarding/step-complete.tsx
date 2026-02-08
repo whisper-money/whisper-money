@@ -1,6 +1,7 @@
 import { complete } from '@/actions/App/Http/Controllers/OnboardingController';
 import { StepButton } from '@/components/onboarding/step-button';
 import { dashboard } from '@/routes';
+import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { PartyPopper } from 'lucide-react';
 import { useState } from 'react';
@@ -34,12 +35,13 @@ export function StepComplete() {
             </div>
 
             <h1 className="mb-2 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-                You're All Set!
+                {__("You're All Set!")}
             </h1>
 
             <p className="mb-8 max-w-lg text-lg text-balance text-muted-foreground">
-                Your accounts are ready and your data is securely encrypted.
-                Welcome to Whisper Money!
+                {__(
+                    'Your accounts are ready and your data is securely encrypted.\n                Welcome to Whisper Money!',
+                )}
             </p>
 
             <div className="mb-12 flex w-full max-w-md flex-col justify-center gap-4">
@@ -48,7 +50,7 @@ export function StepComplete() {
                         ✓
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Encryption Set
+                        {__('Encryption Set')}
                     </p>
                 </div>
                 <div className="flex items-center justify-center gap-2 rounded-xl border bg-card p-2">
@@ -56,7 +58,7 @@ export function StepComplete() {
                         ✓
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Accounts Created
+                        {__('Accounts Created')}
                     </p>
                 </div>
                 <div className="flex items-center justify-center gap-2 rounded-xl border bg-card p-2">
@@ -64,16 +66,16 @@ export function StepComplete() {
                         ✓
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Data Imported
+                        {__('Data Imported')}
                     </p>
                 </div>
             </div>
 
             <StepButton
-                text="Go to Dashboard"
+                text={__('Go to Dashboard')}
                 onClick={handleComplete}
                 loading={isRedirecting}
-                loadingText="Redirecting..."
+                loadingText={__('Redirecting...')}
             />
         </div>
     );

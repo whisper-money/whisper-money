@@ -54,6 +54,7 @@ import { type BreadcrumbItem } from '@/types';
 import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type Label } from '@/types/label';
+import { __ } from '@/utils/i18n';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -81,22 +82,22 @@ function AutomationRuleActions({
                     <Button
                         variant="ghost"
                         className="h-8 w-8 p-0"
-                        aria-label="Actions"
+                        aria-label={__('Actions')}
                     >
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{__('Open menu')}</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuLabel>{__('Actions')}</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
                     >
-                        Delete
+                        {__('Delete')}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -154,15 +155,15 @@ function AutomationRuleRow({
                     </TableRow>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                    <ContextMenuLabel>Actions</ContextMenuLabel>
+                    <ContextMenuLabel>{__('Actions')}</ContextMenuLabel>
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
-                        Edit
+                        {__('Edit')}
                     </ContextMenuItem>
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
                     >
-                        Delete
+                        {__('Delete')}
                     </ContextMenuItem>
                 </ContextMenuContent>
             </ContextMenu>
@@ -217,7 +218,7 @@ export default function AutomationRules() {
     const columns: ColumnDef<AutomationRule>[] = [
         {
             accessorKey: 'priority',
-            header: 'Priority',
+            header: __('Priority'),
             cell: ({ row }) => {
                 return (
                     <div className="font-medium">
@@ -228,7 +229,7 @@ export default function AutomationRules() {
         },
         {
             accessorKey: 'title',
-            header: 'Title',
+            header: __('Title'),
             cell: ({ row }) => {
                 return (
                     <div className="font-medium">{row.getValue('title')}</div>
@@ -237,7 +238,7 @@ export default function AutomationRules() {
         },
         {
             id: 'actions_display',
-            header: 'Actions',
+            header: __('Actions'),
             cell: ({ row }) => {
                 const rule = row.original;
                 const actions = getRuleActions(rule);
@@ -296,7 +297,7 @@ export default function AutomationRules() {
 
                 return (
                     <span className="text-sm text-muted-foreground">
-                        Add note
+                        {__('Add note')}
                     </span>
                 );
             },
@@ -332,19 +333,21 @@ export default function AutomationRules() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Automation rules settings" />
+            <Head title={__('Automation rules settings')} />
 
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Automation rules settings"
-                        description="Manage your transaction automation rules"
+                        title={__('Automation rules settings')}
+                        description={__(
+                            'Manage your transaction automation rules',
+                        )}
                     />
 
                     <div className="space-y-4">
                         <div className="flex items-center justify-between gap-4">
                             <Input
-                                placeholder="Filter rules..."
+                                placeholder={__('Filter rules...')}
                                 value={
                                     (table
                                         .getColumn('title')
@@ -411,7 +414,9 @@ export default function AutomationRules() {
                                                 colSpan={columns.length}
                                                 className="h-24 text-center"
                                             >
-                                                No automation rules found.
+                                                {__(
+                                                    'No automation rules found.',
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -422,7 +427,7 @@ export default function AutomationRules() {
                         <div className="flex items-center justify-end">
                             <div className="text-sm text-muted-foreground">
                                 {table.getFilteredRowModel().rows.length}{' '}
-                                rule(s) total.
+                                {__('rule(s) total.')}
                             </div>
                         </div>
                     </div>
