@@ -4,6 +4,7 @@ use App\Http\Controllers\OpenBanking\ConnectionController;
 use App\Http\Controllers\Settings\AccountController;
 use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
+use App\Http\Controllers\Settings\ChartColorSchemeController;
 use App\Http\Controllers\Settings\LabelController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -54,6 +55,9 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');
     })->name('appearance.edit');
+
+    Route::patch('settings/chart-color-scheme', [ChartColorSchemeController::class, 'update'])
+        ->name('chart-color-scheme.update');
 
     Route::get('settings/billing', [SubscriptionController::class, 'billing'])->name('settings.billing');
     Route::get('settings/billing/portal', [SubscriptionController::class, 'billingPortal'])->name('settings.billing.portal');

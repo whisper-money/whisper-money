@@ -83,6 +83,7 @@ class HandleInertiaRequests extends Middleware
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),
             ],
+            'chartColorScheme' => $user?->setting?->chart_color_scheme?->value ?? 'colorful',
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => [
                 'cashflow' => true,

@@ -17,6 +17,7 @@ import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
+import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { initializePostHog } from './lib/posthog';
 import type { SharedData } from './types';
 import { setTranslations } from './utils/i18n';
@@ -33,6 +34,7 @@ initializePostHog();
 
 // Initialize theme before creating the app so progress bar color is correct
 initializeTheme();
+initializeChartColorScheme();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

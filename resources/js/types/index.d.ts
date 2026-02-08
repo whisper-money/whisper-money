@@ -49,6 +49,8 @@ export interface Flash {
     error: string | null;
 }
 
+export type ChartColorScheme = 'neutral' | 'colorful' | 'blue' | 'pink';
+
 export interface SharedData {
     name: string;
     appUrl: string;
@@ -56,6 +58,7 @@ export interface SharedData {
     quote: { message: string; author: string };
     auth: Auth;
     flash: Flash;
+    chartColorScheme: ChartColorScheme;
     subscriptionsEnabled: boolean;
     pricing: PricingConfig;
     sidebarOpen: boolean;
