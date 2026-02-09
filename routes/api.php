@@ -23,8 +23,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     });
 
     // Accounts
-    Route::get('accounts', [AccountController::class, 'index']);
-    Route::put('accounts/{account}', [AccountController::class, 'update']);
+    Route::get('accounts', [AccountController::class, 'index'])->name('api.accounts.index');
+    Route::put('accounts/{account}', [AccountController::class, 'update'])->name('api.accounts.update');
 
     // Account Balances
     Route::put('accounts/{account}/balance/current', [AccountBalanceController::class, 'updateCurrent'])->name('api.accounts.balance.update-current');
