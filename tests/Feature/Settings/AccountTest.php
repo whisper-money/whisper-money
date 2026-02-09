@@ -111,6 +111,8 @@ it('can update an account', function () {
     assertDatabaseHas('accounts', [
         'id' => $account->id,
         'name' => 'Updated Account Name',
+        'encrypted' => false,
+        'name_iv' => null,
         'bank_id' => $newBank->id,
         'currency_code' => 'EUR',
         'type' => AccountType::Savings->value,

@@ -63,7 +63,11 @@ class AccountController extends Controller
     {
         $this->authorize('update', $account);
 
-        $account->update($request->validated());
+        $account->update([
+            ...$request->validated(),
+            'encrypted' => false,
+            'name_iv' => null,
+        ]);
 
         return to_route('accounts.index');
     }
