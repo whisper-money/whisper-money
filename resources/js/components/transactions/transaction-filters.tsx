@@ -4,7 +4,7 @@ import * as Icons from 'lucide-react';
 import { Check, ChevronsUpDown, Tag, X } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { EncryptedText } from '@/components/encrypted-text';
+import { AccountName } from '@/components/accounts/account-name';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -532,11 +532,8 @@ export function TransactionFilters({
                                                             )
                                                         }
                                                     >
-                                                        <EncryptedText
-                                                            encryptedText={
-                                                                account.name
-                                                            }
-                                                            iv={account.name_iv}
+                                                        <AccountName
+                                                            account={account}
                                                             length={{
                                                                 min: 6,
                                                                 max: 28,

@@ -30,12 +30,11 @@ it('displays user accounts on index page', function () {
         ->has('accounts', 1));
 });
 
-it('can create a new account', function () {
+it('can create a new account with plaintext name', function () {
     actingAs($this->user);
 
     $data = [
-        'name' => 'encrypted_name_value',
-        'name_iv' => 'abcd1234efgh5678',
+        'name' => 'My Checking Account',
         'bank_id' => $this->bank->id,
         'currency_code' => 'USD',
         'type' => AccountType::Checking->value,
@@ -47,8 +46,9 @@ it('can create a new account', function () {
     assertDatabaseHas('accounts', [
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
-        'name' => 'encrypted_name_value',
-        'name_iv' => 'abcd1234efgh5678',
+        'name' => 'My Checking Account',
+        'name_iv' => null,
+        'encrypted' => false,
         'currency_code' => 'USD',
         'type' => AccountType::Checking->value,
     ]);
@@ -59,29 +59,14 @@ it('validates required fields when creating account', function () {
 
     $response = $this->post(route('accounts.store'), []);
 
-    $response->assertSessionHasErrors(['name', 'name_iv', 'bank_id', 'currency_code', 'type']);
-});
-
-it('validates name_iv must be exactly 16 characters', function () {
-    actingAs($this->user);
-
-    $response = $this->post(route('accounts.store'), [
-        'name' => 'encrypted_name',
-        'name_iv' => 'short',
-        'bank_id' => $this->bank->id,
-        'currency_code' => 'USD',
-        'type' => AccountType::Checking->value,
-    ]);
-
-    $response->assertSessionHasErrors(['name_iv']);
+    $response->assertSessionHasErrors(['name', 'bank_id', 'currency_code', 'type']);
 });
 
 it('validates currency_code must be in allowed list', function () {
     actingAs($this->user);
 
     $response = $this->post(route('accounts.store'), [
-        'name' => 'encrypted_name',
-        'name_iv' => 'abcd1234efgh5678',
+        'name' => 'My Account',
         'bank_id' => $this->bank->id,
         'currency_code' => 'INVALID',
         'type' => AccountType::Checking->value,
@@ -94,8 +79,7 @@ it('validates type must be valid AccountType', function () {
     actingAs($this->user);
 
     $response = $this->post(route('accounts.store'), [
-        'name' => 'encrypted_name',
-        'name_iv' => 'abcd1234efgh5678',
+        'name' => 'My Account',
         'bank_id' => $this->bank->id,
         'currency_code' => 'USD',
         'type' => 'invalid_type',
@@ -115,8 +99,7 @@ it('can update an account', function () {
     $newBank = Bank::factory()->create();
 
     $data = [
-        'name' => 'updated_encrypted_name',
-        'name_iv' => 'newiv123456789ab',
+        'name' => 'Updated Account Name',
         'bank_id' => $newBank->id,
         'currency_code' => 'EUR',
         'type' => AccountType::Savings->value,
@@ -127,8 +110,9 @@ it('can update an account', function () {
     $response->assertRedirect(route('accounts.index'));
     assertDatabaseHas('accounts', [
         'id' => $account->id,
-        'name' => 'updated_encrypted_name',
-        'name_iv' => 'newiv123456789ab',
+        'name' => 'Updated Account Name',
+        'encrypted' => false,
+        'name_iv' => null,
         'bank_id' => $newBank->id,
         'currency_code' => 'EUR',
         'type' => AccountType::Savings->value,
@@ -146,7 +130,6 @@ it('prevents updating another users account', function () {
 
     $response = $this->patch(route('accounts.update', $account), [
         'name' => 'hacked_name',
-        'name_iv' => 'abcd1234efgh5678',
         'bank_id' => $this->bank->id,
         'currency_code' => 'USD',
         'type' => AccountType::Checking->value,

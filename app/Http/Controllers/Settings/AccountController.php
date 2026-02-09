@@ -25,7 +25,7 @@ class AccountController extends Controller
             ->accounts()
             ->with('bank:id,name,logo')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'bank_id', 'type', 'currency_code']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
 
         return Inertia::render('settings/accounts', [
             'accounts' => $accounts,
@@ -38,7 +38,11 @@ class AccountController extends Controller
     public function store(StoreAccountRequest $request): RedirectResponse|JsonResponse
     {
         $user = auth()->user();
-        $account = $user->accounts()->create($request->validated());
+        $account = $user->accounts()->create([
+            ...$request->validated(),
+            'encrypted' => false,
+            'name_iv' => null,
+        ]);
 
         // Set user's currency_code from first account if not already set
         if (is_null($user->currency_code)) {
@@ -59,7 +63,11 @@ class AccountController extends Controller
     {
         $this->authorize('update', $account);
 
-        $account->update($request->validated());
+        $account->update([
+            ...$request->validated(),
+            'encrypted' => false,
+            'name_iv' => null,
+        ]);
 
         return to_route('accounts.index');
     }

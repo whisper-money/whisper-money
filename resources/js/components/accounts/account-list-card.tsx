@@ -1,6 +1,6 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
+import { AccountName } from '@/components/accounts/account-name';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
-import { EncryptedText } from '@/components/encrypted-text';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
@@ -78,9 +78,8 @@ export function AccountListCard({
                                                 </span>
                                             </div>
                                         )}
-                                        <EncryptedText
-                                            encryptedText={account.name}
-                                            iv={account.name_iv}
+                                        <AccountName
+                                            account={account}
                                             length={{ min: 8, max: 25 }}
                                             className="truncate"
                                         />

@@ -4,7 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
-import { EncryptedText } from '@/components/encrypted-text';
+import { AccountName } from '@/components/accounts/account-name';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
 import { EncryptedTransactionDescription } from '@/components/transactions/encrypted-transaction-description';
@@ -161,9 +161,8 @@ export function createTransactionColumns({
                                 className="h-5 w-5 rounded-full"
                             />
                         )}
-                        <EncryptedText
-                            encryptedText={transaction.account.name}
-                            iv={transaction.account.name_iv}
+                        <AccountName
+                            account={transaction.account}
                             length={{ min: 5, max: 15 }}
                             className="truncate"
                         />

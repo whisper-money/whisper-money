@@ -1,6 +1,6 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
+import { AccountName } from '@/components/accounts/account-name';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
-import { EncryptedText } from '@/components/encrypted-text';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
@@ -56,9 +56,8 @@ export function AccountBalanceCard({
                             />
                         )}
 
-                        <EncryptedText
-                            encryptedText={account.name}
-                            iv={account.name_iv}
+                        <AccountName
+                            account={account}
                             length={{ min: 5, max: 15 }}
                         />
                     </Link>

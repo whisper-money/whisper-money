@@ -26,7 +26,6 @@ class StoreAccountRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string'],
-            'name_iv' => ['required', 'string', 'size:16'],
             'bank_id' => ['required', 'exists:banks,id'],
             'currency_code' => [
                 'required',

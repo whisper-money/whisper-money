@@ -1,6 +1,6 @@
 import { categorize as categorizeRoute } from '@/actions/App/Http/Controllers/TransactionController';
+import { AccountName } from '@/components/accounts/account-name';
 import { AutomationRulesDialog } from '@/components/automation-rules/automation-rules-dialog';
-import { EncryptedText } from '@/components/encrypted-text';
 import { CategoryIcon } from '@/components/shared/category-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
@@ -716,16 +716,9 @@ export default function CategorizeTransactions({
                                                                         className="h-5 w-5 rounded"
                                                                     />
                                                                 )}
-                                                                <EncryptedText
-                                                                    encryptedText={
-                                                                        currentTransaction
-                                                                            .account
-                                                                            .name
-                                                                    }
-                                                                    iv={
-                                                                        currentTransaction
-                                                                            .account
-                                                                            .name_iv
+                                                                <AccountName
+                                                                    account={
+                                                                        currentTransaction.account
                                                                     }
                                                                     length={{
                                                                         min: 5,

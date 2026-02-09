@@ -114,7 +114,7 @@ export default function UnlockMessageDialog({
                     <DialogTitle>{__('Unlock Encrypted Data')}</DialogTitle>
                     <DialogDescription>
                         {__(
-                            'Enter your encryption password to decrypt transactions information and accounts name.',
+                            'Enter your encryption password to decrypt your transactions information.',
                         )}
                     </DialogDescription>
                 </DialogHeader>

@@ -18,10 +18,10 @@ import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
+import { AccountName } from '@/components/accounts/account-name';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
-import { EncryptedText } from '@/components/encrypted-text';
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -214,10 +214,9 @@ export default function Accounts({ accounts }: AccountsPageProps) {
             cell: ({ row }) => {
                 return (
                     <div className="pl-3 font-medium">
-                        <EncryptedText
-                            encryptedText={row.original.name}
+                        <AccountName
+                            account={row.original}
                             length={{ min: 10, max: 20 }}
-                            iv={row.original.name_iv}
                         />
                     </div>
                 );

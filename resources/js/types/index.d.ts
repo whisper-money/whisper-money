@@ -53,6 +53,7 @@ export interface SharedData {
     pricing: PricingConfig;
     sidebarOpen: boolean;
     features: Features;
+    hasEncryptedAccounts: boolean;
     locale: string;
     translations: Record<string, string>;
     [key: string]: unknown;

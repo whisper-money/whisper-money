@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountBalanceController;
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\Api\ImportDataController;
@@ -20,6 +21,10 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::prefix('sync')->group(function () {
         Route::get('transactions', [TransactionSyncController::class, 'index']);
     });
+
+    // Accounts
+    Route::get('accounts', [AccountController::class, 'index'])->name('api.accounts.index');
+    Route::put('accounts/{account}', [AccountController::class, 'update'])->name('api.accounts.update');
 
     // Account Balances
     Route::put('accounts/{account}/balance/current', [AccountBalanceController::class, 'updateCurrent'])->name('api.accounts.balance.update-current');

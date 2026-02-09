@@ -8,7 +8,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { decrypt, encrypt, importKey } from '@/lib/crypto';
+import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import type { Account } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -44,6 +44,11 @@ export function EditAccountDialog({
     useEffect(() => {
         if (!open) return;
 
+        if (!account.encrypted) {
+            setDecryptedName(account.name);
+            return;
+        }
+
         async function decryptName() {
             const keyString = getStoredKey();
             if (!keyString) {
@@ -53,7 +58,7 @@ export function EditAccountDialog({
 
             try {
                 const key = await importKey(keyString);
-                const name = await decrypt(account.name, key, account.name_iv);
+                const name = await decrypt(account.name, key, account.name_iv!);
                 setDecryptedName(name);
             } catch (err) {
                 console.error('Failed to decrypt account name:', err);
@@ -62,7 +67,7 @@ export function EditAccountDialog({
         }
 
         decryptName();
-    }, [open, account.name, account.name_iv]);
+    }, [open, account.name, account.name_iv, account.encrypted]);
 
     const initialValues = useMemo(
         () =>
@@ -125,12 +130,6 @@ export function EditAccountDialog({
         const { displayName, bankId, type, currencyCode, customBank } =
             formDataRef.current;
 
-        const keyString = getStoredKey();
-        if (!keyString) {
-            alert('Encryption key not available. Please unlock first.');
-            return;
-        }
-
         if (!type || !currencyCode) {
             alert('Please fill in all required fields.');
             return;
@@ -161,14 +160,10 @@ export function EditAccountDialog({
                 finalBankId = String(bankId);
             }
 
-            const key = await importKey(keyString);
-            const { encrypted, iv } = await encrypt(displayName, key);
-
             router.patch(
                 update.url(account.id),
                 {
-                    name: encrypted,
-                    name_iv: iv,
+                    name: displayName,
                     bank_id: finalBankId,
                     type: type,
                     currency_code: currencyCode,

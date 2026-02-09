@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 export interface NetWorthEvolutionAccount {
     id: string;
     name: string;
-    name_iv: string;
+    name_iv: string | null;
+    encrypted: boolean;
     type: AccountType;
     currency_code: string;
     bank: Bank;
