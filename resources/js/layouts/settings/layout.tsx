@@ -31,6 +31,16 @@ const getNavItems = (
         href: accountsIndex(),
         icon: null,
     },
+    ...(openBankingEnabled
+        ? [
+              {
+                  type: 'nav-item' as const,
+                  title: 'Connections',
+                  href: '/settings/connections',
+                  icon: null,
+              },
+          ]
+        : []),
     {
         type: 'nav-item',
         title: 'Automation rules',
@@ -49,16 +59,6 @@ const getNavItems = (
         href: labelsIndex(),
         icon: null,
     },
-    ...(openBankingEnabled
-        ? [
-              {
-                  type: 'nav-item' as const,
-                  title: 'Connections',
-                  href: '/settings/connections',
-                  icon: null,
-              },
-          ]
-        : []),
     { type: 'divider' },
     {
         type: 'section-header',
