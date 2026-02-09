@@ -13,7 +13,7 @@ import {
 import { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { Link2, PenLine } from 'lucide-react';
+import { Link2, PenLine, Plus } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
 
@@ -155,7 +155,10 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         <>
             <Dialog open={open} onOpenChange={handleOpenChange}>
                 <DialogTrigger asChild>
-                    <Button>{__('Create Account')}</Button>
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        {__('Create Account')}
+                    </Button>
                 </DialogTrigger>
                 <DialogContent hasKeyboard className="sm:max-w-[425px]">
                     <DialogHeader>

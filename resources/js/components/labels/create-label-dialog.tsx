@@ -21,6 +21,7 @@ import {
 import { getLabelColorClasses, LABEL_COLORS } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
@@ -29,7 +30,10 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>{__('Create Label')}</Button>
+                <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    {__('Create Label')}
+                </Button>
             </DialogTrigger>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>

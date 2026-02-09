@@ -28,7 +28,7 @@ import {
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
-import { Info } from 'lucide-react';
+import { Info, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 export function CreateCategoryDialog({
@@ -42,7 +42,10 @@ export function CreateCategoryDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>{__('Create Category')}</Button>
+                <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    {__('Create Category')}
+                </Button>
             </DialogTrigger>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>

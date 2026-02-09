@@ -23,6 +23,7 @@ import type { Category } from '@/types/category';
 import type { Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 interface CreateAutomationRuleDialogProps {
@@ -125,7 +126,10 @@ export function CreateAutomationRuleDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button disabled={disabled}>{__('Create Rule')}</Button>
+                <Button disabled={disabled}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    {__('Create Rule')}
+                </Button>
             </DialogTrigger>
             <DialogContent className="overflow-x-hidden sm:max-w-[600px]">
                 <DialogHeader>
