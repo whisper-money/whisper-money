@@ -39,7 +39,7 @@ function getFakeDescription(seed: string): string {
 
 interface EncryptedTransactionDescriptionProps {
     encryptedText: string;
-    iv: string;
+    iv: string | null;
     className?: string;
     length?: number | { min: number; max: number } | null;
 }
@@ -57,6 +57,13 @@ export function EncryptedTransactionDescription({
         () => getFakeDescription(encryptedText),
         [encryptedText],
     );
+
+    if (!iv) {
+        if (isPrivacyModeEnabled) {
+            return <span className={className}>{fakeDescription}</span>;
+        }
+        return <span className={className}>{encryptedText}</span>;
+    }
 
     if (isPrivacyModeEnabled && isKeySet) {
         return <span className={className}>{fakeDescription}</span>;

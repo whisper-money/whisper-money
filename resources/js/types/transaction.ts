@@ -11,7 +11,7 @@ export interface Transaction {
     account_id: UUID;
     category_id: UUID | null;
     description: string;
-    description_iv: string;
+    description_iv: string | null;
     transaction_date: string;
     amount: number;
     currency_code: string;

@@ -1,5 +1,7 @@
 import { useLocale } from '@/hooks/use-locale';
+import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -247,6 +249,8 @@ export function TransactionList({
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
     const locale = useLocale();
+    const { features } = usePage<SharedData>().props;
+    const isPlaintext = features['plaintext-transactions'];
 
     const labels = initialLabels;
 
@@ -342,7 +346,12 @@ export function TransactionList({
                                 let decryptedDescription = '';
                                 let decryptedNotes: string | null = null;
 
-                                if (key) {
+                                if (!transaction.description_iv) {
+                                    decryptedDescription =
+                                        transaction.description;
+                                    decryptedNotes =
+                                        transaction.notes || null;
+                                } else if (key) {
                                     try {
                                         decryptedDescription = await decrypt(
                                             transaction.description,
@@ -458,7 +467,10 @@ export function TransactionList({
                             let decryptedDescription = '';
                             let decryptedNotes: string | null = null;
 
-                            if (key) {
+                            if (!transaction.description_iv) {
+                                decryptedDescription = transaction.description;
+                                decryptedNotes = transaction.notes || null;
+                            } else if (key) {
                                 try {
                                     decryptedDescription = await decrypt(
                                         transaction.description,
@@ -581,7 +593,10 @@ export function TransactionList({
                         let decryptedDescription = '';
                         let decryptedNotes: string | null = null;
 
-                        if (key) {
+                        if (!transaction.description_iv) {
+                            decryptedDescription = transaction.description;
+                            decryptedNotes = transaction.notes || null;
+                        } else if (key) {
                             try {
                                 decryptedDescription = await decrypt(
                                     transaction.description,
@@ -668,18 +683,23 @@ export function TransactionList({
                         let decryptedNotes: string | null = null;
 
                         try {
-                            decryptedDescription = await decrypt(
-                                tx.description,
-                                key,
-                                tx.description_iv,
-                            );
-
-                            if (tx.notes && tx.notes_iv) {
-                                decryptedNotes = await decrypt(
-                                    tx.notes,
+                            if (!tx.description_iv) {
+                                decryptedDescription = tx.description;
+                                decryptedNotes = tx.notes || null;
+                            } else {
+                                decryptedDescription = await decrypt(
+                                    tx.description,
                                     key,
-                                    tx.notes_iv,
+                                    tx.description_iv,
                                 );
+
+                                if (tx.notes && tx.notes_iv) {
+                                    decryptedNotes = await decrypt(
+                                        tx.notes,
+                                        key,
+                                        tx.notes_iv,
+                                    );
+                                }
                             }
                         } catch {
                             continue;
@@ -883,9 +903,17 @@ export function TransactionList({
                         );
 
                         if (combinedNote !== transaction.decryptedNotes) {
-                            const encrypted = await encrypt(combinedNote, key);
-                            finalNotes = encrypted.encrypted;
-                            finalNotesIv = encrypted.iv;
+                            if (isPlaintext) {
+                                finalNotes = combinedNote;
+                                finalNotesIv = null;
+                            } else {
+                                const encrypted = await encrypt(
+                                    combinedNote,
+                                    key,
+                                );
+                                finalNotes = encrypted.encrypted;
+                                finalNotesIv = encrypted.iv;
+                            }
                             consoleDebug('Combined notes with rule note');
                         } else {
                             consoleDebug('Rule note already present, skipping');
@@ -911,7 +939,9 @@ export function TransactionList({
                         : null;
 
                     let decryptedNotes = transaction.decryptedNotes;
-                    if (finalNotes && finalNotesIv) {
+                    if (finalNotes && !finalNotesIv) {
+                        decryptedNotes = finalNotes;
+                    } else if (finalNotes && finalNotesIv) {
                         decryptedNotes = await decrypt(
                             finalNotes,
                             key,
@@ -1039,9 +1069,17 @@ export function TransactionList({
                         );
 
                         if (combinedNote !== transaction.decryptedNotes) {
-                            const encrypted = await encrypt(combinedNote, key);
-                            finalNotes = encrypted.encrypted;
-                            finalNotesIv = encrypted.iv;
+                            if (isPlaintext) {
+                                finalNotes = combinedNote;
+                                finalNotesIv = null;
+                            } else {
+                                const encrypted = await encrypt(
+                                    combinedNote,
+                                    key,
+                                );
+                                finalNotes = encrypted.encrypted;
+                                finalNotesIv = encrypted.iv;
+                            }
                             consoleDebug('Combined notes with rule note');
                         } else {
                             consoleDebug('Rule note already present, skipping');
@@ -1067,7 +1105,9 @@ export function TransactionList({
                         : null;
 
                     let decryptedNotes = transaction.decryptedNotes;
-                    if (finalNotes && finalNotesIv) {
+                    if (finalNotes && !finalNotesIv) {
+                        decryptedNotes = finalNotes;
+                    } else if (finalNotes && finalNotesIv) {
                         decryptedNotes = await decrypt(
                             finalNotes,
                             key,

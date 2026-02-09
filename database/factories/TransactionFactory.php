@@ -41,4 +41,14 @@ class TransactionFactory extends Factory
             'source' => TransactionSource::Imported,
         ]);
     }
+
+    public function plaintext(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'description' => fake()->sentence(),
+            'description_iv' => null,
+            'notes' => fake()->optional()->paragraph(),
+            'notes_iv' => null,
+        ]);
+    }
 }

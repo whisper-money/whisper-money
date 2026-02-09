@@ -195,7 +195,10 @@ export default function CategorizeTransactions({
                             let decryptedDescription = '';
                             let decryptedNotes: string | null = null;
 
-                            if (key) {
+                            if (!transaction.description_iv) {
+                                decryptedDescription = transaction.description;
+                                decryptedNotes = transaction.notes || null;
+                            } else if (key) {
                                 try {
                                     decryptedDescription = await decrypt(
                                         transaction.description,

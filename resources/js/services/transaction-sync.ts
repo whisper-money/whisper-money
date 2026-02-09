@@ -225,11 +225,13 @@ class TransactionSyncService {
             const decryptedTransactions = await Promise.all(
                 transactionsInRange.map(async (t) => {
                     try {
-                        const decryptedDescription = await decrypt(
-                            t.description,
-                            key,
-                            t.description_iv,
-                        );
+                        const decryptedDescription = t.description_iv
+                            ? await decrypt(
+                                  t.description,
+                                  key,
+                                  t.description_iv,
+                              )
+                            : t.description;
                         return {
                             transaction_date: normalizeDate(t.transaction_date),
                             amount: parseFloat(t.amount),

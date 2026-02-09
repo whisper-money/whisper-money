@@ -3,10 +3,12 @@ import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
+import type { SharedData } from '@/types';
 import type { Account, Bank } from '@/types/account';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
 import type { DecryptedTransaction } from '@/types/transaction';
+import { usePage } from '@inertiajs/react';
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 
@@ -20,6 +22,9 @@ interface ReEvaluateAllOptions {
 }
 
 export function useReEvaluateAllTransactions() {
+    const { features } = usePage<SharedData>().props;
+    const isPlaintext = features['plaintext-transactions'];
+
     const reEvaluateAll = useCallback(
         async (
             transactions: DecryptedTransaction[],
@@ -90,12 +95,17 @@ export function useReEvaluateAllTransactions() {
                             );
 
                             if (combinedNote !== transaction.decryptedNotes) {
-                                const encrypted = await encrypt(
-                                    combinedNote,
-                                    key,
-                                );
-                                finalNotes = encrypted.encrypted;
-                                finalNotesIv = encrypted.iv;
+                                if (isPlaintext) {
+                                    finalNotes = combinedNote;
+                                    finalNotesIv = null;
+                                } else {
+                                    const encrypted = await encrypt(
+                                        combinedNote,
+                                        key,
+                                    );
+                                    finalNotes = encrypted.encrypted;
+                                    finalNotesIv = encrypted.iv;
+                                }
                             }
                         }
 

@@ -31,8 +31,9 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
+import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ImportStepAccount } from './import-step-account';
@@ -70,6 +71,8 @@ export function ImportTransactionsDrawer({
     onImportComplete,
 }: ImportTransactionsDrawerProps) {
     const { isKeySet } = useEncryptionKey();
+    const { features } = usePage<SharedData>().props;
+    const isPlaintext = features['plaintext-transactions'];
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
@@ -308,7 +311,7 @@ export function ImportTransactionsDrawer({
     };
 
     const handleConfirmImport = async () => {
-        if (!isKeySet) {
+        if (!isPlaintext && !isKeySet) {
             setError('Please unlock your encryption key first');
             return;
         }
@@ -345,10 +348,20 @@ export function ImportTransactionsDrawer({
                 batch.map(async (transaction, batchIndex) => {
                     const rowNumber = i + batchIndex + 1;
 
-                    const { encrypted, iv } =
-                        await transactionSyncService.encryptDescription(
-                            transaction.description,
-                        );
+                    let encrypted: string;
+                    let iv: string | null;
+
+                    if (isPlaintext) {
+                        encrypted = transaction.description;
+                        iv = null;
+                    } else {
+                        const result =
+                            await transactionSyncService.encryptDescription(
+                                transaction.description,
+                            );
+                        encrypted = result.encrypted;
+                        iv = result.iv;
+                    }
 
                     let categoryId: string | null = null;
                     let notes: string | null = null;
@@ -375,8 +388,20 @@ export function ImportTransactionsDrawer({
                                 categoryId = ruleMatch.categoryId;
                             }
                             if (ruleMatch.note && ruleMatch.noteIv) {
-                                notes = ruleMatch.note;
-                                notesIv = ruleMatch.noteIv;
+                                if (isPlaintext) {
+                                    const { decrypt } = await import(
+                                        '@/lib/crypto'
+                                    );
+                                    notes = await decrypt(
+                                        ruleMatch.note,
+                                        key,
+                                        ruleMatch.noteIv,
+                                    );
+                                    notesIv = null;
+                                } else {
+                                    notes = ruleMatch.note;
+                                    notesIv = ruleMatch.noteIv;
+                                }
                             }
                             if (
                                 ruleMatch.labelIds &&
