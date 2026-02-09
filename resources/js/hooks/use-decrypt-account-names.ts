@@ -1,7 +1,6 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import { router } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useRef } from 'react';
 
@@ -60,7 +59,7 @@ export function useDecryptAccountNames() {
                     }
                 }
 
-                router.reload();
+                window.location.reload();
             } catch {
                 // Silent failure — migration will retry next session
                 hasRun.current = false;
