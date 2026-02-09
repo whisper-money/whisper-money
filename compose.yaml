@@ -62,6 +62,8 @@ services:
         networks:
             - sail
     php:
+        profiles:
+            - full
         build:
             context: .
             dockerfile: Dockerfile

@@ -19,8 +19,8 @@ import {
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useLocale } from '@/hooks/use-locale';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type Transaction } from '@/types/transaction';
 import { type ParsedTransaction } from '@/types/import';
+import { type Transaction } from '@/types/transaction';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { ChevronDown } from 'lucide-react';
