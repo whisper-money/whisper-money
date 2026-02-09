@@ -30,7 +30,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(BankingProviderInterface::class, function ($app) {
             return new EnableBankingProvider(
                 config('services.enablebanking.app_id'),
-                config('services.enablebanking.private_key_path'),
+                base_path(config('services.enablebanking.private_key_path')),
             );
         });
     }
