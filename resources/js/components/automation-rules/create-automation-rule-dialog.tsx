@@ -3,6 +3,7 @@ import { RuleBuilder } from '@/components/automation-rules/rule-builder';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Button } from '@/components/ui/button';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     Dialog,
     DialogContent,
@@ -23,7 +24,6 @@ import type { Category } from '@/types/category';
 import type { Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 interface CreateAutomationRuleDialogProps {
@@ -126,10 +126,9 @@ export function CreateAutomationRuleDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button disabled={disabled}>
-                    <Plus className="mr-2 h-4 w-4" />
+                <CreateButton disabled={disabled}>
                     {__('Create Rule')}
-                </Button>
+                </CreateButton>
             </DialogTrigger>
             <DialogContent className="overflow-x-hidden sm:max-w-[600px]">
                 <DialogHeader>

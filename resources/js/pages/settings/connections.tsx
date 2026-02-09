@@ -9,6 +9,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,7 +21,7 @@ import SettingsLayout from '@/layouts/settings/layout';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
-import { MoreHorizontal, Plus, RefreshCw, Unplug } from 'lucide-react';
+import { MoreHorizontal, RefreshCw, Unplug } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -64,10 +65,11 @@ export default function ConnectionsPage({ connections }: Props) {
                                 )}
                             </p>
                         </div>
-                        <Button onClick={() => setConnectDialogOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" />
+                        <CreateButton
+                            onClick={() => setConnectDialogOpen(true)}
+                        >
                             {__('Connect Bank')}
-                        </Button>
+                        </CreateButton>
                     </div>
 
                     {connections.length === 0 ? (

@@ -1,7 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
-import { Button } from '@/components/ui/button';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     Dialog,
     DialogContent,
@@ -13,7 +13,7 @@ import {
 import { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { Link2, PenLine, Plus } from 'lucide-react';
+import { Link2, PenLine } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
 
@@ -155,10 +155,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         <>
             <Dialog open={open} onOpenChange={handleOpenChange}>
                 <DialogTrigger asChild>
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
-                        {__('Create Account')}
-                    </Button>
+                    <CreateButton>{__('Create Account')}</CreateButton>
                 </DialogTrigger>
                 <DialogContent hasKeyboard className="sm:max-w-[425px]">
                     <DialogHeader>

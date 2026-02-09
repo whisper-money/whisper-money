@@ -1,6 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     Dialog,
     DialogContent,
@@ -21,7 +22,6 @@ import {
 import { getLabelColorClasses, LABEL_COLORS } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
@@ -30,10 +30,7 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    {__('Create Label')}
-                </Button>
+                <CreateButton>{__('Create Label')}</CreateButton>
             </DialogTrigger>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>
