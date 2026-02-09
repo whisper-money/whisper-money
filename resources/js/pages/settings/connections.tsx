@@ -15,6 +15,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
@@ -47,146 +48,149 @@ export default function ConnectionsPage({ connections }: Props) {
     }
 
     return (
-        <SettingsLayout>
+        <AppLayout>
             <Head title={__('Connections')} />
 
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-lg font-medium">
-                            {__('Bank Connections')}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                            {__(
-                                'Manage your connected bank accounts for automatic transaction syncing.',
-                            )}
-                        </p>
-                    </div>
-                    <Button onClick={() => setConnectDialogOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        {__('Connect Bank')}
-                    </Button>
-                </div>
-
-                {connections.length === 0 ? (
-                    <Card>
-                        <CardContent className="flex flex-col items-center justify-center py-12">
-                            <p className="text-muted-foreground">
+            <SettingsLayout>
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-medium">
+                                {__('Bank Connections')}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
                                 {__(
-                                    'No bank connections yet. Connect a bank to automatically sync your transactions.',
+                                    'Manage your connected bank accounts for automatic transaction syncing.',
                                 )}
                             </p>
-                            <Button
-                                className="mt-4"
-                                variant="outline"
-                                onClick={() => setConnectDialogOpen(true)}
-                            >
-                                {__('Connect Your First Bank')}
-                            </Button>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="space-y-3">
-                        {connections.map((connection) => (
-                            <Card key={connection.id}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <div className="space-y-1">
-                                        <CardTitle className="text-base">
-                                            {connection.aspsp_name}
-                                        </CardTitle>
-                                        <CardDescription>
-                                            {connection.aspsp_country} &middot;{' '}
-                                            {connection.accounts_count}{' '}
-                                            {connection.accounts_count === 1
-                                                ? __('account')
-                                                : __('accounts')}
-                                        </CardDescription>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <ConnectionStatusBadge
-                                            status={connection.status}
-                                        />
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                >
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                {connection.status ===
-                                                    'active' && (
+                        </div>
+                        <Button onClick={() => setConnectDialogOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            {__('Connect Bank')}
+                        </Button>
+                    </div>
+
+                    {connections.length === 0 ? (
+                        <Card>
+                            <CardContent className="flex flex-col items-center justify-center py-12">
+                                <p className="text-muted-foreground">
+                                    {__(
+                                        'No bank connections yet. Connect a bank to automatically sync your transactions.',
+                                    )}
+                                </p>
+                                <Button
+                                    className="mt-4"
+                                    variant="outline"
+                                    onClick={() => setConnectDialogOpen(true)}
+                                >
+                                    {__('Connect Your First Bank')}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <div className="space-y-3">
+                            {connections.map((connection) => (
+                                <Card key={connection.id}>
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <div className="space-y-1">
+                                            <CardTitle className="text-base">
+                                                {connection.aspsp_name}
+                                            </CardTitle>
+                                            <CardDescription>
+                                                {connection.aspsp_country}{' '}
+                                                &middot;{' '}
+                                                {connection.accounts_count}{' '}
+                                                {connection.accounts_count === 1
+                                                    ? __('account')
+                                                    : __('accounts')}
+                                            </CardDescription>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <ConnectionStatusBadge
+                                                status={connection.status}
+                                            />
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                    >
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    {connection.status ===
+                                                        'active' && (
+                                                        <DropdownMenuItem
+                                                            onClick={() =>
+                                                                handleSync(
+                                                                    connection,
+                                                                )
+                                                            }
+                                                        >
+                                                            <RefreshCw className="mr-2 h-4 w-4" />
+                                                            {__('Sync Now')}
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     <DropdownMenuItem
                                                         onClick={() =>
-                                                            handleSync(
+                                                            setDisconnectConnection(
                                                                 connection,
                                                             )
                                                         }
+                                                        className="text-destructive"
                                                     >
-                                                        <RefreshCw className="mr-2 h-4 w-4" />
-                                                        {__('Sync Now')}
+                                                        <Unplug className="mr-2 h-4 w-4" />
+                                                        {__('Disconnect')}
                                                     </DropdownMenuItem>
-                                                )}
-                                                <DropdownMenuItem
-                                                    onClick={() =>
-                                                        setDisconnectConnection(
-                                                            connection,
-                                                        )
-                                                    }
-                                                    className="text-destructive"
-                                                >
-                                                    <Unplug className="mr-2 h-4 w-4" />
-                                                    {__('Disconnect')}
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex gap-6 text-sm text-muted-foreground">
-                                        <span>
-                                            {__('Last synced')}:{' '}
-                                            {formatDate(
-                                                connection.last_synced_at,
-                                            )}
-                                        </span>
-                                        {connection.valid_until && (
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex gap-6 text-sm text-muted-foreground">
                                             <span>
-                                                {__('Expires')}:{' '}
+                                                {__('Last synced')}:{' '}
                                                 {formatDate(
-                                                    connection.valid_until,
+                                                    connection.last_synced_at,
                                                 )}
                                             </span>
+                                            {connection.valid_until && (
+                                                <span>
+                                                    {__('Expires')}:{' '}
+                                                    {formatDate(
+                                                        connection.valid_until,
+                                                    )}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {connection.error_message && (
+                                            <p className="mt-2 text-sm text-destructive">
+                                                {connection.error_message}
+                                            </p>
                                         )}
-                                    </div>
-                                    {connection.error_message && (
-                                        <p className="mt-2 text-sm text-destructive">
-                                            {connection.error_message}
-                                        </p>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                )}
-            </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
-            <ConnectAccountDialog
-                open={connectDialogOpen}
-                onOpenChange={setConnectDialogOpen}
-            />
-
-            {disconnectConnection && (
-                <DisconnectDialog
-                    connection={disconnectConnection}
-                    open={!!disconnectConnection}
-                    onOpenChange={(open) => {
-                        if (!open) setDisconnectConnection(null);
-                    }}
+                <ConnectAccountDialog
+                    open={connectDialogOpen}
+                    onOpenChange={setConnectDialogOpen}
                 />
-            )}
-        </SettingsLayout>
+
+                {disconnectConnection && (
+                    <DisconnectDialog
+                        connection={disconnectConnection}
+                        open={!!disconnectConnection}
+                        onOpenChange={(open) => {
+                            if (!open) setDisconnectConnection(null);
+                        }}
+                    />
+                )}
+            </SettingsLayout>
+        </AppLayout>
     );
 }
