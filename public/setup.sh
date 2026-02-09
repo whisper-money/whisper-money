@@ -790,7 +790,7 @@ start_services() {
     fi
 
     echo -e "${BLUE}Starting Docker services...${NC}"
-    docker compose up -d
+    docker compose --profile full up -d
 
     wait_for_service "mysql"
     wait_for_service "redis"
@@ -939,7 +939,7 @@ install() {
 
     # Now start PHP service (after dependencies are installed)
     echo -e "${BLUE}Starting PHP service...${NC}"
-    if ! docker compose up -d php; then
+    if ! docker compose --profile full up -d php; then
         echo -e "${RED}Failed to start PHP service!${NC}"
         echo -e "${YELLOW}Checking logs...${NC}"
         docker compose logs php 2>&1 | tail -20
@@ -1217,7 +1217,7 @@ upgrade() {
 
     # Restart services
     echo -e "${BLUE}Restarting services...${NC}"
-    docker compose restart
+    docker compose --profile full restart
     echo -e "${GREEN}Services restarted.${NC}"
     echo ""
 
