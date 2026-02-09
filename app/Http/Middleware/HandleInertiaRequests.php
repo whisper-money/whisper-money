@@ -94,6 +94,7 @@ class HandleInertiaRequests extends Middleware
             'labels' => fn () => $user ? $user->labels()
                 ->orderBy('name')
                 ->get(['id', 'name', 'color']) : [],
+            'hasEncryptedAccounts' => $user?->accounts()->where('encrypted', true)->exists() ?? false,
             'locale' => app()->getLocale(),
             'translations' => $this->getTranslations(),
         ];

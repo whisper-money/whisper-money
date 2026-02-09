@@ -1,6 +1,8 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import { SharedData } from '@/types';
+import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useRef } from 'react';
 
@@ -13,10 +15,11 @@ interface EncryptedAccount {
 
 export function useDecryptAccountNames() {
     const { isKeySet } = useEncryptionKey();
+    const { hasEncryptedAccounts } = usePage<SharedData>().props;
     const hasRun = useRef(false);
 
     useEffect(() => {
-        if (!isKeySet || hasRun.current) {
+        if (!isKeySet || !hasEncryptedAccounts || hasRun.current) {
             return;
         }
 
@@ -67,5 +70,5 @@ export function useDecryptAccountNames() {
         }
 
         migrateAccounts();
-    }, [isKeySet]);
+    }, [isKeySet, hasEncryptedAccounts]);
 }
