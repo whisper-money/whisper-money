@@ -22,6 +22,7 @@ import {
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -31,7 +32,6 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
-import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';

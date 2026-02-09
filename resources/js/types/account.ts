@@ -43,6 +43,8 @@ export interface Account {
     bank: Bank;
     type: AccountType;
     currency_code: CurrencyCode;
+    banking_connection_id: UUID | null;
+    external_account_id: string | null;
 }
 
 export interface AccountBalance {

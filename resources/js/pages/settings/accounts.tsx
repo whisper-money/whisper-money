@@ -213,11 +213,16 @@ export default function Accounts({ accounts }: AccountsPageProps) {
             },
             cell: ({ row }) => {
                 return (
-                    <div className="pl-3 font-medium">
+                    <div className="flex items-center gap-2 pl-3 font-medium">
                         <AccountName
                             account={row.original}
                             length={{ min: 10, max: 20 }}
                         />
+                        {row.original.banking_connection_id && (
+                            <Badge variant="secondary" className="text-xs">
+                                {__('Connected')}
+                            </Badge>
+                        )}
                     </div>
                 );
             },

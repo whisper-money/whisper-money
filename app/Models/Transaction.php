@@ -38,6 +38,7 @@ class Transaction extends Model
         'notes',
         'notes_iv',
         'source',
+        'external_transaction_id',
     ];
 
     protected function casts(): array
