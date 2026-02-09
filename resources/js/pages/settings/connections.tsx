@@ -73,18 +73,11 @@ export default function ConnectionsPage({ connections }: Props) {
                     {connections.length === 0 ? (
                         <Card>
                             <CardContent className="flex flex-col items-center justify-center py-12">
-                                <p className="text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     {__(
                                         'No bank connections yet. Connect a bank to automatically sync your transactions.',
                                     )}
                                 </p>
-                                <Button
-                                    className="mt-4"
-                                    variant="outline"
-                                    onClick={() => setConnectDialogOpen(true)}
-                                >
-                                    {__('Connect Your First Bank')}
-                                </Button>
                             </CardContent>
                         </Card>
                     ) : (
