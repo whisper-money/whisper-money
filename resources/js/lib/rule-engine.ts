@@ -70,8 +70,16 @@ function normalizeRuleJson(rulesJson: unknown): unknown {
 
 async function decryptAccountName(
     account: Account,
-    key: CryptoKey,
+    key: CryptoKey | null,
 ): Promise<string> {
+    if (!account.encrypted) {
+        return account.name.trim();
+    }
+
+    if (!key || !account.name_iv) {
+        return '';
+    }
+
     try {
         const decryptedAccountName = await decrypt(
             account.name,

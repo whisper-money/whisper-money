@@ -7,8 +7,6 @@ import {
 import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
-import { encrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
 import { type AccountType, formatAccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { AlertCircle, CheckCircle2, CreditCard } from 'lucide-react';
@@ -18,7 +16,8 @@ import { StepButton } from './step-button';
 interface ExistingAccount {
     id: string;
     name: string;
-    name_iv: string;
+    name_iv: string | null;
+    encrypted: boolean;
     type: string;
     currency_code: string;
     bank_id: string;
@@ -97,16 +96,6 @@ export function StepCreateAccount({
         const { displayName, bankId, type, currencyCode, customBank } =
             formDataRef.current;
 
-        const keyString = getStoredKey();
-        if (!keyString) {
-            setError(
-                __(
-                    'Encryption key not available. Please go back and set up encryption.',
-                ),
-            );
-            return;
-        }
-
         if (!displayName.trim()) {
             setError(__('Please enter an account name.'));
             return;
@@ -147,14 +136,10 @@ export function StepCreateAccount({
                 finalBankId = String(bankId);
             }
 
-            const key = await importKey(keyString);
-            const { encrypted, iv } = await encrypt(displayName, key);
-
             const response = await fetch(store.url(), {
                 method: 'POST',
                 body: JSON.stringify({
-                    name: encrypted,
-                    name_iv: iv,
+                    name: displayName,
                     bank_id: finalBankId,
                     type: type,
                     currency_code: currencyCode,

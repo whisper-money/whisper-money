@@ -1,4 +1,4 @@
-import { EncryptedText } from '@/components/encrypted-text';
+import { AccountName } from '@/components/accounts/account-name';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -61,9 +61,8 @@ export function ImportBalanceStepAccount({
                             )}
                             <div className="flex flex-1 flex-col gap-1">
                                 <span className="font-medium">
-                                    <EncryptedText
-                                        encryptedText={account.name}
-                                        iv={account.name_iv}
+                                    <AccountName
+                                        account={account}
                                         length={19}
                                     />
                                 </span>

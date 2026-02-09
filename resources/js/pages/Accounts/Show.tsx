@@ -1,11 +1,11 @@
 import { index, show } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceChart } from '@/components/accounts/account-balance-chart';
+import { AccountName } from '@/components/accounts/account-name';
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
-import { EncryptedText } from '@/components/encrypted-text';
 import HeadingSmall from '@/components/heading-small';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { Button } from '@/components/ui/button';
@@ -62,11 +62,7 @@ export default function AccountShow({
         },
         {
             title: (
-                <EncryptedText
-                    encryptedText={account.name}
-                    iv={account.name_iv}
-                    length={{ min: 5, max: 20 }}
-                />
+                <AccountName account={account} length={{ min: 5, max: 20 }} />
             ),
 
             href: show.url(account.id),
@@ -95,9 +91,8 @@ export default function AccountShow({
                         )}
                         <HeadingSmall
                             title={
-                                <EncryptedText
-                                    encryptedText={account.name}
-                                    iv={account.name_iv}
+                                <AccountName
+                                    account={account}
                                     length={{ min: 8, max: 30 }}
                                 />
                             }

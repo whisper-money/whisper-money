@@ -34,7 +34,7 @@ class TransactionController extends Controller
             ->where('user_id', $user->id)
             ->with('bank:id,name,logo')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'bank_id', 'type', 'currency_code']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
 
         $banks = Bank::query()
             ->where(function ($q) use ($user) {
@@ -77,7 +77,7 @@ class TransactionController extends Controller
             ->where('user_id', $user->id)
             ->with('bank:id,name,logo')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'bank_id', 'type', 'currency_code']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
 
         $banks = Bank::query()
             ->where(function ($q) use ($user) {

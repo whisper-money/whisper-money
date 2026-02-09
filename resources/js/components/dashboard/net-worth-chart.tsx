@@ -1,9 +1,9 @@
+import { AccountName } from '@/components/accounts/account-name';
 import {
     ChartViewToggle,
     MoMChart,
     MoMPercentChart,
 } from '@/components/charts';
-import { EncryptedText } from '@/components/encrypted-text';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
@@ -80,17 +80,11 @@ function calculateTrend(
 }
 
 interface EncryptedLabelProps {
-    account: { name: string; name_iv: string };
+    account: { name: string; name_iv: string | null; encrypted: boolean };
 }
 
 function EncryptedLabel({ account }: EncryptedLabelProps) {
-    return (
-        <EncryptedText
-            encryptedText={account.name}
-            iv={account.name_iv}
-            length={{ min: 5, max: 20 }}
-        />
-    );
+    return <AccountName account={account} length={{ min: 5, max: 20 }} />;
 }
 
 interface CurrencyTotal {

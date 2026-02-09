@@ -131,16 +131,27 @@ export function EditTransactionDialog({
 
         async function decryptAccountNames() {
             const keyString = getStoredKey();
-            if (!keyString) {
-                return;
-            }
 
             try {
-                const key = await importKey(keyString);
+                let key: CryptoKey | null = null;
+                if (keyString) {
+                    key = await importKey(keyString);
+                }
+
                 const decryptedNames = new Map<string, string>();
 
                 await Promise.all(
                     accounts.map(async (account) => {
+                        if (!account.encrypted) {
+                            decryptedNames.set(account.id, account.name);
+                            return;
+                        }
+
+                        if (!key || !account.name_iv) {
+                            decryptedNames.set(account.id, '[Encrypted]');
+                            return;
+                        }
+
                         try {
                             const decryptedName = await decrypt(
                                 account.name,

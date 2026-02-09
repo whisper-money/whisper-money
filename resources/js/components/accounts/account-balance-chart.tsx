@@ -1,10 +1,10 @@
+import { AccountName } from '@/components/accounts/account-name';
 import {
     ChartViewToggle,
     MoMChart,
     MoMPercentChart,
 } from '@/components/charts';
 import { PercentageTrendIndicator } from '@/components/dashboard/percentage-trend-indicator';
-import { EncryptedText } from '@/components/encrypted-text';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
@@ -176,11 +176,7 @@ export function AccountBalanceChart({
     const chartConfig: ChartConfig = {
         value: {
             label: (
-                <EncryptedText
-                    encryptedText={account.name}
-                    iv={account.name_iv}
-                    length={{ min: 5, max: 20 }}
-                />
+                <AccountName account={account} length={{ min: 5, max: 20 }} />
             ),
 
             color: 'var(--color-chart-2)',

@@ -9,22 +9,13 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { encrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
 
 export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
     const [open, setOpen] = useState(false);
-    const [isKeyAvailable, setIsKeyAvailable] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
@@ -33,18 +24,6 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         currencyCode: null,
         customBank: null,
     });
-
-    useEffect(() => {
-        const checkKey = () => {
-            const key = getStoredKey();
-            setIsKeyAvailable(!!key);
-        };
-
-        checkKey();
-        const interval = setInterval(checkKey, 1000);
-
-        return () => clearInterval(interval);
-    }, []);
 
     const handleFormChange = useCallback((data: AccountFormData) => {
         formDataRef.current = data;
@@ -94,12 +73,6 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         const { displayName, bankId, type, currencyCode, customBank } =
             formDataRef.current;
 
-        const keyString = getStoredKey();
-        if (!keyString) {
-            alert('Encryption key not available. Please unlock first.');
-            return;
-        }
-
         if (!type || !currencyCode) {
             alert('Please fill in all required fields.');
             return;
@@ -130,14 +103,10 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                 finalBankId = String(bankId);
             }
 
-            const key = await importKey(keyString);
-            const { encrypted, iv } = await encrypt(displayName, key);
-
             router.post(
                 store.url(),
                 {
-                    name: encrypted,
-                    name_iv: iv,
+                    name: displayName,
                     bank_id: finalBankId,
                     type: type,
                     currency_code: currencyCode,
@@ -163,30 +132,10 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         }
     }
 
-    const createButton = (
-        <Button disabled={!isKeyAvailable}>{__('Create Account')}</Button>
-    );
-
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                {isKeyAvailable ? (
-                    createButton
-                ) : (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                {createButton}
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>
-                                    Encryption key required. Please unlock your
-                                    data first.
-                                </p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
+                <Button>{__('Create Account')}</Button>
             </DialogTrigger>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>

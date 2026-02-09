@@ -9,7 +9,8 @@ import { StepButton } from './step-button';
 interface ExistingAccount {
     id: string;
     name: string;
-    name_iv: string;
+    name_iv: string | null;
+    encrypted: boolean;
     type: string;
     currency_code: string;
     bank_id: string;

@@ -22,12 +22,14 @@ class Account extends Model
         'bank_id',
         'currency_code',
         'type',
+        'encrypted',
     ];
 
     protected function casts(): array
     {
         return [
             'type' => AccountType::class,
+            'encrypted' => 'boolean',
         ];
     }
 
