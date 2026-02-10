@@ -22,6 +22,7 @@ import { AccountName } from '@/components/accounts/account-name';
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
+import { BankLogo } from '@/components/bank-logo';
 import HeadingSmall from '@/components/heading-small';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -229,15 +230,12 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                 const bank = row.original.bank;
                 return (
                     <div className="flex items-center gap-2">
-                        {bank.logo ? (
-                            <img
-                                src={bank.logo}
-                                alt={bank.name}
-                                className="bg-red h-6 w-6 rounded-full object-contain"
-                            />
-                        ) : (
-                            <div className="h-6 w-6 rounded bg-muted" />
-                        )}
+                        <BankLogo
+                            src={bank.logo}
+                            name={bank.name}
+                            className="h-6 w-6"
+                            fallback="empty"
+                        />
                         <span>{bank.name}</span>
                     </div>
                 );

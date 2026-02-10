@@ -1,11 +1,11 @@
 import { AccountName } from '@/components/accounts/account-name';
+import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { type Account } from '@/types/account';
 import type { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
-import { Building2 } from 'lucide-react';
 
 interface ImportBalanceStepAccountProps {
     accounts?: Account[];
@@ -48,17 +48,12 @@ export function ImportBalanceStepAccount({
                                 id={`account-${account.id}`}
                             />
 
-                            {account.bank.logo ? (
-                                <img
-                                    src={account.bank.logo}
-                                    alt={account.bank.name}
-                                    className="h-10 w-10 rounded-md object-contain"
-                                />
-                            ) : (
-                                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
-                                    <Building2 className="h-5 w-5 text-muted-foreground" />
-                                </div>
-                            )}
+                            <BankLogo
+                                src={account.bank.logo}
+                                name={account.bank.name}
+                                className="h-10 w-10"
+                                fallback="icon"
+                            />
                             <div className="flex flex-1 flex-col gap-1">
                                 <span className="font-medium">
                                     <AccountName

@@ -1,5 +1,6 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountName } from '@/components/accounts/account-name';
+import { BankLogo } from '@/components/bank-logo';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
@@ -63,21 +64,12 @@ export function AccountListCard({
                                     className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                                 >
                                     <h3 className="flex items-center gap-2 font-semibold">
-                                        {account.bank?.logo ? (
-                                            <img
-                                                src={account.bank.logo}
-                                                alt={account.bank.name}
-                                                className="size-4 rounded-full object-contain"
-                                            />
-                                        ) : (
-                                            <div className="flex size-4 items-center justify-center rounded-full bg-muted">
-                                                <span className="text-sm font-medium text-muted-foreground">
-                                                    {account.bank?.name?.charAt(
-                                                        0,
-                                                    ) || '?'}
-                                                </span>
-                                            </div>
-                                        )}
+                                        <BankLogo
+                                            src={account.bank?.logo}
+                                            name={account.bank?.name}
+                                            className="size-4"
+                                            fallback="letter"
+                                        />
                                         <AccountName
                                             account={account}
                                             length={{ min: 8, max: 25 }}

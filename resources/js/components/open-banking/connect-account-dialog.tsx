@@ -1,3 +1,4 @@
+import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -246,13 +247,10 @@ export function ConnectAccountDialog({
                                     }`}
                                     onClick={() => setSelectedBank(institution)}
                                 >
-                                    {institution.logo && (
-                                        <img
-                                            src={institution.logo}
-                                            alt=""
-                                            className="h-6 w-6 rounded object-contain"
-                                        />
-                                    )}
+                                    <BankLogo
+                                        src={institution.logo}
+                                        className="h-6 w-6"
+                                    />
                                     <span>{institution.name}</span>
                                 </button>
                             ))}
@@ -284,13 +282,10 @@ export function ConnectAccountDialog({
                     <div className="space-y-4">
                         <div className="rounded-lg border p-4">
                             <div className="flex items-center gap-3">
-                                {selectedBank.logo && (
-                                    <img
-                                        src={selectedBank.logo}
-                                        alt=""
-                                        className="h-8 w-8 rounded object-contain"
-                                    />
-                                )}
+                                <BankLogo
+                                    src={selectedBank.logo}
+                                    className="h-8 w-8"
+                                />
                                 <div>
                                     <p className="font-medium">
                                         {selectedBank.name}

@@ -1,6 +1,7 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountName } from '@/components/accounts/account-name';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
+import { BankLogo } from '@/components/bank-logo';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
@@ -48,13 +49,11 @@ export function AccountBalanceCard({
                         href={show.url(account.id)}
                         className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                     >
-                        {account.bank.logo && (
-                            <img
-                                src={account.bank.logo}
-                                alt={account.bank.name}
-                                className="mr-2 inline-block size-5 rounded-full object-contain"
-                            />
-                        )}
+                        <BankLogo
+                            src={account.bank.logo}
+                            name={account.bank.name}
+                            className="mr-2 inline-block size-5"
+                        />
 
                         <AccountName
                             account={account}
