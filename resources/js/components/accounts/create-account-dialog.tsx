@@ -1,6 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
+import { Button } from '@/components/ui/button';
 import { CreateButton } from '@/components/ui/create-button';
 import {
     Dialog,
