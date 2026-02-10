@@ -54,6 +54,58 @@ class BalanceSyncService
     }
 
     /**
+     * Calculate historical daily balances by working backwards from the latest known balance.
+     * Uses transaction amounts to derive end-of-day balances for dates without direct balance data.
+     */
+    public function calculateHistoricalBalances(Account $account): void
+    {
+        $referenceBalance = $account->balances()
+            ->orderByDesc('balance_date')
+            ->first();
+
+        if (! $referenceBalance) {
+            return;
+        }
+
+        $existingDates = $account->balances()
+            ->pluck('balance_date')
+            ->map(fn ($date) => $date->toDateString())
+            ->flip()
+            ->all();
+
+        $dailyTotals = $account->transactions()
+            ->where('transaction_date', '<=', $referenceBalance->balance_date)
+            ->selectRaw('transaction_date, SUM(amount) as daily_total')
+            ->groupBy('transaction_date')
+            ->orderByDesc('transaction_date')
+            ->pluck('daily_total', 'transaction_date');
+
+        if ($dailyTotals->isEmpty()) {
+            return;
+        }
+
+        $runningBalance = $referenceBalance->balance;
+        $referenceDate = $referenceBalance->balance_date->toDateString();
+
+        foreach ($dailyTotals as $date => $sum) {
+            if ($date < $referenceDate && ! isset($existingDates[$date])) {
+                $account->balances()->create([
+                    'balance_date' => $date,
+                    'balance' => $runningBalance,
+                ]);
+            }
+
+            $runningBalance -= (int) $sum;
+        }
+
+        Log::info('Calculated historical balances', [
+            'account_id' => $account->id,
+            'reference_date' => $referenceDate,
+            'reference_balance' => $referenceBalance->balance,
+        ]);
+    }
+
+    /**
      * Select the most useful balance from the list based on preferred types.
      */
     private function selectPreferredBalance(array $balances): ?array

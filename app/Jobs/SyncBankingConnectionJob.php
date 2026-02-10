@@ -57,6 +57,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             foreach ($connection->accounts as $account) {
                 $transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
                 $balanceSync->sync($account);
+                $balanceSync->calculateHistoricalBalances($account);
             }
 
             $connection->update([
