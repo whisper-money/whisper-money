@@ -18,7 +18,7 @@ class TransactionSyncService
      *
      * @return int Number of new transactions created
      */
-    public function sync(Account $account, string $dateFrom, string $dateTo): int
+    public function sync(Account $account, string $dateFrom, string $dateTo, ?string $strategy = null): int
     {
         if (! $account->external_account_id) {
             return 0;
@@ -33,6 +33,7 @@ class TransactionSyncService
                 $dateFrom,
                 $dateTo,
                 $continuationKey,
+                $strategy,
             );
 
             foreach ($result['transactions'] as $transaction) {

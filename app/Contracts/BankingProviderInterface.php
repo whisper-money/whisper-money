@@ -30,7 +30,7 @@ interface BankingProviderInterface
      *
      * @return array{transactions: array, continuation_key: string|null}
      */
-    public function getTransactions(string $accountId, string $dateFrom, string $dateTo, ?string $continuationKey = null): array;
+    public function getTransactions(string $accountId, string $dateFrom, string $dateTo, ?string $continuationKey = null, ?string $strategy = null): array;
 
     /**
      * Fetch balances for an account.

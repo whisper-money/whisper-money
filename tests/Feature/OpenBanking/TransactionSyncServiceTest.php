@@ -19,7 +19,7 @@ test('sync creates transactions from provider data', function () {
 
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('getTransactions')
-        ->with('ext-123', '2025-01-01', '2025-01-31', null)
+        ->with('ext-123', '2025-01-01', '2025-01-31', null, null)
         ->once()
         ->andReturn([
             'transactions' => [
@@ -115,7 +115,7 @@ test('sync handles pagination with continuation key', function () {
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
 
     $mockProvider->shouldReceive('getTransactions')
-        ->with('ext-123', '2025-01-01', '2025-01-31', null)
+        ->with('ext-123', '2025-01-01', '2025-01-31', null, null)
         ->once()
         ->andReturn([
             'transactions' => [
@@ -131,7 +131,7 @@ test('sync handles pagination with continuation key', function () {
         ]);
 
     $mockProvider->shouldReceive('getTransactions')
-        ->with('ext-123', '2025-01-01', '2025-01-31', 'page2')
+        ->with('ext-123', '2025-01-01', '2025-01-31', 'page2', null)
         ->once()
         ->andReturn([
             'transactions' => [

@@ -74,7 +74,7 @@ class EnableBankingProvider implements BankingProviderInterface
         return $response->json();
     }
 
-    public function getTransactions(string $accountId, string $dateFrom, string $dateTo, ?string $continuationKey = null): array
+    public function getTransactions(string $accountId, string $dateFrom, string $dateTo, ?string $continuationKey = null, ?string $strategy = null): array
     {
         $query = [
             'date_from' => $dateFrom,
@@ -83,6 +83,10 @@ class EnableBankingProvider implements BankingProviderInterface
 
         if ($continuationKey) {
             $query['continuation_key'] = $continuationKey;
+        }
+
+        if ($strategy) {
+            $query['strategy'] = $strategy;
         }
 
         $response = $this->client()->get("/accounts/{$accountId}/transactions", $query);

@@ -46,15 +46,21 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $dateFrom = $connection->last_synced_at
-            ? $connection->last_synced_at->toDateString()
-            : now()->subDays(90)->toDateString();
+        $isFirstSync = ! $connection->last_synced_at;
+        $dateFrom = $isFirstSync
+            ? now()->subYear()->toDateString()
+            : $connection->last_synced_at->toDateString();
         $dateTo = now()->toDateString();
+        $strategy = $isFirstSync ? 'longest' : null;
 
         try {
             foreach ($connection->accounts as $account) {
-                $transactionSync->sync($account, $dateFrom, $dateTo);
+                $transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
                 $balanceSync->sync($account);
+
+                if ($isFirstSync) {
+                    $balanceSync->syncHistorical($account);
+                }
             }
 
             $connection->update([
