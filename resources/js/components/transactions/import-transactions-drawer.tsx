@@ -276,6 +276,8 @@ export function ImportTransactionsDrawer({
                 return;
             }
 
+            await transactionSyncService.sync();
+
             const duplicateFlags = await transactionSyncService.checkDuplicates(
                 account.id,
                 parsedTransactions,
