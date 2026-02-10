@@ -25,7 +25,7 @@ class AccountController extends Controller
             ->accounts()
             ->with('bank:id,name,logo')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 
         return Inertia::render('settings/accounts', [
             'accounts' => $accounts,

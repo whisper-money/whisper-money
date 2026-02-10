@@ -14,7 +14,7 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { ArrowUpDown, Link2, MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/Settings/AccountController';
@@ -218,11 +218,6 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                             account={row.original}
                             length={{ min: 10, max: 20 }}
                         />
-                        {row.original.banking_connection_id && (
-                            <Badge variant="secondary" className="text-xs">
-                                {__('Connected')}
-                            </Badge>
-                        )}
                     </div>
                 );
             },
@@ -252,10 +247,20 @@ export default function Accounts({ accounts }: AccountsPageProps) {
             accessorKey: 'type',
             header: () => __('Type'),
             cell: ({ row }) => {
+                const isConnected = !!row.original.banking_connection_id;
+
                 return (
-                    <Badge variant="outline">
-                        {formatAccountType(row.getValue('type'))}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline">
+                            {formatAccountType(row.getValue('type'))}
+                        </Badge>
+                        {isConnected && (
+                            <Link2
+                                className="size-4 text-emerald-600 dark:text-emerald-400"
+                                aria-label={__('Connected account')}
+                            />
+                        )}
+                    </div>
                 );
             },
         },
