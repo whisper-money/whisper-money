@@ -38,6 +38,7 @@ class AuthorizationController extends Controller
             'authorization_id' => $result['authorization_id'],
             'aspsp_name' => $validated['aspsp_name'],
             'aspsp_country' => $validated['country'],
+            'aspsp_logo' => $validated['logo'] ?? null,
             'status' => BankingConnectionStatus::Pending,
         ]);
 
@@ -111,8 +112,12 @@ class AuthorizationController extends Controller
     {
         $bank = Bank::firstOrCreate(
             ['name' => $connection->aspsp_name, 'user_id' => null],
-            ['name' => $connection->aspsp_name],
+            ['name' => $connection->aspsp_name, 'logo' => $connection->aspsp_logo],
         );
+
+        if (! $bank->logo && $connection->aspsp_logo) {
+            $bank->update(['logo' => $connection->aspsp_logo]);
+        }
 
         $accounts = $sessionData['accounts'] ?? [];
 

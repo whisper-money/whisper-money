@@ -22,6 +22,7 @@ class BankingConnection extends Model
         'session_id',
         'aspsp_name',
         'aspsp_country',
+        'aspsp_logo',
         'status',
         'valid_until',
         'last_synced_at',

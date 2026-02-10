@@ -19,6 +19,7 @@ class StartAuthorizationRequest extends FormRequest
         return [
             'aspsp_name' => ['required', 'string'],
             'country' => ['required', 'string', 'size:2'],
+            'logo' => ['nullable', 'string', 'url'],
         ];
     }
 }

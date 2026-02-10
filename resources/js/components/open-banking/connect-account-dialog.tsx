@@ -153,6 +153,7 @@ export function ConnectAccountDialog({
                 body: JSON.stringify({
                     aspsp_name: selectedBank.name,
                     country: country,
+                    logo: selectedBank.logo,
                 }),
             });
 
