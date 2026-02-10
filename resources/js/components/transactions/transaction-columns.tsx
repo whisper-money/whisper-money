@@ -5,6 +5,7 @@ import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
 import { AccountName } from '@/components/accounts/account-name';
+import { EncryptedText } from '@/components/encrypted-text';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
 import { EncryptedTransactionDescription } from '@/components/transactions/encrypted-transaction-description';
