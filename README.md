@@ -22,7 +22,7 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 
 > 🎮 **Try the Demo:** Experience Whisper Money with our [demo account](https://whisper.money/login?demo=1) - no registration required!
 
-> 💬 **Join our Community:** Whether you're a user looking for help or a developer wanting to contribute, we'd love to have you in our [Discord server](https://discord.gg/Zj4TWMX55y)! Share feedback, ask questions, discuss new features, or just hang out with fellow privacy enthusiasts.
+> 💬 **Join our Community:** Whether you're a user looking for help or a developer wanting to contribute, we'd love to have you in our [Discord server](https://https://discord.gg/2WZmDW9QZ8)! Share feedback, ask questions, discuss new features, or just hang out with fellow privacy enthusiasts.
 
 ## Features
 

@@ -62,7 +62,7 @@ export const footerNavItems: NavItem[] = [
     {
         type: 'nav-item',
         title: 'Community',
-        href: 'https://discord.gg/zqfrynthvb',
+        href: 'https://https://discord.gg/2WZmDW9QZ8',
         icon: <DiscordIcon className="size-5" />,
     },
 ];

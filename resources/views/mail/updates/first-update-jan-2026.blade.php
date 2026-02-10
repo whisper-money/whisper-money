@@ -16,7 +16,7 @@ Even more meaningful: we now have our first paying users. This means I need to k
 Whisper Money is a small project built by one person (me!), but it can become something amazing with your input. Here's how you can help shape the future:
 
 <x-mail::panel>
-**Join our Discord community** – Share ideas, report bugs, or just chat about privacy-first finance. [Join our comminity](https://discord.gg/9UQWZECDDv).
+**Join our Discord community** – Share ideas, report bugs, or just chat about privacy-first finance. [Join our comminity](https://https://discord.gg/2WZmDW9QZ8).
 
 **Check our Roadmap** – See what's coming next and vote on features you care about:
 [whisper-money.canny.io](https://whisper-money.canny.io/)
@@ -33,7 +33,7 @@ Building a privacy-first alternative to mainstream finance apps is a big challen
 
 Thank you for trusting Whisper Money with your financial data. Your privacy is my priority, always.
 
-<x-mail::button :url="'https://discord.gg/9UQWZECDDv'">
+<x-mail::button :url="'https://https://discord.gg/2WZmDW9QZ8'">
 Join the Discord Comminity
 </x-mail::button>
 
