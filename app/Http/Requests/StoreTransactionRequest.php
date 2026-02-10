@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\TransactionSource;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Laravel\Pennant\Feature;
 
 class StoreTransactionRequest extends FormRequest
 {
@@ -30,7 +31,9 @@ class StoreTransactionRequest extends FormRequest
                 }),
             ],
             'description' => ['required', 'string'],
-            'description_iv' => ['required', 'string', 'size:16'],
+            'description_iv' => Feature::for($this->user())->active('plaintext-transactions')
+                ? ['nullable', 'string', 'size:16']
+                : ['required', 'string', 'size:16'],
             'transaction_date' => ['required', 'date'],
             'amount' => ['required', 'integer'],
             'currency_code' => ['required', 'string', 'size:3'],

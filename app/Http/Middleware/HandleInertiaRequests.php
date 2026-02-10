@@ -70,6 +70,7 @@ class HandleInertiaRequests extends Middleware
             'features' => [
                 'cashflow' => true,
                 'budgets' => $user ? Feature::for($user)->active('budgets') : false,
+                'plaintext-transactions' => $user ? Feature::for($user)->active('plaintext-transactions') : false,
             ],
             'accounts' => fn () => $user ? $user->accounts()
                 ->with('bank:id,name,logo')

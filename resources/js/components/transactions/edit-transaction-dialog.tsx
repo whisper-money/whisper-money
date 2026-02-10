@@ -41,9 +41,11 @@ import {
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
+import { type SharedData } from '@/types';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -79,6 +81,8 @@ export function EditTransactionDialog({
 
     const { isKeySet } = useEncryptionKey();
     const { sync } = useSyncContext();
+    const { features } = usePage<SharedData>().props;
+    const isPlaintext = features['plaintext-transactions'];
     const [transactionDate, setTransactionDate] = useState('');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState<number>(0);
@@ -332,7 +336,7 @@ export function EditTransactionDialog({
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
 
-        if (!isKeySet) {
+        if (!isPlaintext && !isKeySet) {
             toast.error(
                 __('Please unlock your encryption key to save transactions'),
             );
@@ -370,10 +374,10 @@ export function EditTransactionDialog({
         try {
             const trimmedDescription = description.trim();
             const keyString = getStoredKey();
-            if (!keyString) {
+            if (!isPlaintext && !keyString) {
                 throw new Error(__('Encryption key not available'));
             }
-            const key = await importKey(keyString);
+            const key = keyString ? await importKey(keyString) : null;
 
             if (mode === 'create') {
                 const ruleResult = await checkAndApplyAutomationRules();
@@ -395,19 +399,30 @@ export function EditTransactionDialog({
                     finalLabelIds = [...ruleResult.labelIds];
                 }
 
+                let finalDescription: string;
+                let finalDescriptionIv: string | null;
                 let encryptedNotes: string | null = null;
                 let notesIv: string | null = null;
 
-                if (finalNotes) {
-                    const encrypted = await encrypt(finalNotes, key);
-                    encryptedNotes = encrypted.encrypted;
-                    notesIv = encrypted.iv;
-                }
+                if (isPlaintext) {
+                    finalDescription = trimmedDescription;
+                    finalDescriptionIv = null;
+                    encryptedNotes = finalNotes || null;
+                    notesIv = null;
+                } else {
+                    const encryptedDescription = await encrypt(
+                        trimmedDescription,
+                        key!,
+                    );
+                    finalDescription = encryptedDescription.encrypted;
+                    finalDescriptionIv = encryptedDescription.iv;
 
-                const encryptedDescription = await encrypt(
-                    trimmedDescription,
-                    key,
-                );
+                    if (finalNotes) {
+                        const encrypted = await encrypt(finalNotes, key!);
+                        encryptedNotes = encrypted.encrypted;
+                        notesIv = encrypted.iv;
+                    }
+                }
 
                 const selectedAccount = accounts.find(
                     (acc) => acc.id === accountId,
@@ -420,8 +435,8 @@ export function EditTransactionDialog({
                     user_id: '00000000-0000-0000-0000-000000000000',
                     account_id: accountId,
                     category_id: finalCategoryId,
-                    description: encryptedDescription.encrypted,
-                    description_iv: encryptedDescription.iv,
+                    description: finalDescription,
+                    description_iv: finalDescriptionIv,
                     transaction_date: transactionDate,
                     amount: amount,
                     currency_code: selectedAccount.currency_code,
@@ -490,8 +505,11 @@ export function EditTransactionDialog({
                 let encryptedNotes: string | null = null;
                 let notesIv: string | null = null;
 
-                if (trimmedNotes) {
-                    const encrypted = await encrypt(trimmedNotes, key);
+                if (isPlaintext) {
+                    encryptedNotes = trimmedNotes || null;
+                    notesIv = null;
+                } else if (trimmedNotes) {
+                    const encrypted = await encrypt(trimmedNotes, key!);
                     encryptedNotes = encrypted.encrypted;
                     notesIv = encrypted.iv;
                 }
@@ -501,7 +519,7 @@ export function EditTransactionDialog({
                     notes: string | null;
                     notes_iv: string | null;
                     description?: string;
-                    description_iv?: string;
+                    description_iv?: string | null;
                     label_ids?: string[];
                 } = {
                     category_id: selectedCategoryId,
@@ -517,12 +535,17 @@ export function EditTransactionDialog({
                     transaction.source === 'manually_created' &&
                     trimmedDescription
                 ) {
-                    const encryptedDescription = await encrypt(
-                        trimmedDescription,
-                        key,
-                    );
-                    updateData.description = encryptedDescription.encrypted;
-                    updateData.description_iv = encryptedDescription.iv;
+                    if (isPlaintext) {
+                        updateData.description = trimmedDescription;
+                        updateData.description_iv = null;
+                    } else {
+                        const encryptedDescription = await encrypt(
+                            trimmedDescription,
+                            key!,
+                        );
+                        updateData.description = encryptedDescription.encrypted;
+                        updateData.description_iv = encryptedDescription.iv;
+                    }
                     finalDecryptedDescription = trimmedDescription;
                 }
 

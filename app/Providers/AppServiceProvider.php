@@ -40,5 +40,6 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Feature::define('budgets', fn (User $user) => true);
+        Feature::define('plaintext-transactions', fn (User $user) => false);
     }
 }
