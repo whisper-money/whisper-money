@@ -186,6 +186,91 @@ test('sync uses creditor name as fallback description', function () {
     expect($transaction->description)->toBe('Amazon EU');
 });
 
+test('sync creates daily balances from balance_after_transaction', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['Morning purchase'],
+                    'balance_after_transaction' => ['amount' => '950.00', 'currency' => 'EUR'],
+                ],
+                [
+                    'transaction_id' => 'txn-002',
+                    'transaction_amount' => ['amount' => '30.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['Evening purchase'],
+                    'balance_after_transaction' => ['amount' => '920.00', 'currency' => 'EUR'],
+                ],
+                [
+                    'transaction_id' => 'txn-003',
+                    'transaction_amount' => ['amount' => '1000.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'CRDT',
+                    'booking_date' => '2025-01-20',
+                    'remittance_information' => ['Salary'],
+                    'balance_after_transaction' => ['amount' => '1920.00', 'currency' => 'EUR'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider);
+    $service->sync($account, '2025-01-01', '2025-01-31');
+
+    expect($account->balances()->count())->toBe(2);
+
+    $jan15 = $account->balances()->where('balance_date', '2025-01-15')->first();
+    expect($jan15->balance)->toBe(92000); // Last transaction of the day
+
+    $jan20 = $account->balances()->where('balance_date', '2025-01-20')->first();
+    expect($jan20->balance)->toBe(192000);
+});
+
+test('sync skips daily balance when balance_after_transaction is missing', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['Purchase'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider);
+    $service->sync($account, '2025-01-01', '2025-01-31');
+
+    expect($account->balances()->count())->toBe(0);
+});
+
 test('sync skips accounts without external_account_id', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create([

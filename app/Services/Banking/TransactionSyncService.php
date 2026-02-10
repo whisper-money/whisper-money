@@ -26,6 +26,7 @@ class TransactionSyncService
 
         $created = 0;
         $continuationKey = null;
+        $dailyBalances = [];
 
         do {
             $result = $this->provider->getTransactions(
@@ -40,10 +41,14 @@ class TransactionSyncService
                 if ($this->importTransaction($account, $transaction)) {
                     $created++;
                 }
+
+                $this->trackDailyBalance($transaction, $dailyBalances);
             }
 
             $continuationKey = $result['continuation_key'];
         } while ($continuationKey);
+
+        $this->saveDailyBalances($account, $dailyBalances);
 
         Log::info('Synced transactions', [
             'account_id' => $account->id,
@@ -136,5 +141,40 @@ class TransactionSyncService
             ?? $data['transaction_date']
             ?? $data['value_date']
             ?? now()->toDateString();
+    }
+
+    /**
+     * Track the balance after transaction for each day.
+     * Overwrites so only the last transaction's balance per day is kept.
+     *
+     * @param  array<string, int>  $dailyBalances
+     */
+    private function trackDailyBalance(array $transaction, array &$dailyBalances): void
+    {
+        $balanceAfter = $transaction['balance_after_transaction'] ?? null;
+
+        if (! $balanceAfter || ! isset($balanceAfter['amount'])) {
+            return;
+        }
+
+        $date = $this->parseDate($transaction);
+        $amount = (int) round(floatval($balanceAfter['amount']) * 100);
+
+        $dailyBalances[$date] = $amount;
+    }
+
+    /**
+     * Save tracked daily balances to the account.
+     *
+     * @param  array<string, int>  $dailyBalances
+     */
+    private function saveDailyBalances(Account $account, array $dailyBalances): void
+    {
+        foreach ($dailyBalances as $date => $balance) {
+            $account->balances()->updateOrCreate(
+                ['balance_date' => $date],
+                ['balance' => $balance],
+            );
+        }
     }
 }
