@@ -16,13 +16,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePoll } from '@inertiajs/react';
 import { MoreHorizontal, RefreshCw, Unplug } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Props {
     connections: BankingConnection[];
@@ -32,6 +33,20 @@ export default function ConnectionsPage({ connections }: Props) {
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [disconnectConnection, setDisconnectConnection] =
         useState<BankingConnection | null>(null);
+
+    const hasSyncing = connections.some(
+        (c) => c.status === 'active' && !c.last_synced_at,
+    );
+
+    const { start, stop } = usePoll(5000, {}, { autoStart: false });
+
+    useEffect(() => {
+        if (hasSyncing) {
+            start();
+        } else {
+            stop();
+        }
+    }, [hasSyncing, start, stop]);
 
     function handleSync(connection: BankingConnection) {
         router.post(`/settings/connections/${connection.id}/sync`);
@@ -103,6 +118,9 @@ export default function ConnectionsPage({ connections }: Props) {
                                         <div className="flex items-center gap-2">
                                             <ConnectionStatusBadge
                                                 status={connection.status}
+                                                lastSyncedAt={
+                                                    connection.last_synced_at
+                                                }
                                             />
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -144,12 +162,22 @@ export default function ConnectionsPage({ connections }: Props) {
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex gap-6 text-sm text-muted-foreground">
-                                            <span>
-                                                {__('Last synced')}:{' '}
-                                                {formatDate(
-                                                    connection.last_synced_at,
-                                                )}
-                                            </span>
+                                            {connection.status === 'active' &&
+                                            !connection.last_synced_at ? (
+                                                <span className="flex items-center gap-1.5">
+                                                    <Spinner className="size-3" />
+                                                    {__(
+                                                        'Syncing transactions and balances…',
+                                                    )}
+                                                </span>
+                                            ) : (
+                                                <span>
+                                                    {__('Last synced')}:{' '}
+                                                    {formatDate(
+                                                        connection.last_synced_at,
+                                                    )}
+                                                </span>
+                                            )}
                                             {connection.valid_until && (
                                                 <span>
                                                     {__('Expires')}:{' '}
