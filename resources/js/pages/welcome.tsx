@@ -305,11 +305,6 @@ export default function Welcome({
                             'The most secure personal finance app with end-to-end encryption. Track expenses, create budgets, and manage your money privately.',
                         url: appUrl,
                         applicationCategory: 'FinanceApplication',
-                        offers: {
-                            '@type': 'Offer',
-                            price: '0',
-                            priceCurrency: 'USD',
-                        },
                         featureList: [
                             'End-to-end encryption',
                             'Smart budgeting',
@@ -334,12 +329,12 @@ export default function Welcome({
                                 <span className="inline-flex items-center gap-2 rounded-full border border-[#e3e3e0] px-2.5 py-1 text-[0.8rem] font-medium dark:border-[#3E3E3A]">
                                     <LockIcon className="size-3.5 opacity-75" />
                                     <span className="text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__('Free & Private')}
+                                        {__('Private & Secure')}
                                     </span>
                                 </span>
                                 <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
                                     {__(
-                                        'All your money in one place. No spreadsheets. Free.',
+                                        'All your money in one place. No spreadsheets. Private.',
                                     )}
                                 </h1>
                                 <p className="mb-4 max-w-[840px] text-lg leading-8 font-medium text-[#706f6c] lg:text-xl lg:leading-8 dark:text-[#A1A09A]">
@@ -373,7 +368,7 @@ export default function Welcome({
                                     )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'No credit card required. Your data stays private with E2E encryption.',
+                                            'Your data stays private with end-to-end encryption.',
                                         )}
                                     </p>
                                 </div>
