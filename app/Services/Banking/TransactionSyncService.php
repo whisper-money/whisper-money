@@ -93,6 +93,7 @@ class TransactionSyncService
             'notes_iv' => null,
             'source' => TransactionSource::EnableBanking,
             'external_transaction_id' => $externalId,
+            'raw_data' => $data,
         ]);
 
         return true;
