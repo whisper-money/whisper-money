@@ -5,6 +5,7 @@ namespace App\Http\Controllers\OpenBanking;
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\OpenBanking\DestroyConnectionRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -54,12 +55,8 @@ class ConnectionController extends Controller
     /**
      * Revoke and delete a banking connection.
      */
-    public function destroy(BankingConnection $connection, BankingProviderInterface $provider): RedirectResponse
+    public function destroy(DestroyConnectionRequest $request, BankingConnection $connection, BankingProviderInterface $provider): RedirectResponse
     {
-        if ($connection->user_id !== auth()->id()) {
-            abort(403);
-        }
-
         if ($connection->session_id && $connection->isActive()) {
             try {
                 $provider->revokeSession($connection->session_id);
@@ -69,6 +66,19 @@ class ConnectionController extends Controller
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+
+        if ($request->boolean('delete_accounts')) {
+            $connection->accounts->each(function ($account) {
+                $account->transactions()->delete();
+                $account->balances()->delete();
+                $account->delete();
+            });
+        } else {
+            $connection->accounts()->update([
+                'banking_connection_id' => null,
+                'external_account_id' => null,
+            ]);
         }
 
         $connection->update(['status' => BankingConnectionStatus::Revoked]);
