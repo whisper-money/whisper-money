@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pennant\Feature;
 
 class AuthorizationController extends Controller
 {
@@ -89,6 +90,17 @@ class AuthorizationController extends Controller
         if (! $connection) {
             return redirect()->route('settings.connections.index')
                 ->with('error', 'No pending connection found.');
+        }
+
+        if (Feature::for($user)->active('account-mapping')) {
+            $connection->update([
+                'session_id' => $sessionData['session_id'],
+                'status' => BankingConnectionStatus::AwaitingMapping,
+                'valid_until' => $sessionData['access']['valid_until'] ?? null,
+                'pending_accounts_data' => $sessionData['accounts'] ?? [],
+            ]);
+
+            return redirect()->route('open-banking.map-accounts', $connection);
         }
 
         $connection->update([

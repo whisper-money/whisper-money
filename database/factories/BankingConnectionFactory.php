@@ -56,6 +56,22 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function awaitingMapping(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => BankingConnectionStatus::AwaitingMapping,
+            'last_synced_at' => null,
+            'pending_accounts_data' => [
+                [
+                    'uid' => fake()->uuid(),
+                    'currency' => 'EUR',
+                    'name' => 'Test Account',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+            ],
+        ]);
+    }
+
     public function error(): static
     {
         return $this->state(fn (array $attributes) => [

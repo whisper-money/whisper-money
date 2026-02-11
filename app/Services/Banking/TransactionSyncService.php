@@ -18,7 +18,7 @@ class TransactionSyncService
      *
      * @return int Number of new transactions created
      */
-    public function sync(Account $account, string $dateFrom, string $dateTo, ?string $strategy = null): int
+    public function sync(Account $account, string $dateFrom, string $dateTo, ?string $strategy = null, bool $saveDailyBalances = true): int
     {
         if (! $account->external_account_id) {
             return 0;
@@ -42,13 +42,17 @@ class TransactionSyncService
                     $created++;
                 }
 
-                $this->trackDailyBalance($transaction, $dailyBalances);
+                if ($saveDailyBalances) {
+                    $this->trackDailyBalance($transaction, $dailyBalances);
+                }
             }
 
             $continuationKey = $result['continuation_key'];
         } while ($continuationKey);
 
-        $this->saveDailyBalances($account, $dailyBalances);
+        if ($saveDailyBalances) {
+            $this->saveDailyBalances($account, $dailyBalances);
+        }
 
         Log::info('Synced transactions', [
             'account_id' => $account->id,

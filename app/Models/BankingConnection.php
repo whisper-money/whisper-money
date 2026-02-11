@@ -27,6 +27,7 @@ class BankingConnection extends Model
         'valid_until',
         'last_synced_at',
         'error_message',
+        'pending_accounts_data',
     ];
 
     protected function casts(): array
@@ -35,6 +36,7 @@ class BankingConnection extends Model
             'status' => BankingConnectionStatus::class,
             'valid_until' => 'datetime',
             'last_synced_at' => 'datetime',
+            'pending_accounts_data' => 'array',
         ];
     }
 
@@ -51,6 +53,11 @@ class BankingConnection extends Model
     public function isActive(): bool
     {
         return $this->status === BankingConnectionStatus::Active;
+    }
+
+    public function hasPendingAccounts(): bool
+    {
+        return ! empty($this->pending_accounts_data);
     }
 
     public function isExpired(): bool

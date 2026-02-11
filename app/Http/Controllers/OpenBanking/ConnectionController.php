@@ -27,7 +27,10 @@ class ConnectionController extends Controller
             ->bankingConnections()
             ->withCount('accounts')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->each(function ($connection) {
+                $connection->has_pending_accounts = $connection->hasPendingAccounts();
+            });
 
         return Inertia::render('settings/connections', [
             'connections' => $connections,

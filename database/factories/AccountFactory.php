@@ -38,4 +38,13 @@ class AccountFactory extends Factory
             'external_account_id' => fake()->uuid(),
         ]);
     }
+
+    public function linked(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'banking_connection_id' => BankingConnection::factory(),
+            'external_account_id' => fake()->uuid(),
+            'linked_at' => now(),
+        ]);
+    }
 }

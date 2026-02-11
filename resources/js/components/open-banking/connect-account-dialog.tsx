@@ -284,7 +284,7 @@ export function ConnectAccountDialog({
                             <div className="flex items-center gap-3">
                                 <BankLogo
                                     src={selectedBank.logo}
-                                    className="h-8 w-8"
+                                    className="size-16 p-1"
                                 />
                                 <div>
                                     <p className="font-medium">

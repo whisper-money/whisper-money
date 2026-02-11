@@ -11,6 +11,7 @@ const statusConfig: Record<
     }
 > = {
     active: { label: 'Active', variant: 'default' },
+    awaiting_mapping: { label: 'Setup Required', variant: 'secondary' },
     pending: { label: 'Pending', variant: 'secondary' },
     expired: { label: 'Expired', variant: 'outline' },
     revoked: { label: 'Revoked', variant: 'outline' },

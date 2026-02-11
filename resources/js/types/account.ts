@@ -45,6 +45,7 @@ export interface Account {
     currency_code: CurrencyCode;
     banking_connection_id: UUID | null;
     external_account_id: string | null;
+    linked_at: string | null;
 }
 
 export interface AccountBalance {

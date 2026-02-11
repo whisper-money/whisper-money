@@ -25,6 +25,7 @@ class Account extends Model
         'encrypted',
         'banking_connection_id',
         'external_account_id',
+        'linked_at',
     ];
 
     protected function casts(): array
@@ -32,6 +33,7 @@ class Account extends Model
         return [
             'type' => AccountType::class,
             'encrypted' => 'boolean',
+            'linked_at' => 'datetime',
         ];
     }
 
@@ -63,5 +65,10 @@ class Account extends Model
     public function isConnected(): bool
     {
         return $this->banking_connection_id !== null;
+    }
+
+    public function isLinked(): bool
+    {
+        return $this->linked_at !== null;
     }
 }

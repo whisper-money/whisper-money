@@ -2,6 +2,7 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
@@ -77,7 +78,7 @@ test('callback without code redirects with error', function () {
     $response->assertSessionHas('error');
 });
 
-test('callback with valid code creates session and accounts', function () {
+test('callback with valid code creates accounts directly when account-mapping is disabled', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
@@ -123,4 +124,58 @@ test('callback with valid code creates session and accounts', function () {
         'external_account_id' => 'ext-account-1',
         'encrypted' => false,
     ]);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
+});
+
+test('callback with valid code stores pending accounts and redirects to mapping when account-mapping is enabled', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+    Feature::for($user)->activate('account-mapping');
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $accounts = [
+        [
+            'uid' => 'ext-account-1',
+            'currency' => 'EUR',
+            'name' => 'My Checking Account',
+            'account_id' => ['iban' => 'ES1234567890123456789012'],
+        ],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-123',
+            'accounts' => $accounts,
+            'aspsp' => ['name' => 'Test Bank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $response->assertRedirect(route('open-banking.map-accounts', $connection));
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->session_id)->toBe('session-123');
+    expect($connection->pending_accounts_data)->toEqual($accounts);
+
+    $this->assertDatabaseMissing('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+
+    Queue::assertNothingPushed();
 });
