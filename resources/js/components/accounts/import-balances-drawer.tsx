@@ -18,6 +18,7 @@ import {
     parseDate,
     parseFile,
 } from '@/lib/file-parser';
+import { type SharedData } from '@/types';
 import { type Account } from '@/types/account';
 import {
     BalanceImportStep,
@@ -28,6 +29,7 @@ import {
 import { DateFormat } from '@/types/import';
 import type { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -60,6 +62,7 @@ export function ImportBalancesDrawer({
     accountId,
     onSuccess,
 }: ImportBalancesDrawerProps) {
+    const { locale } = usePage<SharedData>().props;
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
@@ -240,6 +243,7 @@ export function ImportBalancesDrawer({
                 const detected = autoDetectDateFormat(
                     data,
                     autoMapping.balance_date,
+                    locale,
                 );
                 if (detected) {
                     detectedFormat = detected;

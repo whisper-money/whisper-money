@@ -178,9 +178,43 @@ export async function parseFile(file: File): Promise<{
     });
 }
 
+/**
+ * Returns the preferred date format for a given locale.
+ * Most locales use DD-MM-YYYY, while US/Philippines/etc use MM-DD-YYYY.
+ */
+export function getLocaleDateFormat(locale?: string): DateFormat | null {
+    if (!locale) {
+        return null;
+    }
+
+    const mdyLocales = ['en-US', 'en-PH', 'fil', 'ja', 'zh', 'ko', 'hu'];
+    const ymdLocales = [
+        'sv',
+        'lt',
+        'zh-CN',
+        'zh-TW',
+        'ja-JP',
+        'ko-KR',
+        'hu-HU',
+    ];
+
+    const normalized = locale.replace('_', '-');
+
+    if (ymdLocales.some((l) => normalized.startsWith(l))) {
+        return DateFormat.YearMonthDay;
+    }
+
+    if (mdyLocales.some((l) => normalized.startsWith(l))) {
+        return DateFormat.MonthDayYear;
+    }
+
+    return DateFormat.DayMonthYear;
+}
+
 export function autoDetectDateFormat(
     data: ParsedRow[],
     dateColumnName: string,
+    locale?: string,
 ): DateFormat | null {
     if (!data || data.length === 0 || !dateColumnName) {
         return null;
@@ -216,10 +250,22 @@ export function autoDetectDateFormat(
         return null;
     }
 
-    const bestFormat = formats.find((format) => scores[format] === maxScore);
-
     if (maxScore >= sampleSize * 0.8) {
-        return bestFormat || null;
+        const tiedFormats = formats.filter(
+            (format) => scores[format] === maxScore,
+        );
+
+        if (tiedFormats.length === 1) {
+            return tiedFormats[0];
+        }
+
+        // Use the user's locale to break ties between ambiguous formats
+        const localePreferred = getLocaleDateFormat(locale);
+        if (localePreferred && tiedFormats.includes(localePreferred)) {
+            return localePreferred;
+        }
+
+        return tiedFormats[0];
     }
 
     return null;
