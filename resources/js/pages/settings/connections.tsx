@@ -19,10 +19,11 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { Head, router, usePoll } from '@inertiajs/react';
-import { MoreHorizontal, RefreshCw, Unplug } from 'lucide-react';
+import { Head, router, usePage, usePoll } from '@inertiajs/react';
+import { ArrowRight, MoreHorizontal, RefreshCw, Unplug } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Props {
@@ -30,6 +31,8 @@ interface Props {
 }
 
 export default function ConnectionsPage({ connections }: Props) {
+    const { auth } = usePage<SharedData>().props;
+    const isDemoAccount = auth?.isDemoAccount ?? false;
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [disconnectConnection, setDisconnectConnection] =
         useState<BankingConnection | null>(null);
@@ -82,6 +85,7 @@ export default function ConnectionsPage({ connections }: Props) {
                         </div>
                         <CreateButton
                             onClick={() => setConnectDialogOpen(true)}
+                            disabled={isDemoAccount}
                         >
                             {__('Connect Bank')}
                         </CreateButton>
@@ -133,6 +137,19 @@ export default function ConnectionsPage({ connections }: Props) {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     {connection.status ===
+                                                        'awaiting_mapping' && (
+                                                        <DropdownMenuItem
+                                                            onClick={() =>
+                                                                router.visit(
+                                                                    `/open-banking/connections/${connection.id}/map-accounts`,
+                                                                )
+                                                            }
+                                                        >
+                                                            <ArrowRight className="mr-2 h-4 w-4" />
+                                                            {__('Map Accounts')}
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {connection.status ===
                                                         'active' && (
                                                         <DropdownMenuItem
                                                             onClick={() =>
@@ -162,8 +179,16 @@ export default function ConnectionsPage({ connections }: Props) {
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex gap-6 text-sm text-muted-foreground">
-                                            {connection.status === 'active' &&
-                                            !connection.last_synced_at ? (
+                                            {connection.status ===
+                                            'awaiting_mapping' ? (
+                                                <span>
+                                                    {__(
+                                                        'Accounts need to be mapped before syncing can begin.',
+                                                    )}
+                                                </span>
+                                            ) : connection.status ===
+                                                  'active' &&
+                                              !connection.last_synced_at ? (
                                                 <span className="flex items-center gap-1.5">
                                                     <Spinner className="size-3" />
                                                     {__(
