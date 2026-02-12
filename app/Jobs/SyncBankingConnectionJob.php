@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\BankingConnectionStatus;
+use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
@@ -13,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 {
@@ -54,6 +56,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         $strategy = $isFirstSync ? 'longest' : null;
 
         try {
+            $transactionsPerBank = [];
+
+            $connection->load('accounts.bank');
+
             foreach ($connection->accounts as $account) {
                 if ($account->isLinked()) {
                     $lastTransaction = $account->transactions()
@@ -64,15 +70,20 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                         ? $lastTransaction->transaction_date->toDateString()
                         : $dateFrom;
 
-                    $transactionSync->sync($account, $linkedDateFrom, $dateTo, $strategy, saveDailyBalances: false);
+                    $created = $transactionSync->sync($account, $linkedDateFrom, $dateTo, $strategy, saveDailyBalances: false);
                     $balanceSync->sync($account);
                 } else {
-                    $transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
+                    $created = $transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
                     $balanceSync->sync($account);
 
                     if ($isFirstSync) {
                         $balanceSync->calculateHistoricalBalances($account);
                     }
+                }
+
+                if ($created > 0) {
+                    $bankName = $account->bank?->name ?? __('Unknown Bank');
+                    $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
                 }
             }
 
@@ -80,6 +91,16 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 'last_synced_at' => now(),
                 'error_message' => null,
             ]);
+
+            $totalTransactions = array_sum($transactionsPerBank);
+
+            if (! $isFirstSync && $totalTransactions > 0) {
+                Mail::to($connection->user)->send(new BankTransactionsSyncedEmail(
+                    $connection->user,
+                    $totalTransactions,
+                    $transactionsPerBank,
+                ));
+            }
         } catch (\Throwable $e) {
             Log::error('Banking sync failed', [
                 'connection_id' => $connection->id,
