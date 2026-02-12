@@ -73,6 +73,7 @@ class TransactionSyncService
 
         if ($externalId) {
             $exists = $account->transactions()
+                ->withTrashed()
                 ->where('external_transaction_id', $externalId)
                 ->exists();
 

@@ -278,6 +278,46 @@ test('sync skips daily balance when balance_after_transaction is missing', funct
     expect($account->balances()->count())->toBe(0);
 });
 
+test('sync does not re-create soft-deleted transactions', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'external_transaction_id' => 'txn-001',
+    ]);
+    $transaction->delete();
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['Grocery Store Purchase'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider);
+    $created = $service->sync($account, '2025-01-01', '2025-01-31');
+
+    expect($created)->toBe(0);
+    expect($account->transactions()->withTrashed()->count())->toBe(1);
+    expect($account->transactions()->withTrashed()->first()->trashed())->toBeTrue();
+});
+
 test('sync skips accounts without external_account_id', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create([
