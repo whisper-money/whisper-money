@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Laravel\Pennant\Feature;
 
 class UpdateTransactionRequest extends FormRequest
 {
@@ -23,9 +22,7 @@ class UpdateTransactionRequest extends FormRequest
                 }),
             ],
             'description' => ['sometimes', 'string'],
-            'description_iv' => Feature::for($this->user())->active('plaintext-transactions')
-                ? ['nullable', 'string', 'size:16']
-                : ['sometimes', 'string', 'size:16'],
+            'description_iv' => ['nullable', 'string', 'size:16'],
             'notes' => ['nullable', 'string'],
             'notes_iv' => ['nullable', 'string', 'size:16'],
             'label_ids' => ['nullable', 'array'],

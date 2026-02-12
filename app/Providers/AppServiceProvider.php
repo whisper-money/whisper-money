@@ -50,7 +50,6 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perSecond(30);
         });
 
-        Feature::define('plaintext-transactions', fn (User $user) => false);
         Feature::define('open-banking', fn (User $user) => false);
         Feature::define('account-mapping', fn (User $user) => false);
     }
