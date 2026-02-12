@@ -82,7 +82,7 @@ export default function ConnectionsPage({ connections }: Props) {
 
             <SettingsLayout>
                 <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-4">
                         <div>
                             <h3 className="text-lg font-medium">
                                 {__('Bank Connections')}
