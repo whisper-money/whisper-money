@@ -4,6 +4,16 @@ import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Setting
 import { index as labelsIndex } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectSeparator,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { cn, isSameUrl, resolveUrl } from '@/lib/utils';
 import { edit as editAccount } from '@/routes/account';
@@ -17,7 +27,7 @@ import {
     type NavItem,
 } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
 const getNavItems = (
@@ -103,6 +113,68 @@ const getNavItems = (
         : []),
 ];
 
+function renderMobileNavGroups(
+    items: (NavItem | NavSectionHeader | NavDivider)[],
+) {
+    const elements: React.ReactNode[] = [];
+    let currentGroupLabel: string | null = null;
+    let currentGroupItems: NavItem[] = [];
+
+    const flushGroup = () => {
+        if (currentGroupItems.length === 0) {
+            return;
+        }
+
+        const groupKey = currentGroupLabel ?? 'default';
+
+        if (currentGroupLabel) {
+            elements.push(
+                <SelectGroup key={groupKey}>
+                    <SelectLabel>{__(currentGroupLabel)}</SelectLabel>
+                    {currentGroupItems.map((item) => (
+                        <SelectItem
+                            key={resolveUrl(item.href)}
+                            value={resolveUrl(item.href)}
+                        >
+                            {__(item.title)}
+                        </SelectItem>
+                    ))}
+                </SelectGroup>,
+            );
+        } else {
+            elements.push(
+                ...currentGroupItems.map((item) => (
+                    <SelectItem
+                        key={resolveUrl(item.href)}
+                        value={resolveUrl(item.href)}
+                    >
+                        {__(item.title)}
+                    </SelectItem>
+                )),
+            );
+        }
+
+        currentGroupItems = [];
+    };
+
+    for (const item of items) {
+        if (item.type === 'divider') {
+            flushGroup();
+            elements.push(<SelectSeparator key={`sep-${elements.length}`} />);
+            currentGroupLabel = null;
+        } else if (item.type === 'section-header') {
+            flushGroup();
+            currentGroupLabel = item.title;
+        } else {
+            currentGroupItems.push(item);
+        }
+    }
+
+    flushGroup();
+
+    return elements;
+}
+
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { subscriptionsEnabled, auth, features } =
         usePage<SharedData>().props;
@@ -121,6 +193,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
         openBankingEnabled,
     );
 
+    const activeNavItem = sidebarNavItems.find(
+        (item): item is NavItem =>
+            item.type === 'nav-item' && isSameUrl(currentPath, item.href),
+    );
+
     return (
         <div className="px-4 py-6">
             <Heading
@@ -129,20 +206,37 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
             />
 
             <div className="flex flex-col lg:flex-row lg:space-x-12">
-                <aside className="w-full max-w-xl lg:w-48">
+                {/* Mobile: dropdown select */}
+                <div className="lg:hidden">
+                    <Select
+                        value={
+                            activeNavItem
+                                ? resolveUrl(activeNavItem.href)
+                                : undefined
+                        }
+                        onValueChange={(value) => router.visit(value)}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder={__('Navigate to...')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {renderMobileNavGroups(sidebarNavItems)}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* Desktop: sidebar nav */}
+                <aside className="hidden w-48 lg:block">
                     <nav className="flex flex-col space-y-1 space-x-0">
                         {sidebarNavItems.map((item, index) => {
-                            if ('type' in item && item.type === 'divider') {
+                            if (item.type === 'divider') {
                                 return (
                                     <Separator
                                         key={`divider-${index}`}
                                         className="my-2 ml-0 opacity-0"
                                     />
                                 );
-                            } else if (
-                                'type' in item &&
-                                item.type === 'section-header'
-                            ) {
+                            } else if (item.type === 'section-header') {
                                 return (
                                     <h2
                                         key={`section-header-${index}`}
@@ -178,10 +272,8 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                     </nav>
                 </aside>
 
-                <Separator className="my-6 lg:hidden" />
-
                 <div className="flex-1 md:max-w-4xl">
-                    <section className="max-w-3xl space-y-12">
+                    <section className="mt-6 max-w-3xl space-y-12 lg:mt-0">
                         {children}
                     </section>
                 </div>
