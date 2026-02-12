@@ -1,6 +1,8 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
+import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
 import { Button } from '@/components/ui/button';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     Dialog,
     DialogContent,
@@ -9,14 +11,25 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
+import { Link2, PenLine } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
 
+type Mode = 'choice' | 'manual';
+
 export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
+    const { features } = usePage<SharedData>().props;
+    const openBankingEnabled = features['open-banking'];
+
     const [open, setOpen] = useState(false);
+    const [mode, setMode] = useState<Mode>(
+        openBankingEnabled ? 'choice' : 'manual',
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: null,
@@ -28,6 +41,13 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
     const handleFormChange = useCallback((data: AccountFormData) => {
         formDataRef.current = data;
     }, []);
+
+    function handleOpenChange(newOpen: boolean) {
+        setOpen(newOpen);
+        if (!newOpen) {
+            setMode(openBankingEnabled ? 'choice' : 'manual');
+        }
+    }
 
     async function createBankAndGetId(): Promise<string | null> {
         const customBank = formDataRef.current.customBank;
@@ -113,7 +133,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                 },
                 {
                     onSuccess: () => {
-                        setOpen(false);
+                        handleOpenChange(false);
                         onSuccess?.();
                     },
                     onFinish: () => {
@@ -133,41 +153,105 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button>{__('Create Account')}</Button>
-            </DialogTrigger>
-            <DialogContent hasKeyboard className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{__('Create Account')}</DialogTitle>
-                    <DialogDescription>
-                        {__(
-                            'Add a new bank account to track your transactions.',
-                        )}
-                    </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-2">
-                    <AccountForm onChange={handleFormChange} />
+        <>
+            <Dialog open={open} onOpenChange={handleOpenChange}>
+                <DialogTrigger asChild>
+                    <CreateButton>{__('Create Account')}</CreateButton>
+                </DialogTrigger>
+                <DialogContent hasKeyboard className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>{__('Create Account')}</DialogTitle>
+                        <DialogDescription>
+                            {mode === 'choice'
+                                ? __('Choose how you want to add your account.')
+                                : __(
+                                      'Add a new bank account to track your transactions.',
+                                  )}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setOpen(false)}
-                            disabled={isSubmitting}
-                        >
-                            {__('Cancel')}
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={isSubmitting}
-                            data-testid="submit-account"
-                        >
-                            {isSubmitting ? 'Creating...' : 'Create'}
-                        </Button>
-                    </div>
-                </form>
-            </DialogContent>
-        </Dialog>
+                    {mode === 'choice' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                className="flex flex-col items-center gap-3 rounded-lg border p-6 text-center transition-colors hover:bg-accent"
+                                onClick={() => setMode('manual')}
+                            >
+                                <PenLine className="h-8 w-8 text-muted-foreground" />
+                                <div>
+                                    <p className="font-medium">
+                                        {__('Manual')}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {__(
+                                            'Add an account and import transactions manually.',
+                                        )}
+                                    </p>
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                className="flex flex-col items-center gap-3 rounded-lg border p-6 text-center transition-colors hover:bg-accent"
+                                onClick={() => {
+                                    handleOpenChange(false);
+                                    setConnectDialogOpen(true);
+                                }}
+                            >
+                                <Link2 className="h-8 w-8 text-muted-foreground" />
+                                <div>
+                                    <p className="font-medium">
+                                        {__('Connected')}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {__(
+                                            'Connect your bank and sync transactions automatically.',
+                                        )}
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+                    )}
+
+                    {mode === 'manual' && (
+                        <form onSubmit={handleSubmit} className="space-y-2">
+                            <AccountForm onChange={handleFormChange} />
+
+                            <div className="flex justify-end gap-2 pt-4">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        if (openBankingEnabled) {
+                                            setMode('choice');
+                                        } else {
+                                            handleOpenChange(false);
+                                        }
+                                    }}
+                                    disabled={isSubmitting}
+                                >
+                                    {openBankingEnabled
+                                        ? __('Back')
+                                        : __('Cancel')}
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    data-testid="submit-account"
+                                >
+                                    {isSubmitting
+                                        ? __('Creating...')
+                                        : __('Create')}
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <ConnectAccountDialog
+                open={connectDialogOpen}
+                onOpenChange={setConnectDialogOpen}
+            />
+        </>
     );
 }

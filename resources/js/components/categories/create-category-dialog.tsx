@@ -2,6 +2,7 @@ import { store } from '@/actions/App/Http/Controllers/Settings/CategoryControlle
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     Dialog,
     DialogContent,
@@ -42,7 +43,7 @@ export function CreateCategoryDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>{__('Create Category')}</Button>
+                <CreateButton>{__('Create Category')}</CreateButton>
             </DialogTrigger>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>

@@ -5,6 +5,7 @@ import { getYear, parseISO } from 'date-fns';
 import { ArrowDown, MoreHorizontal } from 'lucide-react';
 
 import { AccountName } from '@/components/accounts/account-name';
+import { BankLogo } from '@/components/bank-logo';
 import { EncryptedText } from '@/components/encrypted-text';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
@@ -155,13 +156,11 @@ export function createTransactionColumns({
 
                 return (
                     <div className="flex items-center gap-2">
-                        {transaction.bank?.logo && (
-                            <img
-                                src={transaction.bank.logo}
-                                alt={transaction.bank.name}
-                                className="h-5 w-5 rounded-full"
-                            />
-                        )}
+                        <BankLogo
+                            src={transaction.bank?.logo}
+                            name={transaction.bank?.name}
+                            className="h-5 w-5"
+                        />
                         <AccountName
                             account={transaction.account}
                             length={{ min: 5, max: 15 }}

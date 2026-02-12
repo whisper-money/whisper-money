@@ -42,6 +42,8 @@ export interface Features {
     cashflow: boolean;
     budgets: boolean;
     'plaintext-transactions': boolean;
+    'open-banking': boolean;
+    'account-mapping': boolean;
 }
 
 export interface SharedData {

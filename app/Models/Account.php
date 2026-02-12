@@ -23,6 +23,9 @@ class Account extends Model
         'currency_code',
         'type',
         'encrypted',
+        'banking_connection_id',
+        'external_account_id',
+        'linked_at',
     ];
 
     protected function casts(): array
@@ -30,6 +33,7 @@ class Account extends Model
         return [
             'type' => AccountType::class,
             'encrypted' => 'boolean',
+            'linked_at' => 'datetime',
         ];
     }
 
@@ -51,5 +55,20 @@ class Account extends Model
     public function balances(): HasMany
     {
         return $this->hasMany(AccountBalance::class);
+    }
+
+    public function bankingConnection(): BelongsTo
+    {
+        return $this->belongsTo(BankingConnection::class);
+    }
+
+    public function isConnected(): bool
+    {
+        return $this->banking_connection_id !== null;
+    }
+
+    public function isLinked(): bool
+    {
+        return $this->linked_at !== null;
     }
 }

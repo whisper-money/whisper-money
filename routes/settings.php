@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\OpenBanking\ConnectionController;
 use App\Http\Controllers\Settings\AccountController;
 use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
@@ -63,4 +64,11 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
+
+    // Open Banking connections (feature-flagged)
+    Route::middleware('open-banking')->group(function () {
+        Route::get('settings/connections', [ConnectionController::class, 'index'])->name('settings.connections.index');
+        Route::post('settings/connections/{connection}/sync', [ConnectionController::class, 'sync'])->name('settings.connections.sync');
+        Route::delete('settings/connections/{connection}', [ConnectionController::class, 'destroy'])->name('settings.connections.destroy');
+    });
 });

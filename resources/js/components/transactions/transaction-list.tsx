@@ -349,8 +349,7 @@ export function TransactionList({
                                 if (!transaction.description_iv) {
                                     decryptedDescription =
                                         transaction.description;
-                                    decryptedNotes =
-                                        transaction.notes || null;
+                                    decryptedNotes = transaction.notes || null;
                                 } else if (key) {
                                     try {
                                         decryptedDescription = await decrypt(

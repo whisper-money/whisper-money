@@ -42,6 +42,16 @@ class TransactionFactory extends Factory
         ]);
     }
 
+    public function enableBanking(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'source' => TransactionSource::EnableBanking,
+            'external_transaction_id' => fake()->uuid(),
+            'description_iv' => null,
+            'notes_iv' => null,
+        ]);
+    }
+
     public function plaintext(): static
     {
         return $this->state(fn (array $attributes) => [

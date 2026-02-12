@@ -1,6 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/LabelController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     Dialog,
     DialogContent,
@@ -29,7 +30,7 @@ export function CreateLabelDialog({ onSuccess }: { onSuccess?: () => void }) {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>{__('Create Label')}</Button>
+                <CreateButton>{__('Create Label')}</CreateButton>
             </DialogTrigger>
             <DialogContent hasKeyboard className="sm:max-w-[425px]">
                 <DialogHeader>

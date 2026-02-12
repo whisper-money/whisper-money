@@ -6,6 +6,7 @@ import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
+import { BankLogo } from '@/components/bank-logo';
 import HeadingSmall from '@/components/heading-small';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { Button } from '@/components/ui/button';
@@ -76,19 +77,12 @@ export default function AccountShow({
             <div className="space-y-6 p-6">
                 <div className="sm flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div className="flex items-center gap-4 pl-1">
-                        {account.bank?.logo ? (
-                            <img
-                                src={account.bank.logo}
-                                alt={account.bank.name}
-                                className="size-12 rounded-full object-contain"
-                            />
-                        ) : (
-                            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                                <span className="text-lg font-medium text-muted-foreground">
-                                    {account.bank?.name?.charAt(0) || '?'}
-                                </span>
-                            </div>
-                        )}
+                        <BankLogo
+                            src={account.bank?.logo}
+                            name={account.bank?.name}
+                            className="size-12"
+                            fallback="letter"
+                        />
                         <HeadingSmall
                             title={
                                 <AccountName

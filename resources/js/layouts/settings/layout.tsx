@@ -23,6 +23,7 @@ import { type PropsWithChildren } from 'react';
 const getNavItems = (
     subscriptionsEnabled: boolean,
     isDemoAccount: boolean,
+    openBankingEnabled: boolean,
 ): (NavItem | NavSectionHeader | NavDivider)[] => [
     {
         type: 'nav-item',
@@ -30,6 +31,16 @@ const getNavItems = (
         href: accountsIndex(),
         icon: null,
     },
+    ...(openBankingEnabled
+        ? [
+              {
+                  type: 'nav-item' as const,
+                  title: 'Connections',
+                  href: '/settings/connections',
+                  icon: null,
+              },
+          ]
+        : []),
     {
         type: 'nav-item',
         title: 'Automation rules',
@@ -93,8 +104,10 @@ const getNavItems = (
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
-    const { subscriptionsEnabled, auth } = usePage<SharedData>().props;
+    const { subscriptionsEnabled, auth, features } =
+        usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
+    const openBankingEnabled = features['open-banking'] ?? false;
 
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
@@ -102,7 +115,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     }
 
     const currentPath = window.location.pathname;
-    const sidebarNavItems = getNavItems(subscriptionsEnabled, isDemoAccount);
+    const sidebarNavItems = getNavItems(
+        subscriptionsEnabled,
+        isDemoAccount,
+        openBankingEnabled,
+    );
 
     return (
         <div className="px-4 py-6">

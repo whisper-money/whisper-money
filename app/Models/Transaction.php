@@ -38,6 +38,8 @@ class Transaction extends Model
         'notes',
         'notes_iv',
         'source',
+        'external_transaction_id',
+        'raw_data',
     ];
 
     protected function casts(): array
@@ -46,6 +48,7 @@ class Transaction extends Model
             'transaction_date' => 'date:Y-m-d',
             'amount' => 'integer',
             'source' => TransactionSource::class,
+            'raw_data' => 'array',
         ];
     }
 

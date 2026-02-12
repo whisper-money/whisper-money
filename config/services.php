@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'enablebanking' => [
+        'app_id' => env('ENABLEBANKING_APP_ID'),
+        'private_key_path' => env('ENABLEBANKING_PRIVATE_KEY_PATH'),
+        'redirect_url' => env('ENABLEBANKING_REDIRECT_URL'),
+    ],
+
 ];

@@ -5,6 +5,9 @@ use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\OpenBanking\AccountMappingController;
+use App\Http\Controllers\OpenBanking\AuthorizationController;
+use App\Http\Controllers\OpenBanking\InstitutionController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
@@ -59,6 +62,14 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+});
+
+Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'open-banking'])->prefix('open-banking')->group(function () {
+    Route::get('institutions', [InstitutionController::class, 'index'])->name('open-banking.institutions');
+    Route::post('authorize', [AuthorizationController::class, 'store'])->name('open-banking.authorize');
+    Route::get('callback', [AuthorizationController::class, 'callback'])->name('open-banking.callback');
+    Route::get('connections/{connection}/map-accounts', [AccountMappingController::class, 'show'])->name('open-banking.map-accounts');
+    Route::post('connections/{connection}/map-accounts', [AccountMappingController::class, 'store'])->name('open-banking.map-accounts.store');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'budgets'])->group(function () {

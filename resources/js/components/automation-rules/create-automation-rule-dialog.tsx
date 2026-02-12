@@ -3,6 +3,7 @@ import { RuleBuilder } from '@/components/automation-rules/rule-builder';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Button } from '@/components/ui/button';
+import { CreateButton } from '@/components/ui/create-button';
 import {
     Dialog,
     DialogContent,
@@ -125,7 +126,9 @@ export function CreateAutomationRuleDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button disabled={disabled}>{__('Create Rule')}</Button>
+                <CreateButton disabled={disabled}>
+                    {__('Create Rule')}
+                </CreateButton>
             </DialogTrigger>
             <DialogContent className="overflow-x-hidden sm:max-w-[600px]">
                 <DialogHeader>

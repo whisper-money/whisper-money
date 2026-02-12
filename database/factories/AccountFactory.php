@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\AccountType;
 use App\Models\Bank;
+use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -28,5 +29,22 @@ class AccountFactory extends Factory
             'currency_code' => fake()->randomElement(['USD', 'EUR', 'GBP', 'JPY']),
             'type' => fake()->randomElement(AccountType::cases()),
         ];
+    }
+
+    public function connected(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'banking_connection_id' => BankingConnection::factory(),
+            'external_account_id' => fake()->uuid(),
+        ]);
+    }
+
+    public function linked(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'banking_connection_id' => BankingConnection::factory(),
+            'external_account_id' => fake()->uuid(),
+            'linked_at' => now(),
+        ]);
     }
 }

@@ -1,4 +1,5 @@
 import { index as indexBanks } from '@/actions/App/Http/Controllers/Settings/BankController';
+import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -110,15 +111,12 @@ export function BankCombobox({
                 >
                     {selectedBank ? (
                         <div className="flex items-center gap-2">
-                            {selectedBank.logo ? (
-                                <img
-                                    src={selectedBank.logo}
-                                    alt={selectedBank.name}
-                                    className="h-4 w-4 rounded object-contain"
-                                />
-                            ) : (
-                                <div className="h-4 w-4 rounded bg-muted" />
-                            )}
+                            <BankLogo
+                                src={selectedBank.logo}
+                                name={selectedBank.name}
+                                className="h-4 w-4"
+                                fallback="empty"
+                            />
                             <span>{selectedBank.name}</span>
                         </div>
                     ) : (
@@ -154,15 +152,12 @@ export function BankCombobox({
                                     onSelect={() => handleSelect(bank)}
                                 >
                                     <div className="flex items-center gap-2">
-                                        {bank.logo ? (
-                                            <img
-                                                src={bank.logo}
-                                                alt={bank.name}
-                                                className="h-4 w-4 rounded object-contain"
-                                            />
-                                        ) : (
-                                            <div className="h-4 w-4 rounded bg-muted" />
-                                        )}
+                                        <BankLogo
+                                            src={bank.logo}
+                                            name={bank.name}
+                                            className="h-4 w-4"
+                                            fallback="empty"
+                                        />
                                         <span>{bank.name}</span>
                                     </div>
                                     <Check

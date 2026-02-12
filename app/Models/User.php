@@ -118,6 +118,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(Budget::class);
     }
 
+    public function bankingConnections(): HasMany
+    {
+        return $this->hasMany(BankingConnection::class);
+    }
+
     public function hasReceivedEmail(DripEmailType $type): bool
     {
         return $this->mailLogs()->where('email_type', $type)->exists();

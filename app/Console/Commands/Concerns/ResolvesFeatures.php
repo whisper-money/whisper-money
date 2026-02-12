@@ -49,6 +49,6 @@ trait ResolvesFeatures
 
     private function getStringBasedFeatures(): array
     {
-        return ['budgets', 'plaintext-transactions'];
+        return ['budgets', 'plaintext-transactions', 'open-banking', 'account-mapping'];
     }
 }
