@@ -45,12 +45,18 @@ export interface Features {
     'account-mapping': boolean;
 }
 
+export interface Flash {
+    success: string | null;
+    error: string | null;
+}
+
 export interface SharedData {
     name: string;
     appUrl: string;
     version: string;
     quote: { message: string; author: string };
     auth: Auth;
+    flash: Flash;
     subscriptionsEnabled: boolean;
     pricing: PricingConfig;
     sidebarOpen: boolean;
