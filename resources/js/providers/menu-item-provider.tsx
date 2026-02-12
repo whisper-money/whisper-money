@@ -44,14 +44,13 @@ export function getMainNavItems(features: Features): NavItem[] {
             href: transactionsIndex(),
             icon: Receipt,
         },
+        {
+            type: 'nav-item',
+            title: 'Budgets',
+            href: budgetsIndex(),
+            icon: PiggyBank,
+        },
     );
-
-    items.push({
-        type: 'nav-item',
-        title: 'Budgets',
-        href: budgetsIndex(),
-        icon: PiggyBank,
-    });
 
     return items;
 }
