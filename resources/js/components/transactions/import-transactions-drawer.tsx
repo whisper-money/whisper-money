@@ -22,6 +22,7 @@ import {
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -31,7 +32,6 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
-import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -71,7 +71,7 @@ export function ImportTransactionsDrawer({
     onImportComplete,
 }: ImportTransactionsDrawerProps) {
     const { isKeySet } = useEncryptionKey();
-    const { features } = usePage<SharedData>().props;
+    const { features, locale } = usePage<SharedData>().props;
     const isPlaintext = features['plaintext-transactions'];
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
@@ -187,6 +187,7 @@ export function ImportTransactionsDrawer({
                 const detected = autoDetectDateFormat(
                     data,
                     autoMapping.transaction_date,
+                    locale,
                 );
                 if (detected) {
                     detectedFormat = detected;
