@@ -72,7 +72,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'open-banking'
     Route::post('connections/{connection}/map-accounts', [AccountMappingController::class, 'store'])->name('open-banking.map-accounts.store');
 });
 
-Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'budgets'])->group(function () {
+Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('budgets', [BudgetController::class, 'index'])->name('budgets.index');
     Route::post('budgets', [BudgetController::class, 'store'])->name('budgets.store');
     Route::get('budgets/{budget}', [BudgetController::class, 'show'])->name('budgets.show');

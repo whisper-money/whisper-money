@@ -46,14 +46,12 @@ export function getMainNavItems(features: Features): NavItem[] {
         },
     );
 
-    if (features.budgets) {
-        items.push({
-            type: 'nav-item',
-            title: 'Budgets',
-            href: budgetsIndex(),
-            icon: PiggyBank,
-        });
-    }
+    items.push({
+        type: 'nav-item',
+        title: 'Budgets',
+        href: budgetsIndex(),
+        icon: PiggyBank,
+    });
 
     return items;
 }

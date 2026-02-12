@@ -5,7 +5,6 @@ namespace App\Listeners;
 use App\Events\TransactionDeleted;
 use App\Services\BudgetTransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Laravel\Pennant\Feature;
 
 class UnassignTransactionFromBudget implements ShouldQueue
 {
@@ -14,9 +13,8 @@ class UnassignTransactionFromBudget implements ShouldQueue
     public function handle(TransactionDeleted $event): void
     {
         $transaction = $event->transaction;
-        $user = $transaction->user;
 
-        if (! $user || ! Feature::for($user)->active('budgets')) {
+        if (! $transaction->user) {
             return;
         }
 

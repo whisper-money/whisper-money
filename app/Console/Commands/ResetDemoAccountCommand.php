@@ -21,7 +21,6 @@ use App\Services\Demo\DemoLabelsProvider;
 use App\Services\Demo\DemoTransactionsProvider;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
-use Laravel\Pennant\Feature;
 
 class ResetDemoAccountCommand extends Command
 {
@@ -76,8 +75,6 @@ class ResetDemoAccountCommand extends Command
         $this->createAutomationRules($user, $labels);
 
         $this->createBudgets($user);
-
-        $this->enableBudgetsFeature($user);
 
         $this->assignTransactionsToBudgets($user);
 
@@ -508,11 +505,6 @@ class ResetDemoAccountCommand extends Command
 
             $iteration++;
         }
-    }
-
-    private function enableBudgetsFeature(User $user): void
-    {
-        Feature::for($user)->activate('budgets');
     }
 
     private function assignTransactionsToBudgets(User $user): void
