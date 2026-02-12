@@ -8,7 +8,6 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -613,8 +612,6 @@ test('updating transaction labels via API works correctly', function () {
 
 test('when budget with label exists, updating transaction with that label assigns it to budget', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('budgets');
-
     $account = Account::factory()->create(['user_id' => $user->id]);
     $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Work']);
 

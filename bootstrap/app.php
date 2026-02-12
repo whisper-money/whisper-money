@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\EnsureBudgetsFeature;
 use App\Http\Middleware\EnsureOpenBankingFeature;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
@@ -42,7 +41,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
             'block-demo' => \App\Http\Middleware\BlockDemoAccountActions::class,
-            'budgets' => EnsureBudgetsFeature::class,
             'open-banking' => EnsureOpenBankingFeature::class,
         ]);
     })

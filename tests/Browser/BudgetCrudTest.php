@@ -3,11 +3,9 @@
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 test('user can create a budget with category', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create([
         'user_id' => $user->id,
@@ -58,7 +56,6 @@ test('user can create a budget with category', function () {
 
 test('user can update budget name', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([
@@ -96,7 +93,6 @@ test('user can update budget name', function () {
 
 test('user can delete a budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([
@@ -133,7 +129,6 @@ test('user can delete a budget', function () {
 
 test('budget creation validates required fields', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $page = $this->actingAs($user)->visit('/budgets');
     $page->wait(2); // Wait for page to fully load
@@ -151,7 +146,6 @@ test('budget creation validates required fields', function () {
 
 test('budget shows current period information', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([
@@ -168,7 +162,6 @@ test('budget shows current period information', function () {
 
 test('user can navigate back to budgets list from budget detail', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([

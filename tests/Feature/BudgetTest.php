@@ -3,11 +3,9 @@
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 test('user can create a budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
 
@@ -36,7 +34,6 @@ test('user can create a budget', function () {
 
 test('user can view their budgets', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $budget = Budget::factory()->create(['user_id' => $user->id]);
 
@@ -51,7 +48,6 @@ test('user can view their budgets', function () {
 
 test('user can view a specific budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([
@@ -72,8 +68,6 @@ test('user can view a specific budget', function () {
 test('user cannot view another users budget', function () {
     $user1 = User::factory()->create(['onboarded_at' => now()]);
     $user2 = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user1)->activate('budgets');
-    Feature::for($user2)->activate('budgets');
 
     $budget = Budget::factory()->create(['user_id' => $user1->id]);
 
@@ -84,7 +78,6 @@ test('user cannot view another users budget', function () {
 
 test('user can update their budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $budget = Budget::factory()->create(['user_id' => $user->id]);
 
@@ -102,7 +95,6 @@ test('user can update their budget', function () {
 
 test('user can delete their budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $budget = Budget::factory()->create(['user_id' => $user->id]);
 
@@ -117,7 +109,6 @@ test('user can delete their budget', function () {
 
 test('budget show returns previous period when it exists', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $budget = Budget::factory()->monthly()->create([
         'user_id' => $user->id,
@@ -153,7 +144,6 @@ test('budget show returns previous period when it exists', function () {
 
 test('budget show returns null previous period when it is the first period', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $budget = Budget::factory()->monthly()->create([
         'user_id' => $user->id,
@@ -180,7 +170,6 @@ test('budget show returns null previous period when it is the first period', fun
 
 test('budget period is automatically generated', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
 

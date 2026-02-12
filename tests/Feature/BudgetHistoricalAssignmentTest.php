@@ -7,13 +7,11 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\assertDatabaseHas;
 
 beforeEach(function () {
     $this->user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($this->user)->activate('budgets');
 });
 
 test('budget creation dispatches the historical assignment job', function () {

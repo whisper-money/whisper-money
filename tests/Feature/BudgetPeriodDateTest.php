@@ -5,7 +5,6 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\User;
 use Carbon\Carbon;
-use Laravel\Pennant\Feature;
 
 test('getCurrentPeriod finds period on its last day regardless of time', function () {
     Carbon::setTestNow(Carbon::parse('2026-01-31 15:30:00'));
@@ -62,7 +61,6 @@ test('budget index loads current period on last day of period', function () {
     Carbon::setTestNow(Carbon::parse('2026-01-31 18:00:00'));
 
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $budget = Budget::factory()->create([
         'user_id' => $user->id,
@@ -93,7 +91,6 @@ test('budget show finds current period on last day of period', function () {
     Carbon::setTestNow(Carbon::parse('2026-01-31 20:00:00'));
 
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $budget = Budget::factory()->create([
         'user_id' => $user->id,

@@ -3,21 +3,9 @@
 use App\Models\Budget;
 use App\Models\Category;
 use App\Models\User;
-use Laravel\Pennant\Feature;
-
-test('budgets menu item hidden when feature disabled', function () {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->deactivate('budgets');
-
-    $page = $this->actingAs($user)->visit('/dashboard');
-
-    $page->assertDontSee('Budgets')
-        ->assertNoJavascriptErrors();
-});
 
 test('budgets menu item visible when feature enabled', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $page = $this->actingAs($user)->visit('/dashboard');
 
@@ -25,18 +13,8 @@ test('budgets menu item visible when feature enabled', function () {
         ->assertNoJavascriptErrors();
 });
 
-test('user cannot access budgets page when feature disabled', function () {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->deactivate('budgets');
-
-    $response = $this->actingAs($user)->get('/budgets');
-
-    $response->assertNotFound();
-});
-
 test('user can navigate to budgets index page', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $page = $this->actingAs($user)->visit('/budgets');
 
@@ -47,7 +25,6 @@ test('user can navigate to budgets index page', function () {
 
 test('user can view empty budgets list', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $page = $this->actingAs($user)->visit('/budgets');
 
@@ -57,7 +34,6 @@ test('user can view empty budgets list', function () {
 
 test('user can view budgets list with existing budgets', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([
@@ -75,7 +51,6 @@ test('user can view budgets list with existing budgets', function () {
 
 test('user can open create budget dialog', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
 
@@ -90,7 +65,6 @@ test('user can open create budget dialog', function () {
 
 test('user can view a specific budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([
@@ -111,7 +85,6 @@ test('user can view a specific budget', function () {
 
 test('user can open edit budget dialog', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([
@@ -131,7 +104,6 @@ test('user can open edit budget dialog', function () {
 
 test('user can open delete budget dialog', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user->id]);
     $budget = Budget::factory()->create([
@@ -154,8 +126,6 @@ test('user can open delete budget dialog', function () {
 test('user cannot access another users budget', function () {
     $user1 = User::factory()->create(['onboarded_at' => now()]);
     $user2 = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user1)->activate('budgets');
-    Feature::for($user2)->activate('budgets');
 
     $category = Category::factory()->create(['user_id' => $user1->id]);
     $budget = Budget::factory()->create([
@@ -170,7 +140,6 @@ test('user cannot access another users budget', function () {
 
 test('budgets navigation works from sidebar', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $page = $this->actingAs($user)->visit('/dashboard');
 
@@ -180,7 +149,6 @@ test('budgets navigation works from sidebar', function () {
 
 test('budgets page shows correct feature flag state', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
-    Feature::for($user)->activate('budgets');
 
     $page = $this->actingAs($user)->visit('/budgets');
 

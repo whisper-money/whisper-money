@@ -40,7 +40,6 @@ export interface NavDivider {
 
 export interface Features {
     cashflow: boolean;
-    budgets: boolean;
     'plaintext-transactions': boolean;
     'open-banking': boolean;
     'account-mapping': boolean;
