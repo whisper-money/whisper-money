@@ -7,6 +7,7 @@ use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
 use App\Events\TransactionUpdated;
 use App\Http\Responses\RegisterResponse;
+use App\Listeners\ApplyAutomationRules;
 use App\Listeners\AssignTransactionToBudget;
 use App\Listeners\UnassignTransactionFromBudget;
 use App\Models\User;
@@ -40,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(TransactionCreated::class, ApplyAutomationRules::class);
         Event::listen(TransactionCreated::class, AssignTransactionToBudget::class);
         Event::listen(TransactionUpdated::class, AssignTransactionToBudget::class);
         Event::listen(TransactionDeleted::class, UnassignTransactionFromBudget::class);

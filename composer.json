@@ -12,6 +12,7 @@
         "php": "^8.2",
         "firebase/php-jwt": "^7.0",
         "inertiajs/inertia-laravel": "^2.0",
+        "jwadhams/json-logic-php": "^1.5",
         "laravel/cashier": "^16.1",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
