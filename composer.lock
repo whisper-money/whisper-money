@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "98b80c7fbbd588b5674d2a769d135250",
+    "content-hash": "6542d8efaa85230382eec1ee7879b3a2",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -1349,6 +1349,49 @@
                 "source": "https://github.com/Jean85/pretty-package-versions/tree/2.1.1"
             },
             "time": "2025-03-19T14:43:43+00:00"
+        },
+        {
+            "name": "jwadhams/json-logic-php",
+            "version": "1.5.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/jwadhams/json-logic-php.git",
+                "reference": "060aab5ad36ae1fdd74d3006131b197ca777fa48"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/jwadhams/json-logic-php/zipball/060aab5ad36ae1fdd74d3006131b197ca777fa48",
+                "reference": "060aab5ad36ae1fdd74d3006131b197ca777fa48",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.2.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.3.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-0": {
+                    "JWadhams": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jeremy Wadhams",
+                    "email": "jwadhams@dealerinspire.com"
+                }
+            ],
+            "description": "Build rules with complex comparisons and boolean operators, serialized as JSON, and execute them in PHP",
+            "support": {
+                "issues": "https://github.com/jwadhams/json-logic-php/issues",
+                "source": "https://github.com/jwadhams/json-logic-php/tree/1.5.1"
+            },
+            "time": "2024-07-09T15:20:54+00:00"
         },
         {
             "name": "laravel/cashier",
