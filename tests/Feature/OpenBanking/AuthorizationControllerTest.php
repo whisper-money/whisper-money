@@ -57,15 +57,22 @@ test('authorization requires aspsp_name and country', function () {
     $response->assertJsonValidationErrors(['aspsp_name', 'country']);
 });
 
-test('callback with error redirects with error message', function () {
+test('callback with error redirects with error message and deletes pending connection', function () {
     $user = User::factory()->onboarded()->create();
     Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+    ]);
 
     $response = $this->actingAs($user)
         ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access');
 
     $response->assertRedirect(route('settings.connections.index'));
-    $response->assertSessionHas('error');
+    $response->assertSessionHas('error', 'User denied access');
+
+    $connection->refresh();
+    expect($connection->trashed())->toBeTrue();
 });
 
 test('callback without code redirects with error', function () {

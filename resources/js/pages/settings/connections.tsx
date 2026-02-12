@@ -25,13 +25,14 @@ import { __ } from '@/utils/i18n';
 import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import { ArrowRight, MoreHorizontal, RefreshCw, Unplug } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface Props {
     connections: BankingConnection[];
 }
 
 export default function ConnectionsPage({ connections }: Props) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, flash } = usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [disconnectConnection, setDisconnectConnection] =
@@ -42,6 +43,15 @@ export default function ConnectionsPage({ connections }: Props) {
     );
 
     const { start, stop } = usePoll(5000, {}, { autoStart: false });
+
+    useEffect(() => {
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+    }, [flash?.error, flash?.success]);
 
     useEffect(() => {
         if (hasSyncing) {

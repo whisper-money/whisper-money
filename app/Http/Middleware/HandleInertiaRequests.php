@@ -45,6 +45,10 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+            ],
             'name' => config('app.name'),
             'appUrl' => config('app.url'),
             'version' => json_decode(file_get_contents(base_path('package.json')))->version ?? '0.0.0',

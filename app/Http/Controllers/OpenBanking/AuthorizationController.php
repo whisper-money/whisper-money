@@ -60,6 +60,12 @@ class AuthorizationController extends Controller
                 'description' => $request->query('error_description'),
             ]);
 
+            auth()->user()->bankingConnections()
+                ->where('status', BankingConnectionStatus::Pending)
+                ->latest()
+                ->first()
+                ?->delete();
+
             return redirect()->route('settings.connections.index')
                 ->with('error', $request->query('error_description', 'Authorization was denied or cancelled.'));
         }
