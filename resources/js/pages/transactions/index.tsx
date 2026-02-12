@@ -47,6 +47,15 @@ import {
 import { DataTable } from '@/components/ui/data-table';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
@@ -393,6 +402,7 @@ export default function Transactions({
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
+    const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -1466,6 +1476,7 @@ export default function Transactions({
             );
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
+            setBulkDeleteConfirmation('');
             setRowSelection({});
 
             setRefreshKey((prev) => prev + 1);
@@ -1771,11 +1782,10 @@ export default function Transactions({
             />
 
             <AlertDialog
-                open={!!deleteTransaction}
+                open={!!deleteTransaction && !isBulkDeleteMode}
                 onOpenChange={(open) => {
                     if (!open) {
                         setDeleteTransaction(null);
-                        setIsBulkDeleteMode(false);
                     }
                 }}
             >
@@ -1783,37 +1793,85 @@ export default function Transactions({
                     <AlertDialogHeader>
                         <AlertDialogTitle>
                             {__('Delete Transaction')}
-
-                            {isBulkDeleteMode ? 's' : ''}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {isBulkDeleteMode
-                                ? `Are you sure you want to delete ${selectedCount} transactions? This action cannot be undone.`
-                                : 'Are you sure you want to delete this transaction? This action cannot be undone.'}
+                            {__(
+                                'Are you sure you want to delete this transaction? This action cannot be undone.',
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel
-                            disabled={isDeleting || isBulkDeleting}
-                        >
+                        <AlertDialogCancel disabled={isDeleting}>
                             {__('Cancel')}
                         </AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={
-                                isBulkDeleteMode
-                                    ? handleBulkDelete
-                                    : handleDelete
-                            }
-                            disabled={isDeleting || isBulkDeleting}
+                            onClick={handleDelete}
+                            disabled={isDeleting}
                             className="bg-red-600 hover:bg-red-700"
                         >
-                            {isDeleting || isBulkDeleting
-                                ? 'Deleting...'
-                                : 'Delete'}
+                            {isDeleting ? __('Deleting...') : __('Delete')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <Dialog
+                open={!!deleteTransaction && isBulkDeleteMode}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteTransaction(null);
+                        setIsBulkDeleteMode(false);
+                        setBulkDeleteConfirmation('');
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{__('Delete Transactions')}</DialogTitle>
+                        <DialogDescription>
+                            {__(
+                                'This action cannot be undone. To confirm, type',
+                            )}{' '}
+                            <span className="font-semibold text-foreground">
+                                delete {selectedCount} transactions
+                            </span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Input
+                        value={bulkDeleteConfirmation}
+                        onChange={(e) =>
+                            setBulkDeleteConfirmation(e.target.value)
+                        }
+                        placeholder={`delete ${selectedCount} transactions`}
+                        disabled={isBulkDeleting}
+                        autoFocus
+                    />
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setDeleteTransaction(null);
+                                setIsBulkDeleteMode(false);
+                                setBulkDeleteConfirmation('');
+                            }}
+                            disabled={isBulkDeleting}
+                        >
+                            {__('Cancel')}
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleBulkDelete}
+                            disabled={
+                                isBulkDeleting ||
+                                bulkDeleteConfirmation !==
+                                    `delete ${selectedCount} transactions`
+                            }
+                        >
+                            {isBulkDeleting ? __('Deleting...') : __('Delete')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <BulkActionsBar
                 selectedCount={selectedCount}

@@ -15,7 +15,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { isAdmin } from '@/hooks/use-admin';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
@@ -59,8 +58,6 @@ export function BulkActionsBar({
     if (selectedCount < 1) {
         return null;
     }
-
-    const isDeleteEnabled = isAdmin();
 
     const displayCount = isSelectingAll ? totalFilteredCount : selectedCount;
     const canSelectAll =
@@ -149,15 +146,13 @@ export function BulkActionsBar({
                                         {__('Re-evaluate rules')}
                                     </DropdownMenuItem>
 
-                                    {isDeleteEnabled && (
-                                        <DropdownMenuItem
-                                            variant="destructive"
-                                            onSelect={onDelete}
-                                        >
-                                            <Trash2 />
-                                            {__('Delete')}
-                                        </DropdownMenuItem>
-                                    )}
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        onSelect={onDelete}
+                                    >
+                                        <Trash2 />
+                                        {__('Delete')}
+                                    </DropdownMenuItem>
                                 </DropdownMenuGroup>
                             </DropdownMenuContent>
                         </DropdownMenu>
