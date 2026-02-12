@@ -51,6 +51,9 @@ export function createTransactionColumns({
     return [
         {
             id: 'select',
+            meta: {
+                cellClassName: 'hidden md:table-cell',
+            },
             header: ({ table }) => (
                 <Checkbox
                     checked={
