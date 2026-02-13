@@ -32,6 +32,7 @@ class Transaction extends Model
         'category_id',
         'description',
         'description_iv',
+        'original_description',
         'transaction_date',
         'amount',
         'currency_code',
