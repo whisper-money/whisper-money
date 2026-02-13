@@ -90,20 +90,25 @@ class ResetDemoAccountCommand extends Command
         $user = User::where('email', $email)->first();
 
         if ($user) {
-            $user->update(['encryption_salt' => $salt]);
+            $user->encryption_salt = $salt;
+            $user->email_verified_at ??= now();
+            $user->save();
 
             return $user;
         }
 
-        return User::create([
+        $user = new User([
             'email' => $email,
             'name' => 'Demo User',
             'password' => $password,
-            'email_verified_at' => now(),
             'onboarded_at' => now(),
             'encryption_salt' => $salt,
             'currency_code' => 'USD',
         ]);
+        $user->email_verified_at = now();
+        $user->save();
+
+        return $user;
     }
 
     private function deleteExistingData(User $user): void
