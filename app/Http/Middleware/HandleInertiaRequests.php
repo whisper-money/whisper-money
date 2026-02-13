@@ -100,7 +100,9 @@ class HandleInertiaRequests extends Middleware
                 ->orderBy('name')
                 ->get(['id', 'name', 'color']) : [],
             'hasEncryptedAccounts' => $user?->accounts()->where('encrypted', true)->exists() ?? false,
-            'hasEncryptedTransactions' => $user?->transactions()->whereNotNull('description_iv')->exists() ?? false,
+            'hasEncryptedTransactions' => $user?->transactions()
+                ->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
+                ->exists() ?? false,
             'locale' => app()->getLocale(),
             'translations' => $this->getTranslations(),
         ];
