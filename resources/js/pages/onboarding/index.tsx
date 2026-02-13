@@ -3,8 +3,6 @@ import { StepCategoryTypes } from '@/components/onboarding/step-category-types';
 import { StepComplete } from '@/components/onboarding/step-complete';
 import { StepCreateAccount } from '@/components/onboarding/step-create-account';
 import { StepCustomizeCategories } from '@/components/onboarding/step-customize-categories';
-import { StepEncryptionExplained } from '@/components/onboarding/step-encryption-explained';
-import { StepEncryptionSetup } from '@/components/onboarding/step-encryption-setup';
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
 import { StepImportTransactions } from '@/components/onboarding/step-import-transactions';
 import { StepMoreAccounts } from '@/components/onboarding/step-more-accounts';
@@ -40,14 +38,9 @@ interface ExistingAccount {
 interface OnboardingProps {
     banks: Bank[];
     accounts: ExistingAccount[];
-    hasEncryptionSetup: boolean;
 }
 
-export default function Onboarding({
-    banks,
-    accounts,
-    hasEncryptionSetup,
-}: OnboardingProps) {
+export default function Onboarding({ banks, accounts }: OnboardingProps) {
     const { sync } = useSyncContext();
     const hasSyncedRef = useRef(false);
 
@@ -70,7 +63,6 @@ export default function Onboarding({
         addCreatedAccount,
     } = useOnboardingState({
         existingAccountsCount: accounts.length,
-        hasEncryptionSetup,
     });
 
     const handleAccountCreated = async (account: CreatedAccount) => {
@@ -119,12 +111,6 @@ export default function Onboarding({
         switch (currentStep) {
             case 'welcome':
                 return <StepWelcome onContinue={goNext} />;
-
-            case 'encryption-explained':
-                return <StepEncryptionExplained onContinue={goNext} />;
-
-            case 'encryption-setup':
-                return <StepEncryptionSetup onComplete={goNext} />;
 
             case 'account-types':
                 return <StepAccountTypes onContinue={goNext} />;
@@ -193,8 +179,6 @@ export default function Onboarding({
     const getStepTitle = (step: OnboardingStep): string => {
         const titles: Record<OnboardingStep, string> = {
             welcome: __('Welcome'),
-            'encryption-explained': __('End-to-End Encryption'),
-            'encryption-setup': __('Setup Encryption'),
             'account-types': __('Account Types'),
             'create-account': __('Create Account'),
             'category-types': __('Categories'),

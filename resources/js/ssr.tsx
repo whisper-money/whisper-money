@@ -25,9 +25,11 @@ createServer((page) =>
                 | undefined;
             const initialUser = initialPageProps?.auth?.user ?? null;
             const initialIsAuthenticated = Boolean(initialUser);
+            const hasEncryptionSetup =
+                (initialPageProps?.hasEncryptionSetup as boolean) ?? false;
 
             return (
-                <EncryptionKeyProvider>
+                <EncryptionKeyProvider hasEncryptionSetup={hasEncryptionSetup}>
                     <PrivacyModeProvider>
                         <SyncProvider
                             initialIsAuthenticated={initialIsAuthenticated}

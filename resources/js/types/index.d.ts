@@ -40,7 +40,6 @@ export interface NavDivider {
 
 export interface Features {
     cashflow: boolean;
-    'plaintext-transactions': boolean;
     'open-banking': boolean;
     'account-mapping': boolean;
 }
@@ -62,6 +61,7 @@ export interface SharedData {
     sidebarOpen: boolean;
     features: Features;
     hasEncryptedAccounts: boolean;
+    hasEncryptionSetup: boolean;
     locale: string;
     translations: Record<string, string>;
     [key: string]: unknown;

@@ -1,10 +1,7 @@
-import { getStoredKey } from '@/lib/key-storage';
 import { useCallback, useMemo, useState } from 'react';
 
 export type OnboardingStep =
     | 'welcome'
-    | 'encryption-explained'
-    | 'encryption-setup'
     | 'account-types'
     | 'create-account'
     | 'category-types'
@@ -19,8 +16,6 @@ export type OnboardingStep =
 // import-transactions and import-balances are sub-steps that don't increment the counter
 const PRIMARY_STEPS: OnboardingStep[] = [
     'welcome',
-    'encryption-explained',
-    'encryption-setup',
     'account-types',
     'create-account',
     'category-types',
@@ -31,8 +26,6 @@ const PRIMARY_STEPS: OnboardingStep[] = [
 
 // Steps that are sub-steps (shown under the same progress position as 'create-account')
 const SUB_STEPS: OnboardingStep[] = ['import-transactions', 'import-balances'];
-
-const SKIPPABLE_ENCRYPTION_STEPS: OnboardingStep[] = ['encryption-setup'];
 
 export interface OnboardingState {
     currentStep: OnboardingStep;
@@ -51,31 +44,12 @@ export interface CreatedAccount {
 
 interface UseOnboardingStateOptions {
     existingAccountsCount?: number;
-    hasEncryptionSetup?: boolean;
 }
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
-    const { existingAccountsCount = 0, hasEncryptionSetup = false } = options;
+    const { existingAccountsCount = 0 } = options;
 
-    // Check both: backend says encryption is set up AND we have the key in browser storage
-    // We need the key in storage to actually decrypt data
-    const hasEncryptionKey = useMemo(() => {
-        // If backend says encryption is not set up, we definitely don't have a key
-        if (!hasEncryptionSetup) {
-            return false;
-        }
-        // If backend says it's set up, also check if we have the key locally
-        return getStoredKey() !== null;
-    }, [hasEncryptionSetup]);
-
-    const primarySteps = useMemo(() => {
-        if (hasEncryptionKey) {
-            return PRIMARY_STEPS.filter(
-                (step) => !SKIPPABLE_ENCRYPTION_STEPS.includes(step),
-            );
-        }
-        return PRIMARY_STEPS;
-    }, [hasEncryptionKey]);
+    const primarySteps = PRIMARY_STEPS;
 
     // Determine initial step based on existing state
     const initialStep = useMemo((): OnboardingStep => {
@@ -140,6 +114,5 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         goNext,
         goBack,
         addCreatedAccount,
-        hasEncryptionKey,
     };
 }

@@ -71,7 +71,7 @@ it('shows welcome step as first onboarding step', function () {
         ->assertNoJavascriptErrors();
 });
 
-it('navigates from welcome to encryption explanation', function () {
+it('navigates from welcome to account types', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
     ]);
@@ -84,26 +84,7 @@ it('navigates from welcome to encryption explanation', function () {
         ->assertSee('Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
-        ->assertSee('Your Data, Your Privacy')
-        ->assertSee('End-to-End Encryption')
-        ->assertNoJavascriptErrors();
-});
-
-it('shows encryption setup after encryption explanation', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding');
-
-    $page->click("Let's Get Started")
-        ->wait(1)
-        ->assertSee('Your Data, Your Privacy')
-        ->click('@encryption-continue-button')
-        ->wait(1)
-        ->assertSee('Create Your Encryption Password')
+        ->assertSee('Account Types')
         ->assertNoJavascriptErrors();
 });
 
@@ -120,71 +101,6 @@ it('marks user as onboarded when completing onboarding', function () {
     $user->refresh();
     expect($user->isOnboarded())->toBeTrue();
     expect($user->onboarded_at)->not->toBeNull();
-});
-
-// =============================================================================
-// Encryption Key Skip Tests
-// =============================================================================
-
-it('skips encryption setup step when user has encryption key stored', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-        'encryption_salt' => 'test-salt',
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding');
-
-    // Store a mock encryption key in localStorage (using the correct key name)
-    $page->script("localStorage.setItem('encryption_key', 'mock-encryption-key')");
-
-    // Reload the page to pick up the stored key
-    $page->navigate('/onboarding')
-        ->wait(1)
-        // Still shows welcome
-        ->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
-        ->click("Let's Get Started")
-        ->wait(1)
-        // Still shows encryption explanation
-        ->assertSee('Your Data, Your Privacy')
-        ->click('@encryption-continue-button')
-        ->wait(1)
-        // Should skip encryption-setup and go directly to account types
-        ->assertSee('Account Types')
-        ->assertDontSee('Create Your Encryption Password')
-        ->assertNoJavascriptErrors();
-
-    // Cleanup
-    $page->script("localStorage.removeItem('encryption_key')");
-});
-
-it('shows encryption setup step when no encryption key exists', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit('/onboarding');
-
-    // Ensure no key exists
-    $page->script("localStorage.removeItem('encryption_key')");
-    $page->script("sessionStorage.removeItem('encryption_key')");
-
-    $page->navigate('/onboarding')
-        ->wait(1)
-        ->assertSee('Welcome to')
-        ->assertSee('Whisper Money')
-        ->click("Let's Get Started")
-        ->wait(1)
-        ->assertSee('Your Data, Your Privacy')
-        ->click('@encryption-continue-button')
-        ->wait(1)
-        // Should show encryption setup since no key exists
-        ->assertSee('Create Your Encryption Password')
-        ->assertNoJavascriptErrors();
 });
 
 // =============================================================================
@@ -209,17 +125,8 @@ it('shows existing accounts instead of create form when accounts exist', functio
 
     $page = visit('/onboarding');
 
-    // Store mock encryption key to skip encryption setup step
-    $page->script("localStorage.setItem('encryption_key', 'mock-encryption-key')");
-
-    $page->navigate('/onboarding')
+    $page->click("Let's Get Started")
         ->wait(1)
-        // Navigate through initial steps
-        ->click("Let's Get Started")
-        ->wait(1)
-        ->click('@encryption-continue-button')
-        ->wait(1)
-        // Should now be at account types (encryption-setup was skipped)
         ->assertSee('Account Types')
         ->click('Create Your First Account')
         ->wait(1)
@@ -228,8 +135,6 @@ it('shows existing accounts instead of create form when accounts exist', functio
         ->assertSee('Test Bank')
         ->assertSee('Checking')
         ->assertNoJavascriptErrors();
-
-    $page->script("localStorage.removeItem('encryption_key')");
 });
 
 it('allows continuing with existing accounts', function () {
@@ -250,14 +155,7 @@ it('allows continuing with existing accounts', function () {
 
     $page = visit('/onboarding');
 
-    $page->script("localStorage.setItem('encryption_key', 'mock-encryption-key')");
-
-    $page->navigate('/onboarding')
-        ->wait(1)
-        // Navigate through initial steps
-        ->click("Let's Get Started")
-        ->wait(1)
-        ->click('@encryption-continue-button')
+    $page->click("Let's Get Started")
         ->wait(1)
         ->assertSee('Account Types')
         ->click('Create Your First Account')
@@ -270,8 +168,6 @@ it('allows continuing with existing accounts', function () {
         // Should go to import transactions (since checking account needs transactions)
         ->assertSee('Import Your Transactions')
         ->assertNoJavascriptErrors();
-
-    $page->script("localStorage.removeItem('encryption_key')");
 });
 
 // =============================================================================
@@ -296,14 +192,7 @@ it('shows import transactions step after account creation', function () {
 
     $page = visit('/onboarding');
 
-    $page->script("localStorage.setItem('encryption_key', 'mock-encryption-key')");
-
-    $page->navigate('/onboarding')
-        ->wait(1)
-        // Navigate through initial steps
-        ->click("Let's Get Started")
-        ->wait(1)
-        ->click('@encryption-continue-button')
+    $page->click("Let's Get Started")
         ->wait(1)
         ->click('Create Your First Account')
         ->wait(1)
@@ -313,8 +202,6 @@ it('shows import transactions step after account creation', function () {
         ->assertSee('Import Your Transactions')
         ->assertSee('Import Transactions')
         ->assertNoJavascriptErrors();
-
-    $page->script("localStorage.removeItem('encryption_key')");
 });
 
 it('shows add another account form without first account restriction', function () {
@@ -335,26 +222,14 @@ it('shows add another account form without first account restriction', function 
 
     $page = visit('/onboarding');
 
-    $page->script("localStorage.setItem('encryption_key', 'mock-encryption-key')");
-
-    // Navigate to more-accounts step via direct state manipulation
-    // For this test, we verify that when adding another account, the first account restriction is gone
-    $page->navigate('/onboarding')
-        ->wait(1)
-        ->click("Let's Get Started")
-        ->wait(1)
-        ->click('@encryption-continue-button')
+    $page->click("Let's Get Started")
         ->wait(1)
         ->click('Create Your First Account')
         ->wait(1)
         // At this point, the "Your Accounts" view shows existing accounts
-        // The Continue button will proceed to import, but the key point is tested:
-        // existing accounts are shown correctly
         ->assertSee('Your Accounts')
         ->assertSee('Primary Bank')
         ->assertNoJavascriptErrors();
-
-    $page->script("localStorage.removeItem('encryption_key')");
 });
 
 // =============================================================================
@@ -376,25 +251,13 @@ it('completes onboarding flow through account creation', function () {
     $page->assertPathIs('/onboarding')
         ->assertNoJavascriptErrors();
 
-    // Step 2: Welcome
+    // Step 1: Welcome
     $page->assertSee('Welcome to')
         ->assertSee('Whisper Money')
         ->click("Let's Get Started")
         ->wait(1);
 
-    // Step 3: Encryption Explanation
-    $page->assertSee('Your Data, Your Privacy')
-        ->click('@encryption-continue-button')
-        ->wait(1);
-
-    // Step 4: Encryption Setup
-    $page->assertSee('Create Your Encryption Password')
-        ->fill('#password', 'MySecureEncryptionPassword123!')
-        ->fill('#confirmPassword', 'MySecureEncryptionPassword123!')
-        ->click('Setup Encryption')
-        ->wait(3);
-
-    // Step 5: Account Types
+    // Step 2: Account Types
     $page->assertSee('Account Types')
         ->assertSee('Checking')
         ->assertSee('Savings')
@@ -402,7 +265,7 @@ it('completes onboarding flow through account creation', function () {
         ->click('Create Your First Account')
         ->wait(1);
 
-    // Step 6: Create Account
+    // Step 3: Create Account
     $page->assertSee('Create an Account')
         ->assertSee('Your first account must be a')
         ->fill('#display_name', 'My Checking Account')
@@ -421,13 +284,9 @@ it('completes onboarding flow through account creation', function () {
         ->click('Create Account')
         ->wait(3);
 
-    // Step 7: Import Transactions step should appear
+    // Step 4: Import Transactions step should appear
     $page->assertSee('Import Your Transactions')
         ->assertNoJavascriptErrors();
-
-    // Verify user's encryption was set up
-    $user->refresh();
-    expect($user->encryption_salt)->not->toBeNull();
 
     // Verify account was created
     expect($user->accounts()->count())->toBe(1);

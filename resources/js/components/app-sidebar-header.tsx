@@ -3,7 +3,11 @@ import { EncryptionKeyButton } from '@/components/encryption-key-button';
 import { ImportTransactionsButton } from '@/components/transactions/import-transactions-button';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { type BreadcrumbItem as BreadcrumbItemType } from '@/types';
+import {
+    type BreadcrumbItem as BreadcrumbItemType,
+    type SharedData,
+} from '@/types';
+import { usePage } from '@inertiajs/react';
 import AppLogo from './app-logo';
 import { NavUser } from './nav-user';
 
@@ -12,6 +16,8 @@ export function AppSidebarHeader({
 }: {
     breadcrumbs?: BreadcrumbItemType[];
 }) {
+    const { hasEncryptionSetup } = usePage<SharedData>().props;
+
     return (
         <header className="pt-safe flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/50 px-5 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:min-h-12 sm:px-6 md:px-4">
             <div className="flex items-center gap-2 sm:hidden">
@@ -23,11 +29,15 @@ export function AppSidebarHeader({
             </div>
             <div className="flex items-center gap-2">
                 <ImportTransactionsButton />
-                <Separator
-                    orientation="vertical"
-                    className="data-[orientation=vertical]:h-6"
-                />
-                <EncryptionKeyButton />
+                {hasEncryptionSetup && (
+                    <>
+                        <Separator
+                            orientation="vertical"
+                            className="data-[orientation=vertical]:h-6"
+                        />
+                        <EncryptionKeyButton />
+                    </>
+                )}
                 <Separator
                     orientation="vertical"
                     className="data-[orientation=vertical]:h-6 sm:hidden"

@@ -9,12 +9,14 @@ Whisper Money is a privacy-first personal finance app with end-to-end encryption
 ## Commands
 
 ### Development
+
 ```bash
 composer run dev          # Start full dev environment (PHP server, queue, Vite, logs)
 bun run dev               # Vite dev server only
 ```
 
 ### Build & Quality
+
 ```bash
 bun run build             # Production build (don't run automatically - ask user)
 bun run format            # Format code with Prettier
@@ -23,13 +25,15 @@ vendor/bin/pint --dirty   # PHP code formatting
 ```
 
 ### Testing
+
 ```bash
-php artisan test                              # Run all tests
+php artisan test --exclue-testsuite=Browser     # Run all tests
 php artisan test tests/Feature/ExampleTest.php  # Run specific file
-php artisan test --filter=testName            # Filter by test name
+php artisan test --filter=testName              # Filter by test name
 ```
 
 ### CI Requirements (must pass before finalizing changes)
+
 ```bash
 bun install --frozen-lockfile
 composer install --no-interaction --prefer-dist --optimize-autoloader
@@ -43,18 +47,21 @@ bun run lint
 ## Architecture
 
 ### Backend (Laravel 12)
+
 - **Streamlined structure**: No middleware files in `app/Http/Middleware/`, configuration in `bootstrap/app.php`
 - **Commands auto-register**: Files in `app/Console/Commands/` are automatically available
 - **Form Requests**: Always use for validation instead of inline controller validation
 - **Eloquent**: Prefer `Model::query()` over `DB::`, use eager loading to prevent N+1
 
 ### Frontend (React 19 + Inertia v2)
+
 - **Pages**: `resources/js/pages/` - Inertia page components
 - **Components**: `resources/js/components/` - Reusable UI components
 - **Services**: `resources/js/services/` - Sync services with IndexedDB (Dexie) for offline support
 - **Wayfinder**: Type-safe routes generated in `resources/js/routes/` and `resources/js/actions/`
 
 ### Wayfinder Usage
+
 ```typescript
 // Import controller methods (tree-shakable)
 import { show, store } from '@/actions/App/Http/Controllers/PostController'
@@ -67,6 +74,7 @@ show.url(1)       // "/posts/1"
 ```
 
 ### Navigation
+
 - Use `router.visit()` from `@inertiajs/react` or `<Link>` component
 - Never use traditional `<a>` tags for internal navigation
 
@@ -202,7 +210,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 ## Constructors
 
 - Use PHP 8 constructor property promotion in `__construct()`.
-    - <code-snippet>public function __construct(public GitHub $github) { }</code-snippet>
+  - <code-snippet>public function \_\_construct(public GitHub $github) { }</code-snippet>
 - Do not allow empty `__construct()` methods with zero parameters unless the constructor is private.
 
 ## Type Declarations
@@ -414,4 +422,4 @@ Fortify is a headless authentication backend that provides authentication routes
 - `Features::updateProfileInformation()` to let users update their profile.
 - `Features::updatePasswords()` to let users change their passwords.
 - `Features::resetPasswords()` for password reset via email.
-</laravel-boost-guidelines>
+  </laravel-boost-guidelines>

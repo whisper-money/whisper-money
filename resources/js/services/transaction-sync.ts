@@ -1,4 +1,4 @@
-import { encrypt, importKey } from '@/lib/crypto';
+import { importKey } from '@/lib/crypto';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { TransactionSyncManager } from '@/lib/sync-manager';
@@ -272,18 +272,6 @@ class TransactionSyncService {
             );
             return transactions.map(() => false);
         }
-    }
-
-    async encryptDescription(
-        description: string,
-    ): Promise<{ encrypted: string; iv: string }> {
-        const keyString = getStoredKey();
-        if (!keyString) {
-            throw new Error('Encryption key not set');
-        }
-
-        const key = await importKey(keyString);
-        return await encrypt(description, key);
     }
 
     async getLastSyncTime(): Promise<string | null> {

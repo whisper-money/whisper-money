@@ -1,7 +1,5 @@
 import { useLocale } from '@/hooks/use-locale';
-import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -56,7 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { decrypt, encrypt, importKey } from '@/lib/crypto';
+import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
@@ -249,9 +247,6 @@ export function TransactionList({
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
     const locale = useLocale();
-    const { features } = usePage<SharedData>().props;
-    const isPlaintext = features['plaintext-transactions'];
-
     const labels = initialLabels;
 
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
@@ -902,17 +897,8 @@ export function TransactionList({
                         );
 
                         if (combinedNote !== transaction.decryptedNotes) {
-                            if (isPlaintext) {
-                                finalNotes = combinedNote;
-                                finalNotesIv = null;
-                            } else {
-                                const encrypted = await encrypt(
-                                    combinedNote,
-                                    key,
-                                );
-                                finalNotes = encrypted.encrypted;
-                                finalNotesIv = encrypted.iv;
-                            }
+                            finalNotes = combinedNote;
+                            finalNotesIv = null;
                             consoleDebug('Combined notes with rule note');
                         } else {
                             consoleDebug('Rule note already present, skipping');
@@ -1068,17 +1054,8 @@ export function TransactionList({
                         );
 
                         if (combinedNote !== transaction.decryptedNotes) {
-                            if (isPlaintext) {
-                                finalNotes = combinedNote;
-                                finalNotesIv = null;
-                            } else {
-                                const encrypted = await encrypt(
-                                    combinedNote,
-                                    key,
-                                );
-                                finalNotes = encrypted.encrypted;
-                                finalNotesIv = encrypted.iv;
-                            }
+                            finalNotes = combinedNote;
+                            finalNotesIv = null;
                             consoleDebug('Combined notes with rule note');
                         } else {
                             consoleDebug('Rule note already present, skipping');

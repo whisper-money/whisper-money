@@ -25,15 +25,13 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
-import { decrypt, encrypt, importKey } from '@/lib/crypto';
+import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type SharedData } from '@/types';
 import {
     filterTransactionalAccounts,
     type Account,
@@ -45,7 +43,6 @@ import { type Label } from '@/types/label';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { getYear, parseISO } from 'date-fns';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -79,10 +76,7 @@ export function EditTransactionDialog({
     const STORAGE_KEY_UPDATE_BALANCE =
         'whisper_money_update_balance_on_transaction';
 
-    const { isKeySet } = useEncryptionKey();
     const { sync } = useSyncContext();
-    const { features } = usePage<SharedData>().props;
-    const isPlaintext = features['plaintext-transactions'];
     const [transactionDate, setTransactionDate] = useState('');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState<number>(0);
@@ -336,13 +330,6 @@ export function EditTransactionDialog({
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
 
-        if (!isPlaintext && !isKeySet) {
-            toast.error(
-                __('Please unlock your encryption key to save transactions'),
-            );
-            return;
-        }
-
         if (mode === 'create') {
             if (!description.trim()) {
                 toast.error(__('Description is required'));
@@ -373,11 +360,6 @@ export function EditTransactionDialog({
         setIsSubmitting(true);
         try {
             const trimmedDescription = description.trim();
-            const keyString = getStoredKey();
-            if (!isPlaintext && !keyString) {
-                throw new Error(__('Encryption key not available'));
-            }
-            const key = keyString ? await importKey(keyString) : null;
 
             if (mode === 'create') {
                 const ruleResult = await checkAndApplyAutomationRules();
@@ -399,30 +381,10 @@ export function EditTransactionDialog({
                     finalLabelIds = [...ruleResult.labelIds];
                 }
 
-                let finalDescription: string;
-                let finalDescriptionIv: string | null;
-                let encryptedNotes: string | null = null;
-                let notesIv: string | null = null;
-
-                if (isPlaintext) {
-                    finalDescription = trimmedDescription;
-                    finalDescriptionIv = null;
-                    encryptedNotes = finalNotes || null;
-                    notesIv = null;
-                } else {
-                    const encryptedDescription = await encrypt(
-                        trimmedDescription,
-                        key!,
-                    );
-                    finalDescription = encryptedDescription.encrypted;
-                    finalDescriptionIv = encryptedDescription.iv;
-
-                    if (finalNotes) {
-                        const encrypted = await encrypt(finalNotes, key!);
-                        encryptedNotes = encrypted.encrypted;
-                        notesIv = encrypted.iv;
-                    }
-                }
+                const finalDescription = trimmedDescription;
+                const finalDescriptionIv = null;
+                const encryptedNotes = finalNotes || null;
+                const notesIv = null;
 
                 const selectedAccount = accounts.find(
                     (acc) => acc.id === accountId,
@@ -505,14 +467,8 @@ export function EditTransactionDialog({
                 let encryptedNotes: string | null = null;
                 let notesIv: string | null = null;
 
-                if (isPlaintext) {
-                    encryptedNotes = trimmedNotes || null;
-                    notesIv = null;
-                } else if (trimmedNotes) {
-                    const encrypted = await encrypt(trimmedNotes, key!);
-                    encryptedNotes = encrypted.encrypted;
-                    notesIv = encrypted.iv;
-                }
+                encryptedNotes = trimmedNotes || null;
+                notesIv = null;
 
                 const updateData: {
                     category_id: string | null;
@@ -535,17 +491,8 @@ export function EditTransactionDialog({
                     transaction.source === 'manually_created' &&
                     trimmedDescription
                 ) {
-                    if (isPlaintext) {
-                        updateData.description = trimmedDescription;
-                        updateData.description_iv = null;
-                    } else {
-                        const encryptedDescription = await encrypt(
-                            trimmedDescription,
-                            key!,
-                        );
-                        updateData.description = encryptedDescription.encrypted;
-                        updateData.description_iv = encryptedDescription.iv;
-                    }
+                    updateData.description = trimmedDescription;
+                    updateData.description_iv = null;
                     finalDecryptedDescription = trimmedDescription;
                 }
 

@@ -95,7 +95,11 @@ export function AccountBalanceCard({
                         />
                     </div>
                     <div className="h-[70px] w-full max-w-[250px] flex-1">
-                        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
+                        <ResponsiveContainer
+                            width="100%"
+                            height="100%"
+                            initialDimension={{ width: 1, height: 1 }}
+                        >
                             <LineChart data={account.history}>
                                 <Tooltip
                                     content={({ active, payload }) => {

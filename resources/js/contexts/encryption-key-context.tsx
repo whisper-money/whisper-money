@@ -3,6 +3,7 @@ import axios from 'axios';
 import {
     createContext,
     type ReactNode,
+    useCallback,
     useContext,
     useEffect,
     useState,
@@ -26,15 +27,27 @@ const EncryptionKeyContext = createContext<
     EncryptionKeyContextType | undefined
 >(undefined);
 
-export function EncryptionKeyProvider({ children }: { children: ReactNode }) {
-    const [isKeySet, setIsKeySet] = useState(false);
+interface EncryptionKeyProviderProps {
+    hasEncryptionSetup: boolean;
+    children: ReactNode;
+}
+
+export function EncryptionKeyProvider({
+    hasEncryptionSetup,
+    children,
+}: EncryptionKeyProviderProps) {
+    const [isKeySet, setIsKeySet] = useState(!hasEncryptionSetup);
     const [encryptedMessageData, setEncryptedMessageData] =
         useState<EncryptedMessageData | null>(null);
 
-    function refreshKeyState() {
+    const refreshKeyState = useCallback(() => {
+        if (!hasEncryptionSetup) {
+            setIsKeySet(true);
+            return;
+        }
         const key = getStoredKey();
         setIsKeySet(!!key);
-    }
+    }, [hasEncryptionSetup]);
 
     async function fetchEncryptedMessage() {
         try {
@@ -55,13 +68,17 @@ export function EncryptionKeyProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         refreshKeyState();
 
+        if (!hasEncryptionSetup) {
+            return;
+        }
+
         const interval = setInterval(() => {
             const key = getStoredKey();
             setIsKeySet(!!key);
         }, 1000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [hasEncryptionSetup, refreshKeyState]);
 
     return (
         <EncryptionKeyContext.Provider

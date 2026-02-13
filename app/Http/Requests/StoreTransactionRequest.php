@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use App\Enums\TransactionSource;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Laravel\Pennant\Feature;
 
 class StoreTransactionRequest extends FormRequest
 {
@@ -31,9 +30,7 @@ class StoreTransactionRequest extends FormRequest
                 }),
             ],
             'description' => ['required', 'string'],
-            'description_iv' => Feature::for($this->user())->active('plaintext-transactions')
-                ? ['nullable', 'string', 'size:16']
-                : ['required', 'string', 'size:16'],
+            'description_iv' => ['nullable', 'string', 'size:16'],
             'transaction_date' => ['required', 'date'],
             'amount' => ['required', 'integer'],
             'currency_code' => ['required', 'string', 'size:3'],
@@ -59,7 +56,6 @@ class StoreTransactionRequest extends FormRequest
             'category_id.exists' => 'The selected category does not exist or does not belong to you.',
             'label_ids.*.exists' => 'One or more selected labels do not exist or do not belong to you.',
             'description.required' => 'The description is required.',
-            'description_iv.required' => 'The description IV is required.',
             'description_iv.size' => 'The description IV must be exactly 16 characters.',
             'transaction_date.required' => 'The transaction date is required.',
             'transaction_date.date' => 'The transaction date must be a valid date.',

@@ -8,7 +8,6 @@ import {
     DrawerTitle,
 } from '@/components/ui/drawer';
 import { Progress } from '@/components/ui/progress';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { importKey } from '@/lib/crypto';
 import {
     autoDetectColumns,
@@ -70,9 +69,7 @@ export function ImportTransactionsDrawer({
     onOpenChange,
     onImportComplete,
 }: ImportTransactionsDrawerProps) {
-    const { isKeySet } = useEncryptionKey();
-    const { features, locale } = usePage<SharedData>().props;
-    const isPlaintext = features['plaintext-transactions'];
+    const { locale } = usePage<SharedData>().props;
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
@@ -314,11 +311,6 @@ export function ImportTransactionsDrawer({
     };
 
     const handleConfirmImport = async () => {
-        if (!isPlaintext && !isKeySet) {
-            setError('Please unlock your encryption key first');
-            return;
-        }
-
         setIsImporting(true);
         setError(null);
         setImportErrors([]);
@@ -351,20 +343,8 @@ export function ImportTransactionsDrawer({
                 batch.map(async (transaction, batchIndex) => {
                     const rowNumber = i + batchIndex + 1;
 
-                    let encrypted: string;
-                    let iv: string | null;
-
-                    if (isPlaintext) {
-                        encrypted = transaction.description;
-                        iv = null;
-                    } else {
-                        const result =
-                            await transactionSyncService.encryptDescription(
-                                transaction.description,
-                            );
-                        encrypted = result.encrypted;
-                        iv = result.iv;
-                    }
+                    const encrypted: string = transaction.description;
+                    const iv: string | null = null;
 
                     let categoryId: string | null = null;
                     let notes: string | null = null;
@@ -391,20 +371,15 @@ export function ImportTransactionsDrawer({
                                 categoryId = ruleMatch.categoryId;
                             }
                             if (ruleMatch.note && ruleMatch.noteIv) {
-                                if (isPlaintext) {
-                                    const { decrypt } = await import(
-                                        '@/lib/crypto'
-                                    );
-                                    notes = await decrypt(
-                                        ruleMatch.note,
-                                        key,
-                                        ruleMatch.noteIv,
-                                    );
-                                    notesIv = null;
-                                } else {
-                                    notes = ruleMatch.note;
-                                    notesIv = ruleMatch.noteIv;
-                                }
+                                const { decrypt } = await import(
+                                    '@/lib/crypto'
+                                );
+                                notes = await decrypt(
+                                    ruleMatch.note,
+                                    key,
+                                    ruleMatch.noteIv,
+                                );
+                                notesIv = null;
                             }
                             if (
                                 ruleMatch.labelIds &&

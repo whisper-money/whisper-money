@@ -110,7 +110,11 @@ export function AccountListCard({
                         </div>
                     </div>
                     <div className="h-[100px] w-full">
-                        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
+                        <ResponsiveContainer
+                            width="100%"
+                            height="100%"
+                            initialDimension={{ width: 1, height: 1 }}
+                        >
                             <LineChart data={account.history}>
                                 <Tooltip
                                     content={({ active, payload }) => {

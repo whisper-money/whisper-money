@@ -3,36 +3,11 @@
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
-test('plaintext-transactions feature flag defaults to false', function () {
+test('creating plaintext transaction succeeds', function () {
     $user = User::factory()->onboarded()->create();
-
-    expect(Feature::for($user)->active('plaintext-transactions'))->toBeFalse();
-});
-
-test('creating transaction without description_iv fails when flag is inactive', function () {
-    $user = User::factory()->onboarded()->create();
-    $account = Account::factory()->create(['user_id' => $user->id]);
-
-    $response = actingAs($user)->postJson(route('transactions.store'), [
-        'account_id' => $account->id,
-        'description' => 'Grocery shopping',
-        'transaction_date' => '2025-11-11',
-        'amount' => 5000,
-        'currency_code' => 'USD',
-        'source' => 'manually_created',
-    ]);
-
-    $response->assertUnprocessable();
-    $response->assertJsonValidationErrors(['description_iv']);
-});
-
-test('creating plaintext transaction succeeds when flag is active', function () {
-    $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('plaintext-transactions');
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $response = actingAs($user)->postJson(route('transactions.store'), [
@@ -52,9 +27,8 @@ test('creating plaintext transaction succeeds when flag is active', function () 
     ]);
 });
 
-test('creating plaintext transaction with notes succeeds when flag is active', function () {
+test('creating plaintext transaction with notes succeeds', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('plaintext-transactions');
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $response = actingAs($user)->postJson(route('transactions.store'), [
@@ -77,9 +51,8 @@ test('creating plaintext transaction with notes succeeds when flag is active', f
     ]);
 });
 
-test('encrypted transactions still work when flag is active', function () {
+test('encrypted transactions still work', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('plaintext-transactions');
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $response = actingAs($user)->postJson(route('transactions.store'), [
@@ -104,7 +77,7 @@ test('encrypted and plaintext transactions can coexist', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
 
-    // Create an encrypted transaction (before flag was activated)
+    // Create an encrypted transaction (legacy)
     Transaction::factory()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
@@ -112,9 +85,7 @@ test('encrypted and plaintext transactions can coexist', function () {
         'description_iv' => str_repeat('e', 16),
     ]);
 
-    // Activate the flag and create a plaintext transaction
-    Feature::for($user)->activate('plaintext-transactions');
-
+    // Create a plaintext transaction
     Transaction::factory()->plaintext()->create([
         'user_id' => $user->id,
         'account_id' => $account->id,
@@ -126,9 +97,8 @@ test('encrypted and plaintext transactions can coexist', function () {
     expect(Transaction::where('user_id', $user->id)->whereNotNull('description_iv')->count())->toBe(1);
 });
 
-test('updating transaction without description_iv works when flag is active', function () {
+test('updating transaction without description_iv works', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('plaintext-transactions');
     $account = Account::factory()->create(['user_id' => $user->id]);
 
     $transaction = Transaction::factory()->create([
@@ -151,27 +121,4 @@ test('updating transaction without description_iv works when flag is active', fu
         'notes' => 'Updated notes',
         'notes_iv' => null,
     ]);
-});
-
-test('plaintext-transactions feature flag is shared with frontend', function () {
-    $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('plaintext-transactions');
-
-    $response = actingAs($user)->get(route('transactions.index'));
-
-    $response->assertSuccessful();
-    $response->assertInertia(fn ($page) => $page
-        ->where('features.plaintext-transactions', true)
-    );
-});
-
-test('plaintext-transactions feature flag defaults to false in frontend', function () {
-    $user = User::factory()->onboarded()->create();
-
-    $response = actingAs($user)->get(route('transactions.index'));
-
-    $response->assertSuccessful();
-    $response->assertInertia(fn ($page) => $page
-        ->where('features.plaintext-transactions', false)
-    );
 });

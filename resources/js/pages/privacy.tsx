@@ -11,7 +11,7 @@ export default function Privacy() {
                 <meta
                     name="description"
                     content={__(
-                        'Privacy policy for Whisper Money. Learn how we collect, use, and protect your personal information with end-to-end encryption.',
+                        'Privacy policy for Whisper Money. Learn how we collect, use, and protect your personal information.',
                     )}
                 />
 
@@ -181,23 +181,31 @@ export default function Privacy() {
                             </p>
                             <ul className="mb-4 list-disc pl-6 text-[#706f6c] dark:text-[#A1A09A]">
                                 <li>
-                                    <strong>
-                                        {__('End-to-End Encryption:')}
-                                    </strong>
+                                    <strong>{__('Encryption at Rest:')}</strong>
                                     {__(
-                                        'Your\n                                    financial data is encrypted on your device\n                                    before being transmitted to our servers,\n                                    ensuring that only you can access your\n                                    information',
+                                        ' All data is stored on secure servers with encryption at rest, protecting your information from unauthorized access',
                                     )}
                                 </li>
                                 <li>
-                                    <strong>{__('Secure Storage:')}</strong>
+                                    <strong>
+                                        {__('Encryption in Transit:')}
+                                    </strong>
                                     {__(
-                                        'All data is\n                                    stored on secure servers with encryption at\n                                    rest',
+                                        ' All communications between your device and our servers are protected using TLS (Transport Layer Security)',
+                                    )}
+                                </li>
+                                <li>
+                                    <strong>
+                                        {__('No Third-Party Data Sharing:')}
+                                    </strong>
+                                    {__(
+                                        ' Your financial data is never shared with advertisers, data brokers, or any third party',
                                     )}
                                 </li>
                                 <li>
                                     <strong>{__('Access Controls:')}</strong>
                                     {__(
-                                        'Strict\n                                    access controls and authentication\n                                    mechanisms protect against unauthorized\n                                    access',
+                                        ' Strict access controls and authentication mechanisms protect against unauthorized access',
                                     )}
                                 </li>
                                 <li>
@@ -205,7 +213,7 @@ export default function Privacy() {
                                         {__('Regular Security Audits:')}
                                     </strong>
                                     {__(
-                                        'We\n                                    regularly review and update our security\n                                    practices',
+                                        ' We regularly review and update our security practices',
                                     )}
                                 </li>
                             </ul>

@@ -1,4 +1,3 @@
-import EncryptionVideoPlayer from '@/components/landing/encryption-video-player';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,7 @@ const LANDING_IMAGES = [
         key: 'bank-accounts',
         light: '/images/landing/whisper.money_light_3.png',
         dark: '/images/landing/whisper.money_dark_3.png',
-        alt: 'Transactions encrypted',
+        alt: 'Your transactions at a glance',
         className: 'left-[-24%] group-hover:left-[-32%]',
     },
     {
@@ -227,14 +226,14 @@ export default function Welcome({
                 <meta
                     name="description"
                     content={__(
-                        'The most secure personal finance app with end-to-end encryption. Track expenses, create budgets, and manage your money privately.',
+                        'The most secure privacy-first personal finance app. Track expenses, create budgets, and manage your money privately.',
                     )}
                 />
 
                 <meta
                     name="keywords"
                     content={__(
-                        'finance app, budgeting, expense tracking, end-to-end encryption, secure finance, personal finance, money management, privacy, encrypted finance app',
+                        'finance app, budgeting, expense tracking, secure finance, personal finance, money management, privacy, privacy-first finance app',
                     )}
                 />
 
@@ -251,7 +250,7 @@ export default function Welcome({
                 <meta
                     property="og:description"
                     content={__(
-                        'Your financial data stays private with end-to-end encryption. The most secure way to manage your personal finances.',
+                        'Your financial data stays private. The most secure way to manage your personal finances.',
                     )}
                 />
 
@@ -282,7 +281,7 @@ export default function Welcome({
                 <meta
                     name="twitter:description"
                     content={__(
-                        'Your financial data stays private with end-to-end encryption. The most secure way to manage your personal finances.',
+                        'Your financial data stays private. The most secure way to manage your personal finances.',
                     )}
                 />
 
@@ -302,11 +301,11 @@ export default function Welcome({
                         '@type': 'WebApplication',
                         name: 'Whisper Money',
                         description:
-                            'The most secure personal finance app with end-to-end encryption. Track expenses, create budgets, and manage your money privately.',
+                            'The most secure privacy-first personal finance app. Track expenses, create budgets, and manage your money privately.',
                         url: appUrl,
                         applicationCategory: 'FinanceApplication',
                         featureList: [
-                            'End-to-end encryption',
+                            'Privacy-first design',
                             'Smart budgeting',
                             'Expense tracking',
                             'Visual insights',
@@ -367,9 +366,7 @@ export default function Welcome({
                                         </div>
                                     )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__(
-                                            'Your data stays private with end-to-end encryption.',
-                                        )}
+                                        {__('Your data stays private. Always.')}
                                     </p>
                                 </div>
                             </div>
@@ -422,68 +419,54 @@ export default function Welcome({
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 sm:gap-12">
                             <div className="flex flex-col items-center gap-4 text-center">
                                 <h2 className="max-w-[720px] text-3xl leading-tight font-semibold text-balance sm:text-5xl sm:leading-tight">
-                                    {__('How End-to-End Encryption Works')}
+                                    {__('Your Data, Your Rules')}
                                 </h2>
                                 <p className="text-md max-w-[640px] font-medium text-[#706f6c] sm:text-xl dark:text-[#A1A09A]">
                                     {__(
-                                        'Your financial data is encrypted on your\n                                    device before it ever reaches our servers.',
+                                        'We built Whisper Money with one principle: your financial data belongs to you.',
                                     )}
                                 </p>
                             </div>
 
-                            <div className="flex flex-col gap-8 sm:flex-row">
-                                <div className="flex w-full grow flex-col items-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-center dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                    <EncryptionVideoPlayer
-                                        lightSrc="/images/landing_videos/Whisper Money - Light - Encryption.mp4"
-                                        darkSrc="/images/landing_videos/Whisper Money - Dark - Encryption.mp4"
-                                        className="w-full max-w-4xl"
-                                    />
-
-                                    <h3 className="text-xl font-semibold">
-                                        {__('Your Private Key')}
-                                    </h3>
-                                    <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__(
-                                            'A unique encryption key is generated on your device. Only you have access to it—we never see or store it.',
-                                        )}
-                                    </p>
-                                </div>
-
-                                <div className="grid grow-0 gap-8">
-                                    {[
-                                        {
-                                            icon: LockIcon,
-                                            title: __('Client-Side Encryption'),
-                                            description: __(
-                                                'Your transactions, accounts, and budgets are encrypted on your device before syncing to the cloud.',
-                                            ),
-                                        },
-                                        {
-                                            icon: ShieldCheckIcon,
-                                            title: __(
-                                                'Zero-Knowledge Architecture',
-                                            ),
-                                            description: __(
-                                                "We store encrypted data we can't read. Even if our servers were compromised, your data stays secure.",
-                                            ),
-                                        },
-                                    ].map((item) => (
-                                        <div
-                                            key={item.title}
-                                            className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-center dark:border-[#3E3E3A] dark:bg-[#161615]"
-                                        >
-                                            <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
-                                                <item.icon className="size-8 text-emerald-600 dark:text-emerald-400" />
-                                            </div>
-                                            <h3 className="text-xl font-semibold">
-                                                {item.title}
-                                            </h3>
-                                            <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                {item.description}
-                                            </p>
+                            <div className="grid w-full gap-8 sm:grid-cols-3">
+                                {[
+                                    {
+                                        icon: EyeOffIcon,
+                                        title: __('No Third-Party Sharing'),
+                                        description: __(
+                                            'Your financial data is never shared with advertisers, data brokers, or any third party. Period.',
+                                        ),
+                                    },
+                                    {
+                                        icon: ShieldCheckIcon,
+                                        title: __('No AI Snooping'),
+                                        description: __(
+                                            'We never feed your transactions into AI systems. Your spending habits are yours alone.',
+                                        ),
+                                    },
+                                    {
+                                        icon: LockIcon,
+                                        title: __('You Own Your Data'),
+                                        description: __(
+                                            'Export or delete your data anytime. We store it securely and never use it for anything other than providing you the service.',
+                                        ),
+                                    },
+                                ].map((item) => (
+                                    <div
+                                        key={item.title}
+                                        className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-center dark:border-[#3E3E3A] dark:bg-[#161615]"
+                                    >
+                                        <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
+                                            <item.icon className="size-8 text-emerald-600 dark:text-emerald-400" />
                                         </div>
-                                    ))}
-                                </div>
+                                        <h3 className="text-xl font-semibold">
+                                            {item.title}
+                                        </h3>
+                                        <p className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                            {item.description}
+                                        </p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </section>
@@ -513,7 +496,7 @@ export default function Welcome({
                                     </div>
                                     <p className="text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            "AI can't help you with your transactions\n                                        because they're end-to-end encrypted.\n                                        This is intentional\u2014we believe your\n                                        financial data should never be fed into\n                                        AI systems that you don't control.",
+                                            "We believe your financial data should never be fed into AI systems that you don't control. Your transactions stay between you and Whisper Money.",
                                         )}
                                     </p>
                                 </div>
@@ -561,7 +544,7 @@ export default function Welcome({
                                     </h3>
                                     <p className="text-lg text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            "Import a year's worth of transactions in\n                                        under 10 seconds. Simply export a CSV or\n                                        XLS file from your bank and drag it into\n                                        Whisper Money. All data is encrypted\n                                        locally before upload.",
+                                            "Import a year's worth of transactions in under 10 seconds. Simply export a CSV or XLS file from your bank and drag it into Whisper Money.",
                                         )}
                                     </p>
                                 </div>
@@ -576,7 +559,7 @@ export default function Welcome({
                                     <div className="flex items-center gap-3 rounded-lg border border-[#e3e3e0] bg-background p-4 dark:border-[#3E3E3A]">
                                         <CheckIcon className="size-5 shrink-0 text-emerald-500" />
                                         <span className="text-sm font-medium">
-                                            {__('Encrypted on your device')}
+                                            {__('Secure upload')}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3 rounded-lg border border-[#e3e3e0] bg-background p-4 dark:border-[#3E3E3A]">
@@ -601,11 +584,11 @@ export default function Welcome({
                                         <div className="flex items-center self-start">
                                             <ShieldCheckIcon className="size-5 stroke-1 text-[#1b1b18] dark:text-[#EDEDEC]" />
                                         </div>
-                                        {__('End-to-end encryption')}
+                                        {__('Privacy-first')}
                                     </h3>
                                     <div className="flex max-w-[240px] flex-col gap-2 text-sm text-balance text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'Your financial data is encrypted on your\n                                        device. Only you can access it.',
+                                            'Your financial data stays private. We never share, sell, or use it for anything other than your benefit.',
                                         )}
                                     </div>
                                 </div>
@@ -815,7 +798,7 @@ export default function Welcome({
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                                 {__(
-                                                    'Finally, a finance app that\n                                                respects my privacy. The\n                                                encryption gives me peace of\n                                                mind.',
+                                                    "Finally, a finance app that respects my privacy. Knowing my data isn't being shared gives me peace of mind.",
                                                 )}
                                             </p>
                                         </div>
@@ -849,7 +832,7 @@ export default function Welcome({
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                                 {__(
-                                                    'Love that my financial data is\n                                                encrypted. No more worrying\n                                                about data breaches!',
+                                                    'Love that my financial data stays private. No more worrying about who has access to my spending habits!',
                                                 )}
                                             </p>
                                         </div>
@@ -868,7 +851,7 @@ export default function Welcome({
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                                 {__(
-                                                    'Finally, a finance app that\n                                                respects my privacy. The\n                                                encryption gives me peace of\n                                                mind.',
+                                                    "Finally, a finance app that respects my privacy. Knowing my data isn't being shared gives me peace of mind.",
                                                 )}
                                             </p>
                                         </div>
@@ -902,7 +885,7 @@ export default function Welcome({
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                                 {__(
-                                                    'Love that my financial data is\n                                                encrypted. No more worrying\n                                                about data breaches!',
+                                                    'Love that my financial data stays private. No more worrying about who has access to my spending habits!',
                                                 )}
                                             </p>
                                         </div>
@@ -921,7 +904,7 @@ export default function Welcome({
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                                 {__(
-                                                    'Finally, a finance app that\n                                                respects my privacy. The\n                                                encryption gives me peace of\n                                                mind.',
+                                                    "Finally, a finance app that respects my privacy. Knowing my data isn't being shared gives me peace of mind.",
                                                 )}
                                             </p>
                                         </div>
@@ -955,7 +938,7 @@ export default function Welcome({
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                                 {__(
-                                                    'Love that my financial data is\n                                                encrypted. No more worrying\n                                                about data breaches!',
+                                                    'Love that my financial data stays private. No more worrying about who has access to my spending habits!',
                                                 )}
                                             </p>
                                         </div>
@@ -974,7 +957,7 @@ export default function Welcome({
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                                 {__(
-                                                    'Finally, a finance app that\n                                                respects my privacy. The\n                                                encryption gives me peace of\n                                                mind.',
+                                                    "Finally, a finance app that respects my privacy. Knowing my data isn't being shared gives me peace of mind.",
                                                 )}
                                             </p>
                                         </div>
@@ -1008,7 +991,7 @@ export default function Welcome({
                                             </div>
                                             <p className="sm:text-md mt-4 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                                 {__(
-                                                    'Love that my financial data is\n                                                encrypted. No more worrying\n                                                about data breaches!',
+                                                    'Love that my financial data stays private. No more worrying about who has access to my spending habits!',
                                                 )}
                                             </p>
                                         </div>

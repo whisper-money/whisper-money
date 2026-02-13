@@ -73,7 +73,6 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => [
                 'cashflow' => true,
-                'plaintext-transactions' => $user ? Feature::for($user)->active('plaintext-transactions') : false,
                 'open-banking' => $user ? Feature::for($user)->active('open-banking') : false,
                 'account-mapping' => $user ? Feature::for($user)->active('account-mapping') : false,
             ],
@@ -101,6 +100,7 @@ class HandleInertiaRequests extends Middleware
                 ->orderBy('name')
                 ->get(['id', 'name', 'color']) : [],
             'hasEncryptedAccounts' => $user?->accounts()->where('encrypted', true)->exists() ?? false,
+            'hasEncryptionSetup' => $user?->encryption_salt !== null,
             'locale' => app()->getLocale(),
             'translations' => $this->getTranslations(),
         ];
