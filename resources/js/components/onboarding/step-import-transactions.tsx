@@ -6,7 +6,7 @@ import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { ArrowRight, FileSpreadsheet, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -27,6 +27,15 @@ export function StepImportTransactions({
         banks: Bank[];
         automationRules: AutomationRule[];
     }>().props;
+
+    // Refresh shared props so the newly created account is available
+    useEffect(() => {
+        if (accounts.length === 0) {
+            router.reload({
+                only: ['accounts', 'categories', 'banks', 'automationRules'],
+            });
+        }
+    }, [accounts.length]);
 
     const handleDrawerClose = (open: boolean) => {
         setIsDrawerOpen(open);
