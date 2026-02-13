@@ -1,7 +1,4 @@
 import { CategorySelect } from '@/components/transactions/category-select';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { encrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
@@ -9,7 +6,6 @@ import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 interface CategoryCellProps {
     transaction: DecryptedTransaction;
@@ -30,39 +26,18 @@ export function CategoryCell({
     className,
     withoutChevronIcon,
 }: CategoryCellProps) {
-    const { isKeySet } = useEncryptionKey();
     const [isUpdating, setIsUpdating] = useState(false);
 
     async function handleCategoryChange(value: string) {
-        if (!isKeySet) {
-            toast.error(
-                'Please unlock your encryption key to update transactions',
-            );
-            return;
-        }
-
         const categoryId = value === 'null' ? null : value;
 
         setIsUpdating(true);
         try {
             const updateData: {
                 category_id: string | null;
-                notes?: string;
-                notes_iv?: string;
             } = {
                 category_id: categoryId,
             };
-
-            if (transaction.notes) {
-                const keyString = getStoredKey();
-                if (!keyString) {
-                    throw new Error('Encryption key not available');
-                }
-                const key = await importKey(keyString);
-                const encrypted = await encrypt(transaction.notes, key);
-                updateData.notes = encrypted.encrypted;
-                updateData.notes_iv = encrypted.iv;
-            }
 
             await transactionSyncService.update(transaction.id, updateData);
 
