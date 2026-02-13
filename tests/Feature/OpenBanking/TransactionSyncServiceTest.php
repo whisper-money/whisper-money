@@ -3,9 +3,11 @@
 use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
 use App\Models\Account;
+use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Banking\TransactionDescriptionFormatter;
 use App\Services\Banking\TransactionSyncService;
 
 test('sync creates transactions from provider data', function () {
@@ -41,7 +43,7 @@ test('sync creates transactions from provider data', function () {
             'continuation_key' => null,
         ]);
 
-    $service = new TransactionSyncService($mockProvider);
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
     $created = $service->sync($account, '2025-01-01', '2025-01-31');
 
     expect($created)->toBe(2);
@@ -103,7 +105,7 @@ test('sync deduplicates transactions by external_transaction_id', function () {
             'continuation_key' => null,
         ]);
 
-    $service = new TransactionSyncService($mockProvider);
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
     $created = $service->sync($account, '2025-01-01', '2025-01-31');
 
     expect($created)->toBe(1);
@@ -153,7 +155,7 @@ test('sync handles pagination with continuation key', function () {
             'continuation_key' => null,
         ]);
 
-    $service = new TransactionSyncService($mockProvider);
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
     $created = $service->sync($account, '2025-01-01', '2025-01-31');
 
     expect($created)->toBe(2);
@@ -186,7 +188,7 @@ test('sync uses creditor name as fallback description', function () {
             'continuation_key' => null,
         ]);
 
-    $service = new TransactionSyncService($mockProvider);
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
     $service->sync($account, '2025-01-01', '2025-01-31');
 
     $transaction = $account->transactions()->first();
@@ -235,7 +237,7 @@ test('sync creates daily balances from balance_after_transaction', function () {
             'continuation_key' => null,
         ]);
 
-    $service = new TransactionSyncService($mockProvider);
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
     $service->sync($account, '2025-01-01', '2025-01-31');
 
     expect($account->balances()->count())->toBe(2);
@@ -272,7 +274,7 @@ test('sync skips daily balance when balance_after_transaction is missing', funct
             'continuation_key' => null,
         ]);
 
-    $service = new TransactionSyncService($mockProvider);
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
     $service->sync($account, '2025-01-01', '2025-01-31');
 
     expect($account->balances()->count())->toBe(0);
@@ -310,7 +312,7 @@ test('sync does not re-create soft-deleted transactions', function () {
             'continuation_key' => null,
         ]);
 
-    $service = new TransactionSyncService($mockProvider);
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
     $created = $service->sync($account, '2025-01-01', '2025-01-31');
 
     expect($created)->toBe(0);
@@ -328,8 +330,78 @@ test('sync skips accounts without external_account_id', function () {
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldNotReceive('getTransactions');
 
-    $service = new TransactionSyncService($mockProvider);
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
     $created = $service->sync($account, '2025-01-01', '2025-01-31');
 
     expect($created)->toBe(0);
+});
+
+test('sync formats BBVA transaction descriptions and stores original', function () {
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'BBVA', 'user_id' => $user->id]);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['ADEUDO DE ENDESA // PAGO DE ADEUDO DIRECTO SEPA'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $service->sync($account, '2025-01-01', '2025-01-31');
+
+    $transaction = $account->transactions()->first();
+    expect($transaction->description)->toBe('Adeudo de Endesa / Pago de Adeudo Directo SEPA');
+    expect($transaction->original_description)->toBe('ADEUDO DE ENDESA // PAGO DE ADEUDO DIRECTO SEPA');
+});
+
+test('sync does not format descriptions for non-BBVA banks', function () {
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'ING', 'user_id' => $user->id]);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-001',
+                    'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['ADEUDO DE ENDESA'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $service->sync($account, '2025-01-01', '2025-01-31');
+
+    $transaction = $account->transactions()->first();
+    expect($transaction->description)->toBe('ADEUDO DE ENDESA');
+    expect($transaction->original_description)->toBeNull();
 });

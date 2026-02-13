@@ -11,6 +11,7 @@ class TransactionSyncService
 {
     public function __construct(
         private BankingProviderInterface $provider,
+        private TransactionDescriptionFormatter $descriptionFormatter,
     ) {}
 
     /**
@@ -27,6 +28,7 @@ class TransactionSyncService
         $created = 0;
         $continuationKey = null;
         $dailyBalances = [];
+        $bankName = $account->bank?->name;
 
         do {
             $result = $this->provider->getTransactions(
@@ -38,7 +40,7 @@ class TransactionSyncService
             );
 
             foreach ($result['transactions'] as $transaction) {
-                if ($this->importTransaction($account, $transaction)) {
+                if ($this->importTransaction($account, $transaction, $bankName)) {
                     $created++;
                 }
 
@@ -67,7 +69,7 @@ class TransactionSyncService
     /**
      * Import a single transaction, skipping duplicates.
      */
-    private function importTransaction(Account $account, array $data): bool
+    private function importTransaction(Account $account, array $data, ?string $bankName): bool
     {
         $externalId = $data['transaction_id'] ?? $data['entry_reference'] ?? null;
 
@@ -83,14 +85,16 @@ class TransactionSyncService
         }
 
         $amount = $this->parseAmount($data);
-        $description = $this->parseDescription($data);
+        $rawDescription = $this->parseDescription($data);
+        $formatted = $this->descriptionFormatter->format($rawDescription, $bankName);
         $transactionDate = $this->parseDate($data);
         $currency = $data['transaction_amount']['currency'] ?? $account->currency_code;
 
         $account->transactions()->create([
             'user_id' => $account->user_id,
-            'description' => $description,
+            'description' => $formatted['description'],
             'description_iv' => null,
+            'original_description' => $formatted['original_description'],
             'transaction_date' => $transactionDate,
             'amount' => $amount,
             'currency_code' => $currency,
