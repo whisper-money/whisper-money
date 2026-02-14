@@ -51,7 +51,7 @@ return [
             'features' => [
                 'Unlimited accounts',
                 'Unlimited transactions',
-                'End-to-end encryption',
+                'Your data stays yours',
                 'Smart categorization',
                 'Automation rules',
                 'Visual insights & reports',
@@ -67,7 +67,7 @@ return [
             'features' => [
                 'Unlimited accounts',
                 'Unlimited transactions',
-                'End-to-end encryption',
+                'Your data stays yours',
                 'Smart categorization',
                 'Automation rules',
                 'Visual insights & reports',
@@ -83,7 +83,7 @@ return [
         //     'features' => [
         //         'Unlimited accounts',
         //         'Unlimited transactions',
-        //         'End-to-end encryption',
+        //         'Your data stays yours',
         //         'Smart categorization',
         //         'Automation rules',
         //         'Visual insights & reports',

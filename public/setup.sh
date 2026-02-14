@@ -138,7 +138,7 @@ print_header() {
 EOF
     echo -e "${NC}"
     echo -e "${GREEN}Whisper Money - Privacy-First Personal Finance App${NC}"
-    echo -e "${BLUE}End-to-end encrypted financial management${NC}"
+    echo -e "${BLUE}Privacy-first financial management—your data, your ownership${NC}"
     echo ""
 }
 

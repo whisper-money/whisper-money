@@ -26,7 +26,7 @@ Whisper Money is a privacy-first personal finance application that helps you tra
 
 ## Features
 
-- 🔐 **End-to-end encryption** — Your financial data stays private
+- 🔐 **Privacy-first** — Your data is never shared with third parties. You own it
 - 🏦 **Bank account management** — Track multiple accounts in one place
 - 📊 **Transaction categorization** — Automatic and manual categorization
 - 🤖 **Automation rules** — Set up rules to auto-categorize transactions

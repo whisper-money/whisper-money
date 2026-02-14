@@ -7,7 +7,7 @@ It's Victor, the founder of Whisper Money. You signed up a while back to hear ab
 
 ## What is Whisper Money?
 
-I built Whisper Money because I was tired of giving my financial data to big companies who use it for who knows what. Whisper Money keeps your data **end-to-end encrypted** - only you can see your transactions, categories, and insights. Not me, not anyone.
+I built Whisper Money because I was tired of giving my financial data to big companies who use it for who knows what. Whisper Money **never shares your data with third parties** - you are always the owner of your financial information.
 
 It's personal finance, but actually private.
 
@@ -24,7 +24,7 @@ This gets you full access to everything:
 - Unlimited transaction imports
 - Automated categorization rules
 - Multiple account tracking
-- End-to-end encrypted storage
+- Your data stays yours—never shared with third parties
 - Mobile app (iOS & Android)
 
 <x-mail::button :url="config('app.url') . '/register'">
