@@ -7,17 +7,15 @@
 
 ## {{ __('Your Data is Truly Private') }}
 
-{{ __('I built Whisper Money with **end-to-end encryption** because I believe your financial data should be yours alone:') }}
+{{ __('I built Whisper Money because I believe **your financial data should be yours alone**:') }}
 
-- {{ __('Your financial data is encrypted with a key that only you control') }}
-- {{ __('I cannot read your transactions, balances, or any personal information (and I don\'t want to!)') }}
-- {{ __('Your encryption key never leaves your device') }}
+- {{ __('Your data is never shared with third parties') }}
+- {{ __('We don\'t sell, trade, or give away your personal information') }}
+- {{ __('You are always the owner of your data') }}
 
 ## {{ __('No AI, No Data Mining') }}
 
 {{ __("I don't use AI to analyze your spending or sell insights about your habits. Your financial data stays between you and your spreadsheet-loving self.") }}
-
-{{ __("What's more, even if I wanted to use it, I couldn't, since you're the only one who has the key to read the data.") }}
 
 <div style="height: 40px"></div>
 

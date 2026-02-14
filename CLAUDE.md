@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Whisper Money is a privacy-first personal finance app with end-to-end encryption. It uses Laravel 12 (PHP 8.4) backend with React 19 frontend via Inertia.js v2.
+Whisper Money is a privacy-first personal finance app. Your data is never shared with third parties—you are the owner. It uses Laravel 12 (PHP 8.4) backend with React 19 frontend via Inertia.js v2.
 
 ## Commands
 
@@ -90,7 +90,7 @@ show.url(1)       // "/posts/1"
 
 - Eloquent relationships with return type hints
 - User model uses UUID primary keys
-- End-to-end encryption for sensitive financial data
+- Privacy-focused: no data shared with third parties
 
 ===
 

@@ -120,7 +120,7 @@ export default function Terms() {
                                 </li>
                                 <li>
                                     {__(
-                                        'Access your data with end-to-end encryption\n                                    to ensure privacy and security',
+                                        'Access your data securely—your information is never shared with third parties',
                                     )}
                                 </li>
                             </ul>

@@ -16,7 +16,7 @@
 - {{ __('Unlimited transaction imports') }}
 - {{ __('Automated categorization rules') }}
 - {{ __('Multiple account tracking') }}
-- {{ __('End-to-end encrypted storage') }}
+- {{ __('Your data stays yours—never shared with third parties') }}
 
 <x-mail::button :url="config('app.url') . '/subscribe'">
 {{ __('Claim Your Discount') }}

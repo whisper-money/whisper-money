@@ -31,9 +31,9 @@ const benefits = [
     },
     {
         icon: ShieldCheckIcon,
-        title: 'End-to-End Encryption',
+        title: 'Privacy First',
         description:
-            'Your financial data is encrypted with military-grade security.',
+            'Your data is never shared with third parties. You are always the owner.',
     },
     {
         icon: SparklesIcon,

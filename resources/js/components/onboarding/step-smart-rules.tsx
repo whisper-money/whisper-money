@@ -78,7 +78,7 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                             </p>
                             <p className="text-xs text-amber-700 dark:text-amber-300">
                                 {__(
-                                    'This would break our end-to-end encryption\n                                promise',
+                                    'This would mean sharing your data with third parties',
                                 )}
                             </p>
                         </div>
