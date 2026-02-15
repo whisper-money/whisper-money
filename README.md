@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://whisper.money/images/og_whisper_money.png" alt="Whisper Money" width="100%">
+  <img src="https://whisper.money/images/og_whisper_money.png?20260215075346" alt="Whisper Money" width="100%">
 </p>
 <p align="center">
 <a href="https://zdoc.app/de/whisper-money/whisper-money">Deutsch</a> |
