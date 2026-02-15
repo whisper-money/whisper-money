@@ -58,6 +58,10 @@ createInertiaApp({
         const initialIsAuthenticated = Boolean(initialUser);
         const hasEncryptionSetup =
             (initialPageProps?.hasEncryptionSetup as boolean) ?? false;
+        const hasEncryptedAccounts =
+            (initialPageProps?.hasEncryptedAccounts as boolean) ?? false;
+        const hasEncryptedTransactions =
+            (initialPageProps?.hasEncryptedTransactions as boolean) ?? false;
 
         // Initialize translations from server-rendered page data
         setTranslations(
@@ -74,7 +78,12 @@ createInertiaApp({
 
         root.render(
             <StrictMode>
-                <EncryptionKeyProvider hasEncryptionSetup={hasEncryptionSetup}>
+                <EncryptionKeyProvider
+                    hasEncryptionSetup={
+                        hasEncryptionSetup &&
+                        (hasEncryptedAccounts || hasEncryptedTransactions)
+                    }
+                >
                     <PrivacyModeProvider>
                         <SyncProvider
                             initialIsAuthenticated={initialIsAuthenticated}

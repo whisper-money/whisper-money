@@ -16,7 +16,15 @@ export function AppSidebarHeader({
 }: {
     breadcrumbs?: BreadcrumbItemType[];
 }) {
-    const { hasEncryptionSetup } = usePage<SharedData>().props;
+    const {
+        hasEncryptionSetup,
+        hasEncryptedAccounts,
+        hasEncryptedTransactions,
+    } = usePage<SharedData>().props;
+
+    const showEncryptionButton =
+        hasEncryptionSetup &&
+        (hasEncryptedTransactions || hasEncryptedAccounts);
 
     return (
         <header className="pt-safe flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border/50 px-5 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:min-h-12 sm:px-6 md:px-4">
@@ -29,7 +37,7 @@ export function AppSidebarHeader({
             </div>
             <div className="flex items-center gap-2">
                 <ImportTransactionsButton />
-                {hasEncryptionSetup && (
+                {showEncryptionButton && (
                     <>
                         <Separator
                             orientation="vertical"
