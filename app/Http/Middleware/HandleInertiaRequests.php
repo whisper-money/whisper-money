@@ -44,7 +44,7 @@ class HandleInertiaRequests extends Middleware
         $isDemoQuery = $request->query('demo') === '1';
 
         // Clean up encryption data if no encrypted accounts or transactions remain
-        if ($user?->encryption_salt !== null) {
+        if (! $request->is('api/*') && $user?->encryption_salt !== null) {
             $hasAnyEncryptedData = $user->accounts()->where('encrypted', true)->exists()
                 || $user->transactions()->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))->exists();
 
