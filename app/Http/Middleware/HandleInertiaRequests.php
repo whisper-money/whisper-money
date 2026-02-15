@@ -43,6 +43,17 @@ class HandleInertiaRequests extends Middleware
         $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local') ?? false;
         $isDemoQuery = $request->query('demo') === '1';
 
+        // Clean up encryption data if no encrypted accounts or transactions remain
+        if ($user?->encryption_salt !== null) {
+            $hasAnyEncryptedData = $user->accounts()->where('encrypted', true)->exists()
+                || $user->transactions()->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))->exists();
+
+            if (! $hasAnyEncryptedData) {
+                $user->encryptedMessage()->delete();
+                $user->update(['encryption_salt' => null]);
+            }
+        }
+
         return [
             ...parent::share($request),
             'flash' => [
