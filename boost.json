@@ -1,8 +1,8 @@
 {
     "agents": [
         "claude_code",
-        "cursor",
-        "opencode"
+        "opencode",
+        "copilot"
     ],
     "guidelines": true,
     "herd_mcp": false,
