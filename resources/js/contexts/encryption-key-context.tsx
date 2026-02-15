@@ -50,6 +50,10 @@ export function EncryptionKeyProvider({
     }, [hasEncryptionSetup]);
 
     async function fetchEncryptedMessage() {
+        if (!hasEncryptionSetup) {
+            return;
+        }
+
         try {
             const response = await axios.get<EncryptedMessageData>(
                 '/api/encryption/message',
