@@ -63,7 +63,7 @@ class TransactionSyncService {
         data: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>,
     ): Promise<Transaction> {
         const response = await axios.post('/transactions', data);
-        const serverData = response.data.data;
+        const serverData = response.data.data || response.data;
 
         const label_ids = serverData.labels?.map((l: { id: string }) => l.id);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -100,7 +100,7 @@ class TransactionSyncService {
             label_ids,
         });
 
-        const serverData = response.data.data;
+        const serverData = response.data.data || response.data;
 
         const serverLabelIds = serverData.labels?.map(
             (l: { id: string }) => l.id,
