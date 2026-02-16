@@ -342,16 +342,21 @@ export default function Transactions({
         serverTransactions.next_cursor,
     );
 
-    // Reset accumulated data when server props change (filter/sort applied)
+    // Reset accumulated data when server props change (filter/sort applied),
+    // but skip during "Load More" since we append manually in onSuccess.
     const prevTransactionsRef = useRef(serverTransactions);
+    const isLoadingMoreRef = useRef(false);
     useEffect(() => {
-        if (prevTransactionsRef.current !== serverTransactions) {
+        if (
+            prevTransactionsRef.current !== serverTransactions &&
+            !isLoadingMoreRef.current
+        ) {
             setAllTransactions(
                 serverTransactions.data.map(toDecryptedTransaction),
             );
             setNextCursor(serverTransactions.next_cursor);
-            prevTransactionsRef.current = serverTransactions;
         }
+        prevTransactionsRef.current = serverTransactions;
     }, [serverTransactions]);
 
     // Filter state from server-applied filters
@@ -477,6 +482,7 @@ export default function Transactions({
         }
 
         setIsLoadingMore(true);
+        isLoadingMoreRef.current = true;
         router.reload({
             data: { cursor: nextCursor },
             only: ['transactions'],
@@ -490,7 +496,10 @@ export default function Transactions({
                 ]);
                 setNextCursor(next.next_cursor);
             },
-            onFinish: () => setIsLoadingMore(false),
+            onFinish: () => {
+                setIsLoadingMore(false);
+                isLoadingMoreRef.current = false;
+            },
         });
     }, [nextCursor, isLoadingMore]);
 
