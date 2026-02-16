@@ -1,6 +1,6 @@
 import { useLocale } from '@/hooks/use-locale';
 import { __ } from '@/utils/i18n';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Cell,
     Row,
@@ -342,22 +342,9 @@ export default function Transactions({
         serverTransactions.next_cursor,
     );
 
-    // Reset accumulated data when server props change (filter/sort applied),
-    // but skip during "Load More" since we append manually in onSuccess.
-    const prevTransactionsRef = useRef(serverTransactions);
-    const isLoadingMoreRef = useRef(false);
-    useEffect(() => {
-        if (
-            prevTransactionsRef.current !== serverTransactions &&
-            !isLoadingMoreRef.current
-        ) {
-            setAllTransactions(
-                serverTransactions.data.map(toDecryptedTransaction),
-            );
-            setNextCursor(serverTransactions.next_cursor);
-        }
-        prevTransactionsRef.current = serverTransactions;
-    }, [serverTransactions]);
+    // Reset is handled explicitly via onSuccess in navigateWithFilters,
+    // and append is handled via onSuccess in handleLoadMore.
+    // No useEffect watching serverTransactions — avoids race conditions.
 
     // Filter state from server-applied filters
     const [filters, setFilters] = useState<Filters>(() =>
@@ -417,6 +404,14 @@ export default function Transactions({
                 router.visit(transactionsIndex({ query: params }).url, {
                     preserveScroll: true,
                     preserveState: true,
+                    onSuccess: (page) => {
+                        const txns = (page.props as unknown as Props)
+                            .transactions;
+                        setAllTransactions(
+                            txns.data.map(toDecryptedTransaction),
+                        );
+                        setNextCursor(txns.next_cursor);
+                    },
                     onFinish: () => setIsNavigating(false),
                 });
             };
@@ -475,33 +470,56 @@ export default function Transactions({
         [sorting, filters, navigateWithFilters],
     );
 
-    // Load More with cursor pagination
-    const handleLoadMore = useCallback(() => {
+    // Refresh the transaction list from the server (resets accumulated pages)
+    const refreshTransactions = useCallback(() => {
+        router.reload({
+            only: ['transactions'],
+            onSuccess: (page) => {
+                const txns = (page.props as unknown as Props).transactions;
+                setAllTransactions(txns.data.map(toDecryptedTransaction));
+                setNextCursor(txns.next_cursor);
+            },
+        });
+    }, []);
+
+    // Load More with cursor pagination (fetch directly to avoid cursor in URL)
+    const { component, version } = usePage();
+    const handleLoadMore = useCallback(async () => {
         if (!nextCursor || isLoadingMore) {
             return;
         }
 
         setIsLoadingMore(true);
-        isLoadingMoreRef.current = true;
-        router.reload({
-            data: { cursor: nextCursor },
-            only: ['transactions'],
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: (page) => {
-                const next = (page.props as unknown as Props).transactions;
-                setAllTransactions((prev) => [
-                    ...prev,
-                    ...next.data.map(toDecryptedTransaction),
-                ]);
-                setNextCursor(next.next_cursor);
-            },
-            onFinish: () => {
-                setIsLoadingMore(false);
-                isLoadingMoreRef.current = false;
-            },
-        });
-    }, [nextCursor, isLoadingMore]);
+        try {
+            const params = clientFiltersToQueryParams(filters, sortParam);
+            params.cursor = nextCursor;
+            const url = transactionsIndex({ query: params }).url;
+
+            const response = await fetch(url, {
+                headers: {
+                    'X-Inertia': 'true',
+                    'X-Inertia-Version': version,
+                    'X-Inertia-Partial-Data': 'transactions',
+                    'X-Inertia-Partial-Component': component,
+                    Accept: 'text/html, application/xhtml+xml',
+                },
+            });
+
+            const json = await response.json();
+            const next = json.props
+                .transactions as CursorPaginatedResponse<ServerTransaction>;
+
+            setAllTransactions((prev) => [
+                ...prev,
+                ...next.data.map(toDecryptedTransaction),
+            ]);
+            setNextCursor(next.next_cursor);
+        } catch (error) {
+            console.error('Failed to load more transactions:', error);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [nextCursor, isLoadingMore, filters, sortParam, component, version]);
 
     // Auto-load more when the sentinel becomes visible
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -1165,14 +1183,10 @@ export default function Transactions({
                                     transactions={allTransactions}
                                     onReEvaluateComplete={() => {
                                         setRowSelection({});
-                                        router.reload({
-                                            only: ['transactions'],
-                                        });
+                                        refreshTransactions();
                                     }}
                                     onImportComplete={() =>
-                                        router.reload({
-                                            only: ['transactions'],
-                                        })
+                                        refreshTransactions()
                                     }
                                 />
 
@@ -1280,9 +1294,7 @@ export default function Transactions({
                 automationRules={automationRules}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
-                onSuccess={() => {
-                    router.reload({ only: ['transactions'] });
-                }}
+                onSuccess={() => refreshTransactions()}
                 mode="create"
             />
 
