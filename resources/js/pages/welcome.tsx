@@ -638,8 +638,8 @@ export default function Welcome({
                                 <FeatureCard>
                                     <div className="p-2">
                                         <FeatureScreenshot
-                                            light="/images/landing/features/budgets_light.png"
-                                            dark="/images/landing/features/budgets_dark.png"
+                                            light="/images/landing/features/budget_detail_light.png"
+                                            dark="/images/landing/features/budget_detail_dark.png"
                                             alt={__(
                                                 'Track your budget progress',
                                             )}
@@ -660,8 +660,8 @@ export default function Welcome({
                                 <FeatureCard>
                                     <div className="p-2">
                                         <FeatureScreenshot
-                                            light="/images/landing/features/budgets_light.png"
-                                            dark="/images/landing/features/budgets_dark.png"
+                                            light="/images/landing/features/budget_edit_light.png"
+                                            dark="/images/landing/features/budget_edit_dark.png"
                                             alt={__(
                                                 'Budget insights and alerts',
                                             )}
