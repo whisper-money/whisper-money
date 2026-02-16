@@ -494,6 +494,27 @@ export default function Transactions({
         });
     }, [nextCursor, isLoadingMore]);
 
+    // Auto-load more when the sentinel becomes visible
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        const el = loadMoreRef.current;
+        if (!el || !nextCursor) {
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting) {
+                    handleLoadMore();
+                }
+            },
+            { rootMargin: '200px' },
+        );
+
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [nextCursor, handleLoadMore]);
+
     // Persist column visibility
     useEffect(() => {
         try {
@@ -1205,20 +1226,22 @@ export default function Transactions({
                                 rowCountLabel={__('transactions loaded')}
                             >
                                 {nextCursor && (
-                                    <Button
-                                        onClick={handleLoadMore}
-                                        disabled={isLoadingMore}
-                                        variant="outline"
-                                    >
-                                        {isLoadingMore ? (
-                                            <>
-                                                <Spinner />
-                                                {__('Loading')}
-                                            </>
-                                        ) : (
-                                            <>{__('Load more')}</>
-                                        )}
-                                    </Button>
+                                    <div ref={loadMoreRef}>
+                                        <Button
+                                            onClick={handleLoadMore}
+                                            disabled={isLoadingMore}
+                                            variant="outline"
+                                        >
+                                            {isLoadingMore ? (
+                                                <>
+                                                    <Spinner />
+                                                    {__('Loading')}
+                                                </>
+                                            ) : (
+                                                <>{__('Load more')}</>
+                                            )}
+                                        </Button>
+                                    </div>
                                 )}
                             </DataTablePagination>
                         </>
