@@ -105,7 +105,7 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
-- php - 8.4.1
+- php - 8.4.17
 - inertiajs/inertia-laravel (INERTIA) - v2
 - laravel/cashier (CASHIER) - v16
 - laravel/fortify (FORTIFY) - v1
@@ -210,7 +210,7 @@ This project has domain-specific skills available. You MUST activate the relevan
 ## Constructors
 
 - Use PHP 8 constructor property promotion in `__construct()`.
-  - <code-snippet>public function \_\_construct(public GitHub $github) { }</code-snippet>
+    - <code-snippet>public function __construct(public GitHub $github) { }</code-snippet>
 - Do not allow empty `__construct()` methods with zero parameters unless the constructor is private.
 
 ## Type Declarations
@@ -422,4 +422,4 @@ Fortify is a headless authentication backend that provides authentication routes
 - `Features::updateProfileInformation()` to let users update their profile.
 - `Features::updatePasswords()` to let users change their passwords.
 - `Features::resetPasswords()` for password reset via email.
-  </laravel-boost-guidelines>
+</laravel-boost-guidelines>

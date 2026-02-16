@@ -47,6 +47,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('onboarding', [OnboardingController::class, 'index'])->name('onboarding');
         Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
     });
+
+    // Accessible during onboarding for transaction import
+    Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
@@ -58,7 +61,6 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('transactions/categorize', [TransactionController::class, 'categorize'])->name('transactions.categorize');
-    Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');

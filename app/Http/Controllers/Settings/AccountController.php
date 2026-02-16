@@ -44,8 +44,8 @@ class AccountController extends Controller
             'name_iv' => null,
         ]);
 
-        // Set user's currency_code from first account if not already set
-        if (is_null($user->currency_code)) {
+        // Set user's currency_code from first account
+        if ($user->accounts()->count() === 1) {
             $user->update(['currency_code' => $account->currency_code]);
         }
 

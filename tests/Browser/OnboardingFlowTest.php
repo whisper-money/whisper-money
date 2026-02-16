@@ -88,21 +88,6 @@ it('navigates from welcome to account types', function () {
         ->assertNoJavascriptErrors();
 });
 
-it('marks user as onboarded when completing onboarding', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-        'encryption_salt' => 'test-salt',
-    ]);
-
-    expect($user->isOnboarded())->toBeFalse();
-
-    $this->actingAs($user)->post('/onboarding/complete');
-
-    $user->refresh();
-    expect($user->isOnboarded())->toBeTrue();
-    expect($user->onboarded_at)->not->toBeNull();
-});
-
 // =============================================================================
 // Existing Account Flow Tests
 // =============================================================================
@@ -236,8 +221,10 @@ it('shows add another account form without first account restriction', function 
 // Full End-to-End Flow Test
 // =============================================================================
 
-it('completes onboarding flow through account creation', function () {
-    // Create a bank for the account creation step
+it('completes entire onboarding flow with account creation, transaction import, and ends on subscribe page', function () {
+    // Enable subscriptions so user ends on /subscribe after completing onboarding
+    config(['subscriptions.enabled' => true]);
+
     Bank::factory()->create(['name' => 'Chase Bank']);
 
     $user = User::factory()->create([
@@ -259,59 +246,93 @@ it('completes onboarding flow through account creation', function () {
 
     // Step 2: Account Types
     $page->assertSee('Account Types')
-        ->assertSee('Checking')
-        ->assertSee('Savings')
-        ->assertSee('Credit Card')
         ->click('Create Your First Account')
         ->wait(1);
 
-    // Step 3: Create Account
+    // Step 3: Create Account (checking with EUR currency)
     $page->assertSee('Create an Account')
         ->assertSee('Your first account must be a')
         ->fill('#display_name', 'My Checking Account')
-        // Select bank from combobox - need to search first
         ->click('Select bank...')
         ->wait(1)
         ->fill('[placeholder="Search bank..."]', 'Chase')
         ->wait(2)
         ->click('Chase Bank')
         ->wait(1)
-        // Select currency - click on the dropdown item (Radix UI creates role="option")
         ->click('Select currency')
         ->wait(1)
-        ->click('[role="option"]:has-text("USD")')
+        ->click('[role="option"]:has-text("EUR")')
         ->wait(1)
         ->click('Create Account')
+        ->wait(5);
+
+    // Step 4: Import Transactions - open the import drawer
+    $page->assertSee('Import Your Transactions')
+        ->click('Import Transactions')
         ->wait(3);
 
-    // Step 4: Import Transactions step should appear
-    $page->assertSee('Import Your Transactions')
+    // The drawer auto-selects the only account and moves to Upload File step
+    // Upload the test CSV file
+    $csvPath = __DIR__.'/assets/test-transactions.csv';
+    $page->attach('input[type="file"]', $csvPath)
+        ->wait(2)
+        ->click('Next')
+        ->wait(2);
+
+    // Column Mapping step (auto-detected: Date, Description, Amount)
+    $page->assertSee('Map Columns')
+        ->click('Preview Transactions')
+        ->wait(3);
+
+    // Preview step - import all 5 transactions from the CSV
+    $page->assertSee('Preview Transactions')
+        ->click('Import 5 Transactions')
+        ->wait(15);
+
+    // After import completes, drawer closes and transitions to Category Types
+    $page->assertSee('Understanding Categories')
+        ->click('Continue')
+        ->wait(1);
+
+    // Smart Rules
+    $page->assertSee('Smart Automation Rules')
+        ->click('Continue to Import')
+        ->wait(1);
+
+    // More Accounts - verify account is listed, then finish
+    $page->assertSee('Great Progress!')
+        ->assertSee('My Checking Account')
+        ->click('Finish Setup')
+        ->wait(1);
+
+    // Complete step
+    $page->assertSee("You're All Set!")
+        ->click('Go to Dashboard')
+        ->wait(5);
+
+    // Since SUBSCRIPTIONS_ENABLED is true, user should end on /subscribe
+    $page->assertPathIs('/subscribe')
         ->assertNoJavascriptErrors();
 
-    // Verify account was created
-    expect($user->accounts()->count())->toBe(1);
-    expect($user->accounts()->first()->type->value)->toBe('checking');
-});
-
-it('marks user as onboarded when completing via API', function () {
-    $user = User::factory()->create([
-        'onboarded_at' => null,
-        'encryption_salt' => 'test-salt',
-    ]);
-
-    $bank = Bank::factory()->create();
-    Account::factory()->create([
-        'user_id' => $user->id,
-        'bank_id' => $bank->id,
-        'type' => 'checking',
-    ]);
-
-    expect($user->isOnboarded())->toBeFalse();
-
-    // Complete onboarding via POST
-    $this->actingAs($user)->post('/onboarding/complete');
-
+    // === Database Assertions ===
     $user->refresh();
+
+    // User should be marked as onboarded
     expect($user->isOnboarded())->toBeTrue();
     expect($user->onboarded_at)->not->toBeNull();
+
+    // User currency_code should match the first account's currency
+    expect($user->currency_code)->toBe('EUR');
+
+    // Account should exist with correct properties
+    $account = $user->accounts()->first();
+    expect($account)->not->toBeNull();
+    expect($account->type->value)->toBe('checking');
+    expect($account->currency_code)->toBe('EUR');
+    expect($account->name)->toBe('My Checking Account');
+
+    // Transactions should be imported in the correct account
+    $transactions = $user->transactions()->where('account_id', $account->id)->get();
+    expect($transactions)->toHaveCount(5);
+    expect($transactions->pluck('currency_code')->unique()->first())->toBe('EUR');
 });

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\Api\ImportDataController;
+use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\Sync\TransactionSyncController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,10 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::prefix('sync')->group(function () {
         Route::get('transactions', [TransactionSyncController::class, 'index']);
     });
+
+    // Transactions
+    Route::get('transactions', [TransactionController::class, 'index'])->name('api.transactions.index');
+    Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('api.transactions.bulk-update');
 
     // Accounts
     Route::get('accounts', [AccountController::class, 'index'])->name('api.accounts.index');

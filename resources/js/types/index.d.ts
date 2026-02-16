@@ -61,6 +61,7 @@ export interface SharedData {
     sidebarOpen: boolean;
     features: Features;
     hasEncryptedAccounts: boolean;
+    hasEncryptedTransactions: boolean;
     hasEncryptionSetup: boolean;
     locale: string;
     translations: Record<string, string>;

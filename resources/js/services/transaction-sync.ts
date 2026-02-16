@@ -63,7 +63,7 @@ class TransactionSyncService {
         data: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>,
     ): Promise<Transaction> {
         const response = await axios.post('/transactions', data);
-        const serverData = response.data.data;
+        const serverData = response.data.data || response.data;
 
         const label_ids = serverData.labels?.map((l: { id: string }) => l.id);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -100,7 +100,7 @@ class TransactionSyncService {
             label_ids,
         });
 
-        const serverData = response.data.data;
+        const serverData = response.data.data || response.data;
 
         const serverLabelIds = serverData.labels?.map(
             (l: { id: string }) => l.id,
@@ -214,24 +214,24 @@ class TransactionSyncService {
             });
 
             const keyString = getStoredKey();
-            if (!keyString) {
-                console.warn('No encryption key found for duplicate check');
-                return transactions.map(() => false);
-            }
-
-            const key = await importKey(keyString);
-            const { decrypt } = await import('@/lib/crypto');
+            const key = keyString ? await importKey(keyString) : null;
 
             const decryptedTransactions = await Promise.all(
                 transactionsInRange.map(async (t) => {
                     try {
-                        const decryptedDescription = t.description_iv
-                            ? await decrypt(
-                                  t.description,
-                                  key,
-                                  t.description_iv,
-                              )
-                            : t.description;
+                        let decryptedDescription: string;
+                        if (t.description_iv && key) {
+                            const { decrypt } = await import('@/lib/crypto');
+                            decryptedDescription = await decrypt(
+                                t.description,
+                                key,
+                                t.description_iv,
+                            );
+                        } else if (t.description_iv && !key) {
+                            return null;
+                        } else {
+                            decryptedDescription = t.description;
+                        }
                         return {
                             transaction_date: normalizeDate(t.transaction_date),
                             amount: parseFloat(t.amount),

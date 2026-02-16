@@ -34,6 +34,11 @@ export function StepMoreAccounts({
     onAddMore,
     onFinish,
 }: StepMoreAccountsProps) {
+    const createdIds = new Set(createdAccounts.map((a) => a.id));
+    const filteredExistingAccounts = existingAccounts.filter(
+        (a) => !createdIds.has(a.id),
+    );
+
     const description = __(
         'Would you like to add more accounts or continue to the dashboard?',
     );
@@ -70,7 +75,7 @@ export function StepMoreAccounts({
                             <Check className="h-5 w-5 text-emerald-500" />
                         </div>
                     ))}
-                    {existingAccounts.map((account) => (
+                    {filteredExistingAccounts.map((account) => (
                         <div
                             key={account.id}
                             className="flex items-center gap-3 rounded-lg border bg-card p-4"
