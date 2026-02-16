@@ -2,7 +2,7 @@ import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { ColumnDef } from '@tanstack/react-table';
 import { getYear, parseISO } from 'date-fns';
-import { ArrowDown, MoreHorizontal } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
@@ -97,8 +97,13 @@ export function createTransactionColumns({
                         }
                     >
                         {__('Date')}
-
-                        <ArrowDown className="h-2 w-2 opacity-25" />
+                        {column.getIsSorted() === 'desc' ? (
+                            <ArrowDown className="h-3 w-3" />
+                        ) : column.getIsSorted() === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                        ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-25" />
+                        )}
                     </Button>
                 );
             },

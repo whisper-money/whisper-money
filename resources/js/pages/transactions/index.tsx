@@ -1,22 +1,18 @@
 import { useLocale } from '@/hooks/use-locale';
 import { __ } from '@/utils/i18n';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Cell,
-    ColumnFiltersState,
     Row,
     SortingState,
     VisibilityState,
     flexRender,
     getCoreRowModel,
-    getFilteredRowModel,
-    getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
-import axios from 'axios';
-import { format, getYear, isWithinInterval, parse, parseISO } from 'date-fns';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { format, getYear, parseISO } from 'date-fns';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
@@ -59,12 +55,9 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { useSyncContext } from '@/contexts/sync-context';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
-import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent, cn } from '@/lib/utils';
@@ -77,7 +70,7 @@ import { type Label } from '@/types/label';
 import {
     type DecryptedTransaction,
     type TransactionFilters as Filters,
-    type Transaction,
+    type ServerTransaction,
 } from '@/types/transaction';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -87,7 +80,30 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+interface AppliedFilters {
+    date_from: string | null;
+    date_to: string | null;
+    amount_min: number | null;
+    amount_max: number | null;
+    category_ids: string[];
+    account_ids: string[];
+    label_ids: string[];
+    search: string;
+    sort: string;
+}
+
+interface CursorPaginatedResponse {
+    data: ServerTransaction[];
+    next_cursor: string | null;
+    next_page_url: string | null;
+    prev_cursor: string | null;
+    prev_page_url: string | null;
+    per_page: number;
+}
+
 interface Props {
+    transactions: CursorPaginatedResponse;
+    appliedFilters: AppliedFilters;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
@@ -97,130 +113,70 @@ interface Props {
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
 
-/**
- * Parse filters from URL query parameters
- */
-function parseFiltersFromURL(): Filters {
-    if (typeof window === 'undefined') {
-        return {
-            dateFrom: null,
-            dateTo: null,
-            amountMin: null,
-            amountMax: null,
-            categoryIds: [],
-            accountIds: [],
-            labelIds: [],
-            searchText: '',
-        };
-    }
-
-    const urlParams = new URLSearchParams(window.location.search);
-
-    // Parse dates
-    let dateFrom: Date | null = null;
-    let dateTo: Date | null = null;
-    const dateFromParam = urlParams.get('dateFrom');
-    const dateToParam = urlParams.get('dateTo');
-
-    if (dateFromParam) {
-        try {
-            const parsed = parse(dateFromParam, 'yyyy-MM-dd', new Date());
-            if (!isNaN(parsed.getTime())) {
-                dateFrom = parsed;
-            }
-        } catch {
-            // Invalid date, ignore
-        }
-    }
-
-    if (dateToParam) {
-        try {
-            const parsed = parse(dateToParam, 'yyyy-MM-dd', new Date());
-            if (!isNaN(parsed.getTime())) {
-                dateTo = parsed;
-            }
-        } catch {
-            // Invalid date, ignore
-        }
-    }
-
-    // Parse amounts
-    const amountMinParam = urlParams.get('amountMin');
-    const amountMaxParam = urlParams.get('amountMax');
-    const amountMin =
-        amountMinParam !== null ? parseFloat(amountMinParam) || null : null;
-    const amountMax =
-        amountMaxParam !== null ? parseFloat(amountMaxParam) || null : null;
-
-    // Parse ID arrays (comma-separated)
-    const categoryIdsParam = urlParams.get('categoryIds');
-    const accountIdsParam = urlParams.get('accountIds');
-    const labelIdsParam = urlParams.get('labelIds');
-
-    const categoryIds = categoryIdsParam
-        ? categoryIdsParam.split(',').filter(Boolean)
-        : [];
-    const accountIds = accountIdsParam
-        ? accountIdsParam.split(',').filter(Boolean)
-        : [];
-    const labelIds = labelIdsParam
-        ? labelIdsParam.split(',').filter(Boolean)
-        : [];
-
-    // Parse search text
-    const searchText = urlParams.get('search') || '';
-
+function serverToClientFilters(applied: AppliedFilters): Filters {
     return {
-        dateFrom,
-        dateTo,
-        amountMin,
-        amountMax,
-        categoryIds,
-        accountIds,
-        labelIds,
-        searchText,
+        dateFrom: applied.date_from
+            ? new Date(applied.date_from + 'T00:00:00')
+            : null,
+        dateTo: applied.date_to
+            ? new Date(applied.date_to + 'T00:00:00')
+            : null,
+        amountMin: applied.amount_min,
+        amountMax: applied.amount_max,
+        categoryIds: applied.category_ids,
+        accountIds: applied.account_ids,
+        labelIds: applied.label_ids,
+        searchText: applied.search,
     };
 }
 
-/**
- * Serialize filters to URL query parameters
- */
-function serializeFiltersToURL(filters: Filters): Record<string, string> {
+function clientFiltersToQueryParams(
+    filters: Filters,
+    sort: string,
+): Record<string, string> {
     const params: Record<string, string> = {};
 
     if (filters.dateFrom) {
-        params.dateFrom = format(filters.dateFrom, 'yyyy-MM-dd');
+        params.date_from = format(filters.dateFrom, 'yyyy-MM-dd');
     }
-
     if (filters.dateTo) {
-        params.dateTo = format(filters.dateTo, 'yyyy-MM-dd');
+        params.date_to = format(filters.dateTo, 'yyyy-MM-dd');
     }
-
     if (filters.amountMin !== null) {
-        params.amountMin = filters.amountMin.toString();
+        params.amount_min = filters.amountMin.toString();
     }
-
     if (filters.amountMax !== null) {
-        params.amountMax = filters.amountMax.toString();
+        params.amount_max = filters.amountMax.toString();
     }
-
     if (filters.categoryIds.length > 0) {
-        params.categoryIds = filters.categoryIds.join(',');
+        params.category_ids = filters.categoryIds.join(',');
     }
-
     if (filters.accountIds.length > 0) {
-        params.accountIds = filters.accountIds.join(',');
+        params.account_ids = filters.accountIds.join(',');
     }
-
     if (filters.labelIds.length > 0) {
-        params.labelIds = filters.labelIds.join(',');
+        params.label_ids = filters.labelIds.join(',');
     }
-
     if (filters.searchText) {
         params.search = filters.searchText;
     }
+    if (sort !== '-transaction_date') {
+        params.sort = sort;
+    }
 
     return params;
+}
+
+function toDecryptedTransaction(tx: ServerTransaction): DecryptedTransaction {
+    return {
+        ...tx,
+        transaction_date: String(tx.transaction_date).slice(0, 10),
+        decryptedDescription: tx.description_iv ? '' : tx.description,
+        decryptedNotes: tx.notes_iv ? null : tx.notes || null,
+        bank: tx.account?.bank || undefined,
+        labels: tx.labels || [],
+        label_ids: tx.labels?.map((l) => l.id) || [],
+    };
 }
 
 interface TransactionRowProps {
@@ -367,32 +323,54 @@ function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
 }
 
 export default function Transactions({
+    transactions: serverTransactions,
+    appliedFilters,
     categories,
     accounts,
     banks,
     labels: initialLabels,
     automationRules,
 }: Props) {
-    const { isKeySet } = useEncryptionKey();
-    const { sync } = useSyncContext();
     const locale = useLocale();
-    const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
-        [],
+    const labels = initialLabels;
+
+    // Convert server transactions to DecryptedTransaction for column compatibility
+    const [allTransactions, setAllTransactions] = useState<
+        DecryptedTransaction[]
+    >(() => serverTransactions.data.map(toDecryptedTransaction));
+    const [nextCursor, setNextCursor] = useState<string | null>(
+        serverTransactions.next_cursor,
     );
-    const [isLoading, setIsLoading] = useState(true);
-    const [refreshKey, setRefreshKey] = useState(0);
-    const [sorting, setSorting] = useState<SortingState>([
-        { id: 'transaction_date', desc: true },
-    ]);
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+    // Reset is handled explicitly via onSuccess in navigateWithFilters,
+    // and append is handled via onSuccess in handleLoadMore.
+    // No useEffect watching serverTransactions — avoids race conditions.
+
+    // Filter state from server-applied filters
+    const [filters, setFilters] = useState<Filters>(() =>
+        serverToClientFilters(appliedFilters),
+    );
+    const [sortParam, setSortParam] = useState(
+        appliedFilters.sort || '-transaction_date',
+    );
+
+    // Sync filter state when appliedFilters prop changes
+    useEffect(() => {
+        setFilters(serverToClientFilters(appliedFilters));
+        setSortParam(appliedFilters.sort || '-transaction_date');
+    }, [appliedFilters]);
+
+    // Derive sorting state for TanStack Table from sort param
+    const sorting = useMemo<SortingState>(() => {
+        const desc = sortParam.startsWith('-');
+        const column = sortParam.replace(/^-/, '');
+        return [{ id: column, desc }];
+    }, [sortParam]);
+
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         getInitialColumnVisibility(),
     );
     const [rowSelection, setRowSelection] = useState({});
-    const [filters, setFilters] = useState<Filters>(() =>
-        parseFiltersFromURL(),
-    );
-    const labels = initialLabels;
     const [editTransaction, setEditTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -404,13 +382,184 @@ export default function Transactions({
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
-    const [displayedCount, setDisplayedCount] = useState(25);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isSelectingAll, setIsSelectingAll] = useState(false);
+    const [isNavigating, setIsNavigating] = useState(false);
+
+    // Debounce timer ref for search
+    const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Navigate to server with new filters/sort
+    const navigateWithFilters = useCallback(
+        (newFilters: Filters, newSort: string, debounceMs = 0) => {
+            if (searchTimerRef.current) {
+                clearTimeout(searchTimerRef.current);
+            }
+
+            const doNavigate = () => {
+                const params = clientFiltersToQueryParams(newFilters, newSort);
+                setIsNavigating(true);
+                setRowSelection({});
+                setIsSelectingAll(false);
+                router.visit(transactionsIndex({ query: params }).url, {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: (page) => {
+                        const txns = (page.props as unknown as Props)
+                            .transactions;
+                        setAllTransactions(
+                            txns.data.map(toDecryptedTransaction),
+                        );
+                        setNextCursor(txns.next_cursor);
+                    },
+                    onFinish: () => setIsNavigating(false),
+                });
+            };
+
+            if (debounceMs > 0) {
+                searchTimerRef.current = setTimeout(doNavigate, debounceMs);
+            } else {
+                doNavigate();
+            }
+        },
+        [],
+    );
+
+    // Handle filter changes from the filter component
+    const handleFiltersChange = useCallback(
+        (newFilters: Filters) => {
+            setFilters(newFilters);
+
+            // Debounce search, immediate for other filters
+            const isSearchChange = newFilters.searchText !== filters.searchText;
+            const onlySearchChanged =
+                isSearchChange &&
+                newFilters.dateFrom === filters.dateFrom &&
+                newFilters.dateTo === filters.dateTo &&
+                newFilters.amountMin === filters.amountMin &&
+                newFilters.amountMax === filters.amountMax &&
+                JSON.stringify(newFilters.categoryIds) ===
+                    JSON.stringify(filters.categoryIds) &&
+                JSON.stringify(newFilters.accountIds) ===
+                    JSON.stringify(filters.accountIds) &&
+                JSON.stringify(newFilters.labelIds) ===
+                    JSON.stringify(filters.labelIds);
+
+            navigateWithFilters(
+                newFilters,
+                sortParam,
+                onlySearchChanged ? 300 : 0,
+            );
+        },
+        [filters, sortParam, navigateWithFilters],
+    );
+
+    // Handle sort changes from table column headers
+    const handleSortingChange = useCallback(
+        (updater: SortingState | ((prev: SortingState) => SortingState)) => {
+            const newSorting =
+                typeof updater === 'function' ? updater(sorting) : updater;
+            if (newSorting.length === 0) {
+                return;
+            }
+            const { id, desc } = newSorting[0];
+            const newSort = desc ? `-${id}` : id;
+            setSortParam(newSort);
+            navigateWithFilters(filters, newSort);
+        },
+        [sorting, filters, navigateWithFilters],
+    );
+
+    // Refresh the transaction list from the server (resets accumulated pages)
+    const refreshTransactions = useCallback(() => {
+        router.reload({
+            only: ['transactions'],
+            onSuccess: (page) => {
+                const txns = (page.props as unknown as Props).transactions;
+                setAllTransactions(txns.data.map(toDecryptedTransaction));
+                setNextCursor(txns.next_cursor);
+            },
+        });
+    }, []);
+
+    // Load More with cursor pagination (fetch directly to avoid cursor in URL)
+    const { component, version } = usePage();
+    const handleLoadMore = useCallback(async () => {
+        if (!nextCursor || isLoadingMore) {
+            return;
+        }
+
+        setIsLoadingMore(true);
+        try {
+            const params = clientFiltersToQueryParams(filters, sortParam);
+            params.cursor = nextCursor;
+            const url = transactionsIndex({ query: params }).url;
+
+            const response = await fetch(url, {
+                headers: {
+                    'X-Inertia': 'true',
+                    'X-Inertia-Version': version,
+                    'X-Inertia-Partial-Data': 'transactions',
+                    'X-Inertia-Partial-Component': component,
+                    Accept: 'text/html, application/xhtml+xml',
+                },
+            });
+
+            const json = await response.json();
+            const next = json.props
+                .transactions as CursorPaginatedResponse;
+
+            setAllTransactions((prev) => [
+                ...prev,
+                ...next.data.map(toDecryptedTransaction),
+            ]);
+            setNextCursor(next.next_cursor);
+        } catch (error) {
+            console.error('Failed to load more transactions:', error);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [nextCursor, isLoadingMore, filters, sortParam, component, version]);
+
+    // Auto-load more when the sentinel becomes visible
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+        const el = loadMoreRef.current;
+        if (!el || !nextCursor) {
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting) {
+                    handleLoadMore();
+                }
+            },
+            { rootMargin: '200px' },
+        );
+
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [nextCursor, handleLoadMore]);
+
+    // Persist column visibility
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                COLUMN_VISIBILITY_KEY,
+                JSON.stringify(columnVisibility),
+            );
+        } catch (error) {
+            console.error(
+                'Failed to save column visibility to localStorage:',
+                error,
+            );
+        }
+    }, [columnVisibility]);
 
     const updateTransaction = useCallback(
         (updatedTransaction: DecryptedTransaction) => {
-            setTransactions((previous) =>
+            setAllTransactions((previous) =>
                 previous.map((transaction) => {
                     if (transaction.id !== updatedTransaction.id) {
                         return transaction;
@@ -435,502 +584,30 @@ export default function Transactions({
                 }),
             );
         },
-        [setTransactions],
+        [],
     );
-
-    useEffect(() => {
-        async function fetchTransactions() {
-            setIsLoading(true);
-            try {
-                const response = await axios.get('/api/sync/transactions');
-                const serverData = response.data.data || response.data;
-
-                if (!Array.isArray(serverData)) {
-                    throw new Error('Invalid server response format');
-                }
-
-                const accountsMap = new Map(
-                    accounts.map((account) => [account.id, account]),
-                );
-                const categoriesMap = new Map(
-                    categories.map((category) => [category.id, category]),
-                );
-                const banksMap = new Map(banks.map((bank) => [bank.id, bank]));
-
-                const keyString = getStoredKey();
-                let key: CryptoKey | null = null;
-
-                if (keyString && isKeySet) {
-                    try {
-                        key = await importKey(keyString);
-                    } catch (error) {
-                        console.error(
-                            'Failed to import encryption key:',
-                            error,
-                        );
-                    }
-                }
-
-                const transformedTransactions = serverData.map(
-                    (serverRecord) => {
-                        const label_ids = serverRecord.labels?.map(
-                            (l: { id: string }) => l.id,
-                        );
-
-                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        const { labels: _labels, ...rest } = serverRecord;
-
-                        return {
-                            ...rest,
-                            transaction_date: String(
-                                serverRecord.transaction_date,
-                            ).slice(0, 10),
-                            label_ids: label_ids || [],
-                        } as Transaction;
-                    },
-                );
-
-                const decrypted = await Promise.all(
-                    transformedTransactions.map(async (transaction) => {
-                        try {
-                            let decryptedDescription = '';
-                            let decryptedNotes: string | null = null;
-
-                            if (!transaction.description_iv) {
-                                decryptedDescription = transaction.description;
-                                decryptedNotes = transaction.notes || null;
-                            } else if (key) {
-                                try {
-                                    decryptedDescription = await decrypt(
-                                        transaction.description,
-                                        key,
-                                        transaction.description_iv,
-                                    );
-
-                                    if (
-                                        transaction.notes &&
-                                        transaction.notes_iv
-                                    ) {
-                                        decryptedNotes = await decrypt(
-                                            transaction.notes,
-                                            key,
-                                            transaction.notes_iv,
-                                        );
-                                    }
-                                } catch (error) {
-                                    console.error(
-                                        'Failed to decrypt transaction:',
-                                        transaction.id,
-                                        error,
-                                    );
-                                }
-                            }
-
-                            const account = accountsMap.get(
-                                transaction.account_id,
-                            );
-                            const category = transaction.category_id
-                                ? categoriesMap.get(transaction.category_id)
-                                : null;
-                            const bank = account?.bank?.id
-                                ? banksMap.get(account.bank.id)
-                                : undefined;
-
-                            const transactionLabels =
-                                transaction.label_ids
-                                    ?.map((labelId) =>
-                                        labels.find((l) => l.id === labelId),
-                                    )
-                                    .filter(
-                                        (label): label is Label =>
-                                            label !== undefined,
-                                    ) || [];
-
-                            return {
-                                ...transaction,
-                                decryptedDescription,
-                                decryptedNotes,
-                                account,
-                                category: category || null,
-                                bank,
-                                labels: transactionLabels,
-                            } as DecryptedTransaction;
-                        } catch (error) {
-                            console.error(
-                                'Failed to process transaction:',
-                                transaction.id,
-                                error,
-                            );
-                            return null;
-                        }
-                    }),
-                );
-
-                const validTransactions = decrypted.filter(
-                    (transaction): transaction is DecryptedTransaction =>
-                        transaction !== null,
-                );
-
-                validTransactions.sort((a, b) => {
-                    const dateA = parseISO(a.transaction_date).getTime();
-                    const dateB = parseISO(b.transaction_date).getTime();
-                    return dateB - dateA;
-                });
-
-                setTransactions(validTransactions);
-            } catch (error) {
-                console.error('Failed to load transactions:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        }
-
-        fetchTransactions();
-    }, [refreshKey, accounts, banks, categories, labels, isKeySet]);
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(
-                COLUMN_VISIBILITY_KEY,
-                JSON.stringify(columnVisibility),
-            );
-        } catch (error) {
-            console.error(
-                'Failed to save column visibility to localStorage:',
-                error,
-            );
-        }
-    }, [columnVisibility]);
-
-    // Sync filters to URL
-    useEffect(() => {
-        const params = serializeFiltersToURL(filters);
-        const currentParams = new URLSearchParams(window.location.search);
-        const currentParamsObj: Record<string, string> = {};
-
-        currentParams.forEach((value, key) => {
-            currentParamsObj[key] = value;
-        });
-
-        // Check if params have changed
-        const hasChanged =
-            JSON.stringify(params) !== JSON.stringify(currentParamsObj);
-
-        if (hasChanged) {
-            router.visit(transactionsIndex({ query: params }).url, {
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-            });
-        }
-    }, [filters]);
-
-    useEffect(() => {
-        async function reDecryptTransactions() {
-            if (transactions.length === 0) {
-                return;
-            }
-
-            const keyString = getStoredKey();
-            let key: CryptoKey | null = null;
-
-            if (keyString && isKeySet) {
-                try {
-                    key = await importKey(keyString);
-                } catch (error) {
-                    console.error('Failed to import encryption key:', error);
-                }
-            }
-
-            const reDecrypted = await Promise.all(
-                transactions.map(async (transaction) => {
-                    try {
-                        let decryptedDescription = '';
-                        let decryptedNotes: string | null = null;
-
-                        if (!transaction.description_iv) {
-                            decryptedDescription = transaction.description;
-                            decryptedNotes = transaction.notes || null;
-                        } else if (key) {
-                            try {
-                                decryptedDescription = await decrypt(
-                                    transaction.description,
-                                    key,
-                                    transaction.description_iv,
-                                );
-
-                                if (transaction.notes && transaction.notes_iv) {
-                                    decryptedNotes = await decrypt(
-                                        transaction.notes,
-                                        key,
-                                        transaction.notes_iv,
-                                    );
-                                }
-                            } catch (error) {
-                                console.error(
-                                    'Failed to decrypt transaction:',
-                                    transaction.id,
-                                    error,
-                                );
-                            }
-                        }
-
-                        return {
-                            ...transaction,
-                            decryptedDescription,
-                            decryptedNotes,
-                        } as DecryptedTransaction;
-                    } catch (error) {
-                        console.error(
-                            'Failed to process transaction:',
-                            transaction.id,
-                            error,
-                        );
-                        return transaction;
-                    }
-                }),
-            );
-
-            setTransactions(reDecrypted);
-        }
-
-        reDecryptTransactions();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isKeySet]);
-
-    const [searchMatchedIds, setSearchMatchedIds] = useState<Set<string>>(
-        new Set(),
-    );
-    const [isSearching, setIsSearching] = useState(false);
-
-    useEffect(() => {
-        async function searchInIndexedDB() {
-            if (!filters.searchText || !isKeySet) {
-                setSearchMatchedIds(new Set());
-                setIsSearching(false);
-                return;
-            }
-
-            setIsSearching(true);
-            try {
-                const keyString = getStoredKey();
-                if (!keyString) {
-                    setSearchMatchedIds(new Set());
-                    return;
-                }
-
-                const key = await importKey(keyString);
-                const searchLower = filters.searchText.toLowerCase();
-
-                const allIndexedTransactions = await db.transactions.toArray();
-                const matchedIds = new Set<string>();
-
-                for (const tx of allIndexedTransactions) {
-                    try {
-                        let decryptedDescription = '';
-                        let decryptedNotes: string | null = null;
-
-                        try {
-                            if (!tx.description_iv) {
-                                decryptedDescription = tx.description;
-                                decryptedNotes = tx.notes || null;
-                            } else {
-                                decryptedDescription = await decrypt(
-                                    tx.description,
-                                    key,
-                                    tx.description_iv,
-                                );
-
-                                if (tx.notes && tx.notes_iv) {
-                                    decryptedNotes = await decrypt(
-                                        tx.notes,
-                                        key,
-                                        tx.notes_iv,
-                                    );
-                                }
-                            }
-                        } catch {
-                            continue;
-                        }
-
-                        const matchesDescription = decryptedDescription
-                            .toLowerCase()
-                            .includes(searchLower);
-                        const matchesNotes =
-                            decryptedNotes
-                                ?.toLowerCase()
-                                .includes(searchLower) || false;
-
-                        if (matchesDescription || matchesNotes) {
-                            matchedIds.add(tx.id);
-                        }
-                    } catch {
-                        continue;
-                    }
-                }
-
-                setSearchMatchedIds(matchedIds);
-            } catch (error) {
-                console.error('Failed to search in IndexedDB:', error);
-                setSearchMatchedIds(new Set());
-            } finally {
-                setIsSearching(false);
-            }
-        }
-
-        searchInIndexedDB();
-    }, [filters.searchText, isKeySet]);
-
-    const filteredTransactions = useMemo(() => {
-        return transactions.filter((transaction) => {
-            if (filters.searchText && isKeySet) {
-                if (!searchMatchedIds.has(transaction.id)) {
-                    return false;
-                }
-            } else if (filters.searchText && !isKeySet) {
-                return false;
-            }
-
-            if (filters.dateFrom || filters.dateTo) {
-                const transactionDate = parseISO(transaction.transaction_date);
-                if (
-                    filters.dateFrom &&
-                    filters.dateTo &&
-                    !isWithinInterval(transactionDate, {
-                        start: filters.dateFrom,
-                        end: filters.dateTo,
-                    })
-                ) {
-                    return false;
-                }
-                if (filters.dateFrom && transactionDate < filters.dateFrom) {
-                    return false;
-                }
-                if (filters.dateTo && transactionDate > filters.dateTo) {
-                    return false;
-                }
-            }
-
-            if (
-                filters.amountMin !== null &&
-                transaction.amount / 100 < filters.amountMin
-            ) {
-                return false;
-            }
-            if (
-                filters.amountMax !== null &&
-                transaction.amount / 100 > filters.amountMax
-            ) {
-                return false;
-            }
-
-            if (
-                filters.categoryIds.length > 0 &&
-                !filters.categoryIds.includes(transaction.category_id || -1)
-            ) {
-                return false;
-            }
-
-            if (
-                filters.accountIds.length > 0 &&
-                !filters.accountIds.includes(transaction.account_id)
-            ) {
-                return false;
-            }
-
-            if (filters.labelIds.length > 0) {
-                const transactionLabelIds =
-                    transaction.labels?.map((l) => l.id) || [];
-                const hasMatchingLabel = filters.labelIds.some((labelId) =>
-                    transactionLabelIds.includes(labelId),
-                );
-                if (!hasMatchingLabel) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-    }, [transactions, filters, isKeySet, searchMatchedIds]);
-
-    const sortedTransactions = useMemo(() => {
-        if (sorting.length === 0) {
-            return filteredTransactions;
-        }
-
-        const sorted = [...filteredTransactions];
-        sorted.sort((a, b) => {
-            for (const sort of sorting) {
-                const { id, desc } = sort;
-                let comparison = 0;
-
-                if (id === 'transaction_date') {
-                    const dateA = parseISO(a.transaction_date).getTime();
-                    const dateB = parseISO(b.transaction_date).getTime();
-                    comparison = dateA - dateB;
-                } else if (id === 'amount') {
-                    comparison = parseFloat(a.amount) - parseFloat(b.amount);
-                } else if (id === 'description') {
-                    comparison = a.decryptedDescription.localeCompare(
-                        b.decryptedDescription,
-                    );
-                } else if (id === 'account') {
-                    const accountA = a.account?.name || '';
-                    const accountB = b.account?.name || '';
-                    comparison = accountA.localeCompare(accountB);
-                } else if (id === 'category') {
-                    const categoryA = a.category?.name || '';
-                    const categoryB = b.category?.name || '';
-                    comparison = categoryA.localeCompare(categoryB);
-                }
-
-                if (comparison !== 0) {
-                    return desc ? -comparison : comparison;
-                }
-            }
-            return 0;
-        });
-
-        return sorted;
-    }, [filteredTransactions, sorting]);
-
-    const displayedTransactions = useMemo(() => {
-        return sortedTransactions.slice(0, displayedCount);
-    }, [sortedTransactions, displayedCount]);
 
     const handleReEvaluateRules = useCallback(
         async (transaction: DecryptedTransaction) => {
             consoleDebug('=== Re-evaluating rules for single transaction ===');
-            consoleDebug('Transaction:', {
-                id: transaction.id,
-                description: transaction.decryptedDescription,
-                amount: transaction.amount,
-                currentCategory: transaction.category?.name || 'None',
-            });
 
             setIsReEvaluating(true);
             try {
                 const keyString = getStoredKey();
-                if (!keyString || !isKeySet) {
-                    consoleDebug('❌ Encryption key not set');
-                    console.error('Encryption key not set');
+                if (!keyString) {
                     toast.error(
                         'Please unlock your encryption key to re-evaluate rules',
                     );
                     return;
                 }
-                consoleDebug('✓ Encryption key found');
 
                 const key = await importKey(keyString);
                 const rules = automationRules;
-                consoleDebug(`Found ${rules.length} automation rules`);
 
                 if (rules.length === 0) {
-                    consoleDebug('❌ No rules to evaluate');
                     return;
                 }
 
-                consoleDebug('Evaluating rules against transaction...');
                 const result = await evaluateRules(
                     transaction,
                     rules,
@@ -940,15 +617,12 @@ export default function Transactions({
                     key,
                 );
 
-                consoleDebug('Rule evaluation result:', result);
-
                 if (result) {
-                    consoleDebug('✓ Rule matched! Applying changes...');
                     let finalNotes = transaction.notes;
                     let finalNotesIv = transaction.notes_iv;
+                    let decryptedNotes = transaction.decryptedNotes;
 
                     if (result.note && result.noteIv) {
-                        consoleDebug('Adding note from rule');
                         const decryptedRuleNote = await decrypt(
                             result.note,
                             key,
@@ -962,132 +636,82 @@ export default function Transactions({
                         if (combinedNote !== transaction.decryptedNotes) {
                             finalNotes = combinedNote;
                             finalNotesIv = null;
-                            consoleDebug('Combined notes with rule note');
-                        } else {
-                            consoleDebug('Rule note already present, skipping');
+                            decryptedNotes = combinedNote;
+                        }
+                    } else if (result.note && !result.noteIv) {
+                        const combinedNote = appendNoteIfNotPresent(
+                            transaction.decryptedNotes,
+                            result.note,
+                        );
+
+                        if (combinedNote !== transaction.decryptedNotes) {
+                            finalNotes = combinedNote;
+                            finalNotesIv = null;
+                            decryptedNotes = combinedNote;
                         }
                     }
 
-                    const updateData = {
+                    await transactionSyncService.update(transaction.id, {
                         category_id: result.categoryId,
                         notes: finalNotes,
                         notes_iv: finalNotesIv,
-                    };
-                    consoleDebug('Updating transaction with:', updateData);
-
-                    await transactionSyncService.update(
-                        transaction.id,
-                        updateData,
-                    );
-                    consoleDebug('✓ Transaction updated in IndexedDB');
+                    });
 
                     const selectedCategory = result.categoryId
                         ? categories.find((c) => c.id === result.categoryId) ||
                           null
                         : null;
 
-                    let decryptedNotes = transaction.decryptedNotes;
-                    if (finalNotes && !finalNotesIv) {
-                        decryptedNotes = finalNotes;
-                    } else if (finalNotes && finalNotesIv) {
-                        decryptedNotes = await decrypt(
-                            finalNotes,
-                            key,
-                            finalNotesIv,
-                        );
-                    }
-
-                    const updatedTransaction = {
+                    updateTransaction({
                         ...transaction,
                         category_id: result.categoryId,
                         category: selectedCategory,
                         notes: finalNotes,
                         notes_iv: finalNotesIv,
                         decryptedNotes,
-                    };
-                    consoleDebug('Updating UI state with:', {
-                        id: updatedTransaction.id,
-                        newCategory: selectedCategory?.name || 'None',
-                        hasNotes: !!decryptedNotes,
                     });
-
-                    updateTransaction(updatedTransaction);
-                    consoleDebug('✓ UI state updated successfully');
-                } else {
-                    consoleDebug('❌ No rules matched this transaction');
                 }
             } catch (error) {
-                consoleDebug('❌ Error during re-evaluation:', error);
                 console.error('Failed to re-evaluate rules:', error);
             } finally {
                 setIsReEvaluating(false);
-                consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [
-            isKeySet,
-            categories,
-            accounts,
-            banks,
-            updateTransaction,
-            automationRules,
-        ],
+        [categories, accounts, banks, updateTransaction, automationRules],
     );
-
-    useEffect(() => {
-        if (refreshKey > 0) {
-            sync();
-        }
-    }, [refreshKey, sync]);
 
     async function handleBulkReEvaluateRules() {
         const BATCH_SIZE = 25;
         consoleDebug('=== Re-evaluating rules for bulk transactions ===');
-        consoleDebug(`Selected ${selectedIds.length} transactions`);
 
         if (selectedIds.length === 0) {
-            consoleDebug('❌ No transactions selected');
             return;
         }
 
         setIsReEvaluating(true);
         try {
             const keyString = getStoredKey();
-            if (!keyString || !isKeySet) {
-                consoleDebug('❌ Encryption key not set');
-                console.error('Encryption key not set');
+            if (!keyString) {
                 toast.error(
                     'Please unlock your encryption key to re-evaluate rules',
                 );
                 return;
             }
-            consoleDebug('✓ Encryption key found');
 
             const key = await importKey(keyString);
             const rules = automationRules;
-            consoleDebug(`Found ${rules.length} automation rules`);
 
             if (rules.length === 0) {
-                consoleDebug('❌ No rules to evaluate');
                 return;
             }
 
-            const selectedTransactions = transactions.filter((t) =>
+            const selectedTransactions = allTransactions.filter((t) =>
                 selectedIds.includes(t.id.toString()),
             );
-            consoleDebug(
-                'Processing transactions:',
-                selectedTransactions.map((t) => ({
-                    id: t.id,
-                    description: t.decryptedDescription,
-                    currentCategory: t.category?.name || 'None',
-                })),
-            );
 
-            // Collect all updates first without updating IndexedDB
             const allUpdates: Array<{
                 transaction: DecryptedTransaction;
-                categoryId: number | null;
+                categoryId: string | null;
                 category: Category | null;
                 notes: string | null;
                 notesIv: string | null;
@@ -1097,14 +721,13 @@ export default function Transactions({
             const dbUpdates: Array<{
                 id: string;
                 data: {
-                    category_id: number | null;
+                    category_id: string | null;
                     notes: string | null;
                     notes_iv: string | null;
                 };
             }> = [];
 
             for (const transaction of selectedTransactions) {
-                consoleDebug(`\nEvaluating transaction ${transaction.id}...`);
                 const result = await evaluateRules(
                     transaction,
                     rules,
@@ -1114,15 +737,11 @@ export default function Transactions({
                     key,
                 );
 
-                consoleDebug('Rule evaluation result:', result);
-
                 if (result) {
-                    consoleDebug('✓ Rule matched! Applying changes...');
                     let finalNotes = transaction.notes;
                     let finalNotesIv = transaction.notes_iv;
 
                     if (result.note && result.noteIv) {
-                        consoleDebug('Adding note from rule');
                         const decryptedRuleNote = await decrypt(
                             result.note,
                             key,
@@ -1136,23 +755,26 @@ export default function Transactions({
                         if (combinedNote !== transaction.decryptedNotes) {
                             finalNotes = combinedNote;
                             finalNotesIv = null;
-                            consoleDebug('Combined notes with rule note');
-                        } else {
-                            consoleDebug('Rule note already present, skipping');
+                        }
+                    } else if (result.note && !result.noteIv) {
+                        const combinedNote = appendNoteIfNotPresent(
+                            transaction.decryptedNotes,
+                            result.note,
+                        );
+
+                        if (combinedNote !== transaction.decryptedNotes) {
+                            finalNotes = combinedNote;
+                            finalNotesIv = null;
                         }
                     }
 
-                    const updateData = {
-                        category_id: result.categoryId,
-                        notes: finalNotes,
-                        notes_iv: finalNotesIv,
-                    };
-                    consoleDebug('Queuing update for transaction:', updateData);
-
-                    // Collect for batch IndexedDB update
                     dbUpdates.push({
                         id: transaction.id,
-                        data: updateData,
+                        data: {
+                            category_id: result.categoryId,
+                            notes: finalNotes,
+                            notes_iv: finalNotesIv,
+                        },
                     });
 
                     const selectedCategory = result.categoryId
@@ -1179,29 +801,13 @@ export default function Transactions({
                         notesIv: finalNotesIv,
                         decryptedNotes,
                     });
-                    consoleDebug(
-                        `✓ Queued update for transaction ${transaction.id}`,
-                    );
-                } else {
-                    consoleDebug(
-                        `❌ No rules matched transaction ${transaction.id}`,
-                    );
                 }
             }
 
-            // Batch update IndexedDB
             if (dbUpdates.length > 0) {
-                consoleDebug(
-                    `\nBatch updating ${dbUpdates.length} transactions in IndexedDB...`,
-                );
                 await transactionSyncService.updateManyIndividual(dbUpdates);
-                consoleDebug('✓ IndexedDB batch update complete');
             }
 
-            // Update UI state in batches
-            consoleDebug(
-                `\nApplying ${allUpdates.length} updates to UI state in batches of ${BATCH_SIZE}...`,
-            );
             if (allUpdates.length > 0) {
                 for (let i = 0; i < allUpdates.length; i += BATCH_SIZE) {
                     const batch = allUpdates.slice(i, i + BATCH_SIZE);
@@ -1209,11 +815,7 @@ export default function Transactions({
                         batch.map((u) => u.transaction.id),
                     );
 
-                    consoleDebug(
-                        `Applying batch ${Math.floor(i / BATCH_SIZE) + 1} (${batch.length} updates)...`,
-                    );
-
-                    setTransactions((previous) =>
+                    setAllTransactions((previous) =>
                         previous.map((transaction) => {
                             if (!batchIds.has(transaction.id)) {
                                 return transaction;
@@ -1235,24 +837,17 @@ export default function Transactions({
                         }),
                     );
 
-                    // Small delay between batches to allow React to process renders
                     if (i + BATCH_SIZE < allUpdates.length) {
                         await new Promise((resolve) => setTimeout(resolve, 50));
                     }
                 }
-                consoleDebug('✓ UI state updated successfully');
-            } else {
-                consoleDebug('❌ No updates to apply');
             }
 
-            consoleDebug('Clearing selection...');
             setRowSelection({});
         } catch (error) {
-            consoleDebug('❌ Error during bulk re-evaluation:', error);
             console.error('Failed to re-evaluate rules:', error);
         } finally {
             setIsReEvaluating(false);
-            consoleDebug('=== Bulk re-evaluation complete ===');
         }
     }
 
@@ -1281,42 +876,21 @@ export default function Transactions({
     );
 
     const table = useReactTable({
-        data: displayedTransactions,
+        data: allTransactions,
         columns,
-        onSortingChange: setSorting,
-        onColumnFiltersChange: setColumnFilters,
+        manualSorting: true,
+        onSortingChange: handleSortingChange,
         getRowId: (row) => row.id.toString(),
         getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
         enableRowSelection: true,
         state: {
             sorting,
-            columnFilters,
             columnVisibility,
             rowSelection,
         },
     });
-
-    const loadMore = useCallback(() => {
-        if (displayedCount < sortedTransactions.length && !isLoadingMore) {
-            setIsLoadingMore(true);
-            requestAnimationFrame(() => {
-                setDisplayedCount((prev) =>
-                    Math.min(prev + 25, sortedTransactions.length),
-                );
-                requestAnimationFrame(() => {
-                    setIsLoadingMore(false);
-                });
-            });
-        }
-    }, [displayedCount, sortedTransactions.length, isLoadingMore]);
-
-    useEffect(() => {
-        setDisplayedCount(25);
-    }, [filters, sorting]);
 
     async function handleDelete() {
         if (!deleteTransaction) {
@@ -1326,7 +900,7 @@ export default function Transactions({
         setIsDeleting(true);
         try {
             await transactionSyncService.delete(deleteTransaction.id);
-            setTransactions((previous) =>
+            setAllTransactions((previous) =>
                 previous.filter(
                     (transaction) => transaction.id !== deleteTransaction.id,
                 ),
@@ -1334,8 +908,6 @@ export default function Transactions({
             setDeleteTransaction(null);
             setIsBulkDeleteMode(false);
             setRowSelection({});
-
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to delete transaction:', error);
         } finally {
@@ -1344,13 +916,6 @@ export default function Transactions({
     }
 
     async function handleBulkCategoryChange(categoryId: number | null) {
-        if (!isKeySet) {
-            toast.error(
-                'Please unlock your encryption key to update transactions',
-            );
-            return;
-        }
-
         if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
@@ -1365,13 +930,11 @@ export default function Transactions({
                 : null;
 
             if (isSelectingAll) {
-                // Update via filters
                 await transactionSyncService.updateByFilters(filters, {
                     category_id: categoryId,
                 });
 
-                // Optimistically update matching transactions in state
-                setTransactions((previous) =>
+                setAllTransactions((previous) =>
                     previous.map((transaction) => ({
                         ...transaction,
                         category_id: categoryId,
@@ -1379,17 +942,13 @@ export default function Transactions({
                     })),
                 );
 
-                toast.success(
-                    `Updated ${sortedTransactions.length} transactions`,
-                );
+                toast.success(`Updated all filtered transactions`);
             } else {
-                // Update selected transactions
                 await transactionSyncService.updateMany(selectedIds, {
                     category_id: categoryId,
                 });
 
-                // Optimistically update selected transactions in state
-                setTransactions((previous) =>
+                setAllTransactions((previous) =>
                     previous.map((transaction) => {
                         if (selectedIds.includes(transaction.id.toString())) {
                             return {
@@ -1407,8 +966,6 @@ export default function Transactions({
 
             setRowSelection({});
             setIsSelectingAll(false);
-
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to update transactions:', error);
             toast.error('Failed to update transactions');
@@ -1429,8 +986,7 @@ export default function Transactions({
             return;
         }
 
-        // Defer the find operation until delete is actually clicked
-        const firstSelectedTransaction = filteredTransactions.find(
+        const firstSelectedTransaction = allTransactions.find(
             (t) => t.id.toString() === selectedIds[0],
         );
 
@@ -1448,7 +1004,7 @@ export default function Transactions({
         setIsBulkDeleting(true);
         try {
             await transactionSyncService.deleteMany(selectedIds);
-            setTransactions((previous) =>
+            setAllTransactions((previous) =>
                 previous.filter(
                     (transaction) => !selectedIds.includes(transaction.id),
                 ),
@@ -1457,8 +1013,6 @@ export default function Transactions({
             setIsBulkDeleteMode(false);
             setBulkDeleteConfirmation('');
             setRowSelection({});
-
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to delete transactions:', error);
         } finally {
@@ -1478,15 +1032,12 @@ export default function Transactions({
             );
 
             if (isSelectingAll) {
-                // Update via filters
                 await transactionSyncService.updateByFilters(filters, {
                     label_ids: labelIds,
                 });
 
-                // Optimistically update matching transactions in state
-                setTransactions((previous) =>
+                setAllTransactions((previous) =>
                     previous.map((transaction) => {
-                        // If labelIds is empty, remove all labels
                         if (labelIds.length === 0) {
                             return {
                                 ...transaction,
@@ -1494,7 +1045,6 @@ export default function Transactions({
                             };
                         }
 
-                        // Otherwise, merge with existing labels
                         const existingLabels = transaction.labels || [];
                         const mergedLabels = [
                             ...existingLabels,
@@ -1513,20 +1063,15 @@ export default function Transactions({
                     }),
                 );
 
-                toast.success(
-                    `Updated ${sortedTransactions.length} transactions`,
-                );
+                toast.success(`Updated all filtered transactions`);
             } else {
-                // Update selected transactions
                 await transactionSyncService.updateMany(selectedIds, {
                     label_ids: labelIds,
                 });
 
-                // Optimistically update selected transactions in state
-                setTransactions((previous) =>
+                setAllTransactions((previous) =>
                     previous.map((transaction) => {
                         if (selectedIds.includes(transaction.id.toString())) {
-                            // If labelIds is empty, remove all labels
                             if (labelIds.length === 0) {
                                 return {
                                     ...transaction,
@@ -1534,7 +1079,6 @@ export default function Transactions({
                                 };
                             }
 
-                            // Otherwise, merge with existing labels
                             const existingLabels = transaction.labels || [];
                             const mergedLabels = [
                                 ...existingLabels,
@@ -1560,8 +1104,6 @@ export default function Transactions({
 
             setRowSelection({});
             setIsSelectingAll(false);
-
-            setRefreshKey((prev) => prev + 1);
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
             toast.error('Failed to update transactions with labels');
@@ -1577,9 +1119,8 @@ export default function Transactions({
 
     const handleSelectAll = useCallback(() => {
         setIsSelectingAll(true);
-        // Use requestAnimationFrame to defer the expensive reduce operation
         requestAnimationFrame(() => {
-            const allIds = sortedTransactions.reduce(
+            const allIds = allTransactions.reduce(
                 (acc, transaction) => {
                     acc[transaction.id.toString()] = true;
                     return acc;
@@ -1588,7 +1129,7 @@ export default function Transactions({
             );
             setRowSelection(allIds);
         });
-    }, [sortedTransactions]);
+    }, [allTransactions]);
 
     const renderTransactionRow = useCallback(
         (
@@ -1624,11 +1165,11 @@ export default function Transactions({
                 <div className="space-y-4">
                     <TransactionFiltersComponent
                         filters={filters}
-                        onFiltersChange={setFilters}
+                        onFiltersChange={handleFiltersChange}
                         categories={categories}
                         labels={labels}
                         accounts={accounts}
-                        isKeySet={isKeySet}
+                        isKeySet={true}
                         actions={
                             <div className="flex w-full justify-between gap-2 sm:justify-end">
                                 <TransactionActionsMenu
@@ -1639,15 +1180,13 @@ export default function Transactions({
                                     onAddTransaction={() =>
                                         setCreateDialogOpen(true)
                                     }
-                                    transactions={transactions}
+                                    transactions={allTransactions}
                                     onReEvaluateComplete={() => {
                                         setRowSelection({});
-                                        setTimeout(() => {
-                                            window.location.reload();
-                                        }, 500);
+                                        refreshTransactions();
                                     }}
                                     onImportComplete={() =>
-                                        setRefreshKey((prev) => prev + 1)
+                                        refreshTransactions()
                                     }
                                 />
 
@@ -1656,7 +1195,7 @@ export default function Transactions({
                         }
                     />
 
-                    {isLoading || isSearching ? (
+                    {isNavigating ? (
                         <div className="space-y-4">
                             <div className="overflow-hidden rounded-md border">
                                 <div className="grid grid-cols-4 gap-4 border-b p-4">
@@ -1706,25 +1245,26 @@ export default function Transactions({
                             />
 
                             <DataTablePagination
-                                displayedCount={displayedCount}
-                                total={sortedTransactions.length}
-                                rowCountLabel={__('transactions total')}
+                                displayedCount={allTransactions.length}
+                                rowCountLabel={__('transactions loaded')}
                             >
-                                {displayedCount < sortedTransactions.length && (
-                                    <Button
-                                        onClick={loadMore}
-                                        disabled={isLoadingMore}
-                                        variant="outline"
-                                    >
-                                        {isLoadingMore ? (
-                                            <>
-                                                <Spinner />
-                                                {__('Loading')}
-                                            </>
-                                        ) : (
-                                            <>{__('Load more')}</>
-                                        )}
-                                    </Button>
+                                {nextCursor && (
+                                    <div ref={loadMoreRef}>
+                                        <Button
+                                            onClick={handleLoadMore}
+                                            disabled={isLoadingMore}
+                                            variant="outline"
+                                        >
+                                            {isLoadingMore ? (
+                                                <>
+                                                    <Spinner />
+                                                    {__('Loading')}
+                                                </>
+                                            ) : (
+                                                <>{__('Load more')}</>
+                                            )}
+                                        </Button>
+                                    </div>
                                 )}
                             </DataTablePagination>
                         </>
@@ -1754,9 +1294,7 @@ export default function Transactions({
                 automationRules={automationRules}
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
-                onSuccess={(transaction) => {
-                    setTransactions((prev) => [transaction, ...prev]);
-                }}
+                onSuccess={() => refreshTransactions()}
                 mode="create"
             />
 
@@ -1854,7 +1392,7 @@ export default function Transactions({
 
             <BulkActionsBar
                 selectedCount={selectedCount}
-                totalFilteredCount={sortedTransactions.length}
+                totalFilteredCount={allTransactions.length}
                 isSelectingAll={isSelectingAll}
                 categories={categories}
                 labels={labels}

@@ -45,7 +45,6 @@ export function TransactionFilters({
     categories,
     labels,
     accounts,
-    isKeySet,
     actions,
     hideAccountFilter = false,
 }: TransactionFiltersProps) {
@@ -80,7 +79,7 @@ export function TransactionFilters({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters.searchText]);
 
-    function handleCategoryToggle(categoryId: number) {
+    function handleCategoryToggle(categoryId: string) {
         const newCategoryIds = filters.categoryIds.includes(categoryId)
             ? filters.categoryIds.filter((id) => id !== categoryId)
             : [...filters.categoryIds, categoryId];
@@ -132,14 +131,9 @@ export function TransactionFilters({
             <div className="flex flex-col items-center gap-3 lg:flex-row">
                 <div className="flex w-full flex-row items-center gap-2 lg:w-auto">
                     <Input
-                        placeholder={
-                            isKeySet
-                                ? __('Search description or notes...')
-                                : __('Search disabled (encryption key not set)')
-                        }
+                        placeholder={__('Search description or notes...')}
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
-                        disabled={!isKeySet}
                         className="max-w-sm flex-1 md:max-w-full md:min-w-[350px]"
                     />
 
@@ -567,4 +561,4 @@ export function TransactionFilters({
     );
 }
 
-const UNCATEGORIZED_CATEGORY_ID = -1;
+const UNCATEGORIZED_CATEGORY_ID = 'uncategorized';

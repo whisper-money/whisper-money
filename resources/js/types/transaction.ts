@@ -23,6 +23,12 @@ export interface Transaction {
     updated_at: string;
 }
 
+export interface ServerTransaction extends Transaction {
+    account?: Account;
+    category?: Category | null;
+    labels?: Label[];
+}
+
 export interface DecryptedTransaction extends Transaction {
     decryptedDescription: string;
     decryptedNotes: string | null;

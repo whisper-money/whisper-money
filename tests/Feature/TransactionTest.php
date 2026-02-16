@@ -25,6 +25,9 @@ test('authenticated users can access transactions page', function () {
     $response->assertSuccessful();
     $response->assertInertia(fn ($page) => $page
         ->component('transactions/index')
+        ->has('transactions')
+        ->has('transactions.data')
+        ->has('appliedFilters')
         ->has('categories')
         ->has('accounts')
         ->has('banks')
