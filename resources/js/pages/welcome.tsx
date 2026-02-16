@@ -111,19 +111,19 @@ function LandingPlanCard({
             {(isDefault || isBestValue) && (
                 <div
                     className={cn(
-                        'px-6 py-2.5 text-xs font-semibold uppercase',
+                        'px-6 pt-6 text-xs font-semibold uppercase',
                         isDefault &&
-                            'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]',
+                            'text-[#1b1b18] dark:bg-[#EDEDEC] dark:text-[#1b1b18]',
                         isBestValue &&
                             !isDefault &&
-                            'bg-[#f5f5f4] text-[#706f6c] dark:bg-[#1f1f1e] dark:text-[#A1A09A]',
+                            'text-[#706f6c] dark:bg-[#1f1f1e] dark:text-[#A1A09A]',
                     )}
                 >
                     {isDefault ? __('Most Popular') : __('Best Value')}
                 </div>
             )}
 
-            <div className="flex flex-1 flex-col p-6">
+            <div className="flex flex-1 flex-col p-6 pt-2">
                 <h3 className="text-lg font-semibold">{__(plan.name)}</h3>
 
                 <div className="mt-3 flex items-baseline gap-2">
@@ -389,12 +389,12 @@ export default function Welcome({
                                         {__('Private & Secure')}
                                     </span>
                                 </span>
-                                <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
+                                <h1 className="font-heading max-w-[840px] bg-gradient-to-r from-[#1b1b18] to-[#1b1b18] bg-clip-text text-4xl leading-tight font-semibold text-balance text-transparent drop-shadow-2xl sm:text-5xl sm:leading-tight lg:text-6xl lg:leading-tight dark:from-[#EDEDEC] dark:to-[#A1A09A]">
                                     {__(
                                         'All your money in one place. No spreadsheets. Private.',
                                     )}
                                 </h1>
-                                <p className="mb-4 max-w-[840px] text-lg leading-8 font-medium text-[#706f6c] lg:text-xl lg:leading-8 dark:text-[#A1A09A]">
+                                <p className="mb-4 max-w-[840px] text-lg leading-8 font-medium text-balance text-[#706f6c] lg:text-xl lg:leading-8 dark:text-[#A1A09A]">
                                     {__(
                                         'Understand your finances and make better decisions without the friction. Track expenses, create budgets, and achieve your goals\u2014all in one place.',
                                     )}
@@ -473,7 +473,7 @@ export default function Welcome({
                         </div>
                     </section>
 
-                    <section className="px-4 py-12 sm:py-16 md:py-20">
+                    <section className="grid gap-6 px-4 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-3">
                             <FeatureCard>
                                 <div className="p-2">
@@ -529,9 +529,7 @@ export default function Welcome({
                                 </div>
                             </FeatureCard>
                         </div>
-                    </section>
 
-                    <section className="px-4 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto max-w-7xl">
                             <FeatureCard>
                                 <div className="grid items-center gap-0 sm:grid-cols-2">
@@ -919,13 +917,13 @@ export default function Welcome({
 
                     <section className="px-4 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto max-w-7xl">
-                            <div className="flex flex-col items-center gap-6 rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] px-6 py-12 text-center sm:px-12 sm:py-16 dark:border-[#3E3E3A] dark:bg-[#161615]">
-                                <h2 className="max-w-[600px] text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
+                            <div className="flex flex-col items-center gap-6 px-6 py-12 text-center sm:px-12 sm:py-16 dark:border-[#3E3E3A] dark:bg-[#161615]">
+                                <h2 className="max-w-[600px] text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight">
                                     {__(
                                         'Ready to take control of your finances?',
                                     )}
                                 </h2>
-                                <p className="max-w-[480px] text-[#706f6c] sm:text-lg dark:text-[#A1A09A]">
+                                <p className="max-w-[480px] text-balance text-[#706f6c] sm:text-lg dark:text-[#A1A09A]">
                                     {__(
                                         'Start managing your money privately. No credit card required.',
                                     )}
@@ -936,21 +934,13 @@ export default function Welcome({
                                             {__('Get Started for Free')}
                                         </Button>
                                     </Link>
-                                    <Link href="/login?demo=1">
-                                        <Button
-                                            variant="outline"
-                                            className="h-12 cursor-pointer px-8 text-base"
-                                        >
-                                            {__('Try the Demo')}
-                                        </Button>
-                                    </Link>
                                 </div>
                             </div>
                         </div>
                     </section>
                 </main>
 
-                <footer className="py-8 dark:border-[#3E3E3A]">
+                <footer className="py-8 lg:mt-12 dark:border-[#3E3E3A]">
                     <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-6 text-sm text-[#706f6c] sm:flex-row lg:px-8 dark:text-[#A1A09A]">
                         <p>
                             © {new Date().getFullYear()}
