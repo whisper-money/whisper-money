@@ -49,10 +49,14 @@ function getBillingLabel(billingPeriod: string | null): string {
 }
 
 function FeatureScreenshot({
-    label,
+    light,
+    dark,
+    alt,
     className,
 }: {
-    label: string;
+    light: string;
+    dark: string;
+    alt: string;
     className?: string;
 }) {
     return (
@@ -62,11 +66,18 @@ function FeatureScreenshot({
                 className,
             )}
         >
-            <div className="flex aspect-[4/3] items-center justify-center">
-                <span className="text-xs font-medium tracking-wider text-zinc-300 uppercase dark:text-zinc-700">
-                    {label}
-                </span>
-            </div>
+            <img
+                src={light}
+                alt={alt}
+                className="w-full dark:hidden"
+                loading="lazy"
+            />
+            <img
+                src={dark}
+                alt={alt}
+                className="hidden w-full dark:block"
+                loading="lazy"
+            />
         </div>
     );
 }
@@ -478,7 +489,11 @@ export default function Welcome({
                             <FeatureCard>
                                 <div className="p-2">
                                     <FeatureScreenshot
-                                        label={__('Accounts screenshot')}
+                                        light="/images/landing/features/accounts_light.png"
+                                        dark="/images/landing/features/accounts_dark.png"
+                                        alt={__(
+                                            'All your accounts at a glance',
+                                        )}
                                     />
                                 </div>
                                 <div className="p-6 pt-4">
@@ -496,7 +511,9 @@ export default function Welcome({
                             <FeatureCard>
                                 <div className="p-2">
                                     <FeatureScreenshot
-                                        label={__('Transactions screenshot')}
+                                        light="/images/landing/features/transactions_light.png"
+                                        dark="/images/landing/features/transactions_dark.png"
+                                        alt={__('Every transaction tracked')}
                                     />
                                 </div>
                                 <div className="p-6 pt-4">
@@ -514,7 +531,11 @@ export default function Welcome({
                             <FeatureCard>
                                 <div className="p-2">
                                     <FeatureScreenshot
-                                        label={__('Privacy screenshot')}
+                                        light="/images/landing/features/privacy_light.png"
+                                        dark="/images/landing/features/privacy_dark.png"
+                                        alt={__(
+                                            'Your data encrypted and private',
+                                        )}
                                     />
                                 </div>
                                 <div className="p-6 pt-4">
@@ -567,7 +588,11 @@ export default function Welcome({
                                     </div>
                                     <div className="p-2">
                                         <FeatureScreenshot
-                                            label={__('Import screenshot')}
+                                            light="/images/landing/features/import_light.png"
+                                            dark="/images/landing/features/import_dark.png"
+                                            alt={__(
+                                                'Import transactions in seconds',
+                                            )}
                                             className="aspect-auto min-h-[320px]"
                                         />
                                     </div>
@@ -593,7 +618,9 @@ export default function Welcome({
                                 <FeatureCard>
                                     <div className="p-2">
                                         <FeatureScreenshot
-                                            label={__('Budget creation')}
+                                            light="/images/landing/features/budgets_light.png"
+                                            dark="/images/landing/features/budgets_dark.png"
+                                            alt={__('Set your budget goals')}
                                         />
                                     </div>
                                     <div className="p-6 pt-4">
@@ -611,7 +638,11 @@ export default function Welcome({
                                 <FeatureCard>
                                     <div className="p-2">
                                         <FeatureScreenshot
-                                            label={__('Budget tracking')}
+                                            light="/images/landing/features/budgets_light.png"
+                                            dark="/images/landing/features/budgets_dark.png"
+                                            alt={__(
+                                                'Track your budget progress',
+                                            )}
                                         />
                                     </div>
                                     <div className="p-6 pt-4">
@@ -629,7 +660,11 @@ export default function Welcome({
                                 <FeatureCard>
                                     <div className="p-2">
                                         <FeatureScreenshot
-                                            label={__('Budget insights')}
+                                            light="/images/landing/features/budgets_light.png"
+                                            dark="/images/landing/features/budgets_dark.png"
+                                            alt={__(
+                                                'Budget insights and alerts',
+                                            )}
                                         />
                                     </div>
                                     <div className="p-6 pt-4">
@@ -653,7 +688,9 @@ export default function Welcome({
                                 <div className="grid items-center gap-0 sm:grid-cols-2">
                                     <div className="p-2">
                                         <FeatureScreenshot
-                                            label={__('Cashflow screenshot')}
+                                            light="/images/landing/features/cashflow_light.png"
+                                            dark="/images/landing/features/cashflow_dark.png"
+                                            alt={__('Cashflow visualization')}
                                             className="aspect-auto min-h-[320px]"
                                         />
                                     </div>
