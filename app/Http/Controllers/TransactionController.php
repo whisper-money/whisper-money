@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\BulkUpdateTransactionsRequest;
+use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Requests\UpdateTransactionRequest;
 use App\Models\Account;
@@ -21,9 +22,49 @@ class TransactionController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(Request $request): Response
+    public function index(IndexTransactionRequest $request): Response
     {
         $user = $request->user();
+        $validated = $request->validated();
+
+        $perPage = (int) ($validated['per_page'] ?? 50);
+        $sortParam = $validated['sort'] ?? '-transaction_date';
+
+        $descending = str_starts_with($sortParam, '-');
+        $sortColumn = ltrim($sortParam, '-');
+        $sortDirection = $descending ? 'desc' : 'asc';
+
+        $filters = array_filter([
+            'date_from' => $validated['date_from'] ?? null,
+            'date_to' => $validated['date_to'] ?? null,
+            'amount_min' => $validated['amount_min'] ?? null,
+            'amount_max' => $validated['amount_max'] ?? null,
+            'category_ids' => $validated['category_ids'] ?? null,
+            'account_ids' => $validated['account_ids'] ?? null,
+            'label_ids' => $validated['label_ids'] ?? null,
+            'search' => $validated['search'] ?? null,
+        ], fn ($value) => $value !== null);
+
+        $transactions = Transaction::query()
+            ->where('user_id', $user->id)
+            ->with(['account.bank:id,name,logo', 'category:id,name,icon,color', 'labels:id,name,color'])
+            ->applyFilters($filters)
+            ->orderBy($sortColumn, $sortDirection)
+            ->orderBy('id', 'desc')
+            ->cursorPaginate($perPage)
+            ->withQueryString();
+
+        $appliedFilters = [
+            'date_from' => $validated['date_from'] ?? null,
+            'date_to' => $validated['date_to'] ?? null,
+            'amount_min' => $validated['amount_min'] ?? null,
+            'amount_max' => $validated['amount_max'] ?? null,
+            'category_ids' => $validated['category_ids'] ?? [],
+            'account_ids' => $validated['account_ids'] ?? [],
+            'label_ids' => $validated['label_ids'] ?? [],
+            'search' => $validated['search'] ?? '',
+            'sort' => $sortParam,
+        ];
 
         $categories = Category::query()
             ->where('user_id', $user->id)
@@ -56,6 +97,8 @@ class TransactionController extends Controller
             ->get();
 
         return Inertia::render('transactions/index', [
+            'transactions' => $transactions,
+            'appliedFilters' => $appliedFilters,
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
@@ -192,30 +235,7 @@ class TransactionController extends Controller
                 ], 403);
             }
         } elseif ($filters !== null) {
-            if (isset($filters['date_from'])) {
-                $query->whereDate('transaction_date', '>=', $filters['date_from']);
-            }
-            if (isset($filters['date_to'])) {
-                $query->whereDate('transaction_date', '<=', $filters['date_to']);
-            }
-            if (isset($filters['amount_min'])) {
-                $query->where('amount', '>=', $filters['amount_min'] * 100);
-            }
-            if (isset($filters['amount_max'])) {
-                $query->where('amount', '<=', $filters['amount_max'] * 100);
-            }
-            if (! empty($filters['category_ids'])) {
-                $query->whereIn('category_id', $filters['category_ids']);
-            }
-            if (! empty($filters['account_ids'])) {
-                $query->whereIn('account_id', $filters['account_ids']);
-            }
-            if (! empty($filters['label_ids'])) {
-                $query->whereHas('labels', function ($q) use ($filters) {
-                    $q->whereIn('labels.id', $filters['label_ids']);
-                });
-            }
-
+            $query->applyFilters($filters);
             $transactions = $query->get();
         } else {
             $transactions = $query->get();
@@ -242,40 +262,17 @@ class TransactionController extends Controller
         }
 
         if (! empty($updateData)) {
-            $query = Transaction::query()->where('user_id', $user->id);
+            $updateQuery = Transaction::query()->where('user_id', $user->id);
             if ($transactionIds && count($transactionIds) > 0) {
-                $query->whereIn('id', $transactionIds);
+                $updateQuery->whereIn('id', $transactionIds);
             } elseif ($filters !== null) {
-                if (isset($filters['date_from'])) {
-                    $query->whereDate('transaction_date', '>=', $filters['date_from']);
-                }
-                if (isset($filters['date_to'])) {
-                    $query->whereDate('transaction_date', '<=', $filters['date_to']);
-                }
-                if (isset($filters['amount_min'])) {
-                    $query->where('amount', '>=', $filters['amount_min'] * 100);
-                }
-                if (isset($filters['amount_max'])) {
-                    $query->where('amount', '<=', $filters['amount_max'] * 100);
-                }
-                if (! empty($filters['category_ids'])) {
-                    $query->whereIn('category_id', $filters['category_ids']);
-                }
-                if (! empty($filters['account_ids'])) {
-                    $query->whereIn('account_id', $filters['account_ids']);
-                }
-                if (! empty($filters['label_ids'])) {
-                    $query->whereHas('labels', function ($q) use ($filters) {
-                        $q->whereIn('labels.id', $filters['label_ids']);
-                    });
-                }
+                $updateQuery->applyFilters($filters);
             }
-            $query->update($updateData);
+            $updateQuery->update($updateData);
         }
 
         if ($hasLabelUpdate) {
             foreach ($transactions as $transaction) {
-                // Replace labels (consistent with single update behavior)
                 $transaction->labels()->sync($labelIds ?? []);
                 $transaction->save();
             }

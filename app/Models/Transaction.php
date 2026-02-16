@@ -6,6 +6,7 @@ use App\Enums\TransactionSource;
 use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
 use App\Events\TransactionUpdated;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -78,5 +79,59 @@ class Transaction extends Model
     public function budgetTransactions(): HasMany
     {
         return $this->hasMany(BudgetTransaction::class);
+    }
+
+    /**
+     * @param  Builder<Transaction>  $query
+     * @param  array<string, mixed>  $filters
+     * @return Builder<Transaction>
+     */
+    public function scopeApplyFilters(Builder $query, array $filters): Builder
+    {
+        if (isset($filters['date_from'])) {
+            $query->whereDate('transaction_date', '>=', $filters['date_from']);
+        }
+
+        if (isset($filters['date_to'])) {
+            $query->whereDate('transaction_date', '<=', $filters['date_to']);
+        }
+
+        if (isset($filters['amount_min'])) {
+            $query->where('amount', '>=', $filters['amount_min'] * 100);
+        }
+
+        if (isset($filters['amount_max'])) {
+            $query->where('amount', '<=', $filters['amount_max'] * 100);
+        }
+
+        if (! empty($filters['category_ids'])) {
+            $ids = collect($filters['category_ids']);
+            $hasUncategorized = $ids->contains('uncategorized');
+            $realIds = $ids->reject(fn ($id) => $id === 'uncategorized')->values()->all();
+
+            $query->where(function (Builder $q) use ($realIds, $hasUncategorized) {
+                if (! empty($realIds)) {
+                    $q->whereIn('category_id', $realIds);
+                }
+                if ($hasUncategorized) {
+                    $q->orWhereNull('category_id');
+                }
+            });
+        }
+
+        if (! empty($filters['account_ids'])) {
+            $query->whereIn('account_id', $filters['account_ids']);
+        }
+
+        if (! empty($filters['label_ids'])) {
+            $query->whereHas('labels', fn (Builder $q) => $q->whereIn('labels.id', $filters['label_ids']));
+        }
+
+        if (! empty($filters['search'])) {
+            $term = '%'.$filters['search'].'%';
+            $query->where(fn (Builder $q) => $q->where('description', 'LIKE', $term)->orWhere('notes', 'LIKE', $term));
+        }
+
+        return $query;
     }
 }
