@@ -32,6 +32,7 @@ it('shows existing accounts in list', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $page->navigate('/settings/accounts')->wait(2);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -120,6 +121,7 @@ it('can filter accounts by name', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $page->navigate('/settings/accounts')->wait(2);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -135,7 +137,7 @@ it('can edit an existing account via dropdown menu', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->wait(1);
+    $page->navigate('/settings/accounts')->wait(2);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Old Account Name', 'Edit Bank', 'Checking', 'USD');
@@ -165,7 +167,7 @@ it('can delete an account via dropdown menu', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->wait(1);
+    $page->navigate('/settings/accounts')->wait(2);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Account To Delete', 'Delete Bank', 'Checking', 'USD');
