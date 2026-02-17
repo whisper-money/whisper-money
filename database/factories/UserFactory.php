@@ -64,7 +64,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'onboarded_at' => now(),
-            'encryption_salt' => 'test-salt',
             'locale' => 'en',
         ]);
     }

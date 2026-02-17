@@ -25,7 +25,6 @@ it('shows existing accounts in list', function () {
         'user_id' => $user->id,
         'bank_id' => $bank->id,
         'name' => 'My Checking',
-        'name_iv' => str_repeat('b', 16),
         'type' => 'checking',
         'currency_code' => 'USD',
     ]);
@@ -33,7 +32,6 @@ it('shows existing accounts in list', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -48,7 +46,6 @@ it('can open create account dialog', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
@@ -64,7 +61,6 @@ it('can create a new bank account', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
@@ -114,19 +110,16 @@ it('can filter accounts by name', function () {
         'user_id' => $user->id,
         'bank_id' => $bank->id,
         'name' => 'Checking Account',
-        'name_iv' => str_repeat('b', 16),
     ]);
     Account::factory()->create([
         'user_id' => $user->id,
         'bank_id' => $bank->id,
         'name' => 'Savings Account',
-        'name_iv' => str_repeat('c', 16),
     ]);
 
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -143,7 +136,6 @@ it('can edit an existing account via dropdown menu', function () {
 
     $page = visit('/settings/accounts');
     $page->wait(1);
-    $this->setupEncryptionKey($page);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Old Account Name', 'Edit Bank', 'Checking', 'USD');
@@ -174,7 +166,6 @@ it('can delete an account via dropdown menu', function () {
 
     $page = visit('/settings/accounts');
     $page->wait(1);
-    $this->setupEncryptionKey($page);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Account To Delete', 'Delete Bank', 'Checking', 'USD');

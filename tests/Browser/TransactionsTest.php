@@ -28,7 +28,6 @@ it('can open add transaction dialog', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -43,17 +42,12 @@ it('can create a transaction', function () {
 
     actingAs($user);
 
-    // Generate a single encryption key to use throughout the test
-    $encryptionKey = base64_encode(random_bytes(32));
-
     // Create category via UI
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page, $encryptionKey);
     createCategoryViaUI($page, 'Groceries');
 
     // Create account via UI
     $page = visit('/settings/accounts');
-    $this->setupEncryptionKey($page, $encryptionKey);
     createAccountViaUI($page, 'My Checking', 'Test Bank');
 
     // Verify account was created
@@ -62,7 +56,6 @@ it('can create a transaction', function () {
 
     // Visit transactions page
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page, $encryptionKey);
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
@@ -111,7 +104,6 @@ it('can filter transactions by search text', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->wait(2)

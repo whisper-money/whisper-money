@@ -126,7 +126,6 @@ return [
     'demo' => [
         'email' => env('DEMO_EMAIL', 'demo@whisper.money'),
         'password' => env('DEMO_PASSWORD', 'demo'),
-        'encryption_key' => env('DEMO_ENCRYPTION_KEY', 'demo'),
     ],
 
 ];

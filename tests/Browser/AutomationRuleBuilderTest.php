@@ -15,7 +15,6 @@ it('can create an automation rule with visual builder', function () {
     actingAs($user);
 
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
 
     // Create category via UI to ensure it syncs to IndexedDB
     createCategoryViaUI($page, 'Groceries');
@@ -53,7 +52,6 @@ it('can add multiple conditions to a group', function () {
     actingAs($user);
 
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
 
     createCategoryViaUI($page, 'Shopping');
 
@@ -92,7 +90,6 @@ it('can add multiple groups', function () {
     actingAs($user);
 
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
 
     createCategoryViaUI($page, 'Food');
 
@@ -131,7 +128,6 @@ it('can select different field types and operators', function () {
     actingAs($user);
 
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
 
     createCategoryViaUI($page, 'Bills');
 
@@ -172,7 +168,6 @@ it('can edit an existing rule with visual builder', function () {
     actingAs($user);
 
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
 
     createCategoryViaUI($page, 'Transport');
 
@@ -217,7 +212,6 @@ it('validates that at least one condition is required', function () {
     actingAs($user);
 
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
 
     createCategoryViaUI($page, 'Entertainment');
 
@@ -248,7 +242,6 @@ it('can toggle group operators between AND and OR', function () {
     actingAs($user);
 
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
 
     createCategoryViaUI($page, 'Health');
 
@@ -290,7 +283,6 @@ it('can use is empty operator for nullable fields', function () {
     actingAs($user);
 
     $page = visit('/settings/categories');
-    $this->setupEncryptionKey($page);
 
     createCategoryViaUI($page, 'Travel');
 
