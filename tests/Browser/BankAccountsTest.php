@@ -32,7 +32,7 @@ it('shows existing accounts in list', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->navigate('/settings/accounts')->wait(2);
+    $page->refresh()->wait(2);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -121,7 +121,7 @@ it('can filter accounts by name', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->navigate('/settings/accounts')->wait(2);
+    $page->refresh()->wait(2);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -137,12 +137,12 @@ it('can edit an existing account via dropdown menu', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->navigate('/settings/accounts')->wait(2);
+    $page->refresh()->wait(2);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Old Account Name', 'Edit Bank', 'Checking', 'USD');
 
-    $page->navigate('/settings/accounts')->wait(5);
+    $page->refresh()->wait(5);
 
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
@@ -154,7 +154,7 @@ it('can edit an existing account via dropdown menu', function () {
         ->click('button[type="submit"]:has-text("Update")')
         ->wait(2);
 
-    $page->navigate('/settings/accounts')->wait(5);
+    $page->refresh()->wait(5);
 
     $page->assertSee('Updated Account Name')
         ->assertNoJavascriptErrors();
@@ -167,12 +167,12 @@ it('can delete an account via dropdown menu', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->navigate('/settings/accounts')->wait(2);
+    $page->refresh()->wait(2);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Account To Delete', 'Delete Bank', 'Checking', 'USD');
 
-    $page->navigate('/settings/accounts')->wait(5);
+    $page->refresh()->wait(5);
 
     $page->assertSee('Bank accounts')
         ->assertSee('Account To Delete')
@@ -186,7 +186,7 @@ it('can delete an account via dropdown menu', function () {
         ->click('button[type="submit"]:has-text("Delete")')
         ->wait(2);
 
-    $page->navigate('/settings/accounts')->wait(5);
+    $page->refresh()->wait(5);
 
     $page->assertDontSee('Account To Delete')
         ->assertNoJavascriptErrors();
