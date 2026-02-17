@@ -20,7 +20,7 @@ it('can view bank accounts page', function () {
 
 it('shows existing accounts in list', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'Test Bank']);
+    $bank = Bank::factory()->create(['name' => 'Test Bank', 'logo' => null]);
     Account::factory()->create([
         'user_id' => $user->id,
         'bank_id' => $bank->id,
@@ -32,7 +32,7 @@ it('shows existing accounts in list', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->refresh()->wait(2);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -57,7 +57,7 @@ it('can open create account dialog', function () {
 
 it('can create a new bank account', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'My Bank']);
+    $bank = Bank::factory()->create(['name' => 'My Bank', 'logo' => null]);
 
     actingAs($user);
 
@@ -106,7 +106,7 @@ it('shows empty state when no accounts exist', function () {
 
 it('can filter accounts by name', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'Test Bank']);
+    $bank = Bank::factory()->create(['name' => 'Test Bank', 'logo' => null]);
     Account::factory()->create([
         'user_id' => $user->id,
         'bank_id' => $bank->id,
@@ -121,7 +121,7 @@ it('can filter accounts by name', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->refresh()->wait(2);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(2);
 
     $page->assertSee('Bank accounts')
         ->waitForText('Test Bank')
@@ -132,17 +132,16 @@ it('can filter accounts by name', function () {
 
 it('can edit an existing account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'Edit Bank']);
+    $bank = Bank::factory()->create(['name' => 'Edit Bank', 'logo' => null]);
 
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->refresh()->wait(2);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Old Account Name', 'Edit Bank', 'Checking', 'USD');
 
-    $page->refresh()->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
 
     $page->assertSee('Bank accounts')
         ->click('button[aria-label="Open menu"]')
@@ -154,7 +153,7 @@ it('can edit an existing account via dropdown menu', function () {
         ->click('button[type="submit"]:has-text("Update")')
         ->wait(2);
 
-    $page->refresh()->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
 
     $page->assertSee('Updated Account Name')
         ->assertNoJavascriptErrors();
@@ -162,17 +161,16 @@ it('can edit an existing account via dropdown menu', function () {
 
 it('can delete an account via dropdown menu', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = Bank::factory()->create(['name' => 'Delete Bank']);
+    $bank = Bank::factory()->create(['name' => 'Delete Bank', 'logo' => null]);
 
     actingAs($user);
 
     $page = visit('/settings/accounts');
-    $page->refresh()->wait(2);
 
     // Create account via UI to ensure it syncs to IndexedDB
     createAccountViaUI($page, 'Account To Delete', 'Delete Bank', 'Checking', 'USD');
 
-    $page->refresh()->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
 
     $page->assertSee('Bank accounts')
         ->assertSee('Account To Delete')
@@ -186,7 +184,7 @@ it('can delete an account via dropdown menu', function () {
         ->click('button[type="submit"]:has-text("Delete")')
         ->wait(2);
 
-    $page->refresh()->wait(5);
+    $page->navigate('/settings/accounts', ['waitUntil' => 'domcontentloaded'])->wait(5);
 
     $page->assertDontSee('Account To Delete')
         ->assertNoJavascriptErrors();
