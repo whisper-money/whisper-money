@@ -12,7 +12,6 @@ it('can open import transactions drawer', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -30,7 +29,6 @@ it('shows no accounts message when none exist', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -48,7 +46,6 @@ it('can select account for import', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -67,7 +64,6 @@ it('can upload a CSV file for import', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -86,7 +82,6 @@ it('can complete full import flow', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -105,7 +100,6 @@ it('shows column mapping step after file upload', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -124,7 +118,6 @@ it('can navigate back through import steps', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')
@@ -143,7 +136,6 @@ it('applies automation rules when importing transactions', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('button[aria-label="More actions"]')

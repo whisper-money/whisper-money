@@ -41,7 +41,6 @@ it('redirects onboarded user away from onboarding page to dashboard', function (
 it('redirects non-onboarded user from dashboard to onboarding', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
-        'encryption_salt' => 'test-salt',
     ]);
 
     $this->actingAs($user);
@@ -95,7 +94,6 @@ it('navigates from welcome to account types', function () {
 it('shows existing accounts instead of create form when accounts exist', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
-        'encryption_salt' => 'test-salt',
     ]);
 
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
@@ -125,7 +123,6 @@ it('shows existing accounts instead of create form when accounts exist', functio
 it('allows continuing with existing accounts', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
-        'encryption_salt' => 'test-salt',
     ]);
 
     $bank = Bank::factory()->create(['name' => 'Existing Bank']);
@@ -162,7 +159,6 @@ it('allows continuing with existing accounts', function () {
 it('shows import transactions step after account creation', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
-        'encryption_salt' => 'test-salt',
     ]);
 
     $bank = Bank::factory()->create(['name' => 'My Bank']);
@@ -192,7 +188,6 @@ it('shows import transactions step after account creation', function () {
 it('shows add another account form without first account restriction', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
-        'encryption_salt' => 'test-salt',
     ]);
 
     $bank = Bank::factory()->create(['name' => 'Primary Bank']);

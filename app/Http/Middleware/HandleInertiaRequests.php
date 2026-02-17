@@ -73,7 +73,6 @@ class HandleInertiaRequests extends Middleware
                 'email' => config('app.demo.email'),
                 'password' => config('app.demo.password'),
             ] : null,
-            'demoEncryptionKey' => $isDemoAccount ? config('app.demo.encryption_key') : null,
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
             'pricing' => [
                 'plans' => config('subscriptions.plans', []),

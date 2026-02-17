@@ -6,7 +6,6 @@ beforeEach(function () {
     config(['app.demo' => [
         'email' => 'demo@whisper.money',
         'password' => 'demo',
-        'encryption_key' => 'demo',
     ]]);
 });
 

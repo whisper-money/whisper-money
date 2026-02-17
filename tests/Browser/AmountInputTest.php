@@ -14,7 +14,6 @@ it('formats amount on blur', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -33,7 +32,6 @@ it('accepts comma as decimal separator', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
 
     $page->assertSee('Transactions')
         ->click('Add Transaction')
@@ -55,7 +53,7 @@ it('can create a transaction with amount input', function () {
 
     actingAs($user);
 
-    $page = $this->visitWithEncryptionKey('/transactions');
+    $page = visit('/transactions');
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
@@ -98,7 +96,6 @@ it('formats amount when pressing enter', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
@@ -137,7 +134,6 @@ it('accepts negative amounts', function () {
     actingAs($user);
 
     $page = visit('/transactions');
-    $this->setupEncryptionKey($page);
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')

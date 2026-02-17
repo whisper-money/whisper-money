@@ -10,13 +10,11 @@ use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
-use App\Models\EncryptedMessage;
 use App\Models\Label;
 use App\Models\User;
 use App\Services\BudgetPeriodService;
 use App\Services\BudgetTransactionService;
 use App\Services\Demo\DemoAutomationRulesProvider;
-use App\Services\Demo\DemoEncryptionService;
 use App\Services\Demo\DemoLabelsProvider;
 use App\Services\Demo\DemoTransactionsProvider;
 use Illuminate\Console\Command;
@@ -30,13 +28,10 @@ class ResetDemoAccountCommand extends Command
 
     private const MIN_BALANCE_GROWTH_PERCENTAGE = 0.05;
 
-    private string $encryptionKey;
-
     public function __construct(
         private DemoTransactionsProvider $transactionsProvider,
         private DemoLabelsProvider $labelsProvider,
         private DemoAutomationRulesProvider $rulesProvider,
-        private DemoEncryptionService $encryptionService,
         private BudgetPeriodService $budgetPeriodService,
         private BudgetTransactionService $budgetTransactionService,
     ) {
@@ -47,7 +42,6 @@ class ResetDemoAccountCommand extends Command
     {
         $demoEmail = config('app.demo.email');
         $demoPassword = config('app.demo.password');
-        $demoEncryptionKey = config('app.demo.encryption_key');
 
         if (! $demoEmail || ! $demoPassword) {
             $this->error('Demo configuration not set. Please set DEMO_EMAIL and DEMO_PASSWORD in .env');
@@ -57,14 +51,9 @@ class ResetDemoAccountCommand extends Command
 
         $this->info("Resetting demo account: {$demoEmail}");
 
-        $salt = $this->encryptionService->generateSalt($demoEncryptionKey);
-        $this->encryptionKey = $this->encryptionService->deriveKey($demoEncryptionKey, $salt);
-
-        $user = $this->findOrCreateDemoUser($demoEmail, $demoPassword, $salt);
+        $user = $this->findOrCreateDemoUser($demoEmail, $demoPassword);
 
         $this->deleteExistingData($user);
-
-        $this->createEncryptedMessage($user);
 
         $this->createCategories($user);
 
@@ -85,12 +74,11 @@ class ResetDemoAccountCommand extends Command
         return self::SUCCESS;
     }
 
-    private function findOrCreateDemoUser(string $email, string $password, string $salt): User
+    private function findOrCreateDemoUser(string $email, string $password): User
     {
         $user = User::where('email', $email)->first();
 
         if ($user) {
-            $user->encryption_salt = $salt;
             $user->email_verified_at ??= now();
             $user->save();
 
@@ -102,7 +90,6 @@ class ResetDemoAccountCommand extends Command
             'name' => 'Demo User',
             'password' => $password,
             'onboarded_at' => now(),
-            'encryption_salt' => $salt,
             'currency_code' => 'USD',
         ]);
         $user->email_verified_at = now();
@@ -122,23 +109,6 @@ class ResetDemoAccountCommand extends Command
         $user->encryptedMessage()?->delete();
 
         $this->info('  Deleted existing data');
-    }
-
-    private function createEncryptedMessage(User $user): void
-    {
-        $testMessage = $this->encryptionService->encrypt(
-            'Hello, world',
-            $this->encryptionKey,
-            'demo_test_message'
-        );
-
-        EncryptedMessage::create([
-            'user_id' => $user->id,
-            'encrypted_content' => $testMessage['encrypted'],
-            'iv' => $testMessage['iv'],
-        ]);
-
-        $this->info('  Created encrypted message for key verification');
     }
 
     private function createCategories(User $user): void
@@ -234,16 +204,10 @@ class ResetDemoAccountCommand extends Command
         $createdAccounts = [];
         $transactionAccounts = [];
 
-        foreach ($accounts as $index => $accountData) {
-            $encrypted = $this->encryptionService->encrypt(
-                $accountData['name'],
-                $this->encryptionKey,
-                "demo_account_{$index}"
-            );
-
+        foreach ($accounts as $accountData) {
             $account = $user->accounts()->create([
-                'name' => $encrypted['encrypted'],
-                'name_iv' => $encrypted['iv'],
+                'name' => $accountData['name'],
+                'name_iv' => null,
                 'bank_id' => $accountData['bank_account_id'],
                 'currency_code' => 'USD',
                 'type' => $accountData['type'],
@@ -329,7 +293,6 @@ class ResetDemoAccountCommand extends Command
         }
 
         $allTransactions = $this->transactionsProvider->getTransactions();
-        $transactionIndex = 0;
         $count = 0;
 
         foreach ($allTransactions as $transactionData) {
@@ -344,14 +307,7 @@ class ResetDemoAccountCommand extends Command
 
             $account = $accounts[array_rand($accounts)];
 
-            $encrypted = $this->encryptionService->encrypt(
-                $transactionData['description'],
-                $this->encryptionKey,
-                "demo_tx_{$account->id}_{$transactionIndex}"
-            );
-
-            $transactionData['description'] = $encrypted['encrypted'];
-            $transactionData['description_iv'] = $encrypted['iv'];
+            $transactionData['description_iv'] = null;
 
             $transaction = $account->transactions()->create([
                 'user_id' => $account->user_id,
@@ -365,7 +321,6 @@ class ResetDemoAccountCommand extends Command
                 }
             }
 
-            $transactionIndex++;
             $count++;
         }
 
