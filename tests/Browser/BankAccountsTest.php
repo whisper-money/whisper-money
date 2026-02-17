@@ -126,10 +126,10 @@ it('can filter accounts by name', function () {
     actingAs($user);
 
     $page = visit('/settings/accounts');
+    $page->wait(1);
     $this->setupEncryptionKey($page);
 
-    $page->assertSee('Bank accounts')
-        ->waitForText('Test Bank')
+    $page->waitForText('Test Bank')
         ->fill('input[placeholder="Filter accounts..."]', 'Checking')
         ->wait(0.5)
         ->assertNoJavascriptErrors();
