@@ -871,7 +871,7 @@ export default function Welcome({
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <a
-                                                            href="https://https://discord.gg/2WZmDW9QZ8"
+                                                            href="https://discord.gg/2WZmDW9QZ8"
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="font-semibold text-[#5865F2] underline-offset-2 hover:underline"

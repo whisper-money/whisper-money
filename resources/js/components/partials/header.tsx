@@ -78,7 +78,7 @@ export default function Header({
                                 </Button>
                             </a>
                             <a
-                                href="https://https://discord.gg/2WZmDW9QZ8"
+                                href="https://discord.gg/2WZmDW9QZ8"
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
@@ -184,7 +184,7 @@ export default function Header({
                                     </Button>
                                 </a>
                                 <a
-                                    href="https://https://discord.gg/2WZmDW9QZ8"
+                                    href="https://discord.gg/2WZmDW9QZ8"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
