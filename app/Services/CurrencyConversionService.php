@@ -35,7 +35,7 @@ class CurrencyConversionService
         $rates = $this->getRatesForCurrency($target, $date);
 
         if (! isset($rates[$source]) || $rates[$source] == 0) {
-            Log::warning('Currency rate not found', [
+            Log::debug('Currency rate not found', [
                 'source' => $source,
                 'target' => $target,
                 'date' => $date,

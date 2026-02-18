@@ -104,6 +104,7 @@ class BinanceBalanceSyncService
         }
 
         $count = 0;
+        $skippedAssets = [];
 
         foreach ($snapshots as $snapshot) {
             $updateTime = $snapshot['updateTime'] ?? null;
@@ -120,11 +121,19 @@ class BinanceBalanceSyncService
                 $asset = $balance['asset'];
                 $quantity = (float) ($balance['free'] ?? 0) + (float) ($balance['locked'] ?? 0);
 
-                if ($quantity <= 0) {
+                if ($quantity <= 0 || isset($skippedAssets[$asset])) {
                     continue;
                 }
 
-                $totalValue += $this->currencyConverter->convert($asset, $targetCurrency, $quantity, $date);
+                $converted = $this->currencyConverter->convert($asset, $targetCurrency, $quantity, $date);
+
+                if ($converted == 0.0) {
+                    $skippedAssets[$asset] = true;
+
+                    continue;
+                }
+
+                $totalValue += $converted;
             }
 
             $account->balances()->updateOrCreate(
@@ -139,6 +148,7 @@ class BinanceBalanceSyncService
             'account_id' => $account->id,
             'days_synced' => $count,
             'currency' => $targetCurrency,
+            ...($skippedAssets ? ['skipped_assets' => array_keys($skippedAssets)] : []),
         ]);
 
         return true;
