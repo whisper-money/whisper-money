@@ -6,6 +6,8 @@ use App\Enums\BankingConnectionStatus;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
+use App\Services\Banking\BinanceBalanceSyncService;
+use App\Services\Banking\BinanceClient;
 use App\Services\Banking\IndexaCapitalBalanceSyncService;
 use App\Services\Banking\IndexaCapitalClient;
 use App\Services\Banking\TransactionSyncService;
@@ -53,6 +55,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         try {
             if ($connection->isIndexaCapital()) {
                 $this->syncIndexaCapital($connection);
+            } elseif ($connection->isBinance()) {
+                $this->syncBinance($connection);
             } else {
                 $this->syncEnableBanking($connection, $transactionSync, $balanceSync);
             }
@@ -80,6 +84,18 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     {
         $client = new IndexaCapitalClient($connection->api_token);
         $syncService = new IndexaCapitalBalanceSyncService;
+
+        $connection->load('accounts');
+
+        foreach ($connection->accounts as $account) {
+            $syncService->sync($account, $client);
+        }
+    }
+
+    private function syncBinance(BankingConnection $connection): void
+    {
+        $client = new BinanceClient($connection->api_token, $connection->api_secret);
+        $syncService = new BinanceBalanceSyncService;
 
         $connection->load('accounts');
 
