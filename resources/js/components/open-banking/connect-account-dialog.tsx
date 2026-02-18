@@ -392,11 +392,21 @@ export function ConnectAccountDialog({
                                     placeholder={__(
                                         'Paste your Indexa Capital API token',
                                     )}
+                                    className="my-2"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     {__(
-                                        'You can generate your API token from your Indexa Capital dashboard under Settings > Applications.',
-                                    )}
+                                        'You can generate your API token from your Indexa Capital dashboard under',
+                                    )}{' '}
+                                    <a
+                                        href="https://indexacapital.com/es/u/user#settings-apps"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        {__('Settings > Applications')}
+                                    </a>
+                                    .
                                 </p>
                             </div>
                         )}
@@ -414,6 +424,7 @@ export function ConnectAccountDialog({
                                         onChange={(e) =>
                                             setApiKey(e.target.value)
                                         }
+                                        className="mt-1"
                                         placeholder={__(
                                             'Paste your Binance API Key',
                                         )}
@@ -430,6 +441,7 @@ export function ConnectAccountDialog({
                                         onChange={(e) =>
                                             setApiSecret(e.target.value)
                                         }
+                                        className="mt-1"
                                         placeholder={__(
                                             'Paste your Binance API Secret',
                                         )}
@@ -437,8 +449,17 @@ export function ConnectAccountDialog({
                                 </div>
                                 <p className="text-xs text-muted-foreground">
                                     {__(
-                                        'You can create API keys from your Binance account under API Management.',
-                                    )}
+                                        'You can create API keys from your Binance account under',
+                                    )}{' '}
+                                    <a
+                                        href="https://www.binance.com/es/my/settings/api-management"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        {__('API Management')}
+                                    </a>
+                                    .
                                 </p>
                             </div>
                         )}
