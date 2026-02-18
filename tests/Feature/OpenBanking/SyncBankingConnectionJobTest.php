@@ -303,7 +303,9 @@ test('indexa capital sync only syncs balances, not transactions', function () {
 
     Http::fake([
         'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
-            'total_amount' => 10000.00,
+            'portfolios' => [
+                ['date' => '2026-02-18', 'total_amount' => 10000.00, 'cash_amount' => 0, 'instruments_amount' => 10000.00],
+            ],
         ]),
     ]);
 
@@ -337,7 +339,9 @@ test('indexa capital connections do not expire', function () {
 
     Http::fake([
         'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
-            'total_amount' => 10000.00,
+            'portfolios' => [
+                ['date' => '2026-02-18', 'total_amount' => 10000.00, 'cash_amount' => 0, 'instruments_amount' => 10000.00],
+            ],
         ]),
     ]);
 
@@ -368,7 +372,9 @@ test('indexa capital sync does not send email', function () {
 
     Http::fake([
         'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
-            'total_amount' => 10000.00,
+            'portfolios' => [
+                ['date' => '2026-02-18', 'total_amount' => 10000.00, 'cash_amount' => 0, 'instruments_amount' => 10000.00],
+            ],
         ]),
     ]);
 

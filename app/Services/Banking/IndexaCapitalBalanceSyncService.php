@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Log;
 class IndexaCapitalBalanceSyncService
 {
     /**
-     * Sync the current portfolio balance for an Indexa Capital account.
+     * Sync portfolio balances for an Indexa Capital account.
+     * Stores up to one year of daily historical balances from the portfolios data.
      */
     public function sync(Account $account, IndexaCapitalClient $client): void
     {
@@ -17,11 +18,10 @@ class IndexaCapitalBalanceSyncService
         }
 
         $performance = $client->getPerformance($account->external_account_id);
+        $portfolios = $performance['portfolios'] ?? [];
 
-        $amount = $this->extractPortfolioValue($performance);
-
-        if ($amount === null) {
-            Log::warning('Could not extract portfolio value from Indexa Capital performance data', [
+        if (empty($portfolios)) {
+            Log::warning('No portfolio data from Indexa Capital', [
                 'account_id' => $account->id,
                 'external_account_id' => $account->external_account_id,
             ]);
@@ -29,36 +29,27 @@ class IndexaCapitalBalanceSyncService
             return;
         }
 
-        $date = now()->toDateString();
+        $count = 0;
 
-        $account->balances()->updateOrCreate(
-            ['balance_date' => $date],
-            ['balance' => $amount],
-        );
+        foreach ($portfolios as $entry) {
+            $date = $entry['date'] ?? null;
+            $value = $entry['total_amount'] ?? null;
 
-        Log::info('Synced Indexa Capital balance', [
-            'account_id' => $account->id,
-            'balance' => $amount,
-            'date' => $date,
-        ]);
-    }
+            if ($date === null || $value === null) {
+                continue;
+            }
 
-    /**
-     * Extract the current portfolio value from performance data.
-     * Returns amount in cents (bigint).
-     */
-    private function extractPortfolioValue(array $performance): ?int
-    {
-        $value = $performance['total_amount']
-            ?? $performance['value']
-            ?? $performance['portfolio_value']
-            ?? $performance['amount']
-            ?? null;
+            $account->balances()->updateOrCreate(
+                ['balance_date' => $date],
+                ['balance' => (int) round(floatval($value) * 100)],
+            );
 
-        if ($value === null) {
-            return null;
+            $count++;
         }
 
-        return (int) round(floatval($value) * 100);
+        Log::info('Synced Indexa Capital balances', [
+            'account_id' => $account->id,
+            'days_synced' => $count,
+        ]);
     }
 }
