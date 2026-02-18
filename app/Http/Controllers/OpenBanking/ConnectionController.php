@@ -46,9 +46,14 @@ class ConnectionController extends Controller
             abort(403);
         }
 
-        if (! $connection->isActive()) {
+        if (! $connection->isActive() && $connection->status !== BankingConnectionStatus::Error) {
             return back()->with('error', 'Connection is not active.');
         }
+
+        $connection->update([
+            'status' => BankingConnectionStatus::Active,
+            'error_message' => null,
+        ]);
 
         SyncBankingConnectionJob::dispatch($connection);
 

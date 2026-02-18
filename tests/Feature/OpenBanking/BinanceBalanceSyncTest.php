@@ -38,7 +38,7 @@ test('syncs binance balance using direct EUR pair', function () {
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(1);
@@ -74,7 +74,7 @@ test('syncs binance balance using USDT fallback conversion', function () {
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(1);
@@ -108,7 +108,7 @@ test('handles USD stablecoins as 1:1 when target is USD', function () {
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(1);
@@ -142,7 +142,7 @@ test('includes locked balances in total', function () {
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client);
 
     $balance = $account->balances()->first();
@@ -179,7 +179,7 @@ test('updates existing balance for same date', function () {
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(1);
@@ -207,7 +207,7 @@ test('handles empty balances gracefully', function () {
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(0);
@@ -223,13 +223,13 @@ test('skips account without external_account_id', function () {
     $client = Mockery::mock(BinanceClient::class);
     $client->shouldNotReceive('getAccount');
 
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(0);
 });
 
-test('first sync fetches historical snapshots and converts using kline prices', function () {
+test('first sync fetches historical snapshots and converts using currency API', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->binance()->create([
         'user_id' => $user->id,
@@ -267,9 +267,10 @@ test('first sync fetches historical snapshots and converts using kline prices', 
                 ],
             ],
         ]),
-        'api.binance.com/api/v3/klines*' => Http::response([
-            [$twoDaysAgo->startOfDay()->getTimestampMs(), '0', '0', '0', '48000.00', '0', '0', '0', 0, '0', '0', '0'],
-            [$yesterday->startOfDay()->getTimestampMs(), '0', '0', '0', '50000.00', '0', '0', '0', 0, '0', '0', '0'],
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => [
+                'btc' => 0.000019, // 1 EUR = 0.000019 BTC → 1 BTC = 52631.58 EUR
+            ],
         ]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -277,26 +278,26 @@ test('first sync fetches historical snapshots and converts using kline prices', 
             ],
         ]),
         'api.binance.com/api/v3/ticker/price' => Http::response([
-            ['symbol' => 'BTCEUR', 'price' => '51000.00'],
+            ['symbol' => 'BTCUSDT', 'price' => '56100.00'],
+            ['symbol' => 'EURUSDT', 'price' => '1.10'],
         ]),
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: true);
 
     // 2 historical days + 1 current day = 3
     expect($account->balances()->count())->toBe(3);
 
-    // Historical: 2 BTC * 48000 EUR = 96000 EUR
+    // Historical: 2 BTC / 0.000019 = 105263.16 EUR → 10526316 cents
     $oldBalance = $account->balances()->where('balance_date', $twoDaysAgo->toDateString())->first();
-    expect($oldBalance->balance)->toBe(9600000);
+    expect($oldBalance->balance)->toBe(10526316);
 
-    // Historical: 2 BTC * 50000 EUR = 100000 EUR
     $yesterdayBalance = $account->balances()->where('balance_date', $yesterday->toDateString())->first();
-    expect($yesterdayBalance->balance)->toBe(10000000);
+    expect($yesterdayBalance->balance)->toBe(10526316);
 
-    // Current: 2 BTC * 51000 EUR = 102000 EUR
+    // Current (ticker-based): 2 BTC * 56100 USDT / 1.10 = 102000 EUR
     $todayBalance = $account->balances()->where('balance_date', now()->toDateString())->first();
     expect($todayBalance->balance)->toBe(10200000);
 });
@@ -335,8 +336,10 @@ test('subsequent sync only fetches snapshots since last balance date', function 
                 ],
             ],
         ]),
-        'api.binance.com/api/v3/klines*' => Http::response([
-            [$yesterday->startOfDay()->getTimestampMs(), '0', '0', '0', '55000.00', '0', '0', '0', 0, '0', '0', '0'],
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => [
+                'btc' => 0.000018, // 1 BTC = 1/0.000018 = 55555.56 EUR
+            ],
         ]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -344,25 +347,28 @@ test('subsequent sync only fetches snapshots since last balance date', function 
             ],
         ]),
         'api.binance.com/api/v3/ticker/price' => Http::response([
-            ['symbol' => 'BTCEUR', 'price' => '56000.00'],
+            ['symbol' => 'BTCUSDT', 'price' => '61600.00'],
+            ['symbol' => 'EURUSDT', 'price' => '1.10'],
         ]),
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: false);
 
     // 1 pre-existing + 1 historical (yesterday) + 1 current (today) = 3
     expect($account->balances()->count())->toBe(3);
 
+    // Historical: 1 BTC / 0.000018 = 55555.56 EUR → 5555556 cents
     $yesterdayBalance = $account->balances()->where('balance_date', $yesterday->toDateString())->first();
-    expect($yesterdayBalance->balance)->toBe(5500000); // 1 BTC * 55000 EUR
+    expect($yesterdayBalance->balance)->toBe(5555556);
 
+    // Current (ticker-based): 1 BTC * 61600 USDT / 1.10 = 56000 EUR
     $todayBalance = $account->balances()->where('balance_date', now()->toDateString())->first();
-    expect($todayBalance->balance)->toBe(5600000); // 1 BTC * 56000 EUR
+    expect($todayBalance->balance)->toBe(5600000);
 });
 
-test('historical sync uses USDT fallback when direct pair kline unavailable', function () {
+test('historical sync converts assets using currency API', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->binance()->create([
         'user_id' => $user->id,
@@ -390,13 +396,10 @@ test('historical sync uses USDT fallback when direct pair kline unavailable', fu
                 ],
             ],
         ]),
-        // SOLEUR kline fails (pair doesn't exist), SOLUSDT and EURUSDT succeed
-        'api.binance.com/api/v3/klines*symbol=SOLEUR*' => Http::response(['msg' => 'Invalid symbol'], 400),
-        'api.binance.com/api/v3/klines*symbol=SOLUSDT*' => Http::response([
-            [$yesterday->startOfDay()->getTimestampMs(), '0', '0', '0', '100.00', '0', '0', '0', 0, '0', '0', '0'],
-        ]),
-        'api.binance.com/api/v3/klines*symbol=EURUSDT*' => Http::response([
-            [$yesterday->startOfDay()->getTimestampMs(), '0', '0', '0', '1.10', '0', '0', '0', 0, '0', '0', '0'],
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => [
+                'sol' => 0.01, // 1 EUR = 0.01 SOL → 1 SOL = 100 EUR
+            ],
         ]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -410,10 +413,10 @@ test('historical sync uses USDT fallback when direct pair kline unavailable', fu
     ]);
 
     $client = new BinanceClient('test-key', 'test-secret');
-    $service = new BinanceBalanceSyncService;
+    $service = app(BinanceBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: true);
 
-    // Historical: 10 SOL * 100 USDT / 1.10 = ~909.09 EUR
+    // Historical: 10 SOL / 0.01 = 1000 EUR → 100000 cents
     $yesterdayBalance = $account->balances()->where('balance_date', $yesterday->toDateString())->first();
-    expect($yesterdayBalance->balance)->toBe(90909);
+    expect($yesterdayBalance->balance)->toBe(100000);
 });

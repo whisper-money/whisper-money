@@ -60,28 +60,6 @@ class BinanceClient
     }
 
     /**
-     * Get daily kline (candlestick) data for a symbol.
-     *
-     * Each kline: [openTime, open, high, low, close, volume, closeTime, ...]
-     *
-     * @return array<int, array>
-     */
-    public function getDailyKlines(string $symbol, int $startTime, int $endTime): array
-    {
-        $response = $this->publicClient()->get('/api/v3/klines', [
-            'symbol' => $symbol,
-            'interval' => '1d',
-            'startTime' => $startTime,
-            'endTime' => $endTime,
-            'limit' => 200,
-        ]);
-
-        $response->throw();
-
-        return $response->json();
-    }
-
-    /**
      * Execute a signed request with fresh timestamp on each retry attempt.
      */
     private function signedRequest(string $path, array $params = []): array
