@@ -28,6 +28,7 @@ class BankingConnection extends Model
         'last_synced_at',
         'error_message',
         'pending_accounts_data',
+        'api_token',
     ];
 
     protected function casts(): array
@@ -37,6 +38,7 @@ class BankingConnection extends Model
             'valid_until' => 'datetime',
             'last_synced_at' => 'datetime',
             'pending_accounts_data' => 'array',
+            'api_token' => 'encrypted',
         ];
     }
 
@@ -53,6 +55,16 @@ class BankingConnection extends Model
     public function isActive(): bool
     {
         return $this->status === BankingConnectionStatus::Active;
+    }
+
+    public function isIndexaCapital(): bool
+    {
+        return $this->provider === 'indexacapital';
+    }
+
+    public function isEnableBanking(): bool
+    {
+        return $this->provider === 'enablebanking';
     }
 
     public function hasPendingAccounts(): bool

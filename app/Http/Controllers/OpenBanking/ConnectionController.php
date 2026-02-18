@@ -60,7 +60,7 @@ class ConnectionController extends Controller
      */
     public function destroy(DestroyConnectionRequest $request, BankingConnection $connection, BankingProviderInterface $provider): RedirectResponse
     {
-        if ($connection->session_id && $connection->isActive()) {
+        if ($connection->isEnableBanking() && $connection->session_id && $connection->isActive()) {
             try {
                 $provider->revokeSession($connection->session_id);
             } catch (\Throwable $e) {

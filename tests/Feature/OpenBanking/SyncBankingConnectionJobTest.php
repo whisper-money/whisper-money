@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BankingConnectionStatus;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\Account;
@@ -9,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 test('first sync calculates historical balances', function () {
@@ -285,4 +287,102 @@ test('lists different banks separately in email', function () {
         return $mail->totalTransactions === 8
             && $mail->transactionsPerBank === ['Bank A' => 4, 'Bank B' => 4];
     });
+});
+
+test('indexa capital sync only syncs balances, not transactions', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
+            'portfolios' => [
+                ['date' => '2026-02-18', 'total_amount' => 10000.00, 'cash_amount' => 0, 'instruments_amount' => 10000.00],
+            ],
+        ]),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldNotReceive('sync');
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldNotReceive('sync');
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->last_synced_at)->not->toBeNull();
+    expect($account->balances()->count())->toBe(1);
+});
+
+test('indexa capital connections do not expire', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->subDay(),
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
+            'portfolios' => [
+                ['date' => '2026-02-18', 'total_amount' => 10000.00, 'cash_amount' => 0, 'instruments_amount' => 10000.00],
+            ],
+        ]),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->last_synced_at)->not->toBeNull();
+});
+
+test('indexa capital sync does not send email', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
+            'portfolios' => [
+                ['date' => '2026-02-18', 'total_amount' => 10000.00, 'cash_amount' => 0, 'instruments_amount' => 10000.00],
+            ],
+        ]),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    Mail::assertNothingQueued();
 });

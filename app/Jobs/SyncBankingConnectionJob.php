@@ -6,6 +6,8 @@ use App\Enums\BankingConnectionStatus;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
+use App\Services\Banking\IndexaCapitalBalanceSyncService;
+use App\Services\Banking\IndexaCapitalClient;
 use App\Services\Banking\TransactionSyncService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -37,7 +39,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     {
         $connection = $this->bankingConnection;
 
-        if ($connection->isExpired()) {
+        if ($connection->isEnableBanking() && $connection->isExpired()) {
             $connection->update(['status' => BankingConnectionStatus::Expired]);
             Log::info('Banking connection expired, skipping sync', ['connection_id' => $connection->id]);
 
@@ -48,59 +50,17 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $isFirstSync = ! $connection->last_synced_at;
-        $dateFrom = $isFirstSync
-            ? now()->subYear()->toDateString()
-            : $connection->last_synced_at->toDateString();
-        $dateTo = now()->toDateString();
-        $strategy = $isFirstSync ? 'longest' : null;
-
         try {
-            $transactionsPerBank = [];
-
-            $connection->load('accounts.bank');
-
-            foreach ($connection->accounts as $account) {
-                if ($account->isLinked()) {
-                    $lastTransaction = $account->transactions()
-                        ->latest('transaction_date')
-                        ->first();
-
-                    $linkedDateFrom = $lastTransaction
-                        ? $lastTransaction->transaction_date->toDateString()
-                        : $dateFrom;
-
-                    $created = $transactionSync->sync($account, $linkedDateFrom, $dateTo, $strategy, saveDailyBalances: false);
-                    $balanceSync->sync($account);
-                } else {
-                    $created = $transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
-                    $balanceSync->sync($account);
-
-                    if ($isFirstSync) {
-                        $balanceSync->calculateHistoricalBalances($account);
-                    }
-                }
-
-                if ($created > 0) {
-                    $bankName = $account->bank?->name ?? __('Unknown Bank');
-                    $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
-                }
+            if ($connection->isIndexaCapital()) {
+                $this->syncIndexaCapital($connection);
+            } else {
+                $this->syncEnableBanking($connection, $transactionSync, $balanceSync);
             }
 
             $connection->update([
                 'last_synced_at' => now(),
                 'error_message' => null,
             ]);
-
-            $totalTransactions = array_sum($transactionsPerBank);
-
-            if (! $isFirstSync && $totalTransactions > 0) {
-                Mail::to($connection->user)->send(new BankTransactionsSyncedEmail(
-                    $connection->user,
-                    $totalTransactions,
-                    $transactionsPerBank,
-                ));
-            }
         } catch (\Throwable $e) {
             Log::error('Banking sync failed', [
                 'connection_id' => $connection->id,
@@ -113,6 +73,69 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             ]);
 
             throw $e;
+        }
+    }
+
+    private function syncIndexaCapital(BankingConnection $connection): void
+    {
+        $client = new IndexaCapitalClient($connection->api_token);
+        $syncService = new IndexaCapitalBalanceSyncService;
+
+        $connection->load('accounts');
+
+        foreach ($connection->accounts as $account) {
+            $syncService->sync($account, $client);
+        }
+    }
+
+    private function syncEnableBanking(BankingConnection $connection, TransactionSyncService $transactionSync, BalanceSyncService $balanceSync): void
+    {
+        $isFirstSync = ! $connection->last_synced_at;
+        $dateFrom = $isFirstSync
+            ? now()->subYear()->toDateString()
+            : $connection->last_synced_at->toDateString();
+        $dateTo = now()->toDateString();
+        $strategy = $isFirstSync ? 'longest' : null;
+
+        $transactionsPerBank = [];
+
+        $connection->load('accounts.bank');
+
+        foreach ($connection->accounts as $account) {
+            if ($account->isLinked()) {
+                $lastTransaction = $account->transactions()
+                    ->latest('transaction_date')
+                    ->first();
+
+                $linkedDateFrom = $lastTransaction
+                    ? $lastTransaction->transaction_date->toDateString()
+                    : $dateFrom;
+
+                $created = $transactionSync->sync($account, $linkedDateFrom, $dateTo, $strategy, saveDailyBalances: false);
+                $balanceSync->sync($account);
+            } else {
+                $created = $transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
+                $balanceSync->sync($account);
+
+                if ($isFirstSync) {
+                    $balanceSync->calculateHistoricalBalances($account);
+                }
+            }
+
+            if ($created > 0) {
+                $bankName = $account->bank?->name ?? __('Unknown Bank');
+                $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
+            }
+        }
+
+        $totalTransactions = array_sum($transactionsPerBank);
+
+        if (! $isFirstSync && $totalTransactions > 0) {
+            Mail::to($connection->user)->send(new BankTransactionsSyncedEmail(
+                $connection->user,
+                $totalTransactions,
+                $transactionsPerBank,
+            ));
         }
     }
 }

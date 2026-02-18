@@ -201,9 +201,14 @@ export default function ConnectionsPage({ connections }: Props) {
                                               !connection.last_synced_at ? (
                                                 <span className="flex items-center gap-1.5">
                                                     <Spinner className="size-3" />
-                                                    {__(
-                                                        'Syncing transactions and balances…',
-                                                    )}
+                                                    {connection.provider ===
+                                                    'indexacapital'
+                                                        ? __(
+                                                              'Syncing balances…',
+                                                          )
+                                                        : __(
+                                                              'Syncing transactions and balances…',
+                                                          )}
                                                 </span>
                                             ) : (
                                                 <span>

@@ -506,8 +506,7 @@ export default function Transactions({
             });
 
             const json = await response.json();
-            const next = json.props
-                .transactions as CursorPaginatedResponse;
+            const next = json.props.transactions as CursorPaginatedResponse;
 
             setAllTransactions((prev) => [
                 ...prev,

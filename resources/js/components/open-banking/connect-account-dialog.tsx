@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import type { EnableBankingInstitution } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const COUNTRIES = [
     { code: 'ES', name: 'Spain' },
@@ -41,12 +41,28 @@ const COUNTRIES = [
     { code: 'GB', name: 'United Kingdom' },
 ] as const;
 
+const INDEXA_CAPITAL_INSTITUTION: EnableBankingInstitution = {
+    name: 'Indexa Capital',
+    country: 'ES',
+    logo: '/images/banks/logos/indexa-capital.jpg',
+    maximum_consent_validity: null,
+};
+
 interface ConnectAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
 
 type Step = 'country' | 'bank' | 'confirm';
+
+function getCsrfToken(): string {
+    return decodeURIComponent(
+        document.cookie
+            .split('; ')
+            .find((row) => row.startsWith('XSRF-TOKEN='))
+            ?.split('=')[1] || '',
+    );
+}
 
 export function ConnectAccountDialog({
     open,
@@ -66,6 +82,12 @@ export function ConnectAccountDialog({
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [apiToken, setApiToken] = useState('');
+
+    const isIndexaCapital = useMemo(
+        () => selectedBank?.name === 'Indexa Capital',
+        [selectedBank],
+    );
 
     const resetState = useCallback(() => {
         setStep('country');
@@ -77,6 +99,7 @@ export function ConnectAccountDialog({
         setIsLoading(false);
         setIsSubmitting(false);
         setError(null);
+        setApiToken('');
     }, []);
 
     useEffect(() => {
@@ -107,12 +130,7 @@ export function ConnectAccountDialog({
                 {
                     headers: {
                         Accept: 'application/json',
-                        'X-XSRF-TOKEN': decodeURIComponent(
-                            document.cookie
-                                .split('; ')
-                                .find((row) => row.startsWith('XSRF-TOKEN='))
-                                ?.split('=')[1] || '',
-                        ),
+                        'X-XSRF-TOKEN': getCsrfToken(),
                     },
                 },
             );
@@ -122,8 +140,14 @@ export function ConnectAccountDialog({
             }
 
             const data = await response.json();
-            setInstitutions(data);
-            setFilteredInstitutions(data);
+
+            const allInstitutions =
+                countryCode === 'ES'
+                    ? [INDEXA_CAPITAL_INSTITUTION, ...data]
+                    : data;
+
+            setInstitutions(allInstitutions);
+            setFilteredInstitutions(allInstitutions);
             setStep('bank');
         } catch {
             setError(__('Failed to load banks. Please try again.'));
@@ -139,33 +163,43 @@ export function ConnectAccountDialog({
         setError(null);
 
         try {
-            const response = await fetch('/open-banking/authorize', {
+            const url = isIndexaCapital
+                ? '/open-banking/indexa-capital/connect'
+                : '/open-banking/authorize';
+
+            const body = isIndexaCapital
+                ? { api_token: apiToken }
+                : {
+                      aspsp_name: selectedBank.name,
+                      country: country,
+                      logo: selectedBank.logo,
+                  };
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                 },
-                body: JSON.stringify({
-                    aspsp_name: selectedBank.name,
-                    country: country,
-                    logo: selectedBank.logo,
-                }),
+                body: JSON.stringify(body),
             });
 
             if (!response.ok) {
-                throw new Error('Failed to start authorization');
+                const data = await response.json().catch(() => ({}));
+                throw new Error(
+                    data.message || 'Failed to start authorization',
+                );
             }
 
             const data = await response.json();
             window.location.href = data.redirect_url;
-        } catch {
-            setError(__('Failed to connect to your bank. Please try again.'));
+        } catch (e) {
+            setError(
+                e instanceof Error
+                    ? e.message
+                    : __('Failed to connect. Please try again.'),
+            );
             setIsSubmitting(false);
         }
     }
@@ -182,8 +216,14 @@ export function ConnectAccountDialog({
                             )}
                         {step === 'bank' && __('Select your bank.')}
                         {step === 'confirm' &&
+                            !isIndexaCapital &&
                             __(
                                 'You will be redirected to your bank to authorize access.',
+                            )}
+                        {step === 'confirm' &&
+                            isIndexaCapital &&
+                            __(
+                                'Enter your API token to connect your Indexa Capital account.',
                             )}
                     </DialogDescription>
                 </DialogHeader>
@@ -291,13 +331,41 @@ export function ConnectAccountDialog({
                                         {selectedBank.name}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {__(
-                                            'You will be redirected to authorize access to your account data.',
-                                        )}
+                                        {isIndexaCapital
+                                            ? __(
+                                                  'Connect your Indexa Capital account using your API token.',
+                                              )
+                                            : __(
+                                                  'You will be redirected to authorize access to your account data.',
+                                              )}
                                     </p>
                                 </div>
                             </div>
                         </div>
+
+                        {isIndexaCapital && (
+                            <div className="space-y-2">
+                                <Label htmlFor="api-token">
+                                    {__('API Token')}
+                                </Label>
+                                <Input
+                                    id="api-token"
+                                    type="password"
+                                    value={apiToken}
+                                    onChange={(e) =>
+                                        setApiToken(e.target.value)
+                                    }
+                                    placeholder={__(
+                                        'Paste your Indexa Capital API token',
+                                    )}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {__(
+                                        'You can generate your API token from your Indexa Capital dashboard under Settings > Applications.',
+                                    )}
+                                </p>
+                            </div>
+                        )}
 
                         <div className="flex justify-end gap-2">
                             <Button
@@ -309,7 +377,10 @@ export function ConnectAccountDialog({
                             </Button>
                             <Button
                                 onClick={handleAuthorize}
-                                disabled={isSubmitting}
+                                disabled={
+                                    isSubmitting ||
+                                    (isIndexaCapital && !apiToken)
+                                }
                             >
                                 {isSubmitting
                                     ? __('Connecting...')
