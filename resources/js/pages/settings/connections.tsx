@@ -23,7 +23,13 @@ import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage, usePoll } from '@inertiajs/react';
-import { ArrowRight, MoreHorizontal, RefreshCw, Unplug } from 'lucide-react';
+import {
+    AlertCircle,
+    ArrowRight,
+    MoreHorizontal,
+    RefreshCw,
+    Unplug,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -159,8 +165,10 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             {__('Map Accounts')}
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {connection.status ===
-                                                        'active' && (
+                                                    {(connection.status ===
+                                                        'active' ||
+                                                        connection.status ===
+                                                            'error') && (
                                                         <DropdownMenuItem
                                                             onClick={() =>
                                                                 handleSync(
@@ -169,7 +177,12 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             }
                                                         >
                                                             <RefreshCw className="mr-2 h-4 w-4" />
-                                                            {__('Sync Now')}
+                                                            {connection.status ===
+                                                            'error'
+                                                                ? __('Retry')
+                                                                : __(
+                                                                      'Sync Now',
+                                                                  )}
                                                         </DropdownMenuItem>
                                                     )}
                                                     <DropdownMenuItem
@@ -227,10 +240,45 @@ export default function ConnectionsPage({ connections }: Props) {
                                                 </span>
                                             )}
                                         </div>
-                                        {connection.error_message && (
-                                            <p className="mt-2 text-sm text-destructive">
-                                                {connection.error_message}
-                                            </p>
+                                        {connection.status === 'error' && (
+                                            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
+                                                <div className="flex items-start gap-2">
+                                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                                                    <div className="space-y-2">
+                                                        <p className="text-sm text-destructive">
+                                                            {connection.error_message ??
+                                                                __(
+                                                                    'An unexpected error occurred during sync.',
+                                                                )}
+                                                        </p>
+                                                        <div className="flex flex-wrap items-center gap-3">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 text-xs"
+                                                                onClick={() =>
+                                                                    handleSync(
+                                                                        connection,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <RefreshCw className="mr-1.5 h-3 w-3" />
+                                                                {__('Retry')}
+                                                            </Button>
+                                                            <a
+                                                                href="https://discord.gg/2WZmDW9QZ8"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                {__(
+                                                                    'Need help? Join our Discord',
+                                                                )}
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         )}
                                     </CardContent>
                                 </Card>

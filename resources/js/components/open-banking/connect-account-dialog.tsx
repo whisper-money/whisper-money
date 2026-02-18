@@ -48,6 +48,13 @@ const INDEXA_CAPITAL_INSTITUTION: EnableBankingInstitution = {
     maximum_consent_validity: null,
 };
 
+const BINANCE_INSTITUTION: EnableBankingInstitution = {
+    name: 'Binance',
+    country: 'ALL',
+    logo: 'https://whisper.money/storage/banks/logos/t1h5rqi19dJTPl6ZadziPjNwm0lrcdTFBRzB3iCy.png',
+    maximum_consent_validity: null,
+};
+
 interface ConnectAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -83,9 +90,16 @@ export function ConnectAccountDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [apiToken, setApiToken] = useState('');
+    const [apiKey, setApiKey] = useState('');
+    const [apiSecret, setApiSecret] = useState('');
 
     const isIndexaCapital = useMemo(
         () => selectedBank?.name === 'Indexa Capital',
+        [selectedBank],
+    );
+
+    const isBinance = useMemo(
+        () => selectedBank?.name === 'Binance',
         [selectedBank],
     );
 
@@ -100,6 +114,8 @@ export function ConnectAccountDialog({
         setIsSubmitting(false);
         setError(null);
         setApiToken('');
+        setApiKey('');
+        setApiSecret('');
     }, []);
 
     useEffect(() => {
@@ -141,10 +157,14 @@ export function ConnectAccountDialog({
 
             const data = await response.json();
 
-            const allInstitutions =
-                countryCode === 'ES'
-                    ? [INDEXA_CAPITAL_INSTITUTION, ...data]
-                    : data;
+            const extraInstitutions = [BINANCE_INSTITUTION];
+            if (countryCode === 'ES') {
+                extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
+            }
+
+            const allInstitutions = [...extraInstitutions, ...data].sort(
+                (a, b) => a.name.localeCompare(b.name),
+            );
 
             setInstitutions(allInstitutions);
             setFilteredInstitutions(allInstitutions);
@@ -163,17 +183,21 @@ export function ConnectAccountDialog({
         setError(null);
 
         try {
-            const url = isIndexaCapital
-                ? '/open-banking/indexa-capital/connect'
-                : '/open-banking/authorize';
+            const url = isBinance
+                ? '/open-banking/binance/connect'
+                : isIndexaCapital
+                  ? '/open-banking/indexa-capital/connect'
+                  : '/open-banking/authorize';
 
-            const body = isIndexaCapital
-                ? { api_token: apiToken }
-                : {
-                      aspsp_name: selectedBank.name,
-                      country: country,
-                      logo: selectedBank.logo,
-                  };
+            const body = isBinance
+                ? { api_key: apiKey, api_secret: apiSecret, country: country }
+                : isIndexaCapital
+                  ? { api_token: apiToken }
+                  : {
+                        aspsp_name: selectedBank.name,
+                        country: country,
+                        logo: selectedBank.logo,
+                    };
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -217,6 +241,7 @@ export function ConnectAccountDialog({
                         {step === 'bank' && __('Select your bank.')}
                         {step === 'confirm' &&
                             !isIndexaCapital &&
+                            !isBinance &&
                             __(
                                 'You will be redirected to your bank to authorize access.',
                             )}
@@ -224,6 +249,11 @@ export function ConnectAccountDialog({
                             isIndexaCapital &&
                             __(
                                 'Enter your API token to connect your Indexa Capital account.',
+                            )}
+                        {step === 'confirm' &&
+                            isBinance &&
+                            __(
+                                'Enter your API Key and Secret to connect your Binance account.',
                             )}
                     </DialogDescription>
                 </DialogHeader>
@@ -331,13 +361,17 @@ export function ConnectAccountDialog({
                                         {selectedBank.name}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {isIndexaCapital
+                                        {isBinance
                                             ? __(
-                                                  'Connect your Indexa Capital account using your API token.',
+                                                  'Connect your Binance account using your API Key and Secret.',
                                               )
-                                            : __(
-                                                  'You will be redirected to authorize access to your account data.',
-                                              )}
+                                            : isIndexaCapital
+                                              ? __(
+                                                    'Connect your Indexa Capital account using your API token.',
+                                                )
+                                              : __(
+                                                    'You will be redirected to authorize access to your account data.',
+                                                )}
                                     </p>
                                 </div>
                             </div>
@@ -358,11 +392,74 @@ export function ConnectAccountDialog({
                                     placeholder={__(
                                         'Paste your Indexa Capital API token',
                                     )}
+                                    className="my-2"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     {__(
-                                        'You can generate your API token from your Indexa Capital dashboard under Settings > Applications.',
-                                    )}
+                                        'You can generate your API token from your Indexa Capital dashboard under',
+                                    )}{' '}
+                                    <a
+                                        href="https://indexacapital.com/es/u/user#settings-apps"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        {__('Settings > Applications')}
+                                    </a>
+                                    .
+                                </p>
+                            </div>
+                        )}
+
+                        {isBinance && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="api-key">
+                                        {__('API Key')}
+                                    </Label>
+                                    <Input
+                                        id="api-key"
+                                        type="password"
+                                        value={apiKey}
+                                        onChange={(e) =>
+                                            setApiKey(e.target.value)
+                                        }
+                                        className="mt-1"
+                                        placeholder={__(
+                                            'Paste your Binance API Key',
+                                        )}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="api-secret">
+                                        {__('API Secret')}
+                                    </Label>
+                                    <Input
+                                        id="api-secret"
+                                        type="password"
+                                        value={apiSecret}
+                                        onChange={(e) =>
+                                            setApiSecret(e.target.value)
+                                        }
+                                        className="mt-1"
+                                        placeholder={__(
+                                            'Paste your Binance API Secret',
+                                        )}
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {__(
+                                        'You can create API keys from your Binance account under',
+                                    )}{' '}
+                                    <a
+                                        href="https://www.binance.com/es/my/settings/api-management"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        {__('API Management')}
+                                    </a>
+                                    .
                                 </p>
                             </div>
                         )}
@@ -379,7 +476,8 @@ export function ConnectAccountDialog({
                                 onClick={handleAuthorize}
                                 disabled={
                                     isSubmitting ||
-                                    (isIndexaCapital && !apiToken)
+                                    (isIndexaCapital && !apiToken) ||
+                                    (isBinance && (!apiKey || !apiSecret))
                                 }
                             >
                                 {isSubmitting

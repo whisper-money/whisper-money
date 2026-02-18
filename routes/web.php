@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OpenBanking\AccountMappingController;
 use App\Http\Controllers\OpenBanking\AuthorizationController;
+use App\Http\Controllers\OpenBanking\BinanceController;
 use App\Http\Controllers\OpenBanking\IndexaCapitalController;
 use App\Http\Controllers\OpenBanking\InstitutionController;
 use App\Http\Controllers\RobotsController;
@@ -74,6 +75,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'open-banking'
     Route::get('connections/{connection}/map-accounts', [AccountMappingController::class, 'show'])->name('open-banking.map-accounts');
     Route::post('connections/{connection}/map-accounts', [AccountMappingController::class, 'store'])->name('open-banking.map-accounts.store');
     Route::post('indexa-capital/connect', [IndexaCapitalController::class, 'store'])->name('open-banking.indexa-capital.connect');
+    Route::post('binance/connect', [BinanceController::class, 'store'])->name('open-banking.binance.connect');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {

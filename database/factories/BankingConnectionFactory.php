@@ -86,6 +86,21 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function binance(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => 'binance',
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'test-binance-api-key-'.fake()->uuid(),
+            'api_secret' => 'test-binance-api-secret-'.fake()->uuid(),
+            'aspsp_name' => 'Binance',
+            'aspsp_country' => 'ES',
+            'aspsp_logo' => 'https://whisper.money/storage/banks/logos/t1h5rqi19dJTPl6ZadziPjNwm0lrcdTFBRzB3iCy.png',
+            'valid_until' => null,
+        ]);
+    }
+
     public function error(): static
     {
         return $this->state(fn (array $attributes) => [

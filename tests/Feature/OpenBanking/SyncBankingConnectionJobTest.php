@@ -2,6 +2,7 @@
 
 use App\Enums\BankingConnectionStatus;
 use App\Jobs\SyncBankingConnectionJob;
+use App\Jobs\SyncBinanceHistoricalBalancesJob;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\Account;
 use App\Models\Bank;
@@ -12,6 +13,7 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 
 test('first sync calculates historical balances', function () {
     $user = User::factory()->onboarded()->create();
@@ -385,4 +387,81 @@ test('indexa capital sync does not send email', function () {
     $job->handle($transactionSync, $balanceSync);
 
     Mail::assertNothingQueued();
+});
+
+test('binance first sync gets current balance immediately and dispatches historical job', function () {
+    Queue::fake(SyncBinanceHistoricalBalancesJob::class);
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'BTC', 'free' => '1.0', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([
+            ['symbol' => 'BTCEUR', 'price' => '50000.00'],
+        ]),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    expect($account->balances()->count())->toBe(1);
+    expect($account->balances()->first()->balance)->toBe(5000000);
+
+    Queue::assertPushed(SyncBinanceHistoricalBalancesJob::class, function ($job) use ($account) {
+        return $job->account->id === $account->id
+            && $job->delay !== null;
+    });
+});
+
+test('binance subsequent sync does not dispatch historical job', function () {
+    Queue::fake(SyncBinanceHistoricalBalancesJob::class);
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'BTC', 'free' => '1.0', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([
+            ['symbol' => 'BTCEUR', 'price' => '50000.00'],
+        ]),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    Queue::assertNotPushed(SyncBinanceHistoricalBalancesJob::class);
 });

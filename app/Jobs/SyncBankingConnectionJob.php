@@ -6,6 +6,8 @@ use App\Enums\BankingConnectionStatus;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
+use App\Services\Banking\BinanceBalanceSyncService;
+use App\Services\Banking\BinanceClient;
 use App\Services\Banking\IndexaCapitalBalanceSyncService;
 use App\Services\Banking\IndexaCapitalClient;
 use App\Services\Banking\TransactionSyncService;
@@ -13,6 +15,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
@@ -53,6 +56,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         try {
             if ($connection->isIndexaCapital()) {
                 $this->syncIndexaCapital($connection);
+            } elseif ($connection->isBinance()) {
+                $this->syncBinance($connection);
             } else {
                 $this->syncEnableBanking($connection, $transactionSync, $balanceSync);
             }
@@ -69,7 +74,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
             $connection->update([
                 'status' => BankingConnectionStatus::Error,
-                'error_message' => $e->getMessage(),
+                'error_message' => $this->friendlyErrorMessage($e),
             ]);
 
             throw $e;
@@ -85,6 +90,24 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
         foreach ($connection->accounts as $account) {
             $syncService->sync($account, $client);
+        }
+    }
+
+    private function syncBinance(BankingConnection $connection): void
+    {
+        $isFirstSync = ! $connection->last_synced_at;
+        $client = new BinanceClient($connection->api_token, $connection->api_secret);
+        $syncService = app(BinanceBalanceSyncService::class);
+
+        $connection->load('accounts');
+
+        foreach ($connection->accounts as $account) {
+            if ($isFirstSync) {
+                $syncService->syncCurrentBalance($account, $client);
+                SyncBinanceHistoricalBalancesJob::dispatch($account)->delay(now()->addSeconds(30));
+            } else {
+                $syncService->sync($account, $client, isFirstSync: false);
+            }
         }
     }
 
@@ -137,5 +160,21 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 $transactionsPerBank,
             ));
         }
+    }
+
+    private function friendlyErrorMessage(\Throwable $e): string
+    {
+        if ($e instanceof RequestException) {
+            $status = $e->response->status();
+
+            return match (true) {
+                $status === 429 => __('Rate limit exceeded. Please wait a few minutes and try again.'),
+                $status === 401 || $status === 403 => __('Authentication failed. Your credentials may have expired or been revoked.'),
+                $status >= 500 => __('The provider is experiencing issues. Please try again later.'),
+                default => __('Failed to sync with the provider. Please try again later.'),
+            };
+        }
+
+        return __('An unexpected error occurred during sync. Please try again later.');
     }
 }

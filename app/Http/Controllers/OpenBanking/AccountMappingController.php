@@ -59,7 +59,7 @@ class AccountMappingController extends Controller
         $pendingAccounts = collect($connection->pending_accounts_data)
             ->keyBy('uid');
 
-        $accountType = $connection->isIndexaCapital()
+        $accountType = ($connection->isIndexaCapital() || $connection->isBinance())
             ? AccountType::Investment
             : AccountType::Checking;
 
