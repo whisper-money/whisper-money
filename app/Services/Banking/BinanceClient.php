@@ -2,13 +2,18 @@
 
 namespace App\Services\Banking;
 
+use Exception;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class BinanceClient
 {
     private const BASE_URL = 'https://api.binance.com';
+
+    /** @var array<int, int> Retry backoff: 10s, 30s, 60s */
+    private const RETRY_BACKOFF_MS = [10_000, 30_000, 60_000];
 
     public function __construct(
         private string $apiKey,
@@ -22,15 +27,7 @@ class BinanceClient
      */
     public function getAccount(): array
     {
-        $timestamp = (int) (microtime(true) * 1000);
-        $queryString = "omitZeroBalances=true&timestamp={$timestamp}";
-        $signature = hash_hmac('sha256', $queryString, $this->apiSecret);
-
-        $response = $this->client()->get("/api/v3/account?{$queryString}&signature={$signature}");
-
-        $response->throw();
-
-        return $response->json();
+        return $this->signedRequest('/api/v3/account', ['omitZeroBalances' => 'true']);
     }
 
     /**
@@ -40,16 +37,74 @@ class BinanceClient
      */
     public function getTickerPrices(): array
     {
-        $response = Http::baseUrl(self::BASE_URL)
-            ->acceptJson()
-            ->get('/api/v3/ticker/price');
+        $response = $this->publicClient()->get('/api/v3/ticker/price');
 
         $response->throw();
 
         return $response->json();
     }
 
-    private function client(): PendingRequest
+    /**
+     * Get daily account snapshots (up to 30 per request, max 180 days history).
+     *
+     * @return array{snapshotVos: array<int, array{type: string, updateTime: int, data: array{balances: array<int, array{asset: string, free: string, locked: string}>, totalAssetOfBtc: string}}>}
+     */
+    public function getAccountSnapshots(int $startTime, int $endTime, int $limit = 30): array
+    {
+        return $this->signedRequest('/sapi/v1/accountSnapshot', [
+            'type' => 'SPOT',
+            'startTime' => $startTime,
+            'endTime' => $endTime,
+            'limit' => $limit,
+        ]);
+    }
+
+    /**
+     * Get daily kline (candlestick) data for a symbol.
+     *
+     * Each kline: [openTime, open, high, low, close, volume, closeTime, ...]
+     *
+     * @return array<int, array>
+     */
+    public function getDailyKlines(string $symbol, int $startTime, int $endTime): array
+    {
+        $response = $this->publicClient()->get('/api/v3/klines', [
+            'symbol' => $symbol,
+            'interval' => '1d',
+            'startTime' => $startTime,
+            'endTime' => $endTime,
+            'limit' => 200,
+        ]);
+
+        $response->throw();
+
+        return $response->json();
+    }
+
+    /**
+     * Execute a signed request with fresh timestamp on each retry attempt.
+     */
+    private function signedRequest(string $path, array $params = []): array
+    {
+        return retry(
+            self::RETRY_BACKOFF_MS,
+            function () use ($path, $params) {
+                $params['timestamp'] = (int) (microtime(true) * 1000);
+                $queryString = http_build_query($params);
+                $signature = hash_hmac('sha256', $queryString, $this->apiSecret);
+
+                $response = $this->authenticatedClient()
+                    ->get("{$path}?{$queryString}&signature={$signature}");
+
+                $response->throw();
+
+                return $response->json();
+            },
+            when: fn (Exception $e) => $e instanceof RequestException && $e->response->status() === 429,
+        );
+    }
+
+    private function authenticatedClient(): PendingRequest
     {
         return Http::baseUrl(self::BASE_URL)
             ->withHeaders(['X-MBX-APIKEY' => $this->apiKey])
@@ -60,5 +115,15 @@ class BinanceClient
                     'body' => $response->json(),
                 ]);
             });
+    }
+
+    private function publicClient(): PendingRequest
+    {
+        return Http::baseUrl(self::BASE_URL)
+            ->acceptJson()
+            ->retry(
+                self::RETRY_BACKOFF_MS,
+                fn (Exception $e) => $e instanceof RequestException && $e->response->status() === 429,
+            );
     }
 }

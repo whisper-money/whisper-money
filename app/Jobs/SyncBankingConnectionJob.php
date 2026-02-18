@@ -94,13 +94,14 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     private function syncBinance(BankingConnection $connection): void
     {
+        $isFirstSync = ! $connection->last_synced_at;
         $client = new BinanceClient($connection->api_token, $connection->api_secret);
         $syncService = new BinanceBalanceSyncService;
 
         $connection->load('accounts');
 
         foreach ($connection->accounts as $account) {
-            $syncService->sync($account, $client);
+            $syncService->sync($account, $client, $isFirstSync);
         }
     }
 
