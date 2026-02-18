@@ -1,5 +1,3 @@
-import { EncryptedText } from '@/components/encrypted-text';
-
 type Length = number | { min: number; max: number } | null;
 
 interface AccountNameProps {
@@ -17,16 +15,5 @@ export function AccountName({
     className = '',
     length = null,
 }: AccountNameProps) {
-    if (!account.encrypted) {
-        return <span className={className}>{account.name}</span>;
-    }
-
-    return (
-        <EncryptedText
-            encryptedText={account.name}
-            iv={account.name_iv!}
-            className={className}
-            length={length}
-        />
-    );
+    return <span className={className}>{account.name}</span>;
 }
