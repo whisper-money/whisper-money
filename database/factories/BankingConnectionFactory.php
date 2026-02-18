@@ -72,6 +72,20 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function indexaCapital(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => 'indexacapital',
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'test-indexa-token-'.fake()->uuid(),
+            'aspsp_name' => 'Indexa Capital',
+            'aspsp_country' => 'ES',
+            'aspsp_logo' => '/images/banks/logos/indexa-capital.jpg',
+            'valid_until' => null,
+        ]);
+    }
+
     public function error(): static
     {
         return $this->state(fn (array $attributes) => [

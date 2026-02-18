@@ -175,6 +175,37 @@ test('users can trigger manual sync on active connection', function () {
     $response->assertSessionHas('success');
 });
 
+test('disconnecting indexa capital connection does not revoke session', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->indexaCapital()->create(['user_id' => $user->id]);
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldNotReceive('revokeSession');
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->delete("/settings/connections/{$connection->id}", [
+        'delete_accounts' => false,
+        'confirmation' => null,
+    ]);
+
+    $response->assertRedirect(route('settings.connections.index'));
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Revoked);
+    expect($connection->trashed())->toBeTrue();
+
+    $account->refresh();
+    expect($account->banking_connection_id)->toBeNull();
+    expect($account->external_account_id)->toBeNull();
+});
+
 test('users cannot sync expired connection', function () {
     Queue::fake();
 

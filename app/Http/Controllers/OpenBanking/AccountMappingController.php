@@ -59,6 +59,10 @@ class AccountMappingController extends Controller
         $pendingAccounts = collect($connection->pending_accounts_data)
             ->keyBy('uid');
 
+        $accountType = $connection->isIndexaCapital()
+            ? AccountType::Investment
+            : AccountType::Checking;
+
         foreach ($mappings as $mapping) {
             $uid = $mapping['bank_account_uid'];
             $action = $mapping['action'];
@@ -80,7 +84,7 @@ class AccountMappingController extends Controller
                     'encrypted' => false,
                     'bank_id' => $bank->id,
                     'currency_code' => $currency,
-                    'type' => AccountType::Checking->value,
+                    'type' => $accountType->value,
                     'banking_connection_id' => $connection->id,
                     'external_account_id' => $uid,
                 ]);
