@@ -108,7 +108,7 @@ class IndexaCapitalController extends Controller
             $accounts[] = [
                 'uid' => $accountNumber,
                 'currency' => 'EUR',
-                'name' => "Indexa Capital - {$typeName} ({$accountNumber})",
+                'name' => "{$typeName} ({$accountNumber})",
             ];
         }
 

@@ -165,11 +165,11 @@ test('creates multiple accounts for multiple indexa portfolios', function () {
     $this->assertDatabaseHas('accounts', [
         'user_id' => $user->id,
         'external_account_id' => 'IC-001',
-        'name' => 'Indexa Capital - Investment Portfolio (IC-001)',
+        'name' => 'Investment Portfolio (IC-001)',
     ]);
     $this->assertDatabaseHas('accounts', [
         'user_id' => $user->id,
         'external_account_id' => 'IC-002',
-        'name' => 'Indexa Capital - Pension Plan (IC-002)',
+        'name' => 'Pension Plan (IC-002)',
     ]);
 });
