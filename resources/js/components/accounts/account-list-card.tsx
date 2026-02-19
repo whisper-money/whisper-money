@@ -57,17 +57,17 @@ export function AccountListCard({
             <CardContent className="p-4">
                 <div className="flex flex-col gap-4">
                     <div className="flex max-w-full flex-col sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-start gap-3">
-                            <div className="flex flex-col gap-1">
+                        <div className="flex min-w-0 items-start gap-3">
+                            <div className="flex min-w-0 flex-col gap-1">
                                 <Link
                                     href={show.url(account.id)}
-                                    className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                                    className="-my-1 -ml-1.5 flex min-w-0 items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                                 >
-                                    <h3 className="flex items-center gap-2 font-semibold">
+                                    <h3 className="flex min-w-0 items-center gap-2 font-semibold">
                                         <BankLogo
                                             src={account.bank?.logo}
                                             name={account.bank?.name}
-                                            className="size-4"
+                                            className="size-4 shrink-0"
                                             fallback="letter"
                                         />
                                         <AccountName
@@ -84,7 +84,7 @@ export function AccountListCard({
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-col items-end">
+                        <div className="flex shrink-0 flex-col items-end">
                             <button
                                 type="button"
                                 onClick={() => setUpdateBalanceOpen(true)}
