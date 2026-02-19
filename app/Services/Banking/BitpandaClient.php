@@ -50,6 +50,18 @@ class BitpandaClient
     }
 
     /**
+     * Get Bitpanda's own ticker prices for all assets.
+     * Returns a map of asset symbol to fiat prices (e.g., BTC => {EUR => "56911.68", USD => "67150.45"}).
+     * This is a public endpoint — no authentication required.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function getTickerPrices(): array
+    {
+        return $this->get('/ticker');
+    }
+
+    /**
      * List trades with optional cursor-based pagination.
      *
      * @return array{data: array<int, array{type: string, id: string, attributes: array}>, meta: array, links: array}
@@ -63,6 +75,44 @@ class BitpandaClient
         }
 
         return $this->get('/trades', $params);
+    }
+
+    /**
+     * Fetch all trades by paginating through the cursor-based API.
+     * Trades are returned newest-first from the API but this method
+     * reverses them to chronological order (oldest first).
+     *
+     * @param  string|null  $sinceDate  Optional ISO date string (YYYY-MM-DD) to stop fetching older trades
+     * @return array<int, array{type: string, id: string, attributes: array}>
+     */
+    public function getAllTrades(?string $sinceDate = null): array
+    {
+        $allTrades = [];
+        $cursor = null;
+        $sinceTimestamp = $sinceDate ? strtotime($sinceDate) : null;
+
+        do {
+            $response = $this->getTrades($cursor, 100);
+            $trades = $response['data'] ?? [];
+
+            if (empty($trades)) {
+                break;
+            }
+
+            foreach ($trades as $trade) {
+                $tradeTimestamp = (int) ($trade['attributes']['time']['unix'] ?? 0);
+
+                if ($sinceTimestamp && $tradeTimestamp < $sinceTimestamp) {
+                    return array_reverse($allTrades);
+                }
+
+                $allTrades[] = $trade;
+            }
+
+            $cursor = $response['meta']['next_cursor'] ?? null;
+        } while ($cursor);
+
+        return array_reverse($allTrades);
     }
 
     /**

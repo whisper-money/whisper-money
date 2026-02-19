@@ -510,10 +510,8 @@ test('bitpanda sync calls balance sync service and updates last_synced_at', func
                 ],
             ],
         ]),
-        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
-            'eur' => [
-                'btc' => 0.00002, // 1 BTC = 50000 EUR
-            ],
+        'api.bitpanda.com/v1/ticker' => Http::response([
+            'BTC' => ['EUR' => '50000.00'],
         ]),
     ]);
 
@@ -549,6 +547,7 @@ test('bitpanda connections do not expire', function () {
     Http::fake([
         'api.bitpanda.com/v1/wallets' => Http::response(['data' => []]),
         'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/ticker' => Http::response([]),
     ]);
 
     $transactionSync = Mockery::mock(TransactionSyncService::class);
@@ -580,6 +579,7 @@ test('bitpanda sync does not send email', function () {
     Http::fake([
         'api.bitpanda.com/v1/wallets' => Http::response(['data' => []]),
         'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/ticker' => Http::response([]),
     ]);
 
     $transactionSync = Mockery::mock(TransactionSyncService::class);

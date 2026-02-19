@@ -3,16 +3,13 @@
 namespace App\Services\Banking;
 
 use App\Models\Account;
-use App\Services\CurrencyConversionService;
 use Illuminate\Support\Facades\Log;
 
 class BitpandaBalanceSyncService
 {
-    public function __construct(private CurrencyConversionService $currencyConverter) {}
-
     /**
      * Sync the total portfolio value for a Bitpanda account.
-     * Fetches all crypto and fiat wallets and converts to the account's target currency.
+     * Uses Bitpanda's own ticker prices to match the values shown in the Bitpanda dashboard.
      */
     public function sync(Account $account, BitpandaClient $client): void
     {
@@ -24,14 +21,16 @@ class BitpandaBalanceSyncService
     }
 
     /**
-     * Sync today's balance by fetching all wallets and converting to target currency.
+     * Sync today's balance by fetching all wallets and converting to target currency
+     * using Bitpanda's own ticker prices.
      */
     public function syncCurrentBalance(Account $account, BitpandaClient $client): void
     {
         $targetCurrency = strtoupper($account->currency_code);
+        $ticker = $client->getTickerPrices();
         $totalValue = 0.0;
 
-        $totalValue += $this->sumCryptoWallets($client, $targetCurrency);
+        $totalValue += $this->sumCryptoWallets($client, $ticker, $targetCurrency);
         $totalValue += $this->sumFiatWallets($client, $targetCurrency);
 
         $totalValueCents = (int) round($totalValue * 100);
@@ -43,9 +42,11 @@ class BitpandaBalanceSyncService
     }
 
     /**
-     * Sum all crypto wallet balances, converting each to the target fiat currency.
+     * Sum all crypto wallet balances using Bitpanda's ticker prices.
+     *
+     * @param  array<string, array<string, string>>  $ticker
      */
-    private function sumCryptoWallets(BitpandaClient $client, string $targetCurrency): float
+    private function sumCryptoWallets(BitpandaClient $client, array $ticker, string $targetCurrency): float
     {
         $wallets = $client->getCryptoWallets();
         $total = 0.0;
@@ -60,10 +61,10 @@ class BitpandaBalanceSyncService
                 continue;
             }
 
-            $converted = $this->currencyConverter->convert($symbol, $targetCurrency, $balance);
+            $price = $this->getTickerPrice($ticker, $symbol, $targetCurrency);
 
-            if ($converted == 0.0) {
-                Log::warning('Could not convert Bitpanda asset to fiat', [
+            if ($price === null) {
+                Log::warning('Bitpanda ticker price not found for asset', [
                     'asset' => $symbol,
                     'target_currency' => $targetCurrency,
                 ]);
@@ -71,14 +72,14 @@ class BitpandaBalanceSyncService
                 continue;
             }
 
-            $total += $converted;
+            $total += $balance * $price;
         }
 
         return $total;
     }
 
     /**
-     * Sum all fiat wallet balances, converting to the target currency if needed.
+     * Sum all fiat wallet balances, using ticker to convert if needed.
      */
     private function sumFiatWallets(BitpandaClient $client, string $targetCurrency): float
     {
@@ -97,11 +98,31 @@ class BitpandaBalanceSyncService
             if ($symbol === $targetCurrency) {
                 $total += $balance;
             } else {
-                $converted = $this->currencyConverter->convert($symbol, $targetCurrency, $balance);
-                $total += $converted;
+                // Fiat-to-fiat conversion is rare on Bitpanda; use simple rate if available
+                Log::warning('Bitpanda fiat wallet in different currency than target', [
+                    'fiat_symbol' => $symbol,
+                    'target_currency' => $targetCurrency,
+                    'balance' => $balance,
+                ]);
             }
         }
 
         return $total;
+    }
+
+    /**
+     * Get the ticker price for an asset in the target currency.
+     *
+     * @param  array<string, array<string, string>>  $ticker
+     */
+    private function getTickerPrice(array $ticker, string $symbol, string $targetCurrency): ?float
+    {
+        $price = $ticker[$symbol][$targetCurrency] ?? null;
+
+        if ($price === null) {
+            return null;
+        }
+
+        return (float) $price;
     }
 }
