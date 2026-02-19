@@ -16,7 +16,7 @@ import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { useMemo } from 'react';
-import { Area, AreaChart, Line, XAxis } from 'recharts';
+import { Area, AreaChart, Line, ReferenceLine, XAxis } from 'recharts';
 
 interface Props {
     currentPeriod: BudgetPeriod;
@@ -217,6 +217,26 @@ export function BudgetSpendingChart({
         }),
     } satisfies ChartConfig;
 
+    const todayMarker = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const start = new Date(currentPeriod.start_date);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(currentPeriod.end_date);
+        end.setHours(0, 0, 0, 0);
+
+        if (today < start || today > end) {
+            return null;
+        }
+
+        if (hasPreviousPeriod) {
+            const diffMs = today.getTime() - start.getTime();
+            return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+        }
+
+        return today.toISOString().split('T')[0];
+    }, [currentPeriod, hasPreviousPeriod]);
+
     const periodLabel = useMemo(() => {
         const start = formatDate(currentPeriod.start_date, 'MMM d', locale);
         const end = formatDate(currentPeriod.end_date, 'MMM d, yyyy', locale);
@@ -316,6 +336,21 @@ export function BudgetSpendingChart({
                                 />
                             }
                         />
+
+                        {todayMarker !== null && (
+                            <ReferenceLine
+                                x={todayMarker}
+                                stroke="var(--color-foreground)"
+                                strokeWidth={1}
+                                strokeDasharray="4 4"
+                                label={{
+                                    value: __('Today'),
+                                    position: 'top',
+                                    fontSize: 12,
+                                    fill: 'var(--color-muted-foreground)',
+                                }}
+                            />
+                        )}
 
                         <Area
                             dataKey="allocated"
