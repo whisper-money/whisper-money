@@ -384,3 +384,123 @@ test('account daily balance evolution forbids access to other users accounts', f
 
     $response->assertForbidden();
 });
+
+test('net worth daily evolution returns daily data points with per-account balances', function () {
+    $account1 = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'name' => 'Daily Checking',
+        'currency_code' => 'USD',
+    ]);
+    $account2 = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Savings,
+        'name' => 'Daily Savings',
+        'currency_code' => 'EUR',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account1->id,
+        'balance_date' => now()->subDays(2),
+        'balance' => 100000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account2->id,
+        'balance_date' => now()->subDays(2),
+        'balance' => 200000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account1->id,
+        'balance_date' => now(),
+        'balance' => 150000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account2->id,
+        'balance_date' => now(),
+        'balance' => 250000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-daily-evolution?'.http_build_query([
+        'from' => now()->subDays(2)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data)->toHaveKeys(['data', 'accounts']);
+    expect($data['data'])->toHaveCount(3);
+    expect($data['data'][0])->toHaveKeys(['date', 'timestamp', $account1->id, $account2->id]);
+    expect($data['data'][0]['date'])->toBe(now()->subDays(2)->format('Y-m-d'));
+    expect($data['data'][0][$account1->id])->toBe(100000);
+    expect($data['data'][0][$account2->id])->toBe(200000);
+    expect($data['data'][2][$account1->id])->toBe(150000);
+    expect($data['data'][2][$account2->id])->toBe(250000);
+    expect($data['accounts'])->toHaveKey($account1->id);
+    expect($data['accounts'])->toHaveKey($account2->id);
+    expect($data['accounts'][$account1->id]['currency_code'])->toBe('USD');
+    expect($data['accounts'][$account2->id]['currency_code'])->toBe('EUR');
+});
+
+test('net worth daily evolution fills gaps with last known balance', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    // Balance before the range — carried forward into gap days
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subDays(10),
+        'balance' => 50000,
+    ]);
+
+    // Balance on the last day of the range
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now(),
+        'balance' => 80000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-daily-evolution?'.http_build_query([
+        'from' => now()->subDays(2)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    // 3 days in range: -2, -1, today
+    expect($data['data'])->toHaveCount(3);
+    // Days -2 and -1 carry forward the 50000 balance
+    expect($data['data'][0][$account->id])->toBe(50000);
+    expect($data['data'][1][$account->id])->toBe(50000);
+    // Today has the actual 80000 entry
+    expect($data['data'][2][$account->id])->toBe(80000);
+});
+
+test('net worth daily evolution returns account metadata including bank', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::CreditCard,
+        'name' => 'My Daily CC',
+        'name_iv' => 'test_iv_daily',
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-daily-evolution?'.http_build_query([
+        'from' => now()->subDays(1)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['accounts'][$account->id])->toMatchArray([
+        'id' => $account->id,
+        'name' => 'My Daily CC',
+        'name_iv' => 'test_iv_daily',
+        'type' => 'credit_card',
+    ]);
+    expect($data['accounts'][$account->id])->toHaveKey('bank');
+    expect($data['accounts'][$account->id]['bank'])->toHaveKeys(['id', 'name', 'logo']);
+});

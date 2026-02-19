@@ -43,6 +43,7 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('monthly-spending', [DashboardAnalyticsController::class, 'monthlySpending']);
         Route::get('cash-flow', [DashboardAnalyticsController::class, 'cashFlow']);
         Route::get('net-worth-evolution', [DashboardAnalyticsController::class, 'netWorthEvolution']);
+        Route::get('net-worth-daily-evolution', [DashboardAnalyticsController::class, 'netWorthDailyEvolution']);
         Route::get('top-categories', [DashboardAnalyticsController::class, 'topCategories']);
         Route::get('account/{account}/balance-evolution', [DashboardAnalyticsController::class, 'accountBalanceEvolution']);
         Route::get('account/{account}/daily-balance-evolution', [DashboardAnalyticsController::class, 'accountDailyBalanceEvolution']);

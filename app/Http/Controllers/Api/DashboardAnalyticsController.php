@@ -198,6 +198,59 @@ class DashboardAnalyticsController extends Controller
         ]);
     }
 
+    public function netWorthDailyEvolution(Request $request)
+    {
+        $validated = $request->validate([
+            'from' => 'required|date',
+            'to' => 'required|date',
+        ]);
+
+        $start = Carbon::parse($validated['from']);
+        $end = Carbon::parse($validated['to']);
+
+        $accounts = Account::query()
+            ->where('user_id', $request->user()->id)
+            ->with(['bank:id,name,logo'])
+            ->get();
+
+        $points = [];
+        $current = $start->copy();
+
+        while ($current->lte($end)) {
+            $date = $current->copy();
+            $point = [
+                'date' => $date->format('Y-m-d'),
+                'timestamp' => $date->endOfDay()->timestamp,
+            ];
+
+            foreach ($accounts as $account) {
+                $point[$account->id] = $this->getBalanceAt($account->id, $date);
+            }
+
+            $points[] = $point;
+            $current->addDay();
+        }
+
+        $accountsConfig = $accounts->mapWithKeys(function ($account) {
+            return [
+                $account->id => [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'name_iv' => $account->name_iv,
+                    'encrypted' => $account->encrypted,
+                    'type' => $account->type,
+                    'currency_code' => $account->currency_code,
+                    'bank' => $account->bank,
+                ],
+            ];
+        });
+
+        return response()->json([
+            'data' => $points,
+            'accounts' => $accountsConfig,
+        ]);
+    }
+
     public function topCategories(Request $request)
     {
         $validated = $request->validate([
