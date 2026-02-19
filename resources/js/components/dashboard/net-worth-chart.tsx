@@ -2,6 +2,7 @@ import { AccountName } from '@/components/accounts/account-name';
 import {
     type ChartGranularity,
     ChartGranularityToggle,
+    ChartSettingsPopover,
     ChartViewToggle,
     MoMChart,
     MoMPercentChart,
@@ -20,6 +21,7 @@ import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { useChartViews } from '@/hooks/use-chart-views';
 import { NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
 import { useLocale } from '@/hooks/use-locale';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AccountInfo } from '@/lib/chart-calculations';
 import { formatDayFromDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -150,6 +152,7 @@ export function NetWorthChart({
     showLegend = false,
 }: NetWorthChartProps) {
     const locale = useLocale();
+    const isMobile = useIsMobile();
     const [granularity, setGranularity] = useState<ChartGranularity>('monthly');
     const [dailyData, setDailyData] = useState<NetWorthEvolutionData | null>(
         null,
@@ -362,16 +365,28 @@ export function NetWorthChart({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <ChartGranularityToggle
-                            value={granularity}
-                            onValueChange={setGranularity}
-                        />
-                        <ChartViewToggle
-                            value={chartViews.currentView}
-                            onValueChange={chartViews.setCurrentView}
-                            availableViews={chartViews.availableViews}
-                            granularity={granularity}
-                        />
+                        {isMobile ? (
+                            <ChartSettingsPopover
+                                granularity={granularity}
+                                onGranularityChange={setGranularity}
+                                currentView={chartViews.currentView}
+                                onViewChange={chartViews.setCurrentView}
+                                availableViews={chartViews.availableViews}
+                            />
+                        ) : (
+                            <>
+                                <ChartGranularityToggle
+                                    value={granularity}
+                                    onValueChange={setGranularity}
+                                />
+                                <ChartViewToggle
+                                    value={chartViews.currentView}
+                                    onValueChange={chartViews.setCurrentView}
+                                    availableViews={chartViews.availableViews}
+                                    granularity={granularity}
+                                />
+                            </>
+                        )}
                     </div>
                 </div>
             </CardHeader>

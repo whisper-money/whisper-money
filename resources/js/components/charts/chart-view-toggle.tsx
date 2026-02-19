@@ -15,6 +15,7 @@ interface ChartViewToggleProps {
     availableViews: ChartViewType[];
     granularity?: ChartGranularity;
     className?: string;
+    showTooltip?: boolean;
 }
 
 const viewConfig: Record<
@@ -54,6 +55,7 @@ export function ChartViewToggle({
     availableViews,
     granularity = 'monthly',
     className,
+    showTooltip = true,
 }: ChartViewToggleProps) {
     return (
         <ToggleGroup
@@ -69,17 +71,24 @@ export function ChartViewToggle({
             {availableViews.map((view) => {
                 const config = viewConfig[view];
                 const Icon = config.icon;
+                const item = (
+                    <ToggleGroupItem
+                        key={view}
+                        value={view}
+                        aria-label={config.label}
+                        className="cursor-pointer px-2 aria-checked:bg-primary/10"
+                    >
+                        <Icon className="size-3.5" />
+                    </ToggleGroupItem>
+                );
+
+                if (!showTooltip) {
+                    return item;
+                }
+
                 return (
                     <Tooltip key={view}>
-                        <TooltipTrigger asChild>
-                            <ToggleGroupItem
-                                value={view}
-                                aria-label={config.label}
-                                className="cursor-pointer px-2 aria-checked:bg-primary/10"
-                            >
-                                <Icon className="size-3.5" />
-                            </ToggleGroupItem>
-                        </TooltipTrigger>
+                        <TooltipTrigger asChild>{item}</TooltipTrigger>
                         <TooltipContent side="bottom">
                             {config.tooltip[granularity]}
                         </TooltipContent>
