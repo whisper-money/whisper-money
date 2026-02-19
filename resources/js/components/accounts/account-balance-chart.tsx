@@ -1,5 +1,7 @@
 import { AccountName } from '@/components/accounts/account-name';
 import {
+    type ChartGranularity,
+    ChartGranularityToggle,
     ChartViewToggle,
     MoMChart,
     MoMPercentChart,
@@ -25,11 +27,13 @@ import {
 } from '@/hooks/use-chart-views';
 import { useLocale } from '@/hooks/use-locale';
 import { Account } from '@/types/account';
-import { formatMonthFromYearMonth } from '@/utils/date';
+import { formatDayFromDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { format, subMonths } from 'date-fns';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bar, BarChart, XAxis } from 'recharts';
+import { format, subDays, subMonths } from 'date-fns';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Area, AreaChart, Bar, BarChart, XAxis } from 'recharts';
+
+const DAILY_DAYS = 30;
 
 interface BalanceDataPoint {
     month: string;
@@ -48,6 +52,23 @@ interface AccountBalanceData {
     };
 }
 
+interface DailyBalanceDataPoint {
+    date: string;
+    timestamp: number;
+    value: number;
+}
+
+interface AccountDailyBalanceData {
+    data: DailyBalanceDataPoint[];
+    account: {
+        id: string;
+        name: string;
+        name_iv: string;
+        type: string;
+        currency_code: string;
+    };
+}
+
 interface AccountBalanceChartProps {
     account: Account;
     loading?: boolean;
@@ -55,7 +76,12 @@ interface AccountBalanceChartProps {
     onBalanceClick?: () => void;
 }
 
-function createXAxisFormatter(locale: string) {
+function createXAxisFormatter(locale: string, granularity: ChartGranularity) {
+    if (granularity === 'daily') {
+        return function formatXAxisLabel(value: string): string {
+            return formatDayFromDate(value, locale);
+        };
+    }
     return function formatXAxisLabel(value: string): string {
         return formatMonthFromYearMonth(value, locale);
     };
@@ -75,13 +101,13 @@ function formatChartCurrency(
 }
 
 function calculateTrend(
-    data: BalanceDataPoint[],
-    monthsBack: number,
+    data: Array<{ value: number }>,
+    periodsBack: number,
 ): { percentage: number; previousValue: number; currentValue: number } | null {
     if (data.length < 2) return null;
 
     const currentIndex = data.length - 1;
-    const previousIndex = Math.max(0, data.length - 1 - monthsBack);
+    const previousIndex = Math.max(0, data.length - 1 - periodsBack);
 
     if (currentIndex === previousIndex) return null;
 
@@ -98,6 +124,18 @@ function calculateTrend(
     };
 }
 
+/**
+ * Normalize daily data points to use "month" key so they work with
+ * convertSingleAccountData and useChartViews without changes.
+ */
+function normalizeDailyData(data: DailyBalanceDataPoint[]): BalanceDataPoint[] {
+    return data.map((point) => ({
+        month: point.date,
+        timestamp: point.timestamp,
+        value: point.value,
+    }));
+}
+
 export function AccountBalanceChart({
     account,
     loading: initialLoading,
@@ -105,56 +143,74 @@ export function AccountBalanceChart({
     onBalanceClick,
 }: AccountBalanceChartProps) {
     const locale = useLocale();
+    const [granularity, setGranularity] = useState<ChartGranularity>('monthly');
     const [balanceData, setBalanceData] = useState<AccountBalanceData | null>(
         null,
     );
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        async function fetchBalanceData() {
+    const fetchBalanceData = useCallback(
+        async (currentGranularity: ChartGranularity) => {
             setIsLoading(true);
             try {
                 const now = new Date();
                 const to = format(now, 'yyyy-MM-dd');
-                const from = format(subMonths(now, 12), 'yyyy-MM-dd');
 
-                const params = new URLSearchParams({ from, to });
-                const response = await fetch(
-                    `/api/dashboard/account/${account.id}/balance-evolution?${params.toString()}`,
-                );
-                const data = await response.json();
-                setBalanceData(data);
+                if (currentGranularity === 'daily') {
+                    // Fetch DAILY_DAYS + 1 days (extra day for DoD baseline)
+                    const from = format(subDays(now, DAILY_DAYS), 'yyyy-MM-dd');
+                    const params = new URLSearchParams({ from, to });
+                    const response = await fetch(
+                        `/api/dashboard/account/${account.id}/daily-balance-evolution?${params.toString()}`,
+                    );
+                    const data: AccountDailyBalanceData = await response.json();
+                    // Normalize daily data so the rest of the component works uniformly
+                    setBalanceData({
+                        data: normalizeDailyData(data.data),
+                        account: data.account,
+                    });
+                } else {
+                    const from = format(subMonths(now, 12), 'yyyy-MM-dd');
+                    const params = new URLSearchParams({ from, to });
+                    const response = await fetch(
+                        `/api/dashboard/account/${account.id}/balance-evolution?${params.toString()}`,
+                    );
+                    const data = await response.json();
+                    setBalanceData(data);
+                }
             } catch (error) {
                 console.error('Failed to fetch balance data:', error);
             } finally {
                 setIsLoading(false);
             }
+        },
+        [account.id],
+    );
+
+    useEffect(() => {
+        fetchBalanceData(granularity);
+    }, [fetchBalanceData, granularity, refreshKey]);
+
+    const { chartData, currentBalance, shortTrend, longTrend } = useMemo(() => {
+        if (!balanceData?.data?.length) {
+            return {
+                chartData: [],
+                currentBalance: 0,
+                shortTrend: null,
+                longTrend: null,
+            };
         }
 
-        fetchBalanceData();
-    }, [account.id, refreshKey]);
+        const data = balanceData.data;
+        const current = data[data.length - 1]?.value ?? 0;
 
-    const { chartData, currentBalance, monthlyTrend, yearlyTrend } =
-        useMemo(() => {
-            if (!balanceData?.data?.length) {
-                return {
-                    chartData: [],
-                    currentBalance: 0,
-                    monthlyTrend: null,
-                    yearlyTrend: null,
-                };
-            }
-
-            const data = balanceData.data;
-            const current = data[data.length - 1]?.value ?? 0;
-
-            return {
-                chartData: data,
-                currentBalance: current,
-                monthlyTrend: calculateTrend(data, 1),
-                yearlyTrend: calculateTrend(data, data.length - 1),
-            };
-        }, [balanceData]);
+        return {
+            chartData: data,
+            currentBalance: current,
+            shortTrend: calculateTrend(data, 1),
+            longTrend: calculateTrend(data, data.length - 1),
+        };
+    }, [balanceData]);
 
     // Convert data for useChartViews hook
     const { data: hookData, accounts: hookAccounts } = useMemo(() => {
@@ -184,8 +240,8 @@ export function AccountBalanceChart({
     };
 
     const formatXAxisLabel = useMemo(
-        () => createXAxisFormatter(locale),
-        [locale],
+        () => createXAxisFormatter(locale, granularity),
+        [locale, granularity],
     );
 
     const valueFormatter = (value: number): string => {
@@ -193,7 +249,7 @@ export function AccountBalanceChart({
     };
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const minBarWidth = 50;
+    const minBarWidth = granularity === 'daily' ? 20 : 50;
     const minChartWidth = chartData.length * minBarWidth;
 
     useEffect(() => {
@@ -202,6 +258,13 @@ export function AccountBalanceChart({
                 scrollContainerRef.current.scrollWidth;
         }
     }, [chartData]);
+
+    const shortTrendLabel =
+        granularity === 'daily' ? __('today') : __('this month');
+    const longTrendLabel =
+        granularity === 'daily'
+            ? __('for the last 30 days')
+            : __('for the last 12 months');
 
     if (initialLoading || isLoading) {
         return (
@@ -254,27 +317,34 @@ export function AccountBalanceChart({
                         </button>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
-                                trend={monthlyTrend?.percentage ?? null}
-                                label={__('this month')}
-                                previousAmount={monthlyTrend?.previousValue}
-                                currentAmount={monthlyTrend?.currentValue}
+                                trend={shortTrend?.percentage ?? null}
+                                label={shortTrendLabel}
+                                previousAmount={shortTrend?.previousValue}
+                                currentAmount={shortTrend?.currentValue}
                                 currencyCode={account.currency_code}
                             />
 
                             <PercentageTrendIndicator
-                                trend={yearlyTrend?.percentage ?? null}
-                                label={__('for the last 12 months')}
-                                previousAmount={yearlyTrend?.previousValue}
-                                currentAmount={yearlyTrend?.currentValue}
+                                trend={longTrend?.percentage ?? null}
+                                label={longTrendLabel}
+                                previousAmount={longTrend?.previousValue}
+                                currentAmount={longTrend?.currentValue}
                                 currencyCode={account.currency_code}
                             />
                         </CardDescription>
                     </div>
-                    <ChartViewToggle
-                        value={chartViews.currentView}
-                        onValueChange={chartViews.setCurrentView}
-                        availableViews={chartViews.availableViews}
-                    />
+                    <div className="flex items-center gap-2">
+                        <ChartGranularityToggle
+                            value={granularity}
+                            onValueChange={setGranularity}
+                        />
+                        <ChartViewToggle
+                            value={chartViews.currentView}
+                            onValueChange={chartViews.setCurrentView}
+                            availableViews={chartViews.availableViews}
+                            granularity={granularity}
+                        />
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="relative">
@@ -288,33 +358,84 @@ export function AccountBalanceChart({
                             className="h-full w-full"
                             style={{ minWidth: `${minChartWidth}px` }}
                         >
-                            <BarChart
-                                accessibilityLayer
-                                data={chartData.slice(1)}
-                            >
-                                <XAxis
-                                    dataKey="month"
-                                    tickLine={false}
-                                    tickMargin={10}
-                                    axisLine={false}
-                                    tickFormatter={formatXAxisLabel}
-                                />
-
-                                <ChartTooltip
-                                    content={
-                                        <ChartTooltipContent
-                                            hideLabel
-                                            valueFormatter={valueFormatter}
-                                        />
-                                    }
-                                />
-
-                                <Bar
-                                    dataKey="value"
-                                    fill="var(--color-chart-2)"
-                                    radius={[4, 4, 0, 0]}
-                                />
-                            </BarChart>
+                            {granularity === 'daily' ? (
+                                <AreaChart
+                                    accessibilityLayer
+                                    data={chartData.slice(1)}
+                                >
+                                    <defs>
+                                        <linearGradient
+                                            id="fillBalance"
+                                            x1="0"
+                                            y1="0"
+                                            x2="0"
+                                            y2="1"
+                                        >
+                                            <stop
+                                                offset="5%"
+                                                stopColor="var(--color-chart-2)"
+                                                stopOpacity={0.3}
+                                            />
+                                            <stop
+                                                offset="95%"
+                                                stopColor="var(--color-chart-2)"
+                                                stopOpacity={0.05}
+                                            />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis
+                                        dataKey="month"
+                                        tickLine={false}
+                                        tickMargin={10}
+                                        axisLine={false}
+                                        tickFormatter={formatXAxisLabel}
+                                    />
+                                    <ChartTooltip
+                                        content={
+                                            <ChartTooltipContent
+                                                hideLabel
+                                                valueFormatter={valueFormatter}
+                                            />
+                                        }
+                                    />
+                                    <Area
+                                        dataKey="value"
+                                        type="monotone"
+                                        fill="url(#fillBalance)"
+                                        stroke="var(--color-chart-2)"
+                                        strokeWidth={2}
+                                        dot={false}
+                                        activeDot={{ r: 5 }}
+                                        fillOpacity={1}
+                                    />
+                                </AreaChart>
+                            ) : (
+                                <BarChart
+                                    accessibilityLayer
+                                    data={chartData.slice(1)}
+                                >
+                                    <XAxis
+                                        dataKey="month"
+                                        tickLine={false}
+                                        tickMargin={10}
+                                        axisLine={false}
+                                        tickFormatter={formatXAxisLabel}
+                                    />
+                                    <ChartTooltip
+                                        content={
+                                            <ChartTooltipContent
+                                                hideLabel
+                                                valueFormatter={valueFormatter}
+                                            />
+                                        }
+                                    />
+                                    <Bar
+                                        dataKey="value"
+                                        fill="var(--color-chart-2)"
+                                        radius={[4, 4, 0, 0]}
+                                    />
+                                </BarChart>
+                            )}
                         </ChartContainer>
                     </div>
                 )}
