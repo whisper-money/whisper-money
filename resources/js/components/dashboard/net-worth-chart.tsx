@@ -1,5 +1,7 @@
 import { AccountName } from '@/components/accounts/account-name';
 import {
+    type ChartGranularity,
+    ChartGranularityToggle,
     ChartViewToggle,
     MoMChart,
     MoMPercentChart,
@@ -13,13 +15,16 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { ChartConfig } from '@/components/ui/chart';
+import { StackedAreaChart } from '@/components/ui/stacked-area-chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { useChartViews } from '@/hooks/use-chart-views';
 import { NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
 import { useLocale } from '@/hooks/use-locale';
 import { AccountInfo } from '@/lib/chart-calculations';
+import { formatDayFromDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { useMemo } from 'react';
+import { format, subDays } from 'date-fns';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
 
 interface NetWorthChartProps {
@@ -28,13 +33,23 @@ interface NetWorthChartProps {
     showLegend?: boolean;
 }
 
+const DAILY_DAYS = 30;
+
 interface TrendData {
     percentage: number;
     previousAmount: number;
     currentAmount: number;
 }
 
-function formatXAxisLabel(value: string, locale: string = 'en'): string {
+function formatXAxisLabel(
+    value: string,
+    locale: string = 'en',
+    granularity: ChartGranularity = 'monthly',
+): string {
+    if (granularity === 'daily') {
+        return formatDayFromDate(value, locale);
+    }
+
     const [year, month] = value.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1);
     const monthName = date.toLocaleString(locale, { month: 'short' });
@@ -50,12 +65,12 @@ function formatXAxisLabel(value: string, locale: string = 'en'): string {
 function calculateTrend(
     data: Array<Record<string, string | number>>,
     accountIds: string[],
-    monthsBack: number,
+    periodsBack: number,
 ): TrendData | null {
     if (data.length < 2) return null;
 
     const currentIndex = data.length - 1;
-    const previousIndex = Math.max(0, data.length - 1 - monthsBack);
+    const previousIndex = Math.max(0, data.length - 1 - periodsBack);
 
     if (currentIndex === previousIndex) return null;
 
@@ -130,25 +145,69 @@ function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
 }
 
 export function NetWorthChart({
-    data,
+    data: monthlyData,
     loading,
     showLegend = false,
 }: NetWorthChartProps) {
     const locale = useLocale();
+    const [granularity, setGranularity] = useState<ChartGranularity>('monthly');
+    const [dailyData, setDailyData] = useState<NetWorthEvolutionData | null>(
+        null,
+    );
+    const [isDailyLoading, setIsDailyLoading] = useState(false);
+
+    const fetchDailyData = useCallback(async () => {
+        setIsDailyLoading(true);
+        try {
+            const now = new Date();
+            const to = format(now, 'yyyy-MM-dd');
+            const from = format(subDays(now, DAILY_DAYS), 'yyyy-MM-dd');
+            const params = new URLSearchParams({ from, to });
+            const response = await fetch(
+                `/api/dashboard/net-worth-daily-evolution?${params.toString()}`,
+            );
+            const data: NetWorthEvolutionData = await response.json();
+
+            // Normalize daily data: rename "date" key to "month" so it works
+            // uniformly with useChartViews and the rest of the component.
+            const normalizedData = data.data.map((point) => {
+                const { date, ...rest } = point as Record<string, unknown> & {
+                    date: string;
+                };
+                return { ...rest, month: date };
+            }) as Array<Record<string, string | number>>;
+
+            setDailyData({ data: normalizedData, accounts: data.accounts });
+        } catch (error) {
+            console.error('Failed to fetch daily net worth data:', error);
+        } finally {
+            setIsDailyLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (granularity === 'daily' && !dailyData) {
+            fetchDailyData();
+        }
+    }, [granularity, dailyData, fetchDailyData]);
+
+    const activeData =
+        granularity === 'daily' && dailyData ? dailyData : monthlyData;
+
     const {
         chartData,
         dataKeys,
         chartConfig,
-        monthlyTrend,
-        yearlyTrend,
+        shortTrend,
+        longTrend,
         currencyTotals,
         accountCurrencies,
         primaryCurrency,
         accountsForHook,
     } = useMemo(() => {
-        const accounts = data.accounts || {};
+        const accounts = activeData.accounts || {};
         const accountIds = Object.keys(accounts);
-        const chartDataArray = data.data || [];
+        const chartDataArray = activeData.data || [];
 
         const config: ChartConfig = {};
         const currencies: Record<string, string> = {};
@@ -196,8 +255,8 @@ export function NetWorthChart({
             chartData: chartDataArray,
             dataKeys: accountIds,
             chartConfig: config,
-            monthlyTrend: calculateTrend(chartDataArray, accountIds, 1),
-            yearlyTrend: calculateTrend(
+            shortTrend: calculateTrend(chartDataArray, accountIds, 1),
+            longTrend: calculateTrend(
                 chartDataArray,
                 accountIds,
                 chartDataArray.length - 1,
@@ -207,7 +266,7 @@ export function NetWorthChart({
             primaryCurrency: primary,
             accountsForHook: hookAccounts,
         };
-    }, [data]);
+    }, [activeData]);
 
     const chartViews = useChartViews({
         data: chartData,
@@ -233,7 +292,14 @@ export function NetWorthChart({
         };
     }, [accountCurrencies]);
 
-    if (loading) {
+    const shortTrendLabel =
+        granularity === 'daily' ? __('today') : __('this month');
+    const longTrendLabel =
+        granularity === 'daily'
+            ? __('for the last 30 days')
+            : __('for the last 12 months');
+
+    if (loading || (granularity === 'daily' && isDailyLoading)) {
         return (
             <Card className="col-span-3">
                 <CardHeader>
@@ -264,6 +330,9 @@ export function NetWorthChart({
         );
     }
 
+    const xAxisFormatter = (value: string) =>
+        formatXAxisLabel(value, locale, granularity);
+
     return (
         <Card className="group overflow-hidden">
             <CardHeader>
@@ -275,62 +344,76 @@ export function NetWorthChart({
                                 <TotalDisplay totals={currencyTotals} />
                             </div>
                             <PercentageTrendIndicator
-                                trend={monthlyTrend?.percentage ?? null}
-                                label={__('this month')}
-                                previousAmount={monthlyTrend?.previousAmount}
-                                currentAmount={monthlyTrend?.currentAmount}
+                                trend={shortTrend?.percentage ?? null}
+                                label={shortTrendLabel}
+                                previousAmount={shortTrend?.previousAmount}
+                                currentAmount={shortTrend?.currentAmount}
                                 currencyCode={primaryCurrency}
                             />
 
                             <PercentageTrendIndicator
-                                trend={yearlyTrend?.percentage ?? null}
-                                label={__('for the last 12 months')}
-                                previousAmount={yearlyTrend?.previousAmount}
-                                currentAmount={yearlyTrend?.currentAmount}
+                                trend={longTrend?.percentage ?? null}
+                                label={longTrendLabel}
+                                previousAmount={longTrend?.previousAmount}
+                                currentAmount={longTrend?.currentAmount}
                                 currencyCode={primaryCurrency}
                             />
                         </CardDescription>
                     </div>
 
-                    <ChartViewToggle
-                        value={chartViews.currentView}
-                        onValueChange={chartViews.setCurrentView}
-                        availableViews={chartViews.availableViews}
-                    />
+                    <div className="flex items-center gap-2">
+                        <ChartGranularityToggle
+                            value={granularity}
+                            onValueChange={setGranularity}
+                        />
+                        <ChartViewToggle
+                            value={chartViews.currentView}
+                            onValueChange={chartViews.setCurrentView}
+                            availableViews={chartViews.availableViews}
+                            granularity={granularity}
+                        />
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="relative min-w-0">
-                {chartViews.currentView === 'stacked' && (
-                    <StackedBarChart
-                        data={chartData.slice(1)}
-                        dataKeys={dataKeys}
-                        config={chartConfig}
-                        xAxisKey="month"
-                        xAxisFormatter={(value) =>
-                            formatXAxisLabel(value, locale)
-                        }
-                        valueFormatter={valueFormatter}
-                        accountCurrencies={accountCurrencies}
-                        className="h-[300px] w-full"
-                        showLegend={showLegend}
-                    />
-                )}
+                {chartViews.currentView === 'stacked' &&
+                    (granularity === 'daily' ? (
+                        <StackedAreaChart
+                            data={chartData.slice(1)}
+                            dataKeys={dataKeys}
+                            config={chartConfig}
+                            xAxisKey="month"
+                            xAxisFormatter={xAxisFormatter}
+                            valueFormatter={valueFormatter}
+                            accountCurrencies={accountCurrencies}
+                            className="h-[300px] w-full"
+                            showLegend={showLegend}
+                        />
+                    ) : (
+                        <StackedBarChart
+                            data={chartData.slice(1)}
+                            dataKeys={dataKeys}
+                            config={chartConfig}
+                            xAxisKey="month"
+                            xAxisFormatter={xAxisFormatter}
+                            valueFormatter={valueFormatter}
+                            accountCurrencies={accountCurrencies}
+                            className="h-[300px] w-full"
+                            showLegend={showLegend}
+                        />
+                    ))}
                 {chartViews.currentView === 'mom' && (
                     <MoMChart
                         data={chartViews.deltaSeries}
                         currencyCode={primaryCurrency}
-                        xAxisFormatter={(value) =>
-                            formatXAxisLabel(value, locale)
-                        }
+                        xAxisFormatter={xAxisFormatter}
                         className="h-[300px] w-full"
                     />
                 )}
                 {chartViews.currentView === 'mom_percent' && (
                     <MoMPercentChart
                         data={chartViews.momPercentSeries}
-                        xAxisFormatter={(value) =>
-                            formatXAxisLabel(value, locale)
-                        }
+                        xAxisFormatter={xAxisFormatter}
                         className="h-[300px] w-full"
                     />
                 )}
