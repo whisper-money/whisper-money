@@ -75,7 +75,7 @@ export function ChartViewToggle({
                             <ToggleGroupItem
                                 value={view}
                                 aria-label={config.label}
-                                className="px-2"
+                                className="px-2 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                             >
                                 <Icon className="size-3.5" />
                             </ToggleGroupItem>
