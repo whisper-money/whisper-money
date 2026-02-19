@@ -50,7 +50,12 @@ export function AmountTrendIndicator({
             : null;
 
     const content = (
-        <div className={cn(['flex items-center gap-1', className])}>
+        <div
+            className={cn([
+                'flex items-center gap-1 whitespace-nowrap',
+                className,
+            ])}
+        >
             <AmountDisplay
                 amountInCents={trend}
                 currencyCode={currencyCode}
