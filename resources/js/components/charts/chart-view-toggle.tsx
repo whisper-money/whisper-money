@@ -1,3 +1,4 @@
+import { type ChartGranularity } from '@/components/charts/chart-granularity-toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
     Tooltip,
@@ -12,23 +13,38 @@ interface ChartViewToggleProps {
     value: ChartViewType;
     onValueChange: (value: ChartViewType) => void;
     availableViews: ChartViewType[];
+    granularity?: ChartGranularity;
     className?: string;
 }
 
 const viewConfig: Record<
     ChartViewType,
-    { icon: React.ElementType; label: string; tooltip: string }
+    {
+        icon: React.ElementType;
+        label: string;
+        tooltip: { monthly: string; daily: string };
+    }
 > = {
     stacked: {
         icon: BarChart3,
         label: 'Aggregate',
-        tooltip: 'Monthly balance',
+        tooltip: { monthly: 'Monthly balance', daily: 'Daily balance' },
     },
-    mom: { icon: TrendingUp, label: 'MoM', tooltip: 'Month over month change' },
+    mom: {
+        icon: TrendingUp,
+        label: 'MoM',
+        tooltip: {
+            monthly: 'Month over month change',
+            daily: 'Day over day change',
+        },
+    },
     mom_percent: {
         icon: Percent,
         label: 'MoM%',
-        tooltip: 'Month over month change (%)',
+        tooltip: {
+            monthly: 'Month over month change (%)',
+            daily: 'Day over day change (%)',
+        },
     },
 };
 
@@ -36,6 +52,7 @@ export function ChartViewToggle({
     value,
     onValueChange,
     availableViews,
+    granularity = 'monthly',
     className,
 }: ChartViewToggleProps) {
     return (
@@ -58,13 +75,13 @@ export function ChartViewToggle({
                             <ToggleGroupItem
                                 value={view}
                                 aria-label={config.label}
-                                className="px-2"
+                                className="cursor-pointer px-2 aria-checked:bg-primary/10"
                             >
                                 <Icon className="size-3.5" />
                             </ToggleGroupItem>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">
-                            {config.tooltip}
+                            {config.tooltip[granularity]}
                         </TooltipContent>
                     </Tooltip>
                 );

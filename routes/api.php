@@ -45,6 +45,7 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('net-worth-evolution', [DashboardAnalyticsController::class, 'netWorthEvolution']);
         Route::get('top-categories', [DashboardAnalyticsController::class, 'topCategories']);
         Route::get('account/{account}/balance-evolution', [DashboardAnalyticsController::class, 'accountBalanceEvolution']);
+        Route::get('account/{account}/daily-balance-evolution', [DashboardAnalyticsController::class, 'accountDailyBalanceEvolution']);
     });
 
     // Cashflow Analytics

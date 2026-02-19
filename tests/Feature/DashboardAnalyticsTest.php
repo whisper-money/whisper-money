@@ -289,3 +289,98 @@ test('net worth evolution returns account metadata including bank', function () 
     expect($data['accounts'][$account->id])->toHaveKey('bank');
     expect($data['accounts'][$account->id]['bank'])->toHaveKeys(['id', 'name', 'logo']);
 });
+
+test('account daily balance evolution returns daily data points', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'name' => 'Daily Test Account',
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subDays(2),
+        'balance' => 100000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subDays(1),
+        'balance' => 110000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now(),
+        'balance' => 120000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/daily-balance-evolution?'.http_build_query([
+        'from' => now()->subDays(2)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data)->toHaveKeys(['data', 'account']);
+    expect($data['data'])->toHaveCount(3);
+    expect($data['data'][0])->toHaveKeys(['date', 'timestamp', 'value']);
+    expect($data['data'][0]['date'])->toBe(now()->subDays(2)->format('Y-m-d'));
+    expect($data['data'][0]['value'])->toBe(100000);
+    expect($data['data'][1]['value'])->toBe(110000);
+    expect($data['data'][2]['value'])->toBe(120000);
+    expect($data['account']['id'])->toBe($account->id);
+    expect($data['account']['currency_code'])->toBe('USD');
+});
+
+test('account daily balance evolution fills gaps with last known balance', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Savings,
+    ]);
+
+    // Balance before the range — carried forward into gap days
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subDays(10),
+        'balance' => 50000,
+    ]);
+
+    // Balance on the last day of the range
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now(),
+        'balance' => 80000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/daily-balance-evolution?'.http_build_query([
+        'from' => now()->subDays(2)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    // 3 days in range: -2, -1, today
+    expect($data['data'])->toHaveCount(3);
+    // Days -2 and -1 have no direct entry, so they carry forward the 50000 balance
+    expect($data['data'][0]['value'])->toBe(50000);
+    expect($data['data'][1]['value'])->toBe(50000);
+    // Today has the actual 80000 entry
+    expect($data['data'][2]['value'])->toBe(80000);
+});
+
+test('account daily balance evolution forbids access to other users accounts', function () {
+    $otherUser = User::factory()->create();
+    $account = Account::factory()->create([
+        'user_id' => $otherUser->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/daily-balance-evolution?'.http_build_query([
+        'from' => now()->subDays(7)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertForbidden();
+});

@@ -100,6 +100,22 @@ export function formatDateMedium(
 }
 
 /**
+ * Format a date from YYYY-MM-DD string for daily chart X-axis labels
+ * Shows "MMM d" (e.g., "Feb 14") for current year, or "MMM d 'YY" for other years
+ */
+export function formatDayFromDate(
+    dateStr: string,
+    locale: string = 'en-US',
+): string {
+    const date = new Date(dateStr + 'T00:00:00');
+    const isCurrentYear = date.getFullYear() === new Date().getFullYear();
+
+    const formatStr = isCurrentYear ? 'MMM d' : "MMM d ''yy";
+
+    return formatDate(date, formatStr, locale);
+}
+
+/**
  * Format a date with weekday, day, month, and year (e.g., "Thu, Jan 23, 2025" or "Jue, 23 ene 2025")
  * Capitalizes the first letter
  */
