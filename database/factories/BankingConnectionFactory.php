@@ -101,6 +101,21 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function bitpanda(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => 'bitpanda',
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'test-bitpanda-api-key-'.fake()->uuid(),
+            'api_secret' => null,
+            'aspsp_name' => 'Bitpanda',
+            'aspsp_country' => 'ES',
+            'aspsp_logo' => 'https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png',
+            'valid_until' => null,
+        ]);
+    }
+
     public function error(): static
     {
         return $this->state(fn (array $attributes) => [

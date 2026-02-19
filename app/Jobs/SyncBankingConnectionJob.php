@@ -8,6 +8,8 @@ use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\BinanceBalanceSyncService;
 use App\Services\Banking\BinanceClient;
+use App\Services\Banking\BitpandaBalanceSyncService;
+use App\Services\Banking\BitpandaClient;
 use App\Services\Banking\IndexaCapitalBalanceSyncService;
 use App\Services\Banking\IndexaCapitalClient;
 use App\Services\Banking\TransactionSyncService;
@@ -58,6 +60,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 $this->syncIndexaCapital($connection);
             } elseif ($connection->isBinance()) {
                 $this->syncBinance($connection);
+            } elseif ($connection->isBitpanda()) {
+                $this->syncBitpanda($connection);
             } else {
                 $this->syncEnableBanking($connection, $transactionSync, $balanceSync);
             }
@@ -108,6 +112,18 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             } else {
                 $syncService->sync($account, $client, isFirstSync: false);
             }
+        }
+    }
+
+    private function syncBitpanda(BankingConnection $connection): void
+    {
+        $client = new BitpandaClient($connection->api_token);
+        $syncService = app(BitpandaBalanceSyncService::class);
+
+        $connection->load('accounts');
+
+        foreach ($connection->accounts as $account) {
+            $syncService->sync($account, $client);
         }
     }
 

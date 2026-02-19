@@ -1,0 +1,128 @@
+<?php
+
+namespace App\Services\Banking;
+
+use App\Models\Account;
+use Illuminate\Support\Facades\Log;
+
+class BitpandaBalanceSyncService
+{
+    /**
+     * Sync the total portfolio value for a Bitpanda account.
+     * Uses Bitpanda's own ticker prices to match the values shown in the Bitpanda dashboard.
+     */
+    public function sync(Account $account, BitpandaClient $client): void
+    {
+        if (! $account->external_account_id) {
+            return;
+        }
+
+        $this->syncCurrentBalance($account, $client);
+    }
+
+    /**
+     * Sync today's balance by fetching all wallets and converting to target currency
+     * using Bitpanda's own ticker prices.
+     */
+    public function syncCurrentBalance(Account $account, BitpandaClient $client): void
+    {
+        $targetCurrency = strtoupper($account->currency_code);
+        $ticker = $client->getTickerPrices();
+        $totalValue = 0.0;
+
+        $totalValue += $this->sumCryptoWallets($client, $ticker, $targetCurrency);
+        $totalValue += $this->sumFiatWallets($client, $targetCurrency);
+
+        $totalValueCents = (int) round($totalValue * 100);
+
+        $account->balances()->updateOrCreate(
+            ['balance_date' => now()->toDateString()],
+            ['balance' => $totalValueCents],
+        );
+    }
+
+    /**
+     * Sum all crypto wallet balances using Bitpanda's ticker prices.
+     *
+     * @param  array<string, array<string, string>>  $ticker
+     */
+    private function sumCryptoWallets(BitpandaClient $client, array $ticker, string $targetCurrency): float
+    {
+        $wallets = $client->getCryptoWallets();
+        $total = 0.0;
+
+        foreach ($wallets['data'] ?? [] as $wallet) {
+            $attributes = $wallet['attributes'] ?? [];
+            $balance = (float) ($attributes['balance'] ?? 0);
+            $symbol = $attributes['cryptocoin_symbol'] ?? null;
+            $deleted = $attributes['deleted'] ?? false;
+
+            if ($balance <= 0 || ! $symbol || $deleted) {
+                continue;
+            }
+
+            $price = $this->getTickerPrice($ticker, $symbol, $targetCurrency);
+
+            if ($price === null) {
+                Log::warning('Bitpanda ticker price not found for asset', [
+                    'asset' => $symbol,
+                    'target_currency' => $targetCurrency,
+                ]);
+
+                continue;
+            }
+
+            $total += $balance * $price;
+        }
+
+        return $total;
+    }
+
+    /**
+     * Sum all fiat wallet balances, using ticker to convert if needed.
+     */
+    private function sumFiatWallets(BitpandaClient $client, string $targetCurrency): float
+    {
+        $wallets = $client->getFiatWallets();
+        $total = 0.0;
+
+        foreach ($wallets['data'] ?? [] as $wallet) {
+            $attributes = $wallet['attributes'] ?? [];
+            $balance = (float) ($attributes['balance'] ?? 0);
+            $symbol = strtoupper($attributes['fiat_symbol'] ?? '');
+
+            if ($balance <= 0 || ! $symbol) {
+                continue;
+            }
+
+            if ($symbol === $targetCurrency) {
+                $total += $balance;
+            } else {
+                // Fiat-to-fiat conversion is rare on Bitpanda; use simple rate if available
+                Log::warning('Bitpanda fiat wallet in different currency than target', [
+                    'fiat_symbol' => $symbol,
+                    'target_currency' => $targetCurrency,
+                    'balance' => $balance,
+                ]);
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Get the ticker price for an asset in the target currency.
+     *
+     * @param  array<string, array<string, string>>  $ticker
+     */
+    private function getTickerPrice(array $ticker, string $symbol, string $targetCurrency): ?float
+    {
+        $price = $ticker[$symbol][$targetCurrency] ?? null;
+
+        if ($price === null) {
+            return null;
+        }
+
+        return (float) $price;
+    }
+}

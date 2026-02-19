@@ -55,6 +55,13 @@ const BINANCE_INSTITUTION: EnableBankingInstitution = {
     maximum_consent_validity: null,
 };
 
+const BITPANDA_INSTITUTION: EnableBankingInstitution = {
+    name: 'Bitpanda',
+    country: 'ALL',
+    logo: 'https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png',
+    maximum_consent_validity: null,
+};
+
 interface ConnectAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -92,6 +99,7 @@ export function ConnectAccountDialog({
     const [apiToken, setApiToken] = useState('');
     const [apiKey, setApiKey] = useState('');
     const [apiSecret, setApiSecret] = useState('');
+    const [bitpandaApiKey, setBitpandaApiKey] = useState('');
 
     const isIndexaCapital = useMemo(
         () => selectedBank?.name === 'Indexa Capital',
@@ -100,6 +108,11 @@ export function ConnectAccountDialog({
 
     const isBinance = useMemo(
         () => selectedBank?.name === 'Binance',
+        [selectedBank],
+    );
+
+    const isBitpanda = useMemo(
+        () => selectedBank?.name === 'Bitpanda',
         [selectedBank],
     );
 
@@ -116,6 +129,7 @@ export function ConnectAccountDialog({
         setApiToken('');
         setApiKey('');
         setApiSecret('');
+        setBitpandaApiKey('');
     }, []);
 
     useEffect(() => {
@@ -157,7 +171,10 @@ export function ConnectAccountDialog({
 
             const data = await response.json();
 
-            const extraInstitutions = [BINANCE_INSTITUTION];
+            const extraInstitutions = [
+                BINANCE_INSTITUTION,
+                BITPANDA_INSTITUTION,
+            ];
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
             }
@@ -183,21 +200,25 @@ export function ConnectAccountDialog({
         setError(null);
 
         try {
-            const url = isBinance
-                ? '/open-banking/binance/connect'
-                : isIndexaCapital
-                  ? '/open-banking/indexa-capital/connect'
-                  : '/open-banking/authorize';
+            const url = isBitpanda
+                ? '/open-banking/bitpanda/connect'
+                : isBinance
+                  ? '/open-banking/binance/connect'
+                  : isIndexaCapital
+                    ? '/open-banking/indexa-capital/connect'
+                    : '/open-banking/authorize';
 
-            const body = isBinance
-                ? { api_key: apiKey, api_secret: apiSecret, country: country }
-                : isIndexaCapital
-                  ? { api_token: apiToken }
-                  : {
-                        aspsp_name: selectedBank.name,
-                        country: country,
-                        logo: selectedBank.logo,
-                    };
+            const body = isBitpanda
+                ? { api_key: bitpandaApiKey, country: country }
+                : isBinance
+                  ? { api_key: apiKey, api_secret: apiSecret, country: country }
+                  : isIndexaCapital
+                    ? { api_token: apiToken }
+                    : {
+                          aspsp_name: selectedBank.name,
+                          country: country,
+                          logo: selectedBank.logo,
+                      };
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -242,6 +263,7 @@ export function ConnectAccountDialog({
                         {step === 'confirm' &&
                             !isIndexaCapital &&
                             !isBinance &&
+                            !isBitpanda &&
                             __(
                                 'You will be redirected to your bank to authorize access.',
                             )}
@@ -254,6 +276,11 @@ export function ConnectAccountDialog({
                             isBinance &&
                             __(
                                 'Enter your API Key and Secret to connect your Binance account.',
+                            )}
+                        {step === 'confirm' &&
+                            isBitpanda &&
+                            __(
+                                'Enter your API Key to connect your Bitpanda account.',
                             )}
                     </DialogDescription>
                 </DialogHeader>
@@ -361,17 +388,21 @@ export function ConnectAccountDialog({
                                         {selectedBank.name}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {isBinance
+                                        {isBitpanda
                                             ? __(
-                                                  'Connect your Binance account using your API Key and Secret.',
+                                                  'Connect your Bitpanda account using your API Key.',
                                               )
-                                            : isIndexaCapital
+                                            : isBinance
                                               ? __(
-                                                    'Connect your Indexa Capital account using your API token.',
+                                                    'Connect your Binance account using your API Key and Secret.',
                                                 )
-                                              : __(
-                                                    'You will be redirected to authorize access to your account data.',
-                                                )}
+                                              : isIndexaCapital
+                                                ? __(
+                                                      'Connect your Indexa Capital account using your API token.',
+                                                  )
+                                                : __(
+                                                      'You will be redirected to authorize access to your account data.',
+                                                  )}
                                     </p>
                                 </div>
                             </div>
@@ -464,6 +495,40 @@ export function ConnectAccountDialog({
                             </div>
                         )}
 
+                        {isBitpanda && (
+                            <div className="space-y-2">
+                                <Label htmlFor="bitpanda-api-key">
+                                    {__('API Key')}
+                                </Label>
+                                <Input
+                                    id="bitpanda-api-key"
+                                    type="password"
+                                    value={bitpandaApiKey}
+                                    onChange={(e) =>
+                                        setBitpandaApiKey(e.target.value)
+                                    }
+                                    className="mt-1"
+                                    placeholder={__(
+                                        'Paste your Bitpanda API Key',
+                                    )}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {__(
+                                        'You can create API keys from your Bitpanda account under',
+                                    )}{' '}
+                                    <a
+                                        href="https://web.bitpanda.com/apikey"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        {__('API Key Management')}
+                                    </a>
+                                    .
+                                </p>
+                            </div>
+                        )}
+
                         <div className="flex justify-end gap-2">
                             <Button
                                 variant="outline"
@@ -477,7 +542,8 @@ export function ConnectAccountDialog({
                                 disabled={
                                     isSubmitting ||
                                     (isIndexaCapital && !apiToken) ||
-                                    (isBinance && (!apiKey || !apiSecret))
+                                    (isBinance && (!apiKey || !apiSecret)) ||
+                                    (isBitpanda && !bitpandaApiKey)
                                 }
                             >
                                 {isSubmitting

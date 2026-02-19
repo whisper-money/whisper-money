@@ -465,3 +465,128 @@ test('binance subsequent sync does not dispatch historical job', function () {
 
     Queue::assertNotPushed(SyncBinanceHistoricalBalancesJob::class);
 });
+
+test('bitpanda sync calls balance sync service and updates last_synced_at', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->bitpanda()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'bitpanda-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.bitpanda.com/v1/wallets' => Http::response([
+            'data' => [
+                [
+                    'type' => 'wallet',
+                    'attributes' => [
+                        'cryptocoin_id' => '1',
+                        'cryptocoin_symbol' => 'BTC',
+                        'balance' => '0.50000000',
+                        'is_default' => true,
+                        'name' => 'BTC wallet',
+                        'deleted' => false,
+                    ],
+                    'id' => 'wallet-uuid-1',
+                ],
+            ],
+        ]),
+        'api.bitpanda.com/v1/fiatwallets' => Http::response([
+            'data' => [
+                [
+                    'type' => 'fiat_wallet',
+                    'attributes' => [
+                        'fiat_id' => '1',
+                        'fiat_symbol' => 'EUR',
+                        'balance' => '200.00000000',
+                        'name' => 'EUR Wallet',
+                    ],
+                    'id' => 'fiat-wallet-uuid-1',
+                ],
+            ],
+        ]),
+        'api.bitpanda.com/v1/ticker' => Http::response([
+            'BTC' => ['EUR' => '50000.00'],
+        ]),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldNotReceive('sync');
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldNotReceive('sync');
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->last_synced_at)->not->toBeNull();
+    expect($account->balances()->count())->toBe(1);
+});
+
+test('bitpanda connections do not expire', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->bitpanda()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->subDay(),
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'bitpanda-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.bitpanda.com/v1/wallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/ticker' => Http::response([]),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->last_synced_at)->not->toBeNull();
+});
+
+test('bitpanda sync does not send email', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->bitpanda()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'bitpanda-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.bitpanda.com/v1/wallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/ticker' => Http::response([]),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    Mail::assertNothingQueued();
+});
