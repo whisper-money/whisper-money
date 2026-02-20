@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.1.10](https://github.com/whisper-money/whisper-money/compare/v0.1.9...v0.1.10) (2026-02-20)
+
+
+### Bug Fixes
+
+* Accounts name on settings/account ([202835f](https://github.com/whisper-money/whisper-money/commit/202835f76e6741ba0bf70c25b14fa1f63ec7ac94))
+* Add gap between filter/create button on mobile settings pages ([#115](https://github.com/whisper-money/whisper-money/issues/115)) ([726bce6](https://github.com/whisper-money/whisper-money/commit/726bce61ef8e1d923b49a576d3fcccad31e1adc1))
+* Automerge PR's where not triggering CI on main branch ([ab160ae](https://github.com/whisper-money/whisper-money/commit/ab160ae4890371a9100b6cd89cbce2d0a09180d2))
+* Budget period not found on last day of period ([#91](https://github.com/whisper-money/whisper-money/issues/91)) ([00b2ca7](https://github.com/whisper-money/whisper-money/commit/00b2ca7c55d947d95c9582ce2039a91376f83db9))
+* **cashflow:** prevent breakdown cards overflow on mobile ([#139](https://github.com/whisper-money/whisper-money/issues/139)) ([c03f576](https://github.com/whisper-money/whisper-money/commit/c03f5767585ce084945da00bbf3af902dce5d123))
+* **charts:** use settings popover for chart controls on mobile ([#137](https://github.com/whisper-money/whisper-money/issues/137)) ([880b276](https://github.com/whisper-money/whisper-money/commit/880b27675cd1428fd6194fa7d0a058f398817079))
+* console error ([a76826b](https://github.com/whisper-money/whisper-money/commit/a76826bd62e213537c3308bb0678abe9c40a54b3))
+* Console log errors with Charts ([48b4b7b](https://github.com/whisper-money/whisper-money/commit/48b4b7bd01d4c9f80b3de98048746c537719d2af))
+* Delete pending connection and show toast on cancelled bank authorization ([#111](https://github.com/whisper-money/whisper-money/issues/111)) ([c7f3f1a](https://github.com/whisper-money/whisper-money/commit/c7f3f1a9788d33f324028aabcad19238f1c00ec3))
+* Disable email verification on dev/local ([1b0f3ba](https://github.com/whisper-money/whisper-money/commit/1b0f3ba24dc2c18fcd6c43abcb7c42c6184ec6ea))
+* Discord link ([d7f0084](https://github.com/whisper-money/whisper-money/commit/d7f00843380042ac121e50eb94deb0ea86470f55))
+* Header on iOS ([1d669b4](https://github.com/whisper-money/whisper-money/commit/1d669b44ca9e54247f66615cf11e5647aa2b2327))
+* Hide transaction checkboxes on mobile ([#109](https://github.com/whisper-money/whisper-money/issues/109)) ([abd7a2f](https://github.com/whisper-money/whisper-money/commit/abd7a2f9aa681aa19e091eeb6b3a161a71f1ae69))
+* Install script improvements ([da328ef](https://github.com/whisper-money/whisper-money/commit/da328efe7925c8fbb092579415ee66dfa2903891))
+* Missing import ([b3103d4](https://github.com/whisper-money/whisper-money/commit/b3103d4a61e20a33003c4dc436ab34bf9180fa0f))
+* Onboarding, account not shown on the import drawer ([#121](https://github.com/whisper-money/whisper-money/issues/121)) ([eeca437](https://github.com/whisper-money/whisper-money/commit/eeca437586b8f9f564782ea92bf85412eea28bb6))
+* Prevent account card content overflow on long names ([#133](https://github.com/whisper-money/whisper-money/issues/133)) ([a2b1e91](https://github.com/whisper-money/whisper-money/commit/a2b1e91b49695c299ea8c437048e6c3d429e653f))
+* Prevent automerge when CI checks have failed ([#95](https://github.com/whisper-money/whisper-money/issues/95)) ([6101cfd](https://github.com/whisper-money/whisper-money/commit/6101cfdfa022f3ecb78cc924e014667169f51d08)), closes [#94](https://github.com/whisper-money/whisper-money/issues/94) [#94](https://github.com/whisper-money/whisper-money/issues/94)
+* Prevent re-syncing deleted bank transactions ([#114](https://github.com/whisper-money/whisper-money/issues/114)) ([d1ba189](https://github.com/whisper-money/whisper-money/commit/d1ba18932e80e858c8e928530a5d012747288b96))
+* Small dashboard UI fix ([1500e5c](https://github.com/whisper-money/whisper-money/commit/1500e5cd9126bfd5be4e5e0c4e5767cb59d97c9a))
+* Top spending categories bug ([e8e4f47](https://github.com/whisper-money/whisper-money/commit/e8e4f4780497780daf88e2c1a6abd69bf290a9a2))
+* Top spending categories on mobile ([74ac346](https://github.com/whisper-money/whisper-money/commit/74ac346ca0c3b38a4b4b59a308a087fba78bc0e3))
+* Top spending category must be 100% with always ([f31a44b](https://github.com/whisper-money/whisper-money/commit/f31a44bba2756a4111f3e5e2c3d1b7ae2c643124))
+* Trigger sync on transactions drawer ([f88444f](https://github.com/whisper-money/whisper-money/commit/f88444fece957899245d0717414ac1efa345edb9))
+* Use workflow_run trigger for automerge ([#89](https://github.com/whisper-money/whisper-money/issues/89)) ([dfd8bf8](https://github.com/whisper-money/whisper-money/commit/dfd8bf8092a666fe4e955a37a7c63de33d732ced))
+* Welcome page mobile display for iOS ([#94](https://github.com/whisper-money/whisper-money/issues/94)) ([28f9432](https://github.com/whisper-money/whisper-money/commit/28f9432af4912344825007f463ae91480e336932))
+
+
+### Features
+
+* Add --user and --connection filters to banking:sync command ([#122](https://github.com/whisper-money/whisper-money/issues/122)) ([b9abf49](https://github.com/whisper-money/whisper-money/commit/b9abf49617c7a8ef2803fc9231e35a2695ef5004))
+* Add 'Today' marker on budget spending chart ([#134](https://github.com/whisper-money/whisper-money/issues/134)) ([a0d19ae](https://github.com/whisper-money/whisper-money/commit/a0d19aef812024c9f218665b4d144d3ba7ba28f2))
+* Add automerge workflow for labeled PRs ([#88](https://github.com/whisper-money/whisper-money/issues/88)) ([10bd7da](https://github.com/whisper-money/whisper-money/commit/10bd7da5dbc1c0dada7bc0b72375ad9cd3fd9be7))
+* Add Binance integration ([#131](https://github.com/whisper-money/whisper-money/issues/131)) ([df9fc38](https://github.com/whisper-money/whisper-money/commit/df9fc385623a1ace173d4fbbc6e9a79ed93dc5ed))
+* Add Bitpanda exchange integration ([#132](https://github.com/whisper-money/whisper-money/issues/132)) ([fe76c2e](https://github.com/whisper-money/whisper-money/commit/fe76c2e43d2aa32210292456bc9d9c50355f3c2b))
+* Add daily balance chart with area visualization for account pages ([#135](https://github.com/whisper-money/whisper-money/issues/135)) ([126f7f7](https://github.com/whisper-money/whisper-money/commit/126f7f7e72e90ef0ae2862fd463136b70857e6ff))
+* Add daily granularity toggle with area visualization to net worth chart ([#136](https://github.com/whisper-money/whisper-money/issues/136)) ([900cf41](https://github.com/whisper-money/whisper-money/commit/900cf41e317433eedd76e28c7e6b9846cb330d69))
+* Add Indexa Capital integration ([#130](https://github.com/whisper-money/whisper-money/issues/130)) ([3f541ca](https://github.com/whisper-money/whisper-money/commit/3f541ca4d6376bc8a04d54851eccc7265060fe78))
+* Add multi-currency conversion for net worth charts ([#138](https://github.com/whisper-money/whisper-money/issues/138)) ([b743cad](https://github.com/whisper-money/whisper-money/commit/b743cad8039167d30c2278156b707b170922ac5a))
+* Add per-bank description formatter for bank-synced transactions ([#120](https://github.com/whisper-money/whisper-money/issues/120)) ([9242b3f](https://github.com/whisper-money/whisper-money/commit/9242b3fe5f14a03321a7bf4d1c9478f109f05ab6))
+* Add previous period comparison to budget chart ([#93](https://github.com/whisper-money/whisper-money/issues/93)) ([9bbd91a](https://github.com/whisper-money/whisper-money/commit/9bbd91ac12d98c8919de9b15c56d841333ebbb18))
+* Apply automation rules to bank-synced transactions ([#112](https://github.com/whisper-money/whisper-money/issues/112)) ([8ce0adf](https://github.com/whisper-money/whisper-money/commit/8ce0adf8aec1e297ba87ab2ce4b39c851241fae0))
+* Bulk delete with type-to-confirm modal ([#110](https://github.com/whisper-money/whisper-money/issues/110)) ([03fec11](https://github.com/whisper-money/whisper-money/commit/03fec11705acc7521d4b179d41ae59af60f34023))
+* Decrypt encrypted transactions on key unlock ([#123](https://github.com/whisper-money/whisper-money/issues/123)) ([6abec95](https://github.com/whisper-money/whisper-money/commit/6abec95d0eee266e1a4570400bd82d2e5228695e))
+* Docker dev env with Caddy, PHP on host ([#103](https://github.com/whisper-money/whisper-money/issues/103)) ([caccac6](https://github.com/whisper-money/whisper-money/commit/caccac6166c2e4fc9d485c710f06a65c1dd7360e))
+* Enable email verification on sign up ([#97](https://github.com/whisper-money/whisper-money/issues/97)) ([370d388](https://github.com/whisper-money/whisper-money/commit/370d388d99e01ab07fcfdec0991701e5204a30c3))
+* Improve PWA standalone experience and redirect to dashboard ([#90](https://github.com/whisper-money/whisper-money/issues/90)) ([b4897ef](https://github.com/whisper-money/whisper-money/commit/b4897ef4250fc467d01f57e7dc08ecf21faeb183)), closes [#71](https://github.com/whisper-money/whisper-money/issues/71)
+* Integrate EnableBanking as open banking provider ([#106](https://github.com/whisper-money/whisper-money/issues/106)) ([db7b6e4](https://github.com/whisper-money/whisper-money/commit/db7b6e4da7d6513c9fb088f4460256550cce246f))
+* Plaintext transactions behind feature flag ([#105](https://github.com/whisper-money/whisper-money/issues/105)) ([e35f712](https://github.com/whisper-money/whisper-money/commit/e35f7125b31e7682f36081cfb5f5750cf0433631))
+* Redirect to dashboard when running as installed PWA ([#92](https://github.com/whisper-money/whisper-money/issues/92)) ([1d1c0c3](https://github.com/whisper-money/whisper-money/commit/1d1c0c36fe3041dc8bc179dc2b96aaba4fd87214))
+* Remove dev command from whispermoney ([1930cf2](https://github.com/whisper-money/whisper-money/commit/1930cf229eb96508d158e145f47a7c7c82821f49))
+* Replace settings sidebar with dropdown on mobile ([#117](https://github.com/whisper-money/whisper-money/issues/117)) ([b69138d](https://github.com/whisper-money/whisper-money/commit/b69138df60ecc7358cbbdb698c0f3d4767b1c643))
+* Replace user avatar with Facehash faces ([#86](https://github.com/whisper-money/whisper-money/issues/86)) ([6aa9da3](https://github.com/whisper-money/whisper-money/commit/6aa9da3df39e768a87037d5d4bb9d6f981728714))
+* Show loading spinner on landing page when in PWA mode ([#96](https://github.com/whisper-money/whisper-money/issues/96)) ([21d36bb](https://github.com/whisper-money/whisper-money/commit/21d36bb53b849e17a9c3e46b065d64607e48188f))
+* Show PWA install button on mobile landing page ([#99](https://github.com/whisper-money/whisper-money/issues/99)) ([abc71da](https://github.com/whisper-money/whisper-money/commit/abc71daa7e65b386eb30ba9672c8288016665a56))
+* Spanish localization ([#74](https://github.com/whisper-money/whisper-money/issues/74)) ([70b603e](https://github.com/whisper-money/whisper-money/commit/70b603e901c058c40f19b7c7ce1d31c7ecb0f640))
+
 ## [0.1.9](https://github.com/whisper-money/whisper-money/compare/v0.1.8...v0.1.9) (2026-01-28)
 
 
