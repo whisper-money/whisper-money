@@ -232,7 +232,7 @@ export function NetWorthChart({
     });
 
     const valueFormatter = useMemo(() => {
-        return (value: number, accountId?: string): React.ReactNode => {
+        return (value: number): React.ReactNode => {
             return (
                 <AmountDisplay
                     amountInCents={value}
