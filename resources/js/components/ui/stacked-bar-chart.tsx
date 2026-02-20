@@ -122,8 +122,9 @@ export interface StackedBarChartProps<T extends Record<string, unknown>> {
     config: ChartConfig;
     xAxisKey: string;
     xAxisFormatter?: (value: string) => string;
-    valueFormatter?: (value: number, accountId?: string) => string;
+    valueFormatter?: (value: number, accountId?: string) => React.ReactNode;
     accountCurrencies?: Record<string, string>;
+    displayCurrency?: string;
     className?: string;
     showLegend?: boolean;
     minBarWidth?: number;
@@ -137,6 +138,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
     xAxisFormatter,
     valueFormatter,
     accountCurrencies,
+    displayCurrency,
     className,
     showLegend = true,
     minBarWidth = 50,
@@ -203,6 +205,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                                 hideLabel
                                 valueFormatter={valueFormatter}
                                 accountCurrencies={accountCurrencies}
+                                displayCurrency={displayCurrency}
                             />
                         }
                     />

@@ -13,9 +13,15 @@ export interface NetWorthEvolutionAccount {
     bank: Bank;
 }
 
+export interface OriginalAmount {
+    amount: number;
+    currency_code: string;
+}
+
 export interface NetWorthEvolutionData {
-    data: Array<Record<string, string | number>>;
+    data: Array<Record<string, string | number | OriginalAmount>>;
     accounts: Record<string, NetWorthEvolutionAccount>;
+    currency_code: string;
 }
 
 export interface AccountWithMetrics extends Account {
@@ -87,7 +93,7 @@ function formatMonth(yearMonth: string): string {
 
 export function useDashboardData(): DashboardData & { refetch: () => void } {
     const [data, setData] = useState<Omit<DashboardData, 'isLoading'>>({
-        netWorthEvolution: { data: [], accounts: {} },
+        netWorthEvolution: { data: [], accounts: {}, currency_code: 'USD' },
         accounts: [],
         topCategories: [],
     });
