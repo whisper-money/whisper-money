@@ -306,6 +306,18 @@ const ChartTooltipContent = React.forwardRef<
                                                 </div>
                                                 {item.value !== undefined && (
                                                     <span className="text-foreground font-mono font-medium tabular-nums">
+                                                        {(() => {
+                                                            const originalKey = `${accountId}_original`;
+                                                            const original = item.payload?.[originalKey] as { amount: number; currency_code: string } | undefined;
+                                                            if (original) {
+                                                                return (
+                                                                    <span className="text-muted-foreground mr-1 text-[10px]">
+                                                                        ({formatCurrencyWithCode(original.amount, original.currency_code)})
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
                                                         {valueFormatter
                                                             ? valueFormatter(
                                                                 item.value as number,
@@ -315,18 +327,6 @@ const ChartTooltipContent = React.forwardRef<
                                                                 'number'
                                                                 ? item.value.toLocaleString()
                                                                 : item.value}
-                                                        {(() => {
-                                                            const originalKey = `${accountId}_original`;
-                                                            const original = item.payload?.[originalKey] as { amount: number; currency_code: string } | undefined;
-                                                            if (original) {
-                                                                return (
-                                                                    <span className="text-muted-foreground ml-1 text-[10px]">
-                                                                        ({formatCurrencyWithCode(original.amount, original.currency_code)})
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            return null;
-                                                        })()}
                                                     </span>
                                                 )}
                                             </div>
