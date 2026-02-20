@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
+use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardAnalyticsController extends Controller
 {
+    public function __construct(private ExchangeRateService $exchangeRateService) {}
+
     public function netWorth(Request $request)
     {
         $validated = $request->validate([
@@ -25,9 +27,12 @@ class DashboardAnalyticsController extends Controller
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
 
+        $userCurrency = $request->user()->currency_code;
+
         return response()->json([
-            'current' => $this->calculateNetWorthAt($period->to),
-            'previous' => $this->calculateNetWorthAt($previousPeriod->to),
+            'current' => $this->calculateNetWorthAt($period->to, $userCurrency),
+            'previous' => $this->calculateNetWorthAt($previousPeriod->to, $userCurrency),
+            'currency_code' => $userCurrency,
         ]);
     }
 
@@ -73,6 +78,8 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
+        $userCurrency = $request->user()->currency_code;
+
         $accounts = Account::query()
             ->where('user_id', $request->user()->id)
             ->with(['bank:id,name,logo'])
@@ -90,7 +97,22 @@ class DashboardAnalyticsController extends Controller
             ];
 
             foreach ($accounts as $account) {
-                $point[$account->id] = $this->getBalanceAt($account->id, $date);
+                $originalBalance = $this->getBalanceAt($account->id, $date);
+                $convertedBalance = $this->convertBalance(
+                    $originalBalance,
+                    $account->currency_code,
+                    $userCurrency,
+                    $date->toDateString(),
+                );
+
+                $point[$account->id] = $convertedBalance;
+
+                if ($account->currency_code !== $userCurrency) {
+                    $point[$account->id.'_original'] = [
+                        'amount' => $originalBalance,
+                        'currency_code' => $account->currency_code,
+                    ];
+                }
             }
 
             $points[] = $point;
@@ -114,6 +136,7 @@ class DashboardAnalyticsController extends Controller
         return response()->json([
             'data' => $points,
             'accounts' => $accountsConfig,
+            'currency_code' => $userCurrency,
         ]);
     }
 
@@ -208,6 +231,8 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
+        $userCurrency = $request->user()->currency_code;
+
         $accounts = Account::query()
             ->where('user_id', $request->user()->id)
             ->with(['bank:id,name,logo'])
@@ -224,7 +249,22 @@ class DashboardAnalyticsController extends Controller
             ];
 
             foreach ($accounts as $account) {
-                $point[$account->id] = $this->getBalanceAt($account->id, $date);
+                $originalBalance = $this->getBalanceAt($account->id, $date);
+                $convertedBalance = $this->convertBalance(
+                    $originalBalance,
+                    $account->currency_code,
+                    $userCurrency,
+                    $date->toDateString(),
+                );
+
+                $point[$account->id] = $convertedBalance;
+
+                if ($account->currency_code !== $userCurrency) {
+                    $point[$account->id.'_original'] = [
+                        'amount' => $originalBalance,
+                        'currency_code' => $account->currency_code,
+                    ];
+                }
             }
 
             $points[] = $point;
@@ -248,6 +288,7 @@ class DashboardAnalyticsController extends Controller
         return response()->json([
             'data' => $points,
             'accounts' => $accountsConfig,
+            'currency_code' => $userCurrency,
         ]);
     }
 
@@ -305,52 +346,20 @@ class DashboardAnalyticsController extends Controller
             });
     }
 
-    private function calculateNetWorthAt(Carbon $date): int
+    private function calculateNetWorthAt(Carbon $date, string $userCurrency): int
     {
-        // Get latest balance for each account on or before date
         $accounts = Account::where('user_id', request()->user()->id)->get();
 
         $total = 0;
 
         foreach ($accounts as $account) {
             $balance = $this->getBalanceAt($account->id, $date);
-
-            // Assets: Checking, Savings, Others
-            // Liabilities: CreditCard, Loan
-            if (in_array($account->type, [AccountType::CreditCard, AccountType::Loan])) {
-                // Liabilities should be subtracted from Net Worth.
-                // If balance is stored as positive debt (e.g. $1000 debt), we subtract it.
-                // If balance is stored as negative (e.g. -$1000), we add it.
-                // Standard convention in this app seems to be signed values based on `account_balances` table.
-                // Let's assume standard accounting: Credit Card balance of -$500 means I owe $500.
-                // So I just sum everything up.
-                // Wait, user option was "Assets minus liabilities".
-                // If I have $1000 in Checking (Asset) and -$500 in CC (Liability).
-                // Net Worth = 1000 + (-500) = 500.
-                // This is effectively "Sum of all accounts".
-                // User explicitly selected "Assets minus liabilities" vs "Sum of all accounts".
-                // "Sum of all accounts - This treats all accounts equally. Simple but may include debt as negative values."
-                // "Assets minus liabilities - ... Net Worth = Total Assets - Total Liabilities."
-
-                // If Credit Card balance is stored as POSITIVE (e.g. "I owe $500"), then Net Worth = Assets - Liabilities.
-                // If Credit Card balance is stored as NEGATIVE (e.g. "-$500"), then Net Worth = Assets + Liabilities (1000 + (-500) = 500).
-
-                // Let's check `AccountBalance` table data or assumptions.
-                // I'll assume balances are stored as their actual signed value (Assets +, Liabilities -).
-                // If so, simple sum is correct.
-                // BUT, if the user chose "Assets minus liabilities" distinct from "Sum of all",
-                // it implies liabilities might be stored as positive numbers?
-                // OR they just want the breakdown.
-
-                // Let's double check how `useDashboardData` calculated it previously.
-                // `const currentNetWorth = accountMetrics.reduce((sum, acc) => sum + acc.currentBalance, 0);`
-                // It was just summing them up.
-
-                // If I assume signed balances:
-                $total += $balance;
-            } else {
-                $total += $balance;
-            }
+            $total += $this->convertBalance(
+                $balance,
+                $account->currency_code,
+                $userCurrency,
+                $date->toDateString(),
+            );
         }
 
         return $total;
@@ -363,6 +372,18 @@ class DashboardAnalyticsController extends Controller
             ->where('balance_date', '<=', $date->toDateString())
             ->orderBy('balance_date', 'desc')
             ->value('balance') ?? 0;
+    }
+
+    /**
+     * Convert a balance from one currency to another, skipping conversion when currencies match.
+     */
+    private function convertBalance(int $balance, string $sourceCurrency, string $targetCurrency, string $date): int
+    {
+        if (strtolower($sourceCurrency) === strtolower($targetCurrency)) {
+            return $balance;
+        }
+
+        return $this->exchangeRateService->convert($sourceCurrency, $targetCurrency, $balance, $date);
     }
 
     private function calculateSpending(Carbon $from, Carbon $to): int

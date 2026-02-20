@@ -48,12 +48,16 @@ class CurrencyConversionService
     }
 
     /**
-     * Fetch rates for a target currency, using in-memory cache.
+     * Fetch all rates for a base currency on a given date.
      *
-     * @return array<string, float> Map of currency code => rate (e.g., "btc" => 0.000015)
+     * Returns a map of currency code => rate relative to the base currency.
+     * Results are cached in-memory for the duration of the request.
+     *
+     * @return array<string, float>
      */
-    private function getRatesForCurrency(string $currency, string $date): array
+    public function getRatesForCurrency(string $currency, string $date): array
     {
+        $currency = strtolower($currency);
         $cacheKey = "{$currency}:{$date}";
 
         if (isset($this->rateCache[$cacheKey])) {
