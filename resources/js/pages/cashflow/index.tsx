@@ -97,7 +97,7 @@ export default function CashflowPage() {
                 </div>
 
                 {/* Summary Cards */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-6 md:grid-cols-2">
                     <NetCashflowCard
                         current={summary.current}
                         previous={summary.previous}
@@ -133,7 +133,7 @@ export default function CashflowPage() {
                 </Card>
 
                 {/* Breakdown Cards */}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <BreakdownCard
                         type="income"
                         data={incomeBreakdown}

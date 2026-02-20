@@ -112,42 +112,48 @@ export function BreakdownCard({
 
                         return (
                             <div key={item.category_id} className="space-y-1.5">
-                                <div className="flex min-w-0 items-center gap-2">
-                                    <div
-                                        className={cn([
-                                            'flex size-6 shrink-0 items-center justify-center rounded-full',
-                                            `${categoryColor.bg} ${categoryColor.text}`,
-                                        ])}
-                                    >
-                                        <Icon className="size-3.5" />
-                                    </div>
-                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                                        {item.category.name}
-                                    </span>
-                                    {percentageChange !== null && (
-                                        <PercentageTrendIndicator
-                                            trend={percentageChange}
-                                            label=""
-                                            previousAmount={
-                                                item.previous_amount
-                                            }
-                                            currentAmount={item.amount}
-                                            currencyCode={currency}
-                                            invertColors={type === 'expense'}
-                                            className="shrink-0 text-xs"
-                                        />
-                                    )}
-                                    <div className="flex shrink-0 items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">
-                                            {item.percentage.toFixed(0)}%
+                                <div className="flex min-w-0 items-center justify-between gap-2 overflow-hidden">
+                                    <div className="flex max-w-[60%] grow gap-2">
+                                        <div
+                                            className={cn([
+                                                'flex size-6 shrink-0 items-center justify-center rounded-full',
+                                                `${categoryColor.bg} ${categoryColor.text}`,
+                                            ])}
+                                        >
+                                            <Icon className="size-3.5" />
+                                        </div>
+                                        <span className="min-w-0 truncate text-sm font-medium">
+                                            {item.category.name}
                                         </span>
-                                        <AmountDisplay
-                                            amountInCents={item.amount}
-                                            currencyCode={currency}
-                                            variant="compact"
-                                            minimumFractionDigits={0}
-                                            maximumFractionDigits={0}
-                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {percentageChange !== null && (
+                                            <PercentageTrendIndicator
+                                                trend={percentageChange}
+                                                label=""
+                                                previousAmount={
+                                                    item.previous_amount
+                                                }
+                                                currentAmount={item.amount}
+                                                currencyCode={currency}
+                                                invertColors={
+                                                    type === 'expense'
+                                                }
+                                                className="shrink-0 text-xs"
+                                            />
+                                        )}
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            <span className="hidden text-xs text-muted-foreground sm:inline">
+                                                {item.percentage.toFixed(0)}%
+                                            </span>
+                                            <AmountDisplay
+                                                amountInCents={item.amount}
+                                                currencyCode={currency}
+                                                variant="compact"
+                                                minimumFractionDigits={0}
+                                                maximumFractionDigits={0}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                                 <Progress
