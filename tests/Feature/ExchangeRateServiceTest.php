@@ -121,7 +121,7 @@ test('convert is case-insensitive for currency codes', function () {
 test('getRates returns cached rates from database', function () {
     ExchangeRate::factory()->create([
         'base_currency' => 'eur',
-        'date' => '2026-03-01',
+        'date' => '2026-01-15',
         'rates' => [
             'usd' => 1.10,
             'gbp' => 0.84,
@@ -131,7 +131,7 @@ test('getRates returns cached rates from database', function () {
     Http::fake();
 
     $service = app(ExchangeRateService::class);
-    $rates = $service->getRates('EUR', '2026-03-01');
+    $rates = $service->getRates('EUR', '2026-01-15');
 
     expect($rates)->toHaveKey('usd');
     expect($rates['usd'])->toBe(1.10);
@@ -150,15 +150,36 @@ test('getRates fetches and stores when not cached', function () {
     ]);
 
     $service = app(ExchangeRateService::class);
-    $rates = $service->getRates('eur', '2026-04-01');
+    $rates = $service->getRates('eur', '2026-01-10');
 
     expect($rates)->toHaveKey('usd');
     expect($rates['usd'])->toBe(1.08);
 
     $stored = ExchangeRate::where('base_currency', 'eur')
-        ->where('date', '2026-04-01')
+        ->where('date', '2026-01-10')
         ->first();
 
     expect($stored)->not->toBeNull();
     expect($stored->rates['usd'])->toBe(1.08);
+});
+
+test('getRates caps future dates to today', function () {
+    $today = now()->toDateString();
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'eur',
+        'date' => $today,
+        'rates' => [
+            'usd' => 1.12,
+        ],
+    ]);
+
+    Http::fake();
+
+    $service = app(ExchangeRateService::class);
+    $rates = $service->getRates('EUR', '2027-06-15');
+
+    expect($rates)->toHaveKey('usd');
+    expect($rates['usd'])->toBe(1.12);
+    Http::assertNothingSent();
 });

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ExchangeRate;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class ExchangeRateService
@@ -54,6 +55,12 @@ class ExchangeRateService
     public function getRates(string $baseCurrency, string $date): array
     {
         $baseCurrency = strtolower($baseCurrency);
+
+        // Cap future dates to today — the API only has rates up to the current date.
+        $today = Carbon::today()->toDateString();
+        if ($date > $today) {
+            $date = $today;
+        }
 
         $cached = ExchangeRate::query()
             ->where('base_currency', $baseCurrency)

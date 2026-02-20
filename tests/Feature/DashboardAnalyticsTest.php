@@ -263,7 +263,8 @@ test('net worth evolution converts foreign currency accounts using cached exchan
         'currency_code' => 'EUR',
     ]);
 
-    $endOfMonth = now()->endOfMonth();
+    $lastMonth = now()->subMonth();
+    $endOfMonth = $lastMonth->copy()->endOfMonth();
 
     AccountBalance::factory()->create([
         'account_id' => $usdAccount->id,
@@ -284,7 +285,7 @@ test('net worth evolution converts foreign currency accounts using cached exchan
     ]);
 
     $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
-        'from' => now()->startOfMonth()->toDateString(),
+        'from' => $lastMonth->copy()->startOfMonth()->toDateString(),
         'to' => $endOfMonth->toDateString(),
     ]));
 
