@@ -128,8 +128,9 @@ interface ChartTooltipContentProps {
     ) => React.ReactNode;
     nameKey?: string;
     labelKey?: string;
-    valueFormatter?: (value: number, accountId?: string) => string;
+    valueFormatter?: (value: number, accountId?: string) => React.ReactNode;
     accountCurrencies?: Record<string, string>;
+    displayCurrency?: string;
 }
 
 function formatCurrencyWithCode(value: number, currencyCode: string): string {
@@ -160,6 +161,7 @@ const ChartTooltipContent = React.forwardRef<
             labelKey,
             valueFormatter,
             accountCurrencies,
+            displayCurrency,
         },
         ref,
     ) => {
@@ -204,7 +206,19 @@ const ChartTooltipContent = React.forwardRef<
         ]);
 
         const currencyTotals = React.useMemo(() => {
-            if (!payload?.length || !accountCurrencies) {
+            if (!payload?.length) {
+                return null;
+            }
+
+            // When displayCurrency is set, all values are in a single currency
+            if (displayCurrency) {
+                const total = payload.reduce((sum, item) => {
+                    return sum + (typeof item.value === 'number' ? item.value : 0);
+                }, 0);
+                return [[displayCurrency, total] as [string, number]];
+            }
+
+            if (!accountCurrencies) {
                 return null;
             }
 
@@ -218,7 +232,7 @@ const ChartTooltipContent = React.forwardRef<
             });
 
             return Object.entries(totals).sort((a, b) => b[1] - a[1]);
-        }, [payload, accountCurrencies]);
+        }, [payload, accountCurrencies, displayCurrency]);
 
         if (!active || !payload?.length) {
             return null;
@@ -292,6 +306,18 @@ const ChartTooltipContent = React.forwardRef<
                                                 </div>
                                                 {item.value !== undefined && (
                                                     <span className="text-foreground font-mono font-medium tabular-nums">
+                                                        {(() => {
+                                                            const originalKey = `${accountId}_original`;
+                                                            const original = item.payload?.[originalKey] as { amount: number; currency_code: string } | undefined;
+                                                            if (original) {
+                                                                return (
+                                                                    <span className="text-muted-foreground mr-1 text-[10px]">
+                                                                        ({formatCurrencyWithCode(original.amount, original.currency_code)})
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
                                                         {valueFormatter
                                                             ? valueFormatter(
                                                                 item.value as number,

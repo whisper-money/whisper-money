@@ -5,10 +5,15 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
+    // Prevent real HTTP calls to currency API in all tests
+    Http::fake();
+
     $this->user = User::factory()->create();
     $this->actingAs($this->user);
 });
@@ -18,6 +23,7 @@ test('net worth calculates assets minus liabilities', function () {
     $checking = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
+        'currency_code' => 'USD',
     ]);
     AccountBalance::factory()->create([
         'account_id' => $checking->id,
@@ -29,6 +35,7 @@ test('net worth calculates assets minus liabilities', function () {
     $creditCard = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::CreditCard,
+        'currency_code' => 'USD',
     ]);
     AccountBalance::factory()->create([
         'account_id' => $creditCard->id,
@@ -57,7 +64,19 @@ test('net worth calculates assets minus liabilities', function () {
         ->assertJson([
             'current' => 400000, // 5000 - 1000 = 4000
             'previous' => 350000, // 4000 - 500 = 3500
+            'currency_code' => 'USD',
         ]);
+});
+
+test('net worth response includes currency_code', function () {
+    $response = $this->getJson('/api/dashboard/net-worth?'.http_build_query([
+        'from' => now()->subDays(29)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk()
+        ->assertJsonStructure(['current', 'previous', 'currency_code'])
+        ->assertJson(['currency_code' => 'USD']);
 });
 
 test('monthly spending calculates expenses correctly', function () {
@@ -186,7 +205,7 @@ test('net worth evolution returns monthly data points with per-account balances'
         'user_id' => $this->user->id,
         'type' => AccountType::Savings,
         'name' => 'Savings Account',
-        'currency_code' => 'EUR',
+        'currency_code' => 'USD',
     ]);
 
     AccountBalance::factory()->create([
@@ -218,7 +237,8 @@ test('net worth evolution returns monthly data points with per-account balances'
     $response->assertOk();
     $data = $response->json();
 
-    expect($data)->toHaveKeys(['data', 'accounts']);
+    expect($data)->toHaveKeys(['data', 'accounts', 'currency_code']);
+    expect($data['currency_code'])->toBe('USD');
     expect($data['data'])->toHaveCount(3);
     expect($data['data'][0])->toHaveKeys(['month', 'timestamp', $account1->id, $account2->id]);
     expect($data['accounts'])->toHaveKey($account1->id);
@@ -226,13 +246,77 @@ test('net worth evolution returns monthly data points with per-account balances'
     expect($data['accounts'][$account1->id]['name'])->toBe('Checking Account');
     expect($data['accounts'][$account1->id]['currency_code'])->toBe('USD');
     expect($data['accounts'][$account2->id]['name'])->toBe('Savings Account');
-    expect($data['accounts'][$account2->id]['currency_code'])->toBe('EUR');
+    expect($data['accounts'][$account2->id]['currency_code'])->toBe('USD');
+});
+
+test('net worth evolution converts foreign currency accounts using cached exchange rates', function () {
+    $usdAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'name' => 'USD Checking',
+        'currency_code' => 'USD',
+    ]);
+    $eurAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Savings,
+        'name' => 'EUR Savings',
+        'currency_code' => 'EUR',
+    ]);
+
+    $lastMonth = now()->subMonth();
+    $endOfMonth = $lastMonth->copy()->endOfMonth();
+
+    AccountBalance::factory()->create([
+        'account_id' => $usdAccount->id,
+        'balance_date' => $endOfMonth,
+        'balance' => 100000, // $1,000.00 USD
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $eurAccount->id,
+        'balance_date' => $endOfMonth,
+        'balance' => 200000, // €2,000.00 EUR
+    ]);
+
+    // Seed exchange rate: 1 USD = 0.90 EUR, so EUR -> USD = 200000 / 0.90 = 222222
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => $endOfMonth->toDateString(),
+        'rates' => ['eur' => 0.90],
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
+        'from' => $lastMonth->copy()->startOfMonth()->toDateString(),
+        'to' => $endOfMonth->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    // USD account: no conversion, stays 100000
+    expect($data['data'][0][$usdAccount->id])->toBe(100000);
+    // EUR account: 200000 / 0.90 = 222222 (rounded)
+    expect($data['data'][0][$eurAccount->id])->toBe((int) round(200000 / 0.90));
+
+    // EUR account should have _original data
+    $originalKey = $eurAccount->id.'_original';
+    expect($data['data'][0])->toHaveKey($originalKey);
+    expect($data['data'][0][$originalKey])->toMatchArray([
+        'amount' => 200000,
+        'currency_code' => 'EUR',
+    ]);
+
+    // USD account should NOT have _original data (same currency)
+    $usdOriginalKey = $usdAccount->id.'_original';
+    expect($data['data'][0])->not->toHaveKey($usdOriginalKey);
+
+    Http::assertNothingSent();
 });
 
 test('net worth evolution uses last balance of each month per account', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
+        'currency_code' => 'USD',
     ]);
 
     $lastMonth = now()->subMonth();
@@ -270,6 +354,7 @@ test('net worth evolution returns account metadata including bank', function () 
         'type' => AccountType::CreditCard,
         'name' => 'My Credit Card',
         'name_iv' => 'test_iv_1234567',
+        'currency_code' => 'USD',
     ]);
 
     $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
@@ -337,6 +422,7 @@ test('account daily balance evolution fills gaps with last known balance', funct
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Savings,
+        'currency_code' => 'USD',
     ]);
 
     // Balance before the range — carried forward into gap days
@@ -396,7 +482,7 @@ test('net worth daily evolution returns daily data points with per-account balan
         'user_id' => $this->user->id,
         'type' => AccountType::Savings,
         'name' => 'Daily Savings',
-        'currency_code' => 'EUR',
+        'currency_code' => 'USD',
     ]);
 
     AccountBalance::factory()->create([
@@ -428,7 +514,8 @@ test('net worth daily evolution returns daily data points with per-account balan
     $response->assertOk();
     $data = $response->json();
 
-    expect($data)->toHaveKeys(['data', 'accounts']);
+    expect($data)->toHaveKeys(['data', 'accounts', 'currency_code']);
+    expect($data['currency_code'])->toBe('USD');
     expect($data['data'])->toHaveCount(3);
     expect($data['data'][0])->toHaveKeys(['date', 'timestamp', $account1->id, $account2->id]);
     expect($data['data'][0]['date'])->toBe(now()->subDays(2)->format('Y-m-d'));
@@ -439,13 +526,68 @@ test('net worth daily evolution returns daily data points with per-account balan
     expect($data['accounts'])->toHaveKey($account1->id);
     expect($data['accounts'])->toHaveKey($account2->id);
     expect($data['accounts'][$account1->id]['currency_code'])->toBe('USD');
-    expect($data['accounts'][$account2->id]['currency_code'])->toBe('EUR');
+    expect($data['accounts'][$account2->id]['currency_code'])->toBe('USD');
+});
+
+test('net worth daily evolution converts foreign currency accounts', function () {
+    $usdAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'name' => 'USD Account',
+        'currency_code' => 'USD',
+    ]);
+    $gbpAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Savings,
+        'name' => 'GBP Account',
+        'currency_code' => 'GBP',
+    ]);
+
+    $today = now();
+
+    AccountBalance::factory()->create([
+        'account_id' => $usdAccount->id,
+        'balance_date' => $today,
+        'balance' => 100000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $gbpAccount->id,
+        'balance_date' => $today,
+        'balance' => 50000, // £500.00
+    ]);
+
+    // Seed exchange rate: 1 USD = 0.79 GBP
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => $today->toDateString(),
+        'rates' => ['gbp' => 0.79],
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-daily-evolution?'.http_build_query([
+        'from' => $today->toDateString(),
+        'to' => $today->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    // USD stays the same
+    expect($data['data'][0][$usdAccount->id])->toBe(100000);
+    // GBP: 50000 / 0.79 = 63291 (rounded)
+    expect($data['data'][0][$gbpAccount->id])->toBe((int) round(50000 / 0.79));
+
+    // Original data for GBP account
+    $originalKey = $gbpAccount->id.'_original';
+    expect($data['data'][0])->toHaveKey($originalKey);
+    expect($data['data'][0][$originalKey]['amount'])->toBe(50000);
+    expect($data['data'][0][$originalKey]['currency_code'])->toBe('GBP');
 });
 
 test('net worth daily evolution fills gaps with last known balance', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
+        'currency_code' => 'USD',
     ]);
 
     // Balance before the range — carried forward into gap days
@@ -485,6 +627,7 @@ test('net worth daily evolution returns account metadata including bank', functi
         'type' => AccountType::CreditCard,
         'name' => 'My Daily CC',
         'name_iv' => 'test_iv_daily',
+        'currency_code' => 'USD',
     ]);
 
     $response = $this->getJson('/api/dashboard/net-worth-daily-evolution?'.http_build_query([

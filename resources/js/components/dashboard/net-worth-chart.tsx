@@ -19,7 +19,10 @@ import { ChartConfig } from '@/components/ui/chart';
 import { StackedAreaChart } from '@/components/ui/stacked-area-chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { useChartViews } from '@/hooks/use-chart-views';
-import { NetWorthEvolutionData } from '@/hooks/use-dashboard-data';
+import {
+    NetWorthEvolutionData,
+    OriginalAmount,
+} from '@/hooks/use-dashboard-data';
 import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AccountInfo } from '@/lib/chart-calculations';
@@ -65,7 +68,7 @@ function formatXAxisLabel(
 }
 
 function calculateTrend(
-    data: Array<Record<string, string | number>>,
+    data: Array<Record<string, string | number | OriginalAmount>>,
     accountIds: string[],
     periodsBack: number,
 ): TrendData | null {
@@ -104,48 +107,6 @@ function EncryptedLabel({ account }: EncryptedLabelProps) {
     return <AccountName account={account} length={{ min: 5, max: 20 }} />;
 }
 
-interface CurrencyTotal {
-    currency: string;
-    total: number;
-}
-
-function TotalDisplay({ totals }: { totals: CurrencyTotal[] }) {
-    if (totals.length === 0) return null;
-
-    if (totals.length === 1) {
-        return (
-            <AmountDisplay
-                amountInCents={totals[0].total}
-                currencyCode={totals[0].currency}
-                variant="large"
-                minimumFractionDigits={0}
-                maximumFractionDigits={0}
-            />
-        );
-    }
-
-    return (
-        <div className="flex flex-wrap items-baseline justify-end gap-1">
-            {totals.map((item, index) => (
-                <span key={item.currency} className="flex items-baseline">
-                    {index > 0 && (
-                        <span className="mx-1 text-lg opacity-50 sm:text-2xl">
-                            +
-                        </span>
-                    )}
-                    <AmountDisplay
-                        amountInCents={item.total}
-                        currencyCode={item.currency}
-                        variant="large"
-                        minimumFractionDigits={0}
-                        maximumFractionDigits={0}
-                    />
-                </span>
-            ))}
-        </div>
-    );
-}
-
 export function NetWorthChart({
     data: monthlyData,
     loading,
@@ -178,9 +139,13 @@ export function NetWorthChart({
                     date: string;
                 };
                 return { ...rest, month: date };
-            }) as Array<Record<string, string | number>>;
+            }) as Array<Record<string, string | number | OriginalAmount>>;
 
-            setDailyData({ data: normalizedData, accounts: data.accounts });
+            setDailyData({
+                data: normalizedData,
+                accounts: data.accounts,
+                currency_code: data.currency_code,
+            });
         } catch (error) {
             console.error('Failed to fetch daily net worth data:', error);
         } finally {
@@ -197,15 +162,16 @@ export function NetWorthChart({
     const activeData =
         granularity === 'daily' && dailyData ? dailyData : monthlyData;
 
+    const userCurrency = activeData.currency_code || 'USD';
+
     const {
         chartData,
         dataKeys,
         chartConfig,
         shortTrend,
         longTrend,
-        currencyTotals,
+        totalAmount,
         accountCurrencies,
-        primaryCurrency,
         accountsForHook,
     } = useMemo(() => {
         const accounts = activeData.accounts || {};
@@ -233,26 +199,17 @@ export function NetWorthChart({
             }
         });
 
-        const totals: Record<string, number> = {};
+        // All values are now in the user's currency, so compute a single total
+        let total = 0;
         if (chartDataArray.length > 0) {
             const lastDataPoint = chartDataArray[chartDataArray.length - 1];
             accountIds.forEach((id) => {
                 const value = lastDataPoint[id];
-                const currency = currencies[id] || 'USD';
                 if (typeof value === 'number') {
-                    totals[currency] = (totals[currency] || 0) + value;
+                    total += value;
                 }
             });
         }
-
-        const currencyTotalsList: CurrencyTotal[] = Object.entries(totals)
-            .map(([currency, total]) => ({ currency, total }))
-            .sort((a, b) => b.total - a.total);
-
-        const primary =
-            currencyTotalsList.length > 0
-                ? currencyTotalsList[0].currency
-                : 'USD';
 
         return {
             chartData: chartDataArray,
@@ -264,36 +221,31 @@ export function NetWorthChart({
                 accountIds,
                 chartDataArray.length - 1,
             ),
-            currencyTotals: currencyTotalsList,
+            totalAmount: total,
             accountCurrencies: currencies,
-            primaryCurrency: primary,
             accountsForHook: hookAccounts,
         };
     }, [activeData]);
 
     const chartViews = useChartViews({
-        data: chartData,
+        data: chartData as Array<Record<string, string | number>>,
         accounts: accountsForHook,
         initialView: 'stacked',
         hasStackedView: true,
     });
 
     const valueFormatter = useMemo(() => {
-        return (value: number, accountId?: string): React.ReactNode => {
-            const currency =
-                accountId && accountCurrencies[accountId]
-                    ? accountCurrencies[accountId]
-                    : 'USD';
+        return (value: number): React.ReactNode => {
             return (
                 <AmountDisplay
                     amountInCents={value}
-                    currencyCode={currency}
+                    currencyCode={userCurrency}
                     minimumFractionDigits={0}
                     maximumFractionDigits={0}
                 />
             );
         };
-    }, [accountCurrencies]);
+    }, [userCurrency]);
 
     const shortTrendLabel =
         granularity === 'daily' ? __('today') : __('this month');
@@ -344,14 +296,20 @@ export function NetWorthChart({
                         <CardTitle>{__('Net Worth Evolution')}</CardTitle>
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <div className="text-foreground">
-                                <TotalDisplay totals={currencyTotals} />
+                                <AmountDisplay
+                                    amountInCents={totalAmount}
+                                    currencyCode={userCurrency}
+                                    variant="large"
+                                    minimumFractionDigits={0}
+                                    maximumFractionDigits={0}
+                                />
                             </div>
                             <PercentageTrendIndicator
                                 trend={shortTrend?.percentage ?? null}
                                 label={shortTrendLabel}
                                 previousAmount={shortTrend?.previousAmount}
                                 currentAmount={shortTrend?.currentAmount}
-                                currencyCode={primaryCurrency}
+                                currencyCode={userCurrency}
                             />
 
                             <PercentageTrendIndicator
@@ -359,7 +317,7 @@ export function NetWorthChart({
                                 label={longTrendLabel}
                                 previousAmount={longTrend?.previousAmount}
                                 currentAmount={longTrend?.currentAmount}
-                                currencyCode={primaryCurrency}
+                                currencyCode={userCurrency}
                             />
                         </CardDescription>
                     </div>
@@ -401,6 +359,7 @@ export function NetWorthChart({
                             xAxisFormatter={xAxisFormatter}
                             valueFormatter={valueFormatter}
                             accountCurrencies={accountCurrencies}
+                            displayCurrency={userCurrency}
                             className="h-[300px] w-full"
                             showLegend={showLegend}
                         />
@@ -413,6 +372,7 @@ export function NetWorthChart({
                             xAxisFormatter={xAxisFormatter}
                             valueFormatter={valueFormatter}
                             accountCurrencies={accountCurrencies}
+                            displayCurrency={userCurrency}
                             className="h-[300px] w-full"
                             showLegend={showLegend}
                         />
@@ -420,7 +380,7 @@ export function NetWorthChart({
                 {chartViews.currentView === 'mom' && (
                     <MoMChart
                         data={chartViews.deltaSeries}
-                        currencyCode={primaryCurrency}
+                        currencyCode={userCurrency}
                         xAxisFormatter={xAxisFormatter}
                         className="h-[300px] w-full"
                     />
