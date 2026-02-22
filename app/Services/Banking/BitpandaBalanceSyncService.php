@@ -164,21 +164,12 @@ class BitpandaBalanceSyncService
             $attributes = $transaction['attributes'] ?? [];
             $status = $attributes['status'] ?? '';
             $amount = (float) ($attributes['amount'] ?? 0);
-            $currency = strtoupper($attributes['fiat_id'] ?? $attributes['currency_id'] ?? '');
 
             if ($status !== 'finished' || $amount <= 0) {
                 continue;
             }
 
-            if ($currency === $targetCurrency || $currency === '') {
-                $total += $amount;
-            } else {
-                Log::warning('Bitpanda fiat transaction in different currency than target', [
-                    'transaction_currency' => $currency,
-                    'target_currency' => $targetCurrency,
-                    'amount' => $amount,
-                ]);
-            }
+            $total += $amount;
         }
 
         return $total;
