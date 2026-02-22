@@ -14,7 +14,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Account, AccountBalance } from '@/types/account';
+import {
+    type Account,
+    type AccountBalance,
+    supportsInvestedAmount,
+} from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { useEffect, useRef, useState } from 'react';
 
@@ -42,10 +46,12 @@ export function UpdateBalanceDialog({
 }: UpdateBalanceDialogProps) {
     const [date, setDate] = useState(getTodayDate());
     const [balance, setBalance] = useState(0);
+    const [investedAmount, setInvestedAmount] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoadingLastBalance, setIsLoadingLastBalance] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const showInvestedAmount = supportsInvestedAmount(account);
 
     useEffect(() => {
         async function fetchLastBalance() {
@@ -69,12 +75,15 @@ export function UpdateBalanceDialog({
                 const data: PaginatedBalanceResponse = await response.json();
                 if (data.data.length > 0) {
                     setBalance(data.data[0].balance);
+                    setInvestedAmount(data.data[0].invested_amount);
                 } else {
                     setBalance(0);
+                    setInvestedAmount(null);
                 }
             } catch (err) {
                 console.error('Failed to fetch last balance:', err);
                 setBalance(0);
+                setInvestedAmount(null);
             } finally {
                 setIsLoadingLastBalance(false);
             }
@@ -127,6 +136,9 @@ export function UpdateBalanceDialog({
                 body: JSON.stringify({
                     balance_date: date,
                     balance: balance,
+                    ...(showInvestedAmount && investedAmount !== null
+                        ? { invested_amount: investedAmount }
+                        : {}),
                 }),
             });
 
@@ -177,6 +189,36 @@ export function UpdateBalanceDialog({
                             />
                         )}
                     </div>
+
+                    {showInvestedAmount && (
+                        <div className="space-y-2">
+                            <Label htmlFor="invested-amount">
+                                {__('Invested amount')}
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                                {__(
+                                    'Total money you put into this account. Used to calculate gains/losses.',
+                                )}
+                            </p>
+                            {isLoadingLastBalance ? (
+                                <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                                    {__('Loading...')}
+                                </div>
+                            ) : (
+                                <AmountInput
+                                    id="invested-amount"
+                                    className="mt-1"
+                                    value={investedAmount ?? 0}
+                                    onChange={(value) =>
+                                        setInvestedAmount(
+                                            value === 0 ? null : value,
+                                        )
+                                    }
+                                    currencyCode={account.currency_code}
+                                />
+                            )}
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <Label htmlFor="balance-date">{__('Date')}</Label>
