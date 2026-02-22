@@ -164,7 +164,7 @@ test('handles empty portfolios array gracefully', function () {
     expect($account->balances()->count())->toBe(0);
 });
 
-test('stores invested_amount when return field is present in performance data', function () {
+test('stores invested_amount from instruments_cost and cash_amount', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create([
         'user_id' => $user->id,
@@ -178,8 +178,20 @@ test('stores invested_amount when return field is present in performance data', 
     Http::fake([
         'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
             'portfolios' => [
-                ['date' => now()->toDateString(), 'total_amount' => 15000.00, 'return' => 2000.00],
-                ['date' => now()->subDay()->toDateString(), 'total_amount' => 14500.00, 'return' => 1500.00],
+                [
+                    'date' => now()->toDateString(),
+                    'total_amount' => 15000.00,
+                    'instruments_cost' => 12000.00,
+                    'instruments_amount' => 14700.00,
+                    'cash_amount' => 300.00,
+                ],
+                [
+                    'date' => now()->subDay()->toDateString(),
+                    'total_amount' => 14500.00,
+                    'instruments_cost' => 12000.00,
+                    'instruments_amount' => 14200.00,
+                    'cash_amount' => 300.00,
+                ],
             ],
         ]),
     ]);
@@ -191,16 +203,16 @@ test('stores invested_amount when return field is present in performance data', 
     expect($account->balances()->count())->toBe(2);
 
     $latest = $account->balances()->orderBy('balance_date', 'desc')->first();
-    // invested_amount = total_amount - return = 15000 - 2000 = 13000 → 1300000 cents
+    // invested_amount = instruments_cost + cash_amount = 12000 + 300 = 12300 → 1230000 cents
     expect($latest->balance)->toBe(1500000);
-    expect($latest->invested_amount)->toBe(1300000);
+    expect($latest->invested_amount)->toBe(1230000);
 
     $previous = $account->balances()->orderBy('balance_date', 'asc')->first();
-    // invested_amount = 14500 - 1500 = 13000 → 1300000 cents
-    expect($previous->invested_amount)->toBe(1300000);
+    // invested_amount = 12000 + 300 = 12300 → 1230000 cents
+    expect($previous->invested_amount)->toBe(1230000);
 });
 
-test('stores null invested_amount when return field is missing', function () {
+test('stores null invested_amount when cost fields are missing', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create([
         'user_id' => $user->id,
@@ -230,7 +242,7 @@ test('stores null invested_amount when return field is missing', function () {
     expect($balance->invested_amount)->toBeNull();
 });
 
-test('handles negative return correctly for invested_amount', function () {
+test('falls back to total_amount minus return when instruments_cost is missing', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create([
         'user_id' => $user->id,
@@ -244,7 +256,7 @@ test('handles negative return correctly for invested_amount', function () {
     Http::fake([
         'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
             'portfolios' => [
-                // total_amount=8000, return=-500 → invested = 8000 - (-500) = 8500
+                // No instruments_cost/cash_amount, but has return field
                 ['date' => now()->toDateString(), 'total_amount' => 8000.00, 'return' => -500.00],
             ],
         ]),
@@ -256,6 +268,6 @@ test('handles negative return correctly for invested_amount', function () {
 
     $balance = $account->balances()->first();
     expect($balance->balance)->toBe(800000);
-    // invested_amount = 8000 - (-500) = 8500 → 850000 cents
+    // invested_amount = total_amount - return = 8000 - (-500) = 8500 → 850000 cents
     expect($balance->invested_amount)->toBe(850000);
 });
