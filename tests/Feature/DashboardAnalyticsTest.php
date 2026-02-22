@@ -621,6 +621,222 @@ test('net worth daily evolution fills gaps with last known balance', function ()
     expect($data['data'][2][$account->id])->toBe(80000);
 });
 
+test('account daily balance evolution includes invested_amount for investment accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Investment,
+        'name' => 'My Portfolio',
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subDays(1),
+        'balance' => 500000,
+        'invested_amount' => 400000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now(),
+        'balance' => 550000,
+        'invested_amount' => 420000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/daily-balance-evolution?'.http_build_query([
+        'from' => now()->subDays(1)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0])->toHaveKey('invested_amount');
+    expect($data['data'][0]['invested_amount'])->toBe(400000);
+    expect($data['data'][1]['invested_amount'])->toBe(420000);
+});
+
+test('account daily balance evolution does not include invested_amount for non-investment accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'name' => 'My Checking',
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now(),
+        'balance' => 500000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/daily-balance-evolution?'.http_build_query([
+        'from' => now()->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0])->not->toHaveKey('invested_amount');
+});
+
+test('account daily balance evolution carries forward last known invested_amount across gaps', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Investment,
+        'currency_code' => 'USD',
+    ]);
+
+    // invested_amount recorded 5 days ago
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subDays(5),
+        'balance' => 500000,
+        'invested_amount' => 400000,
+    ]);
+
+    // Balance today with no invested_amount
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now(),
+        'balance' => 550000,
+        'invested_amount' => null,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/daily-balance-evolution?'.http_build_query([
+        'from' => now()->subDays(1)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    // Both days should carry forward the 400000 invested_amount from 5 days ago
+    expect($data['data'][0]['invested_amount'])->toBe(400000);
+    expect($data['data'][1]['invested_amount'])->toBe(400000);
+});
+
+test('account balance evolution includes invested_amount for retirement accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Retirement,
+        'name' => 'Pension Fund',
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 1000000,
+        'invested_amount' => 800000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0])->toHaveKey('invested_amount');
+    expect($data['data'][0]['invested_amount'])->toBe(800000);
+});
+
+test('account balance evolution does not include invested_amount for savings accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Savings,
+        'name' => 'My Savings',
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 1000000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0])->not->toHaveKey('invested_amount');
+});
+
+test('net worth evolution includes invested_amount in accountsConfig for investment accounts', function () {
+    $investment = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Investment,
+        'name' => 'My Portfolio',
+        'currency_code' => 'USD',
+    ]);
+    $checking = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'name' => 'My Checking',
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $investment->id,
+        'balance_date' => now(),
+        'balance' => 500000,
+        'invested_amount' => 400000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $checking->id,
+        'balance_date' => now(),
+        'balance' => 300000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    // Investment account should have invested_amount in its config
+    expect($data['accounts'][$investment->id])->toHaveKey('invested_amount');
+    expect($data['accounts'][$investment->id]['invested_amount'])->toBe(400000);
+
+    // Checking account should NOT have invested_amount
+    expect($data['accounts'][$checking->id])->not->toHaveKey('invested_amount');
+});
+
+test('net worth evolution returns null invested_amount when no invested data exists', function () {
+    $investment = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Investment,
+        'name' => 'Empty Portfolio',
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $investment->id,
+        'balance_date' => now(),
+        'balance' => 500000,
+        'invested_amount' => null,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['accounts'][$investment->id])->toHaveKey('invested_amount');
+    expect($data['accounts'][$investment->id]['invested_amount'])->toBeNull();
+});
+
 test('net worth daily evolution returns account metadata including bank', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,

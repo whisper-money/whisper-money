@@ -163,3 +163,99 @@ test('handles empty portfolios array gracefully', function () {
 
     expect($account->balances()->count())->toBe(0);
 });
+
+test('stores invested_amount when return field is present in performance data', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
+            'portfolios' => [
+                ['date' => now()->toDateString(), 'total_amount' => 15000.00, 'return' => 2000.00],
+                ['date' => now()->subDay()->toDateString(), 'total_amount' => 14500.00, 'return' => 1500.00],
+            ],
+        ]),
+    ]);
+
+    $client = new IndexaCapitalClient('test-token');
+    $service = new IndexaCapitalBalanceSyncService;
+    $service->sync($account, $client);
+
+    expect($account->balances()->count())->toBe(2);
+
+    $latest = $account->balances()->orderBy('balance_date', 'desc')->first();
+    // invested_amount = total_amount - return = 15000 - 2000 = 13000 → 1300000 cents
+    expect($latest->balance)->toBe(1500000);
+    expect($latest->invested_amount)->toBe(1300000);
+
+    $previous = $account->balances()->orderBy('balance_date', 'asc')->first();
+    // invested_amount = 14500 - 1500 = 13000 → 1300000 cents
+    expect($previous->invested_amount)->toBe(1300000);
+});
+
+test('stores null invested_amount when return field is missing', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
+            'portfolios' => [
+                ['date' => now()->toDateString(), 'total_amount' => 15000.00],
+            ],
+        ]),
+    ]);
+
+    $client = new IndexaCapitalClient('test-token');
+    $service = new IndexaCapitalBalanceSyncService;
+    $service->sync($account, $client);
+
+    expect($account->balances()->count())->toBe(1);
+
+    $balance = $account->balances()->first();
+    expect($balance->balance)->toBe(1500000);
+    expect($balance->invested_amount)->toBeNull();
+});
+
+test('handles negative return correctly for invested_amount', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
+            'portfolios' => [
+                // total_amount=8000, return=-500 → invested = 8000 - (-500) = 8500
+                ['date' => now()->toDateString(), 'total_amount' => 8000.00, 'return' => -500.00],
+            ],
+        ]),
+    ]);
+
+    $client = new IndexaCapitalClient('test-token');
+    $service = new IndexaCapitalBalanceSyncService;
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    expect($balance->balance)->toBe(800000);
+    // invested_amount = 8000 - (-500) = 8500 → 850000 cents
+    expect($balance->invested_amount)->toBe(850000);
+});

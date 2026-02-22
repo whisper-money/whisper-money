@@ -188,3 +188,119 @@ it('returns 404 when deleting balance from wrong account', function () {
         'id' => $balance->id,
     ]);
 });
+
+it('can update current balance with invested_amount', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
+        'balance' => 500000,
+        'invested_amount' => 400000,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('data.balance', 500000)
+        ->assertJsonPath('data.invested_amount', 400000);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 500000,
+        'invested_amount' => 400000,
+    ]);
+});
+
+it('can update current balance without invested_amount', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
+        'balance' => 500000,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('data.balance', 500000);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 500000,
+        'invested_amount' => null,
+    ]);
+});
+
+it('validates invested_amount must be an integer', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
+        'balance' => 500000,
+        'invested_amount' => 'not-a-number',
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['invested_amount']);
+});
+
+it('can store balance with invested_amount', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
+        'balance' => 300000,
+        'balance_date' => now()->subDays(5)->toDateString(),
+        'invested_amount' => 250000,
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.balance', 300000)
+        ->assertJsonPath('data.invested_amount', 250000);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 300000,
+        'invested_amount' => 250000,
+    ]);
+});
+
+it('can store balance without invested_amount', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
+        'balance' => 300000,
+        'balance_date' => now()->subDays(5)->toDateString(),
+    ]);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.balance', 300000);
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 300000,
+        'invested_amount' => null,
+    ]);
+});
+
+it('preserves existing invested_amount when updating balance without it', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    AccountBalance::factory()->for($account)->create([
+        'balance_date' => now()->toDateString(),
+        'balance' => 500000,
+        'invested_amount' => 400000,
+    ]);
+
+    $response = $this->actingAs($user)->putJson("/api/accounts/{$account->id}/balance/current", [
+        'balance' => 600000,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('data.balance', 600000);
+
+    $this->assertDatabaseCount('account_balances', 1);
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 600000,
+        'invested_amount' => 400000,
+    ]);
+});

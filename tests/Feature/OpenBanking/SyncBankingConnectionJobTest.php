@@ -405,6 +405,8 @@ test('binance first sync gets current balance immediately and dispatches histori
     ]);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
                 ['asset' => 'BTC', 'free' => '1.0', 'locked' => '0.0'],
@@ -446,6 +448,8 @@ test('binance subsequent sync does not dispatch historical job', function () {
     ]);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -496,6 +500,7 @@ test('bitpanda sync calls balance sync service and updates last_synced_at', func
                 ],
             ],
         ]),
+        'api.bitpanda.com/v1/fiatwallets/transactions*' => Http::response(['data' => []]),
         'api.bitpanda.com/v1/fiatwallets' => Http::response([
             'data' => [
                 [
@@ -546,6 +551,7 @@ test('bitpanda connections do not expire', function () {
 
     Http::fake([
         'api.bitpanda.com/v1/wallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/fiatwallets/transactions*' => Http::response(['data' => []]),
         'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
         'api.bitpanda.com/v1/ticker' => Http::response([]),
     ]);
@@ -578,6 +584,7 @@ test('bitpanda sync does not send email', function () {
 
     Http::fake([
         'api.bitpanda.com/v1/wallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/fiatwallets/transactions*' => Http::response(['data' => []]),
         'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
         'api.bitpanda.com/v1/ticker' => Http::response([]),
     ]);
