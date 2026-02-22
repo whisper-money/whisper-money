@@ -123,11 +123,10 @@ function LandingPlanCard({
                 <div
                     className={cn(
                         'px-6 pt-6 text-xs font-semibold uppercase',
-                        isDefault &&
-                            'text-[#1b1b18] dark:bg-[#EDEDEC] dark:text-[#1b1b18]',
+                        isDefault && 'text-[#1b1b18] dark:text-[#aaa]',
                         isBestValue &&
                             !isDefault &&
-                            'text-[#706f6c] dark:bg-[#1f1f1e] dark:text-[#A1A09A]',
+                            'text-[#706f6c] dark:text-[#A1A09A]',
                     )}
                 >
                     {isDefault ? __('Most Popular') : __('Best Value')}
