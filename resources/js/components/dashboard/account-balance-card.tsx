@@ -5,8 +5,10 @@ import { BankLogo } from '@/components/bank-logo';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { AccountTypeIcon } from './account-type-icon';
@@ -40,6 +42,17 @@ export function AccountBalanceCard({
     }
 
     const isPositive = account.diff >= 0;
+
+    const gain =
+        supportsInvestedAmount(account) && account.investedAmount !== null
+            ? account.currentBalance - account.investedAmount
+            : null;
+    const gainPercentage =
+        gain !== null &&
+        account.investedAmount !== null &&
+        account.investedAmount !== 0
+            ? (gain / Math.abs(account.investedAmount)) * 100
+            : null;
 
     return (
         <Card>
@@ -93,6 +106,36 @@ export function AccountBalanceCard({
                             tooltipSide="bottom"
                             currencyCode={account.currency_code}
                         />
+                        {gain !== null && (
+                            <div className="flex items-center gap-1 text-xs">
+                                {gain >= 0 ? (
+                                    <TrendingUp className="h-3 w-3 text-green-600/70 dark:text-green-400/70" />
+                                ) : (
+                                    <TrendingDown className="h-3 w-3 text-red-600/70 dark:text-red-400/70" />
+                                )}
+                                <AmountDisplay
+                                    amountInCents={Math.abs(gain)}
+                                    currencyCode={account.currency_code}
+                                    variant="trend"
+                                    highlightPositive={gain >= 0}
+                                />
+                                {gainPercentage !== null && (
+                                    <span
+                                        className={
+                                            gain >= 0
+                                                ? 'text-green-600/70 dark:text-green-400/70'
+                                                : 'text-red-600/70 dark:text-red-400/70'
+                                        }
+                                    >
+                                        ({gain >= 0 ? '+' : ''}
+                                        {gainPercentage.toFixed(1)}%)
+                                    </span>
+                                )}
+                                <span className="text-muted-foreground">
+                                    {__('gain/loss')}
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <div className="h-[70px] w-full max-w-[250px] flex-1">
                         <ResponsiveContainer

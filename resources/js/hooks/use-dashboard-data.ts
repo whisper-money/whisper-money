@@ -11,6 +11,7 @@ export interface NetWorthEvolutionAccount {
     type: AccountType;
     currency_code: string;
     bank: Bank;
+    invested_amount?: number | null;
 }
 
 export interface OriginalAmount {
@@ -29,6 +30,7 @@ export interface AccountWithMetrics extends Account {
     previousBalance: number;
     diff: number;
     history: Array<{ date: string; value: number }>;
+    investedAmount: number | null;
 }
 
 export interface DashboardData {
@@ -73,6 +75,7 @@ function deriveAccountMetrics(
             previousBalance,
             diff: currentBalance - previousBalance,
             history,
+            investedAmount: account.invested_amount ?? null,
         } as AccountWithMetrics;
     });
 }

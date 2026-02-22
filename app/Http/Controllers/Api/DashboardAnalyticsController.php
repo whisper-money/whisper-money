@@ -119,18 +119,25 @@ class DashboardAnalyticsController extends Controller
             $current->addMonth();
         }
 
-        $accountsConfig = $accounts->mapWithKeys(function ($account) {
-            return [
-                $account->id => [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'name_iv' => $account->name_iv,
-                    'encrypted' => $account->encrypted,
-                    'type' => $account->type,
-                    'currency_code' => $account->currency_code,
-                    'bank' => $account->bank,
-                ],
+        $accountsConfig = $accounts->mapWithKeys(function ($account) use ($userCurrency) {
+            $config = [
+                'id' => $account->id,
+                'name' => $account->name,
+                'name_iv' => $account->name_iv,
+                'encrypted' => $account->encrypted,
+                'type' => $account->type,
+                'currency_code' => $account->currency_code,
+                'bank' => $account->bank,
             ];
+
+            if ($account->type->supportsInvestedAmount()) {
+                $investedAmount = $this->getInvestedAmountAt($account->id, Carbon::now());
+                $config['invested_amount'] = $investedAmount !== null
+                    ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, Carbon::now()->toDateString())
+                    : null;
+            }
+
+            return [$account->id => $config];
         });
 
         return response()->json([
