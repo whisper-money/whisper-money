@@ -36,6 +36,7 @@ class AccountBalanceController extends Controller
         $validated = request()->validate([
             'balance' => 'required|numeric',
             'balance_date' => 'required|date',
+            'invested_amount' => 'nullable|numeric',
         ]);
 
         $balance = AccountBalance::updateOrCreate(
@@ -45,6 +46,9 @@ class AccountBalanceController extends Controller
             ],
             [
                 'balance' => $validated['balance'],
+                ...array_key_exists('invested_amount', $validated)
+                    ? ['invested_amount' => $validated['invested_amount']]
+                    : [],
             ]
         );
 
@@ -61,6 +65,7 @@ class AccountBalanceController extends Controller
         $this->authorize('update', $account);
 
         $today = now()->toDateString();
+        $validated = $request->validated();
 
         $balance = AccountBalance::updateOrCreate(
             [
@@ -68,7 +73,10 @@ class AccountBalanceController extends Controller
                 'balance_date' => $today,
             ],
             [
-                'balance' => $request->validated()['balance'],
+                'balance' => $validated['balance'],
+                ...array_key_exists('invested_amount', $validated)
+                    ? ['invested_amount' => $validated['invested_amount']]
+                    : [],
             ]
         );
 

@@ -24,6 +24,7 @@ class StoreAccountBalanceRequest extends FormRequest
             ],
             'balance_date' => ['required', 'date'],
             'balance' => ['required', 'integer'],
+            'invested_amount' => ['nullable', 'integer'],
         ];
     }
 

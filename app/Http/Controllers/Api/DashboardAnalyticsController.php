@@ -160,11 +160,17 @@ class DashboardAnalyticsController extends Controller
 
         while ($current->lte($endMonth)) {
             $date = $current->copy()->endOfMonth();
-            $points[] = [
+            $point = [
                 'month' => $date->format('Y-m'),
                 'timestamp' => $date->timestamp,
                 'value' => $this->getBalanceAt($account->id, $date),
             ];
+
+            if ($account->type->supportsInvestedAmount()) {
+                $point['invested_amount'] = $this->getInvestedAmountAt($account->id, $date);
+            }
+
+            $points[] = $point;
             $current->addMonth();
         }
 
@@ -200,11 +206,17 @@ class DashboardAnalyticsController extends Controller
 
         while ($current->lte($end)) {
             $date = $current->copy();
-            $points[] = [
+            $point = [
                 'date' => $date->format('Y-m-d'),
                 'timestamp' => $date->endOfDay()->timestamp,
                 'value' => $this->getBalanceAt($account->id, $date),
             ];
+
+            if ($account->type->supportsInvestedAmount()) {
+                $point['invested_amount'] = $this->getInvestedAmountAt($account->id, $date);
+            }
+
+            $points[] = $point;
             $current->addDay();
         }
 
@@ -372,6 +384,20 @@ class DashboardAnalyticsController extends Controller
             ->where('balance_date', '<=', $date->toDateString())
             ->orderBy('balance_date', 'desc')
             ->value('balance') ?? 0;
+    }
+
+    /**
+     * Get the invested amount at a given date for an account.
+     * Returns null if no invested amount data is available.
+     */
+    private function getInvestedAmountAt(string $accountId, Carbon $date): ?int
+    {
+        return AccountBalance::query()
+            ->where('account_id', $accountId)
+            ->where('balance_date', '<=', $date->toDateString())
+            ->whereNotNull('invested_amount')
+            ->orderBy('balance_date', 'desc')
+            ->value('invested_amount');
     }
 
     /**

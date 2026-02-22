@@ -16,6 +16,7 @@ class AccountBalance extends Model
         'account_id',
         'balance_date',
         'balance',
+        'invested_amount',
     ];
 
     protected function casts(): array

@@ -11,4 +11,12 @@ enum AccountType: string
     case Retirement = 'retirement';
     case Savings = 'savings';
     case Others = 'others';
+
+    /**
+     * Whether this account type supports tracking invested amount and gains/losses.
+     */
+    public function supportsInvestedAmount(): bool
+    {
+        return in_array($this, [self::Investment, self::Retirement], true);
+    }
 }
