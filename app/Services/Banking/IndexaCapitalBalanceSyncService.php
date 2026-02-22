@@ -39,9 +39,18 @@ class IndexaCapitalBalanceSyncService
                 continue;
             }
 
+            $balanceCents = (int) round(floatval($value) * 100);
+            $returnValue = $entry['return'] ?? null;
+            $investedAmountCents = $returnValue !== null
+                ? (int) round((floatval($value) - floatval($returnValue)) * 100)
+                : null;
+
             $account->balances()->updateOrCreate(
                 ['balance_date' => $date],
-                ['balance' => (int) round(floatval($value) * 100)],
+                [
+                    'balance' => $balanceCents,
+                    ...($investedAmountCents !== null ? ['invested_amount' => $investedAmountCents] : []),
+                ],
             );
 
             $count++;
