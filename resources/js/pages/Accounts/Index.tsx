@@ -1,13 +1,13 @@
 import { index } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountListCard } from '@/components/accounts/account-list-card';
 import HeadingSmall from '@/components/heading-small';
-import { useDashboardData } from '@/hooks/use-dashboard-data';
+import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Account, AccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
-import { Head } from '@inertiajs/react';
-import { useMemo } from 'react';
+import { Head, router } from '@inertiajs/react';
+import { useCallback, useMemo } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -26,16 +26,29 @@ const ACCOUNT_TYPE_ORDER: AccountType[] = [
     'others',
 ];
 
-interface Props {
-    accounts: Account[];
+interface AccountMetrics {
+    currentBalance: number;
+    previousBalance: number;
+    diff: number;
+    investedAmount: number | null;
+    history: Array<{
+        date: string;
+        value: number;
+        investedAmount?: number | null;
+    }>;
 }
 
-export default function AccountsIndex({ accounts }: Props) {
-    const { accounts: accountMetrics, isLoading, refetch } = useDashboardData();
+interface Props {
+    accounts: Account[];
+    accountMetrics?: Record<string, AccountMetrics>;
+}
 
-    const accountsWithMetrics = useMemo(() => {
+export default function AccountsIndex({ accounts, accountMetrics }: Props) {
+    const isLoading = !accountMetrics;
+
+    const accountsWithMetrics: AccountWithMetrics[] = useMemo(() => {
         return accounts.map((account) => {
-            const metrics = accountMetrics.find((m) => m.id === account.id);
+            const metrics = accountMetrics?.[account.id];
             return {
                 ...account,
                 currentBalance: metrics?.currentBalance ?? 0,
@@ -48,7 +61,7 @@ export default function AccountsIndex({ accounts }: Props) {
     }, [accounts, accountMetrics]);
 
     const groupedAccounts = useMemo(() => {
-        const groups: Record<AccountType, typeof accountsWithMetrics> = {
+        const groups: Record<AccountType, AccountWithMetrics[]> = {
             checking: [],
             savings: [],
             investment: [],
@@ -70,6 +83,10 @@ export default function AccountsIndex({ accounts }: Props) {
         return groups;
     }, [accountsWithMetrics]);
 
+    const handleBalanceUpdated = useCallback(() => {
+        router.reload({ only: ['accountMetrics'] });
+    }, []);
+
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Accounts')} />
@@ -90,14 +107,14 @@ export default function AccountsIndex({ accounts }: Props) {
                                 key={account.id}
                                 account={account}
                                 loading={isLoading}
-                                onBalanceUpdated={refetch}
+                                onBalanceUpdated={handleBalanceUpdated}
                             />
                         ));
                     })}
                 </div>
 
                 {accounts.length === 0 && !isLoading && (
-                    <div className="flex h-[300px] items-center justify-center text-muted-foreground">
+                    <div className="text-muted-foreground flex h-[300px] items-center justify-center">
                         {__(
                             'No accounts found. Add your first account in Settings.',
                         )}
