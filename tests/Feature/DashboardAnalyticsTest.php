@@ -743,11 +743,11 @@ test('account balance evolution includes invested_amount for retirement accounts
     expect($data['data'][0]['invested_amount'])->toBe(800000);
 });
 
-test('account balance evolution does not include invested_amount for savings accounts', function () {
+test('account balance evolution does not include invested_amount for checking accounts', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
-        'type' => AccountType::Savings,
-        'name' => 'My Savings',
+        'type' => AccountType::Checking,
+        'name' => 'My Checking',
         'currency_code' => 'USD',
     ]);
 

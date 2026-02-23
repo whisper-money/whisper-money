@@ -80,10 +80,16 @@ export function isTransactionalAccount(account: Account): boolean {
     return !NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type);
 }
 
+const INVESTED_AMOUNT_ACCOUNT_TYPES: AccountType[] = [
+    'investment',
+    'retirement',
+    'savings',
+];
+
 export function supportsInvestedAmount(
     account: Pick<Account, 'type'>,
 ): boolean {
-    return NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type);
+    return INVESTED_AMOUNT_ACCOUNT_TYPES.includes(account.type);
 }
 
 export function filterTransactionalAccounts<T extends { type: AccountType }>(

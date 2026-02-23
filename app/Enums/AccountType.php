@@ -17,6 +17,6 @@ enum AccountType: string
      */
     public function supportsInvestedAmount(): bool
     {
-        return in_array($this, [self::Investment, self::Retirement], true);
+        return in_array($this, [self::Investment, self::Retirement, self::Savings], true);
     }
 }
