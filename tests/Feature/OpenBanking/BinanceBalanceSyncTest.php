@@ -502,7 +502,7 @@ test('calculates invested_amount from deposit and withdrawal history', function 
 
     $client = new BinanceClient('test-key', 'test-secret');
     $service = app(BinanceBalanceSyncService::class);
-    $service->sync($account, $client);
+    $service->sync($account, $client, isFirstSync: true);
 
     $balance = $account->balances()->first();
     // Deposits: 0.5 BTC → converted via CurrencyConversionService (0.5 / 0.00002 = 25000 EUR)
@@ -560,7 +560,7 @@ test('excludes internal transfers from invested_amount calculation', function ()
 
     $client = new BinanceClient('test-key', 'test-secret');
     $service = app(BinanceBalanceSyncService::class);
-    $service->sync($account, $client);
+    $service->sync($account, $client, isFirstSync: true);
 
     $balance = $account->balances()->first();
     // Only the external deposit of 500 EUR should count, internal 1000 EUR is excluded
@@ -631,7 +631,7 @@ test('filters deposits by status 1 and withdrawals by status 6', function () {
 
     $client = new BinanceClient('test-key', 'test-secret');
     $service = app(BinanceBalanceSyncService::class);
-    $service->sync($account, $client);
+    $service->sync($account, $client, isFirstSync: true);
 
     $balance = $account->balances()->first();
     // Deposits: 1000 EUR (completed) — pending 2000 excluded
@@ -730,7 +730,7 @@ test('converts stablecoin deposits to fiat for invested_amount', function () {
 
     $client = new BinanceClient('test-key', 'test-secret');
     $service = app(BinanceBalanceSyncService::class);
-    $service->sync($account, $client);
+    $service->sync($account, $client, isFirstSync: true);
 
     $balance = $account->balances()->first();
     // Stablecoins USDT and USDC are treated as USD
@@ -790,7 +790,7 @@ test('paginates within a window when deposit history hits the 1000-record limit'
 
     $client = new BinanceClient('test-key', 'test-secret');
     $service = app(BinanceBalanceSyncService::class);
-    $service->sync($account, $client);
+    $service->sync($account, $client, isFirstSync: true);
 
     $balance = $account->balances()->first();
     // 1000 deposits of 1 EUR + 1 deposit of 500 EUR = 1500 EUR → 150000 cents
@@ -836,9 +836,51 @@ test('fetches deposits from older windows when recent window is empty', function
 
     $client = new BinanceClient('test-key', 'test-secret');
     $service = app(BinanceBalanceSyncService::class);
-    $service->sync($account, $client);
+    $service->sync($account, $client, isFirstSync: true);
 
     $balance = $account->balances()->first();
     // The deposit from the older window should be found: 1000 EUR → 100000 cents
     expect($balance->invested_amount)->toBe(100000);
+});
+
+test('subsequent sync reuses last invested_amount instead of recalculating', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    // Pre-existing balance with invested_amount from a previous first sync
+    $account->balances()->create([
+        'balance_date' => now()->subDay()->toDateString(),
+        'balance' => 5000000,
+        'invested_amount' => 300000, // 3000 EUR
+    ]);
+
+    Http::fake([
+        // No deposit/withdrawal API calls should be made on subsequent sync
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'BTC', 'free' => '1.0', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([
+            ['symbol' => 'BTCEUR', 'price' => '50000.00'],
+        ]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client, isFirstSync: false);
+
+    $todayBalance = $account->balances()->where('balance_date', now()->toDateString())->first();
+    expect($todayBalance->balance)->toBe(5000000);
+    // Should carry forward the last invested_amount
+    expect($todayBalance->invested_amount)->toBe(300000);
 });

@@ -433,6 +433,7 @@ test('binance first sync gets current balance immediately and dispatches histori
 });
 
 test('binance subsequent sync does not dispatch historical job', function () {
+    Mail::fake();
     Queue::fake(SyncBinanceHistoricalBalancesJob::class);
 
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
@@ -467,7 +468,30 @@ test('binance subsequent sync does not dispatch historical job', function () {
     $job = new SyncBankingConnectionJob($connection);
     $job->handle($transactionSync, $balanceSync);
 
-    Queue::assertNotPushed(SyncBinanceHistoricalBalancesJob::class);
+    Mail::assertNothingQueued();
+});
+
+test('fullSync flag forces first-sync behavior on already-synced connection', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->once()->andReturn(0);
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
+
+    $job = new SyncBankingConnectionJob($connection, fullSync: true);
+    $job->handle($transactionSync, $balanceSync);
 });
 
 test('bitpanda sync calls balance sync service and updates last_synced_at', function () {

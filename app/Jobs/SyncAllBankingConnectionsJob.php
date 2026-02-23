@@ -14,6 +14,10 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public function __construct(
+        public bool $fullSync = false,
+    ) {}
+
     public function handle(): void
     {
         BankingConnection::query()
@@ -23,7 +27,7 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
                     ->orWhere('valid_until', '>', now());
             })
             ->each(function (BankingConnection $connection) {
-                SyncBankingConnectionJob::dispatch($connection);
+                SyncBankingConnectionJob::dispatch($connection, $this->fullSync);
             });
     }
 }
