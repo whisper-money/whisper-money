@@ -116,6 +116,15 @@ export function AccountBalanceCard({
                                             date: string;
                                             value: number;
                                         };
+                                        const invested = supportsInvestedAmount(
+                                            account,
+                                        )
+                                            ? account.investedAmount
+                                            : null;
+                                        const gain =
+                                            invested !== null
+                                                ? data.value - invested
+                                                : null;
                                         return (
                                             <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
                                                 <p className="mb-0.5 text-muted-foreground">
@@ -131,6 +140,46 @@ export function AccountBalanceCard({
                                                         }
                                                     />
                                                 </p>
+                                                {invested !== null && (
+                                                    <>
+                                                        <p className="mt-1 flex items-center gap-1 text-muted-foreground">
+                                                            <span
+                                                                className="inline-block h-0.5 w-3 border-t-2 border-dashed"
+                                                                style={{
+                                                                    borderColor:
+                                                                        'var(--color-chart-4)',
+                                                                }}
+                                                            />
+                                                            <span className="font-mono tabular-nums">
+                                                                <AmountDisplay
+                                                                    amountInCents={
+                                                                        invested
+                                                                    }
+                                                                    currencyCode={
+                                                                        account.currency_code
+                                                                    }
+                                                                />
+                                                            </span>
+                                                        </p>
+                                                        {gain !== null && (
+                                                            <p
+                                                                className={`mt-0.5 font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                            >
+                                                                {gain >= 0
+                                                                    ? '+'
+                                                                    : ''}
+                                                                <AmountDisplay
+                                                                    amountInCents={
+                                                                        gain
+                                                                    }
+                                                                    currencyCode={
+                                                                        account.currency_code
+                                                                    }
+                                                                />
+                                                            </p>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
                                         );
                                     }}
@@ -147,9 +196,9 @@ export function AccountBalanceCard({
                                     account.investedAmount !== null && (
                                         <ReferenceLine
                                             y={account.investedAmount}
-                                            stroke="var(--color-chart-4)"
+                                            stroke="var(--color-chart-6)"
                                             strokeWidth={1.5}
-                                            strokeDasharray="6 3"
+                                            strokeDasharray="2 2"
                                         />
                                     )}
                             </LineChart>
