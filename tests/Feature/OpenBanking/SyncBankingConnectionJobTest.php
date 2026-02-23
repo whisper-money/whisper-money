@@ -433,6 +433,7 @@ test('binance first sync gets current balance immediately and dispatches histori
 });
 
 test('binance subsequent sync does not dispatch historical job', function () {
+    Mail::fake();
     Queue::fake(SyncBinanceHistoricalBalancesJob::class);
 
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
