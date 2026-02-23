@@ -14,7 +14,8 @@ class SyncBankingConnections extends Command
     protected $signature = 'banking:sync
         {--user= : Filter by user email address}
         {--connection= : Filter by banking connection ID}
-        {--sync : Run synchronously instead of dispatching to the queue}';
+        {--sync : Run synchronously instead of dispatching to the queue}
+        {--full : Force a full sync instead of incremental}';
 
     protected $description = 'Sync transactions and balances for all active banking connections';
 
@@ -23,6 +24,7 @@ class SyncBankingConnections extends Command
         $userEmail = $this->option('user');
         $connectionId = $this->option('connection');
         $sync = $this->option('sync');
+        $fullSync = $this->option('full');
 
         if (! $userEmail && ! $connectionId) {
             if ($sync) {
@@ -31,7 +33,7 @@ class SyncBankingConnections extends Command
                 return Command::FAILURE;
             }
 
-            SyncAllBankingConnectionsJob::dispatch();
+            SyncAllBankingConnectionsJob::dispatch($fullSync);
 
             $this->info('Banking sync jobs dispatched for all active connections.');
 
@@ -69,13 +71,13 @@ class SyncBankingConnections extends Command
             return Command::SUCCESS;
         }
 
-        $connections->each(function (BankingConnection $connection) use ($sync) {
+        $connections->each(function (BankingConnection $connection) use ($sync, $fullSync) {
             if ($sync) {
                 $this->info("Syncing {$connection->provider} connection {$connection->id}...");
-                SyncBankingConnectionJob::dispatchSync($connection);
+                SyncBankingConnectionJob::dispatchSync($connection, $fullSync);
                 $this->info("Finished syncing {$connection->provider} connection {$connection->id}.");
             } else {
-                SyncBankingConnectionJob::dispatch($connection);
+                SyncBankingConnectionJob::dispatch($connection, $fullSync);
             }
         });
 

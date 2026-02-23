@@ -103,3 +103,40 @@ test('banking:sync can combine user and connection filters', function () {
         return $job->bankingConnection->id === $connection->id;
     });
 });
+
+test('banking:sync passes fullSync flag when --full is provided', function () {
+    Queue::fake();
+
+    artisan('banking:sync', ['--full' => true])
+        ->expectsOutputToContain('Banking sync jobs dispatched for all active connections.')
+        ->assertSuccessful();
+
+    Queue::assertPushed(SyncAllBankingConnectionsJob::class, function ($job) {
+        return $job->fullSync === true;
+    });
+});
+
+test('banking:sync passes fullSync to individual connections with --full', function () {
+    Queue::fake();
+
+    $user = User::factory()->create(['email' => 'test@example.com']);
+    BankingConnection::factory()->for($user)->create();
+
+    artisan('banking:sync', ['--user' => 'test@example.com', '--full' => true])
+        ->assertSuccessful();
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, function ($job) {
+        return $job->fullSync === true;
+    });
+});
+
+test('banking:sync does not set fullSync by default', function () {
+    Queue::fake();
+
+    artisan('banking:sync')
+        ->assertSuccessful();
+
+    Queue::assertPushed(SyncAllBankingConnectionsJob::class, function ($job) {
+        return $job->fullSync === false;
+    });
+});

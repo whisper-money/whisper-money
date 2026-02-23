@@ -33,6 +33,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     public function __construct(
         public BankingConnection $bankingConnection,
+        public bool $fullSync = false,
     ) {}
 
     public function uniqueId(): string
@@ -56,14 +57,16 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
 
         try {
+            $isFirstSync = ! $connection->last_synced_at || $this->fullSync;
+
             if ($connection->isIndexaCapital()) {
-                $this->syncIndexaCapital($connection);
+                $this->syncIndexaCapital($connection, $isFirstSync);
             } elseif ($connection->isBinance()) {
-                $this->syncBinance($connection);
+                $this->syncBinance($connection, $isFirstSync);
             } elseif ($connection->isBitpanda()) {
                 $this->syncBitpanda($connection);
             } else {
-                $this->syncEnableBanking($connection, $transactionSync, $balanceSync);
+                $this->syncEnableBanking($connection, $transactionSync, $balanceSync, $isFirstSync);
             }
 
             $connection->update([
@@ -85,7 +88,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    private function syncIndexaCapital(BankingConnection $connection): void
+    private function syncIndexaCapital(BankingConnection $connection, bool $isFirstSync): void
     {
         $client = new IndexaCapitalClient($connection->api_token);
         $syncService = new IndexaCapitalBalanceSyncService;
@@ -93,13 +96,12 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         $connection->load('accounts');
 
         foreach ($connection->accounts as $account) {
-            $syncService->sync($account, $client);
+            $syncService->sync($account, $client, $isFirstSync);
         }
     }
 
-    private function syncBinance(BankingConnection $connection): void
+    private function syncBinance(BankingConnection $connection, bool $isFirstSync): void
     {
-        $isFirstSync = ! $connection->last_synced_at;
         $client = new BinanceClient($connection->api_token, $connection->api_secret);
         $syncService = app(BinanceBalanceSyncService::class);
 
@@ -127,9 +129,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    private function syncEnableBanking(BankingConnection $connection, TransactionSyncService $transactionSync, BalanceSyncService $balanceSync): void
+    private function syncEnableBanking(BankingConnection $connection, TransactionSyncService $transactionSync, BalanceSyncService $balanceSync, bool $isFirstSync): void
     {
-        $isFirstSync = ! $connection->last_synced_at;
         $dateFrom = $isFirstSync
             ? now()->subYear()->toDateString()
             : $connection->last_synced_at->toDateString();

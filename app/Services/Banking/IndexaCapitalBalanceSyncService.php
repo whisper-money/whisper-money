@@ -9,9 +9,10 @@ class IndexaCapitalBalanceSyncService
 {
     /**
      * Sync portfolio balances for an Indexa Capital account.
-     * Stores up to one year of daily historical balances from the portfolios data.
+     * On first sync, stores all available daily historical balances.
+     * On subsequent syncs, only processes entries since the last recorded balance.
      */
-    public function sync(Account $account, IndexaCapitalClient $client): void
+    public function sync(Account $account, IndexaCapitalClient $client, bool $isFirstSync = true): void
     {
         if (! $account->external_account_id) {
             return;
@@ -29,6 +30,16 @@ class IndexaCapitalBalanceSyncService
             return;
         }
 
+        $sinceDate = null;
+
+        if (! $isFirstSync) {
+            $lastBalanceDate = $account->balances()->max('balance_date');
+
+            if ($lastBalanceDate) {
+                $sinceDate = $lastBalanceDate;
+            }
+        }
+
         $count = 0;
 
         foreach ($portfolios as $entry) {
@@ -36,6 +47,10 @@ class IndexaCapitalBalanceSyncService
             $value = $entry['total_amount'] ?? null;
 
             if ($date === null || $value === null) {
+                continue;
+            }
+
+            if ($sinceDate !== null && $date < $sinceDate) {
                 continue;
             }
 
@@ -56,6 +71,7 @@ class IndexaCapitalBalanceSyncService
         Log::info('Synced Indexa Capital balances', [
             'account_id' => $account->id,
             'days_synced' => $count,
+            ...($sinceDate ? ['since_date' => $sinceDate] : []),
         ]);
     }
 

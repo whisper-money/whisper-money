@@ -53,9 +53,14 @@ class BinanceBalanceSyncService
             Sleep::for(self::THROTTLE_SECONDS)->seconds();
         }
 
-        $investedAmountCents = $this->calculateInvestedAmount($account, $client);
+        $investedAmountCents = null;
 
-        Sleep::for(self::THROTTLE_SECONDS)->seconds();
+        if ($isFirstSync) {
+            $investedAmountCents = $this->calculateInvestedAmount($account, $client);
+            Sleep::for(self::THROTTLE_SECONDS)->seconds();
+        } else {
+            $investedAmountCents = $this->getLastInvestedAmount($account);
+        }
 
         $this->syncCurrentBalance($account, $client, $investedAmountCents);
     }
@@ -291,6 +296,17 @@ class BinanceBalanceSyncService
         ]);
 
         return 0.0;
+    }
+
+    /**
+     * Get the last stored invested amount for the account.
+     */
+    private function getLastInvestedAmount(Account $account): ?int
+    {
+        return $account->balances()
+            ->whereNotNull('invested_amount')
+            ->latest('balance_date')
+            ->value('invested_amount');
     }
 
     /**
