@@ -33,7 +33,15 @@ import { formatDayFromDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { format, subDays, subMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Area, AreaChart, Bar, BarChart, Line, XAxis } from 'recharts';
+import {
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    ComposedChart,
+    Line,
+    XAxis,
+} from 'recharts';
 
 const DAILY_DAYS = 30;
 
@@ -139,57 +147,6 @@ function normalizeDailyData(data: DailyBalanceDataPoint[]): BalanceDataPoint[] {
         value: point.value,
         invested_amount: point.invested_amount,
     }));
-}
-
-function InvestmentBenefitsSummary({
-    currentBalance,
-    investedAmount,
-    currencyCode,
-}: {
-    currentBalance: number;
-    investedAmount: number;
-    currencyCode: string;
-}) {
-    const gainLoss = currentBalance - investedAmount;
-    const gainLossPercent =
-        investedAmount !== 0
-            ? ((currentBalance - investedAmount) / Math.abs(investedAmount)) *
-              100
-            : 0;
-    const isPositive = gainLoss >= 0;
-
-    return (
-        <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">
-                {__('Invested')}{' '}
-                <AmountDisplay
-                    amountInCents={investedAmount}
-                    currencyCode={currencyCode}
-                    minimumFractionDigits={0}
-                    maximumFractionDigits={0}
-                />
-            </span>
-            <span
-                className={
-                    isPositive
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
-                }
-            >
-                {isPositive ? '+' : ''}
-                <AmountDisplay
-                    amountInCents={gainLoss}
-                    currencyCode={currencyCode}
-                    minimumFractionDigits={0}
-                    maximumFractionDigits={0}
-                />
-                <span className="ml-1 text-xs">
-                    ({isPositive ? '+' : ''}
-                    {gainLossPercent.toFixed(1)}%)
-                </span>
-            </span>
-        </div>
-    );
 }
 
 export function AccountBalanceChart({
@@ -402,14 +359,6 @@ export function AccountBalanceChart({
                                 maximumFractionDigits={0}
                             />
                         </button>
-                        {showInvestmentBenefits &&
-                            currentInvestedAmount !== null && (
-                                <InvestmentBenefitsSummary
-                                    currentBalance={currentBalance}
-                                    investedAmount={currentInvestedAmount}
-                                    currencyCode={account.currency_code}
-                                />
-                            )}
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
                                 trend={shortTrend?.percentage ?? null}
@@ -529,6 +478,43 @@ export function AccountBalanceChart({
                                             />
                                         )}
                                 </AreaChart>
+                            ) : showInvestmentBenefits &&
+                              currentInvestedAmount !== null ? (
+                                <ComposedChart
+                                    accessibilityLayer
+                                    data={chartData.slice(1)}
+                                >
+                                    <XAxis
+                                        dataKey="month"
+                                        tickLine={false}
+                                        tickMargin={10}
+                                        axisLine={false}
+                                        tickFormatter={formatXAxisLabel}
+                                    />
+                                    <ChartTooltip
+                                        content={
+                                            <ChartTooltipContent
+                                                hideLabel
+                                                valueFormatter={valueFormatter}
+                                            />
+                                        }
+                                    />
+                                    <Bar
+                                        dataKey="value"
+                                        fill="var(--color-chart-2)"
+                                        radius={[4, 4, 0, 0]}
+                                    />
+                                    <Line
+                                        dataKey="invested_amount"
+                                        type="monotone"
+                                        stroke="var(--color-chart-4)"
+                                        strokeWidth={1.5}
+                                        strokeDasharray="6 3"
+                                        dot={false}
+                                        activeDot={{ r: 4 }}
+                                        connectNulls
+                                    />
+                                </ComposedChart>
                             ) : (
                                 <BarChart
                                     accessibilityLayer
