@@ -152,7 +152,7 @@ class BitpandaBalanceSyncService
 
     /**
      * Sum the amounts of fiat transactions in the target currency.
-     * Only considers finished transactions.
+     * Only considers finished transactions whose fiat_id matches the target currency.
      *
      * @param  array<int, array{type: string, id: string, attributes: array}>  $transactions
      */
@@ -166,6 +166,18 @@ class BitpandaBalanceSyncService
             $amount = (float) ($attributes['amount'] ?? 0);
 
             if ($status !== 'finished' || $amount <= 0) {
+                continue;
+            }
+
+            $fiatId = strtoupper($attributes['fiat_id'] ?? '');
+
+            if ($fiatId !== $targetCurrency) {
+                Log::warning('Bitpanda fiat transaction in different currency than target', [
+                    'fiat_id' => $fiatId,
+                    'target_currency' => $targetCurrency,
+                    'amount' => $amount,
+                ]);
+
                 continue;
             }
 

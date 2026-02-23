@@ -618,6 +618,73 @@ test('only counts finished fiat transactions for invested_amount', function () {
     expect($balance->invested_amount)->toBe(100000); // 1000 EUR → 100000 cents
 });
 
+test('only counts fiat transactions matching target currency for invested_amount', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->bitpanda()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'bitpanda-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.bitpanda.com/v1/ticker' => Http::response([]),
+        'api.bitpanda.com/v1/wallets' => Http::response(['data' => []]),
+        'api.bitpanda.com/v1/fiatwallets/transactions*' => Http::sequence()
+            ->push([
+                'data' => [
+                    [
+                        'type' => 'fiat_wallet_transaction',
+                        'id' => 'tx-1',
+                        'attributes' => [
+                            'amount' => '1000.00',
+                            'status' => 'finished',
+                            'fiat_id' => 'EUR',
+                        ],
+                    ],
+                    [
+                        'type' => 'fiat_wallet_transaction',
+                        'id' => 'tx-2',
+                        'attributes' => [
+                            'amount' => '500.00',
+                            'status' => 'finished',
+                            'fiat_id' => 'USD',
+                        ],
+                    ],
+                    [
+                        'type' => 'fiat_wallet_transaction',
+                        'id' => 'tx-3',
+                        'attributes' => [
+                            'amount' => '250.00',
+                            'status' => 'finished',
+                            'fiat_id' => 'EUR',
+                        ],
+                    ],
+                ],
+                'meta' => ['next_cursor' => null],
+                'links' => [],
+            ])
+            ->push([
+                'data' => [],
+                'meta' => ['next_cursor' => null],
+                'links' => [],
+            ]),
+        'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
+    ]);
+
+    $client = new BitpandaClient('test-key');
+    $service = app(BitpandaBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // Only EUR transactions should count: 1000 + 250 = 1250 EUR → 125000 cents
+    // The 500 USD deposit should be excluded
+    expect($balance->invested_amount)->toBe(125000);
+});
+
 test('returns null invested_amount when no fiat transactions exist', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->bitpanda()->create([
