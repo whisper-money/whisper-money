@@ -84,6 +84,13 @@ php artisan event:cache
 echo "Creating storage link..."
 php artisan storage:link 2>/dev/null || true
 
+# Publish Horizon assets (ensures dashboard works after updates)
+echo "Publishing Horizon assets..."
+php artisan horizon:publish --no-interaction
+
+# Terminate any lingering Horizon processes from previous deploys
+php artisan horizon:terminate 2>/dev/null || true
+
 echo "=== Startup complete, launching services ==="
 
 # Start supervisor
