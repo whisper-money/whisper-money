@@ -743,7 +743,7 @@ test('account balance evolution includes invested_amount for retirement accounts
     expect($data['data'][0]['invested_amount'])->toBe(800000);
 });
 
-test('account balance evolution does not include invested_amount for savings accounts', function () {
+test('account balance evolution includes invested_amount for savings accounts', function () {
     $account = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Savings,
@@ -755,6 +755,7 @@ test('account balance evolution does not include invested_amount for savings acc
         'account_id' => $account->id,
         'balance_date' => now()->endOfMonth(),
         'balance' => 1000000,
+        'invested_amount' => 900000,
     ]);
 
     $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
@@ -765,7 +766,8 @@ test('account balance evolution does not include invested_amount for savings acc
     $response->assertOk();
     $data = $response->json();
 
-    expect($data['data'][0])->not->toHaveKey('invested_amount');
+    expect($data['data'][0])->toHaveKey('invested_amount');
+    expect($data['data'][0]['invested_amount'])->toBe(900000);
 });
 
 test('net worth evolution includes invested_amount in accountsConfig for investment accounts', function () {
