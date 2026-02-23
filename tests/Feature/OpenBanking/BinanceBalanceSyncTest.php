@@ -738,3 +738,49 @@ test('converts stablecoin deposits to fiat for invested_amount', function () {
     // Converted to EUR: 1500 / 1.10 = 1363.636... EUR → 136364 cents
     expect($balance->invested_amount)->toBe(136364);
 });
+
+test('fetches deposits from older windows when recent window is empty', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        // First window (most recent 90 days) returns empty, second window has a deposit
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::sequence()
+            ->push([]) // Window 1: no deposits in last 90 days
+            ->push([
+                [
+                    'id' => 'dep-old',
+                    'amount' => '1000.00',
+                    'coin' => 'EUR',
+                    'status' => 1,
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(120)->getTimestampMs(),
+                ],
+            ]) // Window 2: deposit from ~120 days ago
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'EUR', 'free' => '1000.00', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // The deposit from the older window should be found: 1000 EUR → 100000 cents
+    expect($balance->invested_amount)->toBe(100000);
+});

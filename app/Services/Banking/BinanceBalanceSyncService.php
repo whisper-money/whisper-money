@@ -370,7 +370,7 @@ class BinanceBalanceSyncService
             );
 
             if (empty($records)) {
-                break;
+                continue;
             }
 
             foreach ($records as $record) {
