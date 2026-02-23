@@ -739,6 +739,64 @@ test('converts stablecoin deposits to fiat for invested_amount', function () {
     expect($balance->invested_amount)->toBe(136364);
 });
 
+test('paginates within a window when deposit history hits the 1000-record limit', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    // Build exactly 1000 deposits for the first page (triggers offset pagination)
+    $firstPage = collect(range(1, 1000))->map(fn ($i) => [
+        'id' => "dep-{$i}",
+        'amount' => '1.00',
+        'coin' => 'EUR',
+        'status' => 1,
+        'transferType' => 0,
+        'insertTime' => now()->subDays(10)->getTimestampMs(),
+    ])->all();
+
+    // Second page has the remaining deposits (< 1000, so pagination stops)
+    $secondPage = [
+        [
+            'id' => 'dep-1001',
+            'amount' => '500.00',
+            'coin' => 'EUR',
+            'status' => 1,
+            'transferType' => 0,
+            'insertTime' => now()->subDays(5)->getTimestampMs(),
+        ],
+    ];
+
+    Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::sequence()
+            ->push($firstPage)  // Window 1, offset 0: 1000 records
+            ->push($secondPage) // Window 1, offset 1000: 1 record (stops pagination)
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'EUR', 'free' => '1500.00', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // 1000 deposits of 1 EUR + 1 deposit of 500 EUR = 1500 EUR → 150000 cents
+    expect($balance->invested_amount)->toBe(150000);
+});
+
 test('fetches deposits from older windows when recent window is empty', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
     $connection = BankingConnection::factory()->binance()->create([

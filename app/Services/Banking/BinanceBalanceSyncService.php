@@ -325,7 +325,7 @@ class BinanceBalanceSyncService
     private function fetchAllDepositHistory(BinanceClient $client): array
     {
         return $this->fetchHistoryWindows(
-            fn (int $start, int $end) => $client->getDepositHistory($start, $end),
+            fn (int $start, int $end, int $offset) => $client->getDepositHistory($start, $end, $offset),
         );
     }
 
@@ -338,14 +338,15 @@ class BinanceBalanceSyncService
     private function fetchAllWithdrawHistory(BinanceClient $client): array
     {
         return $this->fetchHistoryWindows(
-            fn (int $start, int $end) => $client->getWithdrawHistory($start, $end),
+            fn (int $start, int $end, int $offset) => $client->getWithdrawHistory($start, $end, $offset),
         );
     }
 
     /**
      * Generic method to fetch transaction history in 90-day windows going back up to 2 years.
+     * Paginates within each window using offset when the API returns the maximum number of records.
      *
-     * @param  callable(int, int): array  $fetcher
+     * @param  callable(int, int, int): array  $fetcher
      * @return array<int, array>
      */
     private function fetchHistoryWindows(callable $fetcher): array
@@ -353,34 +354,36 @@ class BinanceBalanceSyncService
         $allRecords = [];
         $endDate = now();
         $maxWindows = 8; // ~2 years of 90-day windows
+        $limit = 1000;
         $isFirst = true;
 
         for ($i = 0; $i < $maxWindows; $i++) {
-            if (! $isFirst) {
-                Sleep::for(self::THROTTLE_SECONDS)->seconds();
-            }
-            $isFirst = false;
-
             $windowEnd = $endDate->copy()->subDays($i * self::DEPOSIT_WINDOW_DAYS);
             $windowStart = $windowEnd->copy()->subDays(self::DEPOSIT_WINDOW_DAYS);
+            $offset = 0;
 
-            $records = $fetcher(
-                $windowStart->getTimestampMs(),
-                $windowEnd->getTimestampMs(),
-            );
+            do {
+                if (! $isFirst) {
+                    Sleep::for(self::THROTTLE_SECONDS)->seconds();
+                }
+                $isFirst = false;
 
-            if (empty($records)) {
-                continue;
-            }
+                $records = $fetcher(
+                    $windowStart->getTimestampMs(),
+                    $windowEnd->getTimestampMs(),
+                    $offset,
+                );
 
-            foreach ($records as $record) {
-                $allRecords[] = $record;
-            }
+                if (empty($records)) {
+                    break;
+                }
 
-            // If we got fewer records than the limit, no more pages in this window
-            if (count($records) < 1000) {
-                continue;
-            }
+                foreach ($records as $record) {
+                    $allRecords[] = $record;
+                }
+
+                $offset += count($records);
+            } while (count($records) >= $limit);
         }
 
         return $allRecords;
