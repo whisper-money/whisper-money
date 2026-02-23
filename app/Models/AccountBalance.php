@@ -23,6 +23,8 @@ class AccountBalance extends Model
     {
         return [
             'balance_date' => 'date',
+            'balance' => 'integer',
+            'invested_amount' => 'integer',
         ];
     }
 

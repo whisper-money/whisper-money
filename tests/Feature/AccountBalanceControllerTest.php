@@ -280,6 +280,46 @@ it('can store balance without invested_amount', function () {
     ]);
 });
 
+it('validates store balance must be an integer', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
+        'balance' => 'not-a-number',
+        'balance_date' => now()->subDays(5)->toDateString(),
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['balance']);
+});
+
+it('rejects decimal balance on store', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
+        'balance' => 123.45,
+        'balance_date' => now()->subDays(5)->toDateString(),
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['balance']);
+});
+
+it('rejects decimal invested_amount on store', function () {
+    $user = User::factory()->create();
+    $account = Account::factory()->for($user)->create();
+
+    $response = $this->actingAs($user)->postJson("/api/accounts/{$account->id}/balances", [
+        'balance' => 300000,
+        'balance_date' => now()->subDays(5)->toDateString(),
+        'invested_amount' => 250.99,
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['invested_amount']);
+});
+
 it('preserves existing invested_amount when updating balance without it', function () {
     $user = User::factory()->create();
     $account = Account::factory()->for($user)->create();

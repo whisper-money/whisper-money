@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreAccountBalanceRequest;
 use App\Http\Requests\UpdateCurrentAccountBalanceRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
@@ -29,15 +30,11 @@ class AccountBalanceController extends Controller
     /**
      * Store a new balance for an account.
      */
-    public function store(Account $account): JsonResponse
+    public function store(StoreAccountBalanceRequest $request, Account $account): JsonResponse
     {
         $this->authorize('update', $account);
 
-        $validated = request()->validate([
-            'balance' => 'required|numeric',
-            'balance_date' => 'required|date',
-            'invested_amount' => 'nullable|numeric',
-        ]);
+        $validated = $request->validated();
 
         $balance = AccountBalance::updateOrCreate(
             [
