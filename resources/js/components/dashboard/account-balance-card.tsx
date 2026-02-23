@@ -127,58 +127,73 @@ export function AccountBalanceCard({
                                                 : null;
                                         return (
                                             <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
-                                                <p className="mb-0.5 text-muted-foreground">
+                                                <p className="mb-1 text-muted-foreground">
                                                     {data.date}
                                                 </p>
-                                                <p className="font-mono font-medium text-foreground tabular-nums">
-                                                    <AmountDisplay
-                                                        amountInCents={
-                                                            data.value
-                                                        }
-                                                        currencyCode={
-                                                            account.currency_code
-                                                        }
-                                                    />
-                                                </p>
-                                                {invested !== null && (
-                                                    <>
-                                                        <p className="mt-1 flex items-center gap-1 text-muted-foreground">
-                                                            <span
-                                                                className="inline-block h-0.5 w-3 border-t-2 border-dashed"
-                                                                style={{
-                                                                    borderColor:
-                                                                        'var(--color-chart-4)',
-                                                                }}
+                                                {invested !== null ? (
+                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                                                        <span className="text-muted-foreground">
+                                                            {__('Balance')}
+                                                        </span>
+                                                        <span className="text-right font-mono font-medium text-foreground tabular-nums">
+                                                            <AmountDisplay
+                                                                amountInCents={
+                                                                    data.value
+                                                                }
+                                                                currencyCode={
+                                                                    account.currency_code
+                                                                }
                                                             />
-                                                            <span className="font-mono tabular-nums">
-                                                                <AmountDisplay
-                                                                    amountInCents={
-                                                                        invested
-                                                                    }
-                                                                    currencyCode={
-                                                                        account.currency_code
-                                                                    }
-                                                                />
-                                                            </span>
-                                                        </p>
+                                                        </span>
+                                                        <span className="text-muted-foreground">
+                                                            {__('Invested')}
+                                                        </span>
+                                                        <span className="text-right font-mono text-muted-foreground tabular-nums">
+                                                            <AmountDisplay
+                                                                amountInCents={
+                                                                    invested
+                                                                }
+                                                                currencyCode={
+                                                                    account.currency_code
+                                                                }
+                                                            />
+                                                        </span>
                                                         {gain !== null && (
-                                                            <p
-                                                                className={`mt-0.5 font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                                                            >
-                                                                {gain >= 0
-                                                                    ? '+'
-                                                                    : ''}
-                                                                <AmountDisplay
-                                                                    amountInCents={
-                                                                        gain
-                                                                    }
-                                                                    currencyCode={
-                                                                        account.currency_code
-                                                                    }
-                                                                />
-                                                            </p>
+                                                            <>
+                                                                <span className="text-sm text-muted-foreground">
+                                                                    {__(
+                                                                        'Gain/loss',
+                                                                    )}
+                                                                </span>
+                                                                <span
+                                                                    className={`text-right font-mono text-sm tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                >
+                                                                    {gain >= 0
+                                                                        ? '+'
+                                                                        : ''}
+                                                                    <AmountDisplay
+                                                                        amountInCents={
+                                                                            gain
+                                                                        }
+                                                                        currencyCode={
+                                                                            account.currency_code
+                                                                        }
+                                                                    />
+                                                                </span>
+                                                            </>
                                                         )}
-                                                    </>
+                                                    </div>
+                                                ) : (
+                                                    <p className="font-mono font-medium text-foreground tabular-nums">
+                                                        <AmountDisplay
+                                                            amountInCents={
+                                                                data.value
+                                                            }
+                                                            currencyCode={
+                                                                account.currency_code
+                                                            }
+                                                        />
+                                                    </p>
                                                 )}
                                             </div>
                                         );
