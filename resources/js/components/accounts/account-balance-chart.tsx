@@ -469,9 +469,9 @@ export function AccountBalanceChart({
                                             <Line
                                                 dataKey="invested_amount"
                                                 type="monotone"
-                                                stroke="var(--color-chart-4)"
+                                                stroke="var(--color-chart-6)"
                                                 strokeWidth={1.5}
-                                                strokeDasharray="6 3"
+                                                strokeDasharray="2 2"
                                                 dot={false}
                                                 activeDot={{ r: 4 }}
                                                 connectNulls
@@ -507,9 +507,9 @@ export function AccountBalanceChart({
                                     <Line
                                         dataKey="invested_amount"
                                         type="monotone"
-                                        stroke="var(--color-chart-4)"
+                                        stroke="var(--color-chart-6)"
                                         strokeWidth={1.5}
-                                        strokeDasharray="6 3"
+                                        strokeDasharray="2 2"
                                         dot={false}
                                         activeDot={{ r: 4 }}
                                         connectNulls

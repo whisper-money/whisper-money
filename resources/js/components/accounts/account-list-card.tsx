@@ -9,13 +9,7 @@ import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
-import {
-    Line,
-    LineChart,
-    ReferenceLine,
-    ResponsiveContainer,
-    Tooltip,
-} from 'recharts';
+import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
 import { UpdateBalanceDialog } from './update-balance-dialog';
 
@@ -130,11 +124,12 @@ export function AccountListCard({
                                         const data = payload[0].payload as {
                                             date: string;
                                             value: number;
+                                            investedAmount?: number | null;
                                         };
                                         const invested = supportsInvestedAmount(
                                             account,
                                         )
-                                            ? account.investedAmount
+                                            ? (data.investedAmount ?? null)
                                             : null;
                                         const gain =
                                             invested !== null
@@ -175,13 +170,13 @@ export function AccountListCard({
                                                         </span>
                                                         {gain !== null && (
                                                             <>
-                                                                <span className="text-sm text-muted-foreground">
+                                                                <span className="text-muted-foreground">
                                                                     {__(
                                                                         'Gain/loss',
                                                                     )}
                                                                 </span>
                                                                 <span
-                                                                    className={`text-right font-mono text-sm tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                    className={`text-right font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                                                                 >
                                                                     {gain >= 0
                                                                         ? '+'
@@ -222,15 +217,17 @@ export function AccountListCard({
                                     strokeWidth={2}
                                     dot={false}
                                 />
-                                {supportsInvestedAmount(account) &&
-                                    account.investedAmount !== null && (
-                                        <ReferenceLine
-                                            y={account.investedAmount}
-                                            stroke="var(--color-chart-6)"
-                                            strokeWidth={1.5}
-                                            strokeDasharray="2 2"
-                                        />
-                                    )}
+                                {supportsInvestedAmount(account) && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="investedAmount"
+                                        stroke="var(--color-chart-6)"
+                                        strokeWidth={1.5}
+                                        strokeDasharray="4 3"
+                                        dot={false}
+                                        connectNulls
+                                    />
+                                )}
                             </LineChart>
                         </ResponsiveContainer>
                     </div>

@@ -113,6 +113,13 @@ class DashboardAnalyticsController extends Controller
                         'currency_code' => $account->currency_code,
                     ];
                 }
+
+                if ($account->type->supportsInvestedAmount()) {
+                    $investedAmount = $this->getInvestedAmountAt($account->id, $date);
+                    $point[$account->id.'_invested'] = $investedAmount !== null
+                        ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $date->toDateString())
+                        : null;
+                }
             }
 
             $points[] = $point;
