@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
+use App\Services\BalanceLookup;
 use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
@@ -85,6 +86,12 @@ class DashboardAnalyticsController extends Controller
             ->with(['bank:id,name,logo'])
             ->get();
 
+        $accountIds = $accounts->pluck('id');
+
+        // Include "now" in the range end so accountsConfig invested_amount lookups are covered
+        $lookupEnd = Carbon::now()->gt($end) ? Carbon::now() : $end->copy();
+        $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $lookupEnd);
+
         $points = [];
         $current = $start->copy()->startOfMonth();
         $endMonth = $end->copy()->startOfMonth();
@@ -97,7 +104,7 @@ class DashboardAnalyticsController extends Controller
             ];
 
             foreach ($accounts as $account) {
-                $originalBalance = $this->getBalanceAt($account->id, $date);
+                $originalBalance = $lookup->getBalanceAt($account->id, $date);
                 $convertedBalance = $this->convertBalance(
                     $originalBalance,
                     $account->currency_code,
@@ -115,7 +122,7 @@ class DashboardAnalyticsController extends Controller
                 }
 
                 if ($account->type->supportsInvestedAmount()) {
-                    $investedAmount = $this->getInvestedAmountAt($account->id, $date);
+                    $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
                     $point[$account->id.'_invested'] = $investedAmount !== null
                         ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $date->toDateString())
                         : null;
@@ -126,7 +133,8 @@ class DashboardAnalyticsController extends Controller
             $current->addMonth();
         }
 
-        $accountsConfig = $accounts->mapWithKeys(function ($account) use ($userCurrency) {
+        $now = Carbon::now();
+        $accountsConfig = $accounts->mapWithKeys(function ($account) use ($userCurrency, $lookup, $now) {
             $config = [
                 'id' => $account->id,
                 'name' => $account->name,
@@ -138,9 +146,9 @@ class DashboardAnalyticsController extends Controller
             ];
 
             if ($account->type->supportsInvestedAmount()) {
-                $investedAmount = $this->getInvestedAmountAt($account->id, Carbon::now());
+                $investedAmount = $lookup->getInvestedAmountAt($account->id, $now);
                 $config['invested_amount'] = $investedAmount !== null
-                    ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, Carbon::now()->toDateString())
+                    ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $now->toDateString())
                     : null;
             }
 
@@ -168,6 +176,8 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
+        $lookup = BalanceLookup::forAccounts([$account->id], $start->copy()->startOfMonth(), $end);
+
         $points = [];
         $current = $start->copy()->startOfMonth();
         $endMonth = $end->copy()->startOfMonth();
@@ -177,11 +187,11 @@ class DashboardAnalyticsController extends Controller
             $point = [
                 'month' => $date->format('Y-m'),
                 'timestamp' => $date->timestamp,
-                'value' => $this->getBalanceAt($account->id, $date),
+                'value' => $lookup->getBalanceAt($account->id, $date),
             ];
 
             if ($account->type->supportsInvestedAmount()) {
-                $point['invested_amount'] = $this->getInvestedAmountAt($account->id, $date);
+                $point['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $date);
             }
 
             $points[] = $point;
@@ -215,6 +225,8 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
+        $lookup = BalanceLookup::forAccounts([$account->id], $start, $end);
+
         $points = [];
         $current = $start->copy();
 
@@ -223,11 +235,11 @@ class DashboardAnalyticsController extends Controller
             $point = [
                 'date' => $date->format('Y-m-d'),
                 'timestamp' => $date->endOfDay()->timestamp,
-                'value' => $this->getBalanceAt($account->id, $date),
+                'value' => $lookup->getBalanceAt($account->id, $date),
             ];
 
             if ($account->type->supportsInvestedAmount()) {
-                $point['invested_amount'] = $this->getInvestedAmountAt($account->id, $date);
+                $point['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $date);
             }
 
             $points[] = $point;
@@ -264,6 +276,9 @@ class DashboardAnalyticsController extends Controller
             ->with(['bank:id,name,logo'])
             ->get();
 
+        $accountIds = $accounts->pluck('id');
+        $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
+
         $points = [];
         $current = $start->copy();
 
@@ -275,7 +290,7 @@ class DashboardAnalyticsController extends Controller
             ];
 
             foreach ($accounts as $account) {
-                $originalBalance = $this->getBalanceAt($account->id, $date);
+                $originalBalance = $lookup->getBalanceAt($account->id, $date);
                 $convertedBalance = $this->convertBalance(
                     $originalBalance,
                     $account->currency_code,
