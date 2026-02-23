@@ -49,7 +49,6 @@ function InvestmentTooltipContent({
     active,
     payload,
     valueFormatter,
-    currencyCode,
 }: {
     active?: boolean;
     payload?: Array<{
@@ -60,7 +59,6 @@ function InvestmentTooltipContent({
         payload?: Record<string, unknown>;
     }>;
     valueFormatter: (value: number) => string;
-    currencyCode: string;
 }) {
     if (!active || !payload?.length) return null;
 
@@ -529,9 +527,6 @@ export function AccountBalanceChart({
                                                     valueFormatter={
                                                         valueFormatter
                                                     }
-                                                    currencyCode={
-                                                        account.currency_code
-                                                    }
                                                 />
                                             ) : (
                                                 <ChartTooltipContent
@@ -584,9 +579,6 @@ export function AccountBalanceChart({
                                         content={
                                             <InvestmentTooltipContent
                                                 valueFormatter={valueFormatter}
-                                                currencyCode={
-                                                    account.currency_code
-                                                }
                                             />
                                         }
                                     />
