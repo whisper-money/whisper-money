@@ -102,7 +102,8 @@ class BitpandaClient
 
     /**
      * Fetch all fiat transactions of a given type by paginating through the cursor-based API.
-     * Transactions are returned in chronological order (oldest first).
+     * Transactions are returned newest-first from the API but this method
+     * reverses them to chronological order (oldest first).
      *
      * @param  string  $type  Transaction type: deposit, withdrawal, etc.
      * @return array<int, array{type: string, id: string, attributes: array}>
