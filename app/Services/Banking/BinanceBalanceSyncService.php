@@ -28,6 +28,9 @@ class BinanceBalanceSyncService
 
     private const SNAPSHOT_WINDOW_DAYS = 30;
 
+    /** Max days per deposit/withdrawal history request window */
+    private const DEPOSIT_WINDOW_DAYS = 90;
+
     /** Seconds to wait between API calls to avoid hitting Binance rate limits */
     private const THROTTLE_SECONDS = 1;
 
@@ -50,13 +53,17 @@ class BinanceBalanceSyncService
             Sleep::for(self::THROTTLE_SECONDS)->seconds();
         }
 
-        $this->syncCurrentBalance($account, $client);
+        $investedAmountCents = $this->calculateInvestedAmount($account, $client);
+
+        Sleep::for(self::THROTTLE_SECONDS)->seconds();
+
+        $this->syncCurrentBalance($account, $client, $investedAmountCents);
     }
 
     /**
      * Sync today's balance using live ticker prices.
      */
-    public function syncCurrentBalance(Account $account, BinanceClient $client): void
+    public function syncCurrentBalance(Account $account, BinanceClient $client, ?int $investedAmountCents = null): void
     {
         $accountData = $client->getAccount();
         $balances = $accountData['balances'] ?? [];
@@ -73,7 +80,10 @@ class BinanceBalanceSyncService
 
         $account->balances()->updateOrCreate(
             ['balance_date' => now()->toDateString()],
-            ['balance' => $totalValueCents],
+            [
+                'balance' => $totalValueCents,
+                ...($investedAmountCents !== null ? ['invested_amount' => $investedAmountCents] : []),
+            ],
         );
     }
 
@@ -281,5 +291,172 @@ class BinanceBalanceSyncService
         ]);
 
         return 0.0;
+    }
+
+    /**
+     * Calculate the net invested amount by fetching all deposit and withdrawal history.
+     * Net invested = sum of completed deposits - sum of completed withdrawals, converted to fiat.
+     * Fetches history in 90-day windows going as far back as possible.
+     */
+    private function calculateInvestedAmount(Account $account, BinanceClient $client): ?int
+    {
+        $targetCurrency = strtoupper($account->currency_code);
+
+        $deposits = $this->fetchAllDepositHistory($client);
+        Sleep::for(self::THROTTLE_SECONDS)->seconds();
+        $withdrawals = $this->fetchAllWithdrawHistory($client);
+
+        if (empty($deposits) && empty($withdrawals)) {
+            return null;
+        }
+
+        $totalDeposited = $this->sumTransactionAmounts($deposits, $targetCurrency, 'deposit');
+        $totalWithdrawn = $this->sumTransactionAmounts($withdrawals, $targetCurrency, 'withdrawal');
+
+        return (int) round(($totalDeposited - $totalWithdrawn) * 100);
+    }
+
+    /**
+     * Fetch all deposit history by paginating through 90-day windows.
+     * Goes back up to 2 years (8 windows of 90 days).
+     *
+     * @return array<int, array>
+     */
+    private function fetchAllDepositHistory(BinanceClient $client): array
+    {
+        return $this->fetchHistoryWindows(
+            fn (int $start, int $end, int $offset) => $client->getDepositHistory($start, $end, $offset),
+        );
+    }
+
+    /**
+     * Fetch all withdrawal history by paginating through 90-day windows.
+     * Goes back up to 2 years (8 windows of 90 days).
+     *
+     * @return array<int, array>
+     */
+    private function fetchAllWithdrawHistory(BinanceClient $client): array
+    {
+        return $this->fetchHistoryWindows(
+            fn (int $start, int $end, int $offset) => $client->getWithdrawHistory($start, $end, $offset),
+        );
+    }
+
+    /**
+     * Generic method to fetch transaction history in 90-day windows going back up to 2 years.
+     * Paginates within each window using offset when the API returns the maximum number of records.
+     *
+     * @param  callable(int, int, int): array  $fetcher
+     * @return array<int, array>
+     */
+    private function fetchHistoryWindows(callable $fetcher): array
+    {
+        $allRecords = [];
+        $endDate = now();
+        $maxWindows = 8; // ~2 years of 90-day windows
+        $limit = 1000;
+        $isFirst = true;
+
+        for ($i = 0; $i < $maxWindows; $i++) {
+            $windowEnd = $endDate->copy()->subDays($i * self::DEPOSIT_WINDOW_DAYS);
+            $windowStart = $windowEnd->copy()->subDays(self::DEPOSIT_WINDOW_DAYS);
+            $offset = 0;
+
+            do {
+                if (! $isFirst) {
+                    Sleep::for(self::THROTTLE_SECONDS)->seconds();
+                }
+                $isFirst = false;
+
+                $records = $fetcher(
+                    $windowStart->getTimestampMs(),
+                    $windowEnd->getTimestampMs(),
+                    $offset,
+                );
+
+                if (empty($records)) {
+                    break;
+                }
+
+                foreach ($records as $record) {
+                    $allRecords[] = $record;
+                }
+
+                $offset += count($records);
+            } while (count($records) >= $limit);
+        }
+
+        return $allRecords;
+    }
+
+    /**
+     * Sum transaction amounts, converting crypto amounts to fiat using the currency conversion service.
+     * Only includes completed transactions (status=1 for deposits, status=6 for withdrawals)
+     * and excludes internal transfers (transferType=1).
+     *
+     * @param  array<int, array>  $transactions
+     */
+    private function sumTransactionAmounts(array $transactions, string $targetCurrency, string $type): float
+    {
+        $successStatus = $type === 'deposit' ? 1 : 6;
+        $total = 0.0;
+
+        foreach ($transactions as $transaction) {
+            $status = $transaction['status'] ?? -1;
+            $transferType = $transaction['transferType'] ?? 0;
+            $amount = (float) ($transaction['amount'] ?? 0);
+            $coin = $transaction['coin'] ?? '';
+
+            // Skip non-completed or internal transfers
+            if ($status !== $successStatus || $transferType === 1 || $amount <= 0) {
+                continue;
+            }
+
+            $date = $this->getTransactionDate($transaction, $type);
+
+            // For stablecoins pegged to USD, convert directly
+            if (in_array($coin, self::USD_STABLECOINS, true)) {
+                $coin = 'USD';
+            }
+
+            if (strtoupper($coin) === $targetCurrency) {
+                $total += $amount;
+            } else {
+                $converted = $this->currencyConverter->convert($coin, $targetCurrency, $amount, $date);
+                $total += $converted;
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Extract the transaction date string from a deposit or withdrawal record.
+     */
+    private function getTransactionDate(array $transaction, string $type): string
+    {
+        if ($type === 'deposit') {
+            // Deposit uses insertTime (timestamp in milliseconds)
+            $timestamp = $transaction['insertTime'] ?? $transaction['completeTime'] ?? null;
+
+            if ($timestamp) {
+                return Carbon::createFromTimestampMs($timestamp)->toDateString();
+            }
+        } else {
+            // Withdrawal uses completeTime or applyTime (string format)
+            $completeTime = $transaction['completeTime'] ?? null;
+
+            if ($completeTime) {
+                return Carbon::parse($completeTime)->toDateString();
+            }
+
+            $applyTime = $transaction['applyTime'] ?? null;
+
+            if ($applyTime) {
+                return Carbon::parse($applyTime)->toDateString();
+            }
+        }
+
+        return now()->toDateString();
     }
 }

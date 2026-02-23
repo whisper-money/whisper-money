@@ -11,11 +11,13 @@ export enum BalanceImportStep {
 export interface BalanceColumnMapping {
     balance_date: string | null;
     balance: string | null;
+    invested_amount: string | null;
 }
 
 export interface ParsedBalance {
     balance_date: string;
     balance: number;
+    invested_amount: number | null;
 }
 
 export interface ColumnOption {

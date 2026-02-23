@@ -19,7 +19,7 @@ import {
     parseFile,
 } from '@/lib/file-parser';
 import { type SharedData } from '@/types';
-import { type Account } from '@/types/account';
+import { supportsInvestedAmount, type Account } from '@/types/account';
 import {
     BalanceImportStep,
     type BalanceColumnMapping,
@@ -86,6 +86,7 @@ export function ImportBalancesDrawer({
         columnMapping: {
             balance_date: null,
             balance: null,
+            invested_amount: null,
         },
         dateFormat: DateFormat.YearMonthDay,
         dateFormatDetected: false,
@@ -115,6 +116,7 @@ export function ImportBalancesDrawer({
                 columnMapping: {
                     balance_date: null,
                     balance: null,
+                    invested_amount: null,
                 },
                 dateFormat: DateFormat.YearMonthDay,
                 dateFormatDetected: false,
@@ -139,6 +141,7 @@ export function ImportBalancesDrawer({
         const mapping: BalanceColumnMapping = {
             balance_date: null,
             balance: null,
+            invested_amount: null,
         };
 
         if (!headers || headers.length === 0) {
@@ -170,6 +173,16 @@ export function ImportBalancesDrawer({
             'total',
         ];
 
+        const investedPatterns = [
+            'invested',
+            'invested_amount',
+            'invested amount',
+            'cost',
+            'cost basis',
+            'invertido',
+            'coste',
+        ];
+
         for (let i = 0; i < lowerHeaders.length; i++) {
             const header = lowerHeaders[i];
             const originalHeader = headers[i];
@@ -190,6 +203,13 @@ export function ImportBalancesDrawer({
                 balancePatterns.some((p) => header.includes(p))
             ) {
                 mapping.balance = originalHeader;
+            }
+
+            if (
+                !mapping.invested_amount &&
+                investedPatterns.some((p) => header.includes(p))
+            ) {
+                mapping.invested_amount = originalHeader;
             }
         }
 
@@ -339,9 +359,22 @@ export function ImportBalancesDrawer({
 
                 const formattedDate = date.toISOString().split('T')[0];
 
+                let investedAmount: number | null = null;
+                if (state.columnMapping.invested_amount) {
+                    const rawInvested = parseAmount(
+                        row[state.columnMapping.invested_amount] as
+                            | string
+                            | number,
+                    );
+                    if (rawInvested !== null) {
+                        investedAmount = Math.round(rawInvested * 100);
+                    }
+                }
+
                 parsedBalances.push({
                     balance_date: formattedDate,
                     balance: Math.round(balance * 100),
+                    invested_amount: investedAmount,
                 });
             }
 
@@ -413,6 +446,12 @@ export function ImportBalancesDrawer({
                             body: JSON.stringify({
                                 balance_date: balance.balance_date,
                                 balance: balance.balance,
+                                ...(balance.invested_amount !== null
+                                    ? {
+                                          invested_amount:
+                                              balance.invested_amount,
+                                      }
+                                    : {}),
                             }),
                         },
                     );
@@ -551,6 +590,10 @@ export function ImportBalancesDrawer({
     };
 
     const renderStep = () => {
+        const showInvestedAmount = selectedAccount
+            ? supportsInvestedAmount(selectedAccount)
+            : false;
+
         switch (state.step) {
             case BalanceImportStep.SelectAccount:
                 return (
@@ -580,6 +623,7 @@ export function ImportBalancesDrawer({
                         dateFormatDetected={state.dateFormatDetected}
                         parsedData={state.parsedData}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
+                        showInvestedAmount={showInvestedAmount}
                         onMappingChange={handleMappingChange}
                         onDateFormatChange={handleDateFormatChange}
                         onNext={handlePreviewBalances}
@@ -592,6 +636,7 @@ export function ImportBalancesDrawer({
                     <ImportBalanceStepPreview
                         balances={state.balances}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
+                        showInvestedAmount={showInvestedAmount}
                         onConfirm={handleConfirmImport}
                         onBack={handleBack}
                         isImporting={isImporting}

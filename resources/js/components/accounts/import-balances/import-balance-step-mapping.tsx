@@ -24,6 +24,7 @@ interface ImportBalanceStepMappingProps {
     dateFormatDetected: boolean;
     parsedData: ParsedRow[];
     currencyCode: string;
+    showInvestedAmount: boolean;
     onMappingChange: (field: keyof BalanceColumnMapping, value: string) => void;
     onDateFormatChange: (format: DateFormat) => void;
     onNext: () => void;
@@ -37,12 +38,18 @@ export function ImportBalanceStepMapping({
     dateFormatDetected,
     parsedData,
     currencyCode,
+    showInvestedAmount,
     onMappingChange,
     onDateFormatChange,
     onNext,
     onBack,
 }: ImportBalanceStepMappingProps) {
     const isValid = columnMapping.balance_date && columnMapping.balance;
+
+    const currencyFormatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyCode,
+    });
 
     const previewBalances = parsedData.slice(0, 3).map((row) => {
         const date = columnMapping.balance_date
@@ -55,6 +62,17 @@ export function ImportBalanceStepMapping({
             ? parseAmount(row[columnMapping.balance] as string | number)
             : null;
 
+        let investedAmount: string | null = null;
+        if (showInvestedAmount && columnMapping.invested_amount) {
+            const invested = parseAmount(
+                row[columnMapping.invested_amount] as string | number,
+            );
+            investedAmount =
+                invested !== null
+                    ? currencyFormatter.format(invested)
+                    : 'Invalid amount';
+        }
+
         return {
             date: date
                 ? date.toLocaleDateString('en-US', {
@@ -65,11 +83,9 @@ export function ImportBalanceStepMapping({
                 : 'Invalid date',
             balance:
                 balance !== null
-                    ? new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: currencyCode,
-                      }).format(balance)
+                    ? currencyFormatter.format(balance)
                     : 'Invalid amount',
+            investedAmount,
         };
     });
 
@@ -136,6 +152,38 @@ export function ImportBalanceStepMapping({
                     </Select>
                 </div>
 
+                {showInvestedAmount && (
+                    <div className="space-y-2">
+                        <Label htmlFor="invested-column">
+                            {__('Invested Amount')}
+                        </Label>
+                        <Select
+                            value={columnMapping.invested_amount || ''}
+                            onValueChange={(value) =>
+                                onMappingChange('invested_amount', value)
+                            }
+                        >
+                            <SelectTrigger id="invested-column">
+                                <SelectValue
+                                    placeholder={__(
+                                        'Select invested amount column (optional)',
+                                    )}
+                                />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {columnOptions.map((option, index) => (
+                                    <SelectItem
+                                        key={`invested-${option.value}-${index}`}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+
                 {isValid && previewBalances.length > 0 && (
                     <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
                         <Label className="pl-2 text-xs font-light tracking-widest uppercase opacity-50">
@@ -150,9 +198,16 @@ export function ImportBalanceStepMapping({
                                     <span className="whitespace-nowrap text-muted-foreground">
                                         {balance.date}
                                     </span>
-                                    <span className="font-mono font-medium whitespace-nowrap">
-                                        {balance.balance}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        {balance.investedAmount && (
+                                            <span className="font-mono whitespace-nowrap text-muted-foreground">
+                                                {balance.investedAmount}
+                                            </span>
+                                        )}
+                                        <span className="font-mono font-medium whitespace-nowrap">
+                                            {balance.balance}
+                                        </span>
+                                    </div>
                                 </div>
                             ))}
                         </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreAccountBalanceRequest;
 use App\Http\Requests\UpdateCurrentAccountBalanceRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
@@ -29,14 +30,11 @@ class AccountBalanceController extends Controller
     /**
      * Store a new balance for an account.
      */
-    public function store(Account $account): JsonResponse
+    public function store(StoreAccountBalanceRequest $request, Account $account): JsonResponse
     {
         $this->authorize('update', $account);
 
-        $validated = request()->validate([
-            'balance' => 'required|numeric',
-            'balance_date' => 'required|date',
-        ]);
+        $validated = $request->validated();
 
         $balance = AccountBalance::updateOrCreate(
             [
@@ -45,6 +43,9 @@ class AccountBalanceController extends Controller
             ],
             [
                 'balance' => $validated['balance'],
+                ...array_key_exists('invested_amount', $validated)
+                    ? ['invested_amount' => $validated['invested_amount']]
+                    : [],
             ]
         );
 
@@ -61,6 +62,7 @@ class AccountBalanceController extends Controller
         $this->authorize('update', $account);
 
         $today = now()->toDateString();
+        $validated = $request->validated();
 
         $balance = AccountBalance::updateOrCreate(
             [
@@ -68,7 +70,10 @@ class AccountBalanceController extends Controller
                 'balance_date' => $today,
             ],
             [
-                'balance' => $request->validated()['balance'],
+                'balance' => $validated['balance'],
+                ...array_key_exists('invested_amount', $validated)
+                    ? ['invested_amount' => $validated['invested_amount']]
+                    : [],
             ]
         );
 

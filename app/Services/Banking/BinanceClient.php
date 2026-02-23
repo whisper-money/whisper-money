@@ -60,6 +60,48 @@ class BinanceClient
     }
 
     /**
+     * Get deposit history with optional time range and pagination.
+     * Default time range is 90 days. Max window is 90 days per request.
+     *
+     * @return array<int, array{id: string, amount: string, coin: string, network: string, status: int, insertTime: int, transferType: int}>
+     */
+    public function getDepositHistory(?int $startTime = null, ?int $endTime = null, int $offset = 0, int $limit = 1000): array
+    {
+        $params = ['offset' => $offset, 'limit' => $limit];
+
+        if ($startTime !== null) {
+            $params['startTime'] = $startTime;
+        }
+
+        if ($endTime !== null) {
+            $params['endTime'] = $endTime;
+        }
+
+        return $this->signedRequest('/sapi/v1/capital/deposit/hisrec', $params);
+    }
+
+    /**
+     * Get withdrawal history with optional time range and pagination.
+     * Default time range is 90 days. Max window is 90 days per request.
+     *
+     * @return array<int, array{id: string, amount: string, coin: string, network: string, status: int, applyTime: string, transferType: int}>
+     */
+    public function getWithdrawHistory(?int $startTime = null, ?int $endTime = null, int $offset = 0, int $limit = 1000): array
+    {
+        $params = ['offset' => $offset, 'limit' => $limit];
+
+        if ($startTime !== null) {
+            $params['startTime'] = $startTime;
+        }
+
+        if ($endTime !== null) {
+            $params['endTime'] = $endTime;
+        }
+
+        return $this->signedRequest('/sapi/v1/capital/withdraw/history', $params);
+    }
+
+    /**
      * Execute a signed request with fresh timestamp on each retry attempt.
      */
     private function signedRequest(string $path, array $params = []): array

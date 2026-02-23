@@ -39,9 +39,15 @@ class IndexaCapitalBalanceSyncService
                 continue;
             }
 
+            $balanceCents = (int) round(floatval($value) * 100);
+            $investedAmountCents = $this->calculateInvestedAmount($entry);
+
             $account->balances()->updateOrCreate(
                 ['balance_date' => $date],
-                ['balance' => (int) round(floatval($value) * 100)],
+                [
+                    'balance' => $balanceCents,
+                    ...($investedAmountCents !== null ? ['invested_amount' => $investedAmountCents] : []),
+                ],
             );
 
             $count++;
@@ -51,5 +57,32 @@ class IndexaCapitalBalanceSyncService
             'account_id' => $account->id,
             'days_synced' => $count,
         ]);
+    }
+
+    /**
+     * Calculate invested amount from portfolio entry data.
+     *
+     * Uses instruments_cost + cash_amount when available (cost basis approach).
+     * Falls back to total_amount - return if the return field is present.
+     *
+     * @param  array<string, mixed>  $entry
+     */
+    private function calculateInvestedAmount(array $entry): ?int
+    {
+        $instrumentsCost = $entry['instruments_cost'] ?? null;
+        $cashAmount = $entry['cash_amount'] ?? null;
+
+        if ($instrumentsCost !== null && $cashAmount !== null) {
+            return (int) round((floatval($instrumentsCost) + floatval($cashAmount)) * 100);
+        }
+
+        $totalAmount = $entry['total_amount'] ?? null;
+        $returnValue = $entry['return'] ?? null;
+
+        if ($totalAmount !== null && $returnValue !== null) {
+            return (int) round((floatval($totalAmount) - floatval($returnValue)) * 100);
+        }
+
+        return null;
     }
 }

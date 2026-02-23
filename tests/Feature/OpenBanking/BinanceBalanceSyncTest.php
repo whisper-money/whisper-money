@@ -25,6 +25,8 @@ test('syncs binance balance using direct EUR pair', function () {
     ]);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -61,6 +63,8 @@ test('syncs binance balance using USDT fallback conversion', function () {
     ]);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -97,6 +101,8 @@ test('handles USD stablecoins as 1:1 when target is USD', function () {
     ]);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -130,6 +136,8 @@ test('includes locked balances in total', function () {
     ]);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -167,6 +175,8 @@ test('updates existing balance for same date', function () {
     ]);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -199,6 +209,8 @@ test('handles empty balances gracefully', function () {
     ]);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [],
@@ -245,6 +257,8 @@ test('first sync fetches historical snapshots and converts using currency API', 
     $twoDaysAgo = now()->subDays(2);
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response([
             'snapshotVos' => [
                 [
@@ -323,6 +337,8 @@ test('subsequent sync only fetches snapshots since last balance date', function 
     $yesterday = now()->subDay();
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response([
             'snapshotVos' => [
                 [
@@ -383,6 +399,8 @@ test('historical sync converts assets using currency API', function () {
     $yesterday = now()->subDay();
 
     Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
         'api.binance.com/sapi/v1/accountSnapshot*' => Http::response([
             'snapshotVos' => [
                 [
@@ -419,4 +437,408 @@ test('historical sync converts assets using currency API', function () {
     // Historical: 10 SOL / 0.01 = 1000 EUR → 100000 cents
     $yesterdayBalance = $account->balances()->where('balance_date', $yesterday->toDateString())->first();
     expect($yesterdayBalance->balance)->toBe(100000);
+});
+
+test('calculates invested_amount from deposit and withdrawal history', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::sequence()
+            ->push([
+                [
+                    'id' => 'dep-1',
+                    'amount' => '0.5',
+                    'coin' => 'BTC',
+                    'status' => 1,
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(30)->getTimestampMs(),
+                ],
+                [
+                    'id' => 'dep-2',
+                    'amount' => '1000.00',
+                    'coin' => 'USDT',
+                    'status' => 1,
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(20)->getTimestampMs(),
+                ],
+            ])
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::sequence()
+            ->push([
+                [
+                    'id' => 'wd-1',
+                    'amount' => '200.00',
+                    'coin' => 'USDT',
+                    'status' => 6,
+                    'transferType' => 0,
+                    'completeTime' => now()->subDays(10)->toDateTimeString(),
+                ],
+            ])
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => [
+                'btc' => 0.00002, // 1 EUR = 0.00002 BTC → 1 BTC = 50000 EUR
+            ],
+        ]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'BTC', 'free' => '0.5', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([
+            ['symbol' => 'BTCEUR', 'price' => '50000.00'],
+        ]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // Deposits: 0.5 BTC → converted via CurrencyConversionService (0.5 / 0.00002 = 25000 EUR)
+    //           1000 USDT → treated as USD and converted (1000 USD via currency API)
+    // Withdrawals: 200 USDT → treated as USD and converted (200 USD via currency API)
+    // The exact amount depends on the currency conversion API response
+    expect($balance->invested_amount)->not->toBeNull();
+    expect($balance->invested_amount)->toBeGreaterThan(0);
+});
+
+test('excludes internal transfers from invested_amount calculation', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::sequence()
+            ->push([
+                [
+                    'id' => 'dep-1',
+                    'amount' => '500.00',
+                    'coin' => 'EUR',
+                    'status' => 1,
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(30)->getTimestampMs(),
+                ],
+                [
+                    'id' => 'dep-internal',
+                    'amount' => '1000.00',
+                    'coin' => 'EUR',
+                    'status' => 1,
+                    'transferType' => 1, // Internal transfer — should be excluded
+                    'insertTime' => now()->subDays(20)->getTimestampMs(),
+                ],
+            ])
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::sequence()
+            ->push([])
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'EUR', 'free' => '500.00', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // Only the external deposit of 500 EUR should count, internal 1000 EUR is excluded
+    expect($balance->invested_amount)->toBe(50000); // 500 EUR → 50000 cents
+});
+
+test('filters deposits by status 1 and withdrawals by status 6', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::sequence()
+            ->push([
+                [
+                    'id' => 'dep-completed',
+                    'amount' => '1000.00',
+                    'coin' => 'EUR',
+                    'status' => 1, // Completed
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(30)->getTimestampMs(),
+                ],
+                [
+                    'id' => 'dep-pending',
+                    'amount' => '2000.00',
+                    'coin' => 'EUR',
+                    'status' => 0, // Pending — should be excluded
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(20)->getTimestampMs(),
+                ],
+            ])
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::sequence()
+            ->push([
+                [
+                    'id' => 'wd-completed',
+                    'amount' => '300.00',
+                    'coin' => 'EUR',
+                    'status' => 6, // Completed
+                    'transferType' => 0,
+                    'completeTime' => now()->subDays(10)->toDateTimeString(),
+                ],
+                [
+                    'id' => 'wd-processing',
+                    'amount' => '500.00',
+                    'coin' => 'EUR',
+                    'status' => 4, // Processing — should be excluded
+                    'transferType' => 0,
+                    'applyTime' => now()->subDays(5)->toDateTimeString(),
+                ],
+            ])
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'EUR', 'free' => '700.00', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // Deposits: 1000 EUR (completed) — pending 2000 excluded
+    // Withdrawals: 300 EUR (completed) — processing 500 excluded
+    // Net: 1000 - 300 = 700 EUR → 70000 cents
+    expect($balance->invested_amount)->toBe(70000);
+});
+
+test('returns null invested_amount when no deposit or withdrawal history', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'BTC', 'free' => '1.0', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([
+            ['symbol' => 'BTCEUR', 'price' => '50000.00'],
+        ]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    expect($balance->balance)->toBe(5000000);
+    expect($balance->invested_amount)->toBeNull();
+});
+
+test('converts stablecoin deposits to fiat for invested_amount', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::sequence()
+            ->push([
+                [
+                    'id' => 'dep-1',
+                    'amount' => '1000.00',
+                    'coin' => 'USDT',
+                    'status' => 1,
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(30)->getTimestampMs(),
+                ],
+                [
+                    'id' => 'dep-2',
+                    'amount' => '500.00',
+                    'coin' => 'USDC',
+                    'status' => 1,
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(20)->getTimestampMs(),
+                ],
+            ])
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::sequence()
+            ->push([])
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        // CurrencyConversionService will convert USD to EUR
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => [
+                'usd' => 1.10, // 1 EUR = 1.10 USD → 1 USD = 0.909 EUR
+            ],
+        ]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'USDT', 'free' => '1500.00', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([
+            ['symbol' => 'EURUSDT', 'price' => '1.10'],
+        ]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // Stablecoins USDT and USDC are treated as USD
+    // 1000 USD + 500 USD = 1500 USD total deposited
+    // Converted to EUR: 1500 / 1.10 = 1363.636... EUR → 136364 cents
+    expect($balance->invested_amount)->toBe(136364);
+});
+
+test('paginates within a window when deposit history hits the 1000-record limit', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    // Build exactly 1000 deposits for the first page (triggers offset pagination)
+    $firstPage = collect(range(1, 1000))->map(fn ($i) => [
+        'id' => "dep-{$i}",
+        'amount' => '1.00',
+        'coin' => 'EUR',
+        'status' => 1,
+        'transferType' => 0,
+        'insertTime' => now()->subDays(10)->getTimestampMs(),
+    ])->all();
+
+    // Second page has the remaining deposits (< 1000, so pagination stops)
+    $secondPage = [
+        [
+            'id' => 'dep-1001',
+            'amount' => '500.00',
+            'coin' => 'EUR',
+            'status' => 1,
+            'transferType' => 0,
+            'insertTime' => now()->subDays(5)->getTimestampMs(),
+        ],
+    ];
+
+    Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::sequence()
+            ->push($firstPage)  // Window 1, offset 0: 1000 records
+            ->push($secondPage) // Window 1, offset 1000: 1 record (stops pagination)
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'EUR', 'free' => '1500.00', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // 1000 deposits of 1 EUR + 1 deposit of 500 EUR = 1500 EUR → 150000 cents
+    expect($balance->invested_amount)->toBe(150000);
+});
+
+test('fetches deposits from older windows when recent window is empty', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        // First window (most recent 90 days) returns empty, second window has a deposit
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::sequence()
+            ->push([]) // Window 1: no deposits in last 90 days
+            ->push([
+                [
+                    'id' => 'dep-old',
+                    'amount' => '1000.00',
+                    'coin' => 'EUR',
+                    'status' => 1,
+                    'transferType' => 0,
+                    'insertTime' => now()->subDays(120)->getTimestampMs(),
+                ],
+            ]) // Window 2: deposit from ~120 days ago
+            ->whenEmpty(Http::response([])),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'EUR', 'free' => '1000.00', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    $balance = $account->balances()->first();
+    // The deposit from the older window should be found: 1000 EUR → 100000 cents
+    expect($balance->invested_amount)->toBe(100000);
 });

@@ -10,6 +10,7 @@ class BitpandaBalanceSyncService
     /**
      * Sync the total portfolio value for a Bitpanda account.
      * Uses Bitpanda's own ticker prices to match the values shown in the Bitpanda dashboard.
+     * Also calculates the invested amount from fiat deposit/withdrawal history.
      */
     public function sync(Account $account, BitpandaClient $client): void
     {
@@ -17,14 +18,15 @@ class BitpandaBalanceSyncService
             return;
         }
 
-        $this->syncCurrentBalance($account, $client);
+        $investedAmountCents = $this->calculateInvestedAmount($client, strtoupper($account->currency_code));
+        $this->syncCurrentBalance($account, $client, $investedAmountCents);
     }
 
     /**
      * Sync today's balance by fetching all wallets and converting to target currency
      * using Bitpanda's own ticker prices.
      */
-    public function syncCurrentBalance(Account $account, BitpandaClient $client): void
+    public function syncCurrentBalance(Account $account, BitpandaClient $client, ?int $investedAmountCents = null): void
     {
         $targetCurrency = strtoupper($account->currency_code);
         $ticker = $client->getTickerPrices();
@@ -37,7 +39,10 @@ class BitpandaBalanceSyncService
 
         $account->balances()->updateOrCreate(
             ['balance_date' => now()->toDateString()],
-            ['balance' => $totalValueCents],
+            [
+                'balance' => $totalValueCents,
+                ...($investedAmountCents !== null ? ['invested_amount' => $investedAmountCents] : []),
+            ],
         );
     }
 
@@ -124,5 +129,61 @@ class BitpandaBalanceSyncService
         }
 
         return (float) $price;
+    }
+
+    /**
+     * Calculate net invested amount from fiat deposit and withdrawal history.
+     * Net invested = total deposits - total withdrawals (in cents).
+     */
+    private function calculateInvestedAmount(BitpandaClient $client, string $targetCurrency): ?int
+    {
+        $deposits = $client->getAllFiatTransactions('deposit');
+        $withdrawals = $client->getAllFiatTransactions('withdrawal');
+
+        $totalDeposited = $this->sumFiatTransactions($deposits, $targetCurrency);
+        $totalWithdrawn = $this->sumFiatTransactions($withdrawals, $targetCurrency);
+
+        if ($totalDeposited === 0.0 && $totalWithdrawn === 0.0) {
+            return null;
+        }
+
+        return (int) round(($totalDeposited - $totalWithdrawn) * 100);
+    }
+
+    /**
+     * Sum the amounts of fiat transactions in the target currency.
+     * Only considers finished transactions whose fiat_id matches the target currency.
+     *
+     * @param  array<int, array{type: string, id: string, attributes: array}>  $transactions
+     */
+    private function sumFiatTransactions(array $transactions, string $targetCurrency): float
+    {
+        $total = 0.0;
+
+        foreach ($transactions as $transaction) {
+            $attributes = $transaction['attributes'] ?? [];
+            $status = $attributes['status'] ?? '';
+            $amount = (float) ($attributes['amount'] ?? 0);
+
+            if ($status !== 'finished' || $amount <= 0) {
+                continue;
+            }
+
+            $fiatId = strtoupper($attributes['fiat_id'] ?? '');
+
+            if ($fiatId !== $targetCurrency) {
+                Log::warning('Bitpanda fiat transaction in different currency than target', [
+                    'fiat_id' => $fiatId,
+                    'target_currency' => $targetCurrency,
+                    'amount' => $amount,
+                ]);
+
+                continue;
+            }
+
+            $total += $amount;
+        }
+
+        return $total;
     }
 }

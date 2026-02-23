@@ -78,6 +78,60 @@ class BitpandaClient
     }
 
     /**
+     * List fiat wallet transactions with optional type filtering and cursor-based pagination.
+     *
+     * @param  string|null  $type  Filter by type: buy, sell, deposit, withdrawal, transfer, refund
+     * @param  string|null  $cursor  Cursor for pagination
+     * @param  int  $pageSize  Number of results per page
+     * @return array{data: array<int, array{type: string, id: string, attributes: array}>, meta: array, links: array}
+     */
+    public function getFiatTransactions(?string $type = null, ?string $cursor = null, int $pageSize = 25): array
+    {
+        $params = ['page_size' => $pageSize];
+
+        if ($type) {
+            $params['type'] = $type;
+        }
+
+        if ($cursor) {
+            $params['cursor'] = $cursor;
+        }
+
+        return $this->get('/fiatwallets/transactions', $params);
+    }
+
+    /**
+     * Fetch all fiat transactions of a given type by paginating through the cursor-based API.
+     * Transactions are returned newest-first from the API but this method
+     * reverses them to chronological order (oldest first).
+     *
+     * @param  string  $type  Transaction type: deposit, withdrawal, etc.
+     * @return array<int, array{type: string, id: string, attributes: array}>
+     */
+    public function getAllFiatTransactions(string $type): array
+    {
+        $allTransactions = [];
+        $cursor = null;
+
+        do {
+            $response = $this->getFiatTransactions($type, $cursor, 100);
+            $transactions = $response['data'] ?? [];
+
+            if (empty($transactions)) {
+                break;
+            }
+
+            foreach ($transactions as $transaction) {
+                $allTransactions[] = $transaction;
+            }
+
+            $cursor = $response['meta']['next_cursor'] ?? null;
+        } while ($cursor);
+
+        return array_reverse($allTransactions);
+    }
+
+    /**
      * Fetch all trades by paginating through the cursor-based API.
      * Trades are returned newest-first from the API but this method
      * reverses them to chronological order (oldest first).

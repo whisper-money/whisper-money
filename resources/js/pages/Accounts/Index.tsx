@@ -42,6 +42,7 @@ export default function AccountsIndex({ accounts }: Props) {
                 previousBalance: metrics?.previousBalance ?? 0,
                 diff: metrics?.diff ?? 0,
                 history: metrics?.history ?? [],
+                investedAmount: metrics?.investedAmount ?? null,
             };
         });
     }, [accounts, accountMetrics]);

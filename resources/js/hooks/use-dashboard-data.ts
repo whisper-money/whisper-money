@@ -11,6 +11,7 @@ export interface NetWorthEvolutionAccount {
     type: AccountType;
     currency_code: string;
     bank: Bank;
+    invested_amount?: number | null;
 }
 
 export interface OriginalAmount {
@@ -28,7 +29,12 @@ export interface AccountWithMetrics extends Account {
     currentBalance: number;
     previousBalance: number;
     diff: number;
-    history: Array<{ date: string; value: number }>;
+    history: Array<{
+        date: string;
+        value: number;
+        investedAmount?: number | null;
+    }>;
+    investedAmount: number | null;
 }
 
 export interface DashboardData {
@@ -53,9 +59,14 @@ function deriveAccountMetrics(
     }
 
     return Object.values(accounts).map((account) => {
+        const investedKey = account.id + '_invested';
         const history = data.map((point) => ({
             date: formatMonth(point.month as string),
             value: (point[account.id] as number) ?? 0,
+            investedAmount:
+                investedKey in point
+                    ? (point[investedKey] as number | null)
+                    : undefined,
         }));
 
         const currentBalance = history[history.length - 1]?.value ?? 0;
@@ -73,6 +84,7 @@ function deriveAccountMetrics(
             previousBalance,
             diff: currentBalance - previousBalance,
             history,
+            investedAmount: account.invested_amount ?? null,
         } as AccountWithMetrics;
     });
 }

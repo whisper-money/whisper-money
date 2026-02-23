@@ -15,6 +15,7 @@ import { __ } from '@/utils/i18n';
 interface ImportBalanceStepPreviewProps {
     balances: ParsedBalance[];
     currencyCode: string;
+    showInvestedAmount: boolean;
     onConfirm: () => void;
     onBack: () => void;
     isImporting: boolean;
@@ -23,6 +24,7 @@ interface ImportBalanceStepPreviewProps {
 export function ImportBalanceStepPreview({
     balances,
     currencyCode,
+    showInvestedAmount,
     onConfirm,
     onBack,
     isImporting,
@@ -36,6 +38,10 @@ export function ImportBalanceStepPreview({
             currency: currencyCode,
         }).format(balance / 100);
     };
+
+    const hasInvestedData =
+        showInvestedAmount && balances.some((b) => b.invested_amount !== null);
+    const colSpan = hasInvestedData ? 3 : 2;
 
     return (
         <div className="flex flex-col gap-6">
@@ -51,6 +57,11 @@ export function ImportBalanceStepPreview({
                     <TableHeader>
                         <TableRow>
                             <TableHead>{__('Date')}</TableHead>
+                            {hasInvestedData && (
+                                <TableHead className="text-right">
+                                    {__('Invested')}
+                                </TableHead>
+                            )}
                             <TableHead className="text-right">
                                 {__('Balance')}
                             </TableHead>
@@ -60,7 +71,7 @@ export function ImportBalanceStepPreview({
                         {balances.length === 0 ? (
                             <TableRow>
                                 <TableCell
-                                    colSpan={2}
+                                    colSpan={colSpan}
                                     className="text-center text-muted-foreground"
                                 >
                                     No valid balances found
@@ -75,6 +86,15 @@ export function ImportBalanceStepPreview({
                                             locale,
                                         )}
                                     </TableCell>
+                                    {hasInvestedData && (
+                                        <TableCell className="text-right font-mono text-muted-foreground">
+                                            {balance.invested_amount !== null
+                                                ? formatBalance(
+                                                      balance.invested_amount,
+                                                  )
+                                                : '—'}
+                                        </TableCell>
+                                    )}
                                     <TableCell className="text-right font-mono">
                                         {formatBalance(balance.balance)}
                                     </TableCell>

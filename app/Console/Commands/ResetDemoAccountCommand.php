@@ -213,7 +213,7 @@ class ResetDemoAccountCommand extends Command
                 'type' => $accountData['type'],
             ]);
 
-            $this->createBalanceHistory($account, $accountData['current_balance'], $accountData['monthly_variance']);
+            $this->createBalanceHistory($account, $accountData['current_balance'], $accountData['monthly_variance'], $accountData['type']);
 
             $createdAccounts[] = $account;
 
@@ -235,7 +235,7 @@ class ResetDemoAccountCommand extends Command
         return (int) (floor($base / 100) * 100 + $cents);
     }
 
-    private function createBalanceHistory(Account $account, int $currentBalance, int $monthlyVariance): void
+    private function createBalanceHistory(Account $account, int $currentBalance, int $monthlyVariance, AccountType $type): void
     {
         $targetFirstMonthBalance = (int) ($currentBalance / (1 + self::MIN_BALANCE_GROWTH_PERCENTAGE));
         $balance = $currentBalance;
@@ -273,11 +273,20 @@ class ResetDemoAccountCommand extends Command
             }
         }
 
-        foreach ($balances as $balanceData) {
-            $account->balances()->create([
+        $trackInvestedAmount = $type->supportsInvestedAmount();
+
+        foreach ($balances as $i => $balanceData) {
+            $attributes = [
                 'balance_date' => $balanceData['date']->format('Y-m-d'),
                 'balance' => $balanceData['balance'],
-            ]);
+            ];
+
+            if ($trackInvestedAmount) {
+                $gainPercentage = 0.05 + (0.20 - 0.05) * ($i / 12);
+                $attributes['invested_amount'] = (int) ($balanceData['balance'] / (1 + $gainPercentage));
+            }
+
+            $account->balances()->create($attributes);
         }
     }
 

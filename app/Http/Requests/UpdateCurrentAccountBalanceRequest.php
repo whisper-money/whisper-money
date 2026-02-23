@@ -15,6 +15,7 @@ class UpdateCurrentAccountBalanceRequest extends FormRequest
     {
         return [
             'balance' => ['required', 'integer'],
+            'invested_amount' => ['nullable', 'integer'],
         ];
     }
 

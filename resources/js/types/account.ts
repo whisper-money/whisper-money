@@ -53,6 +53,7 @@ export interface AccountBalance {
     account_id: UUID;
     balance_date: string;
     balance: number;
+    invested_amount: number | null;
     created_at: string;
     updated_at: string;
 }
@@ -77,6 +78,12 @@ const NON_TRANSACTIONAL_ACCOUNT_TYPES: AccountType[] = [
 
 export function isTransactionalAccount(account: Account): boolean {
     return !NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type);
+}
+
+export function supportsInvestedAmount(
+    account: Pick<Account, 'type'>,
+): boolean {
+    return NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type);
 }
 
 export function filterTransactionalAccounts<T extends { type: AccountType }>(

@@ -5,6 +5,7 @@ import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indica
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
@@ -123,22 +124,87 @@ export function AccountListCard({
                                         const data = payload[0].payload as {
                                             date: string;
                                             value: number;
+                                            investedAmount?: number | null;
                                         };
+                                        const invested = supportsInvestedAmount(
+                                            account,
+                                        )
+                                            ? (data.investedAmount ?? null)
+                                            : null;
+                                        const gain =
+                                            invested !== null
+                                                ? data.value - invested
+                                                : null;
                                         return (
                                             <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-sm shadow-xl">
-                                                <p className="mb-0.5 text-muted-foreground">
+                                                <p className="mb-1 text-muted-foreground">
                                                     {data.date}
                                                 </p>
-                                                <p className="font-mono font-medium text-foreground tabular-nums">
-                                                    <AmountDisplay
-                                                        amountInCents={
-                                                            data.value
-                                                        }
-                                                        currencyCode={
-                                                            account.currency_code
-                                                        }
-                                                    />
-                                                </p>
+                                                {invested !== null ? (
+                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                                                        <span className="text-muted-foreground">
+                                                            {__('Balance')}
+                                                        </span>
+                                                        <span className="text-right font-mono font-medium text-foreground tabular-nums">
+                                                            <AmountDisplay
+                                                                amountInCents={
+                                                                    data.value
+                                                                }
+                                                                currencyCode={
+                                                                    account.currency_code
+                                                                }
+                                                            />
+                                                        </span>
+                                                        <span className="text-muted-foreground">
+                                                            {__('Invested')}
+                                                        </span>
+                                                        <span className="text-right font-mono text-muted-foreground tabular-nums">
+                                                            <AmountDisplay
+                                                                amountInCents={
+                                                                    invested
+                                                                }
+                                                                currencyCode={
+                                                                    account.currency_code
+                                                                }
+                                                            />
+                                                        </span>
+                                                        {gain !== null && (
+                                                            <>
+                                                                <span className="text-muted-foreground">
+                                                                    {__(
+                                                                        'Gain/loss',
+                                                                    )}
+                                                                </span>
+                                                                <span
+                                                                    className={`text-right font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                >
+                                                                    {gain >= 0
+                                                                        ? '+'
+                                                                        : ''}
+                                                                    <AmountDisplay
+                                                                        amountInCents={
+                                                                            gain
+                                                                        }
+                                                                        currencyCode={
+                                                                            account.currency_code
+                                                                        }
+                                                                    />
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <p className="font-mono font-medium text-foreground tabular-nums">
+                                                        <AmountDisplay
+                                                            amountInCents={
+                                                                data.value
+                                                            }
+                                                            currencyCode={
+                                                                account.currency_code
+                                                            }
+                                                        />
+                                                    </p>
+                                                )}
                                             </div>
                                         );
                                     }}
@@ -151,6 +217,17 @@ export function AccountListCard({
                                     strokeWidth={2}
                                     dot={false}
                                 />
+                                {supportsInvestedAmount(account) && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="investedAmount"
+                                        stroke="var(--color-chart-6)"
+                                        strokeWidth={1.5}
+                                        strokeDasharray="4 3"
+                                        dot={false}
+                                        connectNulls
+                                    />
+                                )}
                             </LineChart>
                         </ResponsiveContainer>
                     </div>

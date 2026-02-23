@@ -28,19 +28,102 @@ import {
 } from '@/hooks/use-chart-views';
 import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Account } from '@/types/account';
+import { Account, supportsInvestedAmount } from '@/types/account';
 import { formatDayFromDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { format, subDays, subMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Area, AreaChart, Bar, BarChart, XAxis } from 'recharts';
+import {
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    ComposedChart,
+    Line,
+    XAxis,
+} from 'recharts';
 
 const DAILY_DAYS = 30;
+
+function InvestmentTooltipContent({
+    active,
+    payload,
+    valueFormatter,
+}: {
+    active?: boolean;
+    payload?: Array<{
+        dataKey?: string | number;
+        name?: string;
+        value?: number | string;
+        color?: string;
+        payload?: Record<string, unknown>;
+    }>;
+    valueFormatter: (value: number) => string;
+}) {
+    if (!active || !payload?.length) return null;
+
+    const balanceItem = payload.find((p) => p.dataKey === 'value');
+    const investedItem = payload.find((p) => p.dataKey === 'invested_amount');
+
+    const balance =
+        typeof balanceItem?.value === 'number' ? balanceItem.value : null;
+    const invested =
+        typeof investedItem?.value === 'number' ? investedItem.value : null;
+    const gain =
+        balance !== null && invested !== null ? balance - invested : null;
+
+    return (
+        <div className="grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+            <div className="grid gap-1.5">
+                {payload.map((item) => (
+                    <div
+                        key={String(item.dataKey)}
+                        className="flex w-full items-center gap-2"
+                    >
+                        <div
+                            className="size-2.5 rounded-xs"
+                            style={{ backgroundColor: item.color }}
+                        />
+                        <div className="flex flex-1 justify-between gap-4">
+                            <span className="text-muted-foreground">
+                                {item.dataKey === 'value'
+                                    ? __('Balance')
+                                    : __('Invested')}
+                            </span>
+                            <span className="font-mono font-medium text-foreground tabular-nums">
+                                {typeof item.value === 'number'
+                                    ? valueFormatter(item.value)
+                                    : item.value}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                {gain !== null && (
+                    <div className="flex w-full items-center gap-2 border-t border-border/50 pt-1.5">
+                        <div className="size-2.5" />
+                        <div className="flex flex-1 justify-between gap-4">
+                            <span className="text-muted-foreground">
+                                {__('Gain/loss')}
+                            </span>
+                            <span
+                                className={`font-mono font-medium tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                                {gain >= 0 ? '+' : ''}
+                                {valueFormatter(gain)}
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 interface BalanceDataPoint {
     month: string;
     timestamp: number;
     value: number;
+    invested_amount?: number | null;
 }
 
 interface AccountBalanceData {
@@ -58,6 +141,7 @@ interface DailyBalanceDataPoint {
     date: string;
     timestamp: number;
     value: number;
+    invested_amount?: number | null;
 }
 
 interface AccountDailyBalanceData {
@@ -135,6 +219,7 @@ function normalizeDailyData(data: DailyBalanceDataPoint[]): BalanceDataPoint[] {
         month: point.date,
         timestamp: point.timestamp,
         value: point.value,
+        invested_amount: point.invested_amount,
     }));
 }
 
@@ -194,11 +279,20 @@ export function AccountBalanceChart({
         fetchBalanceData(granularity);
     }, [fetchBalanceData, granularity, refreshKey]);
 
-    const { chartData, currentBalance, shortTrend, longTrend } = useMemo(() => {
+    const showInvestmentBenefits = supportsInvestedAmount(account);
+
+    const {
+        chartData,
+        currentBalance,
+        currentInvestedAmount,
+        shortTrend,
+        longTrend,
+    } = useMemo(() => {
         if (!balanceData?.data?.length) {
             return {
                 chartData: [],
                 currentBalance: 0,
+                currentInvestedAmount: null as number | null,
                 shortTrend: null,
                 longTrend: null,
             };
@@ -207,9 +301,22 @@ export function AccountBalanceChart({
         const data = balanceData.data;
         const current = data[data.length - 1]?.value ?? 0;
 
+        // Find the most recent non-null invested_amount
+        let invested: number | null = null;
+        for (let i = data.length - 1; i >= 0; i--) {
+            if (
+                data[i].invested_amount !== null &&
+                data[i].invested_amount !== undefined
+            ) {
+                invested = data[i].invested_amount!;
+                break;
+            }
+        }
+
         return {
             chartData: data,
             currentBalance: current,
+            currentInvestedAmount: invested,
             shortTrend: calculateTrend(data, 1),
             longTrend: calculateTrend(data, data.length - 1),
         };
@@ -240,6 +347,14 @@ export function AccountBalanceChart({
 
             color: 'var(--color-chart-2)',
         },
+        ...(showInvestmentBenefits
+            ? {
+                  invested_amount: {
+                      label: __('Invested'),
+                      color: 'var(--color-chart-4)',
+                  },
+              }
+            : {}),
     };
 
     const formatXAxisLabel = useMemo(
@@ -407,10 +522,20 @@ export function AccountBalanceChart({
                                     />
                                     <ChartTooltip
                                         content={
-                                            <ChartTooltipContent
-                                                hideLabel
-                                                valueFormatter={valueFormatter}
-                                            />
+                                            showInvestmentBenefits ? (
+                                                <InvestmentTooltipContent
+                                                    valueFormatter={
+                                                        valueFormatter
+                                                    }
+                                                />
+                                            ) : (
+                                                <ChartTooltipContent
+                                                    hideLabel
+                                                    valueFormatter={
+                                                        valueFormatter
+                                                    }
+                                                />
+                                            )
                                         }
                                     />
                                     <Area
@@ -423,7 +548,56 @@ export function AccountBalanceChart({
                                         activeDot={{ r: 5 }}
                                         fillOpacity={1}
                                     />
+                                    {showInvestmentBenefits &&
+                                        currentInvestedAmount !== null && (
+                                            <Line
+                                                dataKey="invested_amount"
+                                                type="monotone"
+                                                stroke="var(--color-chart-6)"
+                                                strokeWidth={1.5}
+                                                strokeDasharray="2 2"
+                                                dot={false}
+                                                activeDot={{ r: 4 }}
+                                                connectNulls
+                                            />
+                                        )}
                                 </AreaChart>
+                            ) : showInvestmentBenefits &&
+                              currentInvestedAmount !== null ? (
+                                <ComposedChart
+                                    accessibilityLayer
+                                    data={chartData.slice(1)}
+                                >
+                                    <XAxis
+                                        dataKey="month"
+                                        tickLine={false}
+                                        tickMargin={10}
+                                        axisLine={false}
+                                        tickFormatter={formatXAxisLabel}
+                                    />
+                                    <ChartTooltip
+                                        content={
+                                            <InvestmentTooltipContent
+                                                valueFormatter={valueFormatter}
+                                            />
+                                        }
+                                    />
+                                    <Bar
+                                        dataKey="value"
+                                        fill="var(--color-chart-2)"
+                                        radius={[4, 4, 0, 0]}
+                                    />
+                                    <Line
+                                        dataKey="invested_amount"
+                                        type="monotone"
+                                        stroke="var(--color-chart-6)"
+                                        strokeWidth={1.5}
+                                        strokeDasharray="2 2"
+                                        dot={false}
+                                        activeDot={{ r: 4 }}
+                                        connectNulls
+                                    />
+                                </ComposedChart>
                             ) : (
                                 <BarChart
                                     accessibilityLayer

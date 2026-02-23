@@ -16,12 +16,15 @@ class AccountBalance extends Model
         'account_id',
         'balance_date',
         'balance',
+        'invested_amount',
     ];
 
     protected function casts(): array
     {
         return [
             'balance_date' => 'date',
+            'balance' => 'integer',
+            'invested_amount' => 'integer',
         ];
     }
 

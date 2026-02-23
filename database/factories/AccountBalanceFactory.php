@@ -22,4 +22,17 @@ class AccountBalanceFactory extends Factory
             'balance' => fake()->numberBetween(100000, 10000000),
         ];
     }
+
+    /**
+     * Indicate that the balance has an invested amount.
+     */
+    public function withInvestedAmount(?int $investedAmount = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'invested_amount' => $investedAmount ?? fake()->numberBetween(
+                (int) ($attributes['balance'] * 0.5),
+                $attributes['balance']
+            ),
+        ]);
+    }
 }

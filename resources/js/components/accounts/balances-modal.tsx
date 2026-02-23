@@ -34,6 +34,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import type { Account, AccountBalance } from '@/types/account';
+import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -70,6 +71,9 @@ export function BalancesModal({
     );
     const [editDate, setEditDate] = useState('');
     const [editAmount, setEditAmount] = useState(0);
+    const [editInvestedAmount, setEditInvestedAmount] = useState<number | null>(
+        null,
+    );
     const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
     const [deletingBalance, setDeletingBalance] =
@@ -80,6 +84,8 @@ export function BalancesModal({
         style: 'currency',
         currency: account.currency_code,
     });
+
+    const showInvestedAmount = supportsInvestedAmount(account);
 
     const fetchBalances = useCallback(
         async (page: number) => {
@@ -127,6 +133,7 @@ export function BalancesModal({
         setEditingBalance(balance);
         setEditDate(balance.balance_date.split('T')[0]);
         setEditAmount(balance.balance);
+        setEditInvestedAmount(balance.invested_amount);
     }
 
     async function handleEditSubmit(e: React.FormEvent) {
@@ -150,6 +157,9 @@ export function BalancesModal({
                 body: JSON.stringify({
                     balance_date: editDate,
                     balance: editAmount,
+                    ...(showInvestedAmount && editInvestedAmount !== null
+                        ? { invested_amount: editInvestedAmount }
+                        : {}),
                 }),
             });
 
@@ -217,7 +227,13 @@ export function BalancesModal({
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="sm:max-w-[600px]">
+                <DialogContent
+                    className={
+                        showInvestedAmount
+                            ? 'sm:max-w-[700px]'
+                            : 'sm:max-w-[600px]'
+                    }
+                >
                     <DialogHeader>
                         <DialogTitle>{__('Balance History')}</DialogTitle>
                         <DialogDescription>
@@ -242,6 +258,11 @@ export function BalancesModal({
                                         <TableHead className="text-right">
                                             {__('Balance')}
                                         </TableHead>
+                                        {showInvestedAmount && (
+                                            <TableHead className="text-right">
+                                                {__('Invested')}
+                                            </TableHead>
+                                        )}
                                         <TableHead className="w-[100px] text-right">
                                             {__('Actions')}
                                         </TableHead>
@@ -251,7 +272,9 @@ export function BalancesModal({
                                     {isLoading ? (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={3}
+                                                colSpan={
+                                                    showInvestedAmount ? 4 : 3
+                                                }
                                                 className="h-24 text-center"
                                             >
                                                 {__('Loading...')}
@@ -260,7 +283,9 @@ export function BalancesModal({
                                     ) : balances.length === 0 ? (
                                         <TableRow>
                                             <TableCell
-                                                colSpan={3}
+                                                colSpan={
+                                                    showInvestedAmount ? 4 : 3
+                                                }
                                                 className="h-24 text-center"
                                             >
                                                 {__(
@@ -281,6 +306,17 @@ export function BalancesModal({
                                                         balance.balance / 100,
                                                     )}
                                                 </TableCell>
+                                                {showInvestedAmount && (
+                                                    <TableCell className="text-right font-mono text-muted-foreground">
+                                                        {balance.invested_amount !==
+                                                        null
+                                                            ? formatter.format(
+                                                                  balance.invested_amount /
+                                                                      100,
+                                                              )
+                                                            : '—'}
+                                                    </TableCell>
+                                                )}
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-1">
                                                         <Button
@@ -392,6 +428,23 @@ export function BalancesModal({
                                 required
                             />
                         </div>
+
+                        {showInvestedAmount && (
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-invested-amount">
+                                    {__('Invested amount')}
+                                </Label>
+                                <AmountInput
+                                    id="edit-invested-amount"
+                                    className="mt-1"
+                                    value={editInvestedAmount ?? 0}
+                                    onChange={(value) =>
+                                        setEditInvestedAmount(value || null)
+                                    }
+                                    currencyCode={account.currency_code}
+                                />
+                            </div>
+                        )}
 
                         <DialogFooter>
                             <Button

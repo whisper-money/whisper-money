@@ -13,7 +13,8 @@ class SyncBankingConnections extends Command
 {
     protected $signature = 'banking:sync
         {--user= : Filter by user email address}
-        {--connection= : Filter by banking connection ID}';
+        {--connection= : Filter by banking connection ID}
+        {--sync : Run synchronously instead of dispatching to the queue}';
 
     protected $description = 'Sync transactions and balances for all active banking connections';
 
@@ -21,8 +22,15 @@ class SyncBankingConnections extends Command
     {
         $userEmail = $this->option('user');
         $connectionId = $this->option('connection');
+        $sync = $this->option('sync');
 
         if (! $userEmail && ! $connectionId) {
+            if ($sync) {
+                $this->error('The --sync option requires --user and/or --connection filters.');
+
+                return Command::FAILURE;
+            }
+
             SyncAllBankingConnectionsJob::dispatch();
 
             $this->info('Banking sync jobs dispatched for all active connections.');
@@ -61,11 +69,18 @@ class SyncBankingConnections extends Command
             return Command::SUCCESS;
         }
 
-        $connections->each(function (BankingConnection $connection) {
-            SyncBankingConnectionJob::dispatch($connection);
+        $connections->each(function (BankingConnection $connection) use ($sync) {
+            if ($sync) {
+                $this->info("Syncing {$connection->provider} connection {$connection->id}...");
+                SyncBankingConnectionJob::dispatchSync($connection);
+                $this->info("Finished syncing {$connection->provider} connection {$connection->id}.");
+            } else {
+                SyncBankingConnectionJob::dispatch($connection);
+            }
         });
 
-        $this->info("Banking sync jobs dispatched for {$connections->count()} connection(s).");
+        $verb = $sync ? 'synced' : 'dispatched';
+        $this->info("Banking sync jobs {$verb} for {$connections->count()} connection(s).");
 
         return Command::SUCCESS;
     }
