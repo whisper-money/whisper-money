@@ -194,6 +194,95 @@ test('account balance evolution denies access to other users accounts', function
     $response->assertForbidden();
 });
 
+test('accounts index defers account metrics', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subMonthNoOverflow()->startOfMonth(),
+        'balance' => 100000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->startOfMonth(),
+        'balance' => 150000,
+    ]);
+
+    $response = $this->get(route('accounts.list'));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Index')
+            ->has('accounts', 1)
+            ->missing('accountMetrics')
+            ->loadDeferredProps(fn ($reload) => $reload
+                ->has('accountMetrics')
+                ->has("accountMetrics.{$account->id}")
+                ->has("accountMetrics.{$account->id}.currentBalance")
+                ->has("accountMetrics.{$account->id}.previousBalance")
+                ->has("accountMetrics.{$account->id}.diff")
+                ->has("accountMetrics.{$account->id}.history")
+                ->where("accountMetrics.{$account->id}.currentBalance", 150000)
+                ->where("accountMetrics.{$account->id}.previousBalance", 100000)
+                ->where("accountMetrics.{$account->id}.diff", 50000)
+            )
+        );
+});
+
+test('accounts index deferred metrics includes invested amount for investment accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Investment,
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->withInvestedAmount(80000)->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->startOfMonth(),
+        'balance' => 120000,
+    ]);
+
+    $response = $this->get(route('accounts.list'));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Index')
+            ->missing('accountMetrics')
+            ->loadDeferredProps(fn ($reload) => $reload
+                ->where("accountMetrics.{$account->id}.investedAmount", 80000)
+                ->where("accountMetrics.{$account->id}.currentBalance", 120000)
+            )
+        );
+});
+
+test('accounts index deferred metrics returns null invested amount for non-investment accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->startOfMonth(),
+        'balance' => 100000,
+    ]);
+
+    $response = $this->get(route('accounts.list'));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->missing('accountMetrics')
+            ->loadDeferredProps(fn ($reload) => $reload
+                ->where("accountMetrics.{$account->id}.investedAmount", null)
+            )
+        );
+});
+
 test('account show includes bank information', function () {
     $bank = Bank::factory()->create([
         'name' => 'Test Bank',
