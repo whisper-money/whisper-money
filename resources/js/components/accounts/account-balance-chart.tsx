@@ -45,6 +45,82 @@ import {
 
 const DAILY_DAYS = 30;
 
+function InvestmentTooltipContent({
+    active,
+    payload,
+    valueFormatter,
+    currencyCode,
+}: {
+    active?: boolean;
+    payload?: Array<{
+        dataKey?: string | number;
+        name?: string;
+        value?: number | string;
+        color?: string;
+        payload?: Record<string, unknown>;
+    }>;
+    valueFormatter: (value: number) => string;
+    currencyCode: string;
+}) {
+    if (!active || !payload?.length) return null;
+
+    const balanceItem = payload.find((p) => p.dataKey === 'value');
+    const investedItem = payload.find((p) => p.dataKey === 'invested_amount');
+
+    const balance =
+        typeof balanceItem?.value === 'number' ? balanceItem.value : null;
+    const invested =
+        typeof investedItem?.value === 'number' ? investedItem.value : null;
+    const gain =
+        balance !== null && invested !== null ? balance - invested : null;
+
+    return (
+        <div className="grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+            <div className="grid gap-1.5">
+                {payload.map((item) => (
+                    <div
+                        key={String(item.dataKey)}
+                        className="flex w-full items-center gap-2"
+                    >
+                        <div
+                            className="size-2.5 rounded-xs"
+                            style={{ backgroundColor: item.color }}
+                        />
+                        <div className="flex flex-1 justify-between gap-4">
+                            <span className="text-muted-foreground">
+                                {item.dataKey === 'value'
+                                    ? __('Balance')
+                                    : __('Invested')}
+                            </span>
+                            <span className="font-mono font-medium text-foreground tabular-nums">
+                                {typeof item.value === 'number'
+                                    ? valueFormatter(item.value)
+                                    : item.value}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                {gain !== null && (
+                    <div className="flex w-full items-center gap-2 border-t border-border/50 pt-1.5">
+                        <div className="size-2.5" />
+                        <div className="flex flex-1 justify-between gap-4">
+                            <span className="text-muted-foreground">
+                                {__('Gain/loss')}
+                            </span>
+                            <span
+                                className={`font-mono font-medium tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                                {gain >= 0 ? '+' : ''}
+                                {valueFormatter(gain)}
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 interface BalanceDataPoint {
     month: string;
     timestamp: number;
@@ -448,10 +524,23 @@ export function AccountBalanceChart({
                                     />
                                     <ChartTooltip
                                         content={
-                                            <ChartTooltipContent
-                                                hideLabel
-                                                valueFormatter={valueFormatter}
-                                            />
+                                            showInvestmentBenefits ? (
+                                                <InvestmentTooltipContent
+                                                    valueFormatter={
+                                                        valueFormatter
+                                                    }
+                                                    currencyCode={
+                                                        account.currency_code
+                                                    }
+                                                />
+                                            ) : (
+                                                <ChartTooltipContent
+                                                    hideLabel
+                                                    valueFormatter={
+                                                        valueFormatter
+                                                    }
+                                                />
+                                            )
                                         }
                                     />
                                     <Area
@@ -493,9 +582,11 @@ export function AccountBalanceChart({
                                     />
                                     <ChartTooltip
                                         content={
-                                            <ChartTooltipContent
-                                                hideLabel
+                                            <InvestmentTooltipContent
                                                 valueFormatter={valueFormatter}
+                                                currencyCode={
+                                                    account.currency_code
+                                                }
                                             />
                                         }
                                     />
