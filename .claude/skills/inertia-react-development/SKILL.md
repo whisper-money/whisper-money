@@ -1,10 +1,9 @@
 ---
 name: inertia-react-development
-description: >-
-  Develops Inertia.js v2 React client-side applications. Activates when creating
-  React pages, forms, or navigation; using <Link>, <Form>, useForm, or router;
-  working with deferred props, prefetching, or polling; or when user mentions
-  React with Inertia, React pages, React forms, or React navigation.
+description: "Develops Inertia.js v2 React client-side applications. Activates when creating React pages, forms, or navigation; using <Link>, <Form>, useForm, or router; working with deferred props, prefetching, or polling; or when user mentions React with Inertia, React pages, React forms, or React navigation."
+license: MIT
+metadata:
+  author: laravel
 ---
 
 # Inertia React Development
@@ -27,12 +26,12 @@ Use `search-docs` for detailed Inertia v2 React patterns and documentation.
 
 ### Page Components Location
 
-React page components should be placed in the `resources/js/Pages` directory.
+React page components should be placed in the `resources/js/pages` directory.
 
 ### Page Component Structure
 
-<code-snippet name="Basic React Page Component" lang="react">
-
+<!-- Basic React Page Component -->
+```react
 export default function UsersIndex({ users }) {
     return (
         <div>
@@ -43,8 +42,7 @@ export default function UsersIndex({ users }) {
         </div>
     )
 }
-
-</code-snippet>
+```
 
 ## Client-Side Navigation
 
@@ -52,46 +50,43 @@ export default function UsersIndex({ users }) {
 
 Use `<Link>` for client-side navigation instead of traditional `<a>` tags:
 
-<code-snippet name="Inertia React Navigation" lang="react">
-
+<!-- Inertia React Navigation -->
+```react
 import { Link, router } from '@inertiajs/react'
 
 <Link href="/">Home</Link>
 <Link href="/users">Users</Link>
 <Link href={`/users/${user.id}`}>View User</Link>
-
-</code-snippet>
+```
 
 ### Link with Method
 
-<code-snippet name="Link with POST Method" lang="react">
-
+<!-- Link with POST Method -->
+```react
 import { Link } from '@inertiajs/react'
 
 <Link href="/logout" method="post" as="button">
     Logout
 </Link>
-
-</code-snippet>
+```
 
 ### Prefetching
 
 Prefetch pages to improve perceived performance:
 
-<code-snippet name="Prefetch on Hover" lang="react">
-
+<!-- Prefetch on Hover -->
+```react
 import { Link } from '@inertiajs/react'
 
 <Link href="/users" prefetch>
     Users
 </Link>
-
-</code-snippet>
+```
 
 ### Programmatic Navigation
 
-<code-snippet name="Router Visit" lang="react">
-
+<!-- Router Visit -->
+```react
 import { router } from '@inertiajs/react'
 
 function handleClick() {
@@ -104,8 +99,7 @@ router.visit('/users', {
     data: { name: 'John' },
     onSuccess: () => console.log('Success!'),
 })
-
-</code-snippet>
+```
 
 ## Form Handling
 
@@ -113,8 +107,8 @@ router.visit('/users', {
 
 The recommended way to build forms is with the `<Form>` component:
 
-<code-snippet name="Form Component Example" lang="react">
-
+<!-- Form Component Example -->
+```react
 import { Form } from '@inertiajs/react'
 
 export default function CreateUser() {
@@ -138,13 +132,12 @@ export default function CreateUser() {
         </Form>
     )
 }
-
-</code-snippet>
+```
 
 ### Form Component With All Props
 
-<code-snippet name="Form Component Full Example" lang="react">
-
+<!-- Form Component Full Example -->
+```react
 import { Form } from '@inertiajs/react'
 
 <Form action="/users" method="post">
@@ -180,8 +173,7 @@ import { Form } from '@inertiajs/react'
         </>
     )}
 </Form>
-
-</code-snippet>
+```
 
 ### Form Component Reset Props
 
@@ -193,8 +185,8 @@ The `<Form>` component supports automatic resetting:
 
 Use the `search-docs` tool with a query of `form component resetting` for detailed guidance.
 
-<code-snippet name="Form with Reset Props" lang="react">
-
+<!-- Form with Reset Props -->
+```react
 import { Form } from '@inertiajs/react'
 
 <Form
@@ -214,8 +206,7 @@ import { Form } from '@inertiajs/react'
         </>
     )}
 </Form>
-
-</code-snippet>
+```
 
 Forms can also be built using the `useForm` helper for more programmatic control. Use the `search-docs` tool with a query of `useForm helper` for guidance.
 
@@ -223,8 +214,8 @@ Forms can also be built using the `useForm` helper for more programmatic control
 
 For more programmatic control or to follow existing conventions, use the `useForm` hook:
 
-<code-snippet name="useForm Hook Example" lang="react">
-
+<!-- useForm Hook Example -->
+```react
 import { useForm } from '@inertiajs/react'
 
 export default function CreateUser() {
@@ -270,8 +261,7 @@ export default function CreateUser() {
         </form>
     )
 }
-
-</code-snippet>
+```
 
 ## Inertia v2 Features
 
@@ -279,8 +269,8 @@ export default function CreateUser() {
 
 Use deferred props to load data after initial page render:
 
-<code-snippet name="Deferred Props with Empty State" lang="react">
-
+<!-- Deferred Props with Empty State -->
+```react
 export default function UsersIndex({ users }) {
     // users will be undefined initially, then populated
     return (
@@ -301,26 +291,18 @@ export default function UsersIndex({ users }) {
         </div>
     )
 }
-
-</code-snippet>
+```
 
 ### Polling
 
-Automatically refresh data at intervals:
+Use the `usePoll` hook to automatically refresh data at intervals. It handles cleanup on unmount and throttles polling when the tab is inactive.
 
-<code-snippet name="Polling Example" lang="react">
-
-import { router } from '@inertiajs/react'
-import { useEffect } from 'react'
+<!-- Basic Polling -->
+```react
+import { usePoll } from '@inertiajs/react'
 
 export default function Dashboard({ stats }) {
-    useEffect(() => {
-        const interval = setInterval(() => {
-            router.reload({ only: ['stats'] })
-        }, 5000) // Poll every 5 seconds
-
-        return () => clearInterval(interval)
-    }, [])
+    usePoll(5000)
 
     return (
         <div>
@@ -329,15 +311,46 @@ export default function Dashboard({ stats }) {
         </div>
     )
 }
+```
 
-</code-snippet>
+<!-- Polling With Request Options and Manual Control -->
+```react
+import { usePoll } from '@inertiajs/react'
+
+export default function Dashboard({ stats }) {
+    const { start, stop } = usePoll(5000, {
+        only: ['stats'],
+        onStart() {
+            console.log('Polling request started')
+        },
+        onFinish() {
+            console.log('Polling request finished')
+        },
+    }, {
+        autoStart: false,
+        keepAlive: true,
+    })
+
+    return (
+        <div>
+            <h1>Dashboard</h1>
+            <div>Active Users: {stats.activeUsers}</div>
+            <button onClick={start}>Start Polling</button>
+            <button onClick={stop}>Stop Polling</button>
+        </div>
+    )
+}
+```
+
+- `autoStart` (default `true`) — set to `false` to start polling manually via the returned `start()` function
+- `keepAlive` (default `false`) — set to `true` to prevent throttling when the browser tab is inactive
 
 ### WhenVisible (Infinite Scroll)
 
 Load more data when user scrolls to a specific element:
 
-<code-snippet name="Infinite Scroll with WhenVisible" lang="react">
-
+<!-- Infinite Scroll with WhenVisible -->
+```react
 import { WhenVisible } from '@inertiajs/react'
 
 export default function UsersList({ users }) {
@@ -357,8 +370,7 @@ export default function UsersList({ users }) {
         </div>
     )
 }
-
-</code-snippet>
+```
 
 ## Common Pitfalls
 

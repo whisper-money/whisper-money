@@ -1,9 +1,9 @@
 ---
 name: wayfinder-development
-description: >-
-  Activates whenever referencing backend routes in frontend components. Use when
-  importing from @/actions or @/routes, calling Laravel routes from TypeScript,
-  or working with Wayfinder route functions.
+description: "Activates whenever referencing backend routes in frontend components. Use when importing from @/actions or @/routes, calling Laravel routes from TypeScript, or working with Wayfinder route functions."
+license: MIT
+metadata:
+  author: laravel
 ---
 
 # Wayfinder Development
@@ -24,29 +24,29 @@ Use `search-docs` for detailed Wayfinder patterns and documentation.
 ### Generate Routes
 
 Run after route changes if Vite plugin isn't installed:
-
+```bash
 php artisan wayfinder:generate --no-interaction
-
+```
 For form helpers, use `--with-form` flag:
-
+```bash
 php artisan wayfinder:generate --with-form --no-interaction
+```
 
 ### Import Patterns
 
-<code-snippet name="Controller Action Imports" lang="typescript">
-
+<!-- Controller Action Imports -->
+```typescript
 // Named imports for tree-shaking (preferred)...
 import { show, store, update } from '@/actions/App/Http/Controllers/PostController'
 
 // Named route imports...
 import { show as postShow } from '@/routes/post'
-
-</code-snippet>
+```
 
 ### Common Methods
 
-<code-snippet name="Wayfinder Methods" lang="typescript">
-
+<!-- Wayfinder Methods -->
+```typescript
 // Get route object...
 show(1) // { url: "/posts/1", method: "get" }
 
@@ -64,17 +64,15 @@ store.form() // { action: "/posts", method: "post" }
 
 // Query parameters...
 show(1, { query: { page: 1 } }) // "/posts/1?page=1"
-
-</code-snippet>
+```
 
 ## Wayfinder + Inertia
 
 Use Wayfinder with the `<Form>` component:
-<code-snippet name="Wayfinder Form (React)" lang="typescript">
-
+<!-- Wayfinder Form (React) -->
+```typescript
 <Form {...store.form()}><input name="title" /></Form>
-
-</code-snippet>
+```
 
 ## Verification
 
