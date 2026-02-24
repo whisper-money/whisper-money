@@ -49,7 +49,7 @@ export interface DashboardData {
     isLoading: boolean;
 }
 
-function deriveAccountMetrics(
+export function deriveAccountMetrics(
     netWorthEvolution: NetWorthEvolutionData,
 ): AccountWithMetrics[] {
     const { data, accounts } = netWorthEvolution;

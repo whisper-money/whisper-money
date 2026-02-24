@@ -153,31 +153,35 @@ class CashflowAnalyticsController extends Controller
     private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
     {
         return Transaction::query()
-            ->where('user_id', $userId)
-            ->whereBetween('transaction_date', [$from, $to])
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
             ->where(function ($q) use ($type) {
-                $q->whereHas('category', function ($q) use ($type) {
-                    $q->where('type', $type);
+                $q->whereExists(function ($sub) use ($type) {
+                    $sub->select(DB::raw(1))
+                        ->from('categories')
+                        ->whereColumn('categories.id', 'transactions.category_id')
+                        ->where('categories.type', $type);
                 })
                     ->orWhere(function ($q) use ($type) {
-                        $q->whereNull('category_id')
-                            ->where('amount', $type === CategoryType::Income ? '>' : '<', 0);
+                        $q->whereNull('transactions.category_id')
+                            ->where('transactions.amount', $type === CategoryType::Income ? '>' : '<', 0);
                     });
             })
-            ->sum('amount');
+            ->sum('transactions.amount');
     }
 
     private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type)
     {
         // Get categorized transactions
         $categorized = Transaction::query()
-            ->where('user_id', $userId)
-            ->whereBetween('transaction_date', [$from, $to])
-            ->whereHas('category', function ($q) use ($type) {
-                $q->where('type', $type);
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->join('categories', function ($join) use ($type) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', '=', $type);
             })
-            ->select('category_id', DB::raw('sum(amount) as total_amount'))
-            ->groupBy('category_id')
+            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
+            ->groupBy('transactions.category_id')
             ->with('category')
             ->get()
             ->map(function ($item) {

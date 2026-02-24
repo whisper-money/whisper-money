@@ -11,9 +11,7 @@ import { cashflow } from '@/routes';
 import { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
-import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface CashflowSummary {
     income: number;
@@ -23,42 +21,20 @@ interface CashflowSummary {
 }
 
 interface CashflowSummaryCardProps {
+    data?: {
+        current: CashflowSummary;
+        previous: CashflowSummary;
+    } | null;
     loading?: boolean;
 }
 
-export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
+export function CashflowSummaryCard({
+    data,
+    loading,
+}: CashflowSummaryCardProps) {
     const { auth } = usePage<SharedData>().props;
 
-    const [data, setData] = useState<{
-        current: CashflowSummary;
-        previous: CashflowSummary;
-    } | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const now = new Date();
-                const from = format(startOfMonth(now), 'yyyy-MM-dd');
-                const to = format(endOfMonth(now), 'yyyy-MM-dd');
-                const params = new URLSearchParams({ from, to });
-
-                const response = await fetch(
-                    `/api/cashflow/summary?${params.toString()}`,
-                );
-                const result = await response.json();
-                setData(result);
-            } catch (error) {
-                console.error('Failed to fetch cashflow summary:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchData();
-    }, []);
-
-    if (!auth?.user || isLoading || loading) {
+    if (!auth?.user || loading || !data) {
         return (
             <Card className="col-span-3">
                 <CardHeader>
@@ -76,10 +52,6 @@ export function CashflowSummaryCard({ loading }: CashflowSummaryCardProps) {
                 </CardContent>
             </Card>
         );
-    }
-
-    if (!data) {
-        return null;
     }
 
     const { current } = data;

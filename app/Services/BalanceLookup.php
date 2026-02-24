@@ -27,9 +27,10 @@ class BalanceLookup
     /**
      * Preload all balance data for a set of accounts covering the given date range.
      *
-     * Executes exactly 2 queries:
-     * 1. The most recent balance record before the range start for each account (carry-forward seeds).
-     * 2. All balance records within the range.
+     * Executes exactly 3 efficient queries (no correlated subqueries):
+     * 1. A derived-table join to find the latest balance record before the range start per account.
+     * 2. A derived-table join to find the latest non-null invested_amount before the range start per account.
+     * 3. All balance records within the range.
      *
      * @param  Collection<int, string>|array<string>  $accountIds
      */
@@ -46,32 +47,40 @@ class BalanceLookup
         $endDate = $rangeEnd->toDateString();
 
         // Query 1: Get the latest balance record before the range start for each account.
-        // Uses a correlated subquery to find the max balance_date < rangeStart per account.
+        // Uses a derived table with GROUP BY + MAX() joined back, avoiding correlated subquery.
         $carryForwardRecords = AccountBalance::query()
-            ->whereIn('account_id', $accountIdList)
-            ->where('balance_date', '<', $startDate)
-            ->whereRaw('balance_date = (
-                SELECT MAX(ab2.balance_date)
-                FROM account_balances ab2
-                WHERE ab2.account_id = account_balances.account_id
-                AND ab2.balance_date < ?
-            )', [$startDate])
-            ->get(['account_id', 'balance_date', 'balance', 'invested_amount']);
+            ->whereIn('account_balances.account_id', $accountIdList)
+            ->joinSub(
+                AccountBalance::query()
+                    ->selectRaw('account_id, MAX(balance_date) as max_date')
+                    ->whereIn('account_id', $accountIdList)
+                    ->where('balance_date', '<', $startDate)
+                    ->groupBy('account_id'),
+                'latest',
+                function ($join) {
+                    $join->on('account_balances.account_id', '=', 'latest.account_id')
+                        ->on('account_balances.balance_date', '=', 'latest.max_date');
+                }
+            )
+            ->get(['account_balances.account_id', 'account_balances.balance_date', 'account_balances.balance', 'account_balances.invested_amount']);
 
-        // For invested_amount carry-forward, we also need the latest non-null invested_amount
-        // before the range start, which might be on a different date than the latest balance.
+        // Query 2: Get the latest non-null invested_amount before the range start for each account.
         $investedCarryForwardRecords = AccountBalance::query()
-            ->whereIn('account_id', $accountIdList)
-            ->where('balance_date', '<', $startDate)
-            ->whereNotNull('invested_amount')
-            ->whereRaw('balance_date = (
-                SELECT MAX(ab3.balance_date)
-                FROM account_balances ab3
-                WHERE ab3.account_id = account_balances.account_id
-                AND ab3.balance_date < ?
-                AND ab3.invested_amount IS NOT NULL
-            )', [$startDate])
-            ->get(['account_id', 'balance_date', 'invested_amount']);
+            ->whereIn('account_balances.account_id', $accountIdList)
+            ->joinSub(
+                AccountBalance::query()
+                    ->selectRaw('account_id, MAX(balance_date) as max_date')
+                    ->whereIn('account_id', $accountIdList)
+                    ->where('balance_date', '<', $startDate)
+                    ->whereNotNull('invested_amount')
+                    ->groupBy('account_id'),
+                'latest_invested',
+                function ($join) {
+                    $join->on('account_balances.account_id', '=', 'latest_invested.account_id')
+                        ->on('account_balances.balance_date', '=', 'latest_invested.max_date');
+                }
+            )
+            ->get(['account_balances.account_id', 'account_balances.balance_date', 'account_balances.invested_amount']);
 
         // Query 2: All balance records within the range.
         $rangeRecords = AccountBalance::query()
