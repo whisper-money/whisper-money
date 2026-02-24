@@ -92,7 +92,7 @@ class HandleInertiaRequests extends Middleware
             'accounts' => fn () => $user ? $user->accounts()
                 ->with('bank:id,name,logo')
                 ->orderBy('name')
-                ->get(['id', 'name', 'name_iv', 'bank_id', 'type', 'currency_code']) : [],
+                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']) : [],
             'categories' => fn () => $user ? $user->categories()
                 ->orderBy('name')
                 ->get(['id', 'name', 'icon', 'color']) : [],
