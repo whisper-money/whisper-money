@@ -330,7 +330,7 @@ test('budget spending correctly reflects mix of expenses and refunds', function 
     $this->service->assignHistoricalTransactionsToPeriod($period);
 
     // Net spending should be $40 (5000 - 1000 = 4000)
-    $totalSpent = $period->budgetTransactions()->sum('amount');
+    $totalSpent = (int) $period->budgetTransactions()->sum('amount');
     expect($totalSpent)->toBe(4000);
 });
 
