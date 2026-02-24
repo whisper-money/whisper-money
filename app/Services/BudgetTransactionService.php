@@ -62,7 +62,7 @@ class BudgetTransactionService
                 BudgetTransaction::create([
                     'transaction_id' => $transaction->id,
                     'budget_period_id' => $period->id,
-                    'amount' => abs($transaction->amount),
+                    'amount' => -$transaction->amount,
                 ]);
             }
         }
@@ -126,7 +126,7 @@ class BudgetTransactionService
                     BudgetTransaction::create([
                         'transaction_id' => $transaction->id,
                         'budget_period_id' => $period->id,
-                        'amount' => abs($transaction->amount),
+                        'amount' => -$transaction->amount,
                     ]);
 
                     $assignedCount++;

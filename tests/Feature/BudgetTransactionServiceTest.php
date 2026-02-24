@@ -240,14 +240,14 @@ test('assignHistoricalTransactionsToPeriod works with transactions having multip
     expect($count)->toBe(1);
 });
 
-test('assignHistoricalTransactionsToPeriod stores absolute value of amount', function () {
+test('assignHistoricalTransactionsToPeriod stores negated transaction amount for expenses', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    $transaction = Transaction::factory()->create([
+    Transaction::factory()->create([
         'user_id' => $this->user->id,
         'category_id' => $category->id,
         'transaction_date' => now()->subDays(5),
-        'amount' => -5000, // Negative amount
+        'amount' => -5000, // Expense (negative)
     ]);
 
     $budget = Budget::factory()->create([
@@ -265,7 +265,101 @@ test('assignHistoricalTransactionsToPeriod stores absolute value of amount', fun
 
     $budgetTransaction = $period->budgetTransactions()->first();
 
-    expect($budgetTransaction->amount)->toBe(5000); // Should be positive
+    expect($budgetTransaction->amount)->toBe(5000); // -(-5000) = 5000, adds to spending
+});
+
+test('assignHistoricalTransactionsToPeriod stores refund as negative amount', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => 1000, // Refund (positive)
+    ]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    $budgetTransaction = $period->budgetTransactions()->first();
+
+    expect($budgetTransaction->amount)->toBe(-1000); // -(+1000) = -1000, reduces spending
+});
+
+test('budget spending correctly reflects mix of expenses and refunds', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    // $50 expense
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -5000,
+    ]);
+
+    // $10 refund
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(3),
+        'amount' => 1000,
+    ]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+        'allocated_amount' => 10000,
+    ]);
+
+    $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    // Net spending should be $40 (5000 - 1000 = 4000)
+    $totalSpent = (int) $period->budgetTransactions()->sum('amount');
+    expect($totalSpent)->toBe(4000);
+});
+
+test('assignTransaction stores refund as negative budget transaction amount', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    // Create a refund transaction
+    $refund = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => 2000, // positive = refund
+    ]);
+
+    $this->service->assignTransaction($refund);
+
+    $budgetTransaction = $period->budgetTransactions()->first();
+    expect($budgetTransaction->amount)->toBe(-2000);
 });
 
 test('assignHistoricalTransactionsToPeriod only assigns to correct user', function () {
