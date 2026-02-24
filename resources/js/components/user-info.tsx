@@ -46,6 +46,7 @@ export function UserInfo({
                     colorClasses={tailwindColorClasses}
                     intensity3d="dramatic"
                     className="rounded-full"
+                    enableBlink
                 />
             </Avatar>
 

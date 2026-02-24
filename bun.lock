@@ -37,7 +37,7 @@
         "date-fns": "^4.1.0",
         "dexie": "^4.2.1",
         "dexie-react-hooks": "^4.2.0",
-        "facehash": "^0.0.5",
+        "facehash": "^0.1.0",
         "globals": "^15.14.0",
         "input-otp": "^1.4.2",
         "json-logic-js": "^2.0.5",
@@ -1031,7 +1031,7 @@
 
     "exsolve": ["exsolve@1.0.8", "", {}, "sha512-LmDxfWXwcTArk8fUEnOfSZpHOJ6zOMUJKOtFLFqJLoKJetuQG874Uc7/Kki7zFLzYybmZhp1M7+98pfMqeX8yA=="],
 
-    "facehash": ["facehash@0.0.5", "", { "peerDependencies": { "@types/react": "", "next": ">=15", "react": ">=18 <20", "react-dom": ">=18 <20" }, "optionalPeers": ["@types/react", "next"] }, "sha512-txM9veJ9IPNWsimpHD+Qqr5aFcSdgJPBY2oTRzRgIfSPcLxwZQY4++7vv9fHjco25ErUxC9pdq9tPB9NK1UhTQ=="],
+    "facehash": ["facehash@0.1.0", "", { "peerDependencies": { "@types/react": "", "next": ">=15", "react": ">=18 <20", "react-dom": ">=18 <20" }, "optionalPeers": ["@types/react", "next"] }, "sha512-tv/QVZjLvEXHssqBaJECq+kRLFwwhd017PKk8ucT7aLingL2OZ5zEqKwPMHmT9+YQO92MVFWGZQP6vxV+P5vrQ=="],
 
     "fast-content-type-parse": ["fast-content-type-parse@3.0.0", "", {}, "sha512-ZvLdcY8P+N8mGQJahJV5G4U88CSvT1rP8ApL6uETe88MBXrBHAkZlSEySdUlyztF7ccb+Znos3TFqaepHxdhBg=="],
 

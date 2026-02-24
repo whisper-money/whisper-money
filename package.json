@@ -74,7 +74,7 @@
         "date-fns": "^4.1.0",
         "dexie": "^4.2.1",
         "dexie-react-hooks": "^4.2.0",
-        "facehash": "^0.0.5",
+        "facehash": "^0.1.0",
         "globals": "^15.14.0",
         "input-otp": "^1.4.2",
         "json-logic-js": "^2.0.5",
