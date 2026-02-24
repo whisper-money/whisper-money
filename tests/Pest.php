@@ -13,7 +13,7 @@
 
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature', 'Browser');
+    ->in('Feature', 'Browser', 'Performance');
 
 pest()->browser()->timeout(15000);
 
@@ -42,6 +42,84 @@ pest()->browser()->timeout(15000);
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+/**
+ * Create a user with realistic data for performance testing.
+ *
+ * Includes 3 accounts, 30 transactions, 15 balances, 5 categories,
+ * 3 labels, and 1 budget with a current period.
+ */
+function performanceSeedUser(): App\Models\User
+{
+    $user = App\Models\User::factory()->onboarded()->create();
+
+    $categories = App\Models\Category::factory(5)->create(['user_id' => $user->id]);
+    App\Models\Label::factory(3)->create(['user_id' => $user->id]);
+
+    $accounts = App\Models\Account::factory(3)->create(['user_id' => $user->id]);
+
+    foreach ($accounts as $index => $account) {
+        App\Models\Transaction::factory(10)->plaintext()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+            'category_id' => $categories->random()->id,
+        ]);
+
+        for ($i = 0; $i < 5; $i++) {
+            App\Models\AccountBalance::factory()->create([
+                'account_id' => $account->id,
+                'balance_date' => now()->subDays(($index * 5) + $i + 1)->toDateString(),
+            ]);
+        }
+    }
+
+    $budget = App\Models\Budget::factory()->monthly()->create(['user_id' => $user->id]);
+    App\Models\BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+    ]);
+
+    return $user;
+}
+
+/**
+ * Count the number of database queries executed by the given callback.
+ *
+ * @return array{count: int, queries: list<string>}
+ */
+function countQueries(\Closure $callback): array
+{
+    $queryLog = [];
+
+    Illuminate\Support\Facades\DB::listen(function ($query) use (&$queryLog) {
+        $queryLog[] = $query->sql;
+    });
+
+    $callback();
+
+    return ['count' => count($queryLog), 'queries' => $queryLog];
+}
+
+/**
+ * Assert that the callback executes at most $max database queries.
+ *
+ * On failure, dumps all executed queries for easy debugging.
+ */
+function assertMaxQueries(int $max, \Closure $callback, string $context = ''): void
+{
+    $result = countQueries($callback);
+
+    if ($result['count'] > $max) {
+        $message = "{$context}: Expected at most {$max} queries, but {$result['count']} were executed.\n\nQueries:\n";
+        foreach ($result['queries'] as $i => $sql) {
+            $message .= sprintf("  %d. %s\n", $i + 1, $sql);
+        }
+        test()->fail($message);
+    }
+
+    expect($result['count'])->toBeLessThanOrEqual($max);
+}
 
 function createCategoryViaUI($page, string $name, string $color = 'green', string $type = 'Expense'): void
 {
