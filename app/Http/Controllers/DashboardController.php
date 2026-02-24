@@ -5,8 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Transaction;
-use App\Services\BalanceLookup;
-use App\Services\ExchangeRateService;
+use App\Services\AccountMetricsService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -16,7 +15,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __construct(private ExchangeRateService $exchangeRateService) {}
+    public function __construct(private AccountMetricsService $accountMetricsService) {}
 
     public function __invoke(Request $request): Response
     {
@@ -35,85 +34,12 @@ class DashboardController extends Controller
         $start = $now->copy()->subMonths(12);
         $end = $now->copy();
 
-        $userCurrency = $user->currency_code;
-
         $accounts = Account::query()
             ->where('user_id', $user->id)
             ->with(['bank:id,name,logo'])
             ->get();
 
-        $accountIds = $accounts->pluck('id');
-
-        $lookupEnd = Carbon::now()->gt($end) ? Carbon::now() : $end->copy();
-        $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $lookupEnd);
-
-        $points = [];
-        $current = $start->copy()->startOfMonth();
-        $endMonth = $end->copy()->startOfMonth();
-
-        while ($current->lte($endMonth)) {
-            $date = $current->copy()->endOfMonth();
-            $point = [
-                'month' => $date->format('Y-m'),
-                'timestamp' => $date->timestamp,
-            ];
-
-            foreach ($accounts as $account) {
-                $originalBalance = $lookup->getBalanceAt($account->id, $date);
-                $convertedBalance = $this->convertBalance(
-                    $originalBalance,
-                    $account->currency_code,
-                    $userCurrency,
-                    $date->toDateString(),
-                );
-
-                $point[$account->id] = $convertedBalance;
-
-                if ($account->currency_code !== $userCurrency) {
-                    $point[$account->id.'_original'] = [
-                        'amount' => $originalBalance,
-                        'currency_code' => $account->currency_code,
-                    ];
-                }
-
-                if ($account->type->supportsInvestedAmount()) {
-                    $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
-                    $point[$account->id.'_invested'] = $investedAmount !== null
-                        ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $date->toDateString())
-                        : null;
-                }
-            }
-
-            $points[] = $point;
-            $current->addMonth();
-        }
-
-        $accountsConfig = $accounts->mapWithKeys(function ($account) use ($userCurrency, $lookup, $now) {
-            $config = [
-                'id' => $account->id,
-                'name' => $account->name,
-                'name_iv' => $account->name_iv,
-                'encrypted' => $account->encrypted,
-                'type' => $account->type,
-                'currency_code' => $account->currency_code,
-                'bank' => $account->bank,
-            ];
-
-            if ($account->type->supportsInvestedAmount()) {
-                $investedAmount = $lookup->getInvestedAmountAt($account->id, $now);
-                $config['invested_amount'] = $investedAmount !== null
-                    ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $now->toDateString())
-                    : null;
-            }
-
-            return [$account->id => $config];
-        });
-
-        return [
-            'data' => $points,
-            'accounts' => $accountsConfig,
-            'currency_code' => $userCurrency,
-        ];
+        return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end);
     }
 
     private function getTopCategories(Request $request): array
@@ -220,14 +146,5 @@ class DashboardController extends Controller
                     });
             })
             ->sum('transactions.amount');
-    }
-
-    private function convertBalance(int $balance, string $sourceCurrency, string $targetCurrency, string $date): int
-    {
-        if (strtolower($sourceCurrency) === strtolower($targetCurrency)) {
-            return $balance;
-        }
-
-        return $this->exchangeRateService->convert($sourceCurrency, $targetCurrency, $balance, $date);
     }
 }

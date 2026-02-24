@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
+use App\Services\AccountMetricsService;
 use App\Services\BalanceLookup;
 use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
@@ -16,7 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardAnalyticsController extends Controller
 {
-    public function __construct(private ExchangeRateService $exchangeRateService) {}
+    public function __construct(
+        private ExchangeRateService $exchangeRateService,
+        private AccountMetricsService $accountMetricsService,
+    ) {}
 
     public function netWorth(Request $request)
     {
@@ -86,80 +90,9 @@ class DashboardAnalyticsController extends Controller
             ->with(['bank:id,name,logo'])
             ->get();
 
-        $accountIds = $accounts->pluck('id');
-
-        // Include "now" in the range end so accountsConfig invested_amount lookups are covered
-        $lookupEnd = Carbon::now()->gt($end) ? Carbon::now() : $end->copy();
-        $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $lookupEnd);
-
-        $points = [];
-        $current = $start->copy()->startOfMonth();
-        $endMonth = $end->copy()->startOfMonth();
-
-        while ($current->lte($endMonth)) {
-            $date = $current->copy()->endOfMonth();
-            $point = [
-                'month' => $date->format('Y-m'),
-                'timestamp' => $date->timestamp,
-            ];
-
-            foreach ($accounts as $account) {
-                $originalBalance = $lookup->getBalanceAt($account->id, $date);
-                $convertedBalance = $this->convertBalance(
-                    $originalBalance,
-                    $account->currency_code,
-                    $userCurrency,
-                    $date->toDateString(),
-                );
-
-                $point[$account->id] = $convertedBalance;
-
-                if ($account->currency_code !== $userCurrency) {
-                    $point[$account->id.'_original'] = [
-                        'amount' => $originalBalance,
-                        'currency_code' => $account->currency_code,
-                    ];
-                }
-
-                if ($account->type->supportsInvestedAmount()) {
-                    $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
-                    $point[$account->id.'_invested'] = $investedAmount !== null
-                        ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $date->toDateString())
-                        : null;
-                }
-            }
-
-            $points[] = $point;
-            $current->addMonth();
-        }
-
-        $now = Carbon::now();
-        $accountsConfig = $accounts->mapWithKeys(function ($account) use ($userCurrency, $lookup, $now) {
-            $config = [
-                'id' => $account->id,
-                'name' => $account->name,
-                'name_iv' => $account->name_iv,
-                'encrypted' => $account->encrypted,
-                'type' => $account->type,
-                'currency_code' => $account->currency_code,
-                'bank' => $account->bank,
-            ];
-
-            if ($account->type->supportsInvestedAmount()) {
-                $investedAmount = $lookup->getInvestedAmountAt($account->id, $now);
-                $config['invested_amount'] = $investedAmount !== null
-                    ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $now->toDateString())
-                    : null;
-            }
-
-            return [$account->id => $config];
-        });
-
-        return response()->json([
-            'data' => $points,
-            'accounts' => $accountsConfig,
-            'currency_code' => $userCurrency,
-        ]);
+        return response()->json(
+            $this->accountMetricsService->getNetWorthEvolution($userCurrency, $accounts, $start, $end)
+        );
     }
 
     public function accountBalanceEvolution(Request $request, Account $account)
@@ -276,61 +209,9 @@ class DashboardAnalyticsController extends Controller
             ->with(['bank:id,name,logo'])
             ->get();
 
-        $accountIds = $accounts->pluck('id');
-        $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
-
-        $points = [];
-        $current = $start->copy();
-
-        while ($current->lte($end)) {
-            $date = $current->copy();
-            $point = [
-                'date' => $date->format('Y-m-d'),
-                'timestamp' => $date->endOfDay()->timestamp,
-            ];
-
-            foreach ($accounts as $account) {
-                $originalBalance = $lookup->getBalanceAt($account->id, $date);
-                $convertedBalance = $this->convertBalance(
-                    $originalBalance,
-                    $account->currency_code,
-                    $userCurrency,
-                    $date->toDateString(),
-                );
-
-                $point[$account->id] = $convertedBalance;
-
-                if ($account->currency_code !== $userCurrency) {
-                    $point[$account->id.'_original'] = [
-                        'amount' => $originalBalance,
-                        'currency_code' => $account->currency_code,
-                    ];
-                }
-            }
-
-            $points[] = $point;
-            $current->addDay();
-        }
-
-        $accountsConfig = $accounts->mapWithKeys(function ($account) {
-            return [
-                $account->id => [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'name_iv' => $account->name_iv,
-                    'encrypted' => $account->encrypted,
-                    'type' => $account->type,
-                    'currency_code' => $account->currency_code,
-                    'bank' => $account->bank,
-                ],
-            ];
-        });
-
-        return response()->json([
-            'data' => $points,
-            'accounts' => $accountsConfig,
-            'currency_code' => $userCurrency,
-        ]);
+        return response()->json(
+            $this->accountMetricsService->getNetWorthDailyEvolution($userCurrency, $accounts, $start, $end)
+        );
     }
 
     public function topCategories(Request $request)
@@ -395,51 +276,21 @@ class DashboardAnalyticsController extends Controller
         $total = 0;
 
         foreach ($accounts as $account) {
-            $balance = $this->getBalanceAt($account->id, $date);
-            $total += $this->convertBalance(
-                $balance,
+            $balance = AccountBalance::query()
+                ->where('account_id', $account->id)
+                ->where('balance_date', '<=', $date->toDateString())
+                ->orderBy('balance_date', 'desc')
+                ->value('balance') ?? 0;
+
+            $total += $this->exchangeRateService->convert(
                 $account->currency_code,
                 $userCurrency,
+                $balance,
                 $date->toDateString(),
             );
         }
 
         return $total;
-    }
-
-    private function getBalanceAt(string $accountId, Carbon $date): int
-    {
-        return AccountBalance::query()
-            ->where('account_id', $accountId)
-            ->where('balance_date', '<=', $date->toDateString())
-            ->orderBy('balance_date', 'desc')
-            ->value('balance') ?? 0;
-    }
-
-    /**
-     * Get the invested amount at a given date for an account.
-     * Returns null if no invested amount data is available.
-     */
-    private function getInvestedAmountAt(string $accountId, Carbon $date): ?int
-    {
-        return AccountBalance::query()
-            ->where('account_id', $accountId)
-            ->where('balance_date', '<=', $date->toDateString())
-            ->whereNotNull('invested_amount')
-            ->orderBy('balance_date', 'desc')
-            ->value('invested_amount');
-    }
-
-    /**
-     * Convert a balance from one currency to another, skipping conversion when currencies match.
-     */
-    private function convertBalance(int $balance, string $sourceCurrency, string $targetCurrency, string $date): int
-    {
-        if (strtolower($sourceCurrency) === strtolower($targetCurrency)) {
-            return $balance;
-        }
-
-        return $this->exchangeRateService->convert($sourceCurrency, $targetCurrency, $balance, $date);
     }
 
     private function calculateSpending(Carbon $from, Carbon $to): int
