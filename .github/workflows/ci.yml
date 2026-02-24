@@ -58,7 +58,7 @@ jobs:
         run: php artisan key:generate
 
       - name: Tests
-        run: ./vendor/bin/pest --exclude-testsuite=Browser --exclude-testsuite=Performance
+        run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
