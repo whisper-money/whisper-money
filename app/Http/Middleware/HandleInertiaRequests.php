@@ -9,52 +9,25 @@ use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
-    /**
-     * The root template that's loaded on the first page visit.
-     *
-     * @see https://inertiajs.com/server-side-setup#root-template
-     *
-     * @var string
-     */
     protected $rootView = 'app';
 
-    /**
-     * Determines the current asset version.
-     *
-     * @see https://inertiajs.com/asset-versioning
-     */
-    public function version(Request $request): ?string
-    {
-        return parent::version($request);
-    }
-
-    /**
-     * Define the props that are shared by default.
-     *
-     * @see https://inertiajs.com/shared-data
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function share(Request $request): array
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
-        $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local') ?? false;
+        $isDemoAccount = ($user?->isDemoAccount() && ! app()->environment('local')) ?? false;
         $isDemoQuery = $request->query('demo') === '1';
 
-        // Cache encryption checks to avoid duplicate queries
         $hasEncryptedAccounts = $user?->accounts()->where('encrypted', true)->exists() ?? false;
         $hasEncryptedTransactions = $user?->transactions()
             ->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
             ->exists() ?? false;
 
-        // Clean up encryption data if no encrypted accounts or transactions remain
-        if (! $request->is('api/*') && $user?->encryption_salt !== null) {
-            if (! $hasEncryptedAccounts && ! $hasEncryptedTransactions) {
-                $user->encryptedMessage()->delete();
-                $user->update(['encryption_salt' => null]);
-            }
+        if (! $request->is('api/*') && $user?->encryption_salt !== null && ! $hasEncryptedAccounts && ! $hasEncryptedTransactions) {
+            $user->encryptedMessage()->delete();
+            $user->update(['encryption_salt' => null]);
         }
 
         return [
@@ -99,16 +72,10 @@ class HandleInertiaRequests extends Middleware
             'banks' => fn () => $user ? $user->banks()
                 ->orderBy('name')
                 ->get(['id', 'name', 'logo']) : [],
-            'automationRules' => function () use ($user) {
-                if (! $user) {
-                    return [];
-                }
-
-                return $user->automationRules()
-                    ->with(['category:id,name,icon,color', 'labels:id,name,color'])
-                    ->orderBy('priority')
-                    ->get();
-            },
+            'automationRules' => fn () => $user ? $user->automationRules()
+                ->with(['category:id,name,icon,color', 'labels:id,name,color'])
+                ->orderBy('priority')
+                ->get() : [],
             'labels' => fn () => $user ? $user->labels()
                 ->orderBy('name')
                 ->get(['id', 'name', 'color']) : [],

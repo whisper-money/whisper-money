@@ -1,5 +1,3 @@
-type Length = number | { min: number; max: number } | null;
-
 interface AccountNameProps {
     account: {
         name: string;
@@ -7,12 +5,8 @@ interface AccountNameProps {
         encrypted: boolean;
     };
     className?: string;
-    length?: Length;
 }
 
-export function AccountName({
-    account,
-    className = '',
-}: Omit<AccountNameProps, 'length'>) {
+export function AccountName({ account, className = '' }: AccountNameProps) {
     return <span className={className}>{account.name}</span>;
 }

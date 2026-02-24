@@ -194,9 +194,7 @@ class BinanceBalanceSyncService
                 self::SNAPSHOT_WINDOW_DAYS,
             );
 
-            foreach ($response['snapshotVos'] ?? [] as $snapshot) {
-                $snapshots[] = $snapshot;
-            }
+            array_push($snapshots, ...($response['snapshotVos'] ?? []));
 
             $windowStart = $windowEnd->copy()->addDay()->startOfDay();
         }
@@ -212,12 +210,10 @@ class BinanceBalanceSyncService
      */
     private function buildPriceMap(array $tickerPrices): array
     {
-        $map = [];
-        foreach ($tickerPrices as $ticker) {
-            $map[$ticker['symbol']] = (float) $ticker['price'];
-        }
-
-        return $map;
+        return array_map(
+            fn (string $price) => (float) $price,
+            array_column($tickerPrices, 'price', 'symbol'),
+        );
     }
 
     /**
@@ -256,35 +252,29 @@ class BinanceBalanceSyncService
         string $targetCurrency,
         string $quoteAsset,
     ): float {
-        // Asset IS the target currency (e.g., EUR balance when target is EUR)
         if ($asset === $targetCurrency) {
             return $quantity;
         }
 
-        // USD stablecoins when target is USD → 1:1
         if ($targetCurrency === 'USD' && in_array($asset, self::USD_STABLECOINS, true)) {
             return $quantity;
         }
 
-        // Direct pair exists (e.g., BTCEUR when target is EUR)
         $directPair = $asset.$quoteAsset;
         if (isset($priceMap[$directPair])) {
             return $quantity * $priceMap[$directPair];
         }
 
-        // Fallback: convert via USDT (e.g., BTCUSDT * quantity / EURUSDT)
         $usdtPair = $asset.'USDT';
         $fiatUsdtPair = $quoteAsset.'USDT';
 
         if (isset($priceMap[$usdtPair])) {
             $valueInUsdt = $quantity * $priceMap[$usdtPair];
 
-            // If target is already USD/USDT, no further conversion needed
             if ($quoteAsset === 'USDT') {
                 return $valueInUsdt;
             }
 
-            // Convert USDT to target fiat
             if (isset($priceMap[$fiatUsdtPair]) && $priceMap[$fiatUsdtPair] > 0) {
                 return $valueInUsdt / $priceMap[$fiatUsdtPair];
             }
@@ -394,9 +384,7 @@ class BinanceBalanceSyncService
                     break;
                 }
 
-                foreach ($records as $record) {
-                    $allRecords[] = $record;
-                }
+                array_push($allRecords, ...$records);
 
                 $offset += count($records);
             } while (count($records) >= $limit);
@@ -423,7 +411,6 @@ class BinanceBalanceSyncService
             $amount = (float) ($transaction['amount'] ?? 0);
             $coin = $transaction['coin'] ?? '';
 
-            // Skip non-completed or internal transfers
             if ($status !== $successStatus || $transferType === 1 || $amount <= 0) {
                 continue;
             }
@@ -452,27 +439,17 @@ class BinanceBalanceSyncService
     private function getTransactionDate(array $transaction, string $type): string
     {
         if ($type === 'deposit') {
-            // Deposit uses insertTime (timestamp in milliseconds)
             $timestamp = $transaction['insertTime'] ?? $transaction['completeTime'] ?? null;
 
-            if ($timestamp) {
-                return Carbon::createFromTimestampMs($timestamp)->toDateString();
-            }
-        } else {
-            // Withdrawal uses completeTime or applyTime (string format)
-            $completeTime = $transaction['completeTime'] ?? null;
-
-            if ($completeTime) {
-                return Carbon::parse($completeTime)->toDateString();
-            }
-
-            $applyTime = $transaction['applyTime'] ?? null;
-
-            if ($applyTime) {
-                return Carbon::parse($applyTime)->toDateString();
-            }
+            return $timestamp
+                ? Carbon::createFromTimestampMs($timestamp)->toDateString()
+                : now()->toDateString();
         }
 
-        return now()->toDateString();
+        $dateString = $transaction['completeTime'] ?? $transaction['applyTime'] ?? null;
+
+        return $dateString
+            ? Carbon::parse($dateString)->toDateString()
+            : now()->toDateString();
     }
 }

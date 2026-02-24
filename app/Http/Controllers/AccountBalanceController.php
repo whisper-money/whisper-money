@@ -13,9 +13,6 @@ class AccountBalanceController extends Controller
 {
     use AuthorizesRequests;
 
-    /**
-     * List paginated balances for an account.
-     */
     public function index(Account $account): JsonResponse
     {
         $this->authorize('view', $account);
@@ -27,9 +24,6 @@ class AccountBalanceController extends Controller
         return response()->json($balances);
     }
 
-    /**
-     * Store a new balance for an account.
-     */
     public function store(StoreAccountBalanceRequest $request, Account $account): JsonResponse
     {
         $this->authorize('update', $account);
@@ -54,9 +48,6 @@ class AccountBalanceController extends Controller
         ], 201);
     }
 
-    /**
-     * Update or create the current balance for an account.
-     */
     public function updateCurrent(UpdateCurrentAccountBalanceRequest $request, Account $account): JsonResponse
     {
         $this->authorize('update', $account);
@@ -82,9 +73,6 @@ class AccountBalanceController extends Controller
         ]);
     }
 
-    /**
-     * Delete a balance record.
-     */
     public function destroy(Account $account, AccountBalance $accountBalance): JsonResponse
     {
         $this->authorize('update', $account);

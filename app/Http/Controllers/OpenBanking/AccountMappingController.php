@@ -15,9 +15,9 @@ use Inertia\Response;
 
 class AccountMappingController extends Controller
 {
-    public function show(BankingConnection $connection): Response|RedirectResponse
+    public function show(Request $request, BankingConnection $connection): Response|RedirectResponse
     {
-        if ($connection->user_id !== auth()->id()) {
+        if ($connection->user_id !== $request->user()->id) {
             abort(403);
         }
 
@@ -25,7 +25,7 @@ class AccountMappingController extends Controller
             return redirect()->route('settings.connections.index');
         }
 
-        $existingAccounts = auth()->user()
+        $existingAccounts = $request->user()
             ->accounts()
             ->whereNull('banking_connection_id')
             ->with('bank')
@@ -40,11 +40,11 @@ class AccountMappingController extends Controller
 
     public function store(MapAccountsRequest $request, BankingConnection $connection): RedirectResponse
     {
-        if ($connection->user_id !== auth()->id()) {
+        $user = $request->user();
+
+        if ($connection->user_id !== $user->id) {
             abort(403);
         }
-
-        $user = auth()->user();
         $mappings = $request->validated()['mappings'];
 
         $bank = Bank::firstOrCreate(

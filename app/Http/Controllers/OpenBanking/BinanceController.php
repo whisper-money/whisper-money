@@ -15,13 +15,10 @@ use Laravel\Pennant\Feature;
 
 class BinanceController extends Controller
 {
-    /**
-     * Validate Binance API credentials and create a connection.
-     */
     public function store(ConnectBinanceRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $user = auth()->user();
+        $user = $request->user();
 
         $client = new BinanceClient($validated['api_key'], $validated['api_secret']);
 

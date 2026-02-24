@@ -92,7 +92,7 @@ class AccountMetricsService
     {
         $accountIds = $accounts->pluck('id');
 
-        $lookupEnd = Carbon::now()->gt($end) ? Carbon::now() : $end->copy();
+        $lookupEnd = Carbon::now()->max($end);
         $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $lookupEnd);
 
         $points = [];

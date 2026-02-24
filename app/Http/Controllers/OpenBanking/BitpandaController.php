@@ -15,13 +15,10 @@ use Laravel\Pennant\Feature;
 
 class BitpandaController extends Controller
 {
-    /**
-     * Validate Bitpanda API key and create a connection.
-     */
     public function store(ConnectBitpandaRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $user = auth()->user();
+        $user = $request->user();
 
         $client = new BitpandaClient($validated['api_key']);
 

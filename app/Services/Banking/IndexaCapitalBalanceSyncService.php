@@ -31,15 +31,9 @@ class IndexaCapitalBalanceSyncService
             return;
         }
 
-        $sinceDate = null;
-
-        if (! $isFirstSync) {
-            $lastBalanceDate = $account->balances()->max('balance_date');
-
-            if ($lastBalanceDate) {
-                $sinceDate = $lastBalanceDate;
-            }
-        }
+        $sinceDate = ! $isFirstSync
+            ? $account->balances()->max('balance_date')
+            : null;
 
         $count = 0;
 

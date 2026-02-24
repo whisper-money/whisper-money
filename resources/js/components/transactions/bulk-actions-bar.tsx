@@ -83,31 +83,27 @@ export function BulkActionsBar({
                         </>
                     )}
                     {canSelectAll && (
-                        <>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={onSelectAll}
-                                            disabled={isUpdating}
-                                            className="h-auto px-0 py-1 text-xs text-primary hover:text-primary/80"
-                                        >
-                                            <CheckCheck className="mr-1 h-3 w-3" />
-                                            {__('Select all')}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={onSelectAll}
+                                        disabled={isUpdating}
+                                        className="h-auto px-0 py-1 text-xs text-primary hover:text-primary/80"
+                                    >
+                                        <CheckCheck className="mr-1 h-3 w-3" />
                                         {__('Select all')}
-                                        {totalFilteredCount}{' '}
-                                        {__(
-                                            'transactions matching current filter',
-                                        )}
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    {__('Select all')}
+                                    {totalFilteredCount}{' '}
+                                    {__('transactions matching current filter')}
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     )}
                 </div>
 

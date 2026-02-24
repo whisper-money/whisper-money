@@ -15,19 +15,10 @@ class BankTransactionsSyncedEmail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    /**
-     * The number of times the job may be attempted.
-     *
-     * @var int
-     */
-    public $tries = 5;
+    public int $tries = 5;
 
-    /**
-     * The number of seconds to wait before retrying the job.
-     *
-     * @var array<int, int>
-     */
-    public $backoff = [2, 5, 10, 30];
+    /** @var array<int, int> */
+    public array $backoff = [2, 5, 10, 30];
 
     /**
      * @param  array<string, int>  $transactionsPerBank
@@ -58,11 +49,7 @@ class BankTransactionsSyncedEmail extends Mailable implements ShouldQueue
         );
     }
 
-    /**
-     * Get the middleware the job should pass through.
-     *
-     * @return array<int, object>
-     */
+    /** @return array<int, object> */
     public function middleware(): array
     {
         return [(new RateLimited('emails'))->releaseAfter(1)];

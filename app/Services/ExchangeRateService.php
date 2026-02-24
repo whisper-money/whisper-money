@@ -56,11 +56,7 @@ class ExchangeRateService
     {
         $baseCurrency = strtolower($baseCurrency);
 
-        // Cap future dates to today — the API only has rates up to the current date.
-        $today = Carbon::today()->toDateString();
-        if ($date > $today) {
-            $date = $today;
-        }
+        $date = min($date, Carbon::today()->toDateString());
 
         $cached = ExchangeRate::query()
             ->where('base_currency', $baseCurrency)

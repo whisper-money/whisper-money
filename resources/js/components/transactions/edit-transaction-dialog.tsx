@@ -265,12 +265,7 @@ export function EditTransactionDialog({
         transactionDateStr: string,
         transactionAmount: number,
     ) {
-        const xsrfToken = decodeURIComponent(
-            document.cookie
-                .split('; ')
-                .find((row) => row.startsWith('XSRF-TOKEN='))
-                ?.split('=')[1] || '',
-        );
+        const xsrfToken = getCsrfToken();
 
         try {
             // Fetch balances from backend

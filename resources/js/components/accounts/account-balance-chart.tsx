@@ -341,9 +341,7 @@ export function AccountBalanceChart({
 
     const chartConfig: ChartConfig = {
         value: {
-            label: (
-                <AccountName account={account} length={{ min: 5, max: 20 }} />
-            ),
+            label: <AccountName account={account} />,
 
             color: 'var(--color-chart-2)',
         },

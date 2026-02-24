@@ -420,12 +420,7 @@ export function ImportBalancesDrawer({
         const BATCH_SIZE = 50;
         let processedCount = 0;
 
-        const xsrfToken = decodeURIComponent(
-            document.cookie
-                .split('; ')
-                .find((row) => row.startsWith('XSRF-TOKEN='))
-                ?.split('=')[1] || '',
-        );
+        const xsrfToken = getCsrfToken();
 
         for (let i = 0; i < state.balances.length; i += BATCH_SIZE) {
             const batch = state.balances.slice(i, i + BATCH_SIZE);
@@ -505,16 +500,7 @@ export function ImportBalancesDrawer({
         const successCount = createdBalances.length;
         const errorCount = errors.length;
 
-        if (errorCount === 0 && successCount > 0) {
-            toast.success(
-                `${successCount} balance${successCount !== 1 ? 's' : ''} imported successfully`,
-                {
-                    icon: <Check className="h-4 w-4" />,
-                },
-            );
-            onSuccess?.();
-            onOpenChange(false);
-        } else if (successCount > 0 && errorCount > 0) {
+        if (successCount > 0 && errorCount > 0) {
             toast.warning(
                 `${successCount} balance${successCount !== 1 ? 's' : ''} imported, ${errorCount} failed`,
             );

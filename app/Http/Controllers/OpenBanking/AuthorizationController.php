@@ -18,12 +18,9 @@ use Laravel\Pennant\Feature;
 
 class AuthorizationController extends Controller
 {
-    /**
-     * Start the bank authorization flow.
-     */
     public function store(StartAuthorizationRequest $request, BankingProviderInterface $provider): JsonResponse
     {
-        $user = auth()->user();
+        $user = $request->user();
         $validated = $request->validated();
 
         $redirectUrl = config('services.enablebanking.redirect_url');
@@ -49,9 +46,6 @@ class AuthorizationController extends Controller
         ]);
     }
 
-    /**
-     * Handle the callback from bank authorization.
-     */
     public function callback(Request $request, BankingProviderInterface $provider): RedirectResponse
     {
         if ($request->has('error')) {
@@ -60,7 +54,7 @@ class AuthorizationController extends Controller
                 'description' => $request->query('error_description'),
             ]);
 
-            auth()->user()->bankingConnections()
+            $request->user()->bankingConnections()
                 ->where('status', BankingConnectionStatus::Pending)
                 ->latest()
                 ->first()
@@ -86,7 +80,7 @@ class AuthorizationController extends Controller
                 ->with('error', 'Failed to connect to your bank. Please try again.');
         }
 
-        $user = auth()->user();
+        $user = $request->user();
 
         $connection = $user->bankingConnections()
             ->where('status', BankingConnectionStatus::Pending)
@@ -123,10 +117,7 @@ class AuthorizationController extends Controller
             ->with('success', 'Bank account connected successfully.');
     }
 
-    /**
-     * Create local accounts from the EnableBanking session data.
-     */
-    private function createAccountsFromSession($user, BankingConnection $connection, array $sessionData): void
+    private function createAccountsFromSession(User $user, BankingConnection $connection, array $sessionData): void
     {
         $bank = Bank::firstOrCreate(
             ['name' => $connection->aspsp_name, 'user_id' => null],

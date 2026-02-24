@@ -16,9 +16,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { getCsrfToken } from '@/lib/csrf';
 import type { EnableBankingInstitution } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const COUNTRIES = [
     { code: 'ES', name: 'Spain' },
@@ -69,15 +70,6 @@ interface ConnectAccountDialogProps {
 
 type Step = 'country' | 'bank' | 'confirm';
 
-function getCsrfToken(): string {
-    return decodeURIComponent(
-        document.cookie
-            .split('; ')
-            .find((row) => row.startsWith('XSRF-TOKEN='))
-            ?.split('=')[1] || '',
-    );
-}
-
 export function ConnectAccountDialog({
     open,
     onOpenChange,
@@ -101,20 +93,9 @@ export function ConnectAccountDialog({
     const [apiSecret, setApiSecret] = useState('');
     const [bitpandaApiKey, setBitpandaApiKey] = useState('');
 
-    const isIndexaCapital = useMemo(
-        () => selectedBank?.name === 'Indexa Capital',
-        [selectedBank],
-    );
-
-    const isBinance = useMemo(
-        () => selectedBank?.name === 'Binance',
-        [selectedBank],
-    );
-
-    const isBitpanda = useMemo(
-        () => selectedBank?.name === 'Bitpanda',
-        [selectedBank],
-    );
+    const isIndexaCapital = selectedBank?.name === 'Indexa Capital';
+    const isBinance = selectedBank?.name === 'Binance';
+    const isBitpanda = selectedBank?.name === 'Bitpanda';
 
     const resetState = useCallback(() => {
         setStep('country');

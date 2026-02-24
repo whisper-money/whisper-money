@@ -10,9 +10,6 @@ use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
-    /**
-     * Return paginated transactions for the authenticated user with optional filters.
-     */
     public function index(Request $request): JsonResponse
     {
         $query = $request->user()
@@ -30,9 +27,6 @@ class TransactionController extends Controller
         return response()->json($transactions);
     }
 
-    /**
-     * Bulk update transactions (used for decryption migration).
-     */
     public function bulkUpdate(BulkUpdateTransactionRequest $request): JsonResponse
     {
         $validated = $request->validated();

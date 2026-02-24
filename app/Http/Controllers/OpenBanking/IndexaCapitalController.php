@@ -15,13 +15,10 @@ use Laravel\Pennant\Feature;
 
 class IndexaCapitalController extends Controller
 {
-    /**
-     * Validate the Indexa Capital API token and create a connection.
-     */
     public function store(ConnectIndexaCapitalRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $user = auth()->user();
+        $user = $request->user();
 
         $client = new IndexaCapitalClient($validated['api_token']);
 

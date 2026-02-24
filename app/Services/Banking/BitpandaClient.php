@@ -121,9 +121,7 @@ class BitpandaClient
                 break;
             }
 
-            foreach ($transactions as $transaction) {
-                $allTransactions[] = $transaction;
-            }
+            array_push($allTransactions, ...$transactions);
 
             $cursor = $response['meta']['next_cursor'] ?? null;
         } while ($cursor);

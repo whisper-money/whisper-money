@@ -124,11 +124,7 @@ class BitpandaBalanceSyncService
     {
         $price = $ticker[$symbol][$targetCurrency] ?? null;
 
-        if ($price === null) {
-            return null;
-        }
-
-        return (float) $price;
+        return $price !== null ? (float) $price : null;
     }
 
     /**

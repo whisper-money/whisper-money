@@ -56,10 +56,7 @@ export function AccountBalanceCard({
                             className="mr-2 inline-block size-5"
                         />
 
-                        <AccountName
-                            account={account}
-                            length={{ min: 5, max: 15 }}
-                        />
+                        <AccountName account={account} />
                     </Link>
                 </CardTitle>
                 <div className="text-xs font-medium text-muted-foreground">

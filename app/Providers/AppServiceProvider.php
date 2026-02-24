@@ -21,24 +21,16 @@ use Laravel\Pennant\Feature;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
 
-        $this->app->bind(BankingProviderInterface::class, function ($app) {
-            return new EnableBankingProvider(
-                config('services.enablebanking.app_id'),
-                base_path(config('services.enablebanking.private_key_path')),
-            );
-        });
+        $this->app->bind(BankingProviderInterface::class, fn () => new EnableBankingProvider(
+            config('services.enablebanking.app_id'),
+            base_path(config('services.enablebanking.private_key_path')),
+        ));
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         Event::listen(TransactionCreated::class, ApplyAutomationRules::class);

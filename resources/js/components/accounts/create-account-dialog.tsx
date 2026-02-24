@@ -64,12 +64,7 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                     Accept: 'application/json',
                 },
             });

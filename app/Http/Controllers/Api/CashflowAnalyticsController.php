@@ -84,7 +84,7 @@ class CashflowAnalyticsController extends Controller
                 'month' => $current->format('Y-m'),
                 'income' => $income,
                 'expense' => abs($expense),
-                'net' => $income + $expense, // expense is negative, so this gives net
+                'net' => $income + $expense,
             ];
 
             $current->addMonth();
@@ -115,7 +115,6 @@ class CashflowAnalyticsController extends Controller
         $currentTotal = $current->sum('amount');
         $previousTotal = $previous->sum('amount');
 
-        // Add percentage and previous amount to current
         $currentWithPercentage = $current->map(function ($item) use ($currentTotal, $previous) {
             $previousAmount = $previous->firstWhere('category_id', $item['category_id'])['amount'] ?? 0;
 
@@ -173,7 +172,6 @@ class CashflowAnalyticsController extends Controller
 
     private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type): Collection
     {
-        // Get categorized transactions
         $categorized = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
@@ -193,7 +191,6 @@ class CashflowAnalyticsController extends Controller
                 ];
             });
 
-        // Get uncategorized transactions
         $uncategorized = Transaction::query()
             ->where('user_id', $userId)
             ->whereBetween('transaction_date', [$from, $to])
@@ -201,7 +198,6 @@ class CashflowAnalyticsController extends Controller
             ->where('amount', $type === CategoryType::Income ? '>' : '<', 0)
             ->sum('amount');
 
-        // Add uncategorized as a special category if there are any
         if ($uncategorized != 0) {
             $categorized->push([
                 'category_id' => null,

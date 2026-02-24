@@ -34,13 +34,12 @@ class DashboardAnalyticsController extends Controller
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
 
-        $userCurrency = $request->user()->currency_code;
-        $userId = $request->user()->id;
+        $user = $request->user();
 
         return response()->json([
-            'current' => $this->calculateNetWorthAt($userId, $period->to, $userCurrency),
-            'previous' => $this->calculateNetWorthAt($userId, $previousPeriod->to, $userCurrency),
-            'currency_code' => $userCurrency,
+            'current' => $this->calculateNetWorthAt($user->id, $period->to, $user->currency_code),
+            'previous' => $this->calculateNetWorthAt($user->id, $previousPeriod->to, $user->currency_code),
+            'currency_code' => $user->currency_code,
         ]);
     }
 
@@ -138,14 +137,7 @@ class DashboardAnalyticsController extends Controller
 
         return response()->json([
             'data' => $points,
-            'account' => [
-                'id' => $account->id,
-                'name' => $account->name,
-                'name_iv' => $account->name_iv,
-                'encrypted' => $account->encrypted,
-                'type' => $account->type,
-                'currency_code' => $account->currency_code,
-            ],
+            'account' => $this->serializeAccount($account),
         ]);
     }
 
@@ -186,14 +178,7 @@ class DashboardAnalyticsController extends Controller
 
         return response()->json([
             'data' => $points,
-            'account' => [
-                'id' => $account->id,
-                'name' => $account->name,
-                'name_iv' => $account->name_iv,
-                'encrypted' => $account->encrypted,
-                'type' => $account->type,
-                'currency_code' => $account->currency_code,
-            ],
+            'account' => $this->serializeAccount($account),
         ]);
     }
 
@@ -229,8 +214,9 @@ class DashboardAnalyticsController extends Controller
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
 
-        $currentSpending = $this->getCategorySpending($request->user()->id, $period->from, $period->to);
-        $previousSpending = $this->getCategorySpending($request->user()->id, $previousPeriod->from, $previousPeriod->to);
+        $userId = $request->user()->id;
+        $currentSpending = $this->getCategorySpending($userId, $period->from, $period->to);
+        $previousSpending = $this->getCategorySpending($userId, $previousPeriod->from, $previousPeriod->to);
 
         $totalAmount = $currentSpending->sum('amount');
 
@@ -300,41 +286,38 @@ class DashboardAnalyticsController extends Controller
 
     private function calculateSpending(string $userId, Carbon $from, Carbon $to): int
     {
-        $spending = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense);
-            })
-            ->sum('transactions.amount');
-
-        return abs($spending);
+        return abs($this->getTransactionSumByType($userId, $from, $to, CategoryType::Expense));
     }
 
     private function calculateCashFlow(string $userId, Carbon $from, Carbon $to): array
     {
-        $income = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Income);
-            })
-            ->sum('transactions.amount');
-
-        $expense = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense);
-            })
-            ->sum('transactions.amount');
-
         return [
-            'income' => $income,
-            'expense' => abs($expense),
+            'income' => $this->getTransactionSumByType($userId, $from, $to, CategoryType::Income),
+            'expense' => abs($this->getTransactionSumByType($userId, $from, $to, CategoryType::Expense)),
+        ];
+    }
+
+    private function getTransactionSumByType(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
+    {
+        return (int) Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->join('categories', function ($join) use ($type) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', '=', $type);
+            })
+            ->sum('transactions.amount');
+    }
+
+    private function serializeAccount(Account $account): array
+    {
+        return [
+            'id' => $account->id,
+            'name' => $account->name,
+            'name_iv' => $account->name_iv,
+            'encrypted' => $account->encrypted,
+            'type' => $account->type,
+            'currency_code' => $account->currency_code,
         ];
     }
 }

@@ -67,17 +67,7 @@ class BinanceClient
      */
     public function getDepositHistory(?int $startTime = null, ?int $endTime = null, int $offset = 0, int $limit = 1000): array
     {
-        $params = ['offset' => $offset, 'limit' => $limit];
-
-        if ($startTime !== null) {
-            $params['startTime'] = $startTime;
-        }
-
-        if ($endTime !== null) {
-            $params['endTime'] = $endTime;
-        }
-
-        return $this->signedRequest('/sapi/v1/capital/deposit/hisrec', $params);
+        return $this->signedRequest('/sapi/v1/capital/deposit/hisrec', $this->buildHistoryParams($startTime, $endTime, $offset, $limit));
     }
 
     /**
@@ -88,17 +78,20 @@ class BinanceClient
      */
     public function getWithdrawHistory(?int $startTime = null, ?int $endTime = null, int $offset = 0, int $limit = 1000): array
     {
-        $params = ['offset' => $offset, 'limit' => $limit];
+        return $this->signedRequest('/sapi/v1/capital/withdraw/history', $this->buildHistoryParams($startTime, $endTime, $offset, $limit));
+    }
 
-        if ($startTime !== null) {
-            $params['startTime'] = $startTime;
-        }
-
-        if ($endTime !== null) {
-            $params['endTime'] = $endTime;
-        }
-
-        return $this->signedRequest('/sapi/v1/capital/withdraw/history', $params);
+    /**
+     * @return array<string, int>
+     */
+    private function buildHistoryParams(?int $startTime, ?int $endTime, int $offset, int $limit): array
+    {
+        return array_filter([
+            'offset' => $offset,
+            'limit' => $limit,
+            'startTime' => $startTime,
+            'endTime' => $endTime,
+        ], fn ($v) => $v !== null);
     }
 
     /**

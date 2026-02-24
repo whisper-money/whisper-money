@@ -475,12 +475,7 @@ export function ImportTransactionsDrawer({
 
         if (balancesToImport.size > 0) {
             try {
-                const xsrfToken = decodeURIComponent(
-                    document.cookie
-                        .split('; ')
-                        .find((row) => row.startsWith('XSRF-TOKEN='))
-                        ?.split('=')[1] || '',
-                );
+                const xsrfToken = getCsrfToken();
 
                 const balanceRecords = Array.from(balancesToImport.entries());
 
@@ -511,23 +506,7 @@ export function ImportTransactionsDrawer({
 
         console.log('Import complete:', { successCount, errorCount, total });
 
-        if (errorCount === 0 && successCount > 0) {
-            const message =
-                uncategorizedCount > 0
-                    ? `${successCount} transaction${successCount !== 1 ? 's' : ''} imported (${uncategorizedCount} uncategorized)`
-                    : `${successCount} transaction${successCount !== 1 ? 's' : ''} imported successfully`;
-            toast.success(message, {
-                action:
-                    uncategorizedCount > 0
-                        ? {
-                              label: 'Categorize',
-                              onClick: () =>
-                                  router.visit('/transactions/categorize'),
-                          }
-                        : undefined,
-            });
-            onOpenChange(false);
-        } else if (successCount > 0 && errorCount > 0) {
+        if (successCount > 0 && errorCount > 0) {
             const message =
                 uncategorizedCount > 0
                     ? `${successCount} transaction${successCount !== 1 ? 's' : ''} imported (${uncategorizedCount} uncategorized), ${errorCount} failed`

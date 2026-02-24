@@ -77,25 +77,24 @@ class CurrencyConversionService
      */
     private function fetchRates(string $currency, string $date): array
     {
-        $primaryUrl = self::PRIMARY_URL."{$date}/v1/currencies/{$currency}.min.json";
-        $fallbackUrl = self::FALLBACK_URL."{$date}/currencies/{$currency}.min.json";
+        $urls = [
+            self::PRIMARY_URL."{$date}/v1/currencies/{$currency}.min.json",
+            self::FALLBACK_URL."{$date}/currencies/{$currency}.min.json",
+        ];
 
-        try {
-            $response = Http::timeout(10)->get($primaryUrl);
-            $response->throw();
+        $lastException = null;
 
-            return $response->json($currency) ?? [];
-        } catch (\Throwable) {
-            // Primary failed, try fallback
+        foreach ($urls as $url) {
+            try {
+                $response = Http::timeout(10)->get($url);
+                $response->throw();
+
+                return $response->json($currency) ?? [];
+            } catch (\Throwable $e) {
+                $lastException = $e;
+            }
         }
 
-        try {
-            $response = Http::timeout(10)->get($fallbackUrl);
-            $response->throw();
-
-            return $response->json($currency) ?? [];
-        } catch (\Throwable $e) {
-            throw new RuntimeException("Failed to fetch currency rates for {$currency} on {$date}: {$e->getMessage()}", 0, $e);
-        }
+        throw new RuntimeException("Failed to fetch currency rates for {$currency} on {$date}: {$lastException->getMessage()}", 0, $lastException);
     }
 }

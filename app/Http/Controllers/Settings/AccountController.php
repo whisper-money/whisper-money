@@ -16,12 +16,9 @@ class AccountController extends Controller
 {
     use AuthorizesRequests;
 
-    /**
-     * Show the user's accounts settings page.
-     */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $accounts = auth()->user()
+        $accounts = $request->user()
             ->accounts()
             ->with('bank:id,name,logo')
             ->orderBy('name')
@@ -32,12 +29,9 @@ class AccountController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created account.
-     */
     public function store(StoreAccountRequest $request): RedirectResponse|JsonResponse
     {
-        $user = auth()->user();
+        $user = $request->user();
         $account = $user->accounts()->create([
             ...$request->validated(),
             'encrypted' => false,
@@ -56,9 +50,6 @@ class AccountController extends Controller
         return to_route('accounts.index');
     }
 
-    /**
-     * Update the specified account.
-     */
     public function update(UpdateAccountRequest $request, Account $account): RedirectResponse
     {
         $this->authorize('update', $account);
@@ -72,9 +63,6 @@ class AccountController extends Controller
         return to_route('accounts.index');
     }
 
-    /**
-     * Hard delete the specified account and cascade delete all transactions.
-     */
     public function destroy(Account $account): RedirectResponse
     {
         $this->authorize('delete', $account);

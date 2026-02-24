@@ -73,7 +73,6 @@ export function AccountListCard({
                                         />
                                         <AccountName
                                             account={account}
-                                            length={{ min: 8, max: 25 }}
                                             className="truncate"
                                         />
                                     </h3>

@@ -14,7 +14,7 @@ import {
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
-import { format, getYear, isWithinInterval, parseISO } from 'date-fns';
+import { isWithinInterval, parseISO } from 'date-fns';
 import {
     type ReactNode,
     useCallback,
@@ -195,25 +195,6 @@ function getInitialColumnVisibility(): VisibilityState {
     return defaultVisibility;
 }
 
-function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
-    const parsedDate = parseISO(date);
-    const currentYear = getYear(new Date());
-    const transactionYear = getYear(parsedDate);
-    const formatString =
-        transactionYear === currentYear ? 'MMM d' : 'MMM d, yy';
-
-    return (
-        <tr className="hidden bg-muted/50">
-            <td
-                colSpan={colSpan}
-                className="px-4 py-2 text-sm font-semibold text-muted-foreground"
-            >
-                {format(parsedDate, formatString)}
-            </td>
-        </tr>
-    );
-}
-
 export interface TransactionListProps {
     categories: Category[];
     accounts: Account[];
@@ -248,6 +229,46 @@ export function TransactionList({
     const { isKeySet } = useEncryptionKey();
     const locale = useLocale();
     const labels = initialLabels;
+
+    async function decryptTransaction(
+        transaction: {
+            description: string;
+            description_iv: string | null;
+            notes: string | null;
+            notes_iv: string | null;
+        },
+        key: CryptoKey | null,
+    ): Promise<{
+        decryptedDescription: string;
+        decryptedNotes: string | null;
+    }> {
+        let decryptedDescription = '';
+        let decryptedNotes: string | null = null;
+
+        if (!transaction.description_iv) {
+            decryptedDescription = transaction.description;
+            decryptedNotes = transaction.notes || null;
+        } else if (key) {
+            try {
+                decryptedDescription = await decrypt(
+                    transaction.description,
+                    key,
+                    transaction.description_iv,
+                );
+                if (transaction.notes && transaction.notes_iv) {
+                    decryptedNotes = await decrypt(
+                        transaction.notes,
+                        key,
+                        transaction.notes_iv,
+                    );
+                }
+            } catch (error) {
+                console.error('Failed to decrypt transaction:', error);
+            }
+        }
+
+        return { decryptedDescription, decryptedNotes };
+    }
 
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
@@ -338,37 +359,8 @@ export function TransactionList({
                     const decrypted = await Promise.all(
                         providedTransactions.map(async (transaction) => {
                             try {
-                                let decryptedDescription = '';
-                                let decryptedNotes: string | null = null;
-
-                                if (!transaction.description_iv) {
-                                    decryptedDescription =
-                                        transaction.description;
-                                    decryptedNotes = transaction.notes || null;
-                                } else if (key) {
-                                    try {
-                                        decryptedDescription = await decrypt(
-                                            transaction.description,
-                                            key,
-                                            transaction.description_iv,
-                                        );
-                                        if (
-                                            transaction.notes &&
-                                            transaction.notes_iv
-                                        ) {
-                                            decryptedNotes = await decrypt(
-                                                transaction.notes,
-                                                key,
-                                                transaction.notes_iv,
-                                            );
-                                        }
-                                    } catch (error) {
-                                        console.error(
-                                            'Failed to decrypt transaction:',
-                                            error,
-                                        );
-                                    }
-                                }
+                                const { decryptedDescription, decryptedNotes } =
+                                    await decryptTransaction(transaction, key);
 
                                 return {
                                     ...transaction,
@@ -458,38 +450,8 @@ export function TransactionList({
                 const decrypted = await Promise.all(
                     transformedTransactions.map(async (transaction) => {
                         try {
-                            let decryptedDescription = '';
-                            let decryptedNotes: string | null = null;
-
-                            if (!transaction.description_iv) {
-                                decryptedDescription = transaction.description;
-                                decryptedNotes = transaction.notes || null;
-                            } else if (key) {
-                                try {
-                                    decryptedDescription = await decrypt(
-                                        transaction.description,
-                                        key,
-                                        transaction.description_iv,
-                                    );
-
-                                    if (
-                                        transaction.notes &&
-                                        transaction.notes_iv
-                                    ) {
-                                        decryptedNotes = await decrypt(
-                                            transaction.notes,
-                                            key,
-                                            transaction.notes_iv,
-                                        );
-                                    }
-                                } catch (error) {
-                                    console.error(
-                                        'Failed to decrypt transaction:',
-                                        transaction.id,
-                                        error,
-                                    );
-                                }
-                            }
+                            const { decryptedDescription, decryptedNotes } =
+                                await decryptTransaction(transaction, key);
 
                             const account = accountsMap.get(
                                 transaction.account_id,
@@ -584,35 +546,8 @@ export function TransactionList({
             const reDecrypted = await Promise.all(
                 transactions.map(async (transaction) => {
                     try {
-                        let decryptedDescription = '';
-                        let decryptedNotes: string | null = null;
-
-                        if (!transaction.description_iv) {
-                            decryptedDescription = transaction.description;
-                            decryptedNotes = transaction.notes || null;
-                        } else if (key) {
-                            try {
-                                decryptedDescription = await decrypt(
-                                    transaction.description,
-                                    key,
-                                    transaction.description_iv,
-                                );
-
-                                if (transaction.notes && transaction.notes_iv) {
-                                    decryptedNotes = await decrypt(
-                                        transaction.notes,
-                                        key,
-                                        transaction.notes_iv,
-                                    );
-                                }
-                            } catch (error) {
-                                console.error(
-                                    'Failed to decrypt transaction:',
-                                    transaction.id,
-                                    error,
-                                );
-                            }
-                        }
+                        const { decryptedDescription, decryptedNotes } =
+                            await decryptTransaction(transaction, key);
 
                         return {
                             ...transaction,
@@ -1444,10 +1379,6 @@ export function TransactionList({
                             emptyMessage={__('No transactions found.')}
                             renderRow={renderTransactionRow}
                             maxHeight={maxHeight}
-                            getRowDate={(row) => row.transaction_date}
-                            renderDateHeader={(date, colSpan) => (
-                                <DateHeader date={date} colSpan={colSpan} />
-                            )}
                         />
 
                         <DataTablePagination

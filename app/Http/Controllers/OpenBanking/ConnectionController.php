@@ -22,12 +22,9 @@ class ConnectionController extends Controller
 {
     use AuthorizesRequests;
 
-    /**
-     * Show the user's banking connections.
-     */
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $connections = auth()->user()
+        $connections = $request->user()
             ->bankingConnections()
             ->withCount('accounts')
             ->orderByDesc('created_at')
@@ -41,12 +38,9 @@ class ConnectionController extends Controller
         ]);
     }
 
-    /**
-     * Manually trigger a sync for a connection.
-     */
-    public function sync(BankingConnection $connection): RedirectResponse
+    public function sync(Request $request, BankingConnection $connection): RedirectResponse
     {
-        if ($connection->user_id !== auth()->id()) {
+        if ($connection->user_id !== $request->user()->id) {
             abort(403);
         }
 
@@ -122,9 +116,6 @@ class ConnectionController extends Controller
         return null;
     }
 
-    /**
-     * Revoke and delete a banking connection.
-     */
     public function destroy(DestroyConnectionRequest $request, BankingConnection $connection, BankingProviderInterface $provider): RedirectResponse
     {
         if ($connection->isEnableBanking() && $connection->session_id && $connection->isActive()) {
