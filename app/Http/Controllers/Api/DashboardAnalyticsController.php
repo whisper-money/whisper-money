@@ -369,13 +369,14 @@ class DashboardAnalyticsController extends Controller
     private function getCategorySpending(string $userId, Carbon $from, Carbon $to)
     {
         return Transaction::query()
-            ->where('user_id', $userId)
-            ->whereBetween('transaction_date', [$from, $to])
-            ->whereHas('category', function ($q) {
-                $q->where('type', CategoryType::Expense);
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->join('categories', function ($join) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', '=', CategoryType::Expense);
             })
-            ->select('category_id', DB::raw('sum(amount) as total_amount'))
-            ->groupBy('category_id')
+            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
+            ->groupBy('transactions.category_id')
             ->with('category')
             ->get()
             ->map(function ($item) {
@@ -444,12 +445,13 @@ class DashboardAnalyticsController extends Controller
     private function calculateSpending(Carbon $from, Carbon $to): int
     {
         $spending = Transaction::query()
-            ->where('user_id', request()->user()->id)
-            ->whereBetween('transaction_date', [$from, $to])
-            ->whereHas('category', function ($q) {
-                $q->where('type', CategoryType::Expense);
+            ->where('transactions.user_id', request()->user()->id)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->join('categories', function ($join) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', '=', CategoryType::Expense);
             })
-            ->sum('amount');
+            ->sum('transactions.amount');
 
         return abs($spending);
     }
@@ -457,20 +459,22 @@ class DashboardAnalyticsController extends Controller
     private function calculateCashFlow(Carbon $from, Carbon $to): array
     {
         $income = Transaction::query()
-            ->where('user_id', request()->user()->id)
-            ->whereBetween('transaction_date', [$from, $to])
-            ->whereHas('category', function ($q) {
-                $q->where('type', CategoryType::Income);
+            ->where('transactions.user_id', request()->user()->id)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->join('categories', function ($join) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', '=', CategoryType::Income);
             })
-            ->sum('amount');
+            ->sum('transactions.amount');
 
         $expense = Transaction::query()
-            ->where('user_id', request()->user()->id)
-            ->whereBetween('transaction_date', [$from, $to])
-            ->whereHas('category', function ($q) {
-                $q->where('type', CategoryType::Expense);
+            ->where('transactions.user_id', request()->user()->id)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->join('categories', function ($join) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', '=', CategoryType::Expense);
             })
-            ->sum('amount');
+            ->sum('transactions.amount');
 
         return [
             'income' => $income,

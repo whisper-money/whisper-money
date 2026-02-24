@@ -43,12 +43,15 @@ class HandleInertiaRequests extends Middleware
         $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local') ?? false;
         $isDemoQuery = $request->query('demo') === '1';
 
+        // Cache encryption checks to avoid duplicate queries
+        $hasEncryptedAccounts = $user?->accounts()->where('encrypted', true)->exists() ?? false;
+        $hasEncryptedTransactions = $user?->transactions()
+            ->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
+            ->exists() ?? false;
+
         // Clean up encryption data if no encrypted accounts or transactions remain
         if (! $request->is('api/*') && $user?->encryption_salt !== null) {
-            $hasAnyEncryptedData = $user->accounts()->where('encrypted', true)->exists()
-                || $user->transactions()->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))->exists();
-
-            if (! $hasAnyEncryptedData) {
+            if (! $hasEncryptedAccounts && ! $hasEncryptedTransactions) {
                 $user->encryptedMessage()->delete();
                 $user->update(['encryption_salt' => null]);
             }
@@ -109,11 +112,9 @@ class HandleInertiaRequests extends Middleware
             'labels' => fn () => $user ? $user->labels()
                 ->orderBy('name')
                 ->get(['id', 'name', 'color']) : [],
-            'hasEncryptedAccounts' => $user?->accounts()->where('encrypted', true)->exists() ?? false,
+            'hasEncryptedAccounts' => $hasEncryptedAccounts,
             'hasEncryptionSetup' => $user?->encryption_salt !== null,
-            'hasEncryptedTransactions' => $user?->transactions()
-                ->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
-                ->exists() ?? false,
+            'hasEncryptedTransactions' => $hasEncryptedTransactions,
             'locale' => app()->getLocale(),
             'translations' => $this->getTranslations(),
         ];
