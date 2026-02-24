@@ -1,7 +1,7 @@
 {
     "$schema": "https://json.schemastore.org/package.json",
     "name": "whisper-money",
-    "version": "0.1.10",
+    "version": "0.1.11",
     "private": true,
     "type": "module",
     "scripts": {
@@ -36,7 +36,7 @@
         "prettier": "^3.4.2",
         "prettier-plugin-organize-imports": "^4.1.0",
         "prettier-plugin-tailwindcss": "^0.6.11",
-        "release-it": "^19.2.2",
+        "release-it": "^19.2.4",
         "typescript-eslint": "^8.23.0",
         "vitest": "^2.1.8"
     },
