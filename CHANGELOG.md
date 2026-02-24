@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.12](https://github.com/whisper-money/whisper-money/compare/v0.1.10...v0.1.12) (2026-02-24)
+
+
+### Bug Fixes
+
+* Pricing table on dark scheme ([faddd59](https://github.com/whisper-money/whisper-money/commit/faddd59537903572109033cb2112eb0b6504d86a))
+
+
+### Features
+
+* enable invested amount tracking for savings accounts ([#142](https://github.com/whisper-money/whisper-money/issues/142)) ([0a9ca5b](https://github.com/whisper-money/whisper-money/commit/0a9ca5b606809e1772884887534317d7e86cfd8e))
+* investment benefits — show gains/losses on investment accounts ([#140](https://github.com/whisper-money/whisper-money/issues/140)) ([299b8a5](https://github.com/whisper-money/whisper-money/commit/299b8a56d87f8217a9d5ce5a0916361a751d5a94))
+
+
+### Performance Improvements
+
+* **accounts:** replace client-side API calls with Inertia deferred prop ([#144](https://github.com/whisper-money/whisper-money/issues/144)) ([ce9574a](https://github.com/whisper-money/whisper-money/commit/ce9574aa147067447a870bf4d4f1347b7d81c08b))
+* **dashboard:** optimize query performance and eliminate redundant requests ([#146](https://github.com/whisper-money/whisper-money/issues/146)) ([ae81e20](https://github.com/whisper-money/whisper-money/commit/ae81e20a66285ccda6e2a7d22b7ea0f683f0ffb4))
+* make banking syncs incremental on subsequent runs ([#141](https://github.com/whisper-money/whisper-money/issues/141)) ([d48fea1](https://github.com/whisper-money/whisper-money/commit/d48fea15b2c48e4f4647d7762569774d42e3a87d))
+
 ## [0.1.10](https://github.com/whisper-money/whisper-money/compare/v0.1.9...v0.1.10) (2026-02-20)
 
 
