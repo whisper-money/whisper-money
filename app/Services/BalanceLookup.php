@@ -38,11 +38,12 @@ class BalanceLookup
     {
         $instance = new self;
 
-        if (empty($accountIds) || (is_countable($accountIds) && count($accountIds) === 0)) {
+        $accountIdList = $accountIds instanceof Collection ? $accountIds->all() : $accountIds;
+
+        if ($accountIdList === []) {
             return $instance;
         }
 
-        $accountIdList = $accountIds instanceof Collection ? $accountIds->all() : $accountIds;
         $startDate = $rangeStart->toDateString();
         $endDate = $rangeEnd->toDateString();
 
@@ -82,7 +83,7 @@ class BalanceLookup
             )
             ->get(['account_balances.account_id', 'account_balances.balance_date', 'account_balances.invested_amount']);
 
-        // Query 2: All balance records within the range.
+        // Query 3: All balance records within the range.
         $rangeRecords = AccountBalance::query()
             ->whereIn('account_id', $accountIdList)
             ->whereBetween('balance_date', [$startDate, $endDate])

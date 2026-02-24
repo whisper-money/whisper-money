@@ -9,6 +9,7 @@ use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class CashflowAnalyticsController extends Controller
@@ -170,7 +171,7 @@ class CashflowAnalyticsController extends Controller
             ->sum('transactions.amount');
     }
 
-    private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type)
+    private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type): Collection
     {
         // Get categorized transactions
         $categorized = Transaction::query()

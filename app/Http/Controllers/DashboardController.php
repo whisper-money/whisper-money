@@ -9,6 +9,7 @@ use App\Services\AccountMetricsService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -90,7 +91,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getCategorySpending(string $userId, Carbon $from, Carbon $to)
+    private function getCategorySpending(string $userId, Carbon $from, Carbon $to): Collection
     {
         return Transaction::query()
             ->where('transactions.user_id', $userId)

@@ -110,15 +110,12 @@ function assertMaxQueries(int $max, \Closure $callback, string $context = ''): v
 {
     $result = countQueries($callback);
 
-    if ($result['count'] > $max) {
-        $message = "{$context}: Expected at most {$max} queries, but {$result['count']} were executed.\n\nQueries:\n";
-        foreach ($result['queries'] as $i => $sql) {
-            $message .= sprintf("  %d. %s\n", $i + 1, $sql);
-        }
-        test()->fail($message);
+    $message = "{$context}: Expected at most {$max} queries, but {$result['count']} were executed.\n\nQueries:\n";
+    foreach ($result['queries'] as $i => $sql) {
+        $message .= sprintf("  %d. %s\n", $i + 1, $sql);
     }
 
-    expect($result['count'])->toBeLessThanOrEqual($max);
+    expect($result['count'])->toBeLessThanOrEqual($max, $message);
 }
 
 function createCategoryViaUI($page, string $name, string $color = 'green', string $type = 'Expense'): void

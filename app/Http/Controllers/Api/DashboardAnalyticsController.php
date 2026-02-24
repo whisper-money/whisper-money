@@ -12,7 +12,9 @@ use App\Services\BalanceLookup;
 use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class DashboardAnalyticsController extends Controller
@@ -22,7 +24,7 @@ class DashboardAnalyticsController extends Controller
         private AccountMetricsService $accountMetricsService,
     ) {}
 
-    public function netWorth(Request $request)
+    public function netWorth(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'from' => 'required|date',
@@ -33,15 +35,16 @@ class DashboardAnalyticsController extends Controller
         $previousPeriod = $period->previous();
 
         $userCurrency = $request->user()->currency_code;
+        $userId = $request->user()->id;
 
         return response()->json([
-            'current' => $this->calculateNetWorthAt($period->to, $userCurrency),
-            'previous' => $this->calculateNetWorthAt($previousPeriod->to, $userCurrency),
+            'current' => $this->calculateNetWorthAt($userId, $period->to, $userCurrency),
+            'previous' => $this->calculateNetWorthAt($userId, $previousPeriod->to, $userCurrency),
             'currency_code' => $userCurrency,
         ]);
     }
 
-    public function monthlySpending(Request $request)
+    public function monthlySpending(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'from' => 'required|date',
@@ -50,14 +53,15 @@ class DashboardAnalyticsController extends Controller
 
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
+        $userId = $request->user()->id;
 
         return response()->json([
-            'current' => $this->calculateSpending($period->from, $period->to),
-            'previous' => $this->calculateSpending($previousPeriod->from, $previousPeriod->to),
+            'current' => $this->calculateSpending($userId, $period->from, $period->to),
+            'previous' => $this->calculateSpending($userId, $previousPeriod->from, $previousPeriod->to),
         ]);
     }
 
-    public function cashFlow(Request $request)
+    public function cashFlow(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'from' => 'required|date',
@@ -66,14 +70,15 @@ class DashboardAnalyticsController extends Controller
 
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
+        $userId = $request->user()->id;
 
         return response()->json([
-            'current' => $this->calculateCashFlow($period->from, $period->to),
-            'previous' => $this->calculateCashFlow($previousPeriod->from, $previousPeriod->to),
+            'current' => $this->calculateCashFlow($userId, $period->from, $period->to),
+            'previous' => $this->calculateCashFlow($userId, $previousPeriod->from, $previousPeriod->to),
         ]);
     }
 
-    public function netWorthEvolution(Request $request)
+    public function netWorthEvolution(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'from' => 'required|date',
@@ -95,7 +100,7 @@ class DashboardAnalyticsController extends Controller
         );
     }
 
-    public function accountBalanceEvolution(Request $request, Account $account)
+    public function accountBalanceEvolution(Request $request, Account $account): JsonResponse
     {
         if ($account->user_id !== $request->user()->id) {
             abort(403);
@@ -144,7 +149,7 @@ class DashboardAnalyticsController extends Controller
         ]);
     }
 
-    public function accountDailyBalanceEvolution(Request $request, Account $account)
+    public function accountDailyBalanceEvolution(Request $request, Account $account): JsonResponse
     {
         if ($account->user_id !== $request->user()->id) {
             abort(403);
@@ -192,7 +197,7 @@ class DashboardAnalyticsController extends Controller
         ]);
     }
 
-    public function netWorthDailyEvolution(Request $request)
+    public function netWorthDailyEvolution(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'from' => 'required|date',
@@ -214,7 +219,7 @@ class DashboardAnalyticsController extends Controller
         );
     }
 
-    public function topCategories(Request $request)
+    public function topCategories(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'from' => 'required|date',
@@ -247,7 +252,7 @@ class DashboardAnalyticsController extends Controller
         return response()->json($top);
     }
 
-    private function getCategorySpending(string $userId, Carbon $from, Carbon $to)
+    private function getCategorySpending(string $userId, Carbon $from, Carbon $to): Collection
     {
         return Transaction::query()
             ->where('transactions.user_id', $userId)
@@ -269,9 +274,9 @@ class DashboardAnalyticsController extends Controller
             });
     }
 
-    private function calculateNetWorthAt(Carbon $date, string $userCurrency): int
+    private function calculateNetWorthAt(string $userId, Carbon $date, string $userCurrency): int
     {
-        $accounts = Account::where('user_id', request()->user()->id)->get();
+        $accounts = Account::where('user_id', $userId)->get();
 
         $total = 0;
 
@@ -293,10 +298,10 @@ class DashboardAnalyticsController extends Controller
         return $total;
     }
 
-    private function calculateSpending(Carbon $from, Carbon $to): int
+    private function calculateSpending(string $userId, Carbon $from, Carbon $to): int
     {
         $spending = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
+            ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
@@ -307,10 +312,10 @@ class DashboardAnalyticsController extends Controller
         return abs($spending);
     }
 
-    private function calculateCashFlow(Carbon $from, Carbon $to): array
+    private function calculateCashFlow(string $userId, Carbon $from, Carbon $to): array
     {
         $income = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
+            ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
@@ -319,7 +324,7 @@ class DashboardAnalyticsController extends Controller
             ->sum('transactions.amount');
 
         $expense = Transaction::query()
-            ->where('transactions.user_id', request()->user()->id)
+            ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
