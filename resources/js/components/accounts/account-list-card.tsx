@@ -176,7 +176,7 @@ export function AccountListCard({
                                                                     )}
                                                                 </span>
                                                                 <span
-                                                                    className={`text-right font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                    className={`whitespace-nowrap text-right font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                                                                 >
                                                                     {gain >= 0
                                                                         ? '+'
