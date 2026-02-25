@@ -278,9 +278,9 @@ export default function ConnectionsPage({ connections }: Props) {
                                         {connection.status === 'error' && (
                                             <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 dark:bg-destructive/10">
                                                 <div className="flex items-start gap-2">
-                                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive dark:text-destructive-foreground" />
                                                     <div className="space-y-2">
-                                                        <p className="text-sm text-destructive">
+                                                        <p className="text-sm text-destructive dark:text-foreground">
                                                             {connection.error_message ??
                                                                 __(
                                                                     'An unexpected error occurred during sync.',
@@ -291,7 +291,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                 connection,
                                                             ) && (
                                                                 <Button
-                                                                    variant="outline"
+                                                                    variant="secondary"
                                                                     size="sm"
                                                                     className="h-7 text-xs"
                                                                     onClick={() =>
@@ -307,7 +307,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                 </Button>
                                                             )}
                                                             <Button
-                                                                variant="outline"
+                                                                variant="secondary"
                                                                 size="sm"
                                                                 className="h-7 text-xs"
                                                                 onClick={() =>
