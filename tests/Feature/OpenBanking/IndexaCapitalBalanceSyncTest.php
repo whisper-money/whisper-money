@@ -164,7 +164,7 @@ test('handles empty portfolios array gracefully', function () {
     expect($account->balances()->count())->toBe(0);
 });
 
-test('stores invested_amount from instruments_cost and cash_amount', function () {
+test('stores invested_amount from net_amounts data', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create([
         'user_id' => $user->id,
@@ -175,23 +175,32 @@ test('stores invested_amount from instruments_cost and cash_amount', function ()
         'external_account_id' => 'IC-001',
     ]);
 
+    $today = now()->toDateString();
+    $yesterday = now()->subDay()->toDateString();
+    $todayKey = str_replace('-', '', $today);
+    $yesterdayKey = str_replace('-', '', $yesterday);
+
     Http::fake([
         'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
             'portfolios' => [
                 [
-                    'date' => now()->toDateString(),
+                    'date' => $today,
                     'total_amount' => 15000.00,
                     'instruments_cost' => 12000.00,
                     'instruments_amount' => 14700.00,
                     'cash_amount' => 300.00,
                 ],
                 [
-                    'date' => now()->subDay()->toDateString(),
+                    'date' => $yesterday,
                     'total_amount' => 14500.00,
                     'instruments_cost' => 12000.00,
                     'instruments_amount' => 14200.00,
                     'cash_amount' => 300.00,
                 ],
+            ],
+            'net_amounts' => [
+                $todayKey => 11000.00,
+                $yesterdayKey => 10800.00,
             ],
         ]),
     ]);
@@ -203,16 +212,15 @@ test('stores invested_amount from instruments_cost and cash_amount', function ()
     expect($account->balances()->count())->toBe(2);
 
     $latest = $account->balances()->orderBy('balance_date', 'desc')->first();
-    // invested_amount = instruments_cost + cash_amount = 12000 + 300 = 12300 → 1230000 cents
+    // invested_amount comes from net_amounts, not instruments_cost + cash_amount
     expect($latest->balance)->toBe(1500000);
-    expect($latest->invested_amount)->toBe(1230000);
+    expect($latest->invested_amount)->toBe(1100000);
 
     $previous = $account->balances()->orderBy('balance_date', 'asc')->first();
-    // invested_amount = 12000 + 300 = 12300 → 1230000 cents
-    expect($previous->invested_amount)->toBe(1230000);
+    expect($previous->invested_amount)->toBe(1080000);
 });
 
-test('stores null invested_amount when cost fields are missing', function () {
+test('stores null invested_amount when net_amounts is missing', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create([
         'user_id' => $user->id,
@@ -242,7 +250,7 @@ test('stores null invested_amount when cost fields are missing', function () {
     expect($balance->invested_amount)->toBeNull();
 });
 
-test('falls back to total_amount minus return when instruments_cost is missing', function () {
+test('falls back to total_amount minus return when net_amounts is missing', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create([
         'user_id' => $user->id,
@@ -256,7 +264,7 @@ test('falls back to total_amount minus return when instruments_cost is missing',
     Http::fake([
         'api.indexacapital.com/accounts/IC-001/performance' => Http::response([
             'portfolios' => [
-                // No instruments_cost/cash_amount, but has return field
+                // No net_amounts in response, but entry has return field
                 ['date' => now()->toDateString(), 'total_amount' => 8000.00, 'return' => -500.00],
             ],
         ]),
