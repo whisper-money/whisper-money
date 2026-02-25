@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.13](https://github.com/whisper-money/whisper-money/compare/v0.1.12...v0.1.13) (2026-02-25)
+
+
+### Bug Fixes
+
+* **budgets:** handle refunds correctly in budget spending calculations ([#152](https://github.com/whisper-money/whisper-money/issues/152)) ([f2a7f95](https://github.com/whisper-money/whisper-money/commit/f2a7f955e67465bb415685d9c17ecab213f7decf))
+* improve connection error message contrast in dark mode ([#155](https://github.com/whisper-money/whisper-money/issues/155)) ([e718f5d](https://github.com/whisper-money/whisper-money/commit/e718f5df5c5d996ff867081f53a64d8cc9259e78))
+* **open-banking:** use net_amounts for Indexa Capital invested amount calculation ([#156](https://github.com/whisper-money/whisper-money/issues/156)) ([ae2a8c0](https://github.com/whisper-money/whisper-money/commit/ae2a8c011831f48daa0433a415db3337ce445e86))
+
+
+### Features
+
+* **open-banking:** add update credentials flow for API-key connections ([#154](https://github.com/whisper-money/whisper-money/issues/154)) ([690be20](https://github.com/whisper-money/whisper-money/commit/690be20f216c7e000032ffb8dc0d68e4046d5632))
+* Update facehash and enable blink ([2550339](https://github.com/whisper-money/whisper-money/commit/255033999d1bef5d4ae28e5ddb0ebf4f59478639))
+* use testcontainers for isolated MySQL in test runs ([#153](https://github.com/whisper-money/whisper-money/issues/153)) ([e4243c2](https://github.com/whisper-money/whisper-money/commit/e4243c2eaac5dd1fc59bb132cb51ab71712062ad))
+
 ## [0.1.12](https://github.com/whisper-money/whisper-money/compare/v0.1.10...v0.1.12) (2026-02-24)
 
 
