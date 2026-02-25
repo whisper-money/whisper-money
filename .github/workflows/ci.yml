@@ -60,6 +60,7 @@ jobs:
       - name: Tests
         run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance
         env:
+          TESTCONTAINERS: false
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
@@ -118,6 +119,7 @@ jobs:
       - name: Browser Tests
         run: ./vendor/bin/pest --testsuite=Browser --ci
         env:
+          TESTCONTAINERS: false
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
@@ -197,6 +199,7 @@ jobs:
       - name: Performance Tests
         run: ./vendor/bin/pest --testsuite=Performance
         env:
+          TESTCONTAINERS: false
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
