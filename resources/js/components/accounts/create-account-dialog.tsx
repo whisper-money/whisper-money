@@ -11,6 +11,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { getCsrfToken } from '@/lib/csrf';
 import { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';

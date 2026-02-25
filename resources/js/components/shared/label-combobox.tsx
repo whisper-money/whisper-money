@@ -13,6 +13,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';

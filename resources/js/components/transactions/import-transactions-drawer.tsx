@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/drawer';
 import { Progress } from '@/components/ui/progress';
 import { importKey } from '@/lib/crypto';
+import { getCsrfToken } from '@/lib/csrf';
 import {
     autoDetectColumns,
     convertRowsToTransactions,

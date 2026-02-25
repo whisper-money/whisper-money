@@ -7,6 +7,7 @@ import {
 import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
+import { getCsrfToken } from '@/lib/csrf';
 import { type AccountType, formatAccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { AlertCircle, CheckCircle2, CreditCard } from 'lucide-react';

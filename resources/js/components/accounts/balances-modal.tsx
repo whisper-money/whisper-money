@@ -33,6 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { getCsrfToken } from '@/lib/csrf';
 import type { Account, AccountBalance } from '@/types/account';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';

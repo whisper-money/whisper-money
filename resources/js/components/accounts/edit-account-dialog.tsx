@@ -9,6 +9,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { decrypt, importKey } from '@/lib/crypto';
+import { getCsrfToken } from '@/lib/csrf';
 import { getStoredKey } from '@/lib/key-storage';
 import type { Account } from '@/types/account';
 import { __ } from '@/utils/i18n';
