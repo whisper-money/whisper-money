@@ -25,6 +25,13 @@ $useContainers = filter_var(
 // Autoload must be available before anything else
 require __DIR__.'/../vendor/autoload.php';
 
+// Create a minimal .env file when none exists so PHPDotenv does not
+// emit a file_get_contents warning on every single test.
+$envPath = __DIR__.'/../.env';
+if (! file_exists($envPath)) {
+    file_put_contents($envPath, "APP_ENV=testing\n");
+}
+
 if ($useContainers) {
     $container = (new MySQLContainer('8.0'))
         ->withMySQLDatabase('testing')
