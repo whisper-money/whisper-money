@@ -32,6 +32,14 @@ class BankingConnection extends Model
         'api_secret',
     ];
 
+    protected $hidden = [
+        'api_token',
+        'api_secret',
+        'pending_accounts_data',
+        'authorization_id',
+        'session_id',
+    ];
+
     protected function casts(): array
     {
         return [

@@ -1,6 +1,7 @@
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
 import { ConnectionStatusBadge } from '@/components/open-banking/connection-status-badge';
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
+import { UpdateCredentialsDialog } from '@/components/open-banking/update-credentials-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -26,6 +27,7 @@ import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import {
     AlertCircle,
     ArrowRight,
+    KeyRound,
     MoreHorizontal,
     RefreshCw,
     Unplug,
@@ -42,6 +44,8 @@ export default function ConnectionsPage({ connections }: Props) {
     const isDemoAccount = auth?.isDemoAccount ?? false;
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [disconnectConnection, setDisconnectConnection] =
+        useState<BankingConnection | null>(null);
+    const [updateCredentialsConnection, setUpdateCredentialsConnection] =
         useState<BankingConnection | null>(null);
 
     const hasSyncing = connections.some(
@@ -69,6 +73,21 @@ export default function ConnectionsPage({ connections }: Props) {
 
     function handleSync(connection: BankingConnection) {
         router.post(`/settings/connections/${connection.id}/sync`);
+    }
+
+    function isApiKeyProvider(connection: BankingConnection): boolean {
+        return ['indexacapital', 'binance', 'bitpanda'].includes(
+            connection.provider,
+        );
+    }
+
+    function hasAuthError(connection: BankingConnection): boolean {
+        return (
+            connection.status === 'error' &&
+            isApiKeyProvider(connection) &&
+            (connection.error_message?.includes('Authentication failed') ??
+                false)
+        );
     }
 
     function formatDate(dateString: string | null): string {
@@ -165,6 +184,22 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             {__('Map Accounts')}
                                                         </DropdownMenuItem>
                                                     )}
+                                                    {hasAuthError(
+                                                        connection,
+                                                    ) && (
+                                                        <DropdownMenuItem
+                                                            onClick={() =>
+                                                                setUpdateCredentialsConnection(
+                                                                    connection,
+                                                                )
+                                                            }
+                                                        >
+                                                            <KeyRound className="mr-2 h-4 w-4" />
+                                                            {__(
+                                                                'Update Credentials',
+                                                            )}
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     {(connection.status ===
                                                         'active' ||
                                                         connection.status ===
@@ -252,6 +287,25 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                 )}
                                                         </p>
                                                         <div className="flex flex-wrap items-center gap-3">
+                                                            {hasAuthError(
+                                                                connection,
+                                                            ) && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-7 text-xs"
+                                                                    onClick={() =>
+                                                                        setUpdateCredentialsConnection(
+                                                                            connection,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <KeyRound className="mr-1.5 h-3 w-3" />
+                                                                    {__(
+                                                                        'Update Credentials',
+                                                                    )}
+                                                                </Button>
+                                                            )}
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
@@ -298,6 +352,16 @@ export default function ConnectionsPage({ connections }: Props) {
                         open={!!disconnectConnection}
                         onOpenChange={(open) => {
                             if (!open) setDisconnectConnection(null);
+                        }}
+                    />
+                )}
+
+                {updateCredentialsConnection && (
+                    <UpdateCredentialsDialog
+                        connection={updateCredentialsConnection}
+                        open={!!updateCredentialsConnection}
+                        onOpenChange={(open) => {
+                            if (!open) setUpdateCredentialsConnection(null);
                         }}
                     />
                 )}

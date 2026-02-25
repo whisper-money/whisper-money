@@ -221,3 +221,179 @@ test('users cannot sync expired connection', function () {
     $response->assertRedirect();
     $response->assertSessionHas('error');
 });
+
+test('users can update indexa capital credentials with valid token', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->indexaCapital()->error()->create([
+        'user_id' => $user->id,
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/users/me' => Http::response([
+            'accounts' => [['account_number' => 'IC-001', 'status' => 'active', 'type' => 'mutual']],
+        ]),
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_token' => 'new-valid-indexa-token-12345',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->error_message)->toBeNull();
+    expect($connection->api_token)->toBe('new-valid-indexa-token-12345');
+});
+
+test('users can update binance credentials with valid api key and secret', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->binance()->error()->create([
+        'user_id' => $user->id,
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    Http::fake([
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [['asset' => 'BTC', 'free' => '1.0', 'locked' => '0.0']],
+        ]),
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_key' => 'new-valid-binance-key-12345',
+        'api_secret' => 'new-valid-binance-secret-12345',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->error_message)->toBeNull();
+    expect($connection->api_token)->toBe('new-valid-binance-key-12345');
+    expect($connection->api_secret)->toBe('new-valid-binance-secret-12345');
+});
+
+test('users can update bitpanda credentials with valid api key', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->bitpanda()->error()->create([
+        'user_id' => $user->id,
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    Http::fake([
+        'api.bitpanda.com/v1/wallets' => Http::response([
+            'data' => [],
+        ]),
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_key' => 'new-valid-bitpanda-key-12345',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->error_message)->toBeNull();
+    expect($connection->api_token)->toBe('new-valid-bitpanda-key-12345');
+});
+
+test('updating credentials with invalid token returns validation error', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->indexaCapital()->error()->create([
+        'user_id' => $user->id,
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/users/me' => Http::response(['error' => 'Unauthorized'], 401),
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_token' => 'invalid-token-12345678',
+    ]);
+
+    $response->assertSessionHasErrors('credentials');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+});
+
+test('cannot update credentials for enablebanking connection', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'enablebanking',
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_token' => 'some-token-value-12345',
+    ]);
+
+    $response->assertSessionHasErrors();
+});
+
+test('cannot update credentials for another users connection', function () {
+    $user = User::factory()->onboarded()->create();
+    $otherUser = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $otherUser->id,
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_token' => 'some-token-value-12345',
+    ]);
+
+    $response->assertForbidden();
+});
+
+test('credential update requires feature flag', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_token' => 'some-token-value-12345',
+    ]);
+
+    $response->assertNotFound();
+});
+
+test('credential update validates required fields for binance', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->binance()->error()->create([
+        'user_id' => $user->id,
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_key' => 'valid-key-12345678',
+        // missing api_secret
+    ]);
+
+    $response->assertSessionHasErrors('api_secret');
+});
