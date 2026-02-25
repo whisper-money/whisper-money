@@ -20,6 +20,7 @@ class IndexaCapitalBalanceSyncService
 
         $performance = $client->getPerformance($account->external_account_id);
         $portfolios = $performance['portfolios'] ?? [];
+        $netAmounts = $performance['net_amounts'] ?? [];
 
         if (empty($portfolios)) {
             Log::warning('No portfolio data from Indexa Capital', [
@@ -55,7 +56,7 @@ class IndexaCapitalBalanceSyncService
             }
 
             $balanceCents = (int) round(floatval($value) * 100);
-            $investedAmountCents = $this->calculateInvestedAmount($entry);
+            $investedAmountCents = $this->calculateInvestedAmount($entry, $netAmounts);
 
             $account->balances()->updateOrCreate(
                 ['balance_date' => $date],
@@ -76,20 +77,27 @@ class IndexaCapitalBalanceSyncService
     }
 
     /**
-     * Calculate invested amount from portfolio entry data.
+     * Calculate invested amount from the net_amounts data.
      *
-     * Uses instruments_cost + cash_amount when available (cost basis approach).
-     * Falls back to total_amount - return if the return field is present.
+     * Uses net_amounts (cumulative net inflows keyed by YYYYMMDD) which represents
+     * the actual money invested (inflows - outflows - tax_outflows), matching
+     * what Indexa Capital shows as "investment" on their dashboard.
+     *
+     * Falls back to total_amount - return if net_amounts is unavailable.
      *
      * @param  array<string, mixed>  $entry
+     * @param  array<string, float>  $netAmounts
      */
-    private function calculateInvestedAmount(array $entry): ?int
+    private function calculateInvestedAmount(array $entry, array $netAmounts): ?int
     {
-        $instrumentsCost = $entry['instruments_cost'] ?? null;
-        $cashAmount = $entry['cash_amount'] ?? null;
+        $date = $entry['date'] ?? null;
 
-        if ($instrumentsCost !== null && $cashAmount !== null) {
-            return (int) round((floatval($instrumentsCost) + floatval($cashAmount)) * 100);
+        if ($date !== null && ! empty($netAmounts)) {
+            $dateKey = str_replace('-', '', $date);
+
+            if (isset($netAmounts[$dateKey])) {
+                return (int) round(floatval($netAmounts[$dateKey]) * 100);
+            }
         }
 
         $totalAmount = $entry['total_amount'] ?? null;
