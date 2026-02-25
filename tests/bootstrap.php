@@ -38,6 +38,12 @@ if ($useContainers) {
         ->withMySQLUser('testing', 'testing')
         ->start();
 
+    // Stop and remove the container when the PHP process exits, even on
+    // crashes or SIGINT. testcontainers-php has no built-in cleanup.
+    register_shutdown_function(function () use ($container): void {
+        $container->stop();
+    });
+
     $host = $container->getHost();
     $port = (string) $container->getFirstMappedPort();
 
