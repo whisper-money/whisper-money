@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\BankingConnectionStatus;
+use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
@@ -83,6 +84,13 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 'status' => BankingConnectionStatus::Error,
                 'error_message' => $this->friendlyErrorMessage($e),
             ]);
+
+            if ($this->isAuthError($e) && $this->isApiKeyProvider($connection) && $this->attempts() >= $this->tries) {
+                Mail::to($connection->user)->send(new BankingConnectionAuthFailedEmail(
+                    $connection->user,
+                    $connection,
+                ));
+            }
 
             throw $e;
         }
@@ -193,5 +201,18 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
 
         return __('An unexpected error occurred during sync. Please try again later.');
+    }
+
+    private function isAuthError(\Throwable $e): bool
+    {
+        return $e instanceof RequestException
+            && in_array($e->response->status(), [401, 403]);
+    }
+
+    private function isApiKeyProvider(BankingConnection $connection): bool
+    {
+        return $connection->isIndexaCapital()
+            || $connection->isBinance()
+            || $connection->isBitpanda();
     }
 }

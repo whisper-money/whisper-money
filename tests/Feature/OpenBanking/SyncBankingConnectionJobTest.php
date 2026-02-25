@@ -3,6 +3,7 @@
 use App\Enums\BankingConnectionStatus;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Jobs\SyncBinanceHistoricalBalancesJob;
+use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\Account;
 use App\Models\Bank;
@@ -620,4 +621,210 @@ test('bitpanda sync does not send email', function () {
     $job->handle($transactionSync, $balanceSync);
 
     Mail::assertNothingQueued();
+});
+
+test('sends auth failed email on final retry for indexa capital 401 error', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/*' => Http::response(['error' => 'Unauthorized'], 401),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    // Simulate final attempt (3 of 3) - SHOULD send email
+    $job = new SyncBankingConnectionJob($connection);
+    $mockQueueJob = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $mockQueueJob->shouldReceive('attempts')->andReturn(3);
+    $mockQueueJob->shouldReceive('isReleased')->andReturn(false);
+    $mockQueueJob->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $mockQueueJob->shouldReceive('hasFailed')->andReturn(false);
+    $job->job = $mockQueueJob;
+
+    expect($connection->isActive())->toBeTrue();
+    expect($job->attempts())->toBe(3);
+
+    $threw = false;
+
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (\Throwable $e) {
+        $threw = true;
+        expect($e)->toBeInstanceOf(\Illuminate\Http\Client\RequestException::class);
+        expect($e->response->status())->toBe(401);
+    }
+
+    expect($threw)->toBeTrue();
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+    expect($connection->error_message)->toContain('Authentication failed');
+
+    Mail::assertQueued(BankingConnectionAuthFailedEmail::class);
+});
+
+test('does not send auth failed email before final retry attempt', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/*' => Http::response(['error' => 'Unauthorized'], 401),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    // Simulate attempt 1 of 3 - should NOT send email
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(1);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (\Throwable) {
+        // Expected
+    }
+
+    Mail::assertNotQueued(BankingConnectionAuthFailedEmail::class);
+});
+
+test('does not send auth failed email for non-auth errors', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/*' => Http::response(['error' => 'Server Error'], 500),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (\Throwable) {
+        // Expected
+    }
+
+    Mail::assertNotQueued(BankingConnectionAuthFailedEmail::class);
+});
+
+test('does not send auth failed email for enablebanking connections', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'enablebanking',
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    // For EnableBanking, even if the job throws, it should NOT send the auth failed email
+    // because isApiKeyProvider() returns false for enablebanking.
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(new \RuntimeException('Auth error'));
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (\RuntimeException) {
+        // Expected
+    }
+
+    Mail::assertNotQueued(BankingConnectionAuthFailedEmail::class);
+});
+
+test('sends auth failed email for binance 403 error on final attempt', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'EUR',
+    ]);
+
+    Http::fake([
+        'api.binance.com/*' => Http::response(['error' => 'Forbidden'], 403),
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (\Throwable) {
+        // Expected
+    }
+
+    Mail::assertQueued(BankingConnectionAuthFailedEmail::class, function ($mail) use ($user, $connection) {
+        return $mail->hasTo($user->email)
+            && $mail->bankingConnection->id === $connection->id;
+    });
 });

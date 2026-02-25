@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('open-banking')->group(function () {
         Route::get('settings/connections', [ConnectionController::class, 'index'])->name('settings.connections.index');
         Route::post('settings/connections/{connection}/sync', [ConnectionController::class, 'sync'])->name('settings.connections.sync');
+        Route::patch('settings/connections/{connection}/credentials', [ConnectionController::class, 'updateCredentials'])->name('settings.connections.update-credentials');
         Route::delete('settings/connections/{connection}', [ConnectionController::class, 'destroy'])->name('settings.connections.destroy');
     });
 });

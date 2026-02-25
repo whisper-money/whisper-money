@@ -6,8 +6,12 @@ use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OpenBanking\DestroyConnectionRequest;
+use App\Http\Requests\OpenBanking\UpdateConnectionCredentialsRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
+use App\Services\Banking\BinanceClient;
+use App\Services\Banking\BitpandaClient;
+use App\Services\Banking\IndexaCapitalClient;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
@@ -58,6 +62,64 @@ class ConnectionController extends Controller
         SyncBankingConnectionJob::dispatch($connection);
 
         return back()->with('success', 'Sync started. Transactions will be updated shortly.');
+    }
+
+    /**
+     * Update credentials for an API-key-based connection.
+     */
+    public function updateCredentials(UpdateConnectionCredentialsRequest $request, BankingConnection $connection): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $validationError = $this->validateProviderCredentials($connection, $validated);
+
+        if ($validationError) {
+            return back()->withErrors(['credentials' => $validationError]);
+        }
+
+        $updateData = match ($connection->provider) {
+            'indexacapital' => ['api_token' => $validated['api_token']],
+            'binance' => ['api_token' => $validated['api_key'], 'api_secret' => $validated['api_secret']],
+            'bitpanda' => ['api_token' => $validated['api_key']],
+            default => [],
+        };
+
+        $connection->update([
+            ...$updateData,
+            'status' => BankingConnectionStatus::Active,
+            'error_message' => null,
+        ]);
+
+        SyncBankingConnectionJob::dispatch($connection);
+
+        return back()->with('success', __('Credentials updated. Sync started.'));
+    }
+
+    /**
+     * Validate credentials against the provider API.
+     */
+    private function validateProviderCredentials(BankingConnection $connection, array $validated): ?string
+    {
+        try {
+            match ($connection->provider) {
+                'indexacapital' => (new IndexaCapitalClient($validated['api_token']))->getUser(),
+                'binance' => (new BinanceClient($validated['api_key'], $validated['api_secret']))->getAccount(),
+                'bitpanda' => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
+                default => throw new \InvalidArgumentException('Unsupported provider for credential update.'),
+            };
+        } catch (\InvalidArgumentException $e) {
+            return $e->getMessage();
+        } catch (\Throwable $e) {
+            Log::warning('Credential validation failed during update', [
+                'connection_id' => $connection->id,
+                'provider' => $connection->provider,
+                'error' => $e->getMessage(),
+            ]);
+
+            return __('Invalid credentials. Please check and try again.');
+        }
+
+        return null;
     }
 
     /**
