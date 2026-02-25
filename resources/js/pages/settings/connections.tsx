@@ -1,6 +1,7 @@
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
 import { ConnectionStatusBadge } from '@/components/open-banking/connection-status-badge';
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
+import { UpdateCredentialsDialog } from '@/components/open-banking/update-credentials-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -26,6 +27,7 @@ import { Head, router, usePage, usePoll } from '@inertiajs/react';
 import {
     AlertCircle,
     ArrowRight,
+    KeyRound,
     MoreHorizontal,
     RefreshCw,
     Unplug,
