@@ -14,6 +14,7 @@ use App\Services\Banking\BitpandaClient;
 use App\Services\Banking\IndexaCapitalClient;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
