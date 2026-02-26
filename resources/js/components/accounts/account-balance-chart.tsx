@@ -106,7 +106,7 @@ function InvestmentTooltipContent({
                                 {__('Gain/loss')}
                             </span>
                             <span
-                                className={`font-mono font-medium tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                className={`whitespace-nowrap font-mono font-medium tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                             >
                                 {gain >= 0 ? '+' : ''}
                                 {valueFormatter(gain)}
