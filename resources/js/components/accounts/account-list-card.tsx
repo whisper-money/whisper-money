@@ -4,6 +4,7 @@ import { BankLogo } from '@/components/bank-logo';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';

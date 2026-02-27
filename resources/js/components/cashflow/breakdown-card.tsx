@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BreakdownData } from '@/hooks/use-cashflow-data';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { cn } from '@/lib/utils';
 import { getCategoryColorClasses } from '@/types/category';
 import { __ } from '@/utils/i18n';
