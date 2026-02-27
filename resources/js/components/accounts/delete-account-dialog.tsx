@@ -32,6 +32,8 @@ export function DeleteAccountDialog({
 }: DeleteAccountDialogProps) {
     const [confirmText, setConfirmText] = useState('');
 
+    const confirmWord = __('DELETE');
+
     function handleOpenChange(newOpen: boolean) {
         if (!newOpen) {
             setConfirmText('');
@@ -39,7 +41,7 @@ export function DeleteAccountDialog({
         onOpenChange(newOpen);
     }
 
-    const isDeleteEnabled = confirmText === 'DELETE';
+    const isDeleteEnabled = confirmText === confirmWord;
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -49,14 +51,17 @@ export function DeleteAccountDialog({
                     <DialogDescription className="space-y-2">
                         <p>
                             {__(
-                                'This action is irreversible. All transactions in\n                            this account will also be permanently deleted.',
+                                'This action is irreversible. All transactions in this account will also be permanently deleted.',
                             )}
                         </p>
-                        <p className="font-semibold">
-                            {__('Type')}
-                            <span className="text-red-600">DELETE</span>
-                            {__('to\n                            confirm.')}
-                        </p>
+                        <p
+                            className="font-semibold"
+                            dangerouslySetInnerHTML={{
+                                __html: __('Type :word to confirm.', {
+                                    word: `<span class="text-red-600">${confirmWord}</span>`,
+                                }),
+                            }}
+                        />
                     </DialogDescription>
                 </DialogHeader>
 
@@ -99,7 +104,9 @@ export function DeleteAccountDialog({
                                     variant="destructive"
                                     disabled={processing || !isDeleteEnabled}
                                 >
-                                    {processing ? 'Deleting...' : 'Delete'}
+                                    {processing
+                                        ? __('Deleting...')
+                                        : __('Delete')}
                                 </Button>
                             </DialogFooter>
                         )}

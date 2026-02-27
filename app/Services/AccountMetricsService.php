@@ -146,6 +146,7 @@ class AccountMetricsService
                 'type' => $account->type,
                 'currency_code' => $account->currency_code,
                 'bank' => $account->bank,
+                'banking_connection_id' => $account->banking_connection_id,
             ];
 
             if ($account->type->supportsInvestedAmount()) {

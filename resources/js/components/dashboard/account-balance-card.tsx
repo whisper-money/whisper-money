@@ -41,6 +41,7 @@ export function AccountBalanceCard({
     }
 
     const isPositive = account.diff >= 0;
+    const isConnected = !!account.banking_connection_id;
 
     return (
         <Card>
@@ -72,18 +73,29 @@ export function AccountBalanceCard({
             <CardContent>
                 <div className="flex items-center justify-between gap-6">
                     <div className="flex flex-col gap-1">
-                        <button
-                            type="button"
-                            onClick={() => setUpdateBalanceOpen(true)}
-                            className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
-                        >
-                            <AmountDisplay
-                                amountInCents={account.currentBalance}
-                                currencyCode={account.currency_code}
-                                size="2xl"
-                                weight="medium"
-                            />
-                        </button>
+                        {isConnected ? (
+                            <div className="-ml-2 px-2 py-1">
+                                <AmountDisplay
+                                    amountInCents={account.currentBalance}
+                                    currencyCode={account.currency_code}
+                                    size="2xl"
+                                    weight="medium"
+                                />
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setUpdateBalanceOpen(true)}
+                                className="-ml-2 cursor-pointer rounded-md px-2 py-1 text-left transition-colors hover:bg-muted"
+                            >
+                                <AmountDisplay
+                                    amountInCents={account.currentBalance}
+                                    currencyCode={account.currency_code}
+                                    size="2xl"
+                                    weight="medium"
+                                />
+                            </button>
+                        )}
                         <AmountTrendIndicator
                             isPositive={isPositive}
                             trend={Math.abs(account.diff)}
@@ -161,7 +173,7 @@ export function AccountBalanceCard({
                                                                     )}
                                                                 </span>
                                                                 <span
-                                                                    className={`whitespace-nowrap text-right font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                    className={`text-right font-mono whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                                                                 >
                                                                     {gain >= 0
                                                                         ? '+'

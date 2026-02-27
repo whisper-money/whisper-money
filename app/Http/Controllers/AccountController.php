@@ -24,7 +24,7 @@ class AccountController extends Controller
             ->with('bank:id,name,logo')
             ->orderByRaw("FIELD(type, 'checking', 'savings', 'investment', 'retirement', 'loan', 'credit_card', 'others')")
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 
         return Inertia::render('Accounts/Index', [
             'accounts' => $accounts,
@@ -39,7 +39,7 @@ class AccountController extends Controller
         $account->load('bank:id,name,logo');
 
         return Inertia::render('Accounts/Show', [
-            'account' => $account->only(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'bank']),
+            'account' => $account->only(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id', 'bank']),
         ]);
     }
 }
