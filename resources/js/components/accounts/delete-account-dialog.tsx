@@ -32,6 +32,8 @@ export function DeleteAccountDialog({
 }: DeleteAccountDialogProps) {
     const [confirmText, setConfirmText] = useState('');
 
+    const confirmWord = __('DELETE');
+
     function handleOpenChange(newOpen: boolean) {
         if (!newOpen) {
             setConfirmText('');
@@ -39,7 +41,7 @@ export function DeleteAccountDialog({
         onOpenChange(newOpen);
     }
 
-    const isDeleteEnabled = confirmText === 'DELETE';
+    const isDeleteEnabled = confirmText === confirmWord;
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -54,7 +56,7 @@ export function DeleteAccountDialog({
                         </p>
                         <p className="font-semibold">
                             {__('Type')}
-                            <span className="text-red-600">DELETE</span>
+                            <span className="text-red-600">{confirmWord}</span>
                             {__('to\n                            confirm.')}
                         </p>
                     </DialogDescription>
@@ -99,7 +101,9 @@ export function DeleteAccountDialog({
                                     variant="destructive"
                                     disabled={processing || !isDeleteEnabled}
                                 >
-                                    {processing ? 'Deleting...' : 'Delete'}
+                                    {processing
+                                        ? __('Deleting...')
+                                        : __('Delete')}
                                 </Button>
                             </DialogFooter>
                         )}

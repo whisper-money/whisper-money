@@ -52,6 +52,7 @@ export function AccountListCard({
     }
 
     const isPositive = account.diff >= 0;
+    const isConnected = !!account.banking_connection_id;
 
     return (
         <Card className="w-full py-0">
@@ -86,18 +87,29 @@ export function AccountListCard({
                             </div>
                         </div>
                         <div className="flex shrink-0 flex-col items-end">
-                            <button
-                                type="button"
-                                onClick={() => setUpdateBalanceOpen(true)}
-                                className="-mr-2 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted"
-                            >
-                                <AmountDisplay
-                                    amountInCents={account.currentBalance}
-                                    currencyCode={account.currency_code}
-                                    size="2xl"
-                                    weight="bold"
-                                />
-                            </button>
+                            {isConnected ? (
+                                <div className="-mr-2 px-2 py-1">
+                                    <AmountDisplay
+                                        amountInCents={account.currentBalance}
+                                        currencyCode={account.currency_code}
+                                        size="2xl"
+                                        weight="bold"
+                                    />
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setUpdateBalanceOpen(true)}
+                                    className="-mr-2 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted"
+                                >
+                                    <AmountDisplay
+                                        amountInCents={account.currentBalance}
+                                        currencyCode={account.currency_code}
+                                        size="2xl"
+                                        weight="bold"
+                                    />
+                                </button>
+                            )}
                             <AmountTrendIndicator
                                 isPositive={isPositive}
                                 trend={Math.abs(account.diff)}
@@ -176,7 +188,7 @@ export function AccountListCard({
                                                                     )}
                                                                 </span>
                                                                 <span
-                                                                    className={`whitespace-nowrap text-right font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                    className={`text-right font-mono whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                                                                 >
                                                                     {gain >= 0
                                                                         ? '+'
@@ -232,15 +244,20 @@ export function AccountListCard({
                         </ResponsiveContainer>
                     </div>
                     <div className="flex justify-between">
-                        <Button
-                            className="cursor-pointer"
-                            variant="secondary"
-                            onClick={() => setUpdateBalanceOpen(true)}
-                        >
-                            {__('Update balance')}
-                        </Button>
+                        {!isConnected && (
+                            <Button
+                                className="cursor-pointer"
+                                variant="secondary"
+                                onClick={() => setUpdateBalanceOpen(true)}
+                            >
+                                {__('Update balance')}
+                            </Button>
+                        )}
 
-                        <Link href={show.url(account.id)}>
+                        <Link
+                            href={show.url(account.id)}
+                            className={isConnected ? 'ml-auto' : ''}
+                        >
                             <Button className="cursor-pointer" variant="ghost">
                                 {__('Details')} &rarr;
                             </Button>

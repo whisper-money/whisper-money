@@ -56,6 +56,8 @@ export default function AccountShow({
         setChartRefreshKey((prev) => prev + 1);
     }
 
+    const isConnected = !!account.banking_connection_id;
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Accounts',
@@ -96,12 +98,14 @@ export default function AccountShow({
 
                     <ButtonGroup>
                         <ButtonGroup>
-                            <Button
-                                variant="outline"
-                                onClick={() => setUpdateBalanceOpen(true)}
-                            >
-                                {__('Update balance')}
-                            </Button>
+                            {!isConnected && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setUpdateBalanceOpen(true)}
+                                >
+                                    {__('Update balance')}
+                                </Button>
+                            )}
                         </ButtonGroup>
                         <ButtonGroup>
                             <Button
@@ -147,7 +151,11 @@ export default function AccountShow({
                 <AccountBalanceChart
                     account={account}
                     refreshKey={chartRefreshKey}
-                    onBalanceClick={() => setUpdateBalanceOpen(true)}
+                    onBalanceClick={
+                        isConnected
+                            ? undefined
+                            : () => setUpdateBalanceOpen(true)
+                    }
                 />
 
                 {isTransactionalAccount(account) && (
