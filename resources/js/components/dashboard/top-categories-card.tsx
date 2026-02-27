@@ -7,13 +7,10 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
-import {
-    Category,
-    getCategoryChartColor,
-    getCategoryColorClasses,
-} from '@/types/category';
+import { Category, getCategoryColorClasses } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
@@ -32,24 +29,12 @@ interface TopCategoriesCardProps {
     loading?: boolean;
 }
 
-const CHART_COLORS = [
-    'var(--chart-1)',
-    'var(--chart-2)',
-    'var(--chart-3)',
-    'var(--chart-4)',
-    'var(--chart-5)',
-    'var(--chart-6)',
-    'var(--chart-7)',
-    'var(--chart-7)',
-    'var(--chart-8)',
-    'var(--chart-8)',
-];
-
 export function TopCategoriesCard({
     categories,
     loading,
 }: TopCategoriesCardProps) {
-    const { auth, chartColorScheme } = usePage<SharedData>().props;
+    const { auth } = usePage<SharedData>().props;
+    const { categoryBarColor } = useChartColors();
 
     if (loading || !auth?.user) {
         return (
@@ -101,10 +86,10 @@ export function TopCategoriesCard({
                         const categoryColor = getCategoryColorClasses(
                             item.category.color,
                         );
-                        const chartColor =
-                            chartColorScheme === 'colorful'
-                                ? getCategoryChartColor(item.category.color)
-                                : CHART_COLORS[index % CHART_COLORS.length];
+                        const chartColor = categoryBarColor(
+                            item.category.color,
+                            index,
+                        );
 
                         return (
                             <div key={item.category.id} className="space-y-2">

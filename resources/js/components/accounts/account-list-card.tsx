@@ -5,10 +5,9 @@ import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indica
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
-import { SharedData } from '@/types';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
@@ -25,14 +24,7 @@ export function AccountListCard({
     loading,
     onBalanceUpdated,
 }: AccountListCardProps) {
-    const { chartColorScheme } = usePage<SharedData>().props;
-    const isColorful = chartColorScheme === 'colorful';
-    const mainLineColor = isColorful
-        ? 'var(--color-zinc-400)'
-        : 'var(--color-chart-2)';
-    const gainLineColor = isColorful
-        ? 'var(--color-emerald-500)'
-        : 'var(--color-chart-6)';
+    const { accountMainLineColor, accountGainLineColor } = useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
 
     if (loading) {
@@ -222,7 +214,7 @@ export function AccountListCard({
                                 <Line
                                     type="monotone"
                                     dataKey="value"
-                                    stroke={mainLineColor}
+                                    stroke={accountMainLineColor}
                                     strokeWidth={2}
                                     dot={false}
                                 />
@@ -230,7 +222,7 @@ export function AccountListCard({
                                     <Line
                                         type="monotone"
                                         dataKey="investedAmount"
-                                        stroke={gainLineColor}
+                                        stroke={accountGainLineColor}
                                         strokeWidth={1.5}
                                         strokeDasharray="4 3"
                                         dot={false}

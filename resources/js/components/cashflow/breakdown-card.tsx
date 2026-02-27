@@ -10,13 +10,8 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { BreakdownData } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
-import { SharedData } from '@/types';
-import {
-    getCategoryChartColor,
-    getCategoryColorClasses,
-} from '@/types/category';
+import { getCategoryColorClasses } from '@/types/category';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
@@ -27,24 +22,13 @@ interface BreakdownCardProps {
     currency?: string;
 }
 
-const CHART_COLORS = [
-    'var(--chart-1)',
-    'var(--chart-2)',
-    'var(--chart-3)',
-    'var(--chart-4)',
-    'var(--chart-5)',
-    'var(--chart-6)',
-    'var(--chart-7)',
-    'var(--chart-8)',
-];
-
 export function BreakdownCard({
     type,
     data,
     loading,
     currency = 'USD',
 }: BreakdownCardProps) {
-    const { chartColorScheme } = usePage<SharedData>().props;
+    const { categoryBarColor } = useChartColors();
     const title =
         type === 'income' ? __('Income Sources') : __('Expense Categories');
     const description =
@@ -113,10 +97,10 @@ export function BreakdownCard({
                         const categoryColor = getCategoryColorClasses(
                             item.category.color,
                         );
-                        const chartColor =
-                            chartColorScheme === 'colorful'
-                                ? getCategoryChartColor(item.category.color)
-                                : CHART_COLORS[index % CHART_COLORS.length];
+                        const chartColor = categoryBarColor(
+                            item.category.color,
+                            index,
+                        );
 
                         return (
                             <div key={item.category_id} className="space-y-1.5">
