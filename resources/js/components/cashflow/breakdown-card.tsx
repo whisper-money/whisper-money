@@ -10,8 +10,13 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { BreakdownData } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
-import { getCategoryColorClasses } from '@/types/category';
+import { SharedData } from '@/types';
+import {
+    getCategoryChartColor,
+    getCategoryColorClasses,
+} from '@/types/category';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
