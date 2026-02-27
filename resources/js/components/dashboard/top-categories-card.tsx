@@ -9,7 +9,11 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
-import { Category, getCategoryColorClasses } from '@/types/category';
+import {
+    Category,
+    getCategoryChartColor,
+    getCategoryColorClasses,
+} from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
