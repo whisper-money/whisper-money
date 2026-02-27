@@ -172,6 +172,7 @@
     --spent: var(--color-blue-600);
     --allocated: var(--color-blue-200);
     --spent-prev: var(--color-blue-400);
+    --account-line: var(--color-zinc-800);
 }
 
 .dark[data-chart-color='colorful'] {
@@ -188,6 +189,7 @@
     --spent: var(--color-blue-400);
     --allocated: var(--color-blue-800);
     --spent-prev: var(--color-blue-600);
+    --account-line: var(--color-zinc-50);
 }
 
 /* Blue chart color scheme */

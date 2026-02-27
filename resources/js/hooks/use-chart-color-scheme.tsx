@@ -71,7 +71,7 @@ export function useChartColors() {
     const isColorful = chartColorScheme === 'colorful';
 
     const accountMainLineColor = isColorful
-        ? 'var(--color-zinc-400)'
+        ? 'var(--account-line)'
         : 'var(--color-chart-2)';
 
     const accountGainLineColor = isColorful
