@@ -5,9 +5,10 @@ import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indica
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { SharedData } from '@/types';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
