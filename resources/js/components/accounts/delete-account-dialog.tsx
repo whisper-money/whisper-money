@@ -51,14 +51,17 @@ export function DeleteAccountDialog({
                     <DialogDescription className="space-y-2">
                         <p>
                             {__(
-                                'This action is irreversible. All transactions in\n                            this account will also be permanently deleted.',
+                                'This action is irreversible. All transactions in this account will also be permanently deleted.',
                             )}
                         </p>
-                        <p className="font-semibold">
-                            {__('Type')}
-                            <span className="text-red-600">{confirmWord}</span>
-                            {__('to\n                            confirm.')}
-                        </p>
+                        <p
+                            className="font-semibold"
+                            dangerouslySetInnerHTML={{
+                                __html: __('Type :word to confirm.', {
+                                    word: `<span class="text-red-600">${confirmWord}</span>`,
+                                }),
+                            }}
+                        />
                     </DialogDescription>
                 </DialogHeader>
 
