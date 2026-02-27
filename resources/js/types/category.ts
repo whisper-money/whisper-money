@@ -204,3 +204,30 @@ export function getCategoryColorClasses(color: CategoryColor): {
 
     return colorMap[color];
 }
+
+export function getCategoryChartColor(color: CategoryColor): string {
+    const colorMap: Record<CategoryColor, string> = {
+        amber: 'var(--color-amber-500)',
+        blue: 'var(--color-blue-500)',
+        cyan: 'var(--color-cyan-500)',
+        emerald: 'var(--color-emerald-500)',
+        fuchsia: 'var(--color-fuchsia-500)',
+        gray: 'var(--color-gray-500)',
+        green: 'var(--color-green-500)',
+        indigo: 'var(--color-indigo-500)',
+        lime: 'var(--color-lime-500)',
+        neutral: 'var(--color-neutral-500)',
+        orange: 'var(--color-orange-500)',
+        pink: 'var(--color-pink-500)',
+        purple: 'var(--color-purple-500)',
+        red: 'var(--color-red-500)',
+        rose: 'var(--color-rose-500)',
+        slate: 'var(--color-slate-500)',
+        stone: 'var(--color-stone-500)',
+        teal: 'var(--color-teal-500)',
+        violet: 'var(--color-violet-500)',
+        yellow: 'var(--color-yellow-500)',
+    };
+
+    return colorMap[color] ?? 'var(--color-gray-500)';
+}

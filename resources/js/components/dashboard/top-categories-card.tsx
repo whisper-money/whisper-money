@@ -45,7 +45,7 @@ export function TopCategoriesCard({
     categories,
     loading,
 }: TopCategoriesCardProps) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, chartColorScheme } = usePage<SharedData>().props;
 
     if (loading || !auth?.user) {
         return (
@@ -98,7 +98,9 @@ export function TopCategoriesCard({
                             item.category.color,
                         );
                         const chartColor =
-                            CHART_COLORS[index % CHART_COLORS.length];
+                            chartColorScheme === 'colorful'
+                                ? getCategoryChartColor(item.category.color)
+                                : CHART_COLORS[index % CHART_COLORS.length];
 
                         return (
                             <div key={item.category.id} className="space-y-2">

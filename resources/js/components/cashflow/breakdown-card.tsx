@@ -39,6 +39,7 @@ export function BreakdownCard({
     loading,
     currency = 'USD',
 }: BreakdownCardProps) {
+    const { chartColorScheme } = usePage<SharedData>().props;
     const title =
         type === 'income' ? __('Income Sources') : __('Expense Categories');
     const description =
@@ -108,7 +109,9 @@ export function BreakdownCard({
                             item.category.color,
                         );
                         const chartColor =
-                            CHART_COLORS[index % CHART_COLORS.length];
+                            chartColorScheme === 'colorful'
+                                ? getCategoryChartColor(item.category.color)
+                                : CHART_COLORS[index % CHART_COLORS.length];
 
                         return (
                             <div key={item.category_id} className="space-y-1.5">
