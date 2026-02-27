@@ -96,56 +96,65 @@ export default function AccountShow({
                         />
                     </div>
 
-                    <ButtonGroup>
+                    {isConnected ? (
+                        <Button
+                            variant="outline"
+                            onClick={() => setEditOpen(true)}
+                        >
+                            {__('Edit account')}
+                        </Button>
+                    ) : (
                         <ButtonGroup>
-                            {!isConnected && (
+                            <ButtonGroup>
                                 <Button
                                     variant="outline"
                                     onClick={() => setUpdateBalanceOpen(true)}
                                 >
                                     {__('Update balance')}
                                 </Button>
-                            )}
+                            </ButtonGroup>
+                            <ButtonGroup>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setImportBalancesOpen(true)}
+                                >
+                                    {__('Import balances')}
+                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            aria-label={__('More options')}
+                                        >
+                                            <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                setBalancesOpen(true)
+                                            }
+                                        >
+                                            {__('See balances')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => setEditOpen(true)}
+                                        >
+                                            {__('Edit account')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={() => setDeleteOpen(true)}
+                                            variant="destructive"
+                                        >
+                                            {__('Delete')}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </ButtonGroup>
                         </ButtonGroup>
-                        <ButtonGroup>
-                            <Button
-                                variant="outline"
-                                onClick={() => setImportBalancesOpen(true)}
-                            >
-                                {__('Import balances')}
-                            </Button>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        aria-label={__('More options')}
-                                    >
-                                        <ChevronDown className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                        onClick={() => setBalancesOpen(true)}
-                                    >
-                                        {__('See balances')}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        onClick={() => setEditOpen(true)}
-                                    >
-                                        {__('Edit account')}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        onClick={() => setDeleteOpen(true)}
-                                        variant="destructive"
-                                    >
-                                        {__('Delete')}
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </ButtonGroup>
-                    </ButtonGroup>
+                    )}
                 </div>
 
                 <AccountBalanceChart
