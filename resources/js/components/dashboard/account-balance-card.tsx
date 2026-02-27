@@ -24,6 +24,14 @@ export function AccountBalanceCard({
     loading,
     onBalanceUpdated,
 }: AccountBalanceCardProps) {
+    const { chartColorScheme } = usePage<SharedData>().props;
+    const isColorful = chartColorScheme === 'colorful';
+    const mainLineColor = isColorful
+        ? 'var(--color-zinc-400)'
+        : 'var(--color-chart-2)';
+    const gainLineColor = isColorful
+        ? 'var(--color-emerald-500)'
+        : 'var(--color-chart-6)';
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
     if (loading) {
         return (
@@ -161,7 +169,7 @@ export function AccountBalanceCard({
                                                                     )}
                                                                 </span>
                                                                 <span
-                                                                    className={`whitespace-nowrap text-right font-mono tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                    className={`text-right font-mono whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                                                                 >
                                                                     {gain >= 0
                                                                         ? '+'
@@ -198,7 +206,7 @@ export function AccountBalanceCard({
                                 <Line
                                     type="monotone"
                                     dataKey="value"
-                                    stroke={'var(--color-chart-2)'}
+                                    stroke={mainLineColor}
                                     strokeWidth={2}
                                     dot={false}
                                 />
@@ -206,7 +214,7 @@ export function AccountBalanceCard({
                                     <Line
                                         type="monotone"
                                         dataKey="investedAmount"
-                                        stroke="var(--color-chart-6)"
+                                        stroke={gainLineColor}
                                         strokeWidth={1.5}
                                         strokeDasharray="4 3"
                                         dot={false}
