@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
 import { type ParsedBalance } from '@/types/balance-import';
+import { formatCurrency } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 
@@ -32,12 +33,8 @@ export function ImportBalanceStepPreview({
     const locale = useLocale();
     const total = balances.length;
 
-    const formatBalance = (balance: number): string => {
-        return new Intl.NumberFormat(locale, {
-            style: 'currency',
-            currency: currencyCode,
-        }).format(balance / 100);
-    };
+    const formatBalance = (valueInCents: number): string =>
+        formatCurrency(valueInCents, currencyCode, locale);
 
     const hasInvestedData =
         showInvestedAmount && balances.some((b) => b.invested_amount !== null);

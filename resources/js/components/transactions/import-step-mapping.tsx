@@ -128,7 +128,9 @@ export function ImportStepMapping({
                     ? new Intl.NumberFormat(locale, {
                           style: 'currency',
                           currency: currencyCode,
-                      }).format(amount)
+                      })
+                          .format(amount)
+                          .replace(/\s/g, '\u202F')
                     : 'Invalid amount',
         };
     });

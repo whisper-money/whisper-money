@@ -16,6 +16,7 @@ import type {
     ParsedRow,
 } from '@/types/balance-import';
 import { DateFormat } from '@/types/import';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 
 interface ImportBalanceStepMappingProps {
@@ -48,10 +49,15 @@ export function ImportBalanceStepMapping({
     const isValid = columnMapping.balance_date && columnMapping.balance;
     const locale = useLocale();
 
-    const currencyFormatter = new Intl.NumberFormat(locale, {
-        style: 'currency',
-        currency: currencyCode,
-    });
+    const formatBalance = (valueInCents: number) =>
+        formatCurrency(valueInCents, currencyCode, locale);
+    const formatRawAmount = (value: number) =>
+        new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: currencyCode,
+        })
+            .format(value)
+            .replace(/\s/g, '\u202F');
 
     const previewBalances = parsedData.slice(0, 3).map((row) => {
         const date = columnMapping.balance_date
@@ -71,7 +77,7 @@ export function ImportBalanceStepMapping({
             );
             investedAmount =
                 invested !== null
-                    ? currencyFormatter.format(invested)
+                    ? formatRawAmount(invested)
                     : 'Invalid amount';
         }
 
@@ -85,7 +91,7 @@ export function ImportBalanceStepMapping({
                 : 'Invalid date',
             balance:
                 balance !== null
-                    ? currencyFormatter.format(balance)
+                    ? formatRawAmount(balance)
                     : 'Invalid amount',
             investedAmount,
         };

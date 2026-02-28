@@ -13,6 +13,7 @@ import {
 } from '@/lib/sankey-utils';
 import { cn } from '@/lib/utils';
 import { Category } from '@/types/category';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { useMemo, useState } from 'react';
 
@@ -49,19 +50,6 @@ const COLUMN_POSITIONS = [0.25, 0.5, 0.75];
 const NODE_WIDTH = 8;
 const NODE_PADDING = 6;
 const MIN_NODE_HEIGHT = 20;
-
-function formatAmount(
-    amountInCents: number,
-    currency: string,
-    locale: string,
-): string {
-    return new Intl.NumberFormat(locale, {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(amountInCents / 100);
-}
 
 interface OtherCategoriesBreakdownProps {
     categories: SankeyCategory[];
@@ -118,10 +106,12 @@ function OtherCategoriesBreakdown({
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">
                                     <span className="font-medium">
-                                        {formatAmount(
+                                        {formatCurrency(
                                             item.amount,
                                             currency,
                                             locale,
+                                            0,
+                                            0,
                                         )}
                                     </span>
                                     <span className="text-muted-foreground">
@@ -137,7 +127,7 @@ function OtherCategoriesBreakdown({
 
                 <div className="flex items-center justify-between text-sm font-medium">
                     <span>{__('Total')}</span>
-                    <span>{formatAmount(total, currency, locale)}</span>
+                    <span>{formatCurrency(total, currency, locale, 0, 0)}</span>
                 </div>
             </div>
         </div>
@@ -517,7 +507,13 @@ export function SankeyChart({
                                     dominantBaseline="middle"
                                     className="fill-muted-foreground text-[9px]"
                                 >
-                                    {formatAmount(node.value, currency, locale)}
+                                    {formatCurrency(
+                                        node.value,
+                                        currency,
+                                        locale,
+                                        0,
+                                        0,
+                                    )}
                                 </text>
                             </g>
                         );
@@ -532,7 +528,7 @@ export function SankeyChart({
                                 <Popover key={node.id}>
                                     <PopoverTrigger
                                         asChild
-                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${formatAmount(otherGroup.total, currency, locale)}`}
+                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${formatCurrency(otherGroup.total, currency, locale, 0, 0)}`}
                                     >
                                         {nodeContent}
                                     </PopoverTrigger>

@@ -3,6 +3,7 @@ import * as RechartsPrimitive from 'recharts';
 
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/utils/currency';
 
 const THEMES = { light: '', dark: '.dark' } as const;
 
@@ -135,12 +136,7 @@ interface ChartTooltipContentProps {
 }
 
 function formatCurrencyWithCode(value: number, currencyCode: string, locale: string): string {
-    return new Intl.NumberFormat(locale, {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value / 100);
+    return formatCurrency(value, currencyCode, locale, 0, 0);
 }
 
 const ChartTooltipContent = React.forwardRef<

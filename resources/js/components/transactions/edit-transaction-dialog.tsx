@@ -725,7 +725,9 @@ export function EditTransactionDialog({
                                         new Intl.NumberFormat(locale, {
                                             style: 'currency',
                                             currency: transaction.currency_code,
-                                        }).format(transaction.amount / 100)}
+                                        })
+                                            .format(transaction.amount / 100)
+                                            .replace(/\s/g, '\u202F')}
                                 </div>
                             )}
                         </div>
