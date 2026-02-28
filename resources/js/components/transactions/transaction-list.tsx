@@ -59,7 +59,6 @@ import { consoleDebug } from '@/lib/debug';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
-import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
@@ -846,18 +845,6 @@ export function TransactionList({
 
             setIsReEvaluating(true);
             try {
-                const keyString = getStoredKey();
-                if (!keyString || !isKeySet) {
-                    consoleDebug('❌ Encryption key not set');
-                    console.error('Encryption key not set');
-                    toast.error(
-                        'Please unlock your encryption key to re-evaluate rules',
-                    );
-                    return;
-                }
-                consoleDebug('✓ Encryption key found');
-
-                const key = await importKey(keyString);
                 consoleDebug(
                     `Found ${automationRules.length} automation rules`,
                 );
@@ -874,7 +861,7 @@ export function TransactionList({
                     categories,
                     accounts,
                     banks,
-                    key,
+                    null,
                 );
 
                 consoleDebug('Rule evaluation result:', result);
@@ -883,27 +870,6 @@ export function TransactionList({
                     consoleDebug('✓ Rule matched! Applying changes...');
                     let finalNotes = transaction.notes;
                     let finalNotesIv = transaction.notes_iv;
-
-                    if (result.note && result.noteIv) {
-                        consoleDebug('Adding note from rule');
-                        const decryptedRuleNote = await decrypt(
-                            result.note,
-                            key,
-                            result.noteIv,
-                        );
-                        const combinedNote = appendNoteIfNotPresent(
-                            transaction.decryptedNotes,
-                            decryptedRuleNote,
-                        );
-
-                        if (combinedNote !== transaction.decryptedNotes) {
-                            finalNotes = combinedNote;
-                            finalNotesIv = null;
-                            consoleDebug('Combined notes with rule note');
-                        } else {
-                            consoleDebug('Rule note already present, skipping');
-                        }
-                    }
 
                     const updateData = {
                         category_id: result.categoryId,
@@ -923,16 +889,7 @@ export function TransactionList({
                           null
                         : null;
 
-                    let decryptedNotes = transaction.decryptedNotes;
-                    if (finalNotes && !finalNotesIv) {
-                        decryptedNotes = finalNotes;
-                    } else if (finalNotes && finalNotesIv) {
-                        decryptedNotes = await decrypt(
-                            finalNotes,
-                            key,
-                            finalNotesIv,
-                        );
-                    }
+                    const decryptedNotes = transaction.decryptedNotes;
 
                     const updatedTransaction = {
                         ...transaction,
@@ -961,14 +918,7 @@ export function TransactionList({
                 consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [
-            isKeySet,
-            categories,
-            accounts,
-            banks,
-            updateTransaction,
-            automationRules,
-        ],
+        [categories, accounts, banks, updateTransaction, automationRules],
     );
 
     async function handleBulkReEvaluateRules() {
@@ -983,18 +933,6 @@ export function TransactionList({
 
         setIsReEvaluating(true);
         try {
-            const keyString = getStoredKey();
-            if (!keyString || !isKeySet) {
-                consoleDebug('❌ Encryption key not set');
-                console.error('Encryption key not set');
-                toast.error(
-                    'Please unlock your encryption key to re-evaluate rules',
-                );
-                return;
-            }
-            consoleDebug('✓ Encryption key found');
-
-            const key = await importKey(keyString);
             consoleDebug(`Found ${automationRules.length} automation rules`);
 
             if (automationRules.length === 0) {
@@ -1031,36 +969,15 @@ export function TransactionList({
                     categories,
                     accounts,
                     banks,
-                    key,
+                    null,
                 );
 
                 consoleDebug('Rule evaluation result:', result);
 
                 if (result) {
                     consoleDebug('✓ Rule matched! Applying changes...');
-                    let finalNotes = transaction.notes;
-                    let finalNotesIv = transaction.notes_iv;
-
-                    if (result.note && result.noteIv) {
-                        consoleDebug('Adding note from rule');
-                        const decryptedRuleNote = await decrypt(
-                            result.note,
-                            key,
-                            result.noteIv,
-                        );
-                        const combinedNote = appendNoteIfNotPresent(
-                            transaction.decryptedNotes,
-                            decryptedRuleNote,
-                        );
-
-                        if (combinedNote !== transaction.decryptedNotes) {
-                            finalNotes = combinedNote;
-                            finalNotesIv = null;
-                            consoleDebug('Combined notes with rule note');
-                        } else {
-                            consoleDebug('Rule note already present, skipping');
-                        }
-                    }
+                    const finalNotes = transaction.notes;
+                    const finalNotesIv = transaction.notes_iv;
 
                     const updateData = {
                         category_id: result.categoryId,
@@ -1080,16 +997,7 @@ export function TransactionList({
                           null
                         : null;
 
-                    let decryptedNotes = transaction.decryptedNotes;
-                    if (finalNotes && !finalNotesIv) {
-                        decryptedNotes = finalNotes;
-                    } else if (finalNotes && finalNotesIv) {
-                        decryptedNotes = await decrypt(
-                            finalNotes,
-                            key,
-                            finalNotesIv,
-                        );
-                    }
+                    const decryptedNotes = transaction.decryptedNotes;
 
                     updates.push({
                         transaction,

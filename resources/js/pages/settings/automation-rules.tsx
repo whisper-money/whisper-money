@@ -21,7 +21,6 @@ import { CreateAutomationRuleDialog } from '@/components/automation-rules/create
 import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete-automation-rule-dialog';
 import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
 import HeadingSmall from '@/components/heading-small';
-import { LabelBadges } from '@/components/shared/label-combobox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,13 +46,11 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
 import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
-import { type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -66,11 +63,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 function AutomationRuleActions({
     rule,
     categories,
-    labels,
 }: {
     rule: AutomationRule;
     categories: Category[];
-    labels: Label[];
 }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -105,7 +100,6 @@ function AutomationRuleActions({
             <EditAutomationRuleDialog
                 rule={rule}
                 categories={categories}
-                labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
             />
@@ -121,11 +115,9 @@ function AutomationRuleActions({
 function AutomationRuleRow({
     row,
     categories,
-    labels,
 }: {
     row: Row<AutomationRule>;
     categories: Category[];
-    labels: Label[];
 }) {
     const rule = row.original;
     const [editOpen, setEditOpen] = useState(false);
@@ -171,7 +163,6 @@ function AutomationRuleRow({
             <EditAutomationRuleDialog
                 rule={rule}
                 categories={categories}
-                labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
             />
@@ -185,14 +176,12 @@ function AutomationRuleRow({
 }
 
 export default function AutomationRules() {
-    const { isKeySet } = useEncryptionKey();
     const { automationRules: rawRules } = usePage<{
         automationRules: AutomationRule[];
     }>().props;
 
-    // Get categories and labels from globally shared Inertia data
+    // Get categories from globally shared Inertia data
     const categories = usePage().props.categories as Category[];
-    const labels = usePage().props.labels as Label[];
     const rules = useMemo(
         () =>
             rawRules.map((rule) => ({
@@ -204,29 +193,13 @@ export default function AutomationRules() {
             })),
         [rawRules],
     );
-    const [sorting, setSorting] = useState<SortingState>([
-        {
-            id: 'priority',
-            desc: false,
-        },
-    ]);
+    const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
     );
 
     const columns: ColumnDef<AutomationRule>[] = [
-        {
-            accessorKey: 'priority',
-            header: __('Priority'),
-            cell: ({ row }) => {
-                return (
-                    <div className="font-medium">
-                        {row.getValue('priority')}
-                    </div>
-                );
-            },
-        },
         {
             accessorKey: 'title',
             header: __('Title'),
@@ -262,14 +235,6 @@ export default function AutomationRules() {
                                     {actions.category.name}
                                 </Badge>
                             )}
-                            {actions.hasLabels && actions.labels && (
-                                <LabelBadges labels={actions.labels} max={2} />
-                            )}
-                            {actions.hasNote && (
-                                <span className="text-sm text-muted-foreground">
-                                    + note
-                                </span>
-                            )}
                         </div>
                     );
                 }
@@ -291,13 +256,9 @@ export default function AutomationRules() {
                     );
                 }
 
-                if (actions.type === 'labels' && actions.labels) {
-                    return <LabelBadges labels={actions.labels} max={3} />;
-                }
-
                 return (
                     <span className="text-sm text-muted-foreground">
-                        {__('Add note')}
+                        {__('No action set')}
                     </span>
                 );
             },
@@ -309,7 +270,6 @@ export default function AutomationRules() {
                 <AutomationRuleActions
                     rule={row.original}
                     categories={categories}
-                    labels={labels}
                 />
             ),
         },
@@ -362,8 +322,6 @@ export default function AutomationRules() {
                             />
                             <CreateAutomationRuleDialog
                                 categories={categories}
-                                labels={labels}
-                                disabled={!isKeySet}
                             />
                         </div>
 
@@ -405,7 +363,6 @@ export default function AutomationRules() {
                                                     key={row.id}
                                                     row={row}
                                                     categories={categories}
-                                                    labels={labels}
                                                 />
                                             ))
                                     ) : (

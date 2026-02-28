@@ -102,7 +102,7 @@ export async function prepareTransactionData(
     accounts: Account[],
     banks: Bank[],
     categories: Category[],
-    encryptionKey: CryptoKey,
+    encryptionKey: CryptoKey | null,
 ): Promise<TransactionData> {
     const account = accounts.find((a) => a.id === transaction.account_id);
     const bank = account?.bank?.id
@@ -136,7 +136,7 @@ export async function evaluateRules(
     categories: Category[],
     accounts: Account[],
     banks: Bank[],
-    encryptionKey: CryptoKey,
+    encryptionKey: CryptoKey | null,
 ): Promise<RuleEvaluationResult | null> {
     const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
 
@@ -201,7 +201,7 @@ export async function evaluateRulesForTransactions(
     categories: Category[],
     accounts: Account[],
     banks: Bank[],
-    encryptionKey: CryptoKey,
+    encryptionKey: CryptoKey | null,
 ): Promise<Map<string, RuleEvaluationResult>> {
     const results = new Map<string, RuleEvaluationResult>();
 
@@ -237,7 +237,7 @@ export async function evaluateRulesForNewTransaction(
     categories: Category[],
     accounts: Account[],
     banks: Bank[],
-    encryptionKey: CryptoKey,
+    encryptionKey: CryptoKey | null,
 ): Promise<RuleEvaluationResult | null> {
     if (!rules || !categories || !accounts || !banks) {
         consoleDebug(

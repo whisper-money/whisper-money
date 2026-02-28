@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useReEvaluateAllTransactions } from '@/hooks/use-re-evaluate-all-transactions';
+
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -73,13 +74,6 @@ export function TransactionActionsMenu({
     };
 
     const handleReEvaluateAll = async () => {
-        if (!isKeySet) {
-            toast.error(
-                'Please unlock your encryption key to re-evaluate transactions',
-            );
-            return;
-        }
-
         if (!transactions.length) {
             toast.error('No transactions to re-evaluate');
             return;
@@ -199,11 +193,7 @@ export function TransactionActionsMenu({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={handleReEvaluateAll}
-                            disabled={
-                                !isKeySet ||
-                                isReEvaluating ||
-                                !transactions.length
-                            }
+                            disabled={isReEvaluating || !transactions.length}
                         >
                             <WandSparkles className="mr-2 h-4 w-4" />
                             {__('Re-evaluate All Expenses')}

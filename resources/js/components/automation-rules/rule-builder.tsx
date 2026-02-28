@@ -272,12 +272,7 @@ function ConditionRow({
         condition.operator !== 'is_empty' &&
         condition.operator !== 'is_not_empty';
 
-    const inputType =
-        fieldConfig?.type === 'number'
-            ? 'number'
-            : fieldConfig?.type === 'date'
-              ? 'date'
-              : 'text';
+    const inputType = fieldConfig?.type === 'number' ? 'number' : 'text';
 
     return (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -331,7 +326,7 @@ function ConditionRow({
                 size="sm"
                 onClick={onRemove}
                 disabled={!canRemove}
-                className="self-end sm:self-auto"
+                className={`self-end sm:self-auto${!canRemove ? 'opacity-30' : ''}`}
             >
                 <X className="h-4 w-4" />
             </Button>

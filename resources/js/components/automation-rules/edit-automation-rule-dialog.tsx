@@ -1,7 +1,6 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { RuleBuilder } from '@/components/automation-rules/rule-builder';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
-import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -21,7 +20,6 @@ import {
 } from '@/lib/rule-builder-utils';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
-import type { Label as LabelType } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -29,7 +27,6 @@ import { useEffect, useState } from 'react';
 interface EditAutomationRuleDialogProps {
     rule: AutomationRule;
     categories: Category[];
-    labels: LabelType[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
@@ -38,31 +35,26 @@ interface EditAutomationRuleDialogProps {
 export function EditAutomationRuleDialog({
     rule,
     categories,
-    labels,
     open,
     onOpenChange,
     onSuccess,
 }: EditAutomationRuleDialogProps) {
     const [title, setTitle] = useState('');
-    const [priority, setPriority] = useState('0');
     const [ruleStructure, setRuleStructure] = useState<RuleStructure>({
         groups: [createEmptyGroup()],
         groupOperator: 'and',
     });
     const [categoryId, setCategoryId] = useState<string>('');
-    const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (rule && open) {
             setTitle(rule.title);
-            setPriority(String(rule.priority));
             setRuleStructure(parseJsonLogic(rule.rules_json));
             setCategoryId(
                 rule.action_category_id ? String(rule.action_category_id) : '',
             );
-            setSelectedLabelIds(rule.labels?.map((l) => l.id) || []);
         }
     }, [rule, open]);
 
@@ -83,10 +75,10 @@ export function EditAutomationRuleDialog({
             return;
         }
 
-        if (!categoryId && selectedLabelIds.length === 0) {
+        if (!categoryId) {
             setErrors((prev) => ({
                 ...prev,
-                action_category_id: 'At least one action is required',
+                action_category_id: 'A category is required',
             }));
             return;
         }
@@ -100,13 +92,12 @@ export function EditAutomationRuleDialog({
                 update(rule.id).url,
                 {
                     title: title.trim(),
-                    priority: parseInt(priority, 10),
+                    priority: rule.priority,
                     rules_json: JSON.stringify(jsonLogic),
-                    action_category_id: categoryId || null,
+                    action_category_id: categoryId,
                     action_note: null,
                     action_note_iv: null,
-                    action_label_ids:
-                        selectedLabelIds.length > 0 ? selectedLabelIds : null,
+                    action_label_ids: null,
                 },
                 {
                     preserveState: true,
@@ -137,7 +128,7 @@ export function EditAutomationRuleDialog({
                     <DialogTitle>{__('Edit Automation Rule')}</DialogTitle>
                     <DialogDescription>
                         {__(
-                            'Update the rule to automatically categorize transactions\n                        and add labels.',
+                            'Update the rule to automatically categorize transactions.',
                         )}
                     </DialogDescription>
                 </DialogHeader>
@@ -159,28 +150,6 @@ export function EditAutomationRuleDialog({
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="priority">{__('Priority')}</Label>
-                        <Input
-                            id="priority"
-                            type="number"
-                            min="0"
-                            value={priority}
-                            onChange={(e) => setPriority(e.target.value)}
-                            placeholder="0"
-                            required
-                        />
-
-                        <p className="text-xs text-muted-foreground">
-                            {__('Lower numbers execute first')}
-                        </p>
-                        {errors.priority && (
-                            <p className="text-sm text-red-500">
-                                {errors.priority}
-                            </p>
-                        )}
-                    </div>
-
                     <RuleBuilder
                         value={ruleStructure}
                         onChange={setRuleStructure}
@@ -189,9 +158,6 @@ export function EditAutomationRuleDialog({
 
                     <div className="space-y-4 rounded-md border p-4">
                         <h4 className="font-medium">{__('Actions')}</h4>
-                        <p className="text-sm text-muted-foreground">
-                            {__('At least one action is required')}
-                        </p>
 
                         <div className="space-y-2">
                             <Label htmlFor="category">
@@ -201,33 +167,15 @@ export function EditAutomationRuleDialog({
                                 value={categoryId}
                                 onValueChange={setCategoryId}
                                 categories={categories}
-                                placeholder={__('Select a category (optional)')}
+                                placeholder={__('Select a category')}
                                 showUncategorized={false}
                                 data-testid="action-category-select"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>{__('Add Labels')}</Label>
-                            <LabelCombobox
-                                value={selectedLabelIds}
-                                onValueChange={setSelectedLabelIds}
-                                labels={labels}
-                                placeholder={__('Select labels (optional)')}
-                                allowCreate={true}
                             />
                         </div>
 
                         {errors.action_category_id && (
                             <p className="text-sm text-red-500">
                                 {errors.action_category_id}
-                            </p>
-                        )}
-                        {(errors['action_label_ids.0'] ||
-                            errors.action_label_ids) && (
-                            <p className="text-sm text-red-500">
-                                {errors['action_label_ids.0'] ||
-                                    errors.action_label_ids}
                             </p>
                         )}
                     </div>
