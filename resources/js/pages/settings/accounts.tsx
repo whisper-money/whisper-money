@@ -229,14 +229,14 @@ export default function Accounts({ accounts }: AccountsPageProps) {
             cell: ({ row }) => {
                 const bank = row.original.bank;
                 return (
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-32 items-center gap-2">
                         <BankLogo
                             src={bank.logo}
                             name={bank.name}
-                            className="h-6 w-6"
+                            className="h-6 w-6 shrink-0"
                             fallback="empty"
                         />
-                        <span>{bank.name}</span>
+                        <span className="truncate">{bank.name}</span>
                     </div>
                 );
             },
@@ -335,7 +335,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
                             />
                         </div>
 
-                        <div className="rounded-md border">
+                        <div className="overflow-x-auto rounded-md border">
                             <Table>
                                 <TableHeader>
                                     {table
