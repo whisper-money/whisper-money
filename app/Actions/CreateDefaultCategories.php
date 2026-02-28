@@ -425,6 +425,12 @@ class CreateDefaultCategories
                 'type' => 'expense',
             ],
             [
+                'name' => 'Self-Employment Income',
+                'icon' => 'Briefcase',
+                'color' => 'green',
+                'type' => 'income',
+            ],
+            [
                 'name' => 'Other incoming payments',
                 'icon' => 'DollarSign',
                 'color' => 'green',
@@ -503,6 +509,7 @@ class CreateDefaultCategories
             'From account of relatives' => 'Desde cuenta de familiares',
             'Returned payments' => 'Pagos devueltos',
             'Credit cards' => 'Tarjetas de crédito',
+            'Self-Employment Income' => 'Ingresos por trabajo autónomo',
             'Other incoming payments' => 'Otros ingresos',
         ];
     }

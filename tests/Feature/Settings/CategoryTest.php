@@ -217,7 +217,7 @@ test('default categories are created when user registers', function () {
     $service = new \App\Actions\CreateDefaultCategories;
     $service->handle($user);
 
-    expect($user->categories()->count())->toBe(63);
+    expect($user->categories()->count())->toBe(64);
 
     $categoryNames = $user->categories->pluck('name')->toArray();
     expect($categoryNames)->toContain('Food', 'Transportation', 'Salary', 'Insurance');
@@ -229,11 +229,11 @@ test('default categories are not created twice for the same user', function () {
     $service = new \App\Actions\CreateDefaultCategories;
     $service->handle($user);
 
-    expect($user->categories()->count())->toBe(63);
+    expect($user->categories()->count())->toBe(64);
 
     $service->handle($user);
 
-    expect($user->categories()->count())->toBe(63);
+    expect($user->categories()->count())->toBe(64);
 });
 
 test('category names are unique per user', function () {
