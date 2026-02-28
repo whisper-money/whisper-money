@@ -135,11 +135,20 @@ class TransactionController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'color']);
 
+        $transactions = Transaction::query()
+            ->where('user_id', $user->id)
+            ->whereNull('category_id')
+            ->with(['account.bank:id,name,logo', 'labels:id,name,color'])
+            ->orderBy('transaction_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->get(['id', 'account_id', 'category_id', 'description', 'description_iv', 'transaction_date', 'amount', 'currency_code', 'notes', 'notes_iv']);
+
         return Inertia::render('transactions/categorize', [
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
             'labels' => $labels,
+            'transactions' => $transactions,
         ]);
     }
 
