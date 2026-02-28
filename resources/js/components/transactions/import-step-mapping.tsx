@@ -8,6 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useLocale } from '@/hooks/use-locale';
 import { parseAmount, parseDate } from '@/lib/file-parser';
 import {
     DateFormat,
@@ -50,6 +51,7 @@ export function ImportStepMapping({
         : columnMapping.description
           ? [columnMapping.description]
           : [];
+    const locale = useLocale();
 
     const isValid =
         columnMapping.transaction_date &&
@@ -114,7 +116,7 @@ export function ImportStepMapping({
 
         return {
             date: date
-                ? date.toLocaleDateString('en-US', {
+                ? date.toLocaleDateString(locale, {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
@@ -123,10 +125,12 @@ export function ImportStepMapping({
             description: description || 'No description',
             amount:
                 amount !== null
-                    ? new Intl.NumberFormat('en-US', {
+                    ? new Intl.NumberFormat(locale, {
                           style: 'currency',
                           currency: currencyCode,
-                      }).format(amount)
+                      })
+                          .format(amount)
+                          .replace(/\s/g, '\u202F')
                     : 'Invalid amount',
         };
     });

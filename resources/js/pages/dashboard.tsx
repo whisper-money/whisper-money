@@ -9,6 +9,7 @@ import {
     type NetWorthEvolutionData,
     deriveAccountMetrics,
 } from '@/hooks/use-dashboard-data';
+import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { dashboard } from '@/routes';
 import { BreadcrumbItem, SharedData } from '@/types';
@@ -41,6 +42,7 @@ interface DashboardProps extends SharedData {
 
 export default function Dashboard() {
     const { props } = usePage<DashboardProps>();
+    const locale = useLocale();
     const { isKeySet, encryptedMessageData, fetchEncryptedMessage } =
         useEncryptionKey();
     const [showUnlockDialog, setShowUnlockDialog] = useState(false);
@@ -52,8 +54,8 @@ export default function Dashboard() {
     };
 
     const accountMetrics = useMemo(
-        () => deriveAccountMetrics(netWorthEvolution),
-        [netWorthEvolution],
+        () => deriveAccountMetrics(netWorthEvolution, locale),
+        [netWorthEvolution, locale],
     );
 
     const topCategories = props.topCategories ?? [];

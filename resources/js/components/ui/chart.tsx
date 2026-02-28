@@ -1,7 +1,9 @@
 import * as React from 'react';
 import * as RechartsPrimitive from 'recharts';
 
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/utils/currency';
 
 const THEMES = { light: '', dark: '.dark' } as const;
 
@@ -133,13 +135,8 @@ interface ChartTooltipContentProps {
     displayCurrency?: string;
 }
 
-function formatCurrencyWithCode(value: number, currencyCode: string): string {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value / 100);
+function formatCurrencyWithCode(value: number, currencyCode: string, locale: string): string {
+    return formatCurrency(value, currencyCode, locale, 0, 0);
 }
 
 const ChartTooltipContent = React.forwardRef<
@@ -166,6 +163,7 @@ const ChartTooltipContent = React.forwardRef<
         ref,
     ) => {
         const { config } = useChart();
+        const locale = useLocale();
 
         const tooltipLabel = React.useMemo(() => {
             if (hideLabel || !payload?.length) {
@@ -312,7 +310,7 @@ const ChartTooltipContent = React.forwardRef<
                                                             if (original) {
                                                                 return (
                                                                     <span className="text-muted-foreground mr-1 text-[10px]">
-                                                                        ({formatCurrencyWithCode(original.amount, original.currency_code)})
+                                                                        ({formatCurrencyWithCode(original.amount, original.currency_code, locale)})
                                                                     </span>
                                                                 );
                                                             }
@@ -325,7 +323,7 @@ const ChartTooltipContent = React.forwardRef<
                                                             )
                                                             : typeof item.value ===
                                                                 'number'
-                                                                ? item.value.toLocaleString()
+                                                                ? item.value.toLocaleString(locale)
                                                                 : item.value}
                                                     </span>
                                                 )}
@@ -351,6 +349,7 @@ const ChartTooltipContent = React.forwardRef<
                                             {formatCurrencyWithCode(
                                                 total,
                                                 currency,
+                                                locale,
                                             )}
                                         </span>
                                     </div>
@@ -365,6 +364,7 @@ const ChartTooltipContent = React.forwardRef<
                                             ? formatCurrencyWithCode(
                                                 currencyTotals[0][1],
                                                 currencyTotals[0][0],
+                                                locale,
                                             )
                                             : payload
                                                 .reduce(
@@ -384,7 +384,7 @@ const ChartTooltipContent = React.forwardRef<
                                                     },
                                                     0,
                                                 )
-                                                .toLocaleString()}
+                                                .toLocaleString(locale)}
                                     </span>
                                 </div>
                             )}

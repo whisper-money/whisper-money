@@ -33,8 +33,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLocale } from '@/hooks/use-locale';
 import type { Account, AccountBalance } from '@/types/account';
 import { supportsInvestedAmount } from '@/types/account';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -60,6 +62,7 @@ export function BalancesModal({
     onOpenChange,
     onBalanceChange,
 }: BalancesModalProps) {
+    const locale = useLocale();
     const [balances, setBalances] = useState<AccountBalance[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -80,10 +83,8 @@ export function BalancesModal({
         useState<AccountBalance | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const formatter = new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: account.currency_code,
-    });
+    const formatBalance = (valueInCents: number) =>
+        formatCurrency(valueInCents, account.currency_code, locale);
 
     const showInvestedAmount = supportsInvestedAmount(account);
 
@@ -217,7 +218,7 @@ export function BalancesModal({
 
     function formatDate(dateString: string): string {
         const date = new Date(dateString);
-        return date.toLocaleDateString(undefined, {
+        return date.toLocaleDateString(locale, {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
@@ -302,17 +303,16 @@ export function BalancesModal({
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono">
-                                                    {formatter.format(
-                                                        balance.balance / 100,
+                                                    {formatBalance(
+                                                        balance.balance,
                                                     )}
                                                 </TableCell>
                                                 {showInvestedAmount && (
                                                     <TableCell className="text-right font-mono text-muted-foreground">
                                                         {balance.invested_amount !==
                                                         null
-                                                            ? formatter.format(
-                                                                  balance.invested_amount /
-                                                                      100,
+                                                            ? formatBalance(
+                                                                  balance.invested_amount,
                                                               )
                                                             : '—'}
                                                     </TableCell>

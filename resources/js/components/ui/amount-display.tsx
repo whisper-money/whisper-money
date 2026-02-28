@@ -1,6 +1,7 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/utils/currency';
 import { useEffect, useMemo, useState } from 'react';
 
 interface AmountDisplayProps {
@@ -75,13 +76,8 @@ export function AmountDisplay({
     }, [amountInCents, shouldHideAmount]);
 
     const formatted = useMemo(() => {
-        return new Intl.NumberFormat(locale, {
-            style: 'currency',
-            currency: currencyCode,
-            minimumFractionDigits,
-            maximumFractionDigits,
-        }).format(amount);
-    }, [amount, currencyCode, minimumFractionDigits, maximumFractionDigits, locale]);
+        return formatCurrency(amount * 100, currencyCode, locale, minimumFractionDigits, maximumFractionDigits);
+    }, [locale, amount, currencyCode, minimumFractionDigits, maximumFractionDigits]);
 
     const getBackgroundClass = (shouldHideAmount: boolean) => {
         if (!highlightPositive && !shouldHideAmount) return '';

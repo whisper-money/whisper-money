@@ -722,10 +722,12 @@ export function EditTransactionDialog({
                             ) : (
                                 <div className="text-sm font-medium">
                                     {transaction &&
-                                        new Intl.NumberFormat('en-US', {
+                                        new Intl.NumberFormat(locale, {
                                             style: 'currency',
                                             currency: transaction.currency_code,
-                                        }).format(transaction.amount / 100)}
+                                        })
+                                            .format(transaction.amount / 100)
+                                            .replace(/\s/g, '\u202F')}
                                 </div>
                             )}
                         </div>

@@ -8,6 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useLocale } from '@/hooks/use-locale';
 import { parseAmount, parseDate } from '@/lib/file-parser';
 import type {
     BalanceColumnMapping,
@@ -45,11 +46,15 @@ export function ImportBalanceStepMapping({
     onBack,
 }: ImportBalanceStepMappingProps) {
     const isValid = columnMapping.balance_date && columnMapping.balance;
+    const locale = useLocale();
 
-    const currencyFormatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currencyCode,
-    });
+    const formatRawAmount = (value: number) =>
+        new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: currencyCode,
+        })
+            .format(value)
+            .replace(/\s/g, '\u202F');
 
     const previewBalances = parsedData.slice(0, 3).map((row) => {
         const date = columnMapping.balance_date
@@ -69,22 +74,20 @@ export function ImportBalanceStepMapping({
             );
             investedAmount =
                 invested !== null
-                    ? currencyFormatter.format(invested)
+                    ? formatRawAmount(invested)
                     : 'Invalid amount';
         }
 
         return {
             date: date
-                ? date.toLocaleDateString('en-US', {
+                ? date.toLocaleDateString(locale, {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
                   })
                 : 'Invalid date',
             balance:
-                balance !== null
-                    ? currencyFormatter.format(balance)
-                    : 'Invalid amount',
+                balance !== null ? formatRawAmount(balance) : 'Invalid amount',
             investedAmount,
         };
     });

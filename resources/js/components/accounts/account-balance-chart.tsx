@@ -29,6 +29,7 @@ import {
 import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Account, supportsInvestedAmount } from '@/types/account';
+import { formatCurrency } from '@/utils/currency';
 import { formatDayFromDate, formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { format, subDays, subMonths } from 'date-fns';
@@ -106,7 +107,7 @@ function InvestmentTooltipContent({
                                 {__('Gain/loss')}
                             </span>
                             <span
-                                className={`whitespace-nowrap font-mono font-medium tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                className={`font-mono font-medium whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
                             >
                                 {gain >= 0 ? '+' : ''}
                                 {valueFormatter(gain)}
@@ -178,12 +179,7 @@ function formatChartCurrency(
     currencyCode: string,
     locale: string,
 ): string {
-    return new Intl.NumberFormat(locale, {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value / 100);
+    return formatCurrency(value, currencyCode, locale, 0, 0);
 }
 
 function calculateTrend(

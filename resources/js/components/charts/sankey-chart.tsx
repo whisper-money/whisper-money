@@ -5,6 +5,7 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import {
     calculatePercentage,
     GroupedCategory,
@@ -12,6 +13,7 @@ import {
 } from '@/lib/sankey-utils';
 import { cn } from '@/lib/utils';
 import { Category } from '@/types/category';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { useMemo, useState } from 'react';
 
@@ -49,20 +51,12 @@ const NODE_WIDTH = 8;
 const NODE_PADDING = 6;
 const MIN_NODE_HEIGHT = 20;
 
-function formatAmount(amountInCents: number, currency: string): string {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(amountInCents / 100);
-}
-
 interface OtherCategoriesBreakdownProps {
     categories: SankeyCategory[];
     total: number;
     currency: string;
     grandTotal: number;
+    locale: string;
 }
 
 function OtherCategoriesBreakdown({
@@ -70,6 +64,7 @@ function OtherCategoriesBreakdown({
     total,
     currency,
     grandTotal,
+    locale,
 }: OtherCategoriesBreakdownProps) {
     return (
         <div className="w-64">
@@ -111,7 +106,13 @@ function OtherCategoriesBreakdown({
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">
                                     <span className="font-medium">
-                                        {formatAmount(item.amount, currency)}
+                                        {formatCurrency(
+                                            item.amount,
+                                            currency,
+                                            locale,
+                                            0,
+                                            0,
+                                        )}
                                     </span>
                                     <span className="text-muted-foreground">
                                         {percentage.toFixed(1)}%
@@ -126,7 +127,7 @@ function OtherCategoriesBreakdown({
 
                 <div className="flex items-center justify-between text-sm font-medium">
                     <span>{__('Total')}</span>
-                    <span>{formatAmount(total, currency)}</span>
+                    <span>{formatCurrency(total, currency, locale, 0, 0)}</span>
                 </div>
             </div>
         </div>
@@ -142,6 +143,7 @@ export function SankeyChart({
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+    const locale = useLocale();
 
     const { nodes, links, isEmpty, otherGroups } = useMemo(() => {
         const {
@@ -505,7 +507,13 @@ export function SankeyChart({
                                     dominantBaseline="middle"
                                     className="fill-muted-foreground text-[9px]"
                                 >
-                                    {formatAmount(node.value, currency)}
+                                    {formatCurrency(
+                                        node.value,
+                                        currency,
+                                        locale,
+                                        0,
+                                        0,
+                                    )}
                                 </text>
                             </g>
                         );
@@ -520,7 +528,7 @@ export function SankeyChart({
                                 <Popover key={node.id}>
                                     <PopoverTrigger
                                         asChild
-                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${formatAmount(otherGroup.total, currency)}`}
+                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${formatCurrency(otherGroup.total, currency, locale, 0, 0)}`}
                                     >
                                         {nodeContent}
                                     </PopoverTrigger>
@@ -536,6 +544,7 @@ export function SankeyChart({
                                             total={otherGroup.total}
                                             currency={currency}
                                             grandTotal={grandTotal}
+                                            locale={locale}
                                         />
                                     </PopoverContent>
                                 </Popover>

@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
@@ -36,20 +37,6 @@ interface PaywallStats {
 
 interface PaywallPageProps extends SharedData {
     stats: PaywallStats;
-}
-
-function formatCurrency(
-    amount: number,
-    currencyCode: string,
-    locale: string,
-): string {
-    const absAmount = Math.abs(amount) / 100;
-    return new Intl.NumberFormat(locale, {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(absAmount);
 }
 
 function getEquivalentBillingLabel(
@@ -185,7 +172,13 @@ function BalanceDisplay({
             <div className="flex flex-col items-center">
                 {entries.map(([currency, amount]) => (
                     <span key={currency} className="text-xl font-bold">
-                        {formatCurrency(amount, currency, locale)}
+                        {formatCurrency(
+                            Math.abs(amount),
+                            currency,
+                            locale,
+                            0,
+                            0,
+                        )}
                     </span>
                 ))}
             </div>

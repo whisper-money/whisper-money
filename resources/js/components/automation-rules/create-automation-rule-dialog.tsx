@@ -126,7 +126,7 @@ export function CreateAutomationRuleDialog({
                     <DialogTitle>{__('Create Automation Rule')}</DialogTitle>
                     <DialogDescription>
                         {__(
-                            'Create a rule to automatically categorize transactions.',
+                            'Create a rule to automatically categorize transactions and add labels.',
                         )}
                     </DialogDescription>
                 </DialogHeader>
@@ -194,7 +194,7 @@ export function CreateAutomationRuleDialog({
                             disabled={isSubmitting}
                             data-testid="submit-automation-rule"
                         >
-                            {isSubmitting ? 'Creating...' : 'Create'}
+                            {isSubmitting ? __('Creating...') : __('Create')}
                         </Button>
                     </div>
                 </form>
