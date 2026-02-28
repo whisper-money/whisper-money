@@ -163,7 +163,7 @@ export function CashflowTrendChart({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-[250px] animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                    <div className="h-[350px] animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                 </CardContent>
             </Card>
         );
@@ -185,7 +185,7 @@ export function CashflowTrendChart({
                 <div ref={scrollContainerRef} className="overflow-x-auto">
                     <ChartContainer
                         config={chartConfig}
-                        className="h-[250px] w-full"
+                        className="h-[350px] w-full"
                         style={{ minWidth: `${minChartWidth}px` }}
                     >
                         <BarChart accessibilityLayer data={data}>
