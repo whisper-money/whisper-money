@@ -15,14 +15,22 @@ interface AmountInputProps {
     className?: string;
 }
 
-const getCurrencySymbol = (currencyCode: string): string => {
-    const symbols: Record<string, string> = {
-        USD: '$',
-        EUR: '€',
-        GBP: '£',
-        JPY: '¥',
-    };
-    return symbols[currencyCode] || currencyCode;
+const getCurrencyInfo = (
+    currencyCode: string,
+    locale: string,
+): { symbol: string; position: 'prefix' | 'suffix' } => {
+    const parts = new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: currencyCode,
+    }).formatToParts(1);
+
+    const symbolPart = parts.find((p) => p.type === 'currency');
+    const symbol = symbolPart?.value ?? currencyCode;
+    const symbolIndex = parts.findIndex((p) => p.type === 'currency');
+    const literalIndex = parts.findIndex((p) => p.type === 'integer');
+    const position = symbolIndex < literalIndex ? 'prefix' : 'suffix';
+
+    return { symbol, position };
 };
 
 const formatCurrency = (value: number, locale: string): string => {
@@ -207,13 +215,15 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
             }
         };
 
-        const currencySymbol = getCurrencySymbol(currencyCode);
+        const { symbol: currencySymbol, position: symbolPosition } = getCurrencyInfo(currencyCode, locale);
 
         return (
             <div className="relative">
-                <span className="-translate-y-1/2 absolute top-1/2 left-3 text-muted-foreground text-sm">
-                    {currencySymbol}
-                </span>
+                {symbolPosition === 'prefix' && (
+                    <span className="-translate-y-1/2 absolute top-1/2 left-3 text-muted-foreground text-sm">
+                        {currencySymbol}
+                    </span>
+                )}
                 <Input
                     ref={ref}
                     id={id}
@@ -227,8 +237,17 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     placeholder={placeholder}
                     disabled={disabled}
                     required={required}
-                    className={cn(["bg-background pl-9", className])}
+                    className={cn([
+                        'bg-background',
+                        symbolPosition === 'prefix' ? 'pl-9' : 'pr-9',
+                        className,
+                    ])}
                 />
+                {symbolPosition === 'suffix' && (
+                    <span className="-translate-y-1/2 absolute top-1/2 right-3 text-muted-foreground text-sm">
+                        {currencySymbol}
+                    </span>
+                )}
             </div>
         );
     },
