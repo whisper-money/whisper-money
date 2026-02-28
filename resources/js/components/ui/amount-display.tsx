@@ -1,4 +1,5 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -55,6 +56,7 @@ export function AmountDisplay({
     highlightPositive = false,
 }: AmountDisplayProps) {
     const { isKeySet } = useEncryptionKey();
+    const locale = useLocale();
     const [amount, setAmount] = useState<number>(amountInCents / 100);
     const isPositive = amountInCents > 0
 
@@ -73,13 +75,13 @@ export function AmountDisplay({
     }, [amountInCents, shouldHideAmount]);
 
     const formatted = useMemo(() => {
-        return new Intl.NumberFormat('en-US', {
+        return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: currencyCode,
             minimumFractionDigits,
             maximumFractionDigits,
         }).format(amount);
-    }, [amount, currencyCode, minimumFractionDigits, maximumFractionDigits]);
+    }, [amount, currencyCode, minimumFractionDigits, maximumFractionDigits, locale]);
 
     const getBackgroundClass = (shouldHideAmount: boolean) => {
         if (!highlightPositive && !shouldHideAmount) return '';
