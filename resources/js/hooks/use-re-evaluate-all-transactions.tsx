@@ -1,7 +1,4 @@
-import { decrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
-import { appendNoteIfNotPresent } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import type { Account, Bank } from '@/types/account';
 import type { AutomationRule } from '@/types/automation-rule';
@@ -34,14 +31,6 @@ export function useReEvaluateAllTransactions() {
                 return;
             }
 
-            const keyString = getStoredKey();
-            if (!keyString) {
-                toast.error('Please unlock your encryption key');
-                return;
-            }
-
-            const key = await importKey(keyString);
-
             if (!automationRules.length) {
                 toast.error('No automation rules found');
                 return;
@@ -71,34 +60,14 @@ export function useReEvaluateAllTransactions() {
                         categories,
                         accounts,
                         banks,
-                        key,
+                        null,
                     );
 
                     if (result) {
-                        let finalNotes = transaction.notes;
-                        let finalNotesIv = transaction.notes_iv;
-
-                        if (result.note && result.noteIv) {
-                            const decryptedRuleNote = await decrypt(
-                                result.note,
-                                key,
-                                result.noteIv,
-                            );
-                            const combinedNote = appendNoteIfNotPresent(
-                                transaction.decryptedNotes,
-                                decryptedRuleNote,
-                            );
-
-                            if (combinedNote !== transaction.decryptedNotes) {
-                                finalNotes = combinedNote;
-                                finalNotesIv = null;
-                            }
-                        }
-
                         await transactionSyncService.update(transaction.id, {
                             category_id: result.categoryId,
-                            notes: finalNotes,
-                            notes_iv: finalNotesIv,
+                            notes: transaction.notes,
+                            notes_iv: transaction.notes_iv,
                         });
 
                         successCount++;

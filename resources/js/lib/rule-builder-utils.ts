@@ -1,4 +1,4 @@
-export type FieldType = 'string' | 'number' | 'date' | 'nullable';
+export type FieldType = 'string' | 'number';
 
 export type Operator =
     | 'contains'
@@ -35,20 +35,10 @@ export const FIELD_CONFIG: Record<
         type: 'string',
         operators: ['contains', 'equals'],
     },
-    notes: {
-        label: 'Notes',
-        type: 'nullable',
-        operators: ['contains', 'equals', 'is_empty', 'is_not_empty'],
-    },
     amount: {
         label: 'Amount',
         type: 'number',
         operators: ['equals', 'greater_than', 'less_than'],
-    },
-    transaction_date: {
-        label: 'Transaction Date',
-        type: 'date',
-        operators: ['equals'],
     },
     bank_name: {
         label: 'Bank Name',
@@ -59,11 +49,6 @@ export const FIELD_CONFIG: Record<
         label: 'Account Name',
         type: 'string',
         operators: ['contains', 'equals'],
-    },
-    category: {
-        label: 'Category',
-        type: 'nullable',
-        operators: ['equals', 'is_empty', 'is_not_empty'],
     },
 };
 
