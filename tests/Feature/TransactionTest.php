@@ -671,3 +671,98 @@ test('when budget with label exists, updating transaction with that label assign
     expect($budgetTransaction->transaction_id)->toBe($transaction->id);
     expect($budgetTransaction->amount)->toBe(5000); // Stored as absolute value
 });
+
+test('categorize page is accessible to authenticated users', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $response = actingAs($user)->get(route('transactions.categorize'));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('transactions/categorize')
+        ->has('categories')
+        ->has('accounts')
+        ->has('banks')
+        ->has('labels')
+        ->has('transactions')
+    );
+});
+
+test('categorize page only returns uncategorized transactions', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $uncategorized = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => null,
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+    ]);
+
+    $response = actingAs($user)->get(route('transactions.categorize'));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('transactions/categorize')
+        ->has('transactions', 1)
+        ->where('transactions.0.id', $uncategorized->id)
+    );
+});
+
+test('categorize page does not return transactions from deleted accounts', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $activeAccount = Account::factory()->create(['user_id' => $user->id]);
+    $deletedAccount = Account::factory()->create(['user_id' => $user->id]);
+
+    $visibleTransaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $activeAccount->id,
+        'category_id' => null,
+    ]);
+
+    // Delete the account and its transactions (as the controller does)
+    $deletedAccount->transactions()->delete();
+    $deletedAccount->delete();
+
+    $response = actingAs($user)->get(route('transactions.categorize'));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('transactions/categorize')
+        ->has('transactions', 1)
+        ->where('transactions.0.id', $visibleTransaction->id)
+    );
+});
+
+test('categorize page does not return transactions from other users', function () {
+    $user = User::factory()->onboarded()->create();
+    $otherUser = User::factory()->onboarded()->create();
+
+    $otherAccount = Account::factory()->create(['user_id' => $otherUser->id]);
+    Transaction::factory()->create([
+        'user_id' => $otherUser->id,
+        'account_id' => $otherAccount->id,
+        'category_id' => null,
+    ]);
+
+    $response = actingAs($user)->get(route('transactions.categorize'));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('transactions/categorize')
+        ->has('transactions', 0)
+    );
+});
+
+test('guests are redirected from categorize page', function () {
+    $response = $this->get(route('transactions.categorize'));
+
+    $response->assertRedirect(route('login'));
+});

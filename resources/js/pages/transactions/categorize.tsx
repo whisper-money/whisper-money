@@ -17,7 +17,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useLocale } from '@/hooks/use-locale';
 import { decrypt, importKey } from '@/lib/crypto';
-import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRules } from '@/lib/rule-engine';
 import { cn } from '@/lib/utils';
@@ -25,12 +24,14 @@ import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category, getCategoryColorClasses } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
+import {
+    type DecryptedTransaction,
+    type Transaction,
+} from '@/types/transaction';
 import { formatDateLong } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { parseISO } from 'date-fns';
-import { useLiveQuery } from 'dexie-react-hooks';
 import {
     ArrowDown,
     ArrowLeft,
@@ -49,6 +50,7 @@ interface Props {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    transactions: Transaction[];
 }
 
 type AnimationState = 'idle' | 'exiting' | 'entering' | 'success';
@@ -98,24 +100,13 @@ export default function CategorizeTransactions({
     categories,
     accounts,
     banks,
+    transactions: initialTransactions,
 }: Props) {
     const { isKeySet } = useEncryptionKey();
     const { automationRules: sharedAutomationRules } = usePage<{
         automationRules: AutomationRule[];
     }>().props;
     const locale = useLocale();
-
-    const transactionIds = useLiveQuery(
-        async () => {
-            const txs = await db.transactions.toArray();
-            return txs
-                .map((t) => t.id)
-                .sort()
-                .join(',');
-        },
-        [],
-        '',
-    );
 
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
         DecryptedTransaction[]
@@ -154,21 +145,11 @@ export default function CategorizeTransactions({
         }
     }, [isLoading, animationState, currentIndex]);
 
+    // Decrypt transactions received from the backend and build the initial list
     useEffect(() => {
-        async function loadUncategorizedTransactions() {
-            if (transactionIds === undefined) {
-                setIsLoading(true);
-                return;
-            }
-
+        async function decryptTransactions() {
             setIsLoading(true);
             try {
-                const rawTransactions = await db.transactions.toArray();
-
-                const uncategorized = rawTransactions.filter(
-                    (t) => !t.category_id,
-                );
-
                 const accountsMap = new Map(
                     accounts.map((account) => [account.id, account]),
                 );
@@ -190,7 +171,7 @@ export default function CategorizeTransactions({
                 }
 
                 const decrypted = await Promise.all(
-                    uncategorized.map(async (transaction) => {
+                    initialTransactions.map(async (transaction) => {
                         try {
                             let decryptedDescription = '';
                             let decryptedNotes: string | null = null;
@@ -273,8 +254,8 @@ export default function CategorizeTransactions({
             }
         }
 
-        loadUncategorizedTransactions();
-    }, [transactionIds, accounts, banks, isKeySet]);
+        decryptTransactions();
+    }, [initialTransactions, accounts, banks, isKeySet]);
 
     const currentTransaction = uncategorizedTransactions[currentIndex];
     const remainingCount = uncategorizedTransactions.length - currentIndex;
@@ -723,10 +704,6 @@ export default function CategorizeTransactions({
                                                                     account={
                                                                         currentTransaction.account
                                                                     }
-                                                                    length={{
-                                                                        min: 5,
-                                                                        max: 20,
-                                                                    }}
                                                                     className="text-sm text-zinc-600 dark:text-zinc-400"
                                                                 />
                                                             </div>
