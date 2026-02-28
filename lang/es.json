@@ -60,6 +60,8 @@
     "Account is required": "Se requiere una cuenta",
     "Account name": "Nombre de cuenta",
     "Accounts": "Cuentas",
+    "account": "cuenta",
+    "accounts": "cuentas",
     "Accounts Created": "Cuentas Creadas",
     "Accounts need to be mapped before syncing can begin.": "Las cuentas deben mapearse antes de que pueda comenzar la sincronización.",
     "Actions": "Acciones",
