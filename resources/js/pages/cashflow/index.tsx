@@ -112,6 +112,13 @@ export default function CashflowPage() {
                     />
                 </div>
 
+                {/* Trend Chart */}
+                <CashflowTrendChart
+                    data={trend}
+                    loading={isLoading}
+                    currency={auth.user.currency_code}
+                />
+
                 {/* Sankey Diagram */}
                 <Card>
                     <CardHeader className="pb-4">
@@ -148,13 +155,6 @@ export default function CashflowPage() {
                         currency={auth.user.currency_code}
                     />
                 </div>
-
-                {/* Trend Chart */}
-                <CashflowTrendChart
-                    data={trend}
-                    loading={isLoading}
-                    currency={auth.user.currency_code}
-                />
             </div>
         </AppSidebarLayout>
     );
