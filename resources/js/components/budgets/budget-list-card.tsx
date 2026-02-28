@@ -136,8 +136,7 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
 
                 <div className="flex items-center justify-between border-t pt-4">
                     <span className="text-sm text-muted-foreground">
-                        {__('Tracking:')}
-                        {trackingLabel}
+                        {__('Tracking:')} {trackingLabel}
                     </span>
                     <Link href={show({ budget: budget.id }).url}>
                         <Button
