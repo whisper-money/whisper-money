@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { TrendDataPoint } from '@/hooks/use-cashflow-data';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { formatCompactNumber, formatMonthFromYearMonth } from '@/utils/date';
@@ -43,12 +44,16 @@ interface CustomTooltipProps {
     active?: boolean;
     payload?: TooltipPayloadItem[];
     currency?: string;
+    incomeColor?: string;
+    expenseColor?: string;
 }
 
 function CustomTooltip({
     active,
     payload,
     currency = 'USD',
+    incomeColor,
+    expenseColor,
 }: CustomTooltipProps) {
     const locale = useLocale();
 
@@ -65,7 +70,10 @@ function CustomTooltip({
             <div className="space-y-1">
                 <div className="flex items-center justify-between gap-4">
                     <span className="flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-[var(--color-chart-2)]" />
+                        <span
+                            className="size-2 rounded-full"
+                            style={{ background: incomeColor }}
+                        />
                         {__('Income')}
                     </span>
                     <AmountDisplay
@@ -78,7 +86,10 @@ function CustomTooltip({
                 </div>
                 <div className="flex items-center justify-between gap-4">
                     <span className="flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-[var(--color-chart-5)]" />
+                        <span
+                            className="size-2 rounded-full"
+                            style={{ background: expenseColor }}
+                        />
                         {__('Expenses')}
                     </span>
                     <AmountDisplay
@@ -119,15 +130,16 @@ export function CashflowTrendChart({
     const locale = useLocale();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
+    const { cashflowIncomeColor, cashflowExpenseColor } = useChartColors();
 
     const chartConfig: ChartConfig = {
         income: {
             label: __('Income'),
-            color: 'var(--color-chart-2)',
+            color: cashflowIncomeColor,
         },
         expense: {
             label: __('Expenses'),
-            color: 'var(--color-chart-5)',
+            color: cashflowExpenseColor,
         },
         net: {
             label: __('Net'),
@@ -214,7 +226,13 @@ export function CashflowTrendChart({
                             />
 
                             <Tooltip
-                                content={<CustomTooltip currency={currency} />}
+                                content={
+                                    <CustomTooltip
+                                        currency={currency}
+                                        incomeColor={cashflowIncomeColor}
+                                        expenseColor={cashflowExpenseColor}
+                                    />
+                                }
                                 cursor={{
                                     fill: 'var(--color-muted)',
                                     opacity: 0.3,
@@ -223,7 +241,7 @@ export function CashflowTrendChart({
 
                             <Bar
                                 dataKey="income"
-                                fill="var(--color-chart-2)"
+                                fill={cashflowIncomeColor}
                                 radius={[4, 4, 0, 0]}
                                 stackId="a"
                                 name="Income"
@@ -231,7 +249,7 @@ export function CashflowTrendChart({
 
                             <Bar
                                 dataKey="expense"
-                                fill="var(--color-chart-5)"
+                                fill={cashflowExpenseColor}
                                 radius={[4, 4, 0, 0]}
                                 stackId="b"
                                 name="Expenses"
@@ -255,11 +273,17 @@ export function CashflowTrendChart({
                 </div>
                 <div className="mt-4 flex items-center justify-center gap-6 text-xs">
                     <div className="flex items-center gap-2">
-                        <span className="size-3 rounded bg-[var(--color-chart-2)]" />
+                        <span
+                            className="size-3 rounded"
+                            style={{ background: cashflowIncomeColor }}
+                        />
                         <span>{__('Income')}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="size-3 rounded bg-[var(--color-chart-5)]" />
+                        <span
+                            className="size-3 rounded"
+                            style={{ background: cashflowExpenseColor }}
+                        />
                         <span>{__('Expenses')}</span>
                     </div>
                     <div className="flex items-center gap-2">

@@ -157,6 +157,111 @@
     --sidebar-ring: oklch(0.439 0 0);
 }
 
+/* Colorful chart color scheme */
+[data-chart-color='colorful'] {
+    --chart-1: var(--color-blue-600);
+    --chart-2: var(--color-emerald-500);
+    --chart-3: var(--color-amber-500);
+    --chart-4: var(--color-rose-500);
+    --chart-5: var(--color-violet-500);
+    --chart-6: var(--color-cyan-500);
+    --chart-7: var(--color-orange-500);
+    --chart-8: var(--color-teal-500);
+    --chart-9: var(--color-pink-400);
+    --chart-10: var(--color-indigo-400);
+    --spent: var(--color-blue-600);
+    --allocated: var(--color-blue-200);
+    --spent-prev: var(--color-blue-400);
+    --account-line: var(--color-zinc-800);
+    --cashflow-income: var(--color-emerald-500);
+    --cashflow-expense: var(--color-red-500);
+}
+
+.dark[data-chart-color='colorful'] {
+    --chart-1: var(--color-blue-400);
+    --chart-2: var(--color-emerald-400);
+    --chart-3: var(--color-amber-400);
+    --chart-4: var(--color-rose-400);
+    --chart-5: var(--color-violet-400);
+    --chart-6: var(--color-cyan-400);
+    --chart-7: var(--color-orange-400);
+    --chart-8: var(--color-teal-400);
+    --chart-9: var(--color-pink-300);
+    --chart-10: var(--color-indigo-300);
+    --spent: var(--color-blue-400);
+    --allocated: var(--color-blue-800);
+    --spent-prev: var(--color-blue-600);
+    --account-line: var(--color-zinc-50);
+    --cashflow-income: var(--color-emerald-400);
+    --cashflow-expense: var(--color-red-400);
+}
+
+/* Blue chart color scheme */
+[data-chart-color='blue'] {
+    --chart-1: var(--color-blue-900);
+    --chart-2: var(--color-blue-800);
+    --chart-3: var(--color-blue-700);
+    --chart-4: var(--color-blue-600);
+    --chart-5: var(--color-blue-500);
+    --chart-6: var(--color-blue-400);
+    --chart-7: var(--color-blue-300);
+    --chart-8: var(--color-blue-200);
+    --chart-9: var(--color-blue-100);
+    --chart-10: var(--color-blue-50);
+    --spent: var(--color-blue-800);
+    --allocated: var(--color-blue-200);
+    --spent-prev: var(--color-blue-400);
+}
+
+.dark[data-chart-color='blue'] {
+    --chart-1: var(--color-blue-200);
+    --chart-2: var(--color-blue-300);
+    --chart-3: var(--color-blue-400);
+    --chart-4: var(--color-blue-500);
+    --chart-5: var(--color-blue-600);
+    --chart-6: var(--color-blue-700);
+    --chart-7: var(--color-blue-800);
+    --chart-8: var(--color-blue-900);
+    --chart-9: var(--color-blue-50);
+    --chart-10: var(--color-blue-100);
+    --spent: var(--color-blue-200);
+    --allocated: var(--color-blue-700);
+    --spent-prev: var(--color-blue-500);
+}
+
+/* Pink chart color scheme */
+[data-chart-color='pink'] {
+    --chart-1: var(--color-pink-900);
+    --chart-2: var(--color-pink-800);
+    --chart-3: var(--color-pink-700);
+    --chart-4: var(--color-pink-600);
+    --chart-5: var(--color-pink-500);
+    --chart-6: var(--color-pink-400);
+    --chart-7: var(--color-pink-300);
+    --chart-8: var(--color-pink-200);
+    --chart-9: var(--color-pink-100);
+    --chart-10: var(--color-pink-50);
+    --spent: var(--color-pink-800);
+    --allocated: var(--color-pink-200);
+    --spent-prev: var(--color-pink-400);
+}
+
+.dark[data-chart-color='pink'] {
+    --chart-1: var(--color-pink-200);
+    --chart-2: var(--color-pink-300);
+    --chart-3: var(--color-pink-400);
+    --chart-4: var(--color-pink-500);
+    --chart-5: var(--color-pink-600);
+    --chart-6: var(--color-pink-700);
+    --chart-7: var(--color-pink-800);
+    --chart-8: var(--color-pink-900);
+    --chart-9: var(--color-pink-50);
+    --chart-10: var(--color-pink-100);
+    --spent: var(--color-pink-200);
+    --allocated: var(--color-pink-700);
+    --spent-prev: var(--color-pink-500);
+}
+
 @layer base {
     * {
         @apply border-border;

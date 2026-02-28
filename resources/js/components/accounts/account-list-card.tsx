@@ -4,6 +4,7 @@ import { BankLogo } from '@/components/bank-logo';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -24,6 +25,7 @@ export function AccountListCard({
     loading,
     onBalanceUpdated,
 }: AccountListCardProps) {
+    const { accountMainLineColor, accountGainLineColor } = useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
 
     if (loading) {
@@ -225,7 +227,7 @@ export function AccountListCard({
                                 <Line
                                     type="monotone"
                                     dataKey="value"
-                                    stroke="var(--color-chart-2)"
+                                    stroke={accountMainLineColor}
                                     strokeWidth={2}
                                     dot={false}
                                 />
@@ -233,7 +235,7 @@ export function AccountListCard({
                                     <Line
                                         type="monotone"
                                         dataKey="investedAmount"
-                                        stroke="var(--color-chart-6)"
+                                        stroke={accountGainLineColor}
                                         strokeWidth={1.5}
                                         strokeDasharray="4 3"
                                         dot={false}

@@ -18,6 +18,11 @@
                         document.documentElement.classList.add('dark');
                     }
                 }
+
+                var chartScheme = localStorage.getItem('chart-color-scheme') || '{{ $chartColorScheme ?? "colorful" }}';
+                if (chartScheme && chartScheme !== 'neutral') {
+                    document.documentElement.setAttribute('data-chart-color', chartScheme);
+                }
             })();
         </script>
 

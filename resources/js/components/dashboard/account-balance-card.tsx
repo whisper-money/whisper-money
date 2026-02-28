@@ -4,6 +4,7 @@ import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog
 import { BankLogo } from '@/components/bank-logo';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -24,6 +25,7 @@ export function AccountBalanceCard({
     loading,
     onBalanceUpdated,
 }: AccountBalanceCardProps) {
+    const { accountMainLineColor, accountGainLineColor } = useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
     if (loading) {
         return (
@@ -210,7 +212,7 @@ export function AccountBalanceCard({
                                 <Line
                                     type="monotone"
                                     dataKey="value"
-                                    stroke={'var(--color-chart-2)'}
+                                    stroke={accountMainLineColor}
                                     strokeWidth={2}
                                     dot={false}
                                 />
@@ -218,7 +220,7 @@ export function AccountBalanceCard({
                                     <Line
                                         type="monotone"
                                         dataKey="investedAmount"
-                                        stroke="var(--color-chart-6)"
+                                        stroke={accountGainLineColor}
                                         strokeWidth={1.5}
                                         strokeDasharray="4 3"
                                         dot={false}

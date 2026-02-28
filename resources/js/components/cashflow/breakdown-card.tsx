@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BreakdownData } from '@/hooks/use-cashflow-data';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { cn } from '@/lib/utils';
 import { getCategoryColorClasses } from '@/types/category';
 import { __ } from '@/utils/i18n';
@@ -22,23 +23,13 @@ interface BreakdownCardProps {
     currency?: string;
 }
 
-const CHART_COLORS = [
-    'var(--chart-1)',
-    'var(--chart-2)',
-    'var(--chart-3)',
-    'var(--chart-4)',
-    'var(--chart-5)',
-    'var(--chart-6)',
-    'var(--chart-7)',
-    'var(--chart-8)',
-];
-
 export function BreakdownCard({
     type,
     data,
     loading,
     currency = 'USD',
 }: BreakdownCardProps) {
+    const { categoryBarColor } = useChartColors();
     const title =
         type === 'income' ? __('Income Sources') : __('Expense Categories');
     const description =
@@ -107,8 +98,10 @@ export function BreakdownCard({
                         const categoryColor = getCategoryColorClasses(
                             item.category.color,
                         );
-                        const chartColor =
-                            CHART_COLORS[index % CHART_COLORS.length];
+                        const chartColor = categoryBarColor(
+                            item.category.color,
+                            index,
+                        );
 
                         return (
                             <div key={item.category_id} className="space-y-1.5">

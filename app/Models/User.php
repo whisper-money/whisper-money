@@ -69,6 +69,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->onboarded_at !== null;
     }
 
+    public function setting(): HasOne
+    {
+        return $this->hasOne(UserSetting::class);
+    }
+
     public function encryptedMessage(): HasOne
     {
         return $this->hasOne(EncryptedMessage::class);
