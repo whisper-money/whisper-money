@@ -50,6 +50,11 @@ export const FIELD_CONFIG: Record<
         type: 'string',
         operators: ['contains', 'equals'],
     },
+    category: {
+        label: 'Category',
+        type: 'string',
+        operators: ['equals', 'is_empty', 'is_not_empty'],
+    },
 };
 
 export const OPERATOR_LABELS: Record<Operator, string> = {
