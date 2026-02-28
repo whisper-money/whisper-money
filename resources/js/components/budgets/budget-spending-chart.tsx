@@ -77,7 +77,7 @@ function CustomTooltip({
                         {__('Allocated:')}
                     </span>
                     <span className="font-medium">
-                        {formatCurrency(allocated, currencyCode)}
+                        {formatCurrency(allocated, currencyCode, locale)}
                     </span>
                 </div>
                 <div className="flex items-center justify-between gap-8">
@@ -85,7 +85,7 @@ function CustomTooltip({
                         {__('Spent:')}
                     </span>
                     <span className="font-medium">
-                        {formatCurrency(spent, currencyCode)}
+                        {formatCurrency(spent, currencyCode, locale)}
                     </span>
                 </div>
                 {hasPreviousPeriod && data.prevSpent !== undefined && (
@@ -94,7 +94,11 @@ function CustomTooltip({
                             {__('Last period:')}
                         </span>
                         <span className="font-medium text-muted-foreground">
-                            {formatCurrency(data.prevSpent, currencyCode)}
+                            {formatCurrency(
+                                data.prevSpent,
+                                currencyCode,
+                                locale,
+                            )}
                         </span>
                     </div>
                 )}
@@ -106,7 +110,11 @@ function CustomTooltip({
                                 {percentage}% /
                             </span>
                             <span className="font-semibold">
-                                {formatCurrency(available, currencyCode)}
+                                {formatCurrency(
+                                    available,
+                                    currencyCode,
+                                    locale,
+                                )}
                             </span>
                         </div>
                     </div>

@@ -8,6 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useLocale } from '@/hooks/use-locale';
 import { parseAmount, parseDate } from '@/lib/file-parser';
 import type {
     BalanceColumnMapping,
@@ -45,8 +46,9 @@ export function ImportBalanceStepMapping({
     onBack,
 }: ImportBalanceStepMappingProps) {
     const isValid = columnMapping.balance_date && columnMapping.balance;
+    const locale = useLocale();
 
-    const currencyFormatter = new Intl.NumberFormat('en-US', {
+    const currencyFormatter = new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: currencyCode,
     });
@@ -75,7 +77,7 @@ export function ImportBalanceStepMapping({
 
         return {
             date: date
-                ? date.toLocaleDateString('en-US', {
+                ? date.toLocaleDateString(locale, {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',

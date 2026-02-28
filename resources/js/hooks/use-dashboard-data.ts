@@ -1,3 +1,4 @@
+import { useLocale } from '@/hooks/use-locale';
 import { Account, AccountType, Bank } from '@/types/account';
 import { Category } from '@/types/category';
 import { format, subDays, subMonths } from 'date-fns';
@@ -52,6 +53,7 @@ export interface DashboardData {
 
 export function deriveAccountMetrics(
     netWorthEvolution: NetWorthEvolutionData,
+    locale = 'en-US',
 ): AccountWithMetrics[] {
     const { data, accounts } = netWorthEvolution;
 
@@ -62,7 +64,7 @@ export function deriveAccountMetrics(
     return Object.values(accounts).map((account) => {
         const investedKey = account.id + '_invested';
         const history = data.map((point) => ({
-            date: formatMonth(point.month as string),
+            date: formatMonth(point.month as string, locale),
             value: (point[account.id] as number) ?? 0,
             investedAmount:
                 investedKey in point
@@ -91,14 +93,14 @@ export function deriveAccountMetrics(
     });
 }
 
-function formatMonth(yearMonth: string): string {
+function formatMonth(yearMonth: string, locale = 'en-US'): string {
     const [year, month] = yearMonth.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1);
 
     const isCurrentYear = date.getFullYear() === new Date().getFullYear();
 
     return date.toLocaleDateString(
-        'en-US',
+        locale,
         isCurrentYear
             ? { month: 'short' }
             : { year: '2-digit', month: 'short' },
@@ -106,6 +108,7 @@ function formatMonth(yearMonth: string): string {
 }
 
 export function useDashboardData(): DashboardData & { refetch: () => void } {
+    const locale = useLocale();
     const [data, setData] = useState<Omit<DashboardData, 'isLoading'>>({
         netWorthEvolution: { data: [], accounts: {}, currency_code: 'USD' },
         accounts: [],
@@ -146,7 +149,7 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
 
             setData({
                 netWorthEvolution: netWorthData,
-                accounts: deriveAccountMetrics(netWorthData),
+                accounts: deriveAccountMetrics(netWorthData, locale),
                 topCategories,
             });
         } catch (error) {

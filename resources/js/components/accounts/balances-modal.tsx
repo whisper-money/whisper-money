@@ -33,6 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLocale } from '@/hooks/use-locale';
 import type { Account, AccountBalance } from '@/types/account';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -60,6 +61,7 @@ export function BalancesModal({
     onOpenChange,
     onBalanceChange,
 }: BalancesModalProps) {
+    const locale = useLocale();
     const [balances, setBalances] = useState<AccountBalance[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -80,7 +82,7 @@ export function BalancesModal({
         useState<AccountBalance | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const formatter = new Intl.NumberFormat(undefined, {
+    const formatter = new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: account.currency_code,
     });
@@ -217,7 +219,7 @@ export function BalancesModal({
 
     function formatDate(dateString: string): string {
         const date = new Date(dateString);
-        return date.toLocaleDateString(undefined, {
+        return date.toLocaleDateString(locale, {
             year: 'numeric',
             month: 'short',
             day: 'numeric',

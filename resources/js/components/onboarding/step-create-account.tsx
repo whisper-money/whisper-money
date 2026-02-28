@@ -277,9 +277,9 @@ export function StepCreateAccount({
                     {isFirstAccount && (
                         <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
                             <p className="text-center">
-                                {__('Your first account must be a')}{' '}
-                                <strong>{__('Checking')}</strong>{' '}
-                                {__('account.')}
+                                {__(
+                                    'Your first account must be a checking account.',
+                                )}
                             </p>
                         </div>
                     )}

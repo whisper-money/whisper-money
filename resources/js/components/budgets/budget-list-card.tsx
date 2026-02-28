@@ -102,9 +102,17 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                             {__('Spent')}
                         </span>
                         <span className={statusColor}>
-                            {formatCurrency(stats.totalSpent, currencyCode)}{' '}
+                            {formatCurrency(
+                                stats.totalSpent,
+                                currencyCode,
+                                locale,
+                            )}{' '}
                             {__('of')}{' '}
-                            {formatCurrency(stats.totalAllocated, currencyCode)}
+                            {formatCurrency(
+                                stats.totalAllocated,
+                                currencyCode,
+                                locale,
+                            )}
                         </span>
                     </div>
                     <Progress
@@ -117,7 +125,11 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                             {__('Remaining')}
                         </span>
                         <span className={statusColor}>
-                            {formatCurrency(stats.remaining, currencyCode)}
+                            {formatCurrency(
+                                stats.remaining,
+                                currencyCode,
+                                locale,
+                            )}
                         </span>
                     </div>
                 </div>

@@ -1,9 +1,10 @@
 export function formatCurrency(
     valueInCents: number,
     currencyCode = 'USD',
+    locale = 'en-US',
 ): string {
     const amount = valueInCents / 100;
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: currencyCode,
         minimumFractionDigits: 2,

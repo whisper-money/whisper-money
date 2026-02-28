@@ -81,7 +81,7 @@ export function AmountDisplay({
             minimumFractionDigits,
             maximumFractionDigits,
         }).format(amount);
-    }, [amount, currencyCode, minimumFractionDigits, maximumFractionDigits, locale]);
+    }, [locale, amount, currencyCode, minimumFractionDigits, maximumFractionDigits]);
 
     const getBackgroundClass = (shouldHideAmount: boolean) => {
         if (!highlightPositive && !shouldHideAmount) return '';

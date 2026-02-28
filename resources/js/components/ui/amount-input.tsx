@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { Input } from '@/components/ui/input';
+import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 
 interface AmountInputProps {
@@ -24,9 +25,9 @@ const getCurrencySymbol = (currencyCode: string): string => {
     return symbols[currencyCode] || currencyCode;
 };
 
-const formatCurrency = (value: number): string => {
+const formatCurrency = (value: number, locale: string): string => {
     const amount = value / 100;
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat(locale, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(amount);
@@ -158,6 +159,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
         },
         ref,
     ) => {
+        const locale = useLocale();
         const [displayValue, setDisplayValue] = React.useState<string>('');
         const [isFocused, setIsFocused] = React.useState<boolean>(false);
 
@@ -166,7 +168,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                 if (value === 0) {
                     setDisplayValue('');
                 } else {
-                    setDisplayValue(formatCurrency(value));
+                    setDisplayValue(formatCurrency(value, locale));
                 }
             }
         }, [value, isFocused]);

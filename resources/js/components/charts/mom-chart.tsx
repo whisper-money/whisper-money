@@ -1,5 +1,6 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
+import { useLocale } from '@/hooks/use-locale';
 import { ChangeDataPoint } from '@/lib/chart-calculations';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
@@ -84,6 +85,7 @@ export function MoMChart({
 }: MoMChartProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * minBarWidth;
+    const locale = useLocale();
 
     useEffect(() => {
         if (scrollContainerRef.current) {
@@ -120,7 +122,7 @@ export function MoMChart({
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={(value: number) => {
-                            return new Intl.NumberFormat('en-US', {
+                            return new Intl.NumberFormat(locale, {
                                 notation: 'compact',
                                 compactDisplay: 'short',
                             }).format(value / 100);

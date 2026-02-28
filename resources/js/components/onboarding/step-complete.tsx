@@ -40,7 +40,7 @@ export function StepComplete() {
 
             <p className="mb-8 max-w-lg text-lg text-balance text-muted-foreground">
                 {__(
-                    'Your accounts are ready and your data is securely encrypted.\n                Welcome to Whisper Money!',
+                    'Your accounts are ready and your data is securely encrypted. Welcome to Whisper Money!',
                 )}
             </p>
 

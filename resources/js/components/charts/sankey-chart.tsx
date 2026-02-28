@@ -5,6 +5,7 @@ import {
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
+import { useLocale } from '@/hooks/use-locale';
 import {
     calculatePercentage,
     GroupedCategory,
@@ -49,8 +50,12 @@ const NODE_WIDTH = 8;
 const NODE_PADDING = 6;
 const MIN_NODE_HEIGHT = 20;
 
-function formatAmount(amountInCents: number, currency: string): string {
-    return new Intl.NumberFormat('en-US', {
+function formatAmount(
+    amountInCents: number,
+    currency: string,
+    locale: string,
+): string {
+    return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: currency,
         minimumFractionDigits: 0,
@@ -63,6 +68,7 @@ interface OtherCategoriesBreakdownProps {
     total: number;
     currency: string;
     grandTotal: number;
+    locale: string;
 }
 
 function OtherCategoriesBreakdown({
@@ -70,6 +76,7 @@ function OtherCategoriesBreakdown({
     total,
     currency,
     grandTotal,
+    locale,
 }: OtherCategoriesBreakdownProps) {
     return (
         <div className="w-64">
@@ -111,7 +118,11 @@ function OtherCategoriesBreakdown({
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">
                                     <span className="font-medium">
-                                        {formatAmount(item.amount, currency)}
+                                        {formatAmount(
+                                            item.amount,
+                                            currency,
+                                            locale,
+                                        )}
                                     </span>
                                     <span className="text-muted-foreground">
                                         {percentage.toFixed(1)}%
@@ -126,7 +137,7 @@ function OtherCategoriesBreakdown({
 
                 <div className="flex items-center justify-between text-sm font-medium">
                     <span>{__('Total')}</span>
-                    <span>{formatAmount(total, currency)}</span>
+                    <span>{formatAmount(total, currency, locale)}</span>
                 </div>
             </div>
         </div>
@@ -142,6 +153,7 @@ export function SankeyChart({
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+    const locale = useLocale();
 
     const { nodes, links, isEmpty, otherGroups } = useMemo(() => {
         const {
@@ -505,7 +517,7 @@ export function SankeyChart({
                                     dominantBaseline="middle"
                                     className="fill-muted-foreground text-[9px]"
                                 >
-                                    {formatAmount(node.value, currency)}
+                                    {formatAmount(node.value, currency, locale)}
                                 </text>
                             </g>
                         );
@@ -520,7 +532,7 @@ export function SankeyChart({
                                 <Popover key={node.id}>
                                     <PopoverTrigger
                                         asChild
-                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${formatAmount(otherGroup.total, currency)}`}
+                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${formatAmount(otherGroup.total, currency, locale)}`}
                                     >
                                         {nodeContent}
                                     </PopoverTrigger>
@@ -536,6 +548,7 @@ export function SankeyChart({
                                             total={otherGroup.total}
                                             currency={currency}
                                             grandTotal={grandTotal}
+                                            locale={locale}
                                         />
                                     </PopoverContent>
                                 </Popover>
