@@ -78,6 +78,14 @@ export function useChartColors() {
         ? 'var(--color-emerald-500)'
         : 'var(--color-chart-6)';
 
+    const cashflowIncomeColor = isColorful
+        ? 'var(--cashflow-income)'
+        : 'var(--color-chart-2)';
+
+    const cashflowExpenseColor = isColorful
+        ? 'var(--cashflow-expense)'
+        : 'var(--color-chart-5)';
+
     const CHART_COLORS = [
         'var(--chart-1)',
         'var(--chart-2)',
@@ -94,5 +102,11 @@ export function useChartColors() {
             ? getCategoryChartColor(color)
             : CHART_COLORS[index % CHART_COLORS.length];
 
-    return { accountMainLineColor, accountGainLineColor, categoryBarColor };
+    return {
+        accountMainLineColor,
+        accountGainLineColor,
+        cashflowIncomeColor,
+        cashflowExpenseColor,
+        categoryBarColor,
+    };
 }
