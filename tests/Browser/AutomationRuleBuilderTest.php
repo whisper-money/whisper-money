@@ -27,7 +27,6 @@ it('can create an automation rule with visual builder', function () {
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Test Rule')
-        ->fill('priority', '10')
         ->assertSee('Conditions')
         ->assertSee('Description')
         ->fill('input[placeholder="Value"]', 'grocery')
@@ -42,7 +41,7 @@ it('can create an automation rule with visual builder', function () {
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
         'title' => 'Test Rule',
-        'priority' => 10,
+        'priority' => 0,
     ]);
 });
 
@@ -62,7 +61,6 @@ it('can add multiple conditions to a group', function () {
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Multi-Condition Rule')
-        ->fill('priority', '5')
         ->fill('input[placeholder="Value"]', 'grocery')
         ->click('Add Condition')
         ->wait(0.5)
@@ -100,7 +98,6 @@ it('can add multiple groups', function () {
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Multi-Group Rule')
-        ->fill('priority', '3')
         ->fill('input[placeholder="Value"]', 'grocery')
         ->click('Add Group')
         ->wait(0.5)
@@ -138,7 +135,6 @@ it('can select different field types and operators', function () {
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Amount Rule')
-        ->fill('priority', '1')
         ->click('button:has-text("Description")')
         ->wait(0.5)
         ->click('[role="option"]:has-text("Amount")')
@@ -179,7 +175,6 @@ it('can edit an existing rule with visual builder', function () {
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Original Rule')
-        ->fill('priority', '5')
         ->fill('input[placeholder="Value"]', 'grocery')
         ->click('[data-testid="action-category-select"]')
         ->wait(0.5)
@@ -222,7 +217,6 @@ it('validates that at least one condition is required', function () {
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Invalid Rule')
-        ->fill('priority', '1')
         ->click('[data-testid="action-category-select"]')
         ->wait(0.5)
         ->click('Entertainment')
@@ -252,7 +246,6 @@ it('can toggle group operators between AND and OR', function () {
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'OR Rule')
-        ->fill('priority', '1')
         ->fill('input[placeholder="Value"]', 'test')
         ->click('Add Condition')
         ->wait(0.5)
@@ -293,7 +286,6 @@ it('can use is empty operator for nullable fields', function () {
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
         ->fill('title', 'Empty Category Rule')
-        ->fill('priority', '1')
         ->click('button:has-text("Description")')
         ->wait(0.5)
         ->click('[role="option"]:has-text("Category")')
