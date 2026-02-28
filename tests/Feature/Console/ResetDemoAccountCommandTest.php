@@ -25,7 +25,7 @@ test('demo:reset creates demo user with basic data structure', function () {
     expect($user->email_verified_at)->not->toBeNull();
     expect($user->accounts()->count())->toBe(6);
     expect($user->transactions()->count())->toBeGreaterThan(2000);
-    expect($user->categories()->count())->toBe(63);
+    expect($user->categories()->count())->toBe(64);
 })->group('slow');
 
 test('demo:reset verifies existing unverified demo user', function () {
