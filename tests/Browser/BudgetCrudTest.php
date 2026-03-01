@@ -68,9 +68,7 @@ test('user can update budget name', function () {
     $page->wait(2); // Wait for page to fully load
 
     $page->assertSee('Old Name')
-        ->wait(2)
-        ->waitFor('[aria-label="More options"]', 10)
-        ->wait(1) // Extra wait before clicking
+        ->wait(4)
         ->click('[aria-label="More options"]')
         ->wait(1) // Wait for dropdown to open
         ->click('Edit budget')
@@ -107,9 +105,7 @@ test('user can delete a budget', function () {
     $page->wait(2); // Wait for page to fully load
 
     $page->assertSee('Budget to Delete')
-        ->wait(2)
-        ->waitFor('[aria-label="More options"]', 10)
-        ->wait(1) // Extra wait before clicking
+        ->wait(4)
         ->click('[aria-label="More options"]')
         ->wait(1) // Wait for dropdown to open
         ->click('Delete budget')
