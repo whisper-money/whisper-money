@@ -72,8 +72,9 @@ export function CreateBudgetDialog({
         const newErrors: Record<string, string> = {};
 
         if (!selectedCategoryId && !selectedLabelId) {
-            newErrors.selection =
-                'You must select either a category or a label.';
+            newErrors.selection = __(
+                'You must select either a category or a label.',
+            );
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -209,8 +210,8 @@ export function CreateBudgetDialog({
                         <div className="space-y-2">
                             <UILabel htmlFor="period-start-day">
                                 {periodType === 'monthly'
-                                    ? 'Start Day of Month'
-                                    : 'Start Day'}
+                                    ? __('Start Day of Month')
+                                    : __('Start Day')}
                             </UILabel>
                             <Input
                                 id="period-start-day"
@@ -225,11 +226,13 @@ export function CreateBudgetDialog({
 
                             <p className="text-sm text-muted-foreground">
                                 {periodType === 'monthly'
-                                    ? 'Day of the month when the period starts (1-31)'
+                                    ? __(
+                                          'Day of the month when the period starts (1-31)',
+                                      )
                                     : periodType === 'weekly' ||
                                         periodType === 'biweekly'
-                                      ? 'Day of week (0=Sunday, 6=Saturday)'
-                                      : 'Starting day'}
+                                      ? __('Day of week (0=Sunday, 6=Saturday)')
+                                      : __('Starting day')}
                             </p>
                         </div>
 
@@ -380,8 +383,12 @@ export function CreateBudgetDialog({
                                 </Select>
                                 <p className="text-sm text-muted-foreground">
                                     {rolloverType === 'carry_over'
-                                        ? 'Unused budget will carry over to the next period.'
-                                        : 'Budget resets to zero at the start of each period.'}
+                                        ? __(
+                                              'Unused budget will carry over to the next period.',
+                                          )
+                                        : __(
+                                              'Budget resets to zero at the start of each period.',
+                                          )}
                                 </p>
                             </div>
                         </div>
@@ -404,7 +411,9 @@ export function CreateBudgetDialog({
                                 allocatedAmount <= 0
                             }
                         >
-                            {isSubmitting ? 'Creating...' : 'Create Budget'}
+                            {isSubmitting
+                                ? __('Creating...')
+                                : __('Create Budget')}
                         </Button>
                     </DialogFooter>
                 </form>

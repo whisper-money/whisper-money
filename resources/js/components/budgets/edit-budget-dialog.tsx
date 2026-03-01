@@ -178,8 +178,8 @@ export function EditBudgetDialog({
                         <div className="space-y-2">
                             <Label htmlFor="period-start-day">
                                 {periodType === 'monthly'
-                                    ? 'Start Day of Month'
-                                    : 'Start Day'}
+                                    ? __('Start Day of Month')
+                                    : __('Start Day')}
                             </Label>
                             <Input
                                 id="period-start-day"
@@ -196,11 +196,13 @@ export function EditBudgetDialog({
 
                             <p className="text-sm text-muted-foreground">
                                 {periodType === 'monthly'
-                                    ? 'Day of the month when the period starts (1-31)'
+                                    ? __(
+                                          'Day of the month when the period starts (1-31)',
+                                      )
                                     : periodType === 'weekly' ||
                                         periodType === 'biweekly'
-                                      ? 'Day of week (0=Sunday, 6=Saturday)'
-                                      : 'Starting day'}
+                                      ? __('Day of week (0=Sunday, 6=Saturday)')
+                                      : __('Starting day')}
                             </p>
                         </div>
 
@@ -250,8 +252,12 @@ export function EditBudgetDialog({
                             </div>
                             <p className="text-sm text-muted-foreground">
                                 {rolloverType === 'carry_over'
-                                    ? 'Unused budget will carry over to the next period.'
-                                    : 'Budget resets to zero at the start of each period.'}
+                                    ? __(
+                                          'Unused budget will carry over to the next period.',
+                                      )
+                                    : __(
+                                          'Budget resets to zero at the start of each period.',
+                                      )}
                             </p>
                         </div>
                     </div>
