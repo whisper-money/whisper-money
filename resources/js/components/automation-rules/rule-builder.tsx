@@ -283,7 +283,7 @@ function ConditionRow({
                 <SelectContent>
                     {Object.entries(FIELD_CONFIG).map(([key, config]) => (
                         <SelectItem key={key} value={key}>
-                            {config.label}
+                            {__(config.label)}
                         </SelectItem>
                     ))}
                 </SelectContent>
@@ -299,7 +299,7 @@ function ConditionRow({
                 <SelectContent>
                     {availableOperators.map((op) => (
                         <SelectItem key={op} value={op}>
-                            {OPERATOR_LABELS[op]}
+                            {__(OPERATOR_LABELS[op])}
                         </SelectItem>
                     ))}
                 </SelectContent>
