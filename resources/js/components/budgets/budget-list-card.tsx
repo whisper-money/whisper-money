@@ -80,7 +80,7 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
     }, [budget]);
 
     return (
-        <Card className="transition-shadow hover:shadow-md">
+        <Card>
             <CardHeader>
                 <div className="flex items-start justify-between">
                     <div className="space-y-1">
