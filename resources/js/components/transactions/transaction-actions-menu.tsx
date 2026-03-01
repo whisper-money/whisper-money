@@ -142,7 +142,7 @@ export function TransactionActionsMenu({
                                 aria-label={__('Add transaction')}
                             >
                                 <Plus className="h-5 w-5" />
-                                {__('Add Transaction')}
+                                {__('Transaction')}
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
