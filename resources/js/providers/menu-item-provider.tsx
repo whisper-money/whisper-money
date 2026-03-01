@@ -27,7 +27,7 @@ export function getMainNavItems(features: Features): NavItem[] {
         items.push({
             type: 'nav-item',
             title: 'Cashflow',
-            mobileTitle: 'Cashflow',
+            mobileTitle: 'Cashflow_short',
             href: cashflow(),
             icon: TrendingUp,
         });
