@@ -49,7 +49,9 @@ export function AppSidebar() {
                             ])}
                         >
                             <item.icon className="size-5 text-primary" />
-                            <span className="text-xs">{__(item.title)}</span>
+                            <span className="text-xs">
+                                {__(item.mobileTitle ?? item.title)}
+                            </span>
                         </Link>
                     );
                 })}
