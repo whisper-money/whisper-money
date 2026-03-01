@@ -1,17 +1,27 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { GlowingEffect } from "@/components/ui/glowing-effect"
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+function Card({ className, children, ...props }: React.ComponentProps<"div">) {
     return (
         <div
             data-slot="card"
             className={cn(
-                "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6",
+                "relative bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6",
                 className
             )}
             {...props}
-        />
+        >
+            <GlowingEffect
+                spread={40}
+                glow={true}
+                disabled={false}
+                proximity={64}
+                inactiveZone={0.01}
+            />
+            {children}
+        </div>
     )
 }
 
