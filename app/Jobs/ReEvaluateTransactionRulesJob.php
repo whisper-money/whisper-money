@@ -24,6 +24,7 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
         public User $user,
         public string $jobId,
         public ?array $transactionIds = null,
+        public ?array $filters = null,
     ) {}
 
     public function handle(AutomationRuleService $service): void
@@ -34,6 +35,8 @@ class ReEvaluateTransactionRulesJob implements ShouldQueue
 
         if ($this->transactionIds !== null) {
             $query->whereIn('id', $this->transactionIds);
+        } elseif ($this->filters !== null) {
+            $query->applyFilters($this->filters);
         }
 
         $total = $query->count();
