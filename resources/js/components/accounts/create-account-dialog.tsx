@@ -182,7 +182,7 @@ export function CreateAccountDialog({
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 type="button"
-                                className="flex flex-col items-center gap-3 rounded-lg border p-6 text-center transition-colors hover:bg-accent"
+                                className="flex flex-col items-center gap-3 rounded-lg border p-3 pb-6 text-center transition-colors hover:bg-accent"
                                 onClick={() => setMode('manual')}
                             >
                                 <PenLine className="h-8 w-8 text-muted-foreground" />
@@ -190,7 +190,7 @@ export function CreateAccountDialog({
                                     <p className="font-medium">
                                         {__('Manual')}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-balance text-muted-foreground">
                                         {__(
                                             'Add an account and import transactions manually.',
                                         )}
@@ -199,7 +199,7 @@ export function CreateAccountDialog({
                             </button>
                             <button
                                 type="button"
-                                className="flex flex-col items-center gap-3 rounded-lg border p-6 text-center transition-colors hover:bg-accent"
+                                className="flex flex-col items-center gap-3 rounded-lg border p-3 pb-6 text-center transition-colors hover:bg-accent"
                                 onClick={() => {
                                     handleOpenChange(false);
                                     setConnectDialogOpen(true);
@@ -210,7 +210,7 @@ export function CreateAccountDialog({
                                     <p className="font-medium">
                                         {__('Connected')}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-balance text-muted-foreground">
                                         {__(
                                             'Connect your bank and sync transactions automatically.',
                                         )}
