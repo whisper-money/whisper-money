@@ -34,17 +34,19 @@ import { Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 
 interface Props {
     className?: string;
     currencyCode?: string;
+    trigger?: React.ReactNode;
 }
 
 export function CreateBudgetDialog({
     className = '',
     currencyCode = 'USD',
+    trigger,
 }: Props) {
     const page = usePage<SharedData>();
     const [open, setOpen] = useState(false);
@@ -117,19 +119,21 @@ export function CreateBudgetDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Card
-                    className={cn(
-                        'cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100',
-                        className,
-                    )}
-                >
-                    <CardContent className="flex h-full items-center justify-center">
-                        <div className="flex flex-row items-center justify-center gap-1">
-                            <Plus className="mr-2 h-4 w-4" />
-                            {__('Create Budget')}
-                        </div>
-                    </CardContent>
-                </Card>
+                {trigger ?? (
+                    <Card
+                        className={cn(
+                            'cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100',
+                            className,
+                        )}
+                    >
+                        <CardContent className="flex h-full items-center justify-center">
+                            <div className="flex flex-row items-center justify-center gap-1">
+                                <Plus className="mr-2 h-4 w-4" />
+                                {__('Create Budget')}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[600px]">
                 <form onSubmit={handleSubmit}>

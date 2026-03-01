@@ -1,12 +1,15 @@
 import { index } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountListCard } from '@/components/accounts/account-list-card';
+import { CreateAccountDialog } from '@/components/accounts/create-account-dialog';
 import HeadingSmall from '@/components/heading-small';
+import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Account, AccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -87,15 +90,22 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
         router.reload({ only: ['accountMetrics'] });
     }, []);
 
+    const handleAccountCreated = useCallback(() => {
+        router.reload({ only: ['accounts'] });
+    }, []);
+
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Accounts')} />
 
             <div className="space-y-8 p-6">
-                <HeadingSmall
-                    title={__('Accounts')}
-                    description={__('View and manage your bank accounts')}
-                />
+                <div className="flex items-center justify-between">
+                    <HeadingSmall
+                        title={__('Accounts')}
+                        description={__('View and manage your bank accounts')}
+                    />
+                    <CreateAccountDialog onSuccess={handleAccountCreated} />
+                </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
                     {ACCOUNT_TYPE_ORDER.map((type) => {
@@ -111,10 +121,23 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
                             />
                         ));
                     })}
+                    <CreateAccountDialog
+                        onSuccess={handleAccountCreated}
+                        trigger={
+                            <Card className="cursor-pointer opacity-50 transition-opacity duration-200 hover:opacity-100">
+                                <CardContent className="flex h-full items-center justify-center">
+                                    <div className="flex flex-row items-center justify-center gap-1">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        {__('Create Account')}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        }
+                    />
                 </div>
 
                 {accounts.length === 0 && !isLoading && (
-                    <div className="text-muted-foreground flex h-[300px] items-center justify-center">
+                    <div className="flex h-[300px] items-center justify-center text-muted-foreground">
                         {__(
                             'No accounts found. Add your first account in Settings.',
                         )}

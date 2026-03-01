@@ -2,6 +2,7 @@ import { index } from '@/actions/App/Http/Controllers/BudgetController';
 import { BudgetListCard } from '@/components/budgets/budget-list-card';
 import { CreateBudgetDialog } from '@/components/budgets/create-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
+import { CreateButton } from '@/components/ui/create-button';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Budget } from '@/types/budget';
@@ -32,6 +33,12 @@ export default function BudgetsIndex({ budgets, currencyCode }: Props) {
                         description={__(
                             'Track your spending with flexible budgets',
                         )}
+                    />
+                    <CreateBudgetDialog
+                        currencyCode={currencyCode}
+                        trigger={
+                            <CreateButton>{__('Create Budget')}</CreateButton>
+                        }
                     />
                 </div>
 
