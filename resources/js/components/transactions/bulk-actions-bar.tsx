@@ -70,18 +70,6 @@ export function BulkActionsBar({
         <div className="fixed bottom-6 flex w-full animate-in items-center justify-center duration-300 slide-in-from-bottom-5 slide-out-to-bottom-5 fade-in fade-out">
             <div className="flex max-w-[75%] flex-row items-center justify-between gap-10 rounded-full border border-border bg-card px-4 py-2 shadow-lg">
                 <div className="flex items-center gap-2 pl-2 text-sm">
-                    {isSelectingAll ? (
-                        <>
-                            {__('All')}
-                            {displayCount} transaction
-                            {displayCount !== 1 ? 's' : ''} selected
-                        </>
-                    ) : (
-                        <>
-                            {displayCount} transaction
-                            {displayCount !== 1 ? 's' : ''} selected
-                        </>
-                    )}
                     {canSelectAll && (
                         <>
                             <TooltipProvider>
@@ -95,20 +83,24 @@ export function BulkActionsBar({
                                             className="h-auto px-0 py-1 text-xs text-primary hover:text-primary/80"
                                         >
                                             <CheckCheck className="mr-1 h-3 w-3" />
-                                            {__('Select all')}
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        {__('Select all')}
-                                        {totalFilteredCount}{' '}
                                         {__(
-                                            'transactions matching current filter',
+                                            'Select all transactions matching filter',
                                         )}
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </>
                     )}
+                    {displayCount !== 1
+                        ? __(`:count transactions`, {
+                              count: displayCount ?? 0,
+                          })
+                        : __(`:count transaction`, {
+                              count: displayCount ?? 0,
+                          })}
                 </div>
 
                 <ButtonGroup>
