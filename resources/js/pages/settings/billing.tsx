@@ -23,33 +23,39 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const benefits = [
-    {
-        icon: InfinityIcon,
-        title: 'Unlimited Everything',
-        description: 'No limits on bank accounts, transactions, or categories.',
-    },
-    {
-        icon: ShieldCheckIcon,
-        title: 'Privacy First',
-        description:
-            'Your data is never shared with third parties. You are always the owner.',
-    },
-    {
-        icon: SparklesIcon,
-        title: 'Smart Automation',
-        description:
-            'Automation rules to categorize transactions automatically.',
-    },
-    {
-        icon: CreditCardIcon,
-        title: 'Priority Support',
-        description: 'Get help when you need it with priority email support.',
-    },
-];
-
 export default function Billing() {
     const { auth } = usePage<SharedData>().props;
+
+    const benefits = [
+        {
+            icon: InfinityIcon,
+            title: __('Unlimited Everything'),
+            description: __(
+                'No limits on bank accounts, transactions, or categories.',
+            ),
+        },
+        {
+            icon: ShieldCheckIcon,
+            title: __('Privacy First'),
+            description: __(
+                'Your data is never shared with third parties. You are always the owner.',
+            ),
+        },
+        {
+            icon: SparklesIcon,
+            title: __('Smart Automation'),
+            description: __(
+                'Automation rules to categorize transactions automatically.',
+            ),
+        },
+        {
+            icon: CreditCardIcon,
+            title: __('Priority Support'),
+            description: __(
+                'Get help when you need it with priority email support.',
+            ),
+        },
+    ];
     const isDemoAccount = auth?.isDemoAccount ?? false;
 
     return (
