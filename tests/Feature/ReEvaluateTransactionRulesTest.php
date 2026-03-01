@@ -354,3 +354,65 @@ test('job only processes provided transaction_ids', function () {
     $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId));
     expect($progress['processed'])->toBe(1);
 });
+
+test('bulk endpoint dispatches job with provided filters', function () {
+    Queue::fake();
+
+    $response = $this->actingAs($this->user)
+        ->postJson(route('transactions.re-evaluate-rules.bulk'), [
+            'filters' => [
+                'date_from' => '2024-01-01',
+                'date_to' => '2024-12-31',
+            ],
+        ]);
+
+    $response->assertStatus(202)
+        ->assertJsonStructure(['job_id']);
+
+    Queue::assertPushed(ReEvaluateTransactionRulesJob::class, function ($job) {
+        return $job->transactionIds === null
+            && $job->filters === ['date_from' => '2024-01-01', 'date_to' => '2024-12-31'];
+    });
+});
+
+test('job applies rules to transactions matching filters', function () {
+    $matchingTransaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Store',
+        'amount' => -5000,
+        'category_id' => null,
+        'transaction_date' => '2024-06-15',
+    ]);
+
+    $outsideRangeTransaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Grocery Supermarket',
+        'amount' => -3000,
+        'category_id' => null,
+        'transaction_date' => '2023-01-01',
+    ]);
+
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['grocery', ['var' => 'description']]],
+        'action_category_id' => $this->category->id,
+    ]);
+
+    $jobId = 'test-job-'.uniqid();
+    $job = new ReEvaluateTransactionRulesJob($this->user, $jobId, null, [
+        'date_from' => '2024-01-01',
+        'date_to' => '2024-12-31',
+    ]);
+    $job->handle(app(\App\Services\AutomationRuleService::class));
+
+    expect($matchingTransaction->fresh()->category_id)->toBe($this->category->id);
+    expect($outsideRangeTransaction->fresh()->category_id)->toBeNull();
+
+    $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId));
+    expect($progress['status'])->toBe('done');
+    expect($progress['processed'])->toBe(1);
+    expect($progress['updated'])->toBe(1);
+});

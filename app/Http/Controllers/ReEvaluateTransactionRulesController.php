@@ -41,6 +41,7 @@ class ReEvaluateTransactionRulesController extends Controller
     {
         $user = $request->user();
         $transactionIds = $request->input('transaction_ids');
+        $filters = $request->input('filters');
 
         $jobId = (string) Str::uuid();
 
@@ -51,7 +52,7 @@ class ReEvaluateTransactionRulesController extends Controller
             now()->addHour(),
         );
 
-        ReEvaluateTransactionRulesJob::dispatch($user, $jobId, $transactionIds);
+        ReEvaluateTransactionRulesJob::dispatch($user, $jobId, $transactionIds, $filters);
 
         return response()->json([
             'job_id' => $jobId,

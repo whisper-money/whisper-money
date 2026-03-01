@@ -170,6 +170,39 @@ function clientFiltersToQueryParams(
     return params;
 }
 
+function clientFiltersToBackendFilters(
+    filters: Filters,
+): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+
+    if (filters.dateFrom) {
+        result.date_from = format(filters.dateFrom, 'yyyy-MM-dd');
+    }
+    if (filters.dateTo) {
+        result.date_to = format(filters.dateTo, 'yyyy-MM-dd');
+    }
+    if (filters.amountMin !== null && filters.amountMin !== undefined) {
+        result.amount_min = filters.amountMin;
+    }
+    if (filters.amountMax !== null && filters.amountMax !== undefined) {
+        result.amount_max = filters.amountMax;
+    }
+    if (filters.categoryIds.length > 0) {
+        result.category_ids = filters.categoryIds;
+    }
+    if (filters.accountIds.length > 0) {
+        result.account_ids = filters.accountIds;
+    }
+    if (filters.labelIds.length > 0) {
+        result.label_ids = filters.labelIds;
+    }
+    if (filters.searchText) {
+        result.search = filters.searchText;
+    }
+
+    return result;
+}
+
 function toDecryptedTransaction(tx: ServerTransaction): DecryptedTransaction {
     return {
         ...tx,
@@ -386,6 +419,7 @@ export default function Transactions({
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [isSelectingAll, setIsSelectingAll] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
 
     // Debounce timer ref for search
@@ -402,6 +436,7 @@ export default function Transactions({
                 const params = clientFiltersToQueryParams(newFilters, newSort);
                 setIsNavigating(true);
                 setRowSelection({});
+                setIsSelectingAll(false);
                 router.visit(transactionsIndex({ query: params }).url, {
                     preserveScroll: true,
                     preserveState: true,
@@ -619,7 +654,7 @@ export default function Transactions({
     async function handleBulkReEvaluateRules() {
         consoleDebug('=== Re-evaluating rules for bulk transactions ===');
 
-        if (selectedIds.length === 0) {
+        if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
 
@@ -627,9 +662,13 @@ export default function Transactions({
         const toastId = toast.loading(`Re-evaluating 0 of ... transactions...`);
 
         try {
+            const payload = isSelectingAll
+                ? { filters: clientFiltersToBackendFilters(filters) }
+                : { transaction_ids: selectedIds };
+
             const bulkResponse = await axios.post<{ job_id: string }>(
                 reEvaluateBulk().url,
-                { transaction_ids: selectedIds },
+                payload,
             );
 
             const jobId = bulkResponse.data.job_id;
@@ -676,6 +715,7 @@ export default function Transactions({
             });
 
             setRowSelection({});
+            setIsSelectingAll(false);
             refreshTransactions();
         } catch (error) {
             console.error('Failed to re-evaluate rules:', error);
@@ -752,39 +792,63 @@ export default function Transactions({
     }
 
     async function handleBulkCategoryChange(categoryId: number | null) {
-        if (selectedIds.length === 0) {
+        if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
 
         setIsBulkUpdating(true);
         try {
-            const categoriesMap = new Map(
-                categories.map((category) => [category.id, category]),
-            );
-            const selectedCategory = categoryId
-                ? categoriesMap.get(categoryId) || null
-                : null;
+            if (isSelectingAll) {
+                const toastId = toast.loading(__('Updating transactions...'));
+                const response = await axios.patch<{ count: number }>(
+                    '/transactions/bulk',
+                    {
+                        filters: clientFiltersToBackendFilters(filters),
+                        category_id: categoryId,
+                    },
+                );
+                toast.dismiss(toastId);
+                toast.success(
+                    __(`Updated :count transactions`, {
+                        count: response.data.count,
+                    }),
+                );
+                setRowSelection({});
+                setIsSelectingAll(false);
+                refreshTransactions();
+            } else {
+                const categoriesMap = new Map(
+                    categories.map((category) => [category.id, category]),
+                );
+                const selectedCategory = categoryId
+                    ? categoriesMap.get(categoryId) || null
+                    : null;
 
-            await transactionSyncService.updateMany(selectedIds, {
-                category_id: categoryId,
-            });
+                await transactionSyncService.updateMany(selectedIds, {
+                    category_id: categoryId,
+                });
 
-            setAllTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (selectedIds.includes(transaction.id.toString())) {
-                        return {
-                            ...transaction,
-                            category_id: categoryId,
-                            category: selectedCategory,
-                        };
-                    }
-                    return transaction;
-                }),
-            );
+                setAllTransactions((previous) =>
+                    previous.map((transaction) => {
+                        if (selectedIds.includes(transaction.id.toString())) {
+                            return {
+                                ...transaction,
+                                category_id: categoryId,
+                                category: selectedCategory,
+                            };
+                        }
+                        return transaction;
+                    }),
+                );
 
-            toast.success(`Updated ${selectedIds.length} transactions`);
+                toast.success(
+                    __(`Updated :count transactions`, {
+                        count: selectedIds.length,
+                    }),
+                );
 
-            setRowSelection({});
+                setRowSelection({});
+            }
         } catch (error) {
             console.error('Failed to update transactions:', error);
             toast.error('Failed to update transactions');
@@ -840,53 +904,77 @@ export default function Transactions({
     }
 
     async function handleBulkLabelsChange(labelIds: string[]) {
-        if (selectedIds.length === 0) {
+        if (selectedIds.length === 0 && !isSelectingAll) {
             return;
         }
 
         setIsBulkUpdating(true);
         try {
-            const selectedLabels = labels.filter((l) =>
-                labelIds.includes(l.id),
-            );
+            if (isSelectingAll) {
+                const toastId = toast.loading(__('Updating transactions...'));
+                const response = await axios.patch<{ count: number }>(
+                    '/transactions/bulk',
+                    {
+                        filters: clientFiltersToBackendFilters(filters),
+                        label_ids: labelIds,
+                    },
+                );
+                toast.dismiss(toastId);
+                toast.success(
+                    __(`Updated :count transactions`, {
+                        count: response.data.count,
+                    }),
+                );
+                setRowSelection({});
+                setIsSelectingAll(false);
+                refreshTransactions();
+            } else {
+                const selectedLabels = labels.filter((l) =>
+                    labelIds.includes(l.id),
+                );
 
-            await transactionSyncService.updateMany(selectedIds, {
-                label_ids: labelIds,
-            });
+                await transactionSyncService.updateMany(selectedIds, {
+                    label_ids: labelIds,
+                });
 
-            setAllTransactions((previous) =>
-                previous.map((transaction) => {
-                    if (selectedIds.includes(transaction.id.toString())) {
-                        if (labelIds.length === 0) {
+                setAllTransactions((previous) =>
+                    previous.map((transaction) => {
+                        if (selectedIds.includes(transaction.id.toString())) {
+                            if (labelIds.length === 0) {
+                                return {
+                                    ...transaction,
+                                    labels: [],
+                                };
+                            }
+
+                            const existingLabels = transaction.labels || [];
+                            const mergedLabels = [
+                                ...existingLabels,
+                                ...selectedLabels.filter(
+                                    (l) =>
+                                        !existingLabels.some(
+                                            (el) => el.id === l.id,
+                                        ),
+                                ),
+                            ];
+
                             return {
                                 ...transaction,
-                                labels: [],
+                                labels: mergedLabels,
                             };
                         }
+                        return transaction;
+                    }),
+                );
 
-                        const existingLabels = transaction.labels || [];
-                        const mergedLabels = [
-                            ...existingLabels,
-                            ...selectedLabels.filter(
-                                (l) =>
-                                    !existingLabels.some(
-                                        (el) => el.id === l.id,
-                                    ),
-                            ),
-                        ];
+                toast.success(
+                    __(`Updated :count transactions`, {
+                        count: selectedIds.length,
+                    }),
+                );
 
-                        return {
-                            ...transaction,
-                            labels: mergedLabels,
-                        };
-                    }
-                    return transaction;
-                }),
-            );
-
-            toast.success(`Updated ${selectedIds.length} transactions`);
-
-            setRowSelection({});
+                setRowSelection({});
+            }
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
             toast.error('Failed to update transactions with labels');
@@ -897,6 +985,11 @@ export default function Transactions({
 
     function handleClearSelection() {
         setRowSelection({});
+        setIsSelectingAll(false);
+    }
+
+    function handleSelectAll() {
+        setIsSelectingAll(true);
     }
 
     const renderTransactionRow = useCallback(
@@ -1160,12 +1253,14 @@ export default function Transactions({
 
             <BulkActionsBar
                 selectedCount={selectedCount}
+                isSelectingAll={isSelectingAll}
                 categories={categories}
                 labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
                 onLabelsChange={handleBulkLabelsChange}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
+                onSelectAll={handleSelectAll}
                 onClear={handleClearSelection}
                 isUpdating={isBulkUpdating || isReEvaluating}
             />
