@@ -99,7 +99,7 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
             <Head title={__('Accounts')} />
 
             <div className="space-y-8 p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                     <HeadingSmall
                         title={__('Accounts')}
                         description={__('View and manage your bank accounts')}

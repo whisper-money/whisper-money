@@ -27,7 +27,7 @@ export default function BudgetsIndex({ budgets, currencyCode }: Props) {
             <Head title={__('Budgets')} />
 
             <div className="space-y-8 p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                     <HeadingSmall
                         title={__('Budgets')}
                         description={__(
