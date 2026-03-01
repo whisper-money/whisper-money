@@ -1,103 +1,71 @@
-import { evaluateRules } from '@/lib/rule-engine';
-import { transactionSyncService } from '@/services/transaction-sync';
-import type { Account, Bank } from '@/types/account';
-import type { AutomationRule } from '@/types/automation-rule';
-import type { Category } from '@/types/category';
-import type { DecryptedTransaction } from '@/types/transaction';
+import {
+    bulk as reEvaluateBulk,
+    status as reEvaluateStatus,
+} from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
+import axios from 'axios';
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 
-interface ReEvaluateAllOptions {
-    onProgress?: (progress: {
-        current: number;
-        total: number;
-        transactionId: string;
-        description: string;
-    }) => void;
-}
-
 export function useReEvaluateAllTransactions() {
-    const reEvaluateAll = useCallback(
-        async (
-            transactions: DecryptedTransaction[],
-            categories: Category[],
-            accounts: Account[],
-            banks: Bank[],
-            automationRules: AutomationRule[],
-            options?: ReEvaluateAllOptions,
-        ) => {
-            if (!transactions.length) {
-                toast.error('No transactions to re-evaluate');
-                return;
-            }
+    const reEvaluateAll = useCallback(async () => {
+        const toastId = toast.loading(`Re-evaluating 0 of ... transactions...`);
 
-            if (!automationRules.length) {
-                toast.error('No automation rules found');
-                return;
-            }
-
-            const toastId = toast.loading(
-                `Re-evaluating 0 of ${transactions.length} transactions...`,
+        try {
+            const bulkResponse = await axios.post<{ job_id: string }>(
+                reEvaluateBulk().url,
             );
 
-            let successCount = 0;
+            const jobId = bulkResponse.data.job_id;
 
-            try {
-                for (let i = 0; i < transactions.length; i++) {
-                    const transaction = transactions[i];
-                    const progress = i + 1;
+            await new Promise<void>((resolve, reject) => {
+                const poll = async () => {
+                    try {
+                        const statusResponse = await axios.get<{
+                            status: string;
+                            processed: number;
+                            total: number;
+                            updated: number;
+                        }>(reEvaluateStatus({ jobId }).url);
 
-                    options?.onProgress?.({
-                        current: progress,
-                        total: transactions.length,
-                        transactionId: transaction.id,
-                        description: transaction.decryptedDescription,
-                    });
+                        const { status, processed, total, updated } =
+                            statusResponse.data;
 
-                    const result = await evaluateRules(
-                        transaction,
-                        automationRules,
-                        categories,
-                        accounts,
-                        banks,
-                        null,
-                    );
+                        toast.loading(
+                            `Re-evaluating ${processed} of ${total} transactions...`,
+                            { id: toastId },
+                        );
 
-                    if (result) {
-                        await transactionSyncService.update(transaction.id, {
-                            category_id: result.categoryId,
-                            notes: transaction.notes,
-                            notes_iv: transaction.notes_iv,
-                        });
-
-                        successCount++;
+                        if (status === 'done') {
+                            toast.dismiss(toastId);
+                            toast.success(() => (
+                                <div>
+                                    {`Re-evaluation complete!`}
+                                    <br />
+                                    {`${updated} transaction(s) updated.`}
+                                </div>
+                            ));
+                            resolve();
+                        } else if (status === 'failed') {
+                            reject(new Error('Job failed'));
+                        } else {
+                            setTimeout(poll, 1000);
+                        }
+                    } catch (error) {
+                        reject(error);
                     }
+                };
 
-                    toast.loading(
-                        `Re-evaluating ${progress} of ${transactions.length} transactions...`,
-                        { id: toastId },
-                    );
-                }
-
-                toast.dismiss(toastId);
-                toast.success(() => (
-                    <div>
-                        {`Re-evaluation complete!`}
-                        <br />
-                        {`${successCount} transaction(s) updated.`}
-                    </div>
-                ));
-            } catch (error) {
-                console.error('Failed to re-evaluate transactions:', error);
-                toast.error(
-                    'Failed to re-evaluate transactions. Please try again.',
-                    { id: toastId },
-                );
-                throw error;
-            }
-        },
-        [],
-    );
+                poll();
+            });
+        } catch (error) {
+            console.error('Failed to re-evaluate transactions:', error);
+            toast.error(
+                'Failed to re-evaluate transactions. Please try again.',
+                { id: toastId },
+            );
+            throw error;
+        }
+    }, []);
 
     return { reEvaluateAll };
 }

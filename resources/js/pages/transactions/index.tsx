@@ -11,10 +11,16 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
+import axios from 'axios';
 import { format, getYear, parseISO } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import {
+    bulk as reEvaluateBulk,
+    single as reEvaluateSingle,
+    status as reEvaluateStatus,
+} from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
@@ -56,11 +62,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
-import { getStoredKey } from '@/lib/key-storage';
-import { evaluateRules } from '@/lib/rule-engine';
-import { appendNoteIfNotPresent, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem } from '@/types';
 import { type Account, type Bank } from '@/types/account';
@@ -592,95 +595,30 @@ export default function Transactions({
 
             setIsReEvaluating(true);
             try {
-                const keyString = getStoredKey();
-                if (!keyString) {
-                    toast.error(
-                        'Please unlock your encryption key to re-evaluate rules',
-                    );
-                    return;
-                }
+                const response = await axios.post<{
+                    data: DecryptedTransaction;
+                }>(reEvaluateSingle({ transaction: transaction.id }).url);
 
-                const key = await importKey(keyString);
-                const rules = automationRules;
+                const updated = response.data.data;
 
-                if (rules.length === 0) {
-                    return;
-                }
-
-                const result = await evaluateRules(
-                    transaction,
-                    rules,
-                    categories,
-                    accounts,
-                    banks,
-                    key,
-                );
-
-                if (result) {
-                    let finalNotes = transaction.notes;
-                    let finalNotesIv = transaction.notes_iv;
-                    let decryptedNotes = transaction.decryptedNotes;
-
-                    if (result.note && result.noteIv) {
-                        const decryptedRuleNote = await decrypt(
-                            result.note,
-                            key,
-                            result.noteIv,
-                        );
-                        const combinedNote = appendNoteIfNotPresent(
-                            transaction.decryptedNotes,
-                            decryptedRuleNote,
-                        );
-
-                        if (combinedNote !== transaction.decryptedNotes) {
-                            finalNotes = combinedNote;
-                            finalNotesIv = null;
-                            decryptedNotes = combinedNote;
-                        }
-                    } else if (result.note && !result.noteIv) {
-                        const combinedNote = appendNoteIfNotPresent(
-                            transaction.decryptedNotes,
-                            result.note,
-                        );
-
-                        if (combinedNote !== transaction.decryptedNotes) {
-                            finalNotes = combinedNote;
-                            finalNotesIv = null;
-                            decryptedNotes = combinedNote;
-                        }
-                    }
-
-                    await transactionSyncService.update(transaction.id, {
-                        category_id: result.categoryId,
-                        notes: finalNotes,
-                        notes_iv: finalNotesIv,
-                    });
-
-                    const selectedCategory = result.categoryId
-                        ? categories.find((c) => c.id === result.categoryId) ||
-                          null
-                        : null;
-
-                    updateTransaction({
-                        ...transaction,
-                        category_id: result.categoryId,
-                        category: selectedCategory,
-                        notes: finalNotes,
-                        notes_iv: finalNotesIv,
-                        decryptedNotes,
-                    });
-                }
+                updateTransaction({
+                    ...transaction,
+                    category_id: updated.category_id,
+                    category: updated.category,
+                    labels: updated.labels,
+                    notes: updated.notes,
+                    notes_iv: updated.notes_iv,
+                });
             } catch (error) {
                 console.error('Failed to re-evaluate rules:', error);
             } finally {
                 setIsReEvaluating(false);
             }
         },
-        [categories, accounts, banks, updateTransaction, automationRules],
+        [updateTransaction],
     );
 
     async function handleBulkReEvaluateRules() {
-        const BATCH_SIZE = 25;
         consoleDebug('=== Re-evaluating rules for bulk transactions ===');
 
         if (selectedIds.length === 0) {
@@ -688,163 +626,64 @@ export default function Transactions({
         }
 
         setIsReEvaluating(true);
+        const toastId = toast.loading(`Re-evaluating 0 of ... transactions...`);
+
         try {
-            const keyString = getStoredKey();
-            if (!keyString) {
-                toast.error(
-                    'Please unlock your encryption key to re-evaluate rules',
-                );
-                return;
-            }
-
-            const key = await importKey(keyString);
-            const rules = automationRules;
-
-            if (rules.length === 0) {
-                return;
-            }
-
-            const selectedTransactions = allTransactions.filter((t) =>
-                selectedIds.includes(t.id.toString()),
+            const bulkResponse = await axios.post<{ job_id: string }>(
+                reEvaluateBulk().url,
+                { transaction_ids: selectedIds },
             );
 
-            const allUpdates: Array<{
-                transaction: DecryptedTransaction;
-                categoryId: string | null;
-                category: Category | null;
-                notes: string | null;
-                notesIv: string | null;
-                decryptedNotes: string | null;
-            }> = [];
+            const jobId = bulkResponse.data.job_id;
 
-            const dbUpdates: Array<{
-                id: string;
-                data: {
-                    category_id: string | null;
-                    notes: string | null;
-                    notes_iv: string | null;
+            await new Promise<void>((resolve, reject) => {
+                const poll = async () => {
+                    try {
+                        const statusResponse = await axios.get<{
+                            status: string;
+                            processed: number;
+                            total: number;
+                            updated: number;
+                        }>(reEvaluateStatus({ jobId }).url);
+
+                        const { status, processed, total, updated } =
+                            statusResponse.data;
+
+                        toast.loading(
+                            `Re-evaluating ${processed} of ${total} transactions...`,
+                            { id: toastId },
+                        );
+
+                        if (status === 'done') {
+                            toast.dismiss(toastId);
+                            toast.success(() => (
+                                <div>
+                                    {`Re-evaluation complete!`}
+                                    <br />
+                                    {`${updated} transaction(s) updated.`}
+                                </div>
+                            ));
+                            resolve();
+                        } else if (status === 'failed') {
+                            reject(new Error('Job failed'));
+                        } else {
+                            setTimeout(poll, 1000);
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
                 };
-            }> = [];
 
-            for (const transaction of selectedTransactions) {
-                const result = await evaluateRules(
-                    transaction,
-                    rules,
-                    categories,
-                    accounts,
-                    banks,
-                    key,
-                );
-
-                if (result) {
-                    let finalNotes = transaction.notes;
-                    let finalNotesIv = transaction.notes_iv;
-
-                    if (result.note && result.noteIv) {
-                        const decryptedRuleNote = await decrypt(
-                            result.note,
-                            key,
-                            result.noteIv,
-                        );
-                        const combinedNote = appendNoteIfNotPresent(
-                            transaction.decryptedNotes,
-                            decryptedRuleNote,
-                        );
-
-                        if (combinedNote !== transaction.decryptedNotes) {
-                            finalNotes = combinedNote;
-                            finalNotesIv = null;
-                        }
-                    } else if (result.note && !result.noteIv) {
-                        const combinedNote = appendNoteIfNotPresent(
-                            transaction.decryptedNotes,
-                            result.note,
-                        );
-
-                        if (combinedNote !== transaction.decryptedNotes) {
-                            finalNotes = combinedNote;
-                            finalNotesIv = null;
-                        }
-                    }
-
-                    dbUpdates.push({
-                        id: transaction.id,
-                        data: {
-                            category_id: result.categoryId,
-                            notes: finalNotes,
-                            notes_iv: finalNotesIv,
-                        },
-                    });
-
-                    const selectedCategory = result.categoryId
-                        ? categories.find((c) => c.id === result.categoryId) ||
-                          null
-                        : null;
-
-                    let decryptedNotes = transaction.decryptedNotes;
-                    if (finalNotes && !finalNotesIv) {
-                        decryptedNotes = finalNotes;
-                    } else if (finalNotes && finalNotesIv) {
-                        decryptedNotes = await decrypt(
-                            finalNotes,
-                            key,
-                            finalNotesIv,
-                        );
-                    }
-
-                    allUpdates.push({
-                        transaction,
-                        categoryId: result.categoryId,
-                        category: selectedCategory,
-                        notes: finalNotes,
-                        notesIv: finalNotesIv,
-                        decryptedNotes,
-                    });
-                }
-            }
-
-            if (dbUpdates.length > 0) {
-                await transactionSyncService.updateManyIndividual(dbUpdates);
-            }
-
-            if (allUpdates.length > 0) {
-                for (let i = 0; i < allUpdates.length; i += BATCH_SIZE) {
-                    const batch = allUpdates.slice(i, i + BATCH_SIZE);
-                    const batchIds = new Set(
-                        batch.map((u) => u.transaction.id),
-                    );
-
-                    setAllTransactions((previous) =>
-                        previous.map((transaction) => {
-                            if (!batchIds.has(transaction.id)) {
-                                return transaction;
-                            }
-                            const update = batch.find(
-                                (u) => u.transaction.id === transaction.id,
-                            );
-                            if (update) {
-                                return {
-                                    ...transaction,
-                                    category_id: update.categoryId,
-                                    category: update.category,
-                                    notes: update.notes,
-                                    notes_iv: update.notesIv,
-                                    decryptedNotes: update.decryptedNotes,
-                                };
-                            }
-                            return transaction;
-                        }),
-                    );
-
-                    if (i + BATCH_SIZE < allUpdates.length) {
-                        await new Promise((resolve) => setTimeout(resolve, 50));
-                    }
-                }
-            }
+                poll();
+            });
 
             setRowSelection({});
+            refreshTransactions();
         } catch (error) {
             console.error('Failed to re-evaluate rules:', error);
+            toast.error('Failed to re-evaluate rules. Please try again.', {
+                id: toastId,
+            });
         } finally {
             setIsReEvaluating(false);
         }

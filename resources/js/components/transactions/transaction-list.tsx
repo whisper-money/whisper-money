@@ -24,6 +24,7 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 
+import { single as reEvaluateSingle } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
@@ -58,7 +59,6 @@ import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
-import { evaluateRules } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
@@ -836,80 +836,24 @@ export function TransactionList({
     const handleReEvaluateRules = useCallback(
         async (transaction: DecryptedTransaction) => {
             consoleDebug('=== Re-evaluating rules for single transaction ===');
-            consoleDebug('Transaction:', {
-                id: transaction.id,
-                description: transaction.decryptedDescription,
-                amount: transaction.amount,
-                currentCategory: transaction.category?.name || 'None',
-            });
 
             setIsReEvaluating(true);
             try {
-                consoleDebug(
-                    `Found ${automationRules.length} automation rules`,
-                );
+                const response = await axios.post<{
+                    data: DecryptedTransaction;
+                }>(reEvaluateSingle({ transaction: transaction.id }).url);
 
-                if (automationRules.length === 0) {
-                    consoleDebug('❌ No rules to evaluate');
-                    return;
-                }
+                const updated = response.data.data;
 
-                consoleDebug('Evaluating rules against transaction...');
-                const result = await evaluateRules(
-                    transaction,
-                    automationRules,
-                    categories,
-                    accounts,
-                    banks,
-                    null,
-                );
-
-                consoleDebug('Rule evaluation result:', result);
-
-                if (result) {
-                    consoleDebug('✓ Rule matched! Applying changes...');
-                    let finalNotes = transaction.notes;
-                    let finalNotesIv = transaction.notes_iv;
-
-                    const updateData = {
-                        category_id: result.categoryId,
-                        notes: finalNotes,
-                        notes_iv: finalNotesIv,
-                    };
-                    consoleDebug('Updating transaction with:', updateData);
-
-                    await transactionSyncService.update(
-                        transaction.id,
-                        updateData,
-                    );
-                    consoleDebug('✓ Transaction updated in IndexedDB');
-
-                    const selectedCategory = result.categoryId
-                        ? categories.find((c) => c.id === result.categoryId) ||
-                          null
-                        : null;
-
-                    const decryptedNotes = transaction.decryptedNotes;
-
-                    const updatedTransaction = {
-                        ...transaction,
-                        category_id: result.categoryId,
-                        category: selectedCategory,
-                        notes: finalNotes,
-                        notes_iv: finalNotesIv,
-                        decryptedNotes,
-                    };
-                    consoleDebug('Updating UI state with:', {
-                        id: updatedTransaction.id,
-                        newCategory: selectedCategory?.name || 'None',
-                        hasNotes: !!decryptedNotes,
-                    });
-
-                    updateTransaction(updatedTransaction);
-                    consoleDebug('✓ UI state updated successfully');
-                } else {
-                    consoleDebug('❌ No rules matched this transaction');
-                }
+                updateTransaction({
+                    ...transaction,
+                    category_id: updated.category_id,
+                    category: updated.category,
+                    labels: updated.labels,
+                    notes: updated.notes,
+                    notes_iv: updated.notes_iv,
+                });
+                consoleDebug('✓ UI state updated successfully');
             } catch (error) {
                 consoleDebug('❌ Error during re-evaluation:', error);
                 console.error('Failed to re-evaluate rules:', error);
@@ -932,132 +876,67 @@ export function TransactionList({
         }
 
         setIsReEvaluating(true);
+        const toastId = toast.loading(`Re-evaluating 0 of ... transactions...`);
+
         try {
-            consoleDebug(`Found ${automationRules.length} automation rules`);
-
-            if (automationRules.length === 0) {
-                consoleDebug('❌ No rules to evaluate');
-                return;
-            }
-
-            const selectedTransactions = transactions.filter((t) =>
-                selectedIds.includes(t.id.toString()),
-            );
-            consoleDebug(
-                'Processing transactions:',
-                selectedTransactions.map((t) => ({
-                    id: t.id,
-                    description: t.decryptedDescription,
-                    currentCategory: t.category?.name || 'None',
-                })),
+            const bulkResponse = await axios.post<{ job_id: string }>(
+                reEvaluateBulk().url,
+                { transaction_ids: selectedIds },
             );
 
-            const updates: Array<{
-                transaction: DecryptedTransaction;
-                categoryId: number | null;
-                category: Category | null;
-                notes: string | null;
-                notesIv: string | null;
-                decryptedNotes: string | null;
-            }> = [];
+            const jobId = bulkResponse.data.job_id;
 
-            for (const transaction of selectedTransactions) {
-                consoleDebug(`\nEvaluating transaction ${transaction.id}...`);
-                const result = await evaluateRules(
-                    transaction,
-                    automationRules,
-                    categories,
-                    accounts,
-                    banks,
-                    null,
-                );
+            await new Promise<void>((resolve, reject) => {
+                const poll = async () => {
+                    try {
+                        const statusResponse = await axios.get<{
+                            status: string;
+                            processed: number;
+                            total: number;
+                            updated: number;
+                        }>(reEvaluateStatus({ jobId }).url);
 
-                consoleDebug('Rule evaluation result:', result);
+                        const { status, processed, total, updated } =
+                            statusResponse.data;
 
-                if (result) {
-                    consoleDebug('✓ Rule matched! Applying changes...');
-                    const finalNotes = transaction.notes;
-                    const finalNotesIv = transaction.notes_iv;
-
-                    const updateData = {
-                        category_id: result.categoryId,
-                        notes: finalNotes,
-                        notes_iv: finalNotesIv,
-                    };
-                    consoleDebug('Updating transaction with:', updateData);
-
-                    await transactionSyncService.update(
-                        transaction.id,
-                        updateData,
-                    );
-                    consoleDebug('✓ Transaction updated in IndexedDB');
-
-                    const selectedCategory = result.categoryId
-                        ? categories.find((c) => c.id === result.categoryId) ||
-                          null
-                        : null;
-
-                    const decryptedNotes = transaction.decryptedNotes;
-
-                    updates.push({
-                        transaction,
-                        categoryId: result.categoryId,
-                        category: selectedCategory,
-                        notes: finalNotes,
-                        notesIv: finalNotesIv,
-                        decryptedNotes,
-                    });
-                    consoleDebug(
-                        `✓ Queued update for transaction ${transaction.id}`,
-                    );
-                } else {
-                    consoleDebug(
-                        `❌ No rules matched transaction ${transaction.id}`,
-                    );
-                }
-            }
-
-            consoleDebug(`\nApplying ${updates.length} updates to UI state...`);
-            if (updates.length > 0) {
-                setTransactions((previous) =>
-                    previous.map((transaction) => {
-                        const update = updates.find(
-                            (u) => u.transaction.id === transaction.id,
+                        toast.loading(
+                            `Re-evaluating ${processed} of ${total} transactions...`,
+                            { id: toastId },
                         );
-                        if (update) {
-                            consoleDebug(
-                                `Updating UI for transaction ${transaction.id}:`,
-                                {
-                                    newCategory:
-                                        update.category?.name || 'None',
-                                    hasNotes: !!update.decryptedNotes,
-                                },
-                            );
-                            return {
-                                ...transaction,
-                                category_id: update.categoryId,
-                                category: update.category,
-                                notes: update.notes,
-                                notes_iv: update.notesIv,
-                                decryptedNotes: update.decryptedNotes,
-                            };
-                        }
-                        return transaction;
-                    }),
-                );
-                consoleDebug('✓ UI state updated successfully');
-            } else {
-                consoleDebug('❌ No updates to apply');
-            }
 
-            consoleDebug('Clearing selection...');
+                        if (status === 'done') {
+                            toast.dismiss(toastId);
+                            toast.success(() => (
+                                <div>
+                                    {`Re-evaluation complete!`}
+                                    <br />
+                                    {`${updated} transaction(s) updated.`}
+                                </div>
+                            ));
+                            resolve();
+                        } else if (status === 'failed') {
+                            reject(new Error('Job failed'));
+                        } else {
+                            setTimeout(poll, 1000);
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+
+                poll();
+            });
+
             setRowSelection({});
+            consoleDebug('=== Bulk re-evaluation complete ===');
         } catch (error) {
             consoleDebug('❌ Error during bulk re-evaluation:', error);
             console.error('Failed to re-evaluate rules:', error);
+            toast.error('Failed to re-evaluate rules. Please try again.', {
+                id: toastId,
+            });
         } finally {
             setIsReEvaluating(false);
-            consoleDebug('=== Bulk re-evaluation complete ===');
         }
     }
 
