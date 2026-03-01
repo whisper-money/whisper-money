@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.16](https://github.com/whisper-money/whisper-money/compare/v0.1.14...v0.1.16) (2026-03-01)
+
+
+### Bug Fixes
+
+* **i18n:** localise missing strings in budget dialogs to Spanish ([#177](https://github.com/whisper-money/whisper-money/issues/177)) ([7260525](https://github.com/whisper-money/whisper-money/commit/7260525890a9ca94bbecdf7e38c6ce81e5f900ee))
+* **i18n:** localize billing settings page into Spanish ([#176](https://github.com/whisper-money/whisper-money/issues/176)) ([7a8eda9](https://github.com/whisper-money/whisper-money/commit/7a8eda9d905ec3dc771671a474f566a0205aa87d))
+* **i18n:** localize mobile bottom navigation labels into Spanish ([#173](https://github.com/whisper-money/whisper-money/issues/173)) ([717bf34](https://github.com/whisper-money/whisper-money/commit/717bf34103855cdb7c39fb6fab2559f8f797782e))
+* Missing space between page sections and create button ([6c5961d](https://github.com/whisper-money/whisper-money/commit/6c5961da050b3548134f685e5b591f8dc314481e))
+* **tooling:** fix stringWidth error in release-it interactive prompt ([#179](https://github.com/whisper-money/whisper-money/issues/179)) ([866f908](https://github.com/whisper-money/whisper-money/commit/866f90838e4e9be8c3bccb1034ae339868c60a4c))
+* **transactions:** fix toolbar overflow on mobile and shorten button label ([#175](https://github.com/whisper-money/whisper-money/issues/175)) ([0388705](https://github.com/whisper-money/whisper-money/commit/0388705c1236e0398f1c8246ce6426e76f27c6ee))
+
+
+### Features
+
+* **Budgets:** add period navigation and unify period selector UI ([#171](https://github.com/whisper-money/whisper-money/issues/171)) ([0493b87](https://github.com/whisper-money/whisper-money/commit/0493b87562ac0d66aa933e4b77863265b7c72e24))
+* **i18n:** add localization test and fix missing Spanish translations ([#174](https://github.com/whisper-money/whisper-money/issues/174)) ([9317238](https://github.com/whisper-money/whisper-money/commit/9317238c49269f99e6689e580f1bea0f0f28288a))
+* **nav:** add icon+label mobile nav with active pill and full-width buttons ([#178](https://github.com/whisper-money/whisper-money/issues/178)) ([efd86bc](https://github.com/whisper-money/whisper-money/commit/efd86bc8d7e3aca3b433bc3d880f8c279d790f8c))
+* **rules:** move automation rule evaluation to the backend ([#168](https://github.com/whisper-money/whisper-money/issues/168)) ([eda72d4](https://github.com/whisper-money/whisper-money/commit/eda72d4304948fb73094195fb71509d0b08c8f67))
+* **transactions:** re-add select all matching filters to bulk actions bar ([#169](https://github.com/whisper-money/whisper-money/issues/169)) ([0d9fc5a](https://github.com/whisper-money/whisper-money/commit/0d9fc5a2b9243c0d449f497c12b2978038fdf42a))
+* **ui:** add create buttons to accounts and budgets pages ([#172](https://github.com/whisper-money/whisper-money/issues/172)) ([9f5e62f](https://github.com/whisper-money/whisper-money/commit/9f5e62f736803a43467673c635758143caac7f48))
+* **ui:** add glowing effect to all card components ([#170](https://github.com/whisper-money/whisper-money/issues/170)) ([4d14e4d](https://github.com/whisper-money/whisper-money/commit/4d14e4d2f0c006245bcb473ac8a0b11930dee460))
+
 ## [0.1.14](https://github.com/whisper-money/whisper-money/compare/v0.1.13...v0.1.14) (2026-03-01)
 
 
