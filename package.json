@@ -1,10 +1,11 @@
 {
     "$schema": "https://json.schemastore.org/package.json",
     "name": "whisper-money",
-    "version": "0.1.14",
+    "version": "0.1.15",
     "private": true,
     "type": "module",
     "scripts": {
+        "postinstall": "node scripts/patch-inquirer-string-width.js",
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",
