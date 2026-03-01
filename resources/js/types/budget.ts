@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import { Category } from './category';
 import { Label } from './label';
 import { Transaction } from './transaction';
@@ -66,26 +67,26 @@ export interface BudgetHistoryData {
 
 export function getBudgetPeriodTypeLabel(type: BudgetPeriodType): string {
     const labels: Record<BudgetPeriodType, string> = {
-        monthly: 'Monthly',
-        weekly: 'Weekly',
-        biweekly: 'Bi-weekly',
-        custom: 'Custom',
+        monthly: __('Monthly'),
+        weekly: __('Weekly'),
+        biweekly: __('Bi-weekly'),
+        custom: __('Custom'),
     };
     return labels[type];
 }
 
 export function getRolloverTypeLabel(type: RolloverType): string {
     const labels: Record<RolloverType, string> = {
-        carry_over: 'Carry Over',
-        reset: 'Reset/Pool',
+        carry_over: __('Carry Over'),
+        reset: __('Reset/Pool'),
     };
     return labels[type];
 }
 
 export function getRolloverTypeDescription(type: RolloverType): string {
     const descriptions: Record<RolloverType, string> = {
-        carry_over: 'Remaining balance carries over to next period',
-        reset: 'Remaining balance returns to available money pool',
+        carry_over: __('Remaining balance carries over to next period'),
+        reset: __('Remaining balance returns to available money pool'),
     };
     return descriptions[type];
 }
