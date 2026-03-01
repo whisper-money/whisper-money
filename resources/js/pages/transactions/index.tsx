@@ -386,7 +386,6 @@ export default function Transactions({
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const [isSelectingAll, setIsSelectingAll] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
 
     // Debounce timer ref for search
@@ -403,7 +402,6 @@ export default function Transactions({
                 const params = clientFiltersToQueryParams(newFilters, newSort);
                 setIsNavigating(true);
                 setRowSelection({});
-                setIsSelectingAll(false);
                 router.visit(transactionsIndex({ query: params }).url, {
                     preserveScroll: true,
                     preserveState: true,
@@ -754,7 +752,7 @@ export default function Transactions({
     }
 
     async function handleBulkCategoryChange(categoryId: number | null) {
-        if (selectedIds.length === 0 && !isSelectingAll) {
+        if (selectedIds.length === 0) {
             return;
         }
 
@@ -767,43 +765,26 @@ export default function Transactions({
                 ? categoriesMap.get(categoryId) || null
                 : null;
 
-            if (isSelectingAll) {
-                await transactionSyncService.updateByFilters(filters, {
-                    category_id: categoryId,
-                });
+            await transactionSyncService.updateMany(selectedIds, {
+                category_id: categoryId,
+            });
 
-                setAllTransactions((previous) =>
-                    previous.map((transaction) => ({
-                        ...transaction,
-                        category_id: categoryId,
-                        category: selectedCategory,
-                    })),
-                );
+            setAllTransactions((previous) =>
+                previous.map((transaction) => {
+                    if (selectedIds.includes(transaction.id.toString())) {
+                        return {
+                            ...transaction,
+                            category_id: categoryId,
+                            category: selectedCategory,
+                        };
+                    }
+                    return transaction;
+                }),
+            );
 
-                toast.success(`Updated all filtered transactions`);
-            } else {
-                await transactionSyncService.updateMany(selectedIds, {
-                    category_id: categoryId,
-                });
-
-                setAllTransactions((previous) =>
-                    previous.map((transaction) => {
-                        if (selectedIds.includes(transaction.id.toString())) {
-                            return {
-                                ...transaction,
-                                category_id: categoryId,
-                                category: selectedCategory,
-                            };
-                        }
-                        return transaction;
-                    }),
-                );
-
-                toast.success(`Updated ${selectedIds.length} transactions`);
-            }
+            toast.success(`Updated ${selectedIds.length} transactions`);
 
             setRowSelection({});
-            setIsSelectingAll(false);
         } catch (error) {
             console.error('Failed to update transactions:', error);
             toast.error('Failed to update transactions');
@@ -859,7 +840,7 @@ export default function Transactions({
     }
 
     async function handleBulkLabelsChange(labelIds: string[]) {
-        if (selectedIds.length === 0 && !isSelectingAll) {
+        if (selectedIds.length === 0) {
             return;
         }
 
@@ -869,13 +850,13 @@ export default function Transactions({
                 labelIds.includes(l.id),
             );
 
-            if (isSelectingAll) {
-                await transactionSyncService.updateByFilters(filters, {
-                    label_ids: labelIds,
-                });
+            await transactionSyncService.updateMany(selectedIds, {
+                label_ids: labelIds,
+            });
 
-                setAllTransactions((previous) =>
-                    previous.map((transaction) => {
+            setAllTransactions((previous) =>
+                previous.map((transaction) => {
+                    if (selectedIds.includes(transaction.id.toString())) {
                         if (labelIds.length === 0) {
                             return {
                                 ...transaction,
@@ -898,50 +879,14 @@ export default function Transactions({
                             ...transaction,
                             labels: mergedLabels,
                         };
-                    }),
-                );
+                    }
+                    return transaction;
+                }),
+            );
 
-                toast.success(`Updated all filtered transactions`);
-            } else {
-                await transactionSyncService.updateMany(selectedIds, {
-                    label_ids: labelIds,
-                });
-
-                setAllTransactions((previous) =>
-                    previous.map((transaction) => {
-                        if (selectedIds.includes(transaction.id.toString())) {
-                            if (labelIds.length === 0) {
-                                return {
-                                    ...transaction,
-                                    labels: [],
-                                };
-                            }
-
-                            const existingLabels = transaction.labels || [];
-                            const mergedLabels = [
-                                ...existingLabels,
-                                ...selectedLabels.filter(
-                                    (l) =>
-                                        !existingLabels.some(
-                                            (el) => el.id === l.id,
-                                        ),
-                                ),
-                            ];
-
-                            return {
-                                ...transaction,
-                                labels: mergedLabels,
-                            };
-                        }
-                        return transaction;
-                    }),
-                );
-
-                toast.success(`Updated ${selectedIds.length} transactions`);
-            }
+            toast.success(`Updated ${selectedIds.length} transactions`);
 
             setRowSelection({});
-            setIsSelectingAll(false);
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
             toast.error('Failed to update transactions with labels');
@@ -952,22 +897,7 @@ export default function Transactions({
 
     function handleClearSelection() {
         setRowSelection({});
-        setIsSelectingAll(false);
     }
-
-    const handleSelectAll = useCallback(() => {
-        setIsSelectingAll(true);
-        requestAnimationFrame(() => {
-            const allIds = allTransactions.reduce(
-                (acc, transaction) => {
-                    acc[transaction.id.toString()] = true;
-                    return acc;
-                },
-                {} as Record<string, boolean>,
-            );
-            setRowSelection(allIds);
-        });
-    }, [allTransactions]);
 
     const renderTransactionRow = useCallback(
         (
@@ -1230,15 +1160,12 @@ export default function Transactions({
 
             <BulkActionsBar
                 selectedCount={selectedCount}
-                totalFilteredCount={allTransactions.length}
-                isSelectingAll={isSelectingAll}
                 categories={categories}
                 labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
                 onLabelsChange={handleBulkLabelsChange}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
-                onSelectAll={handleSelectAll}
                 onClear={handleClearSelection}
                 isUpdating={isBulkUpdating || isReEvaluating}
             />

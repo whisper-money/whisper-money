@@ -9,49 +9,31 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
-import {
-    CheckCheck,
-    MoreHorizontal,
-    Trash2,
-    WandSparkles,
-    X,
-} from 'lucide-react';
+import { MoreHorizontal, Trash2, WandSparkles, X } from 'lucide-react';
 
 interface BulkActionsBarProps {
     selectedCount: number;
-    totalFilteredCount?: number;
-    isSelectingAll?: boolean;
     categories: Category[];
     labels: Label[];
     onCategoryChange: (categoryId: number | null) => void;
     onLabelsChange: (labelIds: string[]) => void;
     onDelete: () => void;
     onReEvaluateRules: () => void;
-    onSelectAll?: () => void;
     onClear: () => void;
     isUpdating?: boolean;
 }
 
 export function BulkActionsBar({
     selectedCount,
-    totalFilteredCount,
-    isSelectingAll = false,
     categories,
     labels,
     onCategoryChange,
     onLabelsChange,
     onDelete,
     onReEvaluateRules,
-    onSelectAll,
     onClear,
     isUpdating = false,
 }: BulkActionsBarProps) {
@@ -59,47 +41,16 @@ export function BulkActionsBar({
         return null;
     }
 
-    const displayCount = isSelectingAll ? totalFilteredCount : selectedCount;
-    const canSelectAll =
-        !isSelectingAll &&
-        totalFilteredCount &&
-        selectedCount < totalFilteredCount &&
-        onSelectAll;
-
     return (
         <div className="fixed bottom-6 flex w-full animate-in items-center justify-center duration-300 slide-in-from-bottom-5 slide-out-to-bottom-5 fade-in fade-out">
             <div className="flex max-w-[75%] flex-row items-center justify-between gap-10 rounded-full border border-border bg-card px-4 py-2 shadow-lg">
                 <div className="flex items-center gap-2 pl-2 text-sm">
-                    {canSelectAll && (
-                        <>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={onSelectAll}
-                                            disabled={isUpdating}
-                                            className="h-auto px-0 py-1 text-xs text-primary hover:text-primary/80"
-                                        >
-                                            <CheckCheck className="mr-1 h-3 w-3" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        {__(
-                                            'Select all transactions matching filter',
-                                        )}
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </>
-                    )}
-                    {displayCount !== 1
+                    {selectedCount !== 1
                         ? __(`:count transactions`, {
-                              count: displayCount ?? 0,
+                              count: selectedCount,
                           })
                         : __(`:count transaction`, {
-                              count: displayCount ?? 0,
+                              count: selectedCount,
                           })}
                 </div>
 
