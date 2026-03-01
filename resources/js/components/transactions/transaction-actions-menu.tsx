@@ -74,20 +74,9 @@ export function TransactionActionsMenu({
     };
 
     const handleReEvaluateAll = async () => {
-        if (!transactions.length) {
-            toast.error('No transactions to re-evaluate');
-            return;
-        }
-
         setIsReEvaluating(true);
         try {
-            await reEvaluateAll(
-                transactions,
-                categories,
-                accounts,
-                banks,
-                automationRules,
-            );
+            await reEvaluateAll();
             onReEvaluateComplete?.();
         } finally {
             setIsReEvaluating(false);
@@ -193,7 +182,7 @@ export function TransactionActionsMenu({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={handleReEvaluateAll}
-                            disabled={isReEvaluating || !transactions.length}
+                            disabled={isReEvaluating}
                         >
                             <WandSparkles className="mr-2 h-4 w-4" />
                             {__('Re-evaluate All Expenses')}

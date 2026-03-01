@@ -85,8 +85,27 @@ class AutomationRuleService
 
     private function applyActions(Transaction $transaction, AutomationRule $rule): void
     {
+        $dirty = false;
+
         if ($rule->action_category_id) {
             $transaction->category_id = $rule->action_category_id;
+            $dirty = true;
+        }
+
+        // Only apply plain (unencrypted) notes — encrypted notes require the user's key
+        if ($rule->action_note && $rule->action_note_iv === null) {
+            $existingNotes = $transaction->notes ?? '';
+            $ruleNote = $rule->action_note;
+
+            if (! $this->noteAlreadyPresent($existingNotes, $ruleNote)) {
+                $transaction->notes = $existingNotes
+                    ? $existingNotes."\n".$ruleNote
+                    : $ruleNote;
+                $dirty = true;
+            }
+        }
+
+        if ($dirty) {
             $transaction->saveQuietly();
         }
 
@@ -94,6 +113,11 @@ class AutomationRuleService
         if (! empty($labelIds)) {
             $transaction->labels()->syncWithoutDetaching($labelIds);
         }
+    }
+
+    private function noteAlreadyPresent(string $existingNotes, string $note): bool
+    {
+        return mb_strpos($existingNotes, $note) !== false;
     }
 
     private function normalizeRuleJson(mixed $rulesJson): mixed

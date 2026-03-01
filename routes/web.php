@@ -11,6 +11,7 @@ use App\Http\Controllers\OpenBanking\BinanceController;
 use App\Http\Controllers\OpenBanking\BitpandaController;
 use App\Http\Controllers\OpenBanking\IndexaCapitalController;
 use App\Http\Controllers\OpenBanking\InstitutionController;
+use App\Http\Controllers\ReEvaluateTransactionRulesController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
@@ -65,8 +66,11 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('transactions/categorize', [TransactionController::class, 'categorize'])->name('transactions.categorize');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
+    Route::post('transactions/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'bulk'])->name('transactions.re-evaluate-rules.bulk');
+    Route::get('transactions/re-evaluate-rules/status/{jobId}', [ReEvaluateTransactionRulesController::class, 'status'])->name('transactions.re-evaluate-rules.status');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+    Route::post('transactions/{transaction}/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'single'])->name('transactions.re-evaluate-rules.single');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'open-banking'])->prefix('open-banking')->group(function () {
