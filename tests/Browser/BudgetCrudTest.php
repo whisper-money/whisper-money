@@ -69,8 +69,10 @@ test('user can update budget name', function () {
 
     $page->assertSee('Old Name')
         ->wait(2)
-        ->waitForText('Edit budget', 10)
+        ->waitFor('[aria-label="More options"]', 10)
         ->wait(1) // Extra wait before clicking
+        ->click('[aria-label="More options"]')
+        ->wait(1) // Wait for dropdown to open
         ->click('Edit budget')
         ->wait(3) // Wait for dialog to open
         ->assertSee('Edit Budget')
@@ -106,11 +108,11 @@ test('user can delete a budget', function () {
 
     $page->assertSee('Budget to Delete')
         ->wait(2)
-        ->waitForText('Edit budget', 10)
+        ->waitFor('[aria-label="More options"]', 10)
         ->wait(1) // Extra wait before clicking
         ->click('[aria-label="More options"]')
         ->wait(1) // Wait for dropdown to open
-        ->click('Delete')
+        ->click('Delete budget')
         ->wait(3) // Wait for dialog to open
         ->assertSee('Delete Budget')
         ->assertSee('Are you sure')
