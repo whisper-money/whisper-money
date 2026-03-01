@@ -15,12 +15,18 @@ import { SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { Link2, PenLine } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
 
 type Mode = 'choice' | 'manual';
 
-export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
+export function CreateAccountDialog({
+    onSuccess,
+    trigger,
+}: {
+    onSuccess?: () => void;
+    trigger?: React.ReactNode;
+}) {
     const { features } = usePage<SharedData>().props;
     const openBankingEnabled = features['open-banking'];
 
@@ -156,7 +162,9 @@ export function CreateAccountDialog({ onSuccess }: { onSuccess?: () => void }) {
         <>
             <Dialog open={open} onOpenChange={handleOpenChange}>
                 <DialogTrigger asChild>
-                    <CreateButton>{__('Create Account')}</CreateButton>
+                    {trigger ?? (
+                        <CreateButton>{__('Create Account')}</CreateButton>
+                    )}
                 </DialogTrigger>
                 <DialogContent hasKeyboard className="sm:max-w-[425px]">
                     <DialogHeader>
