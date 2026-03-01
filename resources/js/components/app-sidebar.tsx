@@ -17,6 +17,7 @@ import {
 } from '@/providers/menu-item-provider';
 import { dashboard } from '@/routes';
 import { SharedData } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 import AppLogo from './app-logo';
@@ -48,7 +49,7 @@ export function AppSidebar() {
                             ])}
                         >
                             <item.icon className="size-5 text-primary" />
-                            <span className="text-xs">{item.title}</span>
+                            <span className="text-xs">{__(item.title)}</span>
                         </Link>
                     );
                 })}
