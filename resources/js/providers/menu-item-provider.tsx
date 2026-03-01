@@ -12,12 +12,33 @@ import {
     TrendingUp,
 } from 'lucide-react';
 
-export function getMainNavItems(features: Features): NavItem[] {
+const mobileLabels: Record<string, Record<string, string>> = {
+    en: {
+        dashboard: 'Home',
+        cashflow: 'Cashflow',
+        accounts: 'Accounts',
+        transactions: 'Movements',
+        budgets: 'Budget',
+    },
+    es: {
+        dashboard: 'Inicio',
+        cashflow: 'Flujo',
+        accounts: 'Cuentas',
+        transactions: 'Movim.',
+        budgets: 'Presup.',
+    },
+};
+
+function getMobileLabel(key: string, locale: string): string {
+    return (mobileLabels[locale] ?? mobileLabels['en'])[key];
+}
+
+export function getMainNavItems(features: Features, locale: string): NavItem[] {
     const items: NavItem[] = [
         {
             type: 'nav-item',
             title: 'Dashboard',
-            mobileTitle: 'Home',
+            mobileTitle: getMobileLabel('dashboard', locale),
             href: dashboard(),
             icon: LayoutGrid,
         },
@@ -27,7 +48,7 @@ export function getMainNavItems(features: Features): NavItem[] {
         items.push({
             type: 'nav-item',
             title: 'Cashflow',
-            mobileTitle: 'Cashflow_short',
+            mobileTitle: getMobileLabel('cashflow', locale),
             href: cashflow(),
             icon: TrendingUp,
         });
@@ -37,21 +58,21 @@ export function getMainNavItems(features: Features): NavItem[] {
         {
             type: 'nav-item',
             title: 'Accounts',
-            mobileTitle: 'Accounts',
+            mobileTitle: getMobileLabel('accounts', locale),
             href: accountsIndex(),
             icon: CreditCard,
         },
         {
             type: 'nav-item',
             title: 'Transactions',
-            mobileTitle: 'Movements',
+            mobileTitle: getMobileLabel('transactions', locale),
             href: transactionsIndex(),
             icon: Receipt,
         },
         {
             type: 'nav-item',
             title: 'Budgets',
-            mobileTitle: 'Budget',
+            mobileTitle: getMobileLabel('budgets', locale),
             href: budgetsIndex(),
             icon: PiggyBank,
         },
