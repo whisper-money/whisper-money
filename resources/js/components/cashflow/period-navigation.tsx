@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import { useLocale } from '@/hooks/use-locale';
 import { formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -31,32 +32,29 @@ export function PeriodNavigation({
     };
 
     return (
-        <div className="flex items-center gap-2">
+        <ButtonGroup>
             <Button
                 variant="outline"
-                size="icon-sm"
+                size="icon"
                 onClick={handlePrevMonth}
                 aria-label={__('Previous month')}
             >
                 <ChevronLeft className="size-4" />
             </Button>
 
-            <button
-                onClick={handleCurrentMonth}
-                className="min-w-[140px] rounded-md px-3 py-1.5 text-center text-sm font-medium hover:bg-accent"
-            >
+            <Button onClick={handleCurrentMonth} variant="outline">
                 {formatMonthYear(currentDate, locale)}
-            </button>
+            </Button>
 
             <Button
                 variant="outline"
-                size="icon-sm"
+                size="icon"
                 onClick={handleNextMonth}
                 disabled={isCurrentMonth}
                 aria-label={__('Next month')}
             >
                 <ChevronRight className="size-4" />
             </Button>
-        </div>
+        </ButtonGroup>
     );
 }
