@@ -42,8 +42,8 @@ export function BulkActionsBar({
     }
 
     return (
-        <div className="fixed bottom-6 flex w-full animate-in items-center justify-center duration-300 slide-in-from-bottom-5 slide-out-to-bottom-5 fade-in fade-out">
-            <div className="flex max-w-[75%] flex-row items-center justify-between gap-10 rounded-full border border-border bg-card px-4 py-2 shadow-lg">
+        <div className="fixed right-0 bottom-8 left-0 flex w-full animate-in items-center justify-center duration-300 slide-in-from-bottom-5 slide-out-to-bottom-5 fade-in fade-out">
+            <div className="flex max-w-[75%] flex-row items-center justify-between gap-6 rounded-full border border-border bg-sidebar px-4 py-2 shadow-lg">
                 <div className="flex items-center gap-2 pl-2 text-sm">
                     {selectedCount !== 1
                         ? __(`:count transactions`, {
