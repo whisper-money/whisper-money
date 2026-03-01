@@ -62,8 +62,10 @@ export default function Appearance() {
 
                 <div className="space-y-6">
                     <HeadingSmall
-                        title="Chart color scheme"
-                        description="Choose the color palette for your charts"
+                        title={__('Chart color scheme')}
+                        description={__(
+                            'Choose the color palette for your charts',
+                        )}
                     />
                     <Select value={scheme} onValueChange={handleSchemeChange}>
                         <SelectTrigger className="w-48">
@@ -72,7 +74,7 @@ export default function Appearance() {
                         <SelectContent>
                             {schemes.map(({ value, label }) => (
                                 <SelectItem key={value} value={value}>
-                                    {label}
+                                    {__(label)}
                                 </SelectItem>
                             ))}
                         </SelectContent>

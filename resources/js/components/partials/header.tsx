@@ -173,7 +173,7 @@ export default function Header({
                                     >
                                         <Github className="size-5" />
                                         <span className="hidden sm:inline">
-                                            Github
+                                            {__('Github')}
                                         </span>
                                         {stars !== null && (
                                             <span className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
@@ -200,7 +200,7 @@ export default function Header({
                                     >
                                         <DiscordIcon className="size-5" />
                                         <span className="hidden sm:inline">
-                                            Discord
+                                            {__('Discord')}
                                         </span>
                                     </Button>
                                 </a>
@@ -222,7 +222,7 @@ export default function Header({
                                 {auth.user ? (
                                     <Link href={dashboard()}>
                                         <Button className="cursor-pointer">
-                                            Dashboard
+                                            {__('Dashboard')}
                                         </Button>
                                     </Link>
                                 ) : (
@@ -232,7 +232,7 @@ export default function Header({
                                                 variant={'ghost'}
                                                 className="cursor-pointer"
                                             >
-                                                Log in
+                                                {__('Log in')}
                                             </Button>
                                         </Link>
                                         {canRegister && (
@@ -241,7 +241,7 @@ export default function Header({
                                                     variant="default"
                                                     className="cursor-pointer"
                                                 >
-                                                    Register
+                                                    {__('Register')}
                                                 </Button>
                                             </Link>
                                         )}
