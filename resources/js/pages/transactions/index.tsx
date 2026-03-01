@@ -1032,7 +1032,7 @@ export default function Transactions({
                         accounts={accounts}
                         isKeySet={true}
                         actions={
-                            <div className="flex w-full justify-between gap-2 sm:justify-end">
+                            <div className="flex w-full flex-wrap justify-between gap-2 sm:justify-end">
                                 <TransactionActionsMenu
                                     categories={categories}
                                     accounts={accounts}

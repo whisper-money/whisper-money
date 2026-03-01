@@ -16,7 +16,7 @@ it('formats amount on blur', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('Add Transaction')
+        ->click('Transaction')
         ->wait(1)
         ->fill('#amount', '123.45')
         ->click('description')
@@ -34,7 +34,7 @@ it('accepts comma as decimal separator', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('Add Transaction')
+        ->click('Transaction')
         ->wait(1)
         ->fill('#amount', '10,50')
         ->click('description')
@@ -57,9 +57,9 @@ it('can create a transaction with amount input', function () {
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
-        ->click('Add Transaction')
+        ->click('Transaction')
         ->wait(2)
-        ->assertSee('Add Transaction')
+        ->assertSee('Transaction')
         ->wait(1)
         ->fill('#description', 'Test Transaction')
         ->wait(0.5)
@@ -99,7 +99,7 @@ it('formats amount when pressing enter', function () {
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
-        ->click('Add Transaction')
+        ->click('Transaction')
         ->wait(1)
         ->fill('#description', 'Test Transaction Enter')
         ->fill('#amount', '99.99')
@@ -137,7 +137,7 @@ it('accepts negative amounts', function () {
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
-        ->click('Add Transaction')
+        ->click('Transaction')
         ->wait(1)
         ->fill('#description', 'Test Negative Amount')
         ->fill('#amount', '-50.00')

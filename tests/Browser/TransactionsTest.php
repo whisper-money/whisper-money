@@ -30,7 +30,7 @@ it('can open add transaction dialog', function () {
     $page = visit('/transactions');
 
     $page->assertSee('Transactions')
-        ->click('Add Transaction')
+        ->click('Transaction')
         ->wait(0.5)
         ->assertSee('Create Transaction')
         ->assertNoJavascriptErrors();
@@ -59,7 +59,7 @@ it('can create a transaction', function () {
     $page->wait(3); // Extra wait for IndexedDB to sync
 
     $page->assertSee('Transactions')
-        ->click('Add Transaction')
+        ->click('Transaction')
         ->wait(2)
         ->assertSee('Create Transaction')
         ->fill('description', 'Test Transaction')
