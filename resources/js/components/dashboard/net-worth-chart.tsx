@@ -289,7 +289,7 @@ export function NetWorthChart({
         formatXAxisLabel(value, locale, granularity);
 
     return (
-        <Card className="group overflow-hidden">
+        <Card className="group">
             <CardHeader>
                 <div className="flex flex-row items-start justify-between gap-4">
                     <div className="flex min-w-0 flex-col gap-2">
@@ -348,7 +348,7 @@ export function NetWorthChart({
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="relative min-w-0">
+            <CardContent className="relative min-w-0 overflow-hidden">
                 {chartViews.currentView === 'stacked' &&
                     (granularity === 'daily' ? (
                         <StackedAreaChart

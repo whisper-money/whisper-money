@@ -80,6 +80,7 @@
         "json-logic-js": "^2.0.5",
         "laravel-vite-plugin": "^2.0",
         "lucide-react": "^0.553.0",
+        "motion": "^12.34.3",
         "posthog-js": "^1.331.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
