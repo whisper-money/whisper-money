@@ -96,6 +96,8 @@ test('user can open edit budget dialog', function () {
     $page = $this->actingAs($user)->visit("/budgets/{$budget->id}");
 
     $page->assertSee('Original Name')
+        ->click('//button[@aria-label="More options"]')
+        ->wait(0.5)
         ->click('Edit budget')
         ->wait(1)
         ->assertSee('Edit Budget')
@@ -117,7 +119,7 @@ test('user can open delete budget dialog', function () {
     $page->assertSee('Budget to Delete')
         ->click('//button[@aria-label="More options"]')
         ->wait(0.5)
-        ->click('Delete')
+        ->click('Delete budget')
         ->wait(1)
         ->assertSee('Delete Budget')
         ->assertNoJavascriptErrors();
