@@ -24,6 +24,7 @@ export interface NavGroup {
 export interface NavItem {
     type: 'nav-item';
     title: string;
+    mobileTitle?: string;
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | ReactNode | null;
     isActive?: boolean;

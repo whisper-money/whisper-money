@@ -30,7 +30,7 @@ export function AppSidebar() {
 
     return (
         <>
-            <div className="fixed right-4 bottom-6 left-4 z-50 flex items-center justify-evenly gap-2 rounded-full border border-border/75 bg-sidebar/50 px-4 py-3 shadow-lg shadow-black/20 backdrop-blur md:hidden">
+            <div className="fixed right-4 bottom-6 left-4 z-50 flex items-center justify-evenly gap-2 rounded-full border border-border/75 bg-sidebar/50 px-4 py-4 shadow-lg shadow-black/20 backdrop-blur md:hidden">
                 {mainNavItems.map((item) => {
                     const isActive = page.url.startsWith(resolveUrl(item.href));
                     return (
@@ -38,7 +38,7 @@ export function AppSidebar() {
                             key={item.title}
                             href={item.href}
                             className={cn([
-                                'flex flex-col items-center justify-center gap-1 text-primary',
+                                'flex flex-col items-center justify-center text-primary',
                                 'transtion-all duration-200',
                                 {
                                     'opacity-100': isActive,
@@ -47,8 +47,7 @@ export function AppSidebar() {
                                 'hover:opacity-75',
                             ])}
                         >
-                            <item.icon className="size-5 text-primary" />
-                            <span className="text-xs">{item.title}</span>
+                            <item.icon className="size-6 text-primary" />
                         </Link>
                     );
                 })}
