@@ -17,6 +17,7 @@ import {
 } from '@/providers/menu-item-provider';
 import { dashboard } from '@/routes';
 import { SharedData } from '@/types';
+import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 import { useMemo } from 'react';
@@ -34,7 +35,7 @@ export function AppSidebar() {
             <div className="fixed right-4 bottom-6 left-4 z-50 flex items-center justify-evenly gap-1 rounded-full border border-border/75 bg-sidebar/50 px-2 py-2 shadow-lg shadow-black/20 backdrop-blur md:hidden">
                 {mainNavItems.map((item) => {
                     const isActive = page.url.startsWith(resolveUrl(item.href));
-                    const label = item.mobileTitle ?? item.title;
+                    const label = __(item.mobileTitle ?? item.title);
                     const Icon = item.icon as LucideIcon | null;
                     return (
                         <Link

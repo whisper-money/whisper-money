@@ -17,7 +17,7 @@ export function getMainNavItems(features: Features): NavItem[] {
         {
             type: 'nav-item',
             title: 'Dashboard',
-            mobileTitle: 'Panel',
+            mobileTitle: 'Home',
             href: dashboard(),
             icon: LayoutGrid,
         },
@@ -27,7 +27,7 @@ export function getMainNavItems(features: Features): NavItem[] {
         items.push({
             type: 'nav-item',
             title: 'Cashflow',
-            mobileTitle: 'Flujo',
+            mobileTitle: 'Cashflow',
             href: cashflow(),
             icon: TrendingUp,
         });
@@ -37,21 +37,21 @@ export function getMainNavItems(features: Features): NavItem[] {
         {
             type: 'nav-item',
             title: 'Accounts',
-            mobileTitle: 'Cuentas',
+            mobileTitle: 'Accounts',
             href: accountsIndex(),
             icon: CreditCard,
         },
         {
             type: 'nav-item',
             title: 'Transactions',
-            mobileTitle: 'Movim.',
+            mobileTitle: 'Movements',
             href: transactionsIndex(),
             icon: Receipt,
         },
         {
             type: 'nav-item',
             title: 'Budgets',
-            mobileTitle: 'Presup.',
+            mobileTitle: 'Budget',
             href: budgetsIndex(),
             icon: PiggyBank,
         },
