@@ -17,6 +17,7 @@ export function getMainNavItems(features: Features): NavItem[] {
         {
             type: 'nav-item',
             title: 'Dashboard',
+            mobileTitle: 'Panel',
             href: dashboard(),
             icon: LayoutGrid,
         },
@@ -36,18 +37,21 @@ export function getMainNavItems(features: Features): NavItem[] {
         {
             type: 'nav-item',
             title: 'Accounts',
+            mobileTitle: 'Cuentas',
             href: accountsIndex(),
             icon: CreditCard,
         },
         {
             type: 'nav-item',
             title: 'Transactions',
+            mobileTitle: 'Movim.',
             href: transactionsIndex(),
             icon: Receipt,
         },
         {
             type: 'nav-item',
             title: 'Budgets',
+            mobileTitle: 'Presup.',
             href: budgetsIndex(),
             icon: PiggyBank,
         },
