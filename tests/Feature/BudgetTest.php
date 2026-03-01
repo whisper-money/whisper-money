@@ -168,6 +168,135 @@ test('budget show returns null previous period when it is the first period', fun
     );
 });
 
+test('budget show returns next period only when it starts on or before today', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $budget = Budget::factory()->monthly()->create([
+        'user_id' => $user->id,
+        'period_start_day' => 1,
+    ]);
+
+    // Create a previous period (two months ago)
+    $budget->periods()->create([
+        'start_date' => now()->subMonths(2)->startOfMonth(),
+        'end_date' => now()->subMonths(2)->endOfMonth(),
+        'allocated_amount' => 20000,
+        'carried_over_amount' => 0,
+    ]);
+
+    // Create the current period
+    $budget->periods()->create([
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+        'allocated_amount' => 30000,
+        'carried_over_amount' => 0,
+    ]);
+
+    // Create a future period (should be excluded from nextPeriod)
+    $budget->periods()->create([
+        'start_date' => now()->addMonth()->startOfMonth(),
+        'end_date' => now()->addMonth()->endOfMonth(),
+        'allocated_amount' => 30000,
+        'carried_over_amount' => 0,
+    ]);
+
+    // Navigate to the previous period — next should be the current (today), not the future one
+    $previousPeriod = $budget->periods()
+        ->where('start_date', now()->subMonths(2)->startOfMonth()->toDateString())
+        ->first();
+
+    $response = $this->actingAs($user)->get("/budgets/{$budget->id}?period={$previousPeriod->id}");
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('budgets/show')
+        ->has('currentPeriod')
+        ->has('nextPeriod')
+        ->where('nextPeriod.start_date', now()->startOfMonth()->toJSON())
+    );
+});
+
+test('budget show returns null next period when on the latest period', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $budget = Budget::factory()->monthly()->create([
+        'user_id' => $user->id,
+        'period_start_day' => 1,
+    ]);
+
+    // Create only the current period (no future period)
+    $budget->periods()->create([
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+        'allocated_amount' => 30000,
+        'carried_over_amount' => 0,
+    ]);
+
+    $response = $this->actingAs($user)->get("/budgets/{$budget->id}");
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('budgets/show')
+        ->has('currentPeriod')
+        ->where('nextPeriod', null)
+    );
+});
+
+test('budget show can navigate to a specific period via query param', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $budget = Budget::factory()->monthly()->create([
+        'user_id' => $user->id,
+        'period_start_day' => 1,
+    ]);
+
+    // Create a previous period
+    $previousPeriod = $budget->periods()->create([
+        'start_date' => now()->subMonth()->startOfMonth(),
+        'end_date' => now()->subMonth()->endOfMonth(),
+        'allocated_amount' => 20000,
+        'carried_over_amount' => 0,
+    ]);
+
+    // Create the current period
+    $budget->periods()->create([
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+        'allocated_amount' => 30000,
+        'carried_over_amount' => 0,
+    ]);
+
+    $response = $this->actingAs($user)->get("/budgets/{$budget->id}?period={$previousPeriod->id}");
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('budgets/show')
+        ->where('currentPeriod.id', $previousPeriod->id)
+        ->where('previousPeriod', null)
+        ->has('nextPeriod')
+    );
+});
+
+test('budget show returns 404 when period does not belong to budget', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $budget1 = Budget::factory()->monthly()->create(['user_id' => $user->id, 'period_start_day' => 1]);
+    $budget2 = Budget::factory()->monthly()->create(['user_id' => $user->id, 'period_start_day' => 1]);
+
+    // Create a period for budget2
+    $otherPeriod = $budget2->periods()->create([
+        'start_date' => now()->startOfMonth(),
+        'end_date' => now()->endOfMonth(),
+        'allocated_amount' => 30000,
+        'carried_over_amount' => 0,
+    ]);
+
+    // Try to access budget1 with budget2's period ID
+    $response = $this->actingAs($user)->get("/budgets/{$budget1->id}?period={$otherPeriod->id}");
+
+    $response->assertNotFound();
+});
+
 test('budget period is automatically generated', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 

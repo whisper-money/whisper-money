@@ -1,11 +1,11 @@
 import { index, show } from '@/actions/App/Http/Controllers/BudgetController';
+import { BudgetPeriodNavigation } from '@/components/budgets/budget-period-navigation';
 import { BudgetSpendingChart } from '@/components/budgets/budget-spending-chart';
 import { DeleteBudgetDialog } from '@/components/budgets/delete-budget-dialog';
 import { EditBudgetDialog } from '@/components/budgets/edit-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { Button } from '@/components/ui/button';
-import { ButtonGroup } from '@/components/ui/button-group';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -29,6 +29,7 @@ interface Props {
     budget: Budget;
     currentPeriod: BudgetPeriod;
     previousPeriod: BudgetPeriod | null;
+    nextPeriod: BudgetPeriod | null;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
@@ -39,6 +40,7 @@ export default function BudgetShow({
     budget,
     currentPeriod,
     previousPeriod,
+    nextPeriod,
     categories,
     accounts,
     banks,
@@ -57,7 +59,6 @@ export default function BudgetShow({
         const interval = setInterval(() => {
             router.reload({
                 only: ['currentPeriod'],
-                preserveScroll: true,
             });
         }, 3000); // Poll every 3 seconds
 
@@ -75,21 +76,15 @@ export default function BudgetShow({
         },
     ];
 
-    const periodLabel = useMemo(() => {
-        const start = formatDate(
-            currentPeriod.start_date,
-            "MMM d, ''yy",
-            locale,
-        );
-        const end = formatDate(currentPeriod.end_date, "MMM d, ''yy", locale);
-        return `${start} - ${end}`;
-    }, [currentPeriod, locale]);
-
     const trackingLabel = useMemo((): string | null => {
         if (budget.category) return budget.category.name;
         if (budget.label) return budget.label.name;
         return null;
     }, [budget]);
+
+    const periodTypeLabel = useMemo(() => {
+        return getBudgetPeriodTypeLabel(budget.period_type);
+    }, [budget.period_type]);
 
     const periodTransactions = useMemo(() => {
         return (
@@ -98,6 +93,16 @@ export default function BudgetShow({
                 .filter((t) => t !== undefined && t !== null) || []
         );
     }, [currentPeriod]);
+
+    const periodDescriptionLabel = useMemo(() => {
+        const start = formatDate(
+            currentPeriod.start_date,
+            "MMM d, ''yy",
+            locale,
+        );
+        const end = formatDate(currentPeriod.end_date, "MMM d, ''yy", locale);
+        return `${start} - ${end}`;
+    }, [currentPeriod, locale]);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
@@ -126,15 +131,9 @@ export default function BudgetShow({
                                     </div>
                                     <span className="opacity-25">/</span>
                                     <div className="inline">
-                                        <span>{periodLabel} </span>
+                                        <span>{periodDescriptionLabel} </span>
                                         <span className="opacity-50">
-                                            (
-                                            {__(
-                                                getBudgetPeriodTypeLabel(
-                                                    budget.period_type,
-                                                ),
-                                            )}
-                                            )
+                                            ({__(periodTypeLabel)})
                                         </span>
                                     </div>
                                 </div>
@@ -142,13 +141,14 @@ export default function BudgetShow({
                         />
                     </div>
 
-                    <ButtonGroup>
-                        <Button
-                            variant="outline"
-                            onClick={() => setEditOpen(true)}
-                        >
-                            {__('Edit budget')}
-                        </Button>
+                    <div className="flex items-center gap-2">
+                        <BudgetPeriodNavigation
+                            budget={budget}
+                            currentPeriod={currentPeriod}
+                            previousPeriod={previousPeriod}
+                            nextPeriod={nextPeriod}
+                        />
+
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
@@ -161,14 +161,19 @@ export default function BudgetShow({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem
+                                    onClick={() => setEditOpen(true)}
+                                >
+                                    {__('Edit budget')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
                                     onClick={() => setDeleteOpen(true)}
                                     variant="destructive"
                                 >
-                                    {__('Delete')}
+                                    {__('Delete budget')}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    </ButtonGroup>
+                    </div>
                 </div>
 
                 <BudgetSpendingChart

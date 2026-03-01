@@ -43,22 +43,37 @@ class BudgetController extends Controller
 
         $user = $request->user();
 
-        $currentPeriod = $budget->getCurrentPeriod();
+        // If a specific period UUID is requested, load it (scoped to this budget, past/current only)
+        $periodId = $request->query('period');
+        if ($periodId) {
+            $viewedPeriod = $budget->periods()
+                ->where('id', $periodId)
+                ->where('start_date', '<=', today())
+                ->firstOrFail();
+        } else {
+            $viewedPeriod = $budget->getCurrentPeriod();
 
-        if (! $currentPeriod) {
-            $currentPeriod = $this->budgetPeriodService->generatePeriod($budget);
+            if (! $viewedPeriod) {
+                $viewedPeriod = $this->budgetPeriodService->generatePeriod($budget);
+            }
         }
 
-        $currentPeriod->load([
+        $viewedPeriod->load([
             'budgetTransactions.transaction.account.bank',
             'budgetTransactions.transaction.category',
             'budgetTransactions.transaction.labels',
         ]);
 
         $previousPeriod = $budget->periods()
-            ->where('end_date', '<', $currentPeriod->start_date)
+            ->where('end_date', '<', $viewedPeriod->start_date)
             ->orderBy('end_date', 'desc')
             ->with(['budgetTransactions.transaction'])
+            ->first();
+
+        $nextPeriod = $budget->periods()
+            ->where('start_date', '>', $viewedPeriod->end_date)
+            ->where('start_date', '<=', today())
+            ->orderBy('start_date', 'asc')
             ->first();
 
         $budget->load(['category', 'label']);
@@ -84,8 +99,9 @@ class BudgetController extends Controller
 
         return Inertia::render('budgets/show', [
             'budget' => $budget,
-            'currentPeriod' => $currentPeriod,
+            'currentPeriod' => $viewedPeriod,
             'previousPeriod' => $previousPeriod,
+            'nextPeriod' => $nextPeriod,
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
