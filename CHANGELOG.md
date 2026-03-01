@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.1.14](https://github.com/whisper-money/whisper-money/compare/v0.1.13...v0.1.14) (2026-03-01)
+
+
+### Bug Fixes
+
+* **accounts:** widen bank column and truncate text on mobile ([#163](https://github.com/whisper-money/whisper-money/issues/163)) ([e01d62f](https://github.com/whisper-money/whisper-money/commit/e01d62ffd46861270581102da969c7cda12397b9))
+* **categorizer:** fetch uncategorized transactions from backend instead of IndexedDB ([#165](https://github.com/whisper-money/whisper-money/issues/165)) ([9bb835e](https://github.com/whisper-money/whisper-money/commit/9bb835e79b02182679b111a439171eb71e427010))
+* **i18n:** fix missing space after Tracking label and add account/accounts Spanish translations ([#167](https://github.com/whisper-money/whisper-money/issues/167)) ([cd0da10](https://github.com/whisper-money/whisper-money/commit/cd0da10014373af5d3f6ff3298c0fd8247adccb2))
+* prevent gain/loss sign from wrapping off the amount ([#158](https://github.com/whisper-money/whisper-money/issues/158)) ([a4d2100](https://github.com/whisper-money/whisper-money/commit/a4d2100459fde6a2f9a2becdd0807a0eae3dfd65)), closes [whisper-money/whisper-money#157](https://github.com/whisper-money/whisper-money/issues/157)
+* **ui:** app icon visible on light wallpapers + country select overflow on mobile ([#162](https://github.com/whisper-money/whisper-money/issues/162)) ([1b7b147](https://github.com/whisper-money/whisper-money/commit/1b7b147832f90894b6bb4806e0295853a458f296))
+* **ux:** improve status badge, hide balance update for connected accounts, localize delete confirm ([#159](https://github.com/whisper-money/whisper-money/issues/159)) ([79dd24b](https://github.com/whisper-money/whisper-money/commit/79dd24b23ef8ebd9594df9af8da1007e7f3f0f6e))
+
+
+### Features
+
+* **automation-rules:** simplify smart rules UI, fix re-evaluation, and localize amounts ([#161](https://github.com/whisper-money/whisper-money/issues/161)) ([b1f01e4](https://github.com/whisper-money/whisper-money/commit/b1f01e4a8f3eedc9e5848cdda103bdc06c3ce571))
+* **cashflow:** promote trend chart above money flow and increase height ([#166](https://github.com/whisper-money/whisper-money/issues/166)) ([39a47ec](https://github.com/whisper-money/whisper-money/commit/39a47ec23ff52e609825cbd8ebdfa9576b0df22e)), closes [hi#value](https://github.com/hi/issues/value)
+* **categories:** add Self-Employment Income income category ([#164](https://github.com/whisper-money/whisper-money/issues/164)) ([77b225d](https://github.com/whisper-money/whisper-money/commit/77b225d74795bbb1c18e526bd38dfa3859ecac44))
+* **i18n:** localize Spanish translations and currency formatting ([#160](https://github.com/whisper-money/whisper-money/issues/160)) ([2b9fd23](https://github.com/whisper-money/whisper-money/commit/2b9fd2384a3a06f0132498b8fda3ae50624f25d9))
+
 ## [0.1.13](https://github.com/whisper-money/whisper-money/compare/v0.1.12...v0.1.13) (2026-02-25)
 
 
