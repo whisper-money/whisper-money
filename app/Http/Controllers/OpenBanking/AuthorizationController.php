@@ -54,26 +54,29 @@ class AuthorizationController extends Controller
      */
     public function callback(Request $request, BankingProviderInterface $provider): RedirectResponse
     {
+        $user = auth()->user();
+        $errorRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+
         if ($request->has('error')) {
             Log::warning('EnableBanking authorization error', [
                 'error' => $request->query('error'),
                 'description' => $request->query('error_description'),
             ]);
 
-            auth()->user()->bankingConnections()
+            $user->bankingConnections()
                 ->where('status', BankingConnectionStatus::Pending)
                 ->latest()
                 ->first()
                 ?->delete();
 
-            return redirect()->route('settings.connections.index')
+            return redirect()->route($errorRedirect)
                 ->with('error', $request->query('error_description', 'Authorization was denied or cancelled.'));
         }
 
         $code = $request->query('code');
 
         if (! $code) {
-            return redirect()->route('settings.connections.index')
+            return redirect()->route($errorRedirect)
                 ->with('error', 'No authorization code received.');
         }
 
@@ -82,11 +85,9 @@ class AuthorizationController extends Controller
         } catch (\Throwable $e) {
             Log::error('EnableBanking session creation failed', ['error' => $e->getMessage()]);
 
-            return redirect()->route('settings.connections.index')
+            return redirect()->route($errorRedirect)
                 ->with('error', 'Failed to connect to your bank. Please try again.');
         }
-
-        $user = auth()->user();
 
         $connection = $user->bankingConnections()
             ->where('status', BankingConnectionStatus::Pending)
@@ -94,9 +95,11 @@ class AuthorizationController extends Controller
             ->first();
 
         if (! $connection) {
-            return redirect()->route('settings.connections.index')
+            return redirect()->route($errorRedirect)
                 ->with('error', 'No pending connection found.');
         }
+
+        $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
 
         if (Feature::for($user)->active('account-mapping')) {
             $connection->update([
@@ -119,7 +122,7 @@ class AuthorizationController extends Controller
 
         SyncBankingConnectionJob::dispatch($connection);
 
-        return redirect()->route('settings.connections.index')
+        return redirect()->route($successRedirect)
             ->with('success', 'Bank account connected successfully.');
     }
 

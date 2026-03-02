@@ -5,13 +5,26 @@ import {
     AccountFormData,
 } from '@/components/accounts/account-form';
 import { StepHeader } from '@/components/onboarding/step-header';
+import { ConnectAccountInline } from '@/components/open-banking/connect-account-inline';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
+import { cn } from '@/lib/utils';
+import { type SharedData } from '@/types';
 import { type AccountType, formatAccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
-import { AlertCircle, CheckCircle2, CreditCard } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import {
+    AlertCircle,
+    CheckCircle2,
+    CreditCard,
+    Link2,
+    PencilLine,
+    Zap,
+} from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { StepButton } from './step-button';
+
+type AccountMode = 'select' | 'manual' | 'connected';
 
 interface ExistingAccount {
     id: string;
@@ -42,15 +55,33 @@ export function StepCreateAccount({
     onAccountCreated,
     onSkip,
 }: StepCreateAccountProps) {
+    const { pricing, subscriptionsEnabled } = usePage<SharedData>().props;
+    const [mode, setMode] = useState<AccountMode>('select');
+    const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
+        'manual',
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: null,
-        type: isFirstAccount ? 'checking' : null,
+        type: null,
         currencyCode: null,
         customBank: null,
     });
+
+    // Compute cheapest monthly equivalent across all plans
+    const cheapestMonthlyPrice = useMemo(() => {
+        const plans = Object.values(pricing.plans);
+        if (plans.length === 0) {
+            return null;
+        }
+        return Math.min(
+            ...plans.map((plan) =>
+                plan.billing_period === 'year' ? plan.price / 12 : plan.price,
+            ),
+        );
+    }, [pricing.plans]);
 
     const handleFormChange = useCallback((data: AccountFormData) => {
         formDataRef.current = data;
@@ -58,7 +89,9 @@ export function StepCreateAccount({
 
     async function createBankAndGetId(): Promise<string | null> {
         const customBank = formDataRef.current.customBank;
-        if (!customBank) return null;
+        if (!customBank) {
+            return null;
+        }
 
         const formData = new FormData();
         formData.append('name', customBank.name);
@@ -103,11 +136,6 @@ export function StepCreateAccount({
 
         if (!type || !currencyCode) {
             setError(__('Please fill in all required fields.'));
-            return;
-        }
-
-        if (isFirstAccount && type !== 'checking') {
-            setError(__('Your first account must be a checking account.'));
             return;
         }
 
@@ -200,7 +228,7 @@ export function StepCreateAccount({
             return {
                 title: __('Create an Account'),
                 description: __(
-                    "Let's start with your main checking account. You can add more accounts later.",
+                    "Let's set up your first account to start tracking your finances.",
                 ),
             };
         }
@@ -212,16 +240,17 @@ export function StepCreateAccount({
         };
     }, [hasExistingAccounts, isFirstAccount]);
 
-    return (
-        <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
-            <StepHeader
-                icon={CreditCard}
-                iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
-                title={title}
-                description={description}
-            />
+    // Show existing accounts view
+    if (hasExistingAccounts) {
+        return (
+            <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
+                <StepHeader
+                    icon={CreditCard}
+                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
+                    title={title}
+                    description={description}
+                />
 
-            {hasExistingAccounts ? (
                 <div className="w-full max-w-md">
                     <div className="mb-6 space-y-2">
                         {existingAccounts.map((account) => (
@@ -261,28 +290,44 @@ export function StepCreateAccount({
                         }
                     />
                 </div>
-            ) : (
+            </div>
+        );
+    }
+
+    // Connected account inline flow
+    if (mode === 'connected') {
+        return (
+            <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
+                <StepHeader
+                    icon={Link2}
+                    iconContainerClassName="bg-gradient-to-br from-blue-400 to-indigo-500"
+                    title={__('Connect Your Bank')}
+                    description={__(
+                        'Select your country and bank to get started.',
+                    )}
+                />
+                <ConnectAccountInline onBack={() => setMode('select')} />
+            </div>
+        );
+    }
+
+    // Manual account form
+    if (mode === 'manual') {
+        return (
+            <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
+                <StepHeader
+                    icon={CreditCard}
+                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
+                    title={title}
+                    description={description}
+                />
+
                 <form
                     onSubmit={handleSubmit}
                     autoFocus
                     className="w-full max-w-md space-y-4"
                 >
-                    <AccountForm
-                        forceAccountType={
-                            isFirstAccount ? 'checking' : undefined
-                        }
-                        onChange={handleFormChange}
-                    />
-
-                    {isFirstAccount && (
-                        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
-                            <p className="text-center">
-                                {__(
-                                    'Your first account must be a checking account.',
-                                )}
-                            </p>
-                        </div>
-                    )}
+                    <AccountForm onChange={handleFormChange} />
 
                     {error && (
                         <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
@@ -300,11 +345,22 @@ export function StepCreateAccount({
                         text={__('Create Account')}
                     />
 
+                    <Button
+                        type="button"
+                        size="lg"
+                        className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
+                        variant="ghost"
+                        onClick={() => setMode('select')}
+                    >
+                        {__('Back')}
+                    </Button>
+
                     {!isFirstAccount && onSkip && (
                         <Button
+                            type="button"
                             size="lg"
                             className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
-                            variant={'ghost'}
+                            variant="ghost"
                             disabled={isSubmitting}
                             onClick={() => onSkip()}
                         >
@@ -312,7 +368,110 @@ export function StepCreateAccount({
                         </Button>
                     )}
                 </form>
-            )}
+            </div>
+        );
+    }
+
+    // Account type selection screen (default)
+    return (
+        <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
+            <StepHeader
+                icon={CreditCard}
+                iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
+                title={title}
+                description={__('How would you like to set up this account?')}
+            />
+
+            <div className="w-full max-w-md space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                    {/* Manual Account Card */}
+                    <button
+                        type="button"
+                        onClick={() => setSelectedMode('manual')}
+                        className={cn(
+                            'flex flex-col rounded-xl border p-4 text-left transition-all duration-200',
+                            selectedMode === 'manual'
+                                ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 dark:bg-emerald-950/30'
+                                : 'border-border bg-card hover:border-muted-foreground/40',
+                        )}
+                    >
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                            <PencilLine className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <p className="text-sm font-semibold">{__('Manual')}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            {__(
+                                'Enter transactions yourself or import a CSV file',
+                            )}
+                        </p>
+                    </button>
+
+                    {/* Connected Account Card */}
+                    <button
+                        type="button"
+                        onClick={() => setSelectedMode('connected')}
+                        className={cn(
+                            'relative flex flex-col rounded-xl border p-4 text-left transition-all duration-200',
+                            selectedMode === 'connected'
+                                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 dark:bg-blue-950/30'
+                                : 'border-border bg-card hover:border-muted-foreground/40',
+                        )}
+                    >
+                        {subscriptionsEnabled && (
+                            <span className="absolute top-2.5 right-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+                                Pro
+                            </span>
+                        )}
+                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                            <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <p className="text-sm font-semibold">
+                            {__('Connected')}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            {__(
+                                'Auto-sync transactions directly from your bank',
+                            )}
+                        </p>
+                        {subscriptionsEnabled &&
+                            cheapestMonthlyPrice !== null && (
+                                <p className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400">
+                                    {__('From')} $
+                                    {cheapestMonthlyPrice.toFixed(0)}
+                                    {__('/month')}
+                                </p>
+                            )}
+                    </button>
+                </div>
+
+                {selectedMode === 'connected' && subscriptionsEnabled && (
+                    <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
+                        <p className="text-center text-sm text-blue-700 dark:text-blue-300">
+                            {__(
+                                "Connected accounts are a Pro feature. You'll choose a plan at the end of the onboarding.",
+                            )}
+                        </p>
+                    </div>
+                )}
+
+                <StepButton
+                    className="w-full sm:w-full"
+                    text={__('Continue')}
+                    onClick={() => setMode(selectedMode)}
+                />
+
+                {!isFirstAccount && onSkip && (
+                    <Button
+                        type="button"
+                        size="lg"
+                        className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
+                        variant="ghost"
+                        onClick={() => onSkip()}
+                    >
+                        {__('Ignore')}
+                    </Button>
+                )}
+            </div>
         </div>
     );
 }

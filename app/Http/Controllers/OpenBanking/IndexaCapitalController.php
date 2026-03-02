@@ -80,8 +80,10 @@ class IndexaCapitalController extends Controller
 
         SyncBankingConnectionJob::dispatch($connection);
 
+        $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+
         return response()->json([
-            'redirect_url' => route('settings.connections.index'),
+            'redirect_url' => route($successRedirect),
             'connection_id' => $connection->id,
         ]);
     }

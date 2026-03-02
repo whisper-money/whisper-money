@@ -73,7 +73,10 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::post('transactions/{transaction}/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'single'])->name('transactions.re-evaluate-rules.single');
 });
 
-Route::middleware(['auth', 'verified', 'onboarded', 'subscribed', 'open-banking'])->prefix('open-banking')->group(function () {
+// Open-banking routes are accessible without the onboarded/subscribed middleware
+// so that users can connect their bank during the onboarding flow.
+// The 'open-banking' middleware (EnsureOpenBankingFeature) checks the Pennant flag.
+Route::middleware(['auth', 'verified', 'open-banking'])->prefix('open-banking')->group(function () {
     Route::get('institutions', [InstitutionController::class, 'index'])->name('open-banking.institutions');
     Route::post('authorize', [AuthorizationController::class, 'store'])->name('open-banking.authorize');
     Route::get('callback', [AuthorizationController::class, 'callback'])->name('open-banking.callback');

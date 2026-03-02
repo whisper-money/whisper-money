@@ -25,12 +25,19 @@ class EnsureOnboardingComplete
         }
 
         $isOnboardingRoute = $request->routeIs('onboarding') || $request->routeIs('onboarding.*');
+        $isOpenBankingRoute = $request->routeIs('open-banking.*');
 
         if ($user->isOnboarded()) {
             if ($isOnboardingRoute) {
                 return redirect()->route('dashboard');
             }
 
+            return $next($request);
+        }
+
+        // Allow non-onboarded users through open-banking routes so they can
+        // connect their bank during the onboarding flow.
+        if ($isOpenBankingRoute) {
             return $next($request);
         }
 

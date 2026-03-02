@@ -22,7 +22,10 @@ class AccountMappingController extends Controller
         }
 
         if (! $connection->hasPendingAccounts()) {
-            return redirect()->route('settings.connections.index');
+            $user = auth()->user();
+            $redirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+
+            return redirect()->route($redirect);
         }
 
         $existingAccounts = auth()->user()
@@ -109,7 +112,9 @@ class AccountMappingController extends Controller
 
         SyncBankingConnectionJob::dispatch($connection);
 
-        return redirect()->route('settings.connections.index')
+        $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+
+        return redirect()->route($successRedirect)
             ->with('success', 'Bank account connected successfully.');
     }
 }

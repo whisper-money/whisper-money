@@ -244,9 +244,14 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Create Your First Account')
         ->wait(1);
 
-    // Step 3: Create Account (checking with EUR currency)
+    // Step 3: Create Account - select Manual mode then fill the form
     $page->assertSee('Create an Account')
-        ->assertSee('Your first account must be a')
+        ->assertSee('Manual')
+        ->assertSee('Connected')
+        ->click('Manual')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
         ->fill('#display_name', 'My Checking Account')
         ->click('Select bank...')
         ->wait(1)
