@@ -1,4 +1,5 @@
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/currency';
@@ -57,6 +58,7 @@ export function AmountDisplay({
     highlightPositive = false,
 }: AmountDisplayProps) {
     const { isKeySet } = useEncryptionKey();
+    const { isPrivacyModeEnabled } = usePrivacyMode();
     const locale = useLocale();
     const [amount, setAmount] = useState<number>(amountInCents / 100);
     const isPositive = amountInCents > 0
@@ -111,7 +113,7 @@ export function AmountDisplay({
             )}
         >
             <span className='text-xs'>{showSign && amount >= 0 && '+'}</span>
-            <span>{formatted}</span>
+            <span>{isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted}</span>
         </span>
     );
 }

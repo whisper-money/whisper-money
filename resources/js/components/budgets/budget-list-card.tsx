@@ -1,4 +1,5 @@
 import { show } from '@/actions/App/Http/Controllers/BudgetController';
+import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +12,6 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { useLocale } from '@/hooks/use-locale';
 import { Budget, getBudgetPeriodTypeLabel } from '@/types/budget';
-import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -102,17 +102,15 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                             {__('Spent')}
                         </span>
                         <span className={statusColor}>
-                            {formatCurrency(
-                                stats.totalSpent,
-                                currencyCode,
-                                locale,
-                            )}{' '}
+                            <AmountDisplay
+                                amountInCents={stats.totalSpent}
+                                currencyCode={currencyCode}
+                            />{' '}
                             {__('of')}{' '}
-                            {formatCurrency(
-                                stats.totalAllocated,
-                                currencyCode,
-                                locale,
-                            )}
+                            <AmountDisplay
+                                amountInCents={stats.totalAllocated}
+                                currencyCode={currencyCode}
+                            />
                         </span>
                     </div>
                     <Progress
@@ -125,11 +123,10 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                             {__('Remaining')}
                         </span>
                         <span className={statusColor}>
-                            {formatCurrency(
-                                stats.remaining,
-                                currencyCode,
-                                locale,
-                            )}
+                            <AmountDisplay
+                                amountInCents={stats.remaining}
+                                currencyCode={currencyCode}
+                            />
                         </span>
                     </div>
                 </div>
