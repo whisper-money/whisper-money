@@ -92,6 +92,16 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
         // Sync with backend to get the new account in local DB
         await sync();
 
+        // Connected accounts (bank-linked) don't need manual import steps
+        if (account.connected) {
+            if (createdAccounts.length === 0) {
+                goToStep('category-types');
+            } else {
+                goToStep('more-accounts');
+            }
+            return;
+        }
+
         const needsTransactionImport = [
             'checking',
             'savings',

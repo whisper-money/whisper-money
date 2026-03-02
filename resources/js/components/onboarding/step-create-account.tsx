@@ -288,6 +288,7 @@ export function StepCreateAccount({
                                     existingAccounts[0].bank?.name || 'Account',
                                 type: existingAccounts[0].type,
                                 currencyCode: existingAccounts[0].currency_code,
+                                connected: true,
                             })
                         }
                     />
