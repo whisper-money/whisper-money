@@ -333,14 +333,25 @@ export function ConnectAccountInline({ onBack }: ConnectAccountInlineProps) {
                         )}
                     </div>
 
-                    <Button
-                        className="w-full"
-                        size="lg"
-                        disabled={!selectedBank}
-                        onClick={() => setStep('confirm')}
-                    >
-                        {__('Continue')}
-                    </Button>
+                    <div className="space-y-2">
+                        <Button
+                            className="w-full"
+                            size="lg"
+                            disabled={!selectedBank}
+                            onClick={() => setStep('confirm')}
+                        >
+                            {__('Continue')}
+                        </Button>
+                        <Button
+                            variant={'ghost'}
+                            type="button"
+                            onClick={handleBack}
+                            className="w-full"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            {__('Back')}
+                        </Button>
+                    </div>
                 </div>
             )}
 

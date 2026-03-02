@@ -99,8 +99,6 @@ class AuthorizationController extends Controller
                 ->with('error', 'No pending connection found.');
         }
 
-        $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
-
         if (Feature::for($user)->active('account-mapping')) {
             $connection->update([
                 'session_id' => $sessionData['session_id'],
@@ -108,6 +106,14 @@ class AuthorizationController extends Controller
                 'valid_until' => $sessionData['access']['valid_until'] ?? null,
                 'pending_accounts_data' => $sessionData['accounts'] ?? [],
             ]);
+
+            if (! $user->isOnboarded()) {
+                $this->createAccountsFromPending($user, $connection);
+                SyncBankingConnectionJob::dispatch($connection);
+
+                return redirect()->route('onboarding', ['step' => 'create-account'])
+                    ->with('success', 'Bank account connected successfully.');
+            }
 
             return redirect()->route('open-banking.map-accounts', $connection);
         }
@@ -122,8 +128,55 @@ class AuthorizationController extends Controller
 
         SyncBankingConnectionJob::dispatch($connection);
 
-        return redirect()->route($successRedirect)
+        $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+        $redirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
+
+        return redirect()->route($successRedirect, $redirectParams)
             ->with('success', 'Bank account connected successfully.');
+    }
+
+    /**
+     * Auto-create accounts from pending_accounts_data without user interaction.
+     */
+    private function createAccountsFromPending($user, BankingConnection $connection): void
+    {
+        $bank = Bank::firstOrCreate(
+            ['name' => $connection->aspsp_name, 'user_id' => null],
+            ['name' => $connection->aspsp_name, 'logo' => $connection->aspsp_logo],
+        );
+
+        if (! $bank->logo && $connection->aspsp_logo) {
+            $bank->update(['logo' => $connection->aspsp_logo]);
+        }
+
+        foreach ($connection->pending_accounts_data ?? [] as $accountData) {
+            $uid = $accountData['uid'] ?? null;
+
+            if (! $uid) {
+                continue;
+            }
+
+            $currency = $accountData['currency'] ?? 'EUR';
+            $name = $accountData['name']
+                ?? $accountData['account_id']['iban']
+                ?? $connection->aspsp_name.' Account';
+
+            $user->accounts()->create([
+                'name' => $name,
+                'name_iv' => null,
+                'encrypted' => false,
+                'bank_id' => $bank->id,
+                'currency_code' => $currency,
+                'type' => AccountType::Checking->value,
+                'banking_connection_id' => $connection->id,
+                'external_account_id' => $uid,
+            ]);
+        }
+
+        $connection->update([
+            'status' => BankingConnectionStatus::Active,
+            'pending_accounts_data' => null,
+        ]);
     }
 
     /**

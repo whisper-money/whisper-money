@@ -85,9 +85,10 @@ class BitpandaController extends Controller
         SyncBankingConnectionJob::dispatch($connection);
 
         $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+        $redirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
 
         return response()->json([
-            'redirect_url' => route($successRedirect),
+            'redirect_url' => route($successRedirect, $redirectParams),
             'connection_id' => $connection->id,
         ]);
     }

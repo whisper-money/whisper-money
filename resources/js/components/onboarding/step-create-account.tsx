@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
-import { type AccountType, formatAccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import {
@@ -263,13 +262,16 @@ export function StepCreateAccount({
                                 </div>
                                 <div className="flex-1">
                                     <p className="font-medium">
-                                        {account.bank?.name || 'Account'}
+                                        {account.name || 'Account'}
                                     </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {formatAccountType(
-                                            account.type as AccountType,
-                                        )}{' '}
-                                        • {account.currency_code}
+                                    <p className="flex gap-2 text-sm text-muted-foreground">
+                                        <span>
+                                            {account.bank?.name ?? `Bank`}
+                                        </span>
+                                        <span className="opacity-50">
+                                            &ndash;
+                                        </span>
+                                        <span>{account.currency_code}</span>
                                     </p>
                                 </div>
                             </div>
