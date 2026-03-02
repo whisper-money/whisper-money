@@ -1,0 +1,67 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/tomasvotruba/unused-public/config/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+
+    level: 5
+
+    reportUnmatchedIgnoredErrors: false
+
+    unused_public:
+        methods: true
+        properties: true
+        constants: true
+
+    ignoreErrors:
+        # Controllers, Policies, Middleware, Jobs, Mail, Listeners are Laravel
+        # framework entry points called by the framework — not by PHP code.
+        - identifier: public.method.unused
+          path: app/Http/Controllers/*
+        - identifier: public.method.unused
+          path: app/Http/Controllers/**/*
+        - identifier: public.method.unused
+          path: app/Http/Middleware/*
+        - identifier: public.property.unused
+          path: app/Http/Middleware/*
+        - identifier: public.method.unused
+          path: app/Policies/*
+        - identifier: public.method.unused
+          path: app/Jobs/*
+        - identifier: public.property.unused
+          path: app/Jobs/*
+        - identifier: public.method.unused
+          path: app/Jobs/**/*
+        - identifier: public.property.unused
+          path: app/Jobs/**/*
+        - identifier: public.method.unused
+          path: app/Mail/*
+        - identifier: public.property.unused
+          path: app/Mail/*
+        - identifier: public.method.unused
+          path: app/Mail/**/*
+        - identifier: public.property.unused
+          path: app/Mail/**/*
+        - identifier: public.method.unused
+          path: app/Listeners/*
+        - identifier: public.property.unused
+          path: app/Listeners/*
+        # Model relationship methods are called dynamically by Eloquent
+        - identifier: public.method.unused
+          path: app/Models/*
+        - identifier: public.property.unused
+          path: app/Models/*
+        # Enum label/description methods used in Blade/frontend
+        - identifier: public.method.unused
+          path: app/Enums/*
+        # Actions used by Fortify/framework
+        - identifier: public.method.unused
+          path: app/Actions/*
+        # Service client methods may be used externally or reserved for future use
+        - identifier: public.method.unused
+          path: app/Services/Banking/BitpandaClient.php
+        - identifier: public.method.unused
+          path: app/Services/Banking/IndexaCapitalClient.php

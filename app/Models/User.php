@@ -69,31 +69,37 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->onboarded_at !== null;
     }
 
+    /** @return HasOne<UserSetting, $this> */
     public function setting(): HasOne
     {
         return $this->hasOne(UserSetting::class);
     }
 
+    /** @return HasOne<EncryptedMessage, $this> */
     public function encryptedMessage(): HasOne
     {
         return $this->hasOne(EncryptedMessage::class);
     }
 
+    /** @return HasMany<Transaction, $this> */
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
     }
 
+    /** @return HasMany<Account, $this> */
     public function accounts(): HasMany
     {
         return $this->hasMany(Account::class);
     }
 
+    /** @return HasMany<Category, $this> */
     public function categories(): HasMany
     {
         return $this->hasMany(Category::class);
     }
 
+    /** @return HasMany<Bank, $this> */
     public function banks(): HasMany
     {
         return $this->hasMany(Bank::class)
@@ -103,26 +109,31 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             });
     }
 
+    /** @return HasMany<AutomationRule, $this> */
     public function automationRules(): HasMany
     {
         return $this->hasMany(AutomationRule::class);
     }
 
+    /** @return HasMany<Label, $this> */
     public function labels(): HasMany
     {
         return $this->hasMany(Label::class);
     }
 
+    /** @return HasMany<UserMailLog, $this> */
     public function mailLogs(): HasMany
     {
         return $this->hasMany(UserMailLog::class);
     }
 
+    /** @return HasMany<Budget, $this> */
     public function budgets(): HasMany
     {
         return $this->hasMany(Budget::class);
     }
 
+    /** @return HasMany<BankingConnection, $this> */
     public function bankingConnections(): HasMany
     {
         return $this->hasMany(BankingConnection::class);

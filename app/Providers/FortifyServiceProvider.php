@@ -7,6 +7,7 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
+use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -106,7 +107,13 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureEventListeners(): void
     {
         Event::listen(function (Registered $event) {
-            app(CreateDefaultCategories::class)->handle($event->user);
+            $user = $event->user;
+
+            if (! $user instanceof User) {
+                return;
+            }
+
+            app(CreateDefaultCategories::class)->handle($user);
         });
     }
 }

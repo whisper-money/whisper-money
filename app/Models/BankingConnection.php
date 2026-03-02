@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property bool $has_pending_accounts
+ * @property \App\Enums\BankingConnectionStatus $status
+ * @property \Carbon\Carbon|null $valid_until
+ * @property \Carbon\Carbon|null $last_synced_at
+ * @property array<int, mixed>|null $pending_accounts_data
+ */
 class BankingConnection extends Model
 {
     /** @use HasFactory<\Database\Factories\BankingConnectionFactory> */
@@ -52,11 +59,13 @@ class BankingConnection extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return HasMany<Account, $this> */
     public function accounts(): HasMany
     {
         return $this->hasMany(Account::class);

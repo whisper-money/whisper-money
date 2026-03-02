@@ -127,6 +127,22 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: password
 
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+
+      - name: Install PHP Dependencies
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress
+
   linter:
     runs-on: ubuntu-latest
     steps:
@@ -209,7 +225,7 @@ jobs:
 
   build-image:
     runs-on: ubuntu-latest
-    needs: [tests, linter, performance-tests]
+    needs: [tests, linter, static-analysis, performance-tests]
     if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
@@ -253,7 +269,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [tests, linter, performance-tests]
+    needs: [tests, linter, static-analysis, performance-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Trigger deployment

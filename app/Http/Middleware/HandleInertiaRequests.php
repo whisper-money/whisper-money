@@ -40,7 +40,7 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
-        $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local') ?? false;
+        $isDemoAccount = $user?->isDemoAccount() && ! app()->environment('local');
         $isDemoQuery = $request->query('demo') === '1';
 
         // Cache encryption checks to avoid duplicate queries
@@ -83,7 +83,7 @@ class HandleInertiaRequests extends Middleware
                 'bestValuePlan' => config('subscriptions.best_value_plan', null),
                 'promo' => config('subscriptions.promo', []),
             ],
-            'chartColorScheme' => $user?->setting?->chart_color_scheme?->value ?? 'colorful',
+            'chartColorScheme' => $user?->setting?->chart_color_scheme->value ?? 'colorful',
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => [
                 'cashflow' => true,

@@ -103,7 +103,7 @@ class AuthorizationController extends Controller
                 'session_id' => $sessionData['session_id'],
                 'status' => BankingConnectionStatus::AwaitingMapping,
                 'valid_until' => $sessionData['access']['valid_until'] ?? null,
-                'pending_accounts_data' => $sessionData['accounts'] ?? [],
+                'pending_accounts_data' => $sessionData['accounts'],
             ]);
 
             return redirect()->route('open-banking.map-accounts', $connection);

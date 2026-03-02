@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property \Carbon\Carbon $start_date
+ * @property \Carbon\Carbon $end_date
+ */
 class BudgetPeriod extends Model
 {
     use HasFactory, HasUuids;
@@ -32,11 +36,13 @@ class BudgetPeriod extends Model
         ];
     }
 
+    /** @return BelongsTo<Budget, $this> */
     public function budget(): BelongsTo
     {
         return $this->belongsTo(Budget::class);
     }
 
+    /** @return HasMany<BudgetTransaction, $this> */
     public function budgetTransactions(): HasMany
     {
         return $this->hasMany(BudgetTransaction::class);

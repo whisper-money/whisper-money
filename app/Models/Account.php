@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property \App\Enums\AccountType $type
+ */
 class Account extends Model
 {
     /** @use HasFactory<\Database\Factories\AccountFactory> */
@@ -37,26 +40,31 @@ class Account extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<Bank, $this> */
     public function bank(): BelongsTo
     {
         return $this->belongsTo(Bank::class);
     }
 
+    /** @return HasMany<Transaction, $this> */
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
     }
 
+    /** @return HasMany<AccountBalance, $this> */
     public function balances(): HasMany
     {
         return $this->hasMany(AccountBalance::class);
     }
 
+    /** @return BelongsTo<BankingConnection, $this> */
     public function bankingConnection(): BelongsTo
     {
         return $this->belongsTo(BankingConnection::class);

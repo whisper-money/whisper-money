@@ -39,11 +39,7 @@ class IndexaCapitalClient
 
         $accounts = [];
 
-        foreach ($userData['accounts'] ?? [] as $account) {
-            if (! isset($account['account_number'])) {
-                continue;
-            }
-
+        foreach ($userData['accounts'] as $account) {
             $accountDetails = $this->getAccount($account['account_number']);
             $accounts[] = $accountDetails;
         }
@@ -68,7 +64,7 @@ class IndexaCapitalClient
     /**
      * Get performance data for an account, including current portfolio value.
      *
-     * @return array{total_amount: float, return: float, return_percentage: float}
+     * @return array{total_amount?: float, return?: float, return_percentage?: float, portfolios?: array<int, array{date?: string, total_amount?: float, return?: float}>, net_amounts?: array<string, float>}
      */
     public function getPerformance(string $accountNumber): array
     {

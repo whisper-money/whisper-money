@@ -141,7 +141,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     {
         $dateFrom = $isFirstSync
             ? now()->subYear()->toDateString()
-            : $connection->last_synced_at->toDateString();
+            : ($connection->last_synced_at?->toDateString() ?? now()->subMonth()->toDateString());
         $dateTo = now()->toDateString();
         $strategy = $isFirstSync ? 'longest' : null;
 
@@ -171,7 +171,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             }
 
             if ($created > 0) {
-                $bankName = $account->bank?->name ?? __('Unknown Bank');
+                $bankName = $account->bank->name ?? __('Unknown Bank');
                 $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
             }
         }

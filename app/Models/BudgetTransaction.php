@@ -24,11 +24,13 @@ class BudgetTransaction extends Model
         ];
     }
 
+    /** @return BelongsTo<Transaction, $this> */
     public function transaction(): BelongsTo
     {
         return $this->belongsTo(Transaction::class);
     }
 
+    /** @return BelongsTo<BudgetPeriod, $this> */
     public function budgetPeriod(): BelongsTo
     {
         return $this->belongsTo(BudgetPeriod::class);

@@ -20,7 +20,7 @@ class BudgetPeriodService
         // If no allocated amount provided, use the last period's amount or 0
         if ($allocatedAmount === null) {
             $lastPeriod = $budget->periods()->orderBy('end_date', 'desc')->first();
-            $allocatedAmount = $lastPeriod?->allocated_amount ?? 0;
+            $allocatedAmount = $lastPeriod !== null ? $lastPeriod->allocated_amount : 0;
         }
 
         return BudgetPeriod::create([

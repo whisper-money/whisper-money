@@ -71,7 +71,7 @@ class BinanceBalanceSyncService
     public function syncCurrentBalance(Account $account, BinanceClient $client, ?int $investedAmountCents = null): void
     {
         $accountData = $client->getAccount();
-        $balances = $accountData['balances'] ?? [];
+        $balances = $accountData['balances'];
 
         if (empty($balances)) {
             return;
@@ -194,7 +194,7 @@ class BinanceBalanceSyncService
                 self::SNAPSHOT_WINDOW_DAYS,
             );
 
-            foreach ($response['snapshotVos'] ?? [] as $snapshot) {
+            foreach ($response['snapshotVos'] as $snapshot) {
                 $snapshots[] = $snapshot;
             }
 

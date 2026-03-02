@@ -11,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property \App\Enums\RolloverType $rollover_type
+ * @property \App\Enums\BudgetPeriodType $period_type
+ */
 class Budget extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
@@ -36,21 +40,25 @@ class Budget extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
+    /** @return BelongsTo<Label, $this> */
     public function label(): BelongsTo
     {
         return $this->belongsTo(Label::class);
     }
 
+    /** @return HasMany<BudgetPeriod, $this> */
     public function periods(): HasMany
     {
         return $this->hasMany(BudgetPeriod::class);
