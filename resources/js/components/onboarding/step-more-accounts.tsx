@@ -66,10 +66,10 @@ export function StepMoreAccounts({
                             </div>
                             <div className="flex-1">
                                 <p className="font-medium">{account.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                    <span>{account.bank?.name ?? `Bank`}</span>
+                                <p className="flex gap-2 text-sm text-muted-foreground">
+                                    <span>{account.bankName ?? 'Bank'}</span>
                                     <span className="opacity-50">&ndash;</span>
-                                    <span>{account.currency_code}</span>
+                                    <span>{account.currencyCode}</span>
                                 </p>
                             </div>
                             <Check className="h-5 w-5 text-emerald-500" />

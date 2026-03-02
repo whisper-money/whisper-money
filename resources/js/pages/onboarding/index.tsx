@@ -28,6 +28,7 @@ interface ExistingAccount {
     type: string;
     currency_code: string;
     bank_id: string;
+    banking_connection_id: string | null;
     bank?: {
         id: string;
         name: string;

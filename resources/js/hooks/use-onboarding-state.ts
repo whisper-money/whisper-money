@@ -40,6 +40,7 @@ export interface CreatedAccount {
     name: string;
     type: string;
     currencyCode: string;
+    bankName?: string;
     connected?: boolean;
 }
 

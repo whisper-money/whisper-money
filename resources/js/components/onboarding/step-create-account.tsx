@@ -33,6 +33,7 @@ interface ExistingAccount {
     type: string;
     currency_code: string;
     bank_id: string;
+    banking_connection_id: string | null;
     bank?: {
         id: string;
         name: string;
@@ -49,6 +50,7 @@ interface StepCreateAccountProps {
 }
 
 export function StepCreateAccount({
+    banks,
     isFirstAccount,
     existingAccounts = [],
     onAccountCreated,
@@ -194,11 +196,16 @@ export function StepCreateAccount({
 
             const accountData = await response.json();
 
+            const bankName =
+                formDataRef.current.customBank?.name ??
+                banks.find((b) => String(b.id) === String(finalBankId))?.name;
+
             onAccountCreated({
                 id: accountData.id || finalBankId,
                 name: displayName,
                 type: type,
                 currencyCode: currencyCode,
+                bankName,
             });
             setIsSubmitting(false);
         } catch (err) {
@@ -271,6 +278,21 @@ export function StepCreateAccount({
                                         <span className="opacity-50">
                                             &ndash;
                                         </span>
+                                        <span>
+                                            {account.type
+                                                .split('_')
+                                                .map(
+                                                    (w) =>
+                                                        w
+                                                            .charAt(0)
+                                                            .toUpperCase() +
+                                                        w.slice(1),
+                                                )
+                                                .join(' ')}
+                                        </span>
+                                        <span className="opacity-50">
+                                            &ndash;
+                                        </span>
                                         <span>{account.currency_code}</span>
                                     </p>
                                 </div>
@@ -290,7 +312,9 @@ export function StepCreateAccount({
                                     'Account',
                                 type: existingAccounts[0].type,
                                 currencyCode: existingAccounts[0].currency_code,
-                                connected: true,
+                                bankName: existingAccounts[0].bank?.name,
+                                connected:
+                                    !!existingAccounts[0].banking_connection_id,
                             })
                         }
                     />
