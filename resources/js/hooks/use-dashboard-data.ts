@@ -2,7 +2,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { Account, AccountType, Bank } from '@/types/account';
 import { Category } from '@/types/category';
 import { format, subDays, subMonths } from 'date-fns';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export interface NetWorthEvolutionAccount {
     id: string;
@@ -116,7 +116,7 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
     });
     const [isLoading, setIsLoading] = useState(true);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const now = new Date();
@@ -157,11 +157,11 @@ export function useDashboardData(): DashboardData & { refetch: () => void } {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [locale]);
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
 
     return { ...data, isLoading, refetch: fetchData };
 }

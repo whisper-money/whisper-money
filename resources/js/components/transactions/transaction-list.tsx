@@ -862,7 +862,7 @@ export function TransactionList({
                 consoleDebug('=== Re-evaluation complete ===');
             }
         },
-        [categories, accounts, banks, updateTransaction, automationRules],
+        [updateTransaction],
     );
 
     async function handleBulkReEvaluateRules() {
