@@ -231,22 +231,6 @@ export function ConnectAccountInline({ onBack }: ConnectAccountInlineProps) {
         }
     }
 
-    const stepDescriptions: Record<Step, string> = {
-        country: __('Select the country where your bank is located.'),
-        bank: __('Select your bank.'),
-        confirm: isIndexaCapital
-            ? __('Enter your API token to connect your Indexa Capital account.')
-            : isBinance
-              ? __(
-                    'Enter your API Key and Secret to connect your Binance account.',
-                )
-              : isBitpanda
-                ? __('Enter your API Key to connect your Bitpanda account.')
-                : __(
-                      'You will be redirected to your bank to authorize access.',
-                  ),
-    };
-
     return (
         <div className="w-full max-w-md space-y-4">
             {error && (
