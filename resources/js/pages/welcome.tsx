@@ -711,7 +711,7 @@ export default function Welcome({
                     <section className="w-full overflow-hidden px-0 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 text-center sm:gap-12">
                             <div className="flex flex-col items-center gap-4">
-                                <h2 className="max-w-[720px] text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
+                                <h2 className="max-w-[720px] text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight">
                                     {__(
                                         'Trusted by people who value their privacy',
                                     )}
