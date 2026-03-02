@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property \App\Enums\ChartColorScheme $chart_color_scheme
+ */
 class UserSetting extends Model
 {
     /** @use HasFactory<\Database\Factories\UserSettingFactory> */

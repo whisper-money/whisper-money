@@ -86,7 +86,7 @@ class AccountMetricsService
      * Investment accounts get `_invested` entries.
      *
      * @param  Collection<int, Account>  $accounts
-     * @return array{data: list<array<string, mixed>>, accounts: array<string, array<string, mixed>>, currency_code: string}
+     * @return array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}
      */
     public function getNetWorthEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end): array
     {
@@ -173,7 +173,7 @@ class AccountMetricsService
      * Accounts with a different currency than the user also get `_original` entries.
      *
      * @param  Collection<int, Account>  $accounts
-     * @return array{data: list<array<string, mixed>>, accounts: array<string, array<string, mixed>>, currency_code: string}
+     * @return array{data: list<array<string, mixed>>, accounts: mixed, currency_code: string}
      */
     public function getNetWorthDailyEvolution(string $userCurrency, Collection $accounts, Carbon $start, Carbon $end): array
     {

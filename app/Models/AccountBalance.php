@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property \Carbon\Carbon $balance_date
+ */
 class AccountBalance extends Model
 {
     /** @use HasFactory<\Database\Factories\AccountBalanceFactory> */
@@ -28,6 +31,7 @@ class AccountBalance extends Model
         ];
     }
 
+    /** @return BelongsTo<Account, $this> */
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);

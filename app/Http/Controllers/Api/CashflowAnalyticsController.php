@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
@@ -204,13 +205,13 @@ class CashflowAnalyticsController extends Controller
         if ($uncategorized != 0) {
             $categorized->push([
                 'category_id' => null,
-                'category' => (object) [
+                'category' => (new Category)->forceFill([
                     'id' => null,
                     'name' => $type === CategoryType::Income ? 'Unknown Income' : 'Unknown Expense',
                     'type' => $type,
                     'color' => 'gray',
                     'icon' => 'HelpCircle',
-                ],
+                ]),
                 'amount' => abs($uncategorized),
             ]);
         }

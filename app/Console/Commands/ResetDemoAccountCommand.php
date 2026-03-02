@@ -106,7 +106,7 @@ class ResetDemoAccountCommand extends Command
         $user->automationRules()->forceDelete();
         $user->categories()->forceDelete();
         $user->budgets()->forceDelete();
-        $user->encryptedMessage()?->delete();
+        $user->encryptedMessage()->delete();
 
         $this->info('  Deleted existing data');
     }

@@ -69,7 +69,7 @@ class BalanceSyncService
 
         $existingDates = $account->balances()
             ->pluck('balance_date')
-            ->map(fn ($date) => $date->toDateString())
+            ->map(fn (mixed $date) => $date instanceof \Carbon\Carbon ? $date->toDateString() : (string) $date)
             ->flip()
             ->all();
 
