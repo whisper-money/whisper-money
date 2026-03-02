@@ -1,7 +1,7 @@
 <x-mail::message>
 # {{ __('Verify your email, :name!', ['name' => $userName]) }}
 
-{{ __("Hi! I'm Victor, the founder of Whisper Money. Thanks for signing up — I just need you to verify your email address to get started.") }}
+{{ __("Thanks for signing up — I just need you to verify your email address to get started.") }}
 
 {{ __("Once verified, you'll be able to set up your encryption key and start tracking your finances with full privacy.") }}
 
