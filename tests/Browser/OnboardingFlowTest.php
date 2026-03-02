@@ -273,7 +273,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
 
     // The drawer auto-selects the only account and moves to Upload File step
     // Upload the test CSV file
-    $csvPath = __DIR__.'/assets/test-transactions.csv';
+    $csvPath = __DIR__ . '/assets/test-transactions.csv';
     $page->attach('input[type="file"]', $csvPath)
         ->wait(2)
         ->click('Next')
@@ -296,7 +296,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
 
     // Smart Rules
     $page->assertSee('Smart Automation Rules')
-        ->click('Continue to Import')
+        ->click('Continue')
         ->wait(1);
 
     // More Accounts - verify account is listed, then finish
