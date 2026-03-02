@@ -19,8 +19,8 @@ class IndexaCapitalBalanceSyncService
         }
 
         $performance = $client->getPerformance($account->external_account_id);
-        $portfolios = $performance['portfolios'];
-        $netAmounts = $performance['net_amounts'];
+        $portfolios = $performance['portfolios'] ?? [];
+        $netAmounts = $performance['net_amounts'] ?? [];
 
         if (empty($portfolios)) {
             Log::warning('No portfolio data from Indexa Capital', [
@@ -44,8 +44,12 @@ class IndexaCapitalBalanceSyncService
         $count = 0;
 
         foreach ($portfolios as $entry) {
-            $date = $entry['date'];
-            $value = $entry['total_amount'];
+            $date = $entry['date'] ?? null;
+            $value = $entry['total_amount'] ?? null;
+
+            if ($date === null || $value === null) {
+                continue;
+            }
 
             if ($sinceDate !== null && $date < $sinceDate) {
                 continue;
