@@ -179,7 +179,7 @@ export const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
                     setDisplayValue(formatCurrency(value, locale));
                 }
             }
-        }, [value, isFocused]);
+        }, [value, isFocused, locale]);
 
         const handleFocus = () => {
             setIsFocused(true);

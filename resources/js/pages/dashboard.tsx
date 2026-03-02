@@ -47,11 +47,15 @@ export default function Dashboard() {
         useEncryptionKey();
     const [showUnlockDialog, setShowUnlockDialog] = useState(false);
 
-    const netWorthEvolution = props.netWorthEvolution ?? {
-        data: [],
-        accounts: {},
-        currency_code: 'USD',
-    };
+    const netWorthEvolution = useMemo(
+        () =>
+            props.netWorthEvolution ?? {
+                data: [],
+                accounts: {},
+                currency_code: 'USD',
+            },
+        [props.netWorthEvolution],
+    );
 
     const accountMetrics = useMemo(
         () => deriveAccountMetrics(netWorthEvolution, locale),

@@ -68,7 +68,6 @@ function toAliasPath(absolutePath: string): string {
  */
 function importStrings(componentFile: string, consumerFile: string): string[] {
     const aliasPath = toAliasPath(componentFile); // "@/components/foo/bar"
-    const componentDir = dirname(componentFile);
     const consumerDir = dirname(consumerFile);
 
     // Relative path from consumer's directory to component (no extension)
