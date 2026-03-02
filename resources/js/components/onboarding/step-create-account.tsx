@@ -285,7 +285,9 @@ export function StepCreateAccount({
                             onAccountCreated({
                                 id: existingAccounts[0].id,
                                 name:
-                                    existingAccounts[0].bank?.name || 'Account',
+                                    existingAccounts[0].name ||
+                                    existingAccounts[0].bank?.name ||
+                                    'Account',
                                 type: existingAccounts[0].type,
                                 currencyCode: existingAccounts[0].currency_code,
                                 connected: true,

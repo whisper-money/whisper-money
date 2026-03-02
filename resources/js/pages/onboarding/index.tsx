@@ -87,7 +87,11 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
     });
 
     const handleAccountCreated = async (account: CreatedAccount) => {
-        addCreatedAccount(account);
+        // Connected accounts already exist server-side (in existingAccounts prop);
+        // don't add them to createdAccounts — they'll show via filteredExistingAccounts.
+        if (!account.connected) {
+            addCreatedAccount(account);
+        }
 
         // Sync with backend to get the new account in local DB
         await sync();
