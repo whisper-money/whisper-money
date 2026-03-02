@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as RechartsPrimitive from 'recharts';
 
+import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/currency';
@@ -164,6 +165,7 @@ const ChartTooltipContent = React.forwardRef<
     ) => {
         const { config } = useChart();
         const locale = useLocale();
+        const { isPrivacyModeEnabled } = usePrivacyMode();
 
         const tooltipLabel = React.useMemo(() => {
             if (hideLabel || !payload?.length) {
@@ -346,11 +348,9 @@ const ChartTooltipContent = React.forwardRef<
                                             Total {currency}
                                         </span>
                                         <span className="text-foreground font-mono font-medium tabular-nums">
-                                            {formatCurrencyWithCode(
-                                                total,
-                                                currency,
-                                                locale,
-                                            )}
+                                            {isPrivacyModeEnabled
+                                                ? formatCurrencyWithCode(total, currency, locale).replace(/\d/g, '*')
+                                                : formatCurrencyWithCode(total, currency, locale)}
                                         </span>
                                     </div>
                                 ))
@@ -361,11 +361,9 @@ const ChartTooltipContent = React.forwardRef<
                                     </span>
                                     <span className="text-foreground font-mono font-medium tabular-nums">
                                         {currencyTotals && currencyTotals[0]
-                                            ? formatCurrencyWithCode(
-                                                currencyTotals[0][1],
-                                                currencyTotals[0][0],
-                                                locale,
-                                            )
+                                            ? isPrivacyModeEnabled
+                                                ? formatCurrencyWithCode(currencyTotals[0][1], currencyTotals[0][0], locale).replace(/\d/g, '*')
+                                                : formatCurrencyWithCode(currencyTotals[0][1], currencyTotals[0][0], locale)
                                             : payload
                                                 .reduce(
                                                     (

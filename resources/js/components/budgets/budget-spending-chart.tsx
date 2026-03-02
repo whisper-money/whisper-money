@@ -10,6 +10,7 @@ import {
     ChartTooltip,
     type ChartConfig,
 } from '@/components/ui/chart';
+import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { BudgetPeriod } from '@/types/budget';
 import { formatCurrency } from '@/utils/currency';
@@ -53,6 +54,8 @@ function CustomTooltip({
     hasPreviousPeriod,
     locale,
 }: CustomTooltipProps) {
+    const { isPrivacyModeEnabled } = usePrivacyMode();
+
     if (!active || !payload || !payload.length) {
         return null;
     }
@@ -63,6 +66,11 @@ function CustomTooltip({
     const available = data.remaining;
     const percentage =
         allocated > 0 ? Math.round((available / allocated) * 100) : 0;
+
+    const maskIfPrivate = (value: number) => {
+        const formatted = formatCurrency(value, currencyCode, locale);
+        return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
+    };
 
     return (
         <div className="rounded-lg border bg-background p-3 shadow-lg">
@@ -77,16 +85,14 @@ function CustomTooltip({
                         {__('Allocated:')}
                     </span>
                     <span className="font-medium">
-                        {formatCurrency(allocated, currencyCode, locale)}
+                        {maskIfPrivate(allocated)}
                     </span>
                 </div>
                 <div className="flex items-center justify-between gap-8">
                     <span className="text-muted-foreground">
                         {__('Spent:')}
                     </span>
-                    <span className="font-medium">
-                        {formatCurrency(spent, currencyCode, locale)}
-                    </span>
+                    <span className="font-medium">{maskIfPrivate(spent)}</span>
                 </div>
                 {hasPreviousPeriod && data.prevSpent !== undefined && (
                     <div className="flex items-center justify-between gap-8">
@@ -94,11 +100,7 @@ function CustomTooltip({
                             {__('Last period:')}
                         </span>
                         <span className="font-medium text-muted-foreground">
-                            {formatCurrency(
-                                data.prevSpent,
-                                currencyCode,
-                                locale,
-                            )}
+                            {maskIfPrivate(data.prevSpent)}
                         </span>
                     </div>
                 )}
@@ -110,11 +112,7 @@ function CustomTooltip({
                                 {percentage}% /
                             </span>
                             <span className="font-semibold">
-                                {formatCurrency(
-                                    available,
-                                    currencyCode,
-                                    locale,
-                                )}
+                                {maskIfPrivate(available)}
                             </span>
                         </div>
                     </div>
