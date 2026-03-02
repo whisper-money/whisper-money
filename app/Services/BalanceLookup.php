@@ -38,7 +38,7 @@ class BalanceLookup
     {
         $instance = new self;
 
-        if (empty($accountIds) || (is_countable($accountIds) && count($accountIds) === 0)) {
+        if (empty($accountIds)) {
             return $instance;
         }
 

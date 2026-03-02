@@ -171,7 +171,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             }
 
             if ($created > 0) {
-                $bankName = $account->bank?->name ?? __('Unknown Bank');
+                $bankName = $account->bank->name ?? __('Unknown Bank');
                 $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
             }
         }

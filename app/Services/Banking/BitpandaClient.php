@@ -115,7 +115,7 @@ class BitpandaClient
 
         do {
             $response = $this->getFiatTransactions($type, $cursor, 100);
-            $transactions = $response['data'] ?? [];
+            $transactions = $response['data'];
 
             if (empty($transactions)) {
                 break;
@@ -147,7 +147,7 @@ class BitpandaClient
 
         do {
             $response = $this->getTrades($cursor, 100);
-            $trades = $response['data'] ?? [];
+            $trades = $response['data'];
 
             if (empty($trades)) {
                 break;

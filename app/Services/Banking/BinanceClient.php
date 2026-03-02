@@ -143,7 +143,7 @@ class BinanceClient
             ->acceptJson()
             ->retry(
                 self::RETRY_BACKOFF_MS,
-                fn (Exception $e) => $e instanceof RequestException && $e->response->status() === 429,
+                when: fn (\Throwable $e) => $e instanceof RequestException && $e->response->status() === 429,
             );
     }
 }

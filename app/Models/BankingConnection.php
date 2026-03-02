@@ -12,6 +12,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property bool $has_pending_accounts
+ * @property \App\Enums\BankingConnectionStatus $status
+ * @property \Carbon\Carbon|null $valid_until
+ * @property \Carbon\Carbon|null $last_synced_at
+ * @property array<int, mixed>|null $pending_accounts_data
  */
 class BankingConnection extends Model
 {

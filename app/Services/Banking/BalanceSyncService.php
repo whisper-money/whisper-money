@@ -25,7 +25,7 @@ class BalanceSyncService
         }
 
         $result = $this->provider->getBalances($account->external_account_id);
-        $balances = $result['balances'] ?? [];
+        $balances = $result['balances'];
 
         if (empty($balances)) {
             return;

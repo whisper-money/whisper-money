@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Models\User;
 use App\Services\ResendService;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,6 +20,12 @@ class SyncUserToResendListener implements ShouldQueue
             return;
         }
 
-        $this->resendService->createContact($event->user);
+        $user = $event->user;
+
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $this->resendService->createContact($user);
     }
 }

@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property array<string, float> $rates
+ */
 class ExchangeRate extends Model
 {
     /** @use HasFactory<\Database\Factories\ExchangeRateFactory> */

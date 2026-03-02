@@ -80,11 +80,11 @@ class SetupMainUser extends Command
                 continue;
             }
 
-            match ($fileName) {
-                'categories.json' => $this->importCategories($user, $data),
-                'automated_rules.json' => $this->importAutomationRules($user, $data),
-                default => $this->warn("  ! Skipping {$fileName} (no importer defined)"),
-            };
+            if ($fileName === 'categories.json') {
+                $this->importCategories($user, $data);
+            } else {
+                $this->importAutomationRules($user, $data);
+            }
         }
 
         foreach ($jsonFiles as $filePath) {

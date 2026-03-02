@@ -56,11 +56,11 @@ class BitpandaBalanceSyncService
         $wallets = $client->getCryptoWallets();
         $total = 0.0;
 
-        foreach ($wallets['data'] ?? [] as $wallet) {
-            $attributes = $wallet['attributes'] ?? [];
-            $balance = (float) ($attributes['balance'] ?? 0);
-            $symbol = $attributes['cryptocoin_symbol'] ?? null;
-            $deleted = $attributes['deleted'] ?? false;
+        foreach ($wallets['data'] as $wallet) {
+            $attributes = $wallet['attributes'];
+            $balance = (float) $attributes['balance'];
+            $symbol = $attributes['cryptocoin_symbol'];
+            $deleted = $attributes['deleted'];
 
             if ($balance <= 0 || ! $symbol || $deleted) {
                 continue;
@@ -91,10 +91,10 @@ class BitpandaBalanceSyncService
         $wallets = $client->getFiatWallets();
         $total = 0.0;
 
-        foreach ($wallets['data'] ?? [] as $wallet) {
-            $attributes = $wallet['attributes'] ?? [];
-            $balance = (float) ($attributes['balance'] ?? 0);
-            $symbol = strtoupper($attributes['fiat_symbol'] ?? '');
+        foreach ($wallets['data'] as $wallet) {
+            $attributes = $wallet['attributes'];
+            $balance = (float) $attributes['balance'];
+            $symbol = strtoupper($attributes['fiat_symbol']);
 
             if ($balance <= 0 || ! $symbol) {
                 continue;
@@ -161,7 +161,7 @@ class BitpandaBalanceSyncService
         $total = 0.0;
 
         foreach ($transactions as $transaction) {
-            $attributes = $transaction['attributes'] ?? [];
+            $attributes = $transaction['attributes'];
             $status = $attributes['status'] ?? '';
             $amount = (float) ($attributes['amount'] ?? 0);
 

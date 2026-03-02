@@ -7,6 +7,7 @@ use App\Jobs\Drip\SendImportHelpEmailJob;
 use App\Jobs\Drip\SendOnboardingReminderEmailJob;
 use App\Jobs\Drip\SendPromoCodeEmailJob;
 use App\Jobs\Drip\SendWelcomeEmailJob;
+use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 
 class ScheduleDripEmailsListener
@@ -18,6 +19,10 @@ class ScheduleDripEmailsListener
         }
 
         $user = $event->user;
+
+        if (! $user instanceof User) {
+            return;
+        }
 
         SendWelcomeEmailJob::dispatch($user)->delay(now()->addMinutes(30));
         SendOnboardingReminderEmailJob::dispatch($user)->delay(now()->addDay());

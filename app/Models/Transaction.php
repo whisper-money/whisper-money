@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property \Carbon\Carbon $transaction_date
+ * @property int|float $total_amount
  */
 class Transaction extends Model
 {
