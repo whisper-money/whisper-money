@@ -1,16 +1,5 @@
 import { cn } from '@/lib/utils';
-import { AccountType } from '@/types/account';
-import {
-    BadgeQuestionMarkIcon,
-    Building2,
-    CreditCard,
-    FolderKanban,
-    Landmark,
-    LucideIcon,
-    PiggyBank,
-    TrendingUp,
-    Umbrella,
-} from 'lucide-react';
+import { AccountType, accountIconByType } from '@/types/account';
 
 export function AccountTypeIcon({
     type,
@@ -19,17 +8,7 @@ export function AccountTypeIcon({
     type: AccountType;
     className?: string;
 }) {
-    const typeMap: Record<AccountType, LucideIcon> = {
-        checking: Building2, // 🏦 - bank / institution
-        credit_card: CreditCard, // 💳 - card
-        investment: TrendingUp, // 📈 - growth / investment
-        loan: Landmark, // 🏠 - "institution/loan", or use Home if it's a mortgage
-        retirement: Umbrella, // 🏖️ - retirement / pension
-        savings: PiggyBank, // 💰 - savings
-        others: FolderKanban, // 📁 - miscellaneous/other
-    };
-
-    const Icon = typeMap[type] || BadgeQuestionMarkIcon;
+    const Icon = accountIconByType(type);
 
     return (
         <Icon className={cn(['h-5 w-5 text-muted-foreground', className])} />

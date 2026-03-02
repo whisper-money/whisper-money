@@ -1,4 +1,15 @@
 import { __ } from '@/utils/i18n';
+import {
+    BadgeQuestionMarkIcon,
+    Building2,
+    CreditCard,
+    FolderKanban,
+    LineChart,
+    LucideIcon,
+    PiggyBank,
+    TrendingUp,
+    Wallet,
+} from 'lucide-react';
 import { UUID } from './uuid';
 
 export const ACCOUNT_TYPES = [
@@ -90,6 +101,20 @@ export function supportsInvestedAmount(
     account: Pick<Account, 'type'>,
 ): boolean {
     return INVESTED_AMOUNT_ACCOUNT_TYPES.includes(account.type);
+}
+
+export function accountIconByType(type: AccountType): LucideIcon {
+    const typeMap: Record<AccountType, LucideIcon> = {
+        checking: Wallet,
+        credit_card: CreditCard,
+        investment: LineChart,
+        loan: Building2,
+        retirement: TrendingUp,
+        savings: PiggyBank,
+        others: FolderKanban,
+    };
+
+    return typeMap[type] ?? BadgeQuestionMarkIcon;
 }
 
 export function filterTransactionalAccounts<T extends { type: AccountType }>(
