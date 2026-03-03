@@ -67,7 +67,7 @@ export function BudgetPeriodNavigation({
 
             <button
                 onClick={handleCurrent}
-                className="border border-border bg-background px-3 py-1.5 text-center text-sm font-medium hover:bg-accent focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="border border-border bg-background px-3 py-1.5 text-center text-sm font-medium text-nowrap hover:bg-accent focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
                 {periodLabel}
             </button>

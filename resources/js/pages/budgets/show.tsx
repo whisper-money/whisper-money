@@ -129,13 +129,6 @@ export default function BudgetShow({
                                             </span>
                                         )}
                                     </div>
-                                    <span className="opacity-25">/</span>
-                                    <div className="inline">
-                                        <span>{periodDescriptionLabel} </span>
-                                        <span className="opacity-50">
-                                            ({__(periodTypeLabel)})
-                                        </span>
-                                    </div>
                                 </div>
                             }
                         />
