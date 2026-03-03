@@ -226,6 +226,8 @@ it('completes entire onboarding flow with account creation, transaction import, 
         'onboarded_at' => null,
     ]);
 
+    Feature::for($user)->activate('open-banking');
+
     $this->actingAs($user);
 
     $page = visit('/onboarding');
