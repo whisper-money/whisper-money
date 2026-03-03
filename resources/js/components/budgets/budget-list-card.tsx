@@ -84,7 +84,14 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
             <CardHeader>
                 <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                        <CardTitle className="text-xl">{budget.name}</CardTitle>
+                        <CardTitle className="text-xl">
+                            <Link
+                                href={show({ budget: budget.id }).url}
+                                className="-my-1 -ml-1.5 inline-flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                            >
+                                {budget.name}
+                            </Link>
+                        </CardTitle>
                         <CardDescription className="flex items-center gap-2">
                             <Calendar className="h-3 w-3" />
                             {periodLabel}

@@ -13,13 +13,11 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLocale } from '@/hooks/use-locale';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import { Account, Bank } from '@/types/account';
-import { Budget, BudgetPeriod, getBudgetPeriodTypeLabel } from '@/types/budget';
+import { Budget, BudgetPeriod } from '@/types/budget';
 import { Category } from '@/types/category';
-import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import { ChevronDown, Loader2 } from 'lucide-react';
@@ -46,7 +44,6 @@ export default function BudgetShow({
     banks,
     currencyCode,
 }: Props) {
-    const locale = useLocale();
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -82,10 +79,6 @@ export default function BudgetShow({
         return null;
     }, [budget]);
 
-    const periodTypeLabel = useMemo(() => {
-        return getBudgetPeriodTypeLabel(budget.period_type);
-    }, [budget.period_type]);
-
     const periodTransactions = useMemo(() => {
         return (
             currentPeriod.budget_transactions
@@ -93,16 +86,6 @@ export default function BudgetShow({
                 .filter((t) => t !== undefined && t !== null) || []
         );
     }, [currentPeriod]);
-
-    const periodDescriptionLabel = useMemo(() => {
-        const start = formatDate(
-            currentPeriod.start_date,
-            "MMM d, ''yy",
-            locale,
-        );
-        const end = formatDate(currentPeriod.end_date, "MMM d, ''yy", locale);
-        return `${start} - ${end}`;
-    }, [currentPeriod, locale]);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
@@ -128,13 +111,6 @@ export default function BudgetShow({
                                                 {__('No tracking')}
                                             </span>
                                         )}
-                                    </div>
-                                    <span className="opacity-25">/</span>
-                                    <div className="inline">
-                                        <span>{periodDescriptionLabel} </span>
-                                        <span className="opacity-50">
-                                            ({__(periodTypeLabel)})
-                                        </span>
                                     </div>
                                 </div>
                             }
