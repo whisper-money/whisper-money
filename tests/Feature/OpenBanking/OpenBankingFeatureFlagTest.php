@@ -80,3 +80,35 @@ test('guests see open-banking feature as false', function () {
         ->where('features.open-banking', false)
     );
 });
+
+test('open-banking feature flag is shared with frontend on onboarding page when enabled', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+        'encryption_salt' => 'test-salt',
+    ]);
+
+    Feature::for($user)->activate('open-banking');
+
+    $response = $this->actingAs($user)->get('/onboarding');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('features.open-banking', true)
+    );
+});
+
+test('open-banking feature flag is shared with frontend on onboarding page when disabled', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+        'encryption_salt' => 'test-salt',
+    ]);
+
+    Feature::for($user)->deactivate('open-banking');
+
+    $response = $this->actingAs($user)->get('/onboarding');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('features.open-banking', false)
+    );
+});

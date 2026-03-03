@@ -56,7 +56,9 @@ export function StepCreateAccount({
     onAccountCreated,
     onSkip,
 }: StepCreateAccountProps) {
-    const { pricing, subscriptionsEnabled } = usePage<SharedData>().props;
+    const { pricing, subscriptionsEnabled, features } =
+        usePage<SharedData>().props;
+    const openBankingEnabled = features['open-banking'];
     const [mode, setMode] = useState<AccountMode>('select');
     const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
         'manual',
@@ -324,7 +326,7 @@ export function StepCreateAccount({
     }
 
     // Connected account inline flow
-    if (mode === 'connected') {
+    if (openBankingEnabled && mode === 'connected') {
         return (
             <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
                 <StepHeader
@@ -412,7 +414,12 @@ export function StepCreateAccount({
             />
 
             <div className="w-full max-w-md space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div
+                    className={cn(
+                        'grid gap-3',
+                        openBankingEnabled ? 'grid-cols-2' : 'grid-cols-1',
+                    )}
+                >
                     {/* Manual Account Card */}
                     <button
                         type="button"
@@ -436,52 +443,56 @@ export function StepCreateAccount({
                     </button>
 
                     {/* Connected Account Card */}
-                    <button
-                        type="button"
-                        onClick={() => setSelectedMode('connected')}
-                        className={cn(
-                            'relative flex flex-col rounded-xl border p-4 text-left transition-all duration-200',
-                            selectedMode === 'connected'
-                                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 dark:bg-blue-950/30'
-                                : 'border-border bg-card hover:border-muted-foreground/40',
-                        )}
-                    >
-                        {subscriptionsEnabled && (
-                            <span className="absolute top-2.5 right-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
-                                Pro
-                            </span>
-                        )}
-                        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
-                            <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <p className="text-sm font-semibold">
-                            {__('Connected')}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            {__(
-                                'Auto-sync transactions directly from your bank',
+                    {openBankingEnabled && (
+                        <button
+                            type="button"
+                            onClick={() => setSelectedMode('connected')}
+                            className={cn(
+                                'relative flex flex-col rounded-xl border p-4 text-left transition-all duration-200',
+                                selectedMode === 'connected'
+                                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 dark:bg-blue-950/30'
+                                    : 'border-border bg-card hover:border-muted-foreground/40',
                             )}
-                        </p>
-                        {subscriptionsEnabled &&
-                            cheapestMonthlyPrice !== null && (
-                                <p className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400">
-                                    {__('From')} $
-                                    {cheapestMonthlyPrice.toFixed(0)}
-                                    {__('/month')}
-                                </p>
+                        >
+                            {subscriptionsEnabled && (
+                                <span className="absolute top-2.5 right-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+                                    Pro
+                                </span>
                             )}
-                    </button>
+                            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                                <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <p className="text-sm font-semibold">
+                                {__('Connected')}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {__(
+                                    'Auto-sync transactions directly from your bank',
+                                )}
+                            </p>
+                            {subscriptionsEnabled &&
+                                cheapestMonthlyPrice !== null && (
+                                    <p className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400">
+                                        {__('From')} $
+                                        {cheapestMonthlyPrice.toFixed(0)}
+                                        {__('/month')}
+                                    </p>
+                                )}
+                        </button>
+                    )}
                 </div>
 
-                {selectedMode === 'connected' && subscriptionsEnabled && (
-                    <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
-                        <p className="text-center text-sm text-blue-700 dark:text-blue-300">
-                            {__(
-                                "Connected accounts are a Pro feature. You'll choose a plan at the end of the onboarding.",
-                            )}
-                        </p>
-                    </div>
-                )}
+                {openBankingEnabled &&
+                    selectedMode === 'connected' &&
+                    subscriptionsEnabled && (
+                        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
+                            <p className="text-center text-sm text-blue-700 dark:text-blue-300">
+                                {__(
+                                    "Connected accounts are a Pro feature. You'll choose a plan at the end of the onboarding.",
+                                )}
+                            </p>
+                        </div>
+                    )}
 
                 <StepButton
                     className="w-full sm:w-full"
