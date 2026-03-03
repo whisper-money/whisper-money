@@ -1,3 +1,4 @@
+import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
@@ -12,7 +13,8 @@ import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import { Category, getCategoryColorClasses } from '@/types/category';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
+import { format, subDays } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
@@ -60,6 +62,10 @@ export function TopCategoriesCard({
         );
     }
 
+    const now = new Date();
+    const dateFrom = format(subDays(now, 30), 'yyyy-MM-dd');
+    const dateTo = format(now, 'yyyy-MM-dd');
+
     return (
         <Card className="w-full">
             <CardHeader className="gap-2">
@@ -91,8 +97,20 @@ export function TopCategoriesCard({
                             index,
                         );
 
+                        const categoryUrl = transactionsIndex({
+                            query: {
+                                category_ids: item.category.id,
+                                date_from: dateFrom,
+                                date_to: dateTo,
+                            },
+                        }).url;
+
                         return (
-                            <div key={item.category.id} className="space-y-2">
+                            <Link
+                                key={item.category.id}
+                                href={categoryUrl}
+                                className="group block space-y-2"
+                            >
                                 <div className="flex min-w-0 items-center gap-2">
                                     <div
                                         className={cn([
@@ -102,7 +120,7 @@ export function TopCategoriesCard({
                                     >
                                         <Icon className="size-4" />
                                     </div>
-                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                                    <span className="min-w-0 flex-1 truncate text-sm font-medium group-hover:underline">
                                         {item.category.name}
                                     </span>
                                     {percentageChange !== null && (
@@ -134,7 +152,7 @@ export function TopCategoriesCard({
                                     className="h-2"
                                     indicatorColor={chartColor}
                                 />
-                            </div>
+                            </Link>
                         );
                     })}
                     {categories.length === 0 && (
