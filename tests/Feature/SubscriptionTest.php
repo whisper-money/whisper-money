@@ -2,9 +2,11 @@
 
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     config(['subscriptions.enabled' => true]);
@@ -197,5 +199,80 @@ test('pricing config includes all plan details', function () {
                 ->has('description')
                 ->has('badge')
             )
+        );
+});
+
+test('open banking users without bank connections are redirected to paywall on first visit', function () {
+    $user = User::factory()->onboarded()->create();
+
+    Feature::for($user)->activate('open-banking');
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertRedirect(route('subscribe'));
+});
+
+test('open banking users without bank connections can access protected routes after seeing paywall', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+
+    Feature::for($user)->activate('open-banking');
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertOk();
+});
+
+test('open banking users with a bank connection are redirected to paywall', function () {
+    $user = User::factory()->onboarded()->create();
+
+    Feature::for($user)->activate('open-banking');
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertRedirect(route('subscribe'));
+});
+
+test('paywall shows canUseFreePlan true when open banking is active and no bank connected', function () {
+    $user = User::factory()->onboarded()->create();
+
+    Feature::for($user)->activate('open-banking');
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('canUseFreePlan', true)
+        );
+});
+
+test('paywall shows canUseFreePlan false when open banking is active but user has a bank connection', function () {
+    $user = User::factory()->onboarded()->create();
+
+    Feature::for($user)->activate('open-banking');
+    BankingConnection::factory()->for($user)->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('canUseFreePlan', false)
+        );
+});
+
+test('paywall shows canUseFreePlan false when open banking is not active', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('canUseFreePlan', false)
         );
 });

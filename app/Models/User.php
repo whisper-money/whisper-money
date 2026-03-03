@@ -33,6 +33,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'password',
         'encryption_salt',
         'onboarded_at',
+        'paywall_seen_at',
         'currency_code',
         'locale',
     ];
@@ -61,12 +62,18 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'onboarded_at' => 'datetime',
+            'paywall_seen_at' => 'datetime',
         ];
     }
 
     public function isOnboarded(): bool
     {
         return $this->onboarded_at !== null;
+    }
+
+    public function hasSeenPaywall(): bool
+    {
+        return $this->paywall_seen_at !== null;
     }
 
     /** @return HasOne<UserSetting, $this> */

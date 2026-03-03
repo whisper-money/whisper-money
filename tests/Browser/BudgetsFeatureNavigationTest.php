@@ -44,7 +44,7 @@ test('user can view budgets list with existing budgets', function () {
 
     $page = $this->actingAs($user)->visit('/budgets');
 
-    $page->assertSee('Budgets')
+    $page->waitForText('Budgets', 10)
         ->assertSee('Test Budget')
         ->assertNoJavascriptErrors();
 });
@@ -56,7 +56,7 @@ test('user can open create budget dialog', function () {
 
     $page = $this->actingAs($user)->visit('/budgets');
 
-    $page->assertSee('Budgets')
+    $page->waitForText('Budgets', 10)
         ->click('Create Budget')
         ->wait(1)
         ->assertSee('Create Budget')
@@ -75,7 +75,7 @@ test('user can view a specific budget', function () {
 
     $page = $this->actingAs($user)->visit('/budgets');
 
-    $page->assertSee('My Monthly Budget')
+    $page->waitForText('My Monthly Budget', 10)
         ->click('View Details')
         ->wait(2)
         ->assertPathIs("/budgets/{$budget->id}")

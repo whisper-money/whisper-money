@@ -3,6 +3,7 @@
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\User;
+use Laravel\Pennant\Feature;
 
 // =============================================================================
 // Basic Redirect Tests
@@ -341,4 +342,25 @@ it('completes entire onboarding flow with account creation, transaction import, 
     $transactions = $user->transactions()->where('account_id', $account->id)->get();
     expect($transactions)->toHaveCount(5);
     expect($transactions->pluck('currency_code')->unique()->first())->toBe('EUR');
+});
+
+// =============================================================================
+// Subscribe Page Free Plan Tests
+// =============================================================================
+
+it('shows free plan option on subscribe page when open banking is enabled and no bank was connected', function () {
+    config(['subscriptions.enabled' => true]);
+
+    // Create an onboarded user with open-banking active and no banking connections
+    $user = User::factory()->onboarded()->create();
+
+    $this->actingAs($user);
+
+    Feature::for($user)->activate('open-banking');
+
+    $page = visit('/subscribe');
+
+    $page->assertPathIs('/subscribe')
+        ->assertSee('Continue for free')
+        ->assertNoJavascriptErrors();
 });

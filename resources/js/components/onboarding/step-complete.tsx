@@ -1,6 +1,5 @@
 import { complete } from '@/actions/App/Http/Controllers/OnboardingController';
 import { StepButton } from '@/components/onboarding/step-button';
-import { dashboard } from '@/routes';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { PartyPopper } from 'lucide-react';
@@ -16,9 +15,6 @@ export function StepComplete() {
             complete.url(),
             {},
             {
-                onSuccess: () => {
-                    router.visit(dashboard().url);
-                },
                 onError: () => {
                     setIsRedirecting(false);
                 },

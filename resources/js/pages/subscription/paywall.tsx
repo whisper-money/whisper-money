@@ -9,12 +9,13 @@ import {
 import { useCountUp } from '@/hooks/use-count-up';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
+import { dashboard } from '@/routes';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     CheckIcon,
     FolderIcon,
@@ -37,6 +38,7 @@ interface PaywallStats {
 
 interface PaywallPageProps extends SharedData {
     stats: PaywallStats;
+    canUseFreePlan: boolean;
 }
 
 function getEquivalentBillingLabel(
@@ -369,7 +371,8 @@ function PromoSection() {
 }
 
 export default function Paywall() {
-    const { pricing, stats } = usePage<PaywallPageProps>().props;
+    const { pricing, stats, canUseFreePlan } =
+        usePage<PaywallPageProps>().props;
     const planEntries = Object.entries(pricing.plans);
 
     if (planEntries.length === 0) {
@@ -392,6 +395,17 @@ export default function Paywall() {
                     />
 
                     {pricing.promo.enabled && <PromoSection />}
+
+                    {canUseFreePlan && (
+                        <div className="text-center">
+                            <button
+                                onClick={() => router.visit(dashboard().url)}
+                                className="text-sm text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+                            >
+                                {__('Continue for free')}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </>
