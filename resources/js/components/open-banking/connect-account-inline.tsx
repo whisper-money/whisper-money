@@ -13,6 +13,7 @@ import type { EnableBankingInstitution } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useWebHaptics } from 'web-haptics/react';
 
 const COUNTRIES = [
     { code: 'ES', name: 'Spain' },
@@ -73,6 +74,7 @@ interface ConnectAccountInlineProps {
 
 export function ConnectAccountInline({ onBack }: ConnectAccountInlineProps) {
     const [step, setStep] = useState<Step>('country');
+    const { trigger } = useWebHaptics();
     const [country, setCountry] = useState<string>('');
     const [institutions, setInstitutions] = useState<
         EnableBankingInstitution[]
@@ -272,7 +274,10 @@ export function ConnectAccountInline({ onBack }: ConnectAccountInlineProps) {
                         <Button
                             variant={'ghost'}
                             type="button"
-                            onClick={handleBack}
+                            onClick={() => {
+                                trigger('light');
+                                handleBack();
+                            }}
                             className="w-full"
                         >
                             <ArrowLeft className="h-4 w-4" />
@@ -329,7 +334,10 @@ export function ConnectAccountInline({ onBack }: ConnectAccountInlineProps) {
                         <Button
                             variant={'ghost'}
                             type="button"
-                            onClick={handleBack}
+                            onClick={() => {
+                                trigger('light');
+                                handleBack();
+                            }}
                             className="w-full"
                         >
                             <ArrowLeft className="h-4 w-4" />

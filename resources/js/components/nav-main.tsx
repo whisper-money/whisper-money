@@ -9,9 +9,11 @@ import { resolveUrl } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
+import { useWebHaptics } from 'web-haptics/react';
 
 export function NavMain({ items = [] }: { items: NavItem[] }) {
     const page = usePage();
+    const { trigger } = useWebHaptics();
     return (
         <SidebarGroup className="px-2 py-0">
             <SidebarGroupLabel>{__('Platform')}</SidebarGroupLabel>
@@ -25,7 +27,11 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             )}
                             tooltip={{ children: __(item.title) }}
                         >
-                            <Link href={item.href} prefetch>
+                            <Link
+                                href={item.href}
+                                prefetch
+                                onClick={() => trigger('selection')}
+                            >
                                 {item.icon && <item.icon />}
                                 <span>{__(item.title)}</span>
                             </Link>

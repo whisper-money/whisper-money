@@ -43,6 +43,7 @@ import {
     SkipForward,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useWebHaptics } from 'web-haptics/react';
 
 const CATEGORY_USAGE_KEY = 'category-usage-order';
 
@@ -107,6 +108,7 @@ export default function CategorizeTransactions({
         automationRules: AutomationRule[];
     }>().props;
     const locale = useLocale();
+    const { trigger } = useWebHaptics();
 
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
         DecryptedTransaction[]
@@ -506,6 +508,7 @@ export default function CategorizeTransactions({
                             href={categorizeRoute
                                 .url()
                                 ?.replace('/categorize', '')}
+                            onClick={() => trigger('light')}
                         >
                             <Button size="lg" className="mt-4">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -541,6 +544,7 @@ export default function CategorizeTransactions({
                             href={categorizeRoute
                                 .url()
                                 ?.replace('/categorize', '')}
+                            onClick={() => trigger('light')}
                         >
                             <Button>
                                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -561,6 +565,7 @@ export default function CategorizeTransactions({
                 <header className="flex items-center justify-between gap-6 px-4 py-3 dark:border-zinc-800">
                     <Link
                         href={categorizeRoute.url()?.replace('/categorize', '')}
+                        onClick={() => trigger('light')}
                         className="flex w-fit flex-1 items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 dark:text-zinc-400 dark:hover:text-zinc-100"
                     >
                         <ArrowLeft className="h-4 w-4" />
