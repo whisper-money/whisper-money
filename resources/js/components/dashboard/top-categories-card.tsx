@@ -109,7 +109,7 @@ export function TopCategoriesCard({
                             <Link
                                 key={item.category.id}
                                 href={categoryUrl}
-                                className="group block space-y-2"
+                                className="-mx-1.5 my-1.5 block space-y-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted group"
                             >
                                 <div className="flex min-w-0 items-center gap-2">
                                     <div
@@ -120,7 +120,7 @@ export function TopCategoriesCard({
                                     >
                                         <Icon className="size-4" />
                                     </div>
-                                    <span className="min-w-0 flex-1 truncate text-sm font-medium group-hover:underline">
+                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
                                         {item.category.name}
                                     </span>
                                     {percentageChange !== null && (
