@@ -43,6 +43,7 @@ import {
     SkipForward,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useWebHaptics } from 'web-haptics/react';
 
 const CATEGORY_USAGE_KEY = 'category-usage-order';
 

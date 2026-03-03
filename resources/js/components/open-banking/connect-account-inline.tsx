@@ -13,6 +13,7 @@ import type { EnableBankingInstitution } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useWebHaptics } from 'web-haptics/react';
 
 const COUNTRIES = [
     { code: 'ES', name: 'Spain' },
