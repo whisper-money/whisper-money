@@ -4,6 +4,7 @@ import { BudgetSpendingChart } from '@/components/budgets/budget-spending-chart'
 import { DeleteBudgetDialog } from '@/components/budgets/delete-budget-dialog';
 import { EditBudgetDialog } from '@/components/budgets/edit-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
+import { MobileBackButton } from '@/components/mobile-back-button';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { Button } from '@/components/ui/button';
 import {
@@ -88,7 +89,10 @@ export default function BudgetShow({
     }, [currentPeriod]);
 
     return (
-        <AppSidebarLayout breadcrumbs={breadcrumbs}>
+        <AppSidebarLayout
+            breadcrumbs={breadcrumbs}
+            mobileLeading={<MobileBackButton href={index().url} />}
+        >
             <Head title={budget.name} />
 
             <div className="space-y-6 p-6">

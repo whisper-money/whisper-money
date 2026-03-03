@@ -8,6 +8,7 @@ import { ImportBalancesDrawer } from '@/components/accounts/import-balances-draw
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { BankLogo } from '@/components/bank-logo';
 import HeadingSmall from '@/components/heading-small';
+import { MobileBackButton } from '@/components/mobile-back-button';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -73,7 +74,10 @@ export default function AccountShow({
     ];
 
     return (
-        <AppSidebarLayout breadcrumbs={breadcrumbs}>
+        <AppSidebarLayout
+            breadcrumbs={breadcrumbs}
+            mobileLeading={<MobileBackButton href={index().url} />}
+        >
             <Head title={__('Account Details')} />
 
             <div className="space-y-6 p-6">

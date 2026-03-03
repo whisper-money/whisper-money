@@ -5,12 +5,16 @@ import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { useDecryptAccountNames } from '@/hooks/use-decrypt-account-names';
 import { useDecryptTransactions } from '@/hooks/use-decrypt-transactions';
 import { type BreadcrumbItem } from '@/types';
-import { type PropsWithChildren } from 'react';
+import { type PropsWithChildren, type ReactNode } from 'react';
 
 export default function AppSidebarLayout({
     children,
     breadcrumbs = [],
-}: PropsWithChildren<{ breadcrumbs?: BreadcrumbItem[] }>) {
+    mobileLeading,
+}: PropsWithChildren<{
+    breadcrumbs?: BreadcrumbItem[];
+    mobileLeading?: ReactNode;
+}>) {
     useDecryptAccountNames();
     useDecryptTransactions();
 
@@ -21,7 +25,10 @@ export default function AppSidebarLayout({
                 variant="sidebar"
                 className="overflow-x-hidden pb-[90px] sm:pb-0"
             >
-                <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                <AppSidebarHeader
+                    breadcrumbs={breadcrumbs}
+                    mobileLeading={mobileLeading}
+                />
                 {children}
             </AppContent>
         </AppShell>
