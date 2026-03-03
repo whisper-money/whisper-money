@@ -334,9 +334,7 @@ export function CreateBudgetDialog({
                                     )}
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    {__(
-                                        'Select at least a category or a label to\n                                    track.',
-                                    )}
+                                    {__('Select at least a category or a label to track.')}
                                 </p>
                             </div>
 
