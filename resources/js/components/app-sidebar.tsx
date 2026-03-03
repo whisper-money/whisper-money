@@ -28,6 +28,7 @@ export function AppSidebar() {
         () => getMainNavItems(page.props.features, page.props.locale),
         [page.props.features, page.props.locale],
     );
+    const { trigger } = useWebHaptics();
 
     return (
         <>
@@ -40,6 +41,7 @@ export function AppSidebar() {
                         <Link
                             key={item.title}
                             href={item.href}
+                            onClick={() => trigger('selection')}
                             className={cn([
                                 'flex flex-1 flex-col items-center justify-center gap-1 rounded-full px-3 py-2 transition-all duration-200',
                                 {

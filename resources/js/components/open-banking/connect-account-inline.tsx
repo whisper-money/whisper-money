@@ -73,6 +73,7 @@ interface ConnectAccountInlineProps {
 
 export function ConnectAccountInline({ onBack }: ConnectAccountInlineProps) {
     const [step, setStep] = useState<Step>('country');
+    const { trigger } = useWebHaptics();
     const [country, setCountry] = useState<string>('');
     const [institutions, setInstitutions] = useState<
         EnableBankingInstitution[]
@@ -272,7 +273,10 @@ export function ConnectAccountInline({ onBack }: ConnectAccountInlineProps) {
                         <Button
                             variant={'ghost'}
                             type="button"
-                            onClick={handleBack}
+                            onClick={() => {
+                                trigger('light');
+                                handleBack();
+                            }}
                             className="w-full"
                         >
                             <ArrowLeft className="h-4 w-4" />
@@ -329,7 +333,10 @@ export function ConnectAccountInline({ onBack }: ConnectAccountInlineProps) {
                         <Button
                             variant={'ghost'}
                             type="button"
-                            onClick={handleBack}
+                            onClick={() => {
+                                trigger('light');
+                                handleBack();
+                            }}
                             className="w-full"
                         >
                             <ArrowLeft className="h-4 w-4" />
