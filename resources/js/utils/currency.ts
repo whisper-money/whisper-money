@@ -11,6 +11,7 @@ export function formatCurrency(
         currency: currencyCode,
         minimumFractionDigits,
         maximumFractionDigits,
+        useGrouping: 'always',
     })
         .format(amount)
         .replace(/\s/g, '\u202F');

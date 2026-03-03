@@ -30,7 +30,10 @@ describe('formatCurrency', () => {
             const formatted = formatCurrency(cents, 'USD', 'en-US');
             // The formatted string must contain a thousands separator for values >= $1,000
             if (cents >= 100000) {
-                expect(formatted, `Expected thousands separator for ${cents} cents`).toContain(',');
+                expect(
+                    formatted,
+                    `Expected thousands separator for ${cents} cents`,
+                ).toContain(',');
             }
             // The formatted value must exactly match formatting the true decimal amount
             const expected = new Intl.NumberFormat('en-US', {
@@ -39,7 +42,9 @@ describe('formatCurrency', () => {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
             }).format(cents / 100);
-            expect(formatted.replace(/\u202F/g, ' ')).toBe(expected.replace(/\s/g, ' '));
+            expect(formatted.replace(/\u202F/g, ' ')).toBe(
+                expected.replace(/\s/g, ' '),
+            );
         }
     });
 
@@ -57,5 +62,30 @@ describe('formatCurrency', () => {
 
     it('respects custom fraction digits', () => {
         expect(formatCurrency(100000, 'USD', 'en-US', 0, 0)).toBe('$1,000');
+    });
+
+    it('formats es-ES EUR 4-digit amounts with thousands separator', () => {
+        // In some ICU/CLDR versions, es-ES uses useGrouping:'auto' which omits the thousands
+        // separator for 4-digit numbers (1,000–9,999). We force useGrouping:'always' so that
+        // 1.560,07 € is shown instead of 1560,07 €.
+        const formatted = formatCurrency(156007, 'EUR', 'es-ES');
+        expect(formatted).toContain('1.560');
+    });
+
+    it('formats es-ES EUR amounts between 1,000 and 9,999 with thousands separator', () => {
+        const cases = [
+            { cents: 156007, expectedInteger: '1.560' },
+            { cents: 100001, expectedInteger: '1.000' },
+            { cents: 999999, expectedInteger: '9.999' },
+            { cents: 150000, expectedInteger: '1.500' },
+        ];
+
+        for (const { cents, expectedInteger } of cases) {
+            const formatted = formatCurrency(cents, 'EUR', 'es-ES');
+            expect(
+                formatted,
+                `Expected thousands separator for ${cents} cents in es-ES`,
+            ).toContain(expectedInteger);
+        }
     });
 });
