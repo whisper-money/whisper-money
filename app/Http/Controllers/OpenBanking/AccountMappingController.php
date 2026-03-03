@@ -9,6 +9,7 @@ use App\Http\Requests\OpenBanking\MapAccountsRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,11 +22,25 @@ class AccountMappingController extends Controller
             abort(403);
         }
 
+        $user = auth()->user();
+
         if (! $connection->hasPendingAccounts()) {
-            return redirect()->route('settings.connections.index');
+            $redirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+            $params = $user->isOnboarded() ? [] : ['step' => 'create-account'];
+
+            return redirect()->route($redirect, $params);
         }
 
-        $existingAccounts = auth()->user()
+        // During onboarding, skip the mapping UI — auto-create all accounts directly
+        if (! $user->isOnboarded()) {
+            $this->autoCreateAccounts($user, $connection);
+            SyncBankingConnectionJob::dispatch($connection);
+
+            return redirect()->route('onboarding', ['step' => 'create-account'])
+                ->with('success', 'Bank account connected successfully.');
+        }
+
+        $existingAccounts = $user
             ->accounts()
             ->whereNull('banking_connection_id')
             ->with('bank')
@@ -109,7 +124,58 @@ class AccountMappingController extends Controller
 
         SyncBankingConnectionJob::dispatch($connection);
 
-        return redirect()->route('settings.connections.index')
+        $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+        $redirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
+
+        return redirect()->route($successRedirect, $redirectParams)
             ->with('success', 'Bank account connected successfully.');
+    }
+
+    /**
+     * Auto-create all pending accounts without user interaction.
+     */
+    private function autoCreateAccounts(User $user, BankingConnection $connection): void
+    {
+        $bank = Bank::firstOrCreate(
+            ['name' => $connection->aspsp_name, 'user_id' => null],
+            ['name' => $connection->aspsp_name, 'logo' => $connection->aspsp_logo],
+        );
+
+        if (! $bank->logo && $connection->aspsp_logo) {
+            $bank->update(['logo' => $connection->aspsp_logo]);
+        }
+
+        $accountType = ($connection->isIndexaCapital() || $connection->isBinance())
+            ? AccountType::Investment
+            : AccountType::Checking;
+
+        foreach ($connection->pending_accounts_data ?? [] as $accountData) {
+            $uid = $accountData['uid'] ?? null;
+
+            if (! $uid) {
+                continue;
+            }
+
+            $currency = $accountData['currency'] ?? 'EUR';
+            $name = $accountData['name']
+                ?? $accountData['account_id']['iban']
+                ?? $connection->aspsp_name.' Account';
+
+            $user->accounts()->create([
+                'name' => $name,
+                'name_iv' => null,
+                'encrypted' => false,
+                'bank_id' => $bank->id,
+                'currency_code' => $currency,
+                'type' => $accountType->value,
+                'banking_connection_id' => $connection->id,
+                'external_account_id' => $uid,
+            ]);
+        }
+
+        $connection->update([
+            'status' => BankingConnectionStatus::Active,
+            'pending_accounts_data' => null,
+        ]);
     }
 }

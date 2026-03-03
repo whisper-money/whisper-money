@@ -40,23 +40,27 @@ export interface CreatedAccount {
     name: string;
     type: string;
     currencyCode: string;
+    bankName?: string;
+    connected?: boolean;
 }
 
 interface UseOnboardingStateOptions {
     existingAccountsCount?: number;
+    initialStep?: OnboardingStep;
 }
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
-    const { existingAccountsCount = 0 } = options;
+    const { existingAccountsCount = 0, initialStep } = options;
 
     const primarySteps = PRIMARY_STEPS;
 
     // Determine initial step based on existing state
-    const initialStep = useMemo((): OnboardingStep => {
-        return 'welcome';
-    }, []);
+    const resolvedInitialStep = useMemo((): OnboardingStep => {
+        return initialStep ?? 'welcome';
+    }, [initialStep]);
 
-    const [currentStep, setCurrentStep] = useState<OnboardingStep>(initialStep);
+    const [currentStep, setCurrentStep] =
+        useState<OnboardingStep>(resolvedInitialStep);
     const [createdAccounts, setCreatedAccounts] = useState<CreatedAccount[]>(
         [],
     );

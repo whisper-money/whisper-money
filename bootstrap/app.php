@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ActivateDevelopmentFeatures;
 use App\Http\Middleware\EnsureOpenBankingFeature;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\BlockDemoAccountActions::class.':auto',
+            ActivateDevelopmentFeatures::class,
         ]);
 
         $middleware->alias([

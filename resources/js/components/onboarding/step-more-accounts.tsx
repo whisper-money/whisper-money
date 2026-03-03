@@ -1,7 +1,6 @@
 import { StepHeader } from '@/components/onboarding/step-header';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
-import { formatAccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Check, CheckCircle2, Plus, Wallet } from 'lucide-react';
 import { StepButton } from './step-button';
@@ -67,9 +66,10 @@ export function StepMoreAccounts({
                             </div>
                             <div className="flex-1">
                                 <p className="font-medium">{account.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                    {formatAccountType(account.type)} •{' '}
-                                    {account.currencyCode}
+                                <p className="flex gap-2 text-sm text-muted-foreground">
+                                    <span>{account.bankName ?? 'Bank'}</span>
+                                    <span className="opacity-50">&ndash;</span>
+                                    <span>{account.currencyCode}</span>
                                 </p>
                             </div>
                             <Check className="h-5 w-5 text-emerald-500" />
@@ -85,11 +85,12 @@ export function StepMoreAccounts({
                             </div>
                             <div className="flex-1">
                                 <p className="font-medium text-muted-foreground">
-                                    {account.bank?.name || 'Account'}
+                                    {account.name || 'Account'}
                                 </p>
-                                <p className="text-sm text-muted-foreground">
-                                    {formatAccountType(account.type)} •{' '}
-                                    {account.currency_code}
+                                <p className="flex gap-2 text-sm text-muted-foreground">
+                                    <span>{account.bank?.name ?? `Bank`}</span>
+                                    <span className="opacity-50">&ndash;</span>
+                                    <span>{account.currency_code}</span>
                                 </p>
                             </div>
                             <Check className="h-5 w-5 text-emerald-500" />

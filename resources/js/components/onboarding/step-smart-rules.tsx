@@ -116,7 +116,7 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                 </div>
             </div>
 
-            <StepButton text={__('Continue to Import')} onClick={onContinue} />
+            <StepButton text={__('Continue')} onClick={onContinue} />
         </div>
     );
 }

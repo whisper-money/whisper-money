@@ -18,7 +18,7 @@ import OnboardingLayout from '@/layouts/onboarding-layout';
 import { type Bank } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 interface ExistingAccount {
     id: string;
@@ -28,6 +28,7 @@ interface ExistingAccount {
     type: string;
     currency_code: string;
     bank_id: string;
+    banking_connection_id: string | null;
     bank?: {
         id: string;
         name: string;
@@ -40,9 +41,29 @@ interface OnboardingProps {
     accounts: ExistingAccount[];
 }
 
+const VALID_STEPS: OnboardingStep[] = [
+    'welcome',
+    'account-types',
+    'create-account',
+    'import-transactions',
+    'import-balances',
+    'category-types',
+    'customize-categories',
+    'smart-rules',
+    'more-accounts',
+    'complete',
+];
+
 export default function Onboarding({ banks, accounts }: OnboardingProps) {
     const { sync } = useSyncContext();
     const hasSyncedRef = useRef(false);
+
+    // Read ?step= from URL to allow deep-linking into a specific step
+    const initialStep = useMemo((): OnboardingStep | undefined => {
+        const params = new URLSearchParams(window.location.search);
+        const step = params.get('step') as OnboardingStep | null;
+        return step && VALID_STEPS.includes(step) ? step : undefined;
+    }, []);
 
     // Sync banks on mount to ensure IndexedDB has the latest data
     useEffect(() => {
@@ -63,13 +84,28 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
         addCreatedAccount,
     } = useOnboardingState({
         existingAccountsCount: accounts.length,
+        initialStep,
     });
 
     const handleAccountCreated = async (account: CreatedAccount) => {
-        addCreatedAccount(account);
+        // Connected accounts already exist server-side (in existingAccounts prop);
+        // don't add them to createdAccounts — they'll show via filteredExistingAccounts.
+        if (!account.connected) {
+            addCreatedAccount(account);
+        }
 
         // Sync with backend to get the new account in local DB
         await sync();
+
+        // Connected accounts (bank-linked) don't need manual import steps
+        if (account.connected) {
+            if (createdAccounts.length === 0) {
+                goToStep('category-types');
+            } else {
+                goToStep('more-accounts');
+            }
+            return;
+        }
 
         const needsTransactionImport = [
             'checking',

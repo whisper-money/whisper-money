@@ -22,7 +22,7 @@ class OnboardingController extends Controller
 
         $accounts = $user->accounts()
             ->with('bank:id,name,logo')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank_id']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank_id', 'banking_connection_id']);
 
         return Inertia::render('onboarding/index', [
             'banks' => $banks,

@@ -244,15 +244,24 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Create Your First Account')
         ->wait(1);
 
-    // Step 3: Create Account (checking with EUR currency)
+    // Step 3: Create Account - select Manual mode then fill the form
     $page->assertSee('Create an Account')
-        ->assertSee('Your first account must be a')
+        ->assertSee('Manual')
+        ->assertSee('Connected')
+        ->click('Manual')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
         ->fill('#display_name', 'My Checking Account')
         ->click('Select bank...')
         ->wait(1)
         ->fill('[placeholder="Search bank..."]', 'Chase')
         ->wait(2)
         ->click('Chase Bank')
+        ->wait(1)
+        ->click('Select account type')
+        ->wait(1)
+        ->click('[role="option"]:has-text("Checking")')
         ->wait(1)
         ->click('Select currency')
         ->wait(1)
@@ -291,7 +300,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
 
     // Smart Rules
     $page->assertSee('Smart Automation Rules')
-        ->click('Continue to Import')
+        ->click('Continue')
         ->wait(1);
 
     // More Accounts - verify account is listed, then finish
