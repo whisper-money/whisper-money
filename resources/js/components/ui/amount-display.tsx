@@ -3,7 +3,7 @@ import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/utils/currency';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 interface AmountDisplayProps {
     amountInCents: number;
@@ -60,26 +60,22 @@ export function AmountDisplay({
     const { isKeySet } = useEncryptionKey();
     const { isPrivacyModeEnabled } = usePrivacyMode();
     const locale = useLocale();
-    const [amount, setAmount] = useState<number>(amountInCents / 100);
-    const isPositive = amountInCents > 0
+    const isPositive = amountInCents > 0;
 
     const shouldHideAmount = !isKeySet;
 
-    useEffect(() => {
+    const displayAmountInCents = useMemo(() => {
         if (shouldHideAmount) {
             const length = Math.max(3, amountInCents.toString().length);
-            const fakeAmountStr = parseInt("8".repeat(length - 2) + "00");
-
-            setAmount(fakeAmountStr / 100);
-            return;
+            return parseInt('8'.repeat(length - 2) + '00');
         }
 
-        setAmount(amountInCents / 100);
+        return amountInCents;
     }, [amountInCents, shouldHideAmount]);
 
     const formatted = useMemo(() => {
-        return formatCurrency(amount * 100, currencyCode, locale, minimumFractionDigits, maximumFractionDigits);
-    }, [locale, amount, currencyCode, minimumFractionDigits, maximumFractionDigits]);
+        return formatCurrency(displayAmountInCents, currencyCode, locale, minimumFractionDigits, maximumFractionDigits);
+    }, [locale, displayAmountInCents, currencyCode, minimumFractionDigits, maximumFractionDigits]);
 
     const getBackgroundClass = (shouldHideAmount: boolean) => {
         if (!highlightPositive && !shouldHideAmount) return '';
@@ -89,7 +85,7 @@ export function AmountDisplay({
                 return 'rounded-xs bg-green-400 dark:bg-green-900 text-green-400 dark:text-green-900 opacity-20 dark:opacity-100';
             }
 
-            return 'rounded-xs bg-zinc-950 dark:bg-zinc-700 dark:text-zinc-700'
+            return 'rounded-xs bg-zinc-950 dark:bg-zinc-700 dark:text-zinc-700';
         }
 
         if (variant === 'positive-highlight') {
@@ -109,10 +105,10 @@ export function AmountDisplay({
                 weight && weightStyles[weight],
                 getBackgroundClass(shouldHideAmount),
                 { 'font-mono tabular-nums': monospace },
-                className
+                className,
             )}
         >
-            <span className='text-xs'>{showSign && amount >= 0 && '+'}</span>
+            <span className="text-xs">{showSign && isPositive && '+'}</span>
             <span>{isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted}</span>
         </span>
     );
