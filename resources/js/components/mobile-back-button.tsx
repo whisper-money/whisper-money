@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useWebHaptics } from 'web-haptics/react';
 
 interface Props {
     href: string;
@@ -10,6 +11,7 @@ interface Props {
 
 export function MobileBackButton({ href, className }: Props) {
     const [isScrolled, setIsScrolled] = useState(false);
+    const { trigger } = useWebHaptics();
 
     useEffect(() => {
         function handleScroll() {
@@ -23,6 +25,7 @@ export function MobileBackButton({ href, className }: Props) {
     }, []);
 
     function handleBack() {
+        trigger('light');
         router.visit(href);
     }
 
