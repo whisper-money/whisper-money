@@ -25,8 +25,13 @@ class EnsureUserIsSubscribed
         }
 
         // If Open Banking is enabled and the user has no bank connections,
-        // they may continue with a free plan without subscribing.
+        // they may use the app for free — but they must first see the paywall
+        // so they can make an informed choice.
         if ($user && Feature::for($user)->active('open-banking') && ! $user->bankingConnections()->exists()) {
+            if (! $user->hasSeenPaywall()) {
+                return redirect()->route('subscribe');
+            }
+
             return $next($request);
         }
 

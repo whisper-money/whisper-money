@@ -24,6 +24,11 @@ class SubscriptionController extends Controller
         $canUseFreePlan = Feature::for($user)->active('open-banking')
             && ! $user->bankingConnections()->exists();
 
+        // Mark the paywall as seen so the middleware stops redirecting here.
+        if ($canUseFreePlan && ! $user->hasSeenPaywall()) {
+            $user->update(['paywall_seen_at' => now()]);
+        }
+
         return Inertia::render('subscription/paywall', [
             'stats' => $this->getUserStats($user),
             'canUseFreePlan' => $canUseFreePlan,

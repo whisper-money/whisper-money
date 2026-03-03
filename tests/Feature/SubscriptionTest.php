@@ -202,8 +202,18 @@ test('pricing config includes all plan details', function () {
         );
 });
 
-test('open banking users without bank connections can access protected routes without subscribing', function () {
+test('open banking users without bank connections are redirected to paywall on first visit', function () {
     $user = User::factory()->onboarded()->create();
+
+    Feature::for($user)->activate('open-banking');
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertRedirect(route('subscribe'));
+});
+
+test('open banking users without bank connections can access protected routes after seeing paywall', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
 
     Feature::for($user)->activate('open-banking');
 
