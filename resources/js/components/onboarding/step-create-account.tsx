@@ -456,7 +456,7 @@ export function StepCreateAccount({
                         >
                             {subscriptionsEnabled && (
                                 <span className="absolute top-2.5 right-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
-                                    Pro
+                                    Standard
                                 </span>
                             )}
                             <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
@@ -488,7 +488,7 @@ export function StepCreateAccount({
                         <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
                             <p className="text-center text-sm text-blue-700 dark:text-blue-300">
                                 {__(
-                                    "Connected accounts are a Pro feature. You'll choose a plan at the end of the onboarding.",
+                                    "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.",
                                 )}
                             </p>
                         </div>

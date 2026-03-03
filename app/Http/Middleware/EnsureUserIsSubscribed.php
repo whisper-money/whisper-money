@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserIsSubscribed
@@ -17,7 +18,15 @@ class EnsureUserIsSubscribed
             return $next($request);
         }
 
-        if ($request->user()?->hasProPlan()) {
+        $user = $request->user();
+
+        if ($user?->hasProPlan()) {
+            return $next($request);
+        }
+
+        // If Open Banking is enabled and the user has no bank connections,
+        // they may continue with a free plan without subscribing.
+        if ($user && Feature::for($user)->active('open-banking') && ! $user->bankingConnections()->exists()) {
             return $next($request);
         }
 
