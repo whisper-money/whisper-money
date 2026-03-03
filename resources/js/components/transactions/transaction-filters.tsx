@@ -128,13 +128,13 @@ export function TransactionFilters({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col items-center gap-3 lg:flex-row">
-                <div className="flex w-full flex-row items-center gap-2 lg:w-auto">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <div className="flex w-full flex-row items-center gap-2">
                     <Input
                         placeholder={__('Search description or notes...')}
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
-                        className="max-w-sm flex-1 md:max-w-full md:min-w-[350px]"
+                        className="min-w-0 flex-1 md:min-w-[350px]"
                     />
 
                     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -542,19 +542,20 @@ export function TransactionFilters({
                             </div>
                         </PopoverContent>
                     </Popover>
+
+                    {activeFilterCount > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearFilters}
+                            className="h-9"
+                        >
+                            <X className="mr-1 h-4 w-4" />
+                            {__('Clear')}
+                        </Button>
+                    )}
                 </div>
 
-                {activeFilterCount > 0 && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearFilters}
-                        className="h-9"
-                    >
-                        <X className="mr-1 h-4 w-4" />
-                        {__('Clear')}
-                    </Button>
-                )}
                 {actions ? <div className="w-full">{actions}</div> : null}
             </div>
         </div>
