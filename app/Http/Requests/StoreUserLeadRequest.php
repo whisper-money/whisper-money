@@ -25,6 +25,7 @@ class StoreUserLeadRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:user_leads,email'],
             'referrer_code' => ['nullable', 'string', 'max:12'],
+            'locale' => ['nullable', 'string', 'in:en,es'],
         ];
     }
 

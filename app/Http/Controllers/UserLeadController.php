@@ -30,6 +30,7 @@ class UserLeadController extends Controller
         $lead = UserLead::create([
             'email' => $validated['email'],
             'referred_by_id' => $referrer?->id,
+            'locale' => $validated['locale'] ?? null,
         ]);
 
         if ($referrer) {

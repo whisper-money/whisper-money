@@ -154,6 +154,39 @@ test('thank you page shows position and referral url', function () {
     );
 });
 
+test('user lead stores the locale submitted with the form', function () {
+    $this->post(route('user-leads.store'), [
+        'email' => 'test@example.com',
+        'locale' => 'es',
+    ]);
+
+    $lead = UserLead::where('email', 'test@example.com')->first();
+    expect($lead->locale)->toBe('es');
+});
+
+test('user lead defaults to app locale when no locale is submitted', function () {
+    $this->post(route('user-leads.store'), [
+        'email' => 'test@example.com',
+    ]);
+
+    $lead = UserLead::where('email', 'test@example.com')->first();
+    expect($lead->locale)->toBe(app()->getLocale());
+});
+
+test('overtaken email is sent using the overtaken lead locale', function () {
+    $referrer = UserLead::factory()->create(['position' => 520]);
+    $between = UserLead::factory()->create(['position' => 515, 'locale' => 'es']);
+
+    $this->post(route('user-leads.store'), [
+        'email' => 'new@example.com',
+        'referrer_code' => $referrer->referral_code,
+    ]);
+
+    Mail::assertQueued(WaitlistOvertaken::class, function (WaitlistOvertaken $mail) use ($between) {
+        return $mail->hasTo($between->email) && $mail->locale === 'es';
+    });
+});
+
 test('overtaken leads are pushed back one position when referrer jumps forward', function () {
     $referrer = UserLead::factory()->create(['position' => 520]);
     $between1 = UserLead::factory()->create(['position' => 511]);

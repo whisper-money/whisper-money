@@ -224,6 +224,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 
 function WaitlistForm() {
     const [referrerCode, setReferrerCode] = useState('');
+    const { locale } = usePage<SharedData>().props;
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -246,6 +247,7 @@ function WaitlistForm() {
                         name="referrer_code"
                         value={referrerCode}
                     />
+                    <input type="hidden" name="locale" value={locale} />
                     <div className="flex w-full flex-col gap-1.5">
                         <div className="flex w-full flex-row gap-2">
                             <Input
