@@ -14,7 +14,7 @@ export default function OnboardingLayout({
     currentStep,
     totalSteps,
     stepKey,
-    align = 'center',
+    align = 'start',
 }: PropsWithChildren<OnboardingLayoutProps>) {
     const [isVisible, setIsVisible] = useState(false);
 

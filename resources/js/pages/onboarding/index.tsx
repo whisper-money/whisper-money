@@ -229,11 +229,6 @@ export default function Onboarding({
                 currentStep={stepIndex}
                 totalSteps={totalSteps}
                 stepKey={currentStep}
-                align={
-                    currentStep === 'categorize-transactions'
-                        ? 'start'
-                        : 'center'
-                }
             >
                 {renderStep()}
             </OnboardingLayout>
