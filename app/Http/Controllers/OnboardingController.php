@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bank;
+use App\Models\Category;
+use App\Models\Transaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -24,9 +26,24 @@ class OnboardingController extends Controller
             ->with('bank:id,name,logo')
             ->get(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank_id', 'banking_connection_id']);
 
+        $categories = Category::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon', 'color', 'type']);
+
+        $transactions = Transaction::query()
+            ->where('user_id', $user->id)
+            ->whereNull('category_id')
+            ->with(['account.bank:id,name,logo', 'labels:id,name,color'])
+            ->orderBy('transaction_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->get(['id', 'account_id', 'category_id', 'description', 'description_iv', 'transaction_date', 'amount', 'currency_code', 'notes', 'notes_iv']);
+
         return Inertia::render('onboarding/index', [
             'banks' => $banks,
             'accounts' => $accounts,
+            'categories' => $categories,
+            'transactions' => $transactions,
         ]);
     }
 
