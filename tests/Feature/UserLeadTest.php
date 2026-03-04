@@ -1,5 +1,6 @@
 <?php
 
+use App\Mail\WaitlistOvertaken;
 use App\Mail\WaitlistReferralNotification;
 use App\Mail\WaitlistWelcome;
 use App\Models\UserLead;
@@ -151,4 +152,74 @@ test('thank you page shows position and referral url', function () {
         ->where('position', 500)
         ->where('referralUrl', fn ($url) => str_contains($url, '?ref=TESTCODE'))
     );
+});
+
+test('overtaken leads are pushed back one position when referrer jumps forward', function () {
+    $referrer = UserLead::factory()->create(['position' => 520]);
+    $between1 = UserLead::factory()->create(['position' => 511]);
+    $between2 = UserLead::factory()->create(['position' => 515]);
+    $outsideRange = UserLead::factory()->create(['position' => 525]);
+
+    $this->post(route('user-leads.store'), [
+        'email' => 'new@example.com',
+        'referrer_code' => $referrer->referral_code,
+    ]);
+
+    expect($between1->fresh()->position)->toBe(512);
+    expect($between2->fresh()->position)->toBe(516);
+    expect($outsideRange->fresh()->position)->toBe(525);
+});
+
+test('overtaken leads receive the overtaken email', function () {
+    $referrer = UserLead::factory()->create(['position' => 520]);
+    $between = UserLead::factory()->create(['position' => 515]);
+
+    $this->post(route('user-leads.store'), [
+        'email' => 'new@example.com',
+        'referrer_code' => $referrer->referral_code,
+    ]);
+
+    Mail::assertQueued(WaitlistOvertaken::class, function (WaitlistOvertaken $mail) use ($between) {
+        return $mail->hasTo($between->email);
+    });
+});
+
+test('referrer does not receive the overtaken email', function () {
+    $referrer = UserLead::factory()->create(['position' => 520]);
+
+    $this->post(route('user-leads.store'), [
+        'email' => 'new@example.com',
+        'referrer_code' => $referrer->referral_code,
+    ]);
+
+    Mail::assertNotQueued(WaitlistOvertaken::class, function (WaitlistOvertaken $mail) use ($referrer) {
+        return $mail->hasTo($referrer->email);
+    });
+});
+
+test('no overtaken emails when referrer is alone in their range', function () {
+    $referrer = UserLead::factory()->create(['position' => 520]);
+
+    $this->post(route('user-leads.store'), [
+        'email' => 'new@example.com',
+        'referrer_code' => $referrer->referral_code,
+    ]);
+
+    Mail::assertNotQueued(WaitlistOvertaken::class);
+});
+
+test('clamped referrer only pushes back leads within the actual range', function () {
+    $referrer = UserLead::factory()->create(['position' => 5]);
+    $withinRange = UserLead::factory()->create(['position' => 3]);
+    $atOne = UserLead::factory()->create(['position' => 1]);
+
+    $this->post(route('user-leads.store'), [
+        'email' => 'new@example.com',
+        'referrer_code' => $referrer->referral_code,
+    ]);
+
+    // Referrer clamps to 1, overtaken range is positions 1–4
+    expect($referrer->fresh()->position)->toBe(1);
+    expect($withinRange->fresh()->position)->toBe(4);
+    expect($atOne->fresh()->position)->toBe(2);
 });

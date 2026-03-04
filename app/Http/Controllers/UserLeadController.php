@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserLeadRequest;
+use App\Mail\WaitlistOvertaken;
 use App\Mail\WaitlistReferralNotification;
 use App\Mail\WaitlistWelcome;
 use App\Models\UserLead;
@@ -32,7 +33,23 @@ class UserLeadController extends Controller
         ]);
 
         if ($referrer) {
-            $referrer->update(['position' => max(1, $referrer->position - 10)]);
+            $oldPosition = $referrer->position;
+            $newPosition = max(1, $oldPosition - 10);
+
+            $referrer->update(['position' => $newPosition]);
+
+            $overtaken = UserLead::whereBetween('position', [$newPosition, $oldPosition - 1])
+                ->where('id', '!=', $referrer->id)
+                ->get();
+
+            UserLead::whereIn('id', $overtaken->pluck('id'))->increment('position');
+
+            foreach ($overtaken as $overtakenLead) {
+                Mail::to($overtakenLead->email)->send(
+                    (new WaitlistOvertaken($overtakenLead->fresh()))->locale($overtakenLead->locale),
+                );
+            }
+
             Mail::to($referrer->email)->send(
                 (new WaitlistReferralNotification($referrer->fresh()))->locale($referrer->locale),
             );
