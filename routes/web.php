@@ -55,6 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Accessible during onboarding for transaction import and categorization
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
+    Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
 });
 
@@ -67,7 +68,6 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('transactions/categorize', [TransactionController::class, 'categorize'])->name('transactions.categorize');
-    Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::post('transactions/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'bulk'])->name('transactions.re-evaluate-rules.bulk');
     Route::get('transactions/re-evaluate-rules/status/{jobId}', [ReEvaluateTransactionRulesController::class, 'status'])->name('transactions.re-evaluate-rules.status');
     Route::delete('transactions/{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
