@@ -7,6 +7,7 @@ import { StepCustomizeCategories } from '@/components/onboarding/step-customize-
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
 import { StepImportTransactions } from '@/components/onboarding/step-import-transactions';
 import { StepSmartRules } from '@/components/onboarding/step-smart-rules';
+import { StepSyncing } from '@/components/onboarding/step-syncing';
 import { StepWelcome } from '@/components/onboarding/step-welcome';
 import { useSyncContext } from '@/contexts/sync-context';
 import {
@@ -54,6 +55,7 @@ const VALID_STEPS: OnboardingStep[] = [
     'category-types',
     'customize-categories',
     'smart-rules',
+    'syncing',
     'categorize-transactions',
     'complete',
 ];
@@ -171,6 +173,9 @@ export default function Onboarding({
             case 'smart-rules':
                 return <StepSmartRules onContinue={goNext} />;
 
+            case 'syncing':
+                return <StepSyncing onComplete={goNext} />;
+
             case 'import-transactions':
                 return (
                     <StepImportTransactions
@@ -214,6 +219,7 @@ export default function Onboarding({
             'category-types': __('Categories'),
             'customize-categories': __('Customize Categories'),
             'smart-rules': __('Smart Rules'),
+            syncing: __('Syncing'),
             'import-transactions': __('Import Transactions'),
             'import-balances': __('Set Balance'),
             'categorize-transactions': __('Categorize Transactions'),

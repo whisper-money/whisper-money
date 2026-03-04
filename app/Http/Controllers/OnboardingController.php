@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BankingConnectionStatus;
 use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Transaction;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -45,6 +47,17 @@ class OnboardingController extends Controller
             'categories' => $categories,
             'transactions' => $transactions,
         ]);
+    }
+
+    public function syncStatus(Request $request): JsonResponse
+    {
+        $pending = $request->user()
+            ->bankingConnections()
+            ->where('status', BankingConnectionStatus::Active)
+            ->whereNull('last_synced_at')
+            ->exists();
+
+        return response()->json(['pending' => $pending]);
     }
 
     public function complete(Request $request): RedirectResponse

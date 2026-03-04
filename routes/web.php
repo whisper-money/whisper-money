@@ -50,6 +50,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware(['onboarded'])->group(function () {
         Route::get('onboarding', [OnboardingController::class, 'index'])->name('onboarding');
+        Route::get('onboarding/sync-status', [OnboardingController::class, 'syncStatus'])->name('onboarding.sync-status');
         Route::post('onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
     });
 

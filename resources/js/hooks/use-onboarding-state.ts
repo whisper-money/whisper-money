@@ -7,6 +7,7 @@ export type OnboardingStep =
     | 'category-types'
     | 'customize-categories'
     | 'smart-rules'
+    | 'syncing'
     | 'import-transactions'
     | 'import-balances'
     | 'categorize-transactions'
@@ -20,6 +21,7 @@ const PRIMARY_STEPS: OnboardingStep[] = [
     'create-account',
     'category-types',
     'smart-rules',
+    'syncing',
     'categorize-transactions',
     'complete',
 ];
