@@ -1,4 +1,5 @@
 import { AccountName } from '@/components/accounts/account-name';
+import { BankLogo } from '@/components/bank-logo';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { type AnimationState } from '@/hooks/use-categorize-transactions';
 import { useLocale } from '@/hooks/use-locale';
@@ -80,13 +81,11 @@ export function CategorizerCard({
 
                                     {transaction.account && (
                                         <div className="flex items-center gap-2">
-                                            {transaction.bank?.logo && (
-                                                <img
-                                                    src={transaction.bank.logo}
-                                                    alt={transaction.bank.name}
-                                                    className="h-5 w-5 rounded"
-                                                />
-                                            )}
+                                            <BankLogo
+                                                src={transaction.bank?.logo}
+                                                name={transaction.bank?.name}
+                                                className="size-5"
+                                            />
                                             <AccountName
                                                 account={transaction.account}
                                                 className="text-sm text-zinc-600 dark:text-zinc-400"
