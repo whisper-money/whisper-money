@@ -32,6 +32,7 @@ Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('robots.txt', [RobotsController::class, 'index'])->name('robots');
 
 Route::post('user-leads', [UserLeadController::class, 'store'])->name('user-leads.store');
+Route::get('waitlist/thank-you/{lead}', [UserLeadController::class, 'thankYou'])->name('waitlist.thank-you');
 
 Route::get('privacy', function () {
     return Inertia::render('privacy');
