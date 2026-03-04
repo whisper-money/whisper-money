@@ -15,7 +15,16 @@ import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { CheckCircle2, Settings2, SkipForward } from 'lucide-react';
+import {
+    CheckCircle2,
+    PieChart,
+    Settings2,
+    SkipForward,
+    Tag,
+    Target,
+    TrendingDown,
+    Zap,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface StepCategorizeTransactionsProps {
@@ -33,6 +42,7 @@ export function StepCategorizeTransactions({
     transactions,
     onComplete,
 }: StepCategorizeTransactionsProps) {
+    const [hasStarted, setHasStarted] = useState(false);
     const [showRulesHint, setShowRulesHint] = useState(false);
     const [hasSeenHint, setHasSeenHint] = useState(false);
 
@@ -153,6 +163,98 @@ export function StepCategorizeTransactions({
                     </p>
                 </div>
                 <StepButton text={__('Continue')} onClick={onComplete} />
+            </div>
+        );
+    }
+
+    if (!hasStarted) {
+        return (
+            <div className="flex w-full flex-col items-center gap-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
+                    <Tag className="h-8 w-8 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-xl font-semibold">
+                        {__('Categorize Your Transactions')}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {__(
+                            'To continue, you need to categorize at least :count transactions.',
+                            { count: minimumRequired },
+                        )}
+                    </p>
+                </div>
+
+                <div className="grid w-full gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border bg-card p-5 text-left">
+                        <div className="mb-3 flex items-center gap-2">
+                            <div className="flex size-8 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                                <PieChart className="size-4 text-violet-600 dark:text-violet-400" />
+                            </div>
+                            <h3 className="font-semibold">
+                                {__('See where you spend')}
+                            </h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {__(
+                                'Get a clear picture of where your money goes every month.',
+                            )}
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border bg-card p-5 text-left">
+                        <div className="mb-3 flex items-center gap-2">
+                            <div className="flex size-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                <Target className="size-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <h3 className="font-semibold">
+                                {__('Build better budgets')}
+                            </h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {__(
+                                'Create realistic budgets based on your actual spending habits.',
+                            )}
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border bg-card p-5 text-left">
+                        <div className="mb-3 flex items-center gap-2">
+                            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                                <TrendingDown className="size-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <h3 className="font-semibold">
+                                {__('Spot savings opportunities')}
+                            </h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {__(
+                                'Identify categories where you can cut back and save more.',
+                            )}
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border bg-card p-5 text-left">
+                        <div className="mb-3 flex items-center gap-2">
+                            <div className="flex size-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                                <Zap className="size-4 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <h3 className="font-semibold">
+                                {__('Automate over time')}
+                            </h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {__(
+                                'Rules will categorize future transactions for you automatically.',
+                            )}
+                        </p>
+                    </div>
+                </div>
+
+                <StepButton
+                    text={__("Let's start")}
+                    onClick={() => setHasStarted(true)}
+                />
             </div>
         );
     }
