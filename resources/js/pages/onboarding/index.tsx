@@ -134,10 +134,6 @@ export default function Onboarding({
         goToStep('create-account');
     };
 
-    const handleFinishOnboarding = () => {
-        goNext();
-    };
-
     const renderStep = () => {
         const lastAccount = createdAccounts[createdAccounts.length - 1];
 
