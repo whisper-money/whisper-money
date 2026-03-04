@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\UserLead>
@@ -16,8 +17,14 @@ class UserLeadFactory extends Factory
      */
     public function definition(): array
     {
+        static $position = 499;
+        $position++;
+
         return [
             'email' => fake()->unique()->safeEmail(),
+            'position' => $position,
+            'referral_code' => strtoupper(Str::random(8)),
+            'locale' => 'en',
         ];
     }
 }

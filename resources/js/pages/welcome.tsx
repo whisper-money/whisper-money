@@ -1,6 +1,8 @@
+import InputError from '@/components/input-error';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
@@ -10,10 +12,11 @@ import {
 } from '@/components/ui/tooltip';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { cn } from '@/lib/utils';
+import { store as storeUserLead } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
 import { __ } from '@/utils/i18n';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { CheckIcon, ChevronDownIcon, LockIcon } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 
@@ -219,6 +222,58 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
     );
 }
 
+function WaitlistForm() {
+    const [referrerCode, setReferrerCode] = useState('');
+    const { locale } = usePage<SharedData>().props;
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get('ref');
+        if (ref) {
+            setReferrerCode(ref);
+        }
+    }, []);
+
+    return (
+        <Form
+            {...storeUserLead.form()}
+            className="flex w-full flex-col gap-3"
+            disableWhileProcessing
+        >
+            {({ processing, errors }) => (
+                <>
+                    <input
+                        type="hidden"
+                        name="referrer_code"
+                        value={referrerCode}
+                    />
+                    <input type="hidden" name="locale" value={locale} />
+                    <div className="flex w-full flex-col gap-1.5">
+                        <div className="flex w-full flex-row gap-2">
+                            <Input
+                                type="email"
+                                name="email"
+                                required
+                                autoComplete="email"
+                                placeholder={__('Your email address')}
+                                className="h-14 flex-1 text-base"
+                            />
+                            <Button
+                                type="submit"
+                                className="text-shadow h-14 shrink-0 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-6 text-base text-white shadow-sm transition-all duration-200 hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] dark:hover:from-zinc-50"
+                            >
+                                {processing && <Spinner />}
+                                {__('Join Waitlist')}
+                            </Button>
+                        </div>
+                        <InputError message={errors.email} />
+                    </div>
+                </>
+            )}
+        </Form>
+    );
+}
+
 export default function Welcome({
     canRegister,
     hideAuthButtons,
@@ -410,7 +465,9 @@ export default function Welcome({
                                     )}
                                 </p>
                                 <div className="flex w-full max-w-lg flex-col gap-4">
-                                    {isMobile ? (
+                                    {hideAuthButtons ? (
+                                        <WaitlistForm />
+                                    ) : isMobile ? (
                                         <InstallAppButton />
                                     ) : (
                                         <div className="flex w-full flex-row gap-4">
@@ -434,7 +491,13 @@ export default function Welcome({
                                         </div>
                                     )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__('Your data stays private. Always.')}
+                                        {hideAuthButtons
+                                            ? __(
+                                                  "Join the waiting list. We'll let you know when you're in.",
+                                              )
+                                            : __(
+                                                  'Your data stays private. Always.',
+                                              )}
                                     </p>
                                 </div>
                             </div>
