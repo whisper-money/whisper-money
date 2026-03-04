@@ -68,6 +68,8 @@ export function StepCategorizeTransactions({
         categorizedCount >= minimumRequired ||
         totalAvailable === 0;
 
+    const hasReachedMinimum = categorizedCount >= minimumRequired;
+
     // Show rules hint after first categorization, only once
     useEffect(() => {
         if (categorizedCount === 1 && !hasSeenHint) {
@@ -213,11 +215,30 @@ export function StepCategorizeTransactions({
                         <Kbd>{__('Ctrl+N')}</Kbd>
                     </Button>
 
+                    <Button
+                        size="sm"
+                        onClick={onComplete}
+                        disabled={!canContinue}
+                    >
+                        {__('Continue')}
+                    </Button>
+
                     <span className="text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">
-                            {remainingCount}
-                        </span>{' '}
-                        {__('remaining')}
+                        {hasReachedMinimum ? (
+                            <>
+                                <span className="font-medium text-foreground">
+                                    {remainingCount}
+                                </span>{' '}
+                                {__('remaining')}
+                            </>
+                        ) : (
+                            <>
+                                <span className="font-medium text-foreground">
+                                    {categorizedCount}
+                                </span>
+                                /{minimumRequired}
+                            </>
+                        )}
                     </span>
                 </div>
             </div>
@@ -240,21 +261,6 @@ export function StepCategorizeTransactions({
                 commandInputRef={commandInputRef}
                 disabled={showRulesHint}
             />
-
-            {/* Progress + Continue */}
-            <div className="flex flex-col items-center gap-3 pt-2">
-                {!isComplete && minimumRequired > 0 && (
-                    <p className="text-sm text-muted-foreground">
-                        {categorizedCount} / {minimumRequired}{' '}
-                        {__('categorized')}
-                    </p>
-                )}
-                <StepButton
-                    text={__('Continue')}
-                    onClick={onComplete}
-                    disabled={!canContinue}
-                />
-            </div>
 
             <AutomationRulesDialog
                 open={rulesDialogOpen}
