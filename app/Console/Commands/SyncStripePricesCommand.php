@@ -101,7 +101,10 @@ class SyncStripePricesCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function findPriceByLookupKey(string $lookupKey): ?Price
+    /**
+     * @return \Stripe\Price|null
+     */
+    private function findPriceByLookupKey(string $lookupKey): mixed
     {
         $response = Cashier::stripe()->prices->all(['lookup_keys' => [$lookupKey], 'limit' => 1]);
 
@@ -134,7 +137,10 @@ class SyncStripePricesCommand extends Command
         return Cashier::stripe()->prices->create($params);
     }
 
-    private function priceMatches(Price $price, int $amountInCents, string $currency, ?string $billingPeriod): bool
+    /**
+     * @param  \Stripe\Price  $price
+     */
+    private function priceMatches(mixed $price, int $amountInCents, string $currency, ?string $billingPeriod): bool
     {
         $currencyMatches = strtolower((string) $price->currency) === strtolower($currency);
         $amountMatches = $price->unit_amount === $amountInCents;
