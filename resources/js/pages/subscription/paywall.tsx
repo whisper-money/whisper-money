@@ -1,11 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useCountUp } from '@/hooks/use-count-up';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
@@ -353,32 +347,6 @@ function PricingSection({
     );
 }
 
-function PromoSection() {
-    return (
-        <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-            <span>{__('Your data is ready')}</span>
-            <span>•</span>
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <a
-                            href="https://discord.gg/2WZmDW9QZ8"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-[#5865F2] underline-offset-2 hover:underline"
-                        >
-                            {__('Discord for 80% off')}
-                        </a>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        {__("You'll receive an exclusive promo code via DM!")}
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        </p>
-    );
-}
-
 export default function Paywall() {
     const { pricing, stats, canUseFreePlan } =
         usePage<PaywallPageProps>().props;
@@ -403,8 +371,6 @@ export default function Paywall() {
                         defaultPlan={pricing.defaultPlan}
                         currency={pricing.currency}
                     />
-
-                    {pricing.promo.enabled && <PromoSection />}
 
                     {canUseFreePlan && (
                         <div className="text-center">

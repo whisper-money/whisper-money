@@ -4,12 +4,6 @@ import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { cn } from '@/lib/utils';
 import { store as storeUserLead } from '@/routes/user-leads';
@@ -934,35 +928,6 @@ export default function Welcome({
                                             />
                                         ))}
                                     </div>
-
-                                    {pricing.promo.enabled && (
-                                        <p className="text-center text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                            {__(
-                                                '\uD83C\uDF89 Get a founder discount \u2022',
-                                            )}{' '}
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <a
-                                                            href="https://discord.gg/2WZmDW9QZ8"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="font-semibold text-[#5865F2] underline-offset-2 hover:underline"
-                                                        >
-                                                            {__(
-                                                                'Join our Discord',
-                                                            )}
-                                                        </a>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        {__(
-                                                            "You'll receive an\n                                                        exclusive promo code via\n                                                        DM!",
-                                                        )}
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </p>
-                                    )}
                                 </div>
                             </section>
                         )}
