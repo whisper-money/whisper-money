@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Laravel\Cashier\Cashier;
 use Stripe\Exception\ApiErrorException;
-use Stripe\StripeObject;
+use Stripe\Price;
 
 class SyncStripePricesCommand extends Command
 {
@@ -101,7 +101,7 @@ class SyncStripePricesCommand extends Command
         return Command::SUCCESS;
     }
 
-    private function findPriceByLookupKey(string $lookupKey): ?StripeObject
+    private function findPriceByLookupKey(string $lookupKey): ?Price
     {
         $response = Cashier::stripe()->prices->all(['lookup_keys' => [$lookupKey], 'limit' => 1]);
 
@@ -118,7 +118,7 @@ class SyncStripePricesCommand extends Command
         ?string $billingPeriod,
         string $lookupKey,
         bool $transferLookupKey,
-    ): StripeObject {
+    ): Price {
         $params = [
             'product' => $productId,
             'unit_amount' => $amountInCents,
@@ -134,11 +134,11 @@ class SyncStripePricesCommand extends Command
         return Cashier::stripe()->prices->create($params);
     }
 
-    private function priceMatches(StripeObject $price, int $amountInCents, string $currency, ?string $billingPeriod): bool
+    private function priceMatches(Price $price, int $amountInCents, string $currency, ?string $billingPeriod): bool
     {
-        $currencyMatches = strtolower($price->currency) === strtolower($currency);
+        $currencyMatches = strtolower((string) $price->currency) === strtolower($currency);
         $amountMatches = $price->unit_amount === $amountInCents;
-        $intervalMatches = ($price->recurring?->interval ?? null) === $billingPeriod;
+        $intervalMatches = $price->recurring?->interval === $billingPeriod;
 
         return $currencyMatches && $amountMatches && $intervalMatches;
     }
