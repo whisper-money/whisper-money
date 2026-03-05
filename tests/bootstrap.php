@@ -38,11 +38,32 @@ if ($useContainers) {
         ->withMySQLUser('testing', 'testing')
         ->start();
 
-    // Stop and remove the container when the PHP process exits, even on
-    // crashes or SIGINT. testcontainers-php has no built-in cleanup.
-    register_shutdown_function(function () use ($container): void {
-        $container->stop();
-    });
+    // Stop and remove the container when the PHP process exits.
+    // We wrap in try/catch because an uncaught exception inside a
+    // shutdown function becomes a fatal error in PHP, which would leave
+    // the container running.
+    $cleanup = function () use ($container): void {
+        try {
+            $container->stop();
+        } catch (\Throwable) {
+            // Silently ignore — best-effort cleanup.
+        }
+    };
+
+    register_shutdown_function($cleanup);
+
+    // register_shutdown_function is NOT called for signals such as SIGINT
+    // (Ctrl+C) or SIGTERM. Install async signal handlers so the container
+    // is also removed when the test run is interrupted.
+    if (extension_loaded('pcntl')) {
+        pcntl_async_signals(true);
+        foreach ([SIGTERM, SIGINT] as $signal) {
+            pcntl_signal($signal, function () use ($cleanup, $signal): void {
+                $cleanup();
+                exit(128 + $signal);
+            });
+        }
+    }
 
     $host = $container->getHost();
     $port = (string) $container->getFirstMappedPort();
