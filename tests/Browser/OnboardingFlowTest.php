@@ -148,8 +148,8 @@ it('allows continuing with existing accounts', function () {
         // Click Continue to proceed
         ->click('Continue')
         ->wait(2)
-        // Should go to import transactions (since checking account needs transactions)
-        ->assertSee('Import Your Transactions')
+        // Should go to category types (existing accounts no longer trigger import)
+        ->assertSee('Understanding Categories')
         ->assertNoJavascriptErrors();
 });
 
@@ -180,9 +180,8 @@ it('shows import transactions step after account creation', function () {
         ->wait(1)
         ->click('Continue')
         ->wait(2)
-        // Should show import transactions step
-        ->assertSee('Import Your Transactions')
-        ->assertSee('Import Transactions')
+        // Should go to category types (existing accounts no longer trigger import)
+        ->assertSee('Understanding Categories')
         ->assertNoJavascriptErrors();
 });
 
@@ -296,7 +295,12 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Import 5 Transactions')
         ->wait(15);
 
-    // After import completes, drawer closes and transitions to Category Types
+    // After import completes, back to create-account step in list mode
+    $page->assertSee('My Checking Account')
+        ->click('Continue')
+        ->wait(1);
+
+    // Category Types
     $page->assertSee('Understanding Categories')
         ->click('Continue')
         ->wait(1);
@@ -306,10 +310,10 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Continue')
         ->wait(1);
 
-    // More Accounts - verify account is listed, then finish
-    $page->assertSee('Great Progress!')
-        ->assertSee('My Checking Account')
-        ->click('Finish Setup')
+    // Categorize Transactions - transactions prop was loaded at page start (before import),
+    // so no uncategorized transactions are available and Continue is immediately enabled
+    $page->assertSee('No Uncategorized Transactions')
+        ->click('Continue')
         ->wait(1);
 
     // Complete step

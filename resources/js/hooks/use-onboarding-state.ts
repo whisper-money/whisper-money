@@ -7,9 +7,10 @@ export type OnboardingStep =
     | 'category-types'
     | 'customize-categories'
     | 'smart-rules'
+    | 'syncing'
     | 'import-transactions'
     | 'import-balances'
-    | 'more-accounts'
+    | 'categorize-transactions'
     | 'complete';
 
 // Primary steps shown in the progress indicator
@@ -20,7 +21,8 @@ const PRIMARY_STEPS: OnboardingStep[] = [
     'create-account',
     'category-types',
     'smart-rules',
-    'more-accounts',
+    'syncing',
+    'categorize-transactions',
     'complete',
 ];
 
@@ -41,6 +43,7 @@ export interface CreatedAccount {
     type: string;
     currencyCode: string;
     bankName?: string;
+    bankLogo?: string | null;
     connected?: boolean;
 }
 

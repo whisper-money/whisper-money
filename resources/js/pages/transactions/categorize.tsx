@@ -1,51 +1,26 @@
 import { categorize as categorizeRoute } from '@/actions/App/Http/Controllers/TransactionController';
-import { AccountName } from '@/components/accounts/account-name';
 import { AutomationRulesDialog } from '@/components/automation-rules/automation-rules-dialog';
-import { CategoryIcon } from '@/components/shared/category-combobox';
-import { AmountDisplay } from '@/components/ui/amount-display';
+import { CategorizerCard } from '@/components/transactions/categorizer-card';
+import { CategorizerCommand } from '@/components/transactions/categorizer-command';
 import { Button } from '@/components/ui/button';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { useLocale } from '@/hooks/use-locale';
-import { decrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
-import { evaluateRules } from '@/lib/rule-engine';
-import { cn } from '@/lib/utils';
-import { transactionSyncService } from '@/services/transaction-sync';
+import { useCategorizeTransactions } from '@/hooks/use-categorize-transactions';
 import { type Account, type Bank } from '@/types/account';
-import { type AutomationRule } from '@/types/automation-rule';
-import { type Category, getCategoryColorClasses } from '@/types/category';
-import {
-    type DecryptedTransaction,
-    type Transaction,
-} from '@/types/transaction';
-import { formatDateLong } from '@/utils/date';
+import { type Category } from '@/types/category';
+import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { parseISO } from 'date-fns';
+import { Head, Link, router } from '@inertiajs/react';
 import {
-    ArrowDown,
     ArrowLeft,
-    ArrowUp,
     CheckCircle2,
     PartyPopper,
     Settings2,
     SkipBack,
     SkipForward,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { useWebHaptics } from 'web-haptics/react';
-
-const CATEGORY_USAGE_KEY = 'category-usage-order';
 
 interface Props {
     categories: Category[];
@@ -54,400 +29,64 @@ interface Props {
     transactions: Transaction[];
 }
 
-type AnimationState = 'idle' | 'exiting' | 'entering' | 'success';
-
-function getCategoryUsageOrder(): string[] {
-    try {
-        const stored = localStorage.getItem(CATEGORY_USAGE_KEY);
-        if (stored) {
-            return JSON.parse(stored);
-        }
-    } catch {
-        // Ignore errors
-    }
-    return [];
-}
-
-function updateCategoryUsageOrder(categoryId: string): void {
-    try {
-        const current = getCategoryUsageOrder();
-        const filtered = current.filter((id) => id !== categoryId);
-        const updated = [categoryId, ...filtered];
-        localStorage.setItem(CATEGORY_USAGE_KEY, JSON.stringify(updated));
-    } catch {
-        // Ignore errors
-    }
-}
-
-function sortCategoriesByUsage(
-    categories: Category[],
-    usageOrder: string[],
-): Category[] {
-    const orderMap = new Map(usageOrder.map((id, index) => [id, index]));
-
-    return [...categories].sort((a, b) => {
-        const aIndex = orderMap.get(a.id) ?? Infinity;
-        const bIndex = orderMap.get(b.id) ?? Infinity;
-
-        if (aIndex === bIndex) {
-            return a.name.localeCompare(b.name);
-        }
-
-        return aIndex - bIndex;
-    });
-}
-
 export default function CategorizeTransactions({
     categories,
     accounts,
     banks,
-    transactions: initialTransactions,
+    transactions,
 }: Props) {
-    const { isKeySet } = useEncryptionKey();
-    const { automationRules: sharedAutomationRules } = usePage<{
-        automationRules: AutomationRule[];
-    }>().props;
-    const locale = useLocale();
     const { trigger } = useWebHaptics();
 
-    const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
-        DecryptedTransaction[]
-    >([]);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
-    const [animationState, setAnimationState] =
-        useState<AnimationState>('idle');
-    const [categoryUsageOrder, setCategoryUsageOrder] = useState<string[]>([]);
-    const [lastSelectedCategory, setLastSelectedCategory] =
-        useState<Category | null>(null);
-    const [searchValue, setSearchValue] = useState('');
-    const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
-    const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
-    const commandInputRef = useRef<HTMLInputElement>(null);
-
-    const automationRules = useMemo(
-        () =>
-            sharedAutomationRules.map((rule) => ({
-                ...rule,
-                rules_json:
-                    typeof rule.rules_json === 'string'
-                        ? JSON.parse(rule.rules_json)
-                        : rule.rules_json,
-            })) as AutomationRule[],
-        [sharedAutomationRules],
-    );
-
-    useEffect(() => {
-        setCategoryUsageOrder(getCategoryUsageOrder());
-    }, []);
-
-    useEffect(() => {
-        if (!isLoading && animationState === 'idle') {
-            commandInputRef.current?.focus();
-        }
-    }, [isLoading, animationState, currentIndex]);
-
-    // Decrypt transactions received from the backend and build the initial list
-    useEffect(() => {
-        async function decryptTransactions() {
-            setIsLoading(true);
-            try {
-                const accountsMap = new Map(
-                    accounts.map((account) => [account.id, account]),
-                );
-                const banksMap = new Map(banks.map((bank) => [bank.id, bank]));
-
-                const keyString = getStoredKey();
-                let key: CryptoKey | null = null;
-
-                if (keyString && isKeySet) {
-                    try {
-                        key = await importKey(keyString);
-                        setEncryptionKey(key);
-                    } catch (error) {
-                        console.error(
-                            'Failed to import encryption key:',
-                            error,
-                        );
-                    }
-                }
-
-                const decrypted = await Promise.all(
-                    initialTransactions.map(async (transaction) => {
-                        try {
-                            let decryptedDescription = '';
-                            let decryptedNotes: string | null = null;
-
-                            if (!transaction.description_iv) {
-                                decryptedDescription = transaction.description;
-                                decryptedNotes = transaction.notes || null;
-                            } else if (key) {
-                                try {
-                                    decryptedDescription = await decrypt(
-                                        transaction.description,
-                                        key,
-                                        transaction.description_iv,
-                                    );
-
-                                    if (
-                                        transaction.notes &&
-                                        transaction.notes_iv
-                                    ) {
-                                        decryptedNotes = await decrypt(
-                                            transaction.notes,
-                                            key,
-                                            transaction.notes_iv,
-                                        );
-                                    }
-                                } catch (error) {
-                                    console.error(
-                                        'Failed to decrypt transaction:',
-                                        transaction.id,
-                                        error,
-                                    );
-                                }
-                            }
-
-                            const account = accountsMap.get(
-                                transaction.account_id,
-                            );
-                            const bank = account?.bank?.id
-                                ? banksMap.get(account.bank.id)
-                                : undefined;
-
-                            return {
-                                ...transaction,
-                                decryptedDescription,
-                                decryptedNotes,
-                                account,
-                                category: null,
-                                bank,
-                            } as DecryptedTransaction;
-                        } catch (error) {
-                            console.error(
-                                'Failed to process transaction:',
-                                transaction.id,
-                                error,
-                            );
-                            return null;
-                        }
-                    }),
-                );
-
-                const validTransactions = decrypted.filter(
-                    (transaction): transaction is DecryptedTransaction =>
-                        transaction !== null,
-                );
-
-                validTransactions.sort((a, b) => {
-                    const dateA = parseISO(a.transaction_date).getTime();
-                    const dateB = parseISO(b.transaction_date).getTime();
-                    return dateB - dateA;
-                });
-
-                setUncategorizedTransactions(validTransactions);
-            } catch (error) {
-                console.error(
-                    'Failed to load uncategorized transactions:',
-                    error,
-                );
-            } finally {
-                setIsLoading(false);
-            }
-        }
-
-        decryptTransactions();
-    }, [initialTransactions, accounts, banks, isKeySet]);
-
-    const currentTransaction = uncategorizedTransactions[currentIndex];
-    const remainingCount = uncategorizedTransactions.length - currentIndex;
-    const isComplete = currentIndex >= uncategorizedTransactions.length;
-
-    const sortedCategories = useMemo(() => {
-        return sortCategoriesByUsage(categories, categoryUsageOrder);
-    }, [categories, categoryUsageOrder]);
-
-    const applyAutomationRulesToQueue = useCallback(async () => {
-        if (
-            !encryptionKey ||
-            !automationRules.length ||
-            uncategorizedTransactions.length === 0
-        ) {
-            return;
-        }
-
-        const remainingTransactions =
-            uncategorizedTransactions.slice(currentIndex);
-        let categorizedCount = 0;
-        const newUncategorizedList: DecryptedTransaction[] = [
-            ...uncategorizedTransactions.slice(0, currentIndex),
-        ];
-
-        for (const transaction of remainingTransactions) {
-            const result = await evaluateRules(
-                transaction,
-                automationRules,
-                categories,
-                accounts,
-                banks,
-                encryptionKey,
-            );
-
-            if (result?.categoryId) {
-                try {
-                    await transactionSyncService.update(transaction.id, {
-                        category_id: result.categoryId,
-                    });
-                    categorizedCount++;
-
-                    const matchedCategory = categories.find(
-                        (c) => c.id === result.categoryId,
-                    );
-                    if (matchedCategory) {
-                        updateCategoryUsageOrder(matchedCategory.id);
-                    }
-                } catch (error) {
-                    console.error(
-                        'Failed to apply automation rule to transaction:',
-                        error,
-                    );
-                    newUncategorizedList.push(transaction);
-                }
-            } else {
-                newUncategorizedList.push(transaction);
-            }
-        }
-
-        if (categorizedCount > 0) {
-            setCategoryUsageOrder(getCategoryUsageOrder());
-            setUncategorizedTransactions(newUncategorizedList);
-            setCurrentIndex(
-                Math.min(currentIndex, newUncategorizedList.length),
-            );
-        }
-
-        return categorizedCount;
-    }, [
-        encryptionKey,
-        automationRules,
+    const {
+        isLoading,
+        isComplete,
         uncategorizedTransactions,
+        currentTransaction,
         currentIndex,
+        remainingCount,
+        animationState,
+        lastSelectedCategory,
+        sortedCategories,
+        searchValue,
+        setSearchValue,
+        rulesDialogOpen,
+        setRulesDialogOpen,
+        handleCategorySelect,
+        handleSkip,
+        handlePrevious,
+        handleRulesDialogClose,
+        commandInputRef,
+    } = useCategorizeTransactions({
         categories,
         accounts,
         banks,
-    ]);
+        transactions,
+    });
 
-    const handleRulesDialogClose = useCallback(
-        async (open: boolean) => {
-            setRulesDialogOpen(open);
+    const backHref = categorizeRoute.url()?.replace('/categorize', '') ?? '';
 
-            if (!open) {
-                await applyAutomationRulesToQueue();
-                commandInputRef.current?.focus();
-            }
-        },
-        [applyAutomationRulesToQueue],
-    );
-
-    const handleCategorySelect = useCallback(
-        async (category: Category) => {
-            if (!currentTransaction || animationState !== 'idle') return;
-
-            setLastSelectedCategory(category);
-            setAnimationState('exiting');
-
-            try {
-                await transactionSyncService.update(currentTransaction.id, {
-                    category_id: category.id,
-                });
-
-                updateCategoryUsageOrder(category.id);
-                setCategoryUsageOrder(getCategoryUsageOrder());
-            } catch (error) {
-                console.error('Failed to update transaction:', error);
-                setAnimationState('idle');
-                return;
-            }
-
-            setTimeout(() => {
-                setAnimationState('success');
-
-                setTimeout(() => {
-                    setCurrentIndex((prev) => prev + 1);
-                    setAnimationState('entering');
-                    setSearchValue('');
-
-                    setTimeout(() => {
-                        setAnimationState('idle');
-                        setLastSelectedCategory(null);
-                        commandInputRef.current?.focus();
-                    }, 300);
-                }, 400);
-            }, 300);
-        },
-        [currentTransaction, animationState],
-    );
-
-    const handleSkip = useCallback(() => {
-        if (animationState !== 'idle') return;
-
-        setAnimationState('exiting');
-
-        setTimeout(() => {
-            setCurrentIndex((prev) => prev + 1);
-            setAnimationState('entering');
-
-            setTimeout(() => {
-                setAnimationState('idle');
-            }, 300);
-        }, 300);
-    }, [animationState]);
-
-    const handlePrevious = useCallback(() => {
-        if (animationState !== 'idle' || currentIndex === 0) return;
-
-        setAnimationState('exiting');
-
-        setTimeout(() => {
-            setCurrentIndex((prev) => prev - 1);
-            setAnimationState('entering');
-
-            setTimeout(() => {
-                setAnimationState('idle');
-            }, 300);
-        }, 300);
-    }, [animationState, currentIndex]);
-
-    // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ctrl + R for rules dialog
             if (e.ctrlKey && e.key === 'r') {
                 e.preventDefault();
                 setRulesDialogOpen(true);
             }
-            // Ctrl + N for skip (next)
             if (e.ctrlKey && e.key === 'n') {
                 e.preventDefault();
                 if (animationState === 'idle' && currentTransaction) {
                     handleSkip();
                 }
             }
-            // Ctrl + B for previous (back)
             if (e.ctrlKey && e.key === 'b') {
                 e.preventDefault();
                 if (animationState === 'idle' && currentIndex > 0) {
                     handlePrevious();
                 }
             }
-            // Escape to go back to transactions
             if (e.key === 'Escape' && !rulesDialogOpen) {
                 e.preventDefault();
-                const transactionsUrl = categorizeRoute
-                    .url()
-                    ?.replace('/categorize', '');
-                if (transactionsUrl) {
-                    router.visit(transactionsUrl);
+                if (backHref) {
+                    router.visit(backHref);
                 }
             }
         };
@@ -461,6 +100,8 @@ export default function CategorizeTransactions({
         handlePrevious,
         currentIndex,
         rulesDialogOpen,
+        setRulesDialogOpen,
+        backHref,
     ]);
 
     if (isLoading) {
@@ -504,12 +145,7 @@ export default function CategorizeTransactions({
                                 )}
                             </p>
                         </div>
-                        <Link
-                            href={categorizeRoute
-                                .url()
-                                ?.replace('/categorize', '')}
-                            onClick={() => trigger('light')}
-                        >
+                        <Link href={backHref} onClick={() => trigger('light')}>
                             <Button size="lg" className="mt-4">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 {__('Back to Transactions')}
@@ -517,6 +153,18 @@ export default function CategorizeTransactions({
                         </Link>
                     </div>
                 </div>
+
+                <style>{`
+                    @keyframes bounce-in {
+                        0% { opacity: 0; transform: scale(0.3); }
+                        50% { transform: scale(1.05); }
+                        70% { transform: scale(0.9); }
+                        100% { opacity: 1; transform: scale(1); }
+                    }
+                    .animate-bounce-in {
+                        animation: bounce-in 0.6s ease-out forwards;
+                    }
+                `}</style>
             </>
         );
     }
@@ -540,12 +188,7 @@ export default function CategorizeTransactions({
                                 )}
                             </p>
                         </div>
-                        <Link
-                            href={categorizeRoute
-                                .url()
-                                ?.replace('/categorize', '')}
-                            onClick={() => trigger('light')}
-                        >
+                        <Link href={backHref} onClick={() => trigger('light')}>
                             <Button>
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 {__('Back to Transactions')}
@@ -564,7 +207,7 @@ export default function CategorizeTransactions({
             <div className="flex min-h-screen flex-col bg-white dark:bg-zinc-950">
                 <header className="flex items-center justify-between gap-6 px-4 py-3 dark:border-zinc-800">
                     <Link
-                        href={categorizeRoute.url()?.replace('/categorize', '')}
+                        href={backHref}
                         onClick={() => trigger('light')}
                         className="flex w-fit flex-1 items-center gap-2 text-sm text-zinc-600 opacity-50 transition-all duration-200 hover:text-zinc-900 hover:opacity-100 dark:text-zinc-400 dark:hover:text-zinc-100"
                     >
@@ -583,7 +226,6 @@ export default function CategorizeTransactions({
                             >
                                 <Settings2 className="h-4 w-4" />
                                 {__('Rules')}
-
                                 <Kbd>{__('Ctrl+R')}</Kbd>
                             </Button>
                         </div>
@@ -628,215 +270,20 @@ export default function CategorizeTransactions({
 
                 <main className="flex flex-1 flex-col items-center justify-start p-4 sm:justify-center">
                     <div className="w-full max-w-xl space-y-8">
-                        <div className="relative">
-                            {animationState === 'success' &&
-                                lastSelectedCategory && (
-                                    <div className="flex items-center justify-center py-8">
-                                        <div className="animate-success-pop flex flex-col items-center gap-3">
-                                            <div
-                                                className={cn(
-                                                    'flex h-16 w-16 items-center justify-center rounded-full',
-                                                    getCategoryColorClasses(
-                                                        lastSelectedCategory.color,
-                                                    ).bg,
-                                                )}
-                                            >
-                                                <CheckCircle2
-                                                    className={cn(
-                                                        'h-8 w-8',
-                                                        getCategoryColorClasses(
-                                                            lastSelectedCategory.color,
-                                                        ).text,
-                                                    )}
-                                                />
-                                            </div>
-                                            <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                                                {lastSelectedCategory.name}
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-
-                            {animationState !== 'success' &&
-                                currentTransaction && (
-                                    <div
-                                        className={cn(
-                                            'rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl shadow-zinc-200/50 transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-zinc-900/50',
-                                            animationState === 'exiting' &&
-                                                'translate-y-[-20px] scale-95 opacity-0',
-                                            animationState === 'entering' &&
-                                                'animate-card-enter',
-                                            animationState === 'idle' &&
-                                                'translate-y-0 scale-100 opacity-100',
-                                        )}
-                                    >
-                                        <div className="flex flex-col gap-4">
-                                            <div className="space-y-6">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex flex-1 flex-col gap-4">
-                                                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                            {formatDateLong(
-                                                                currentTransaction.transaction_date,
-                                                                locale,
-                                                            )}
-                                                        </p>
-
-                                                        <h2 className="text-2xl whitespace-pre-wrap text-zinc-900 dark:text-zinc-100">
-                                                            {currentTransaction.decryptedDescription ||
-                                                                'Encrypted'}
-                                                        </h2>
-
-                                                        {currentTransaction.account && (
-                                                            <div className="flex items-center gap-2">
-                                                                {currentTransaction
-                                                                    .bank
-                                                                    ?.logo && (
-                                                                    <img
-                                                                        src={
-                                                                            currentTransaction
-                                                                                .bank
-                                                                                .logo
-                                                                        }
-                                                                        alt={
-                                                                            currentTransaction
-                                                                                .bank
-                                                                                .name
-                                                                        }
-                                                                        className="h-5 w-5 rounded"
-                                                                    />
-                                                                )}
-                                                                <AccountName
-                                                                    account={
-                                                                        currentTransaction.account
-                                                                    }
-                                                                    className="text-sm text-zinc-600 dark:text-zinc-400"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {currentTransaction.decryptedNotes && (
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {
-                                                            currentTransaction.decryptedNotes
-                                                        }
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div className="mt-2 font-mono text-xl text-muted-foreground">
-                                                <AmountDisplay
-                                                    amountInCents={
-                                                        currentTransaction.amount
-                                                    }
-                                                    currencyCode={
-                                                        currentTransaction.currency_code
-                                                    }
-                                                    variant="positive-highlight"
-                                                    highlightPositive={
-                                                        currentTransaction.amount >=
-                                                        0
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                        </div>
-
-                        {animationState !== 'success' && currentTransaction && (
-                            <div
-                                className={cn(
-                                    'flex flex-col gap-4 px-6 pt-2 transition-all duration-300',
-                                    animationState === 'exiting' &&
-                                        'translate-y-[-10px] opacity-0',
-                                    animationState === 'entering' &&
-                                        'animate-command-enter',
-                                    animationState === 'idle' &&
-                                        'translate-y-0 opacity-100',
-                                )}
-                            >
-                                <div className="flex flex-col gap-1">
-                                    <h3 className="font-medium">
-                                        {__('Assign a new category')}
-                                    </h3>
-                                    <p className="flex items-center gap-1 text-sm text-muted-foreground">
-                                        {__('Search, move')}{' '}
-                                        <Kbd>
-                                            <ArrowUp className="size-3" />
-                                        </Kbd>
-                                        <Kbd>
-                                            <ArrowDown className="size-3" />
-                                        </Kbd>
-                                        {__(', and press')}
-                                        <Kbd>⏎</Kbd>
-                                    </p>
-                                </div>
-                                <Command
-                                    className="rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
-                                    shouldFilter={true}
-                                >
-                                    <CommandInput
-                                        ref={commandInputRef}
-                                        placeholder={__('Search categories...')}
-                                        value={searchValue}
-                                        onValueChange={setSearchValue}
-                                        disabled={animationState !== 'idle'}
-                                    />
-
-                                    <CommandList className="max-h-64">
-                                        <CommandEmpty>
-                                            {__('No categories found.')}
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {sortedCategories.map(
-                                                (category) => {
-                                                    const colorClasses =
-                                                        getCategoryColorClasses(
-                                                            category.color,
-                                                        );
-                                                    return (
-                                                        <CommandItem
-                                                            key={category.id}
-                                                            value={
-                                                                category.name
-                                                            }
-                                                            onSelect={() =>
-                                                                handleCategorySelect(
-                                                                    category,
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                animationState !==
-                                                                'idle'
-                                                            }
-                                                            className="group cursor-pointer gap-3 p-2"
-                                                        >
-                                                            <div
-                                                                className={cn(
-                                                                    'flex size-5 shrink-0 items-center justify-center rounded-full transition-transform duration-200 group-data-[selected=true]:scale-110',
-                                                                    colorClasses.bg,
-                                                                )}
-                                                            >
-                                                                <CategoryIcon
-                                                                    category={
-                                                                        category
-                                                                    }
-                                                                />
-                                                            </div>
-                                                            <span className="flex-1 truncate font-medium">
-                                                                {category.name}
-                                                            </span>
-                                                        </CommandItem>
-                                                    );
-                                                },
-                                            )}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </div>
-                        )}
+                        <CategorizerCard
+                            transaction={currentTransaction}
+                            animationState={animationState}
+                            lastSelectedCategory={lastSelectedCategory}
+                        />
+                        <CategorizerCommand
+                            sortedCategories={sortedCategories}
+                            animationState={animationState}
+                            currentTransaction={currentTransaction}
+                            searchValue={searchValue}
+                            onSearchChange={setSearchValue}
+                            onCategorySelect={handleCategorySelect}
+                            commandInputRef={commandInputRef}
+                        />
                     </div>
                 </main>
             </div>
@@ -845,78 +292,6 @@ export default function CategorizeTransactions({
                 open={rulesDialogOpen}
                 onOpenChange={handleRulesDialogClose}
             />
-
-            <style>{`
-                @keyframes card-enter {
-                    from {
-                        opacity: 0;
-                        transform: translateY(20px) scale(0.95);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0) scale(1);
-                    }
-                }
-
-                @keyframes command-enter {
-                    from {
-                        opacity: 0;
-                        transform: translateY(10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                @keyframes success-pop {
-                    0% {
-                        opacity: 0;
-                        transform: scale(0.5);
-                    }
-                    50% {
-                        transform: scale(1.1);
-                    }
-                    100% {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                }
-
-                @keyframes bounce-in {
-                    0% {
-                        opacity: 0;
-                        transform: scale(0.3);
-                    }
-                    50% {
-                        transform: scale(1.05);
-                    }
-                    70% {
-                        transform: scale(0.9);
-                    }
-                    100% {
-                        opacity: 1;
-                        transform: scale(1);
-                    }
-                }
-
-                .animate-card-enter {
-                    animation: card-enter 0.3s ease-out forwards;
-                }
-
-                .animate-command-enter {
-                    animation: command-enter 0.3s ease-out 0.1s forwards;
-                    opacity: 0;
-                }
-
-                .animate-success-pop {
-                    animation: success-pop 0.4s ease-out forwards;
-                }
-
-                .animate-bounce-in {
-                    animation: bounce-in 0.6s ease-out forwards;
-                }
-            `}</style>
         </>
     );
 }

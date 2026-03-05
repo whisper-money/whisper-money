@@ -4,6 +4,7 @@ import {
     AccountForm,
     AccountFormData,
 } from '@/components/accounts/account-form';
+import { BankLogo } from '@/components/bank-logo';
 import { StepHeader } from '@/components/onboarding/step-header';
 import { ConnectAccountInline } from '@/components/open-banking/connect-account-inline';
 import { Button } from '@/components/ui/button';
@@ -14,16 +15,27 @@ import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import {
     AlertCircle,
-    CheckCircle2,
+    Check,
     CreditCard,
     Link2,
     PencilLine,
+    Plus,
     Zap,
 } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { StepButton } from './step-button';
 
 type AccountMode = 'select' | 'manual' | 'connected';
+
+interface CreatedAccountDisplay {
+    id: string;
+    name: string;
+    type: string;
+    currencyCode: string;
+    bankName?: string;
+    bankLogo?: string | null;
+    connected?: boolean;
+}
 
 interface ExistingAccount {
     id: string;
@@ -45,16 +57,18 @@ interface StepCreateAccountProps {
     banks: { id: string; name: string; logo: string | null }[];
     isFirstAccount: boolean;
     existingAccounts?: ExistingAccount[];
+    createdAccounts?: CreatedAccountDisplay[];
     onAccountCreated: (account: CreatedAccount) => void;
-    onSkip?: () => void;
+    onContinue?: () => void;
 }
 
 export function StepCreateAccount({
     banks,
     isFirstAccount,
     existingAccounts = [],
+    createdAccounts = [],
     onAccountCreated,
-    onSkip,
+    onContinue,
 }: StepCreateAccountProps) {
     const { pricing, subscriptionsEnabled, features } =
         usePage<SharedData>().props;
@@ -63,6 +77,7 @@ export function StepCreateAccount({
     const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
         'manual',
     );
+    const [isAddingAnother, setIsAddingAnother] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const formDataRef = useRef<AccountFormData>({
@@ -198,9 +213,14 @@ export function StepCreateAccount({
 
             const accountData = await response.json();
 
+            const matchedBank = banks.find(
+                (b) => String(b.id) === String(finalBankId),
+            );
             const bankName =
-                formDataRef.current.customBank?.name ??
-                banks.find((b) => String(b.id) === String(finalBankId))?.name;
+                formDataRef.current.customBank?.name ?? matchedBank?.name;
+            const bankLogo = formDataRef.current.customBank
+                ? null
+                : (matchedBank?.logo ?? null);
 
             onAccountCreated({
                 id: accountData.id || finalBankId,
@@ -208,6 +228,7 @@ export function StepCreateAccount({
                 type: type,
                 currencyCode: currencyCode,
                 bankName,
+                bankLogo,
             });
             setIsSubmitting(false);
         } catch (err) {
@@ -222,9 +243,32 @@ export function StepCreateAccount({
     }
 
     const hasExistingAccounts = existingAccounts.length > 0;
+    const hasCreatedAccounts = createdAccounts.length > 0;
+
+    const createdAccountsByBank = useMemo(() => {
+        const groups = new Map<string, CreatedAccountDisplay[]>();
+        for (const account of createdAccounts) {
+            const key = account.bankName ?? 'Bank';
+            const group = groups.get(key) ?? [];
+            group.push(account);
+            groups.set(key, group);
+        }
+        return Array.from(groups.entries());
+    }, [createdAccounts]);
+
+    const existingAccountsByBank = useMemo(() => {
+        const groups = new Map<string, ExistingAccount[]>();
+        for (const account of existingAccounts) {
+            const key = account.bank?.name ?? 'Bank';
+            const group = groups.get(key) ?? [];
+            group.push(account);
+            groups.set(key, group);
+        }
+        return Array.from(groups.entries());
+    }, [existingAccounts]);
 
     const { title, description } = useMemo(() => {
-        if (hasExistingAccounts) {
+        if (hasExistingAccounts && !isAddingAnother && !hasCreatedAccounts) {
             return {
                 title: __('Your Accounts'),
                 description: __(
@@ -246,10 +290,86 @@ export function StepCreateAccount({
                 'Add another account to track more of your finances.',
             ),
         };
-    }, [hasExistingAccounts, isFirstAccount]);
+    }, [
+        hasExistingAccounts,
+        isFirstAccount,
+        isAddingAnother,
+        hasCreatedAccounts,
+    ]);
+
+    // Show created accounts list view (after creating accounts in this session)
+    if (hasCreatedAccounts && !isAddingAnother) {
+        return (
+            <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
+                <StepHeader
+                    icon={CreditCard}
+                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
+                    title={__('Your Accounts')}
+                    description={__(
+                        'Add more accounts or continue to set up your categories.',
+                    )}
+                />
+
+                <div className="mb-6 w-full max-w-md space-y-3">
+                    {createdAccountsByBank.map(([bankName, accounts]) => (
+                        <div
+                            key={bankName}
+                            className="overflow-hidden rounded-lg border bg-card"
+                        >
+                            <div className="flex items-center gap-2 border-b px-3 py-2.5">
+                                <BankLogo
+                                    src={accounts[0].bankLogo}
+                                    name={bankName}
+                                    fallback="letter"
+                                    className="h-5 w-5 text-[10px]"
+                                />
+                                <span className="text-sm font-medium">
+                                    {bankName}
+                                </span>
+                            </div>
+                            <div className="divide-y">
+                                {accounts.map((account) => (
+                                    <div
+                                        key={account.id}
+                                        className="flex items-center gap-2 px-3 py-2"
+                                    >
+                                        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                                        <span className="flex-1 text-sm">
+                                            {account.name}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {account.currencyCode}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="w-full max-w-md space-y-3">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={() => setIsAddingAnother(true)}
+                    >
+                        <Plus className="h-4 w-4" />
+                        {__('Add another account')}
+                    </Button>
+
+                    <StepButton
+                        text={__('Continue')}
+                        className="w-full sm:w-full"
+                        onClick={onContinue}
+                    />
+                </div>
+            </div>
+        );
+    }
 
     // Show existing accounts view
-    if (hasExistingAccounts) {
+    if (hasExistingAccounts && !isAddingAnother) {
         return (
             <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
                 <StepHeader
@@ -260,66 +380,70 @@ export function StepCreateAccount({
                 />
 
                 <div className="w-full max-w-md">
-                    <div className="mb-6 space-y-2">
-                        {existingAccounts.map((account) => (
+                    <div className="mb-6 space-y-3">
+                        {existingAccountsByBank.map(([bankName, accounts]) => (
                             <div
-                                key={account.id}
-                                className="flex items-center gap-3 rounded-lg border bg-card p-4"
+                                key={bankName}
+                                className="overflow-hidden rounded-lg border bg-card"
                             >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                <div className="flex items-center gap-2 border-b px-3 py-2.5">
+                                    <BankLogo
+                                        src={accounts[0].bank?.logo}
+                                        name={bankName}
+                                        fallback="letter"
+                                        className="h-5 w-5 text-[10px]"
+                                    />
+                                    <span className="text-sm font-medium">
+                                        {bankName}
+                                    </span>
                                 </div>
-                                <div className="flex-1">
-                                    <p className="font-medium">
-                                        {account.name || 'Account'}
-                                    </p>
-                                    <p className="flex gap-2 text-sm text-muted-foreground">
-                                        <span>
-                                            {account.bank?.name ?? `Bank`}
-                                        </span>
-                                        <span className="opacity-50">
-                                            &ndash;
-                                        </span>
-                                        <span>
-                                            {account.type
-                                                .split('_')
-                                                .map(
-                                                    (w) =>
-                                                        w
-                                                            .charAt(0)
-                                                            .toUpperCase() +
-                                                        w.slice(1),
-                                                )
-                                                .join(' ')}
-                                        </span>
-                                        <span className="opacity-50">
-                                            &ndash;
-                                        </span>
-                                        <span>{account.currency_code}</span>
-                                    </p>
+                                <div className="divide-y">
+                                    {accounts.map((account) => (
+                                        <div
+                                            key={account.id}
+                                            className="flex items-center gap-2 px-3 py-2"
+                                        >
+                                            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                                            <span className="flex-1 text-sm">
+                                                {account.name || 'Account'}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {account.type
+                                                    .split('_')
+                                                    .map(
+                                                        (w) =>
+                                                            w
+                                                                .charAt(0)
+                                                                .toUpperCase() +
+                                                            w.slice(1),
+                                                    )
+                                                    .join(' ')}{' '}
+                                                &middot; {account.currency_code}
+                                            </span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    <StepButton
-                        text={__('Continue')}
-                        className="w-full sm:w-full"
-                        onClick={() =>
-                            onAccountCreated({
-                                id: existingAccounts[0].id,
-                                name:
-                                    existingAccounts[0].name ||
-                                    existingAccounts[0].bank?.name ||
-                                    'Account',
-                                type: existingAccounts[0].type,
-                                currencyCode: existingAccounts[0].currency_code,
-                                bankName: existingAccounts[0].bank?.name,
-                                connected:
-                                    !!existingAccounts[0].banking_connection_id,
-                            })
-                        }
-                    />
+                    <div className="space-y-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full gap-2"
+                            onClick={() => setIsAddingAnother(true)}
+                        >
+                            <Plus className="h-4 w-4" />
+                            {__('Add another account')}
+                        </Button>
+
+                        <StepButton
+                            text={__('Continue')}
+                            className="w-full sm:w-full"
+                            onClick={onContinue}
+                        />
+                    </div>
                 </div>
             </div>
         );
@@ -385,19 +509,6 @@ export function StepCreateAccount({
                     >
                         {__('Back')}
                     </Button>
-
-                    {!isFirstAccount && onSkip && (
-                        <Button
-                            type="button"
-                            size="lg"
-                            className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
-                            variant="ghost"
-                            disabled={isSubmitting}
-                            onClick={() => onSkip()}
-                        >
-                            {__('Ignore')}
-                        </Button>
-                    )}
                 </form>
             </div>
         );
@@ -494,23 +605,24 @@ export function StepCreateAccount({
                         </div>
                     )}
 
-                <StepButton
-                    className="w-full sm:w-full"
-                    text={__('Continue')}
-                    onClick={() => setMode(selectedMode)}
-                />
+                <div className="w-full max-w-md space-y-2">
+                    <StepButton
+                        className="w-full sm:w-full"
+                        text={__('Continue')}
+                        onClick={() => setMode(selectedMode)}
+                    />
 
-                {!isFirstAccount && onSkip && (
-                    <Button
-                        type="button"
-                        size="lg"
-                        className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
-                        variant="ghost"
-                        onClick={() => onSkip()}
-                    >
-                        {__('Ignore')}
-                    </Button>
-                )}
+                    {(hasCreatedAccounts || hasExistingAccounts) && (
+                        <Button
+                            type="button"
+                            className="w-full opacity-50 transition-all duration-200 hover:opacity-100"
+                            variant="ghost"
+                            onClick={() => setIsAddingAnother(false)}
+                        >
+                            {__('Back to accounts')}
+                        </Button>
+                    )}
+                </div>
             </div>
         </div>
     );

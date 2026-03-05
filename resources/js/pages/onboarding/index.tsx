@@ -1,12 +1,13 @@
 import { StepAccountTypes } from '@/components/onboarding/step-account-types';
+import { StepCategorizeTransactions } from '@/components/onboarding/step-categorize-transactions';
 import { StepCategoryTypes } from '@/components/onboarding/step-category-types';
 import { StepComplete } from '@/components/onboarding/step-complete';
 import { StepCreateAccount } from '@/components/onboarding/step-create-account';
 import { StepCustomizeCategories } from '@/components/onboarding/step-customize-categories';
 import { StepImportBalances } from '@/components/onboarding/step-import-balances';
 import { StepImportTransactions } from '@/components/onboarding/step-import-transactions';
-import { StepMoreAccounts } from '@/components/onboarding/step-more-accounts';
 import { StepSmartRules } from '@/components/onboarding/step-smart-rules';
+import { StepSyncing } from '@/components/onboarding/step-syncing';
 import { StepWelcome } from '@/components/onboarding/step-welcome';
 import { useSyncContext } from '@/contexts/sync-context';
 import {
@@ -15,7 +16,9 @@ import {
     useOnboardingState,
 } from '@/hooks/use-onboarding-state';
 import OnboardingLayout from '@/layouts/onboarding-layout';
-import { type Bank } from '@/types/account';
+import { type Account, type Bank } from '@/types/account';
+import { type Category } from '@/types/category';
+import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef } from 'react';
@@ -39,6 +42,8 @@ interface ExistingAccount {
 interface OnboardingProps {
     banks: Bank[];
     accounts: ExistingAccount[];
+    categories: Category[];
+    transactions: Transaction[];
 }
 
 const VALID_STEPS: OnboardingStep[] = [
@@ -50,11 +55,17 @@ const VALID_STEPS: OnboardingStep[] = [
     'category-types',
     'customize-categories',
     'smart-rules',
-    'more-accounts',
+    'syncing',
+    'categorize-transactions',
     'complete',
 ];
 
-export default function Onboarding({ banks, accounts }: OnboardingProps) {
+export default function Onboarding({
+    banks,
+    accounts,
+    categories,
+    transactions,
+}: OnboardingProps) {
     const { sync } = useSyncContext();
     const hasSyncedRef = useRef(false);
 
@@ -99,11 +110,8 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
 
         // Connected accounts (bank-linked) don't need manual import steps
         if (account.connected) {
-            if (createdAccounts.length === 0) {
-                goToStep('category-types');
-            } else {
-                goToStep('more-accounts');
-            }
+            addCreatedAccount(account);
+            goToStep('create-account');
             return;
         }
 
@@ -124,21 +132,8 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
         // Sync after import to ensure data is consistent
         await sync();
 
-        // After first account import, go to category steps
-        // After subsequent accounts, go back to more-accounts
-        if (createdAccounts.length === 1) {
-            goToStep('category-types');
-        } else {
-            goToStep('more-accounts');
-        }
-    };
-
-    const handleAddMoreAccounts = () => {
+        // Always return to create-account so the user can add more accounts or continue
         goToStep('create-account');
-    };
-
-    const handleFinishOnboarding = () => {
-        goToStep('complete');
     };
 
     const renderStep = () => {
@@ -154,13 +149,13 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
             case 'create-account':
                 return (
                     <StepCreateAccount
+                        key={createdAccounts.length}
                         banks={banks}
                         isFirstAccount={isFirstAccount}
                         existingAccounts={accounts}
+                        createdAccounts={createdAccounts}
                         onAccountCreated={handleAccountCreated}
-                        onSkip={() => {
-                            goToStep('more-accounts');
-                        }}
+                        onContinue={goNext}
                     />
                 );
 
@@ -178,6 +173,9 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
             case 'smart-rules':
                 return <StepSmartRules onContinue={goNext} />;
 
+            case 'syncing':
+                return <StepSyncing onComplete={goNext} />;
+
             case 'import-transactions':
                 return (
                     <StepImportTransactions
@@ -194,13 +192,14 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
                     />
                 );
 
-            case 'more-accounts':
+            case 'categorize-transactions':
                 return (
-                    <StepMoreAccounts
-                        createdAccounts={createdAccounts}
-                        existingAccounts={accounts}
-                        onAddMore={handleAddMoreAccounts}
-                        onFinish={handleFinishOnboarding}
+                    <StepCategorizeTransactions
+                        categories={categories}
+                        accounts={accounts as unknown as Account[]}
+                        banks={banks}
+                        transactions={transactions}
+                        onComplete={goNext}
                     />
                 );
 
@@ -220,9 +219,10 @@ export default function Onboarding({ banks, accounts }: OnboardingProps) {
             'category-types': __('Categories'),
             'customize-categories': __('Customize Categories'),
             'smart-rules': __('Smart Rules'),
+            syncing: __('Syncing'),
             'import-transactions': __('Import Transactions'),
             'import-balances': __('Set Balance'),
-            'more-accounts': __('Add More Accounts'),
+            'categorize-transactions': __('Categorize Transactions'),
             complete: __('All Set!'),
         };
         return titles[step];

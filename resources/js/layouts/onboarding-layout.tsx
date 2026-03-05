@@ -6,6 +6,7 @@ interface OnboardingLayoutProps {
     currentStep: number;
     totalSteps: number;
     stepKey: string;
+    align?: 'start' | 'center';
 }
 
 export default function OnboardingLayout({
@@ -13,6 +14,7 @@ export default function OnboardingLayout({
     currentStep,
     totalSteps,
     stepKey,
+    align = 'start',
 }: PropsWithChildren<OnboardingLayoutProps>) {
     const [isVisible, setIsVisible] = useState(false);
 
@@ -51,7 +53,12 @@ export default function OnboardingLayout({
                 <div className="size-6"></div>
             </header>
 
-            <main className="flex flex-1 flex-col items-center justify-start px-4 pt-12 sm:justify-center md:px-6">
+            <main
+                className={cn(
+                    'flex flex-1 flex-col items-center justify-start px-4 pt-12 md:px-6',
+                    align === 'center' && 'sm:justify-center',
+                )}
+            >
                 <div
                     key={stepKey}
                     className={cn(
