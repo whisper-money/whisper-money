@@ -102,7 +102,7 @@ function FeatureCard({
 function FreePlanCard({ planFeatures }: { planFeatures: string[] }) {
     return (
         <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#161615]">
-            <div className="flex flex-1 flex-col p-6 pt-6">
+            <div className="flex flex-1 flex-col p-6 pt-2 sm:pt-12">
                 <h3 className="text-lg font-semibold">{__('Free')}</h3>
 
                 <div className="mt-3 flex items-baseline gap-2">
@@ -174,7 +174,7 @@ function LandingPlanCard({
                 <div
                     className={cn(
                         'px-6 pt-6 text-xs font-semibold uppercase',
-                        isDefault && 'text-[#1b1b18] dark:text-[#aaa]',
+                        isDefault && 'text-[#1b1b18]/75 dark:text-[#aaa]',
                         isBestValue &&
                             !isDefault &&
                             'text-[#706f6c] dark:text-[#A1A09A]',
@@ -184,7 +184,12 @@ function LandingPlanCard({
                 </div>
             )}
 
-            <div className="flex flex-1 flex-col p-6 pt-2">
+            <div
+                className={cn(
+                    'flex flex-1 flex-col p-6 pt-2',
+                    !isDefault && !isBestValue && 'sm:pt-12',
+                )}
+            >
                 <h3 className="text-lg font-semibold">{__(plan.name)}</h3>
 
                 <div className="mt-3 flex items-baseline gap-2">
