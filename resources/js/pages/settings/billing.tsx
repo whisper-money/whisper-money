@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { billing } from '@/routes/settings';
 import { type BreadcrumbItem, type SharedData } from '@/types';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
 import {
@@ -24,7 +25,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Billing() {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, pricing, locale } = usePage<SharedData>().props;
+    const defaultPlan = pricing.plans[pricing.defaultPlan];
 
     const benefits = [
         {
@@ -110,7 +112,9 @@ export default function Billing() {
                                 {__('Pro Plan Active')}
                             </span>
                             <span className="text-muted-foreground">
-                                {__('\u2014 $9/month')}
+                                {defaultPlan
+                                    ? `\u2014 ${formatCurrency(defaultPlan.price * 100, pricing.currency, locale)}/${defaultPlan.billing_period}`
+                                    : ''}
                             </span>
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">

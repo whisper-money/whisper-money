@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { store as storeUserLead } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { CheckIcon, ChevronDownIcon, LockIcon } from 'lucide-react';
@@ -108,12 +109,16 @@ function LandingPlanCard({
     plan,
     isDefault,
     isBestValue,
+    currency,
+    locale,
 }: {
     plan: Plan;
     isDefault: boolean;
     isBestValue: boolean;
     promoEnabled: boolean;
     promoBadge: string;
+    currency: string;
+    locale: string;
 }) {
     return (
         <div
@@ -142,11 +147,15 @@ function LandingPlanCard({
                 <div className="mt-3 flex items-baseline gap-2">
                     {plan.original_price && (
                         <span className="text-lg font-medium text-[#706f6c] line-through dark:text-[#A1A09A]">
-                            ${plan.original_price}
+                            {formatCurrency(
+                                plan.original_price * 100,
+                                currency,
+                                locale,
+                            )}
                         </span>
                     )}
                     <span className="text-4xl font-bold tracking-tight">
-                        ${plan.price}
+                        {formatCurrency(plan.price * 100, currency, locale)}
                     </span>
                     <span className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
                         {getBillingLabel(plan.billing_period)}
@@ -920,6 +929,8 @@ export default function Welcome({
                                                     pricing.promo.enabled
                                                 }
                                                 promoBadge={pricing.promo.badge}
+                                                currency={pricing.currency}
+                                                locale={locale}
                                             />
                                         ))}
                                     </div>

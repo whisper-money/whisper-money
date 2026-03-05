@@ -28,7 +28,7 @@ This gets you full access to everything:
 - Mobile app (iOS & Android)
 
 <x-mail::button :url="config('app.url') . '/register'">
-Get Started for $1
+Get Started for €1.56
 </x-mail::button>
 
 ## Built by one person, for real people
@@ -43,5 +43,5 @@ Best,<br>
 Víctor<br>
 Founder, Whisper Money
 
-P.S. The FOUNDER code gives you 80% off your first billing period, whether you choose monthly ($1.80 first month, then $9/month) or yearly ($9.60 first year, then $48/year). Cancel anytime, no questions asked.
+P.S. The FOUNDER code gives you 80% off your first billing period, whether you choose monthly (€1.56 first month, then €7.80/month) or yearly (€9.36 first year, then €46.80/year). Cancel anytime, no questions asked.
 </x-mail::message>

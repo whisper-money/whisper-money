@@ -2,7 +2,7 @@ export interface Plan {
     name: string;
     price: number;
     original_price: number | null;
-    stripe_price_id: string | null;
+    stripe_lookup_key: string | null;
     billing_period: 'month' | 'year' | null;
     features: string[];
 }
@@ -19,4 +19,5 @@ export interface PricingConfig {
     defaultPlan: string;
     bestValuePlan: string | null;
     promo: PromoConfig;
+    currency: string;
 }

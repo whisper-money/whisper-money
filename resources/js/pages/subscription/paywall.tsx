@@ -242,11 +242,14 @@ function CompactPlanCard({
     plan,
     isSelected,
     onSelect,
+    currency,
 }: {
     plan: Plan;
     isSelected: boolean;
     onSelect: () => void;
+    currency: string;
 }) {
+    const locale = useLocale();
     const savingsPercent =
         plan.original_price && plan.billing_period === 'year'
             ? Math.round(
@@ -280,14 +283,17 @@ function CompactPlanCard({
                 )}
             </div>
             <div className="mt-1 flex items-baseline gap-1">
-                <span className="text-xl font-bold">${monthlyEquivalent}</span>
+                <span className="text-xl font-bold">
+                    {formatCurrency(monthlyEquivalent * 100, currency, locale)}
+                </span>
                 <span className="text-sm text-muted-foreground">
                     {getEquivalentBillingLabel(plan.billing_period, __)}
                 </span>
             </div>
             {plan.billing_period === 'year' && (
                 <span className="mt-2 text-xs text-muted-foreground">
-                    {__('Billed annually at')} ${plan.price}
+                    {__('Billed annually at')}{' '}
+                    {formatCurrency(plan.price * 100, currency, locale)}
                 </span>
             )}
         </button>
@@ -297,9 +303,11 @@ function CompactPlanCard({
 function PricingSection({
     planEntries,
     defaultPlan,
+    currency,
 }: {
     planEntries: [string, Plan][];
     defaultPlan: string;
+    currency: string;
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
     const selectedPlanData = planEntries.find(
@@ -315,6 +323,7 @@ function PricingSection({
                         plan={plan}
                         isSelected={key === selectedPlan}
                         onSelect={() => setSelectedPlan(key)}
+                        currency={currency}
                     />
                 ))}
             </div>
@@ -392,6 +401,7 @@ export default function Paywall() {
                     <PricingSection
                         planEntries={planEntries}
                         defaultPlan={pricing.defaultPlan}
+                        currency={pricing.currency}
                     />
 
                     {pricing.promo.enabled && <PromoSection />}
