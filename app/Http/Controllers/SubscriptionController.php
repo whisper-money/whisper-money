@@ -136,6 +136,12 @@ class SubscriptionController extends Controller
                 ->withErrors(['demo' => 'Billing management is not available on the demo account.']);
         }
 
-        return $request->user()->redirectToBillingPortal(route('settings.billing'));
+        $user = $request->user();
+
+        if (! $user->hasStripeId()) {
+            $user->createAsStripeCustomer();
+        }
+
+        return $user->redirectToBillingPortal(route('settings.billing'));
     }
 }

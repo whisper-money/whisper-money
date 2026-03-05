@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Laravel\Pennant\Feature;
 
 beforeEach(function () {
@@ -276,4 +278,36 @@ test('paywall shows canUseFreePlan false when open banking is not active', funct
             ->component('subscription/paywall')
             ->where('canUseFreePlan', false)
         );
+});
+
+test('billing portal creates stripe customer when user has no stripe id', function () {
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('isDemoAccount')->andReturn(false);
+    $user->shouldReceive('hasStripeId')->once()->andReturn(false);
+    $user->shouldReceive('createAsStripeCustomer')->once();
+    $user->shouldReceive('redirectToBillingPortal')
+        ->with(route('settings.billing'))
+        ->once()
+        ->andReturn(new RedirectResponse(route('settings.billing')));
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('settings.billing.portal'))->assertRedirect();
+});
+
+test('billing portal skips stripe customer creation when user already has a stripe id', function () {
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('isDemoAccount')->andReturn(false);
+    $user->shouldReceive('hasStripeId')->once()->andReturn(true);
+    $user->shouldNotReceive('createAsStripeCustomer');
+    $user->shouldReceive('redirectToBillingPortal')
+        ->with(route('settings.billing'))
+        ->once()
+        ->andReturn(new RedirectResponse(route('settings.billing')));
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('settings.billing.portal'))->assertRedirect();
 });
