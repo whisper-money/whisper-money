@@ -5,7 +5,6 @@ namespace App\Listeners;
 use App\Jobs\Drip\SendFeedbackEmailJob;
 use App\Jobs\Drip\SendImportHelpEmailJob;
 use App\Jobs\Drip\SendOnboardingReminderEmailJob;
-use App\Jobs\Drip\SendPromoCodeEmailJob;
 use App\Jobs\Drip\SendWelcomeEmailJob;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
@@ -26,7 +25,6 @@ class ScheduleDripEmailsListener
 
         SendWelcomeEmailJob::dispatch($user)->delay(now()->addMinutes(30));
         SendOnboardingReminderEmailJob::dispatch($user)->delay(now()->addDay());
-        SendPromoCodeEmailJob::dispatch($user)->delay(now()->addDay());
         SendImportHelpEmailJob::dispatch($user)->delay(now()->addDay());
         SendFeedbackEmailJob::dispatch($user)->delay(now()->addDays(5));
     }

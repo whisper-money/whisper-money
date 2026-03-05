@@ -26,9 +26,7 @@ test('all drip email jobs are dispatched when user registers', function () {
         return $job->user->id === $user->id;
     });
 
-    Queue::assertPushed(SendPromoCodeEmailJob::class, function ($job) use ($user) {
-        return $job->user->id === $user->id;
-    });
+    Queue::assertNotPushed(SendPromoCodeEmailJob::class);
 
     Queue::assertPushed(SendImportHelpEmailJob::class, function ($job) use ($user) {
         return $job->user->id === $user->id;
@@ -76,7 +74,6 @@ test('all jobs are dispatched to the emails queue', function () {
 
     Queue::assertPushedOn('emails', SendWelcomeEmailJob::class);
     Queue::assertPushedOn('emails', SendOnboardingReminderEmailJob::class);
-    Queue::assertPushedOn('emails', SendPromoCodeEmailJob::class);
     Queue::assertPushedOn('emails', SendImportHelpEmailJob::class);
     Queue::assertPushedOn('emails', SendFeedbackEmailJob::class);
 });

@@ -55,6 +55,6 @@
 {{ __("We're working hard to open things up, and we can't wait to share Whisper Money with you.") }}
 
 {{ __("Best,") }}<br>
-Víctor & Álvaro<br>
+{{ __('Víctor & Álvaro') }}<br>
 {{ __("Founders of Whisper Money") }}
 </x-mail::message>

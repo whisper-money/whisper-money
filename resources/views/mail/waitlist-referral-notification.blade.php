@@ -34,6 +34,6 @@
 {{ __("Thanks for spreading the word. It means everything to us.") }}
 
 {{ __("Best,") }}<br>
-Víctor & Álvaro<br>
+{{ __('Víctor & Álvaro') }}<br>
 {{ __("Founders of Whisper Money") }}
 </x-mail::message>

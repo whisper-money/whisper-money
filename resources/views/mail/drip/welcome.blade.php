@@ -1,29 +1,38 @@
 <x-mail::message>
 # {{ __('Welcome to Whisper Money, :name!', ['name' => $userName]) }}
 
-{{ __("Hi! I'm Victor, the founder of Whisper Money. I wanted to personally welcome you and thank you for joining us.") }}
+{{ __("Hi! We're Victor and Álvaro, the founders of Whisper Money. We wanted to personally welcome you and thank you for joining us.") }}
 
-{{ __("When I started building Whisper Money, I was frustrated with finance apps that wanted to mine my data or use AI to analyze my spending. I just wanted a simple, private way to track my finances - and I figured others might too.") }}
+{{ __("We built Whisper Money to help you truly understand your finances — without giving up your privacy to do it. Here's what you can look forward to:") }}
 
-## {{ __('Your Data is Truly Private') }}
+## {{ __('Understand Your Finances') }}
 
-{{ __('I built Whisper Money because I believe **your financial data should be yours alone**:') }}
+{{ __('Get a clear picture of where your money goes every month. Track spending across all your accounts, spot patterns, and make sense of your financial life at a glance.') }}
 
-- {{ __('Your data is never shared with third parties') }}
-- {{ __('We don\'t sell, trade, or give away your personal information') }}
-- {{ __('You are always the owner of your data') }}
+## {{ __('Be Smart About Spending & Investing') }}
 
-## {{ __('No AI, No Data Mining') }}
+{{ __('Set budgets, track your goals, and see how your money is working for you. Whether you\'re cutting costs or growing your wealth, Whisper Money helps you make better decisions.') }}
 
-{{ __("I don't use AI to analyze your spending or sell insights about your habits. Your financial data stays between you and your spreadsheet-loving self.") }}
+## {{ __('Everything in One Place') }}
+
+{{ __('Connect your bank accounts, savings, investments, and more — all in a single dashboard. No more switching between apps or losing track of accounts.') }}
+
+## {{ __('Private by Design') }}
+
+{{ __('Your financial data belongs to you — not us, not advertisers, not anyone else:') }}
+
+- {{ __('**Connect your banks** via Open Banking or import from CSV — your choice') }}
+- {{ __('**Your data stays yours** — never shared with third parties') }}
+- {{ __('**No middlemen** — we don\'t sell insights about your habits') }}
+- {{ __('**You\'re always in control** — export or delete your data anytime') }}
 
 <div style="height: 40px"></div>
 
-{{ __('If you have any questions or run into any issues, **just reply to this email**. I personally read every message and I\'m here to help!') }}
+{{ __('If you have any questions or run into any issues, **just reply to this email**. We personally read every message and we\'re here to help!') }}
 
-{{ __('Thanks for giving Whisper Money a try. It means a lot to me.') }}
+{{ __('Thanks for giving Whisper Money a try. It means a lot to us.') }}
 
-Best,<br>
-Víctor F,<br>
-Founder of Whisper Money
+{{ __('Best,') }}<br>
+{{ __('Víctor & Álvaro') }}<br>
+{{ __('Founders of Whisper Money') }}
 </x-mail::message>

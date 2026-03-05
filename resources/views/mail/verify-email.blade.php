@@ -1,7 +1,7 @@
 <x-mail::message>
 # {{ __('Verify your email, :name!', ['name' => $userName]) }}
 
-{{ __("Thanks for signing up — I just need you to verify your email address to get started.") }}
+{{ __("Thanks for signing up — we just need you to verify your email address to get started.") }}
 
 {{ __("Once verified, you'll be able to set up your encryption key and start tracking your finances with full privacy.") }}
 
@@ -11,9 +11,9 @@
 
 {{ __("If you didn't create a Whisper Money account, you can safely ignore this email.") }}
 
-Best,<br>
-Víctor F,<br>
-Founder of Whisper Money
+{{ __('Best,') }}<br>
+{{ __('Víctor & Álvaro') }}<br>
+{{ __('Founders of Whisper Money') }}
 
 <x-mail::subcopy>
 {{ __('If you\'re having trouble clicking the "Verify Email Address" button, copy and paste the URL below into your web browser:') }} <span class="break-all">[{{ $verificationUrl }}]({{ $verificationUrl }})</span>

@@ -11,7 +11,7 @@
 {{ __('View Transactions') }}
 </x-mail::button>
 
-Best,<br>
-Víctor F,<br>
-Founder of Whisper Money
+{{ __('Best,') }}<br>
+{{ __('Víctor & Álvaro') }}<br>
+{{ __('Founders of Whisper Money') }}
 </x-mail::message>
