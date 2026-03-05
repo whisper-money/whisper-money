@@ -308,11 +308,17 @@ it('completes entire onboarding flow with account creation, transaction import, 
     // Smart Rules
     $page->assertSee('Smart Automation Rules')
         ->click('Continue')
-        ->wait(1);
+        ->wait(3); // syncing step reloads transactions — allow time for axios + router.reload
 
-    // Categorize Transactions - transactions prop was loaded at page start (before import),
-    // so no uncategorized transactions are available and Continue is immediately enabled
-    $page->assertSee('No Uncategorized Transactions')
+    // Categorize Transactions - 5 CSV transactions are loaded after the syncing step reloads
+    $page->assertSee('Categorize Your Transactions')
+        ->click("Let's start")
+        ->wait(1)
+        ->click('button:has-text("Skip")')->wait(1)
+        ->click('button:has-text("Skip")')->wait(1)
+        ->click('button:has-text("Skip")')->wait(1)
+        ->click('button:has-text("Skip")')->wait(1)
+        ->click('button:has-text("Skip")')->wait(1)
         ->click('Continue')
         ->wait(1);
 

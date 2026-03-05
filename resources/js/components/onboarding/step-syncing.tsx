@@ -27,18 +27,13 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
 
-    const advance = useCallback((hadPendingSync: boolean) => {
-        if (hadPendingSync) {
-            // Reload transactions so the categorize step sees newly synced data.
-            router.reload({
-                only: ['transactions'],
-                onFinish: () => onCompleteRef.current(),
-            });
-        } else {
-            // Sync was never pending (e.g. CSV-import user): skip the reload so
-            // the transactions prop stays as it was at page load.
-            onCompleteRef.current();
-        }
+    const advance = useCallback((_hadPendingSync: boolean) => {
+        // Always reload transactions so the categorize step sees the latest data,
+        // including transactions imported via CSV during onboarding.
+        router.reload({
+            only: ['transactions'],
+            onFinish: () => onCompleteRef.current(),
+        });
     }, []);
 
     // Check sync status immediately on mount, then poll every 3 seconds
