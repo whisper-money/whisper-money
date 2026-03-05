@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.1.17](https://github.com/whisper-money/whisper-money/compare/v0.1.16...v0.1.17) (2026-03-05)
+
+
+### Bug Fixes
+
+* **amount-display:** eliminate float round-trip causing missing thousands separator ([#191](https://github.com/whisper-money/whisper-money/issues/191)) ([956b661](https://github.com/whisper-money/whisper-money/commit/956b6614486b48c43f4171ec0e4336409490ff34))
+* **billing:** create Stripe customer before redirecting to billing portal ([#206](https://github.com/whisper-money/whisper-money/issues/206)) ([e8bc5fd](https://github.com/whisper-money/whisper-money/commit/e8bc5fd7866afab83dc0b807fdda8f6b3a0b1cc8))
+* **browser-test:** reload transactions in syncing step and fix Skip button selector ([#203](https://github.com/whisper-money/whisper-money/issues/203)) ([3f6c676](https://github.com/whisper-money/whisper-money/commit/3f6c67631be95310cfee77bb2bed52d26ba74896)), closes [#201](https://github.com/whisper-money/whisper-money/issues/201)
+* **haptics:** restore haptic feedback to MobileBackButton ([#198](https://github.com/whisper-money/whisper-money/issues/198)) ([fdc9d14](https://github.com/whisper-money/whisper-money/commit/fdc9d14c47c5e4d2eda9264592b1d7387dee6330))
+* **i18n:** fix unlocalised string in create budget form ([#187](https://github.com/whisper-money/whisper-money/issues/187)) ([40a7942](https://github.com/whisper-money/whisper-money/commit/40a7942b85b0c145e21a1856ce40f86e89dc427d))
+* **i18n:** force thousands separator for 4-digit amounts in es-ES locale ([#193](https://github.com/whisper-money/whisper-money/issues/193)) ([be2e205](https://github.com/whisper-money/whisper-money/commit/be2e205965eb2afbee4c7457c2f8a84d2356177f))
+* **migration:** make add_waitlist_columns migration idempotent ([#200](https://github.com/whisper-money/whisper-money/issues/200)) ([cf9071c](https://github.com/whisper-money/whisper-money/commit/cf9071c11b237579b4f44de69dd688a3fcdd94b6))
+* **onboarding:** gate connect bank option behind open-banking feature flag ([#197](https://github.com/whisper-money/whisper-money/issues/197)) ([09d81ac](https://github.com/whisper-money/whisper-money/commit/09d81ac7e7f2ebee953a85894d44a6848284d400))
+* **static-analysis:** clear phpstan-baseline by fixing all suppressed errors ([#183](https://github.com/whisper-money/whisper-money/issues/183)) ([3e087bd](https://github.com/whisper-money/whisper-money/commit/3e087bdcd77ec638ee9d9dbb0d616b0ef78ff554))
+* **testcontainers:** stop and remove MySQL container on signal and shutdown ([#202](https://github.com/whisper-money/whisper-money/issues/202)) ([011ba13](https://github.com/whisper-money/whisper-money/commit/011ba131142fb4e587ae5609d7ecab15c2b88796))
+* **transactions:** move clear button inline with filters row on all screen sizes ([#192](https://github.com/whisper-money/whisper-money/issues/192)) ([b455ad7](https://github.com/whisper-money/whisper-money/commit/b455ad71ddc9b100107fcf67b7b78f907f698de5))
+
+
+### Features
+
+* (Onboarding) add categorization intro screen with benefit cards ([#201](https://github.com/whisper-money/whisper-money/issues/201)) ([a8dfac1](https://github.com/whisper-money/whisper-money/commit/a8dfac14226e90eac2a396236cd433d5d38501fb))
+* **budgets:** make budget title clickable with muted hover effect ([#186](https://github.com/whisper-money/whisper-money/issues/186)) ([970e858](https://github.com/whisper-money/whisper-money/commit/970e85814e108b995711926e4c80e5580fa2736d))
+* **dashboard:** make top spending categories clickable with transaction filter link ([#189](https://github.com/whisper-money/whisper-money/issues/189)) ([832fc61](https://github.com/whisper-money/whisper-money/commit/832fc6177e7f8ff337b79170e76e4cd53ea99e95))
+* **haptics:** add haptic feedback to nav items and back buttons ([#196](https://github.com/whisper-money/whisper-money/issues/196)) ([3d74267](https://github.com/whisper-money/whisper-money/commit/3d742677b59f36fc6266adbe0904b7230387e6eb))
+* **mobile:** add scroll-aware back button on detail pages ([#194](https://github.com/whisper-money/whisper-money/issues/194)) ([7fec851](https://github.com/whisper-money/whisper-money/commit/7fec8514e47d38f7d0ec253164d241703c0281d0))
+* **onboarding:** inline connected account flow with auto-account creation and step deep-linking ([#184](https://github.com/whisper-money/whisper-money/issues/184)) ([993c91a](https://github.com/whisper-money/whisper-money/commit/993c91a6b6f1f65ee200c96764ecb8c0ad2fbdc6))
+* **pricing:** dynamic Stripe pricing with locale-aware formatting ([#204](https://github.com/whisper-money/whisper-money/issues/204)) ([ac1476e](https://github.com/whisper-money/whisper-money/commit/ac1476eeffee91a67bd91443c5a10b4c46576275))
+* **privacy:** enable privacy mode for all users and extend amount masking ([#182](https://github.com/whisper-money/whisper-money/issues/182)) ([152b186](https://github.com/whisper-money/whisper-money/commit/152b186c103458e8d7833034027750a663555906))
+* **subscription:** allow free plan for open banking users without connected banks ([#188](https://github.com/whisper-money/whisper-money/issues/188)) ([d8f6a68](https://github.com/whisper-money/whisper-money/commit/d8f6a680ceb3a11ed215e4bdb969e0a18fa74833))
+* **waitlist:** waiting list with referral system ([#199](https://github.com/whisper-money/whisper-money/issues/199)) ([4d0d203](https://github.com/whisper-money/whisper-money/commit/4d0d203fd373df5608d6a15dd3da0980c5c49502)), closes [#500](https://github.com/whisper-money/whisper-money/issues/500)
+
 ## [0.1.16](https://github.com/whisper-money/whisper-money/compare/v0.1.14...v0.1.16) (2026-03-01)
 
 
