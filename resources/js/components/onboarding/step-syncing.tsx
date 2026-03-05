@@ -27,11 +27,18 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
 
-    const advance = useCallback(() => {
-        router.reload({
-            only: ['transactions'],
-            onFinish: () => onCompleteRef.current(),
-        });
+    const advance = useCallback((hadPendingSync: boolean) => {
+        if (hadPendingSync) {
+            // Reload transactions so the categorize step sees newly synced data.
+            router.reload({
+                only: ['transactions'],
+                onFinish: () => onCompleteRef.current(),
+            });
+        } else {
+            // Sync was never pending (e.g. CSV-import user): skip the reload so
+            // the transactions prop stays as it was at page load.
+            onCompleteRef.current();
+        }
     }, []);
 
     // Check sync status immediately on mount, then poll every 3 seconds
@@ -39,7 +46,7 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
         let cancelled = false;
         let pollTimer: ReturnType<typeof setTimeout>;
 
-        const check = async () => {
+        const check = async (hadPendingSync: boolean = false) => {
             try {
                 const { data } = await axios.get<{ pending: boolean }>(
                     syncStatus().url,
@@ -51,15 +58,15 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
 
                 if (!data.pending) {
                     setIsPending(false);
-                    advance();
+                    advance(hadPendingSync);
                 } else {
                     setIsPending(true);
-                    pollTimer = setTimeout(check, 3000);
+                    pollTimer = setTimeout(() => check(true), 3000);
                 }
             } catch {
                 if (!cancelled) {
                     // On error, advance anyway to not block the user
-                    advance();
+                    advance(hadPendingSync);
                 }
             }
         };
