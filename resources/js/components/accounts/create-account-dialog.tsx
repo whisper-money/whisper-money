@@ -1,6 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
+import { UpgradeConnectionDialog } from '@/components/open-banking/upgrade-connection-dialog';
 import { Button } from '@/components/ui/button';
 import { CreateButton } from '@/components/ui/create-button';
 import {
@@ -27,8 +28,10 @@ export function CreateAccountDialog({
     onSuccess?: () => void;
     trigger?: React.ReactNode;
 }) {
-    const { features } = usePage<SharedData>().props;
+    const { features, auth, subscriptionsEnabled } =
+        usePage<SharedData>().props;
     const openBankingEnabled = features['open-banking'];
+    const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
 
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState<Mode>(
@@ -36,6 +39,7 @@ export function CreateAccountDialog({
     );
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+    const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: null,
@@ -201,8 +205,12 @@ export function CreateAccountDialog({
                                 type="button"
                                 className="flex flex-col items-center gap-3 rounded-lg border p-3 pb-6 text-center transition-colors hover:bg-accent"
                                 onClick={() => {
-                                    handleOpenChange(false);
-                                    setConnectDialogOpen(true);
+                                    if (isFreePlan) {
+                                        setUpgradeDialogOpen(true);
+                                    } else {
+                                        handleOpenChange(false);
+                                        setConnectDialogOpen(true);
+                                    }
                                 }}
                             >
                                 <Link2 className="h-8 w-8 text-muted-foreground" />
@@ -259,6 +267,11 @@ export function CreateAccountDialog({
             <ConnectAccountDialog
                 open={connectDialogOpen}
                 onOpenChange={setConnectDialogOpen}
+            />
+
+            <UpgradeConnectionDialog
+                open={upgradeDialogOpen}
+                onOpenChange={setUpgradeDialogOpen}
             />
         </>
     );

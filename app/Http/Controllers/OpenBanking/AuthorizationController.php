@@ -21,9 +21,14 @@ class AuthorizationController extends Controller
     /**
      * Start the bank authorization flow.
      */
-    public function store(StartAuthorizationRequest $request, BankingProviderInterface $provider): JsonResponse
+    public function store(StartAuthorizationRequest $request, BankingProviderInterface $provider): JsonResponse|RedirectResponse
     {
         $user = auth()->user();
+
+        if (config('subscriptions.enabled') && ! $user->hasProPlan()) {
+            return response()->json(['redirect' => route('subscribe')], 402);
+        }
+
         $validated = $request->validated();
 
         $redirectUrl = config('services.enablebanking.redirect_url');

@@ -47,6 +47,56 @@ test('users can start bank authorization', function () {
     ]);
 });
 
+test('free tier users cannot start bank authorization when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $response = $this->actingAs($user)->postJson('/open-banking/authorize', [
+        'aspsp_name' => 'Test Bank',
+        'country' => 'ES',
+    ]);
+
+    $response->assertStatus(402);
+    $response->assertJson(['redirect' => route('subscribe')]);
+
+    $this->assertDatabaseMissing('banking_connections', [
+        'user_id' => $user->id,
+    ]);
+});
+
+test('subscribed users can start bank authorization when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_test_auth',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+    Feature::for($user)->activate('open-banking');
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->once()
+        ->andReturn([
+            'url' => 'https://bank.example.com/authorize',
+            'authorization_id' => 'auth-456',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->postJson('/open-banking/authorize', [
+        'aspsp_name' => 'Test Bank',
+        'country' => 'ES',
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonStructure(['redirect_url', 'connection_id']);
+});
+
 test('authorization requires aspsp_name and country', function () {
     $user = User::factory()->onboarded()->create();
     Feature::for($user)->activate('open-banking');
