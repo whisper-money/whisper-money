@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { billing } from '@/routes/settings';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { Zap } from 'lucide-react';
@@ -21,7 +22,7 @@ export function UpgradeConnectionDialog({
     onOpenChange,
 }: UpgradeConnectionDialogProps) {
     function handleUpgrade() {
-        router.visit('/subscribe');
+        router.visit(billing.url());
     }
 
     return (
