@@ -37,6 +37,10 @@ return [
     | information (name, price, features) and Stripe configuration. The key
     | is used as the plan identifier.
     |
+    | Prices are in the configured Cashier currency (see config/cashier.php).
+    | Run `php artisan stripe:sync-prices` to create or update Stripe prices
+    | automatically from this config. Prices are referenced by lookup key.
+    |
     | Supported billing_period values: 'month', 'year', null (for lifetime)
     |
     */
@@ -44,9 +48,9 @@ return [
     'plans' => [
         'monthly' => [
             'name' => 'Pro Monthly',
-            'price' => 9,
+            'price' => 7.80,
             'original_price' => null,
-            'stripe_price_id' => env('STRIPE_PRO_MONTHLY_PRICE_ID', 'price_1SbJYkLNIsVExnyvAJhUoSeB'),
+            'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly'),
             'billing_period' => 'month',
             'features' => [
                 'Unlimited accounts',
@@ -60,9 +64,9 @@ return [
         ],
         'yearly' => [
             'name' => 'Pro Yearly',
-            'price' => 48,
-            'original_price' => 144,
-            'stripe_price_id' => env('STRIPE_PRO_YEARLY_PRICE_ID'),
+            'price' => 46.80,
+            'original_price' => 93.60,
+            'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly'),
             'billing_period' => 'year',
             'features' => [
                 'Unlimited accounts',

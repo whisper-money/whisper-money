@@ -6,8 +6,10 @@ use App\Models\AccountBalance;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Checkout;
 use Laravel\Pennant\Feature;
 
@@ -70,11 +72,11 @@ class SubscriptionController extends Controller
         $planKey = $request->query('plan', config('subscriptions.default_plan'));
         $plan = config("subscriptions.plans.{$planKey}");
 
-        if (! $plan || ! $plan['stripe_price_id']) {
+        if (! $plan || ! ($plan['stripe_lookup_key'] ?? null)) {
             abort(400, 'Invalid plan selected');
         }
 
-        $priceId = $plan['stripe_price_id'];
+        $priceId = $this->resolvePriceIdByLookupKey($plan['stripe_lookup_key']);
 
         return $request->user()
             ->newSubscription('default', $priceId)
@@ -83,6 +85,29 @@ class SubscriptionController extends Controller
                 'success_url' => route('subscribe.success'),
                 'cancel_url' => route('subscribe.cancel'),
             ]);
+    }
+
+    /**
+     * Resolve a Stripe price ID from a lookup key, with a 1-hour cache.
+     */
+    private function resolvePriceIdByLookupKey(string $lookupKey): string
+    {
+        return Cache::remember(
+            "stripe_price_id:{$lookupKey}",
+            now()->addHour(),
+            function () use ($lookupKey): string {
+                $prices = Cashier::stripe()->prices->all([
+                    'lookup_keys' => [$lookupKey],
+                    'limit' => 1,
+                ]);
+
+                if (empty($prices->data)) {
+                    abort(500, "Stripe price not found for lookup key '{$lookupKey}'. Run `php artisan stripe:sync-prices`.");
+                }
+
+                return $prices->data[0]->id;
+            }
+        );
     }
 
     public function success(): Response

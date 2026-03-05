@@ -162,6 +162,7 @@ test('landing page passes subscriptions enabled prop when enabled', function () 
             ->has('pricing.plans')
             ->has('pricing.defaultPlan')
             ->has('pricing.promo')
+            ->has('pricing.currency')
         );
 });
 
@@ -189,7 +190,7 @@ test('pricing config includes all plan details', function () {
                 ->has('name')
                 ->has('price')
                 ->has('original_price')
-                ->has('stripe_price_id')
+                ->has('stripe_lookup_key')
                 ->has('billing_period')
                 ->has('features')
             )

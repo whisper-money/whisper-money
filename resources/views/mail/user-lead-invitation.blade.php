@@ -11,15 +11,7 @@ I built Whisper Money because I was tired of giving my financial data to big com
 
 It's personal finance, but actually private.
 
-## Special Founder's Offer - Just for You
-
-As someone who believed in us early, I want to offer you something special:
-
-<x-mail::panel>
-Use code **FOUNDER** to get **80% off** your first period (monthly or yearly!)
-</x-mail::panel>
-
-This gets you full access to everything:
+This is your exclusive invitation to get full access to everything:
 
 - Unlimited transaction imports
 - Automated categorization rules
@@ -28,7 +20,7 @@ This gets you full access to everything:
 - Mobile app (iOS & Android)
 
 <x-mail::button :url="config('app.url') . '/register'">
-Get Started for $1
+Get Started
 </x-mail::button>
 
 ## Built by one person, for real people
@@ -42,6 +34,4 @@ Thanks for being interested in what I'm building!
 Best,<br>
 Víctor<br>
 Founder, Whisper Money
-
-P.S. The FOUNDER code gives you 80% off your first billing period, whether you choose monthly ($1.80 first month, then $9/month) or yearly ($9.60 first year, then $48/year). Cancel anytime, no questions asked.
 </x-mail::message>

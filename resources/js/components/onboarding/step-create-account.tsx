@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import {
@@ -70,7 +71,7 @@ export function StepCreateAccount({
     onAccountCreated,
     onContinue,
 }: StepCreateAccountProps) {
-    const { pricing, subscriptionsEnabled, features } =
+    const { pricing, subscriptionsEnabled, features, locale } =
         usePage<SharedData>().props;
     const openBankingEnabled = features['open-banking'];
     const [mode, setMode] = useState<AccountMode>('select');
@@ -584,8 +585,12 @@ export function StepCreateAccount({
                             {subscriptionsEnabled &&
                                 cheapestMonthlyPrice !== null && (
                                     <p className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400">
-                                        {__('From')} $
-                                        {cheapestMonthlyPrice.toFixed(0)}
+                                        {__('From')}{' '}
+                                        {formatCurrency(
+                                            cheapestMonthlyPrice * 100,
+                                            pricing.currency,
+                                            locale,
+                                        )}
                                         {__('/month')}
                                     </p>
                                 )}

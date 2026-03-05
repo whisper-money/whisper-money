@@ -1,11 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useCountUp } from '@/hooks/use-count-up';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
@@ -242,11 +236,14 @@ function CompactPlanCard({
     plan,
     isSelected,
     onSelect,
+    currency,
 }: {
     plan: Plan;
     isSelected: boolean;
     onSelect: () => void;
+    currency: string;
 }) {
+    const locale = useLocale();
     const savingsPercent =
         plan.original_price && plan.billing_period === 'year'
             ? Math.round(
@@ -280,14 +277,17 @@ function CompactPlanCard({
                 )}
             </div>
             <div className="mt-1 flex items-baseline gap-1">
-                <span className="text-xl font-bold">${monthlyEquivalent}</span>
+                <span className="text-xl font-bold">
+                    {formatCurrency(monthlyEquivalent * 100, currency, locale)}
+                </span>
                 <span className="text-sm text-muted-foreground">
                     {getEquivalentBillingLabel(plan.billing_period, __)}
                 </span>
             </div>
             {plan.billing_period === 'year' && (
                 <span className="mt-2 text-xs text-muted-foreground">
-                    {__('Billed annually at')} ${plan.price}
+                    {__('Billed annually at')}{' '}
+                    {formatCurrency(plan.price * 100, currency, locale)}
                 </span>
             )}
         </button>
@@ -297,9 +297,11 @@ function CompactPlanCard({
 function PricingSection({
     planEntries,
     defaultPlan,
+    currency,
 }: {
     planEntries: [string, Plan][];
     defaultPlan: string;
+    currency: string;
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
     const selectedPlanData = planEntries.find(
@@ -315,6 +317,7 @@ function PricingSection({
                         plan={plan}
                         isSelected={key === selectedPlan}
                         onSelect={() => setSelectedPlan(key)}
+                        currency={currency}
                     />
                 ))}
             </div>
@@ -344,32 +347,6 @@ function PricingSection({
     );
 }
 
-function PromoSection() {
-    return (
-        <p className="flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-            <span>{__('Your data is ready')}</span>
-            <span>•</span>
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <a
-                            href="https://discord.gg/2WZmDW9QZ8"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-[#5865F2] underline-offset-2 hover:underline"
-                        >
-                            {__('Discord for 80% off')}
-                        </a>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        {__("You'll receive an exclusive promo code via DM!")}
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        </p>
-    );
-}
-
 export default function Paywall() {
     const { pricing, stats, canUseFreePlan } =
         usePage<PaywallPageProps>().props;
@@ -392,9 +369,8 @@ export default function Paywall() {
                     <PricingSection
                         planEntries={planEntries}
                         defaultPlan={pricing.defaultPlan}
+                        currency={pricing.currency}
                     />
-
-                    {pricing.promo.enabled && <PromoSection />}
 
                     {canUseFreePlan && (
                         <div className="text-center">
