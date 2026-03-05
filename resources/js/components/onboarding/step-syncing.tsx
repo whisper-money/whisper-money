@@ -27,7 +27,7 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
 
-    const advance = useCallback((_hadPendingSync: boolean) => {
+    const advance = useCallback(() => {
         // Always reload transactions so the categorize step sees the latest data,
         // including transactions imported via CSV during onboarding.
         router.reload({
@@ -41,7 +41,7 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
         let cancelled = false;
         let pollTimer: ReturnType<typeof setTimeout>;
 
-        const check = async (hadPendingSync: boolean = false) => {
+        const check = async () => {
             try {
                 const { data } = await axios.get<{ pending: boolean }>(
                     syncStatus().url,
@@ -53,15 +53,15 @@ export function StepSyncing({ onComplete }: StepSyncingProps) {
 
                 if (!data.pending) {
                     setIsPending(false);
-                    advance(hadPendingSync);
+                    advance();
                 } else {
                     setIsPending(true);
-                    pollTimer = setTimeout(() => check(true), 3000);
+                    pollTimer = setTimeout(() => check(), 3000);
                 }
             } catch {
                 if (!cancelled) {
                     // On error, advance anyway to not block the user
-                    advance(hadPendingSync);
+                    advance();
                 }
             }
         };
