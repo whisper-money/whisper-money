@@ -13,6 +13,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import {
     CheckIcon,
     FolderIcon,
+    LandmarkIcon,
     LockIcon,
     PiggyBankIcon,
     ReceiptIcon,
@@ -41,10 +42,6 @@ function getEquivalentBillingLabel(
 ): string {
     if (!billingPeriod) {
         return t('one-time');
-    }
-
-    if (billingPeriod === 'year') {
-        return t('/month');
     }
 
     return t('/month');
@@ -232,6 +229,42 @@ function FinancialSnapshot({ stats }: { stats: PaywallStats }) {
     );
 }
 
+function FeaturesSection({ features }: { features: string[] }) {
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 rounded-lg border border-emerald-100/50 bg-emerald-50/25 px-4 py-3 dark:border-emerald-800/50 dark:bg-emerald-950/20">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                    <LandmarkIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="flex-1">
+                    <p className="text-sm font-semibold">
+                        {__('Connected banks')}
+                    </p>
+                    <p className="text-xs text-balance text-muted-foreground">
+                        {__(
+                            'Sync transactions and balances automatically. Forget about manually importing CSVs from your bank.',
+                        )}
+                    </p>
+                </div>
+                <CheckIcon className="h-4 w-4 shrink-0 text-emerald-500" />
+            </div>
+
+            {features.length > 0 && (
+                <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-1">
+                    {features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-1.5">
+                            <CheckIcon className="size-3.5 shrink-0 text-emerald-500" />
+                            <span className="text-xs text-muted-foreground">
+                                {__(feature)}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 function CompactPlanCard({
     plan,
     isSelected,
@@ -298,18 +331,34 @@ function PricingSection({
     planEntries,
     defaultPlan,
     currency,
+    canUseFreePlan,
 }: {
     planEntries: [string, Plan][];
     defaultPlan: string;
     currency: string;
+    canUseFreePlan: boolean;
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
+    const [freeButtonVisible, setFreeButtonVisible] = useState(false);
+
     const selectedPlanData = planEntries.find(
         ([key]) => key === selectedPlan,
     )?.[1];
 
+    useEffect(() => {
+        if (!canUseFreePlan) {
+            return;
+        }
+        const timer = setTimeout(() => setFreeButtonVisible(true), 5000);
+        return () => clearTimeout(timer);
+    }, [canUseFreePlan]);
+
     return (
         <div className="flex flex-col gap-4">
+            {selectedPlanData && (
+                <FeaturesSection features={selectedPlanData.features} />
+            )}
+
             <div className="flex gap-3">
                 {planEntries.map(([key, plan]) => (
                     <CompactPlanCard
@@ -331,17 +380,23 @@ function PricingSection({
                 </Button>
             </a>
 
-            {selectedPlanData && (
-                <ul className="grid grid-cols-2 gap-x-4 gap-y-1 px-6">
-                    {selectedPlanData.features.slice(0, 4).map((feature) => (
-                        <li key={feature} className="flex items-center gap-1.5">
-                            <CheckIcon className="size-3 shrink-0 text-emerald-500" />
-                            <span className="text-xs text-muted-foreground">
-                                {__(feature)}
-                            </span>
-                        </li>
-                    ))}
-                </ul>
+            {canUseFreePlan && (
+                <div
+                    className={cn(
+                        'transition-opacity duration-1000',
+                        freeButtonVisible
+                            ? 'opacity-100'
+                            : 'pointer-events-none opacity-0',
+                    )}
+                >
+                    <Button
+                        variant="ghost"
+                        className="w-full"
+                        onClick={() => router.visit(dashboard().url)}
+                    >
+                        {__('Continue for free')}
+                    </Button>
+                </div>
             )}
         </div>
     );
@@ -370,18 +425,8 @@ export default function Paywall() {
                         planEntries={planEntries}
                         defaultPlan={pricing.defaultPlan}
                         currency={pricing.currency}
+                        canUseFreePlan={canUseFreePlan}
                     />
-
-                    {canUseFreePlan && (
-                        <div className="text-center">
-                            <button
-                                onClick={() => router.visit(dashboard().url)}
-                                className="text-sm text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
-                            >
-                                {__('Continue for free')}
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
         </>

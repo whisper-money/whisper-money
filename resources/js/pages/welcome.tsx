@@ -43,7 +43,7 @@ function getBillingLabel(billingPeriod: string | null): string {
     if (!billingPeriod) {
         return 'one-time';
     }
-    return `/${billingPeriod}`;
+    return '/month';
 }
 
 function FeatureScreenshot({
@@ -99,6 +99,51 @@ function FeatureCard({
     );
 }
 
+function FreePlanCard({ planFeatures }: { planFeatures: string[] }) {
+    return (
+        <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#161615]">
+            <div className="flex flex-1 flex-col p-6 pt-2 sm:pt-12">
+                <h3 className="text-lg font-semibold">{__('Free')}</h3>
+
+                <div className="mt-3 flex items-baseline gap-2">
+                    <span className="text-4xl font-bold tracking-tight">
+                        {__('Free')}
+                    </span>
+                    <span className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                        {__('forever')}
+                    </span>
+                </div>
+
+                <p className="mt-3 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                    {__(
+                        'Get started at no cost. No bank connections included.',
+                    )}
+                </p>
+
+                <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
+
+                <ul className="flex-1 space-y-2.5">
+                    {planFeatures.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2.5">
+                            <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                            <span className="text-sm">{__(feature)}</span>
+                        </li>
+                    ))}
+                </ul>
+
+                <Link href="/register" className="mt-8">
+                    <Button
+                        className="w-full cursor-pointer border-[#e3e3e0] bg-transparent py-5 text-base text-[#1b1b18] shadow-sm transition-all hover:bg-[#f5f5f4] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:bg-[#1f1f1e]"
+                        variant="outline"
+                    >
+                        {__('Get Started Free')}
+                    </Button>
+                </Link>
+            </div>
+        </div>
+    );
+}
+
 function LandingPlanCard({
     plan,
     isDefault,
@@ -114,6 +159,10 @@ function LandingPlanCard({
     currency: string;
     locale: string;
 }) {
+    const { features } = usePage<SharedData>().props;
+    const monthlyEquivalent =
+        plan.billing_period === 'year' ? plan.price / 12 : plan.price;
+
     return (
         <div
             className={cn(
@@ -125,7 +174,7 @@ function LandingPlanCard({
                 <div
                     className={cn(
                         'px-6 pt-6 text-xs font-semibold uppercase',
-                        isDefault && 'text-[#1b1b18] dark:text-[#aaa]',
+                        isDefault && 'text-[#1b1b18]/75 dark:text-[#aaa]',
                         isBestValue &&
                             !isDefault &&
                             'text-[#706f6c] dark:text-[#A1A09A]',
@@ -135,26 +184,44 @@ function LandingPlanCard({
                 </div>
             )}
 
-            <div className="flex flex-1 flex-col p-6 pt-2">
+            <div
+                className={cn(
+                    'flex flex-1 flex-col p-6 pt-2',
+                    !isDefault && !isBestValue && 'sm:pt-12',
+                )}
+            >
                 <h3 className="text-lg font-semibold">{__(plan.name)}</h3>
 
                 <div className="mt-3 flex items-baseline gap-2">
                     {plan.original_price && (
                         <span className="text-lg font-medium text-[#706f6c] line-through dark:text-[#A1A09A]">
                             {formatCurrency(
-                                plan.original_price * 100,
+                                (plan.billing_period === 'year'
+                                    ? plan.original_price / 12
+                                    : plan.original_price) * 100,
                                 currency,
                                 locale,
                             )}
                         </span>
                     )}
                     <span className="text-4xl font-bold tracking-tight">
-                        {formatCurrency(plan.price * 100, currency, locale)}
+                        {formatCurrency(
+                            monthlyEquivalent * 100,
+                            currency,
+                            locale,
+                        )}
                     </span>
                     <span className="text-sm text-[#706f6c] dark:text-[#A1A09A]">
                         {getBillingLabel(plan.billing_period)}
                     </span>
                 </div>
+
+                {plan.billing_period === 'year' && (
+                    <p className="mt-1 text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                        {__('Billed annually at')}{' '}
+                        {formatCurrency(plan.price * 100, currency, locale)}
+                    </p>
+                )}
 
                 <p className="mt-3 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                     {__(
@@ -165,7 +232,10 @@ function LandingPlanCard({
                 <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
 
                 <ul className="flex-1 space-y-2.5">
-                    {plan.features.map((feature) => (
+                    {(features['open-banking']
+                        ? [__('Connect bank accounts'), ...plan.features]
+                        : plan.features
+                    ).map((feature) => (
                         <li key={feature} className="flex items-center gap-2.5">
                             <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
                             <span className="text-sm">{__(feature)}</span>
@@ -284,7 +354,7 @@ export default function Welcome({
     canRegister?: boolean;
     hideAuthButtons?: boolean;
 }) {
-    const { appUrl, subscriptionsEnabled, pricing, locale } =
+    const { appUrl, subscriptionsEnabled, pricing, locale, features } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
@@ -900,14 +970,34 @@ export default function Welcome({
                                     <div
                                         className={cn(
                                             'grid w-full gap-6',
-                                            planEntries.length === 1 &&
-                                                'mx-auto max-w-md',
-                                            planEntries.length === 2 &&
+                                            planEntries.length +
+                                                (features['open-banking']
+                                                    ? 1
+                                                    : 0) ===
+                                                1 && 'mx-auto max-w-md',
+                                            planEntries.length +
+                                                (features['open-banking']
+                                                    ? 1
+                                                    : 0) ===
+                                                2 &&
                                                 'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
-                                            planEntries.length >= 3 &&
+                                            planEntries.length +
+                                                (features['open-banking']
+                                                    ? 1
+                                                    : 0) >=
+                                                3 &&
                                                 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
                                         )}
                                     >
+                                        {features['open-banking'] && (
+                                            <FreePlanCard
+                                                planFeatures={planEntries[0][1].features.filter(
+                                                    (f) =>
+                                                        f !==
+                                                        'Priority support',
+                                                )}
+                                            />
+                                        )}
                                         {planEntries.map(([key, plan]) => (
                                             <LandingPlanCard
                                                 key={key}
