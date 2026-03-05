@@ -31,7 +31,7 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                     </div>
                     <p className="text-sm text-muted-foreground">
                         {__(
-                            'Create rules like "If description contains \'AMAZON\',\n                        categorize as Shopping"',
+                            'Create rules like "If description contains \'AMAZON\', categorize as Shopping"',
                         )}
                     </p>
                 </div>
@@ -47,7 +47,7 @@ export function StepSmartRules({ onContinue }: StepSmartRulesProps) {
                     </div>
                     <p className="text-sm text-muted-foreground">
                         {__(
-                            'Rules apply automatically when you import new\n                        transactions',
+                            'Rules apply automatically when you import new transactions',
                         )}
                     </p>
                 </div>
