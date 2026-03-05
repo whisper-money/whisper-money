@@ -2,6 +2,7 @@ import { ConnectAccountDialog } from '@/components/open-banking/connect-account-
 import { ConnectionStatusBadge } from '@/components/open-banking/connection-status-badge';
 import { DisconnectDialog } from '@/components/open-banking/disconnect-dialog';
 import { UpdateCredentialsDialog } from '@/components/open-banking/update-credentials-dialog';
+import { UpgradeConnectionDialog } from '@/components/open-banking/upgrade-connection-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -40,9 +41,11 @@ interface Props {
 }
 
 export default function ConnectionsPage({ connections }: Props) {
-    const { auth, flash } = usePage<SharedData>().props;
+    const { auth, flash, subscriptionsEnabled } = usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
+    const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+    const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
     const [disconnectConnection, setDisconnectConnection] =
         useState<BankingConnection | null>(null);
     const [updateCredentialsConnection, setUpdateCredentialsConnection] =
@@ -119,7 +122,11 @@ export default function ConnectionsPage({ connections }: Props) {
                             </p>
                         </div>
                         <CreateButton
-                            onClick={() => setConnectDialogOpen(true)}
+                            onClick={() =>
+                                isFreePlan
+                                    ? setUpgradeDialogOpen(true)
+                                    : setConnectDialogOpen(true)
+                            }
                             disabled={isDemoAccount}
                         >
                             {__('Connect Bank')}
@@ -344,6 +351,11 @@ export default function ConnectionsPage({ connections }: Props) {
                 <ConnectAccountDialog
                     open={connectDialogOpen}
                     onOpenChange={setConnectDialogOpen}
+                />
+
+                <UpgradeConnectionDialog
+                    open={upgradeDialogOpen}
+                    onOpenChange={setUpgradeDialogOpen}
                 />
 
                 {disconnectConnection && (
