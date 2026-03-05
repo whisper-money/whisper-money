@@ -620,116 +620,317 @@ export default function Welcome({
                     </section>
 
                     <section className="grid gap-6 px-4 py-12 sm:py-16 md:py-20">
-                        <div className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-3">
-                            <FeatureCard>
-                                <div className="p-2">
-                                    <FeatureScreenshot
-                                        light="/images/landing/features/accounts_light.png"
-                                        dark="/images/landing/features/accounts_dark.png"
-                                        alt={__(
-                                            'All your accounts at a glance',
-                                        )}
-                                    />
-                                </div>
-                                <div className="p-6 pt-4">
-                                    <h3 className="text-xl font-semibold">
-                                        {__('All Your Accounts')}
-                                    </h3>
-                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__(
-                                            'See every account in one place. Track balances, monitor changes, and always know where you stand.',
-                                        )}
-                                    </p>
-                                </div>
-                            </FeatureCard>
+                        <div className="mx-auto grid max-w-7xl gap-3 sm:grid-cols-3">
+                            {features['open-banking'] ? (
+                                <>
+                                    {/* Row 1: Connect Your Banks (2 cols) + Import in Seconds (1 col) */}
+                                    <FeatureCard className="sm:col-span-2">
+                                        <div className="grid h-full items-center gap-0 sm:grid-cols-2">
+                                            <div className="p-8 sm:p-12">
+                                                <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
+                                                    {__('Connect Your Banks')}
+                                                </h2>
+                                                <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
+                                                    {__(
+                                                        'Link your bank accounts directly. Transactions sync automatically, giving you a real-time view of your finances.',
+                                                    )}
+                                                </p>
+                                                <ul className="mt-6 space-y-3">
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Connect in seconds',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Automatic sync',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Secure & encrypted',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div className="p-2">
+                                                <FeatureScreenshot
+                                                    light="/images/landing/features/accounts_light.png"
+                                                    dark="/images/landing/features/accounts_dark.png"
+                                                    alt={__(
+                                                        'Connect your bank accounts',
+                                                    )}
+                                                    className="aspect-auto min-h-[320px]"
+                                                />
+                                            </div>
+                                        </div>
+                                    </FeatureCard>
 
-                            <FeatureCard>
-                                <div className="p-2">
-                                    <FeatureScreenshot
-                                        light="/images/landing/features/transactions_light.png"
-                                        dark="/images/landing/features/transactions_dark.png"
-                                        alt={__('Every transaction tracked')}
-                                    />
-                                </div>
-                                <div className="p-6 pt-4">
-                                    <h3 className="text-xl font-semibold">
-                                        {__('Every Transaction')}
-                                    </h3>
-                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__(
-                                            'Search, filter, and categorize with ease. Understand exactly where your money goes.',
-                                        )}
-                                    </p>
-                                </div>
-                            </FeatureCard>
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <FeatureScreenshot
+                                                light="/images/landing/features/import_light.png"
+                                                dark="/images/landing/features/import_dark.png"
+                                                alt={__(
+                                                    'Import transactions in seconds',
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Import in Seconds')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
+                                                )}
+                                            </p>
+                                            <ul className="mt-4 space-y-2">
+                                                <li className="flex items-center gap-2.5">
+                                                    <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                    <span className="text-sm">
+                                                        {__(
+                                                            'Export from any bank',
+                                                        )}
+                                                    </span>
+                                                </li>
+                                                <li className="flex items-center gap-2.5">
+                                                    <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                    <span className="text-sm">
+                                                        {__('Secure upload')}
+                                                    </span>
+                                                </li>
+                                                <li className="flex items-center gap-2.5">
+                                                    <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                    <span className="text-sm">
+                                                        {__(
+                                                            'Automatic categorization',
+                                                        )}
+                                                    </span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </FeatureCard>
 
-                            <FeatureCard>
-                                <div className="p-2">
-                                    <FeatureScreenshot
-                                        light="/images/landing/features/privacy_light.png"
-                                        dark="/images/landing/features/privacy_dark.png"
-                                        alt={__(
-                                            'Your data encrypted and private',
-                                        )}
-                                    />
-                                </div>
-                                <div className="p-6 pt-4">
-                                    <h3 className="text-xl font-semibold">
-                                        {__('Your Data, Your Rules')}
-                                    </h3>
-                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__(
-                                            'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
-                                        )}
-                                    </p>
-                                </div>
-                            </FeatureCard>
-                        </div>
+                                    {/* Row 2: All Your Accounts, Every Transaction, Your Data Your Rules */}
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <FeatureScreenshot
+                                                light="/images/landing/features/accounts_light.png"
+                                                dark="/images/landing/features/accounts_dark.png"
+                                                alt={__(
+                                                    'All your accounts at a glance',
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('All Your Accounts')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'See every account in one place. Track balances, monitor changes, and always know where you stand.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
 
-                        <div className="mx-auto max-w-7xl">
-                            <FeatureCard>
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <FeatureScreenshot
+                                                light="/images/landing/features/transactions_light.png"
+                                                dark="/images/landing/features/transactions_dark.png"
+                                                alt={__(
+                                                    'Every transaction tracked',
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Every Transaction')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'Search, filter, and categorize with ease. Understand exactly where your money goes.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <FeatureScreenshot
+                                                light="/images/landing/features/privacy_light.png"
+                                                dark="/images/landing/features/privacy_dark.png"
+                                                alt={__(
+                                                    'Your data encrypted and private',
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Your Data, Your Rules')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Row 1: All Your Accounts, Every Transaction, Your Data Your Rules */}
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <FeatureScreenshot
+                                                light="/images/landing/features/accounts_light.png"
+                                                dark="/images/landing/features/accounts_dark.png"
+                                                alt={__(
+                                                    'All your accounts at a glance',
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('All Your Accounts')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'See every account in one place. Track balances, monitor changes, and always know where you stand.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <FeatureScreenshot
+                                                light="/images/landing/features/transactions_light.png"
+                                                dark="/images/landing/features/transactions_dark.png"
+                                                alt={__(
+                                                    'Every transaction tracked',
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Every Transaction')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'Search, filter, and categorize with ease. Understand exactly where your money goes.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <FeatureScreenshot
+                                                light="/images/landing/features/privacy_light.png"
+                                                dark="/images/landing/features/privacy_dark.png"
+                                                alt={__(
+                                                    'Your data encrypted and private',
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Your Data, Your Rules')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+
+                                    {/* Row 2: Import in Seconds (full width) */}
+                                    <FeatureCard className="sm:col-span-3">
+                                        <div className="grid items-center gap-0 sm:grid-cols-2">
+                                            <div className="p-8 sm:p-12">
+                                                <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
+                                                    {__('Import in Seconds')}
+                                                </h2>
+                                                <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
+                                                    {__(
+                                                        "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
+                                                    )}
+                                                </p>
+                                                <ul className="mt-6 space-y-3">
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Export from any bank',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Secure upload',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Automatic categorization',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div className="p-2">
+                                                <FeatureScreenshot
+                                                    light="/images/landing/features/import_light.png"
+                                                    dark="/images/landing/features/import_dark.png"
+                                                    alt={__(
+                                                        'Import transactions in seconds',
+                                                    )}
+                                                    className="aspect-auto min-h-[320px]"
+                                                />
+                                            </div>
+                                        </div>
+                                    </FeatureCard>
+                                </>
+                            )}
+
+                            {/* Row 3: Cashflow at a Glance (always full width) */}
+                            <FeatureCard className="sm:col-span-3">
                                 <div className="grid items-center gap-0 sm:grid-cols-2">
+                                    <div className="p-2">
+                                        <FeatureScreenshot
+                                            light="/images/landing/features/cashflow_light.png"
+                                            dark="/images/landing/features/cashflow_dark.png"
+                                            alt={__('Cashflow visualization')}
+                                            className="aspect-auto min-h-[320px]"
+                                        />
+                                    </div>
                                     <div className="p-8 sm:p-12">
                                         <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
-                                            {__('Import in Seconds')}
+                                            {__('Cashflow at a Glance')}
                                         </h2>
                                         <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
                                             {__(
-                                                "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
+                                                'Visualize your money flow over time. See income vs. expenses and spot trends before they become problems.',
                                             )}
                                         </p>
-                                        <ul className="mt-6 space-y-3">
-                                            <li className="flex items-center gap-2.5">
-                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                <span className="text-sm">
-                                                    {__('Export from any bank')}
-                                                </span>
-                                            </li>
-                                            <li className="flex items-center gap-2.5">
-                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                <span className="text-sm">
-                                                    {__('Secure upload')}
-                                                </span>
-                                            </li>
-                                            <li className="flex items-center gap-2.5">
-                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                <span className="text-sm">
-                                                    {__(
-                                                        'Automatic categorization',
-                                                    )}
-                                                </span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <div className="p-2">
-                                        <FeatureScreenshot
-                                            light="/images/landing/features/import_light.png"
-                                            dark="/images/landing/features/import_dark.png"
-                                            alt={__(
-                                                'Import transactions in seconds',
-                                            )}
-                                            className="aspect-auto min-h-[320px]"
-                                        />
                                     </div>
                                 </div>
                             </FeatureCard>
@@ -814,33 +1015,6 @@ export default function Welcome({
                                     </div>
                                 </FeatureCard>
                             </div>
-                        </div>
-                    </section>
-
-                    <section className="px-4 py-12 sm:py-16 md:py-20">
-                        <div className="mx-auto max-w-7xl">
-                            <FeatureCard>
-                                <div className="grid items-center gap-0 sm:grid-cols-2">
-                                    <div className="p-2">
-                                        <FeatureScreenshot
-                                            light="/images/landing/features/cashflow_light.png"
-                                            dark="/images/landing/features/cashflow_dark.png"
-                                            alt={__('Cashflow visualization')}
-                                            className="aspect-auto min-h-[320px]"
-                                        />
-                                    </div>
-                                    <div className="p-8 sm:p-12">
-                                        <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
-                                            {__('Cashflow at a Glance')}
-                                        </h2>
-                                        <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                            {__(
-                                                'Visualize your money flow over time. See income vs. expenses and spot trends before they become problems.',
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-                            </FeatureCard>
                         </div>
                     </section>
 
