@@ -2217,7 +2217,7 @@ export default function Welcome({
                                 <>
                                     {/* Row 1: Connect Your Banks (2 cols) + Import in Seconds (1 col) */}
                                     <FeatureCard className="sm:col-span-2">
-                                        <div className="grid h-full gap-0 sm:grid-cols-2">
+                                        <div className="grid h-full grid-rows-1 gap-0 sm:grid-cols-2">
                                             <div className="flex flex-col justify-center p-8 sm:p-12">
                                                 <h2 className="text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight">
                                                     {__('Connect Your Banks')}
@@ -2254,10 +2254,10 @@ export default function Welcome({
                                                     </li>
                                                 </ul>
                                             </div>
-                                            <div className="p-2">
+                                            <div className="relative min-h-[320px]">
                                                 <BankConnectionsPreview
                                                     banks={popularBanks}
-                                                    className="h-full"
+                                                    className="absolute inset-2"
                                                 />
                                             </div>
                                         </div>
