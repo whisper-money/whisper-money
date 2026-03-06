@@ -1,7 +1,7 @@
+import { BankLogo } from '@/components/bank-logo';
 import InputError from '@/components/input-error';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
-import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -14,7 +14,7 @@ import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { CheckIcon, ChevronDownIcon, LockIcon } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 const LANDING_IMAGES = [
     {
@@ -105,11 +105,21 @@ function FeatureCard({
     );
 }
 
-function BankConnectionsPreview({ banks }: { banks: ReadonlyArray<PopularBank> }) {
+function BankConnectionsPreview({
+    banks,
+}: {
+    banks: ReadonlyArray<PopularBank>;
+}) {
     const [translateY, setTranslateY] = useState(0);
     const [maxTranslate, setMaxTranslate] = useState(0);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const listRef = useRef<HTMLUListElement | null>(null);
+    const prependedBanksCount = Math.min(30, banks.length);
+    const scrollSpeed = 0.25;
+    const previewBanks = useMemo(
+        () => [...banks.slice(-prependedBanksCount), ...banks],
+        [banks, prependedBanksCount],
+    );
 
     useEffect(() => {
         const updateMaxTranslate = () => {
@@ -147,7 +157,7 @@ function BankConnectionsPreview({ banks }: { banks: ReadonlyArray<PopularBank> }
                 (viewportHeight - rect.top) / (viewportHeight + rect.height);
             const clampedProgress = Math.min(1, Math.max(0, progress));
 
-            setTranslateY(clampedProgress * maxTranslate);
+            setTranslateY(clampedProgress * maxTranslate * scrollSpeed);
         };
 
         updateTranslate();
@@ -158,39 +168,47 @@ function BankConnectionsPreview({ banks }: { banks: ReadonlyArray<PopularBank> }
             window.removeEventListener('scroll', updateTranslate);
             window.removeEventListener('resize', updateTranslate);
         };
-    }, [maxTranslate]);
+    }, [maxTranslate, scrollSpeed]);
 
     return (
         <div
             ref={containerRef}
             role="img"
             aria-label={__('Popular banks available to connect')}
-            className="relative h-[320px] select-none overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
         >
             <ul
                 ref={listRef}
                 className="space-y-2 p-3 transition-transform duration-75 will-change-transform sm:p-4"
                 style={{ transform: `translate3d(0, -${translateY}px, 0)` }}
             >
-                {banks.map((bank, index) => (
-                    <li
-                        key={bank.name}
-                        className="flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
-                    >
-                        <span className="w-6 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
-                            {(index + 1).toString().padStart(2, '0')}
-                        </span>
-                        <BankLogo
-                            src={bank.logo}
-                            name={bank.name}
-                            fallback="letter"
-                            className="size-7 border border-[#e3e3e0] bg-white p-0.5 dark:border-[#3E3E3A] dark:bg-[#141413]"
-                        />
-                        <span className="text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
-                            {bank.name}
-                        </span>
-                    </li>
-                ))}
+                {previewBanks.map((bank, index) => {
+                    const originalIndex =
+                        (index - prependedBanksCount + banks.length) %
+                        banks.length;
+
+                    return (
+                        <li
+                            key={`${bank.name}-${index}`}
+                            className="flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                        >
+                            <span className="w-6 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                                {(originalIndex + 1)
+                                    .toString()
+                                    .padStart(2, '0')}
+                            </span>
+                            <BankLogo
+                                src={bank.logo}
+                                name={bank.name}
+                                fallback="letter"
+                                className="size-7 border border-[#e3e3e0] bg-white p-0.5 dark:border-[#3E3E3A] dark:bg-[#141413]"
+                            />
+                            <span className="text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                {bank.name}
+                            </span>
+                        </li>
+                    );
+                })}
             </ul>
 
             <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
