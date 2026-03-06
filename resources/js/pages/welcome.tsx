@@ -303,10 +303,12 @@ function FeatureCard({
 
 function BankConnectionsPreview({
     banks,
-    prependFromBottomCount = 15,
+    prependFromBottomCount = 2,
+    className,
 }: {
     banks: ReadonlyArray<PopularBank>;
     prependFromBottomCount?: number;
+    className?: string;
 }) {
     const [translateY, setTranslateY] = useState(0);
     const [maxTranslate, setMaxTranslate] = useState(0);
@@ -373,7 +375,10 @@ function BankConnectionsPreview({
             ref={containerRef}
             role="img"
             aria-label={__('Popular banks available to connect')}
-            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+            className={cn(
+                'relative min-h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950',
+                className,
+            )}
         >
             <ul
                 ref={listRef}
@@ -877,15 +882,15 @@ function ImportPreview({
     );
 }
 
-const PRIVACY_ROWS = [
-    { label: 'Account Holder', value: 'Jonathan Mitchell' },
-    { label: 'Account No.', value: 'GB29 NWBK 6016 1331 9268 19' },
-    { label: 'Balance', value: '$12,450.00' },
-    { label: 'Last Login', value: 'Today, 9:42 AM' },
-    { label: 'Statement', value: 'Q4 2024 · Quarterly' },
-] as const;
-
 function PrivacyRedactedPreview() {
+    const PRIVACY_ROWS = [
+        { label: 'Account Holder', value: 'Jonathan Mitchell' },
+        { label: 'Account No.', value: 'GB29 NWBK 6016 1331 9268 19' },
+        { label: 'Balance', value: '$12,450.00' },
+        { label: 'Last Login', value: __('Today') + ', 9:42 AM' },
+        { label: 'Statement', value: 'Q4 2024 · ' + __('Quartely') },
+    ] as const;
+
     const [scrollProgress, setScrollProgress] = useState(0);
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -960,13 +965,13 @@ function PrivacyRedactedPreview() {
                 })}
 
                 {/* Safe row — never redacted */}
-                <li className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-800/50 dark:bg-emerald-950/30">
-                    <LockIcon className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <li className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-800/50 dark:bg-emerald-950/30">
+                    <LockIcon className="mr-2 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <span className="text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
-                        {__('Shared with')}
+                        {__('Shared')}
                     </span>
                     <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                        {__('Only you')}
+                        {__('only with you')}
                     </span>
                 </li>
             </ul>
@@ -2212,9 +2217,9 @@ export default function Welcome({
                                 <>
                                     {/* Row 1: Connect Your Banks (2 cols) + Import in Seconds (1 col) */}
                                     <FeatureCard className="sm:col-span-2">
-                                        <div className="grid h-full items-center gap-0 sm:grid-cols-2">
+                                        <div className="grid h-full items-start gap-0 sm:grid-cols-2">
                                             <div className="p-8 sm:p-12">
-                                                <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
+                                                <h2 className="text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight">
                                                     {__('Connect Your Banks')}
                                                 </h2>
                                                 <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
@@ -2249,9 +2254,10 @@ export default function Welcome({
                                                     </li>
                                                 </ul>
                                             </div>
-                                            <div className="p-2">
+                                            <div className="max-h-50 p-2">
                                                 <BankConnectionsPreview
                                                     banks={popularBanks}
+                                                    className="h-full"
                                                 />
                                             </div>
                                         </div>
