@@ -15,6 +15,8 @@ return [
 
     'drip_emails_enabled' => env('DRIP_EMAILS_ENABLED', true),
 
+    'admin_email' => env('ADMIN_EMAIL'),
+
     /*
     |--------------------------------------------------------------------------
     | Email Verification
