@@ -17,14 +17,31 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserLeadController;
+use App\Models\Bank;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
+    $popularBanks = Bank::query()
+        ->whereNull('user_id')
+        ->whereNotNull('logo')
+        ->where('logo', '!=', '')
+        ->withCount('accounts')
+        ->orderByDesc('accounts_count')
+        ->orderBy('name')
+        ->limit(300)
+        ->get(['name', 'logo'])
+        ->map(fn (Bank $bank): array => [
+            'name' => $bank->name,
+            'logo' => $bank->logo,
+        ])
+        ->values();
+
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
         'hideAuthButtons' => config('landing.hide_auth_buttons', false),
+        'popularBanks' => $popularBanks,
     ]);
 })->name('home');
 
