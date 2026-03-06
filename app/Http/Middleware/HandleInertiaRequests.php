@@ -88,7 +88,7 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => [
                 'cashflow' => true,
-                'open-banking' => $user ? Feature::for($user)->active('open-banking') : true,
+                'open-banking' => $user ? Feature::for($user)->active('open-banking') : false,
                 'account-mapping' => $user ? Feature::for($user)->active('account-mapping') : false,
             ],
             'accounts' => fn() => $user ? $user->accounts()
