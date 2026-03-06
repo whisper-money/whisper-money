@@ -9,11 +9,29 @@ import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { cn } from '@/lib/utils';
 import { store as storeUserLead } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
+import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { CheckIcon, ChevronDownIcon, LockIcon } from 'lucide-react';
+import {
+    ArrowDownLeftIcon,
+    ArrowLeftRightIcon,
+    ArrowUpRightIcon,
+    BoltIcon,
+    BriefcaseIcon,
+    BusIcon,
+    CheckIcon,
+    ChevronDownIcon,
+    ClapperboardIcon,
+    CoinsIcon,
+    HeartPulseIcon,
+    LockIcon,
+    type LucideIcon,
+    ShoppingBasketIcon,
+    WineIcon,
+    WrenchIcon,
+} from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 const LANDING_IMAGES = [
@@ -44,6 +62,131 @@ type PopularBank = {
     name: string;
     logo: string | null;
 };
+
+type TransactionPreviewRow = {
+    id: string;
+    date: string;
+    description: string;
+    category: {
+        name: string;
+        color: CategoryColor;
+        icon: LucideIcon;
+    };
+    amountInCents: number;
+};
+
+const TRANSACTION_PREVIEW_ROWS: ReadonlyArray<TransactionPreviewRow> = [
+    {
+        id: 'txn-1',
+        date: 'Mar 5',
+        description: 'Payroll Deposit',
+        category: {
+            name: 'Salary',
+            color: 'green',
+            icon: CoinsIcon,
+        },
+        amountInCents: 248500,
+    },
+    {
+        id: 'txn-2',
+        date: 'Mar 4',
+        description: 'Whole Foods Market',
+        category: {
+            name: 'Groceries',
+            color: 'red',
+            icon: ShoppingBasketIcon,
+        },
+        amountInCents: -8742,
+    },
+    {
+        id: 'txn-3',
+        date: 'Mar 4',
+        description: 'City Electric Co.',
+        category: {
+            name: 'Electricity',
+            color: 'orange',
+            icon: BoltIcon,
+        },
+        amountInCents: -12840,
+    },
+    {
+        id: 'txn-4',
+        date: 'Mar 3',
+        description: 'Coffee Lab',
+        category: {
+            name: 'Cafes, restaurants, bars',
+            color: 'red',
+            icon: WineIcon,
+        },
+        amountInCents: -1295,
+    },
+    {
+        id: 'txn-5',
+        date: 'Mar 3',
+        description: 'Rent Payment',
+        category: {
+            name: 'Rent and maintanence',
+            color: 'orange',
+            icon: WrenchIcon,
+        },
+        amountInCents: -145000,
+    },
+    {
+        id: 'txn-6',
+        date: 'Mar 2',
+        description: 'Metro Transit',
+        category: {
+            name: 'Transportation',
+            color: 'amber',
+            icon: BusIcon,
+        },
+        amountInCents: -520,
+    },
+    {
+        id: 'txn-7',
+        date: 'Mar 1',
+        description: 'Freelance Invoice',
+        category: {
+            name: 'Self-Employment Income',
+            color: 'green',
+            icon: BriefcaseIcon,
+        },
+        amountInCents: 62000,
+    },
+    {
+        id: 'txn-8',
+        date: 'Feb 28',
+        description: 'Movie Night',
+        category: {
+            name: 'Theatre, music, cinema',
+            color: 'violet',
+            icon: ClapperboardIcon,
+        },
+        amountInCents: -2499,
+    },
+    {
+        id: 'txn-9',
+        date: 'Feb 28',
+        description: 'Healthy Pharmacy',
+        category: {
+            name: 'Health and pharmaceuticals',
+            color: 'rose',
+            icon: HeartPulseIcon,
+        },
+        amountInCents: -3599,
+    },
+    {
+        id: 'txn-10',
+        date: 'Feb 27',
+        description: 'Savings Transfer',
+        category: {
+            name: 'Personal transfers',
+            color: 'cyan',
+            icon: ArrowLeftRightIcon,
+        },
+        amountInCents: -50000,
+    },
+] as const;
 
 function getBillingLabel(billingPeriod: string | null): string {
     if (!billingPeriod) {
@@ -213,6 +356,178 @@ function BankConnectionsPreview({
 
             <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+function TransactionRowsPreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const [translateY, setTranslateY] = useState(0);
+    const [maxTranslate, setMaxTranslate] = useState(0);
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const listRef = useRef<HTMLUListElement | null>(null);
+    const prependedRowsCount = Math.min(10, TRANSACTION_PREVIEW_ROWS.length);
+    const scrollSpeed = 0.28;
+    const previewRows = useMemo(
+        () => [
+            ...TRANSACTION_PREVIEW_ROWS.slice(-prependedRowsCount),
+            ...TRANSACTION_PREVIEW_ROWS,
+        ],
+        [prependedRowsCount],
+    );
+
+    useEffect(() => {
+        const updateMaxTranslate = () => {
+            const container = containerRef.current;
+            const list = listRef.current;
+            if (!container || !list) {
+                return;
+            }
+
+            const travelDistance = Math.max(
+                0,
+                list.scrollHeight - container.clientHeight + 56,
+            );
+            setMaxTranslate(travelDistance);
+        };
+
+        updateMaxTranslate();
+        window.addEventListener('resize', updateMaxTranslate);
+
+        return () => {
+            window.removeEventListener('resize', updateMaxTranslate);
+        };
+    }, []);
+
+    useEffect(() => {
+        const updateTranslate = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            const clampedProgress = Math.min(1, Math.max(0, progress));
+
+            setScrollProgress(clampedProgress);
+            setTranslateY(clampedProgress * maxTranslate * scrollSpeed);
+        };
+
+        updateTranslate();
+        window.addEventListener('scroll', updateTranslate, { passive: true });
+        window.addEventListener('resize', updateTranslate);
+
+        return () => {
+            window.removeEventListener('scroll', updateTranslate);
+            window.removeEventListener('resize', updateTranslate);
+        };
+    }, [maxTranslate, scrollSpeed]);
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__(
+                'Sample transactions with a curved scrolling effect',
+            )}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <div className="absolute inset-x-0 top-0 z-10 grid grid-cols-[60px_minmax(0,1fr)_auto] items-center rounded-t-xl border-b border-[#e3e3e0]/80 bg-[#FDFDFC]/85 px-3 py-2 text-[11px] font-semibold tracking-[0.08em] text-[#706f6c] uppercase backdrop-blur sm:px-4 dark:border-[#3E3E3A]/80 dark:bg-[#161615]/85 dark:text-[#A1A09A]">
+                <span>{__('Date')}</span>
+                <span>{__('Description')}</span>
+                <span className="text-right">{__('Amount')}</span>
+            </div>
+
+            <ul
+                ref={listRef}
+                className="flex flex-col gap-2 p-3 pt-12 transition-transform duration-75 will-change-transform sm:p-4 sm:pt-12"
+                style={{ transform: `translate3d(0, -${translateY}px, 0)` }}
+            >
+                {previewRows.map((transaction, index) => {
+                    const originalIndex =
+                        (index -
+                            prependedRowsCount +
+                            TRANSACTION_PREVIEW_ROWS.length) %
+                        TRANSACTION_PREVIEW_ROWS.length;
+                    const CategoryIcon = transaction.category.icon;
+                    const categoryColorClasses = getCategoryColorClasses(
+                        transaction.category.color,
+                    );
+                    const curveSeed =
+                        originalIndex * 0.7 + scrollProgress * Math.PI * 2.9;
+                    const curveX = Math.sin(curveSeed) * 11;
+                    const curveRotate = Math.sin(curveSeed + Math.PI / 3) * 1.6;
+                    const curveScale =
+                        1 - Math.abs(Math.sin(curveSeed)) * 0.015;
+                    const isIncome = transaction.amountInCents > 0;
+                    const amountLabel = formatCurrency(
+                        Math.abs(transaction.amountInCents),
+                        currency,
+                        locale,
+                    );
+
+                    return (
+                        <li
+                            key={`${transaction.id}-${index}`}
+                            className="flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                            style={{
+                                transform: `translate3d(${curveX}px, 0, 0) rotate(${curveRotate}deg) scale(${curveScale})`,
+                            }}
+                        >
+                            <span className="w-[60px] shrink-0 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                                {transaction.date}
+                            </span>
+
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                    {__(transaction.description)}
+                                </p>
+                                <span
+                                    className={cn(
+                                        'mt-1 inline-flex max-w-full items-center gap-1 truncate rounded-full border border-black/10 px-2 py-0.5 text-[11px] font-medium dark:border-white/15',
+                                        categoryColorClasses.bg,
+                                        categoryColorClasses.text,
+                                    )}
+                                >
+                                    <CategoryIcon className="size-3 shrink-0" />
+                                    {__(transaction.category.name)}
+                                </span>
+                            </div>
+
+                            <span
+                                className={cn(
+                                    'ml-2 flex shrink-0 items-center gap-1 text-sm font-semibold tabular-nums',
+                                    isIncome
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : 'text-[#1b1b18] dark:text-[#EDEDEC]',
+                                )}
+                            >
+                                {isIncome ? (
+                                    <ArrowUpRightIcon className="size-3.5" />
+                                ) : (
+                                    <ArrowDownLeftIcon className="size-3.5" />
+                                )}
+                                <span>
+                                    {isIncome ? '+' : '-'}
+                                    {amountLabel}
+                                </span>
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <div className="pointer-events-none absolute inset-x-0 top-8 h-10 bg-gradient-to-b from-zinc-100/95 to-transparent dark:from-zinc-900/95" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
         </div>
     );
 }
@@ -861,12 +1176,9 @@ export default function Welcome({
 
                                     <FeatureCard>
                                         <div className="p-2">
-                                            <FeatureScreenshot
-                                                light="/images/landing/features/transactions_light.png"
-                                                dark="/images/landing/features/transactions_dark.png"
-                                                alt={__(
-                                                    'Every transaction tracked',
-                                                )}
+                                            <TransactionRowsPreview
+                                                currency={pricing.currency}
+                                                locale={locale}
                                             />
                                         </div>
                                         <div className="p-6 pt-4">
@@ -930,12 +1242,9 @@ export default function Welcome({
 
                                     <FeatureCard>
                                         <div className="p-2">
-                                            <FeatureScreenshot
-                                                light="/images/landing/features/transactions_light.png"
-                                                dark="/images/landing/features/transactions_dark.png"
-                                                alt={__(
-                                                    'Every transaction tracked',
-                                                )}
+                                            <TransactionRowsPreview
+                                                currency={pricing.currency}
+                                                locale={locale}
                                             />
                                         </div>
                                         <div className="p-6 pt-4">
