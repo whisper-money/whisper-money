@@ -28,7 +28,14 @@ Route::get('/', function () {
         ->whereNotNull('logo')
         ->where('logo', '!=', '')
         ->withCount('accounts')
+        ->withExists([
+            'accounts as has_spanish_accounts' => fn ($query) => $query->whereHas(
+                'bankingConnection',
+                fn ($bankingConnectionQuery) => $bankingConnectionQuery->where('aspsp_country', 'ES')
+            ),
+        ])
         ->orderByDesc('accounts_count')
+        ->orderByDesc('has_spanish_accounts')
         ->orderBy('name')
         ->limit(300)
         ->get(['name', 'logo'])

@@ -250,15 +250,17 @@ function FeatureCard({
 
 function BankConnectionsPreview({
     banks,
+    prependFromBottomCount = 15,
 }: {
     banks: ReadonlyArray<PopularBank>;
+    prependFromBottomCount?: number;
 }) {
     const [translateY, setTranslateY] = useState(0);
     const [maxTranslate, setMaxTranslate] = useState(0);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const listRef = useRef<HTMLUListElement | null>(null);
-    const prependedBanksCount = Math.min(30, banks.length);
-    const scrollSpeed = 0.25;
+    const scrollSpeed = 0.15;
+    const prependedBanksCount = Math.min(prependFromBottomCount, banks.length);
     const previewBanks = useMemo(
         () => [...banks.slice(-prependedBanksCount), ...banks],
         [banks, prependedBanksCount],
