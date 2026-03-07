@@ -46,7 +46,7 @@ class HandleInertiaRequests extends Middleware
         // Cache encryption checks to avoid duplicate queries
         $hasEncryptedAccounts = $user?->accounts()->where('encrypted', true)->exists() ?? false;
         $hasEncryptedTransactions = $user?->transactions()
-            ->where(fn($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
+            ->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'))
             ->exists() ?? false;
 
         // Clean up encryption data if no encrypted accounts or transactions remain
@@ -91,14 +91,14 @@ class HandleInertiaRequests extends Middleware
                 'open-banking' => $user ? Feature::for($user)->active('open-banking') : false,
                 'account-mapping' => $user ? Feature::for($user)->active('account-mapping') : false,
             ],
-            'accounts' => fn() => $user ? $user->accounts()
+            'accounts' => fn () => $user ? $user->accounts()
                 ->with('bank:id,name,logo')
                 ->orderBy('name')
                 ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']) : [],
-            'categories' => fn() => $user ? $user->categories()
+            'categories' => fn () => $user ? $user->categories()
                 ->orderBy('name')
                 ->get(['id', 'name', 'icon', 'color']) : [],
-            'banks' => fn() => $user ? $user->banks()
+            'banks' => fn () => $user ? $user->banks()
                 ->orderBy('name')
                 ->get(['id', 'name', 'logo']) : [],
             'automationRules' => function () use ($user) {
@@ -111,7 +111,7 @@ class HandleInertiaRequests extends Middleware
                     ->orderBy('priority')
                     ->get();
             },
-            'labels' => fn() => $user ? $user->labels()
+            'labels' => fn () => $user ? $user->labels()
                 ->orderBy('name')
                 ->get(['id', 'name', 'color']) : [],
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
