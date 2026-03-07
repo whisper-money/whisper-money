@@ -4,19 +4,33 @@ namespace App\Console\Commands;
 
 use App\Models\Bank;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Console\PromptsForMissingInput;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
-class SetBankLogoCommand extends Command
+class SetBankLogoCommand extends Command implements PromptsForMissingInput
 {
     protected $signature = 'banks:set-logo
                             {bank : The UUID of the bank}
                             {url : The image URL to download}';
 
     protected $description = 'Download an image from a URL, process it, and set it as the logo for a bank';
+
+    /**
+     * Prompt for missing input arguments using the returned questions.
+     *
+     * @return array<string, string|array<int, string>>
+     */
+    protected function promptForMissingArgumentsUsing(): array
+    {
+        return [
+            'bank' => ['Which bank UUID should the logo be set for?', 'E.g. 01234567-89ab-cdef-0123-456789abcdef'],
+            'url' => ['What is the image URL to download?', 'E.g. https://example.com/logo.png'],
+        ];
+    }
 
     public function handle(): int
     {
