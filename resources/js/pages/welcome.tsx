@@ -1,3 +1,4 @@
+import { BankLogo } from '@/components/bank-logo';
 import InputError from '@/components/input-error';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
@@ -8,12 +9,31 @@ import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { cn } from '@/lib/utils';
 import { store as storeUserLead } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
+import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { CheckIcon, ChevronDownIcon, LockIcon } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import {
+    ArrowDownLeftIcon,
+    ArrowLeftRightIcon,
+    ArrowUpRightIcon,
+    BoltIcon,
+    BriefcaseIcon,
+    BusIcon,
+    CheckIcon,
+    ChevronDownIcon,
+    ClapperboardIcon,
+    CoinsIcon,
+    FileSpreadsheetIcon,
+    HeartPulseIcon,
+    LockIcon,
+    type LucideIcon,
+    ShoppingBasketIcon,
+    WineIcon,
+    WrenchIcon,
+} from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
 const LANDING_IMAGES = [
     {
@@ -39,45 +59,193 @@ const LANDING_IMAGES = [
     },
 ] as const;
 
+type PopularBank = {
+    name: string;
+    logo: string | null;
+};
+
+type TransactionPreviewRow = {
+    id: string;
+    date: string;
+    description: string;
+    category: {
+        name: string;
+        color: CategoryColor;
+        icon: LucideIcon;
+    };
+    amountInCents: number;
+};
+
+type AccountPreviewRow = {
+    id: string;
+    institution: string;
+    name: string;
+    type: string;
+    color: CategoryColor;
+    balanceInCents: number;
+};
+
+const TRANSACTION_PREVIEW_ROWS: ReadonlyArray<TransactionPreviewRow> = [
+    {
+        id: 'txn-1',
+        date: 'Mar 5',
+        description: 'Payroll Deposit',
+        category: {
+            name: 'Salary',
+            color: 'green',
+            icon: CoinsIcon,
+        },
+        amountInCents: 248500,
+    },
+    {
+        id: 'txn-2',
+        date: 'Mar 4',
+        description: 'Whole Foods Market',
+        category: {
+            name: 'Groceries',
+            color: 'red',
+            icon: ShoppingBasketIcon,
+        },
+        amountInCents: -8742,
+    },
+    {
+        id: 'txn-3',
+        date: 'Mar 4',
+        description: 'City Electric Co.',
+        category: {
+            name: 'Electricity',
+            color: 'orange',
+            icon: BoltIcon,
+        },
+        amountInCents: -12840,
+    },
+    {
+        id: 'txn-4',
+        date: 'Mar 3',
+        description: 'Coffee Lab',
+        category: {
+            name: 'Cafes, restaurants, bars',
+            color: 'red',
+            icon: WineIcon,
+        },
+        amountInCents: -1295,
+    },
+    {
+        id: 'txn-5',
+        date: 'Mar 3',
+        description: 'Rent Payment',
+        category: {
+            name: 'Rent and maintanence',
+            color: 'orange',
+            icon: WrenchIcon,
+        },
+        amountInCents: -145000,
+    },
+    {
+        id: 'txn-6',
+        date: 'Mar 2',
+        description: 'Metro Transit',
+        category: {
+            name: 'Transportation',
+            color: 'amber',
+            icon: BusIcon,
+        },
+        amountInCents: -520,
+    },
+    {
+        id: 'txn-7',
+        date: 'Mar 1',
+        description: 'Freelance Invoice',
+        category: {
+            name: 'Self-Employment Income',
+            color: 'green',
+            icon: BriefcaseIcon,
+        },
+        amountInCents: 62000,
+    },
+    {
+        id: 'txn-8',
+        date: 'Feb 28',
+        description: 'Movie Night',
+        category: {
+            name: 'Theatre, music, cinema',
+            color: 'violet',
+            icon: ClapperboardIcon,
+        },
+        amountInCents: -2499,
+    },
+    {
+        id: 'txn-9',
+        date: 'Feb 28',
+        description: 'Healthy Pharmacy',
+        category: {
+            name: 'Health and pharmaceuticals',
+            color: 'rose',
+            icon: HeartPulseIcon,
+        },
+        amountInCents: -3599,
+    },
+    {
+        id: 'txn-10',
+        date: 'Feb 27',
+        description: 'Savings Transfer',
+        category: {
+            name: 'Personal transfers',
+            color: 'cyan',
+            icon: ArrowLeftRightIcon,
+        },
+        amountInCents: -50000,
+    },
+] as const;
+
+const ACCOUNT_PREVIEW_ROWS: ReadonlyArray<AccountPreviewRow> = [
+    {
+        id: 'acc-1',
+        institution: 'Chase',
+        name: 'Main Checking',
+        type: 'Checking',
+        color: 'blue',
+        balanceInCents: 324580,
+    },
+    {
+        id: 'acc-2',
+        institution: 'Marcus',
+        name: 'High-Yield Savings',
+        type: 'Savings',
+        color: 'green',
+        balanceInCents: 1245000,
+    },
+    {
+        id: 'acc-3',
+        institution: 'American Express',
+        name: 'Gold Card',
+        type: 'Credit',
+        color: 'red',
+        balanceInCents: -189240,
+    },
+    {
+        id: 'acc-4',
+        institution: 'Vanguard',
+        name: 'Investment Portfolio',
+        type: 'Investment',
+        color: 'violet',
+        balanceInCents: 2875000,
+    },
+    {
+        id: 'acc-5',
+        institution: 'Ally',
+        name: 'Emergency Fund',
+        type: 'Savings',
+        color: 'cyan',
+        balanceInCents: 850000,
+    },
+] as const;
+
 function getBillingLabel(billingPeriod: string | null): string {
     if (!billingPeriod) {
         return 'one-time';
     }
     return '/month';
-}
-
-function FeatureScreenshot({
-    light,
-    dark,
-    alt,
-    className,
-}: {
-    light: string;
-    dark: string;
-    alt: string;
-    className?: string;
-}) {
-    return (
-        <div
-            className={cn(
-                'overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950',
-                className,
-            )}
-        >
-            <img
-                src={light}
-                alt={alt}
-                className="w-full dark:hidden"
-                loading="lazy"
-            />
-            <img
-                src={dark}
-                alt={alt}
-                className="hidden w-full dark:block"
-                loading="lazy"
-            />
-        </div>
-    );
 }
 
 function FeatureCard({
@@ -95,6 +263,1388 @@ function FeatureCard({
             )}
         >
             {children}
+        </div>
+    );
+}
+
+function BankConnectionsPreview({
+    banks,
+    prependFromBottomCount = 15,
+    className,
+}: {
+    banks: ReadonlyArray<PopularBank>;
+    prependFromBottomCount?: number;
+    className?: string;
+}) {
+    const [translateY, setTranslateY] = useState(0);
+    const [maxTranslate, setMaxTranslate] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const listRef = useRef<HTMLUListElement | null>(null);
+    const scrollSpeed = 0.15;
+    const prependedBanksCount = Math.min(prependFromBottomCount, banks.length);
+    const previewBanks = useMemo(
+        () => [...banks.slice(-prependedBanksCount), ...banks],
+        [banks, prependedBanksCount],
+    );
+
+    useEffect(() => {
+        const updateMaxTranslate = () => {
+            const container = containerRef.current;
+            const list = listRef.current;
+            if (!container || !list) {
+                return;
+            }
+
+            const travelDistance = Math.max(
+                0,
+                list.scrollHeight - container.clientHeight + 24,
+            );
+            setMaxTranslate(travelDistance);
+        };
+
+        updateMaxTranslate();
+        window.addEventListener('resize', updateMaxTranslate);
+
+        return () => {
+            window.removeEventListener('resize', updateMaxTranslate);
+        };
+    }, []);
+
+    useEffect(() => {
+        const updateTranslate = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            const clampedProgress = Math.min(1, Math.max(0, progress));
+
+            setTranslateY(clampedProgress * maxTranslate * scrollSpeed);
+        };
+
+        updateTranslate();
+        window.addEventListener('scroll', updateTranslate, { passive: true });
+        window.addEventListener('resize', updateTranslate);
+
+        return () => {
+            window.removeEventListener('scroll', updateTranslate);
+            window.removeEventListener('resize', updateTranslate);
+        };
+    }, [maxTranslate, scrollSpeed]);
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('Popular banks available to connect')}
+            className={cn(
+                'relative min-h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950',
+                className,
+            )}
+        >
+            <ul
+                ref={listRef}
+                className="space-y-2 p-3 transition-transform duration-75 will-change-transform sm:p-4"
+                style={{ transform: `translate3d(0, -${translateY}px, 0)` }}
+            >
+                {previewBanks.map((bank, index) => {
+                    const originalIndex =
+                        (index - prependedBanksCount + banks.length) %
+                        banks.length;
+
+                    return (
+                        <li
+                            key={`${bank.name}-${index}`}
+                            className="flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                        >
+                            <span className="w-6 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                                {(originalIndex + 1)
+                                    .toString()
+                                    .padStart(2, '0')}
+                            </span>
+                            <BankLogo
+                                src={bank.logo}
+                                name={bank.name}
+                                fallback="letter"
+                                className="size-7 border border-[#e3e3e0] bg-white p-0.5 dark:border-[#3E3E3A] dark:bg-[#141413]"
+                            />
+                            <span className="text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                {bank.name}
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+function TransactionRowsPreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const [translateY, setTranslateY] = useState(0);
+    const [maxTranslate, setMaxTranslate] = useState(0);
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const listRef = useRef<HTMLUListElement | null>(null);
+    const prependedRowsCount = Math.min(10, TRANSACTION_PREVIEW_ROWS.length);
+    const scrollSpeed = 0.28;
+    const previewRows = useMemo(
+        () => [
+            ...TRANSACTION_PREVIEW_ROWS.slice(-prependedRowsCount),
+            ...TRANSACTION_PREVIEW_ROWS,
+        ],
+        [prependedRowsCount],
+    );
+
+    useEffect(() => {
+        const updateMaxTranslate = () => {
+            const container = containerRef.current;
+            const list = listRef.current;
+            if (!container || !list) {
+                return;
+            }
+
+            const travelDistance = Math.max(
+                0,
+                list.scrollHeight - container.clientHeight + 56,
+            );
+            setMaxTranslate(travelDistance);
+        };
+
+        updateMaxTranslate();
+        window.addEventListener('resize', updateMaxTranslate);
+
+        return () => {
+            window.removeEventListener('resize', updateMaxTranslate);
+        };
+    }, []);
+
+    useEffect(() => {
+        const updateTranslate = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            const clampedProgress = Math.min(1, Math.max(0, progress));
+
+            setScrollProgress(clampedProgress);
+            setTranslateY(clampedProgress * maxTranslate * scrollSpeed);
+        };
+
+        updateTranslate();
+        window.addEventListener('scroll', updateTranslate, { passive: true });
+        window.addEventListener('resize', updateTranslate);
+
+        return () => {
+            window.removeEventListener('scroll', updateTranslate);
+            window.removeEventListener('resize', updateTranslate);
+        };
+    }, [maxTranslate, scrollSpeed]);
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__(
+                'Sample transactions with a curved scrolling effect',
+            )}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <div className="absolute inset-x-0 top-0 z-10 grid grid-cols-[60px_minmax(0,1fr)_auto] items-center rounded-t-xl border-b border-[#e3e3e0]/80 bg-[#FDFDFC]/85 px-3 py-2 text-[11px] font-semibold tracking-[0.08em] text-[#706f6c] uppercase backdrop-blur sm:px-4 dark:border-[#3E3E3A]/80 dark:bg-[#161615]/85 dark:text-[#A1A09A]">
+                <span>{__('Date')}</span>
+                <span>{__('Description')}</span>
+                <span className="text-right">{__('Amount')}</span>
+            </div>
+
+            <ul
+                ref={listRef}
+                className="flex flex-col gap-2 p-3 pt-12 transition-transform duration-75 will-change-transform sm:p-4 sm:pt-12"
+                style={{ transform: `translate3d(0, -${translateY}px, 0)` }}
+            >
+                {previewRows.map((transaction, index) => {
+                    const originalIndex =
+                        (index -
+                            prependedRowsCount +
+                            TRANSACTION_PREVIEW_ROWS.length) %
+                        TRANSACTION_PREVIEW_ROWS.length;
+                    const CategoryIcon = transaction.category.icon;
+                    const categoryColorClasses = getCategoryColorClasses(
+                        transaction.category.color,
+                    );
+                    const curveSeed =
+                        originalIndex * 0.7 + scrollProgress * Math.PI * 2.9;
+                    const curveX = Math.sin(curveSeed) * 11;
+                    const curveRotate = Math.sin(curveSeed + Math.PI / 3) * 1.6;
+                    const curveScale =
+                        1 - Math.abs(Math.sin(curveSeed)) * 0.015;
+                    const isIncome = transaction.amountInCents > 0;
+                    const amountLabel = formatCurrency(
+                        Math.abs(transaction.amountInCents),
+                        currency,
+                        locale,
+                    );
+
+                    return (
+                        <li
+                            key={`${transaction.id}-${index}`}
+                            className="flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                            style={{
+                                transform: `translate3d(${curveX}px, 0, 0) rotate(${curveRotate}deg) scale(${curveScale})`,
+                            }}
+                        >
+                            <span className="w-[60px] shrink-0 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                                {transaction.date}
+                            </span>
+
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                    {__(transaction.description)}
+                                </p>
+                                <span
+                                    className={cn(
+                                        'mt-1 inline-flex max-w-full items-center gap-1 truncate rounded-full border border-black/10 px-2 py-0.5 text-[11px] font-medium dark:border-white/15',
+                                        categoryColorClasses.bg,
+                                        categoryColorClasses.text,
+                                    )}
+                                >
+                                    <CategoryIcon className="size-3 shrink-0" />
+                                    {__(transaction.category.name)}
+                                </span>
+                            </div>
+
+                            <span
+                                className={cn(
+                                    'ml-2 flex shrink-0 items-center gap-1 text-sm font-semibold tabular-nums',
+                                    isIncome
+                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                        : 'text-[#1b1b18] dark:text-[#EDEDEC]',
+                                )}
+                            >
+                                {isIncome ? (
+                                    <ArrowUpRightIcon className="size-3.5" />
+                                ) : (
+                                    <ArrowDownLeftIcon className="size-3.5" />
+                                )}
+                                <span>
+                                    {isIncome ? '+' : '-'}
+                                    {amountLabel}
+                                </span>
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <div className="pointer-events-none absolute inset-x-0 top-8 h-10 bg-gradient-to-b from-zinc-100/95 to-transparent dark:from-zinc-900/95" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+function AccountsBalancePreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const cardCount = ACCOUNT_PREVIEW_ROWS.length;
+    const staggerDelay = 0.12;
+    const staggerRange = 1 - (cardCount - 1) * staggerDelay;
+
+    useEffect(() => {
+        const updateProgress = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            setScrollProgress(Math.min(1, Math.max(0, progress)));
+        };
+
+        updateProgress();
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        window.addEventListener('resize', updateProgress);
+
+        return () => {
+            window.removeEventListener('scroll', updateProgress);
+            window.removeEventListener('resize', updateProgress);
+        };
+    }, []);
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('All your bank accounts at a glance')}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            {ACCOUNT_PREVIEW_ROWS.map((account, index) => {
+                const cardProgress = Math.min(
+                    1,
+                    Math.max(
+                        0,
+                        (scrollProgress - index * staggerDelay) / staggerRange,
+                    ),
+                );
+
+                // Stack: cards centered in container with small per-card offset
+                const stackY = 130 + index * 5;
+                // Spread: cards spaced evenly from top padding
+                const spreadY = 16 + index * 66;
+                const y = stackY + (spreadY - stackY) * cardProgress;
+
+                // Rotation: cards tilt in the stack, straighten as they spread
+                const stackRotate = (index - Math.floor(cardCount / 2)) * 2;
+                const rotate = stackRotate * (1 - cardProgress);
+
+                // Scale: back cards slightly smaller in stack, full size when spread
+                const stackScale = 1 - index * 0.025;
+                const scale = stackScale + (1 - stackScale) * cardProgress;
+
+                // Opacity: back cards dimmer in stack, fully opaque when spread
+                const stackOpacity = Math.max(0.45, 1 - index * 0.12);
+                const opacity =
+                    stackOpacity + (1 - stackOpacity) * cardProgress;
+
+                const zIndex = (cardCount - index) * 10;
+                const colorClasses = getCategoryColorClasses(account.color);
+                const isDebt = account.balanceInCents < 0;
+                const balanceLabel = formatCurrency(
+                    Math.abs(account.balanceInCents),
+                    currency,
+                    locale,
+                );
+
+                return (
+                    <div
+                        key={account.id}
+                        className="absolute inset-x-3 flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/90 px-3 py-2.5 will-change-transform sm:inset-x-4 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/90"
+                        style={{
+                            top: 0,
+                            transform: `translateY(${y}px) rotate(${rotate}deg) scale(${scale})`,
+                            opacity,
+                            zIndex,
+                        }}
+                    >
+                        <BankLogo
+                            src={null}
+                            name={account.institution}
+                            fallback="letter"
+                            className="size-7 shrink-0 border border-[#e3e3e0] bg-white p-0.5 dark:border-[#3E3E3A] dark:bg-[#141413]"
+                        />
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                {__(account.name)}
+                            </p>
+                            <p className="truncate text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                                {account.institution}
+                            </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                            <span
+                                className={cn(
+                                    'text-sm font-semibold tabular-nums',
+                                    isDebt
+                                        ? 'text-red-600 dark:text-red-400'
+                                        : 'text-[#1b1b18] dark:text-[#EDEDEC]',
+                                )}
+                            >
+                                {isDebt ? '-' : ''}
+                                {balanceLabel}
+                            </span>
+                            <span
+                                className={cn(
+                                    'inline-flex items-center rounded-full border border-black/10 px-2 py-0.5 text-[11px] font-medium dark:border-white/15',
+                                    colorClasses.bg,
+                                    colorClasses.text,
+                                )}
+                            >
+                                {__(account.type)}
+                            </span>
+                        </div>
+                    </div>
+                );
+            })}
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+function ImportPreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    // How many transaction rows to show below the file card
+    const previewRows = TRANSACTION_PREVIEW_ROWS.slice(0, 5);
+
+    // Scroll range for the file card drop: 0 → FILE_DROP_END
+    const FILE_DROP_END = 0.4;
+    // Each row slides in over this span of scroll progress
+    const ROW_SPAN = 0.12;
+    // Row i starts appearing at this scroll progress
+    const rowStart = (i: number) => 0.3 + i * 0.1;
+
+    useEffect(() => {
+        const updateProgress = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            setScrollProgress(Math.min(1, Math.max(0, progress)));
+        };
+
+        updateProgress();
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        window.addEventListener('resize', updateProgress);
+
+        return () => {
+            window.removeEventListener('scroll', updateProgress);
+            window.removeEventListener('resize', updateProgress);
+        };
+    }, []);
+
+    // File card animation: drops from above, scales and fades in
+    const fileProgress = Math.min(1, scrollProgress / FILE_DROP_END);
+    const fileY = -80 + 92 * fileProgress;
+    const fileScale = 0.9 + 0.1 * fileProgress;
+    const fileOpacity = fileProgress;
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('Import transactions from a CSV file')}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            {/* File card — drops from above */}
+            <div
+                className="absolute inset-x-3 flex items-center gap-3 rounded-lg border border-emerald-200 bg-[#FDFDFC] px-3 py-3 will-change-transform sm:inset-x-4 dark:border-emerald-800/60 dark:bg-[#1C1C1A]"
+                style={{
+                    top: 0,
+                    transform: `translateY(${fileY}px) scale(${fileScale})`,
+                    opacity: fileOpacity,
+                }}
+            >
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+                    <FileSpreadsheetIcon className="size-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                        transactions.csv
+                    </p>
+                    <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                        847 KB &middot; 1,247 rows
+                    </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-400">
+                    <CheckIcon className="size-3" />
+                    {__('Imported')}
+                </span>
+            </div>
+
+            {/* Transaction rows — cascade in from the right after file card lands */}
+            {previewRows.map((transaction, index) => {
+                const start = rowStart(index);
+                const rowProgress = Math.min(
+                    1,
+                    Math.max(0, (scrollProgress - start) / ROW_SPAN),
+                );
+                const rowX = 24 * (1 - rowProgress);
+                const rowOpacity = rowProgress;
+                const CategoryIcon = transaction.category.icon;
+                const categoryColorClasses = getCategoryColorClasses(
+                    transaction.category.color,
+                );
+                const isIncome = transaction.amountInCents > 0;
+                const amountLabel = formatCurrency(
+                    Math.abs(transaction.amountInCents),
+                    currency,
+                    locale,
+                );
+
+                return (
+                    <div
+                        key={transaction.id}
+                        className="absolute inset-x-3 flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/90 px-3 py-2.5 will-change-transform sm:inset-x-4 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/90"
+                        style={{
+                            top: 0,
+                            transform: `translateY(${124 + index * 38}px) translateX(${rowX}px)`,
+                            opacity: rowOpacity,
+                        }}
+                    >
+                        <span className="w-[52px] shrink-0 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                            {transaction.date}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                {__(transaction.description)}
+                            </p>
+                        </div>
+                        <span
+                            className={cn(
+                                'hidden shrink-0 items-center gap-1 rounded-full border border-black/10 px-2 py-0.5 text-[11px] font-medium sm:inline-flex dark:border-white/15',
+                                categoryColorClasses.bg,
+                                categoryColorClasses.text,
+                            )}
+                        >
+                            <CategoryIcon className="size-3 shrink-0" />
+                            {__(transaction.category.name)}
+                        </span>
+                        <span
+                            className={cn(
+                                'ml-1 shrink-0 text-sm font-semibold tabular-nums',
+                                isIncome
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-[#1b1b18] dark:text-[#EDEDEC]',
+                            )}
+                        >
+                            {isIncome ? '+' : '-'}
+                            {amountLabel}
+                        </span>
+                    </div>
+                );
+            })}
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+function PrivacyRedactedPreview() {
+    const PRIVACY_ROWS = [
+        { label: 'Account Holder', value: 'Jonathan Mitchell' },
+        { label: 'Account No.', value: 'GB29 NWBK 6016 1331 9268 19' },
+        { label: 'Balance', value: '$12,450.00' },
+        { label: 'Last Login', value: __('Today') + ', 9:42 AM' },
+        { label: 'Statement', value: 'Q4 2024 · ' + __('Quartely') },
+    ] as const;
+
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    // Each bar slides in over this span of scroll progress
+    const BAR_SPAN = 0.15;
+    // Row i's bar starts sliding at this scroll progress
+    const barStart = (i: number) => 0.1 + i * 0.12;
+
+    useEffect(() => {
+        const updateProgress = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            setScrollProgress(Math.min(1, Math.max(0, progress)));
+        };
+
+        updateProgress();
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        window.addEventListener('resize', updateProgress);
+
+        return () => {
+            window.removeEventListener('scroll', updateProgress);
+            window.removeEventListener('resize', updateProgress);
+        };
+    }, []);
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__(
+                'Your financial data stays private and is never shared',
+            )}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <ul className="flex flex-col gap-2 p-3 sm:p-4">
+                {PRIVACY_ROWS.map((row, index) => {
+                    const start = barStart(index);
+                    const barProgress = Math.min(
+                        1,
+                        Math.max(0, (scrollProgress - start) / BAR_SPAN),
+                    );
+                    const barX = 100 * (1 - barProgress);
+
+                    return (
+                        <li
+                            key={row.label}
+                            className="flex items-center gap-3 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                        >
+                            <span className="w-[110px] shrink-0 text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                                {__(row.label)}
+                            </span>
+                            <div className="relative min-w-0 flex-1 overflow-hidden rounded">
+                                <span className="block truncate text-sm font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                    {row.value}
+                                </span>
+                                <div
+                                    className="absolute inset-0 rounded bg-zinc-900 will-change-transform dark:bg-zinc-100"
+                                    style={{
+                                        transform: `translateX(${barX}%)`,
+                                    }}
+                                />
+                            </div>
+                        </li>
+                    );
+                })}
+
+                {/* Safe row — never redacted */}
+                <li className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 dark:border-emerald-800/50 dark:bg-emerald-950/30">
+                    <LockIcon className="mr-2 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-xs font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                        {__('Shared')}
+                    </span>
+                    <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                        {__('only with you')}
+                    </span>
+                </li>
+            </ul>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+const CASHFLOW_PREVIEW_DATA = [
+    { month: 'Jan', incomeInCents: 420000, expensesInCents: 310000 },
+    { month: 'Feb', incomeInCents: 385000, expensesInCents: 290000 },
+    { month: 'Mar', incomeInCents: 510000, expensesInCents: 355000 },
+    { month: 'Apr', incomeInCents: 448000, expensesInCents: 380000 },
+    { month: 'May', incomeInCents: 495000, expensesInCents: 320000 },
+    { month: 'Jun', incomeInCents: 530000, expensesInCents: 410000 },
+] as const;
+
+function CashflowChartPreview() {
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const updateProgress = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            setScrollProgress(Math.min(1, Math.max(0, progress)));
+        };
+
+        updateProgress();
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        window.addEventListener('resize', updateProgress);
+
+        return () => {
+            window.removeEventListener('scroll', updateProgress);
+            window.removeEventListener('resize', updateProgress);
+        };
+    }, []);
+
+    const maxValue = Math.max(
+        ...CASHFLOW_PREVIEW_DATA.map((d) =>
+            Math.max(d.incomeInCents, d.expensesInCents),
+        ),
+    );
+    const chartHeight = 200;
+    const COL_SPAN = 0.28;
+    const COL_START_STEP = 0.07;
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('Cashflow income vs expenses bar chart')}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <div className="flex h-full flex-col px-4 pt-5 pb-6">
+                {/* Legend */}
+                <div className="mb-3 flex items-center justify-end gap-4">
+                    <div className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-emerald-500" />
+                        <span className="text-[10px] font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                            {__('Income')}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-rose-400" />
+                        <span className="text-[10px] font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                            {__('Expenses')}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Chart area */}
+                <div
+                    className="relative flex-1"
+                    style={{ height: chartHeight }}
+                >
+                    {/* Dashed gridlines at 25 / 50 / 75 % */}
+                    {[0.25, 0.5, 0.75].map((frac) => (
+                        <div
+                            key={frac}
+                            className="absolute inset-x-0 border-t border-dashed border-[#e3e3e0]/80 dark:border-[#3E3E3A]/60"
+                            style={{ bottom: `${frac * 100}%` }}
+                        />
+                    ))}
+
+                    {/* Baseline */}
+                    <div className="absolute inset-x-0 bottom-0 border-t border-[#e3e3e0] dark:border-[#3E3E3A]" />
+
+                    {/* Columns */}
+                    <div className="absolute inset-0 flex items-end justify-around px-1">
+                        {CASHFLOW_PREVIEW_DATA.map((col, i) => {
+                            const colProgress = Math.min(
+                                1,
+                                Math.max(
+                                    0,
+                                    (scrollProgress - i * COL_START_STEP) /
+                                        COL_SPAN,
+                                ),
+                            );
+
+                            const incomeH =
+                                (col.incomeInCents / maxValue) *
+                                chartHeight *
+                                colProgress;
+                            const expenseH =
+                                (col.expensesInCents / maxValue) *
+                                chartHeight *
+                                colProgress;
+
+                            return (
+                                <div
+                                    key={col.month}
+                                    className="flex flex-col items-center gap-1"
+                                >
+                                    <div className="flex items-end gap-0.5">
+                                        {/* Income bar */}
+                                        <div
+                                            className="w-5 rounded-t-sm bg-emerald-500 will-change-transform dark:bg-emerald-400"
+                                            style={{ height: incomeH }}
+                                        />
+                                        {/* Expense bar */}
+                                        <div
+                                            className="w-5 rounded-t-sm bg-rose-400 will-change-transform dark:bg-rose-500"
+                                            style={{ height: expenseH }}
+                                        />
+                                    </div>
+                                    <span className="text-[9px] font-medium text-[#706f6c] dark:text-[#A1A09A]">
+                                        {col.month}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-50 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+const BUDGETS_PREVIEW_ROWS = [
+    {
+        name: 'Groceries',
+        color: 'red' as const,
+        icon: ShoppingBasketIcon,
+        budgetInCents: 35000,
+        spentInCents: 23800,
+    },
+    {
+        name: 'Transportation',
+        color: 'amber' as const,
+        icon: BusIcon,
+        budgetInCents: 12000,
+        spentInCents: 5400,
+    },
+    {
+        name: 'Entertainment',
+        color: 'violet' as const,
+        icon: ClapperboardIcon,
+        budgetInCents: 8000,
+        spentInCents: 7200,
+    },
+    {
+        name: 'Dining Out',
+        color: 'orange' as const,
+        icon: WineIcon,
+        budgetInCents: 20000,
+        spentInCents: 11000,
+    },
+] as const;
+
+function BudgetsListPreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    const ROW_SLIDE_SPAN = 0.15;
+    const BAR_FILL_SPAN = 0.2;
+    const rowSlideStart = (i: number) => 0.05 + i * 0.1;
+    const barFillStart = (i: number) => rowSlideStart(i) + 0.12;
+
+    useEffect(() => {
+        const updateProgress = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            setScrollProgress(Math.min(1, Math.max(0, progress)));
+        };
+
+        updateProgress();
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        window.addEventListener('resize', updateProgress);
+
+        return () => {
+            window.removeEventListener('scroll', updateProgress);
+            window.removeEventListener('resize', updateProgress);
+        };
+    }, []);
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('Budget goals by category')}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <ul className="flex flex-col gap-2 p-3 sm:p-4">
+                {BUDGETS_PREVIEW_ROWS.map((row, index) => {
+                    const slideProgress = Math.min(
+                        1,
+                        Math.max(
+                            0,
+                            (scrollProgress - rowSlideStart(index)) /
+                                ROW_SLIDE_SPAN,
+                        ),
+                    );
+                    const fillProgress = Math.min(
+                        1,
+                        Math.max(
+                            0,
+                            (scrollProgress - barFillStart(index)) /
+                                BAR_FILL_SPAN,
+                        ),
+                    );
+
+                    const spentPct = row.spentInCents / row.budgetInCents;
+                    const filledPct = spentPct * fillProgress * 100;
+                    const colorClasses = getCategoryColorClasses(row.color);
+                    const Icon = row.icon;
+
+                    return (
+                        <li
+                            key={row.name}
+                            className="rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 will-change-transform dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                            style={{
+                                transform: `translateX(${32 * (1 - slideProgress)}px)`,
+                                opacity: slideProgress,
+                            }}
+                        >
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={cn(
+                                            'flex size-5 shrink-0 items-center justify-center rounded-full',
+                                            colorClasses.bg,
+                                        )}
+                                    >
+                                        <Icon
+                                            className={cn(
+                                                'size-2.5',
+                                                colorClasses.text,
+                                            )}
+                                        />
+                                    </span>
+                                    <span className="text-xs font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                        {__(row.name)}
+                                    </span>
+                                </div>
+                                <span className="text-[10px] text-[#706f6c] dark:text-[#A1A09A]">
+                                    {formatCurrency(
+                                        row.spentInCents,
+                                        currency,
+                                        locale,
+                                    )}{' '}
+                                    /{' '}
+                                    {formatCurrency(
+                                        row.budgetInCents,
+                                        currency,
+                                        locale,
+                                    )}
+                                </span>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e3e3e0] dark:bg-[#3E3E3A]">
+                                <div
+                                    className={cn(
+                                        'h-full rounded-full transition-none will-change-transform',
+                                        spentPct >= 0.85
+                                            ? 'bg-rose-400 dark:bg-rose-500'
+                                            : colorClasses.bg.split(' ')[0] +
+                                                  ' ' +
+                                                  colorClasses.bg
+                                                      .split(' ')
+                                                      .slice(1)
+                                                      .join(' '),
+                                    )}
+                                    style={{ width: `${filledPct}%` }}
+                                />
+                            </div>
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-100 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+function BudgetDetailPreview({
+    currency,
+    locale,
+}: {
+    currency: string;
+    locale: string;
+}) {
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    // Grocery budget detail — 68% spent
+    const budget = BUDGETS_PREVIEW_ROWS[0];
+    const spentPct = budget.spentInCents / budget.budgetInCents; // 0.68
+    const remainingInCents = budget.budgetInCents - budget.spentInCents;
+
+    const BAR_SPAN = 0.35;
+    const STATS_START = 0.3;
+    const STATS_SPAN = 0.2;
+    const ROWS_START = 0.25;
+    const ROW_STEP = 0.1;
+    const ROW_SPAN = 0.18;
+
+    useEffect(() => {
+        const updateProgress = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            setScrollProgress(Math.min(1, Math.max(0, progress)));
+        };
+
+        updateProgress();
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        window.addEventListener('resize', updateProgress);
+
+        return () => {
+            window.removeEventListener('scroll', updateProgress);
+            window.removeEventListener('resize', updateProgress);
+        };
+    }, []);
+
+    const barFill =
+        Math.min(1, Math.max(0, scrollProgress / BAR_SPAN)) * spentPct * 100;
+    const statsProgress = Math.min(
+        1,
+        Math.max(0, (scrollProgress - STATS_START) / STATS_SPAN),
+    );
+
+    // Pick the grocery/food transactions
+    const detailRows = TRANSACTION_PREVIEW_ROWS.slice(1, 4);
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('Budget progress for Groceries')}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <div className="flex flex-col gap-3 p-4">
+                {/* Header */}
+                <div className="flex items-center gap-2">
+                    <span
+                        className={cn(
+                            'flex size-7 shrink-0 items-center justify-center rounded-full',
+                            getCategoryColorClasses(budget.color).bg,
+                        )}
+                    >
+                        <ShoppingBasketIcon
+                            className={cn(
+                                'size-3.5',
+                                getCategoryColorClasses(budget.color).text,
+                            )}
+                        />
+                    </span>
+                    <span className="text-sm font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
+                        {__(budget.name)}
+                    </span>
+                    <span className="ml-auto text-xs text-[#706f6c] dark:text-[#A1A09A]">
+                        {Math.round(spentPct * 100)}% {__('used')}
+                    </span>
+                </div>
+
+                {/* Big progress bar */}
+                <div className="h-3 w-full overflow-hidden rounded-full bg-[#e3e3e0] dark:bg-[#3E3E3A]">
+                    <div
+                        className="h-full rounded-full bg-red-400 transition-none will-change-transform dark:bg-red-500"
+                        style={{ width: `${barFill}%` }}
+                    />
+                </div>
+
+                {/* Stat chips */}
+                <div
+                    className="grid grid-cols-2 gap-2"
+                    style={{ opacity: statsProgress }}
+                >
+                    <div className="rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75">
+                        <p className="text-[10px] text-[#706f6c] dark:text-[#A1A09A]">
+                            {__('Spent')}
+                        </p>
+                        <p className="text-sm font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
+                            {formatCurrency(
+                                budget.spentInCents,
+                                currency,
+                                locale,
+                            )}
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2 dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75">
+                        <p className="text-[10px] text-[#706f6c] dark:text-[#A1A09A]">
+                            {__('Remaining')}
+                        </p>
+                        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                            {formatCurrency(remainingInCents, currency, locale)}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Recent transactions */}
+                <ul className="flex flex-col gap-1.5">
+                    {detailRows.map((row, i) => {
+                        const rowProgress = Math.min(
+                            1,
+                            Math.max(
+                                0,
+                                (scrollProgress - (ROWS_START + i * ROW_STEP)) /
+                                    ROW_SPAN,
+                            ),
+                        );
+                        const Icon = row.category.icon;
+                        return (
+                            <li
+                                key={row.id}
+                                className="flex items-center gap-2.5 rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2 will-change-transform dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                                style={{
+                                    transform: `translateY(${8 * (1 - rowProgress)}px)`,
+                                    opacity: rowProgress,
+                                }}
+                            >
+                                <span
+                                    className={cn(
+                                        'flex size-5 shrink-0 items-center justify-center rounded-full',
+                                        getCategoryColorClasses(
+                                            row.category.color,
+                                        ).bg,
+                                    )}
+                                >
+                                    <Icon
+                                        className={cn(
+                                            'size-2.5',
+                                            getCategoryColorClasses(
+                                                row.category.color,
+                                            ).text,
+                                        )}
+                                    />
+                                </span>
+                                <span className="min-w-0 flex-1 truncate text-xs text-[#1b1b18] dark:text-[#EDEDEC]">
+                                    {row.description}
+                                </span>
+                                <span className="shrink-0 text-xs font-medium text-rose-500 dark:text-rose-400">
+                                    {formatCurrency(
+                                        Math.abs(row.amountInCents),
+                                        currency,
+                                        locale,
+                                    )}
+                                </span>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-50 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
+        </div>
+    );
+}
+
+function BudgetEditPreview() {
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    // "Dining Out" budget — 90% spent (high alert)
+    const budget = BUDGETS_PREVIEW_ROWS[2]; // Entertainment, 90%
+    const diningBudget = BUDGETS_PREVIEW_ROWS[3]; // Dining Out, 55% for the row display
+    const spentPct = budget.spentInCents / budget.budgetInCents;
+
+    const ROW_SPAN = 0.2;
+    const ALERT_START = 0.18;
+    const ALERT_SPAN = 0.22;
+    const ACTION_START = 0.35;
+    const ACTION_SPAN = 0.18;
+
+    useEffect(() => {
+        const updateProgress = () => {
+            const container = containerRef.current;
+            if (!container) {
+                return;
+            }
+
+            const rect = container.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || 1;
+            const progress =
+                (viewportHeight - rect.top) / (viewportHeight + rect.height);
+            setScrollProgress(Math.min(1, Math.max(0, progress)));
+        };
+
+        updateProgress();
+        window.addEventListener('scroll', updateProgress, { passive: true });
+        window.addEventListener('resize', updateProgress);
+
+        return () => {
+            window.removeEventListener('scroll', updateProgress);
+            window.removeEventListener('resize', updateProgress);
+        };
+    }, []);
+
+    const rowProgress = Math.min(1, Math.max(0, scrollProgress / ROW_SPAN));
+    const alertProgress = Math.min(
+        1,
+        Math.max(0, (scrollProgress - ALERT_START) / ALERT_SPAN),
+    );
+    const actionProgress = Math.min(
+        1,
+        Math.max(0, (scrollProgress - ACTION_START) / ACTION_SPAN),
+    );
+
+    const Icon = budget.icon;
+    const DiningIcon = diningBudget.icon;
+    const colorClasses = getCategoryColorClasses(budget.color);
+    const diningColorClasses = getCategoryColorClasses(diningBudget.color);
+    const filledWidth = spentPct * rowProgress * 100;
+
+    return (
+        <div
+            ref={containerRef}
+            role="img"
+            aria-label={__('Budget alert and limit adjustment')}
+            className="relative h-[320px] overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 select-none dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950"
+        >
+            <div className="flex flex-col gap-3 p-4">
+                {/* Budget row */}
+                <div
+                    className="rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 will-change-transform dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                    style={{ opacity: rowProgress }}
+                >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <span
+                                className={cn(
+                                    'flex size-5 shrink-0 items-center justify-center rounded-full',
+                                    colorClasses.bg,
+                                )}
+                            >
+                                <Icon
+                                    className={cn(
+                                        'size-2.5',
+                                        colorClasses.text,
+                                    )}
+                                />
+                            </span>
+                            <span className="text-xs font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                {__(budget.name)}
+                            </span>
+                        </div>
+                        <span className="text-[10px] font-semibold text-rose-500 dark:text-rose-400">
+                            {Math.round(spentPct * 100)}%
+                        </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e3e3e0] dark:bg-[#3E3E3A]">
+                        <div
+                            className="h-full rounded-full bg-rose-400 transition-none will-change-transform dark:bg-rose-500"
+                            style={{ width: `${filledWidth}%` }}
+                        />
+                    </div>
+                </div>
+
+                {/* Alert card */}
+                <div
+                    className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-3 will-change-transform dark:border-amber-800/50 dark:bg-amber-950/30"
+                    style={{
+                        transform: `translateY(${-14 * (1 - alertProgress)}px)`,
+                        opacity: alertProgress,
+                    }}
+                >
+                    <div className="flex items-start gap-2.5">
+                        <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-800/50">
+                            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                !
+                            </span>
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                                {__("You've used 90% of your budget")}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-amber-700/80 dark:text-amber-400/80">
+                                {__(
+                                    'Entertainment · Only $8 remaining this month',
+                                )}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Dining out row (second budget, calmer) */}
+                <div
+                    className="rounded-lg border border-[#e3e3e0]/85 bg-[#FDFDFC]/75 px-3 py-2.5 will-change-transform dark:border-[#3E3E3A]/80 dark:bg-[#1C1C1A]/75"
+                    style={{
+                        opacity: actionProgress,
+                        transform: `translateY(${8 * (1 - actionProgress)}px)`,
+                    }}
+                >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <span
+                                className={cn(
+                                    'flex size-5 shrink-0 items-center justify-center rounded-full',
+                                    diningColorClasses.bg,
+                                )}
+                            >
+                                <DiningIcon
+                                    className={cn(
+                                        'size-2.5',
+                                        diningColorClasses.text,
+                                    )}
+                                />
+                            </span>
+                            <span className="text-xs font-medium text-[#1b1b18] dark:text-[#EDEDEC]">
+                                {__(diningBudget.name)}
+                            </span>
+                        </div>
+                        <span className="text-[10px] text-[#706f6c] dark:text-[#A1A09A]">
+                            {Math.round(
+                                (diningBudget.spentInCents /
+                                    diningBudget.budgetInCents) *
+                                    100,
+                            )}
+                            %
+                        </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e3e3e0] dark:bg-[#3E3E3A]">
+                        <div
+                            className={cn(
+                                'h-full rounded-full transition-none',
+                                diningColorClasses.bg.split(' ')[0] +
+                                    ' ' +
+                                    diningColorClasses.bg
+                                        .split(' ')
+                                        .slice(1)
+                                        .join(' '),
+                            )}
+                            style={{
+                                width: `${(diningBudget.spentInCents / diningBudget.budgetInCents) * actionProgress * 100}%`,
+                            }}
+                        />
+                    </div>
+                </div>
+
+                {/* Adjust limit action */}
+                <div
+                    className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2.5 will-change-transform dark:border-emerald-800/50 dark:bg-emerald-950/30"
+                    style={{
+                        opacity: actionProgress,
+                        transform: `translateY(${10 * (1 - actionProgress)}px)`,
+                    }}
+                >
+                    <div className="flex items-center gap-2">
+                        <CheckIcon className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                            {__('Limit adjusted')}
+                        </span>
+                    </div>
+                    <span className="text-[10px] text-[#706f6c] dark:text-[#A1A09A]">
+                        {__('Entertainment → $100')}
+                    </span>
+                </div>
+            </div>
+
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-zinc-50 to-transparent dark:from-zinc-900" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-zinc-100 to-transparent dark:from-zinc-950" />
         </div>
     );
 }
@@ -350,9 +1900,11 @@ function WaitlistForm() {
 export default function Welcome({
     canRegister,
     hideAuthButtons,
+    popularBanks,
 }: {
     canRegister?: boolean;
     hideAuthButtons?: boolean;
+    popularBanks: PopularBank[];
 }) {
     const { appUrl, subscriptionsEnabled, pricing, locale, features } =
         usePage<SharedData>().props;
@@ -620,116 +2172,253 @@ export default function Welcome({
                     </section>
 
                     <section className="grid gap-6 px-4 py-12 sm:py-16 md:py-20">
-                        <div className="mx-auto grid max-w-7xl gap-6 sm:grid-cols-3">
-                            <FeatureCard>
-                                <div className="p-2">
-                                    <FeatureScreenshot
-                                        light="/images/landing/features/accounts_light.png"
-                                        dark="/images/landing/features/accounts_dark.png"
-                                        alt={__(
-                                            'All your accounts at a glance',
-                                        )}
-                                    />
-                                </div>
-                                <div className="p-6 pt-4">
-                                    <h3 className="text-xl font-semibold">
-                                        {__('All Your Accounts')}
-                                    </h3>
-                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__(
-                                            'See every account in one place. Track balances, monitor changes, and always know where you stand.',
-                                        )}
-                                    </p>
-                                </div>
-                            </FeatureCard>
+                        <div className="mx-auto grid max-w-7xl gap-3 sm:grid-cols-3">
+                            {features['open-banking'] ? (
+                                <>
+                                    {/* Row 1: Connect Your Banks (2 cols) + Import in Seconds (1 col) */}
+                                    <FeatureCard className="sm:col-span-2">
+                                        <div className="grid h-full grid-rows-1 gap-0 sm:grid-cols-2">
+                                            <div className="flex flex-col justify-center p-8 sm:p-12">
+                                                <h2 className="text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight">
+                                                    {__('Connect Your Banks')}
+                                                </h2>
+                                                <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
+                                                    {__(
+                                                        'Link your bank accounts directly. Transactions sync automatically, giving you a real-time view of your finances.',
+                                                    )}
+                                                </p>
+                                                <ul className="mt-6 space-y-3">
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Connect in seconds',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Automatic sync',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Secure & encrypted',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div className="relative min-h-[320px]">
+                                                <BankConnectionsPreview
+                                                    banks={popularBanks}
+                                                    className="absolute inset-2"
+                                                />
+                                            </div>
+                                        </div>
+                                    </FeatureCard>
 
-                            <FeatureCard>
-                                <div className="p-2">
-                                    <FeatureScreenshot
-                                        light="/images/landing/features/transactions_light.png"
-                                        dark="/images/landing/features/transactions_dark.png"
-                                        alt={__('Every transaction tracked')}
-                                    />
-                                </div>
-                                <div className="p-6 pt-4">
-                                    <h3 className="text-xl font-semibold">
-                                        {__('Every Transaction')}
-                                    </h3>
-                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__(
-                                            'Search, filter, and categorize with ease. Understand exactly where your money goes.',
-                                        )}
-                                    </p>
-                                </div>
-                            </FeatureCard>
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <ImportPreview
+                                                currency={pricing.currency}
+                                                locale={locale}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Import in Seconds')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
 
-                            <FeatureCard>
-                                <div className="p-2">
-                                    <FeatureScreenshot
-                                        light="/images/landing/features/privacy_light.png"
-                                        dark="/images/landing/features/privacy_dark.png"
-                                        alt={__(
-                                            'Your data encrypted and private',
-                                        )}
-                                    />
-                                </div>
-                                <div className="p-6 pt-4">
-                                    <h3 className="text-xl font-semibold">
-                                        {__('Your Data, Your Rules')}
-                                    </h3>
-                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                        {__(
-                                            'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
-                                        )}
-                                    </p>
-                                </div>
-                            </FeatureCard>
-                        </div>
+                                    {/* Row 2: All Your Accounts, Every Transaction, Your Data Your Rules */}
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <AccountsBalancePreview
+                                                currency={pricing.currency}
+                                                locale={locale}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('All Your Accounts')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'See every account in one place. Track balances, monitor changes, and always know where you stand.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
 
-                        <div className="mx-auto max-w-7xl">
-                            <FeatureCard>
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <TransactionRowsPreview
+                                                currency={pricing.currency}
+                                                locale={locale}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Every Transaction')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'Search, filter, and categorize with ease. Understand exactly where your money goes.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <PrivacyRedactedPreview />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Your Data, Your Rules')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Row 1: All Your Accounts, Every Transaction, Your Data Your Rules */}
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <AccountsBalancePreview
+                                                currency={pricing.currency}
+                                                locale={locale}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('All Your Accounts')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'See every account in one place. Track balances, monitor changes, and always know where you stand.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <TransactionRowsPreview
+                                                currency={pricing.currency}
+                                                locale={locale}
+                                            />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Every Transaction')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'Search, filter, and categorize with ease. Understand exactly where your money goes.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+
+                                    <FeatureCard>
+                                        <div className="p-2">
+                                            <PrivacyRedactedPreview />
+                                        </div>
+                                        <div className="p-6 pt-4">
+                                            <h3 className="text-xl font-semibold">
+                                                {__('Your Data, Your Rules')}
+                                            </h3>
+                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                                {__(
+                                                    'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
+                                                )}
+                                            </p>
+                                        </div>
+                                    </FeatureCard>
+
+                                    {/* Row 2: Import in Seconds (full width) */}
+                                    <FeatureCard className="sm:col-span-3">
+                                        <div className="grid items-center gap-0 sm:grid-cols-2">
+                                            <div className="p-8 sm:p-12">
+                                                <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
+                                                    {__('Import in Seconds')}
+                                                </h2>
+                                                <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
+                                                    {__(
+                                                        "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
+                                                    )}
+                                                </p>
+                                                <ul className="mt-6 space-y-3">
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Export from any bank',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Secure upload',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                    <li className="flex items-center gap-2.5">
+                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                        <span className="text-sm">
+                                                            {__(
+                                                                'Automatic categorization',
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div className="p-2">
+                                                <ImportPreview
+                                                    currency={pricing.currency}
+                                                    locale={locale}
+                                                />
+                                            </div>
+                                        </div>
+                                    </FeatureCard>
+                                </>
+                            )}
+
+                            {/* Row 3: Cashflow at a Glance (always full width) */}
+                            <FeatureCard className="sm:col-span-3">
                                 <div className="grid items-center gap-0 sm:grid-cols-2">
+                                    <div className="p-2">
+                                        <CashflowChartPreview />
+                                    </div>
                                     <div className="p-8 sm:p-12">
                                         <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
-                                            {__('Import in Seconds')}
+                                            {__('Cashflow at a Glance')}
                                         </h2>
                                         <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
                                             {__(
-                                                "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
+                                                'Visualize your money flow over time. See income vs. expenses and spot trends before they become problems.',
                                             )}
                                         </p>
-                                        <ul className="mt-6 space-y-3">
-                                            <li className="flex items-center gap-2.5">
-                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                <span className="text-sm">
-                                                    {__('Export from any bank')}
-                                                </span>
-                                            </li>
-                                            <li className="flex items-center gap-2.5">
-                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                <span className="text-sm">
-                                                    {__('Secure upload')}
-                                                </span>
-                                            </li>
-                                            <li className="flex items-center gap-2.5">
-                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                <span className="text-sm">
-                                                    {__(
-                                                        'Automatic categorization',
-                                                    )}
-                                                </span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <div className="p-2">
-                                        <FeatureScreenshot
-                                            light="/images/landing/features/import_light.png"
-                                            dark="/images/landing/features/import_dark.png"
-                                            alt={__(
-                                                'Import transactions in seconds',
-                                            )}
-                                            className="aspect-auto min-h-[320px]"
-                                        />
                                     </div>
                                 </div>
                             </FeatureCard>
@@ -752,10 +2441,9 @@ export default function Welcome({
                             <div className="grid gap-6 sm:grid-cols-3">
                                 <FeatureCard>
                                     <div className="p-2">
-                                        <FeatureScreenshot
-                                            light="/images/landing/features/budgets_light.png"
-                                            dark="/images/landing/features/budgets_dark.png"
-                                            alt={__('Set your budget goals')}
+                                        <BudgetsListPreview
+                                            currency={pricing.currency}
+                                            locale={locale}
                                         />
                                     </div>
                                     <div className="p-6 pt-4">
@@ -772,12 +2460,9 @@ export default function Welcome({
 
                                 <FeatureCard>
                                     <div className="p-2">
-                                        <FeatureScreenshot
-                                            light="/images/landing/features/budget_detail_light.png"
-                                            dark="/images/landing/features/budget_detail_dark.png"
-                                            alt={__(
-                                                'Track your budget progress',
-                                            )}
+                                        <BudgetDetailPreview
+                                            currency={pricing.currency}
+                                            locale={locale}
                                         />
                                     </div>
                                     <div className="p-6 pt-4">
@@ -794,13 +2479,7 @@ export default function Welcome({
 
                                 <FeatureCard>
                                     <div className="p-2">
-                                        <FeatureScreenshot
-                                            light="/images/landing/features/budget_edit_light.png"
-                                            dark="/images/landing/features/budget_edit_dark.png"
-                                            alt={__(
-                                                'Budget insights and alerts',
-                                            )}
-                                        />
+                                        <BudgetEditPreview />
                                     </div>
                                     <div className="p-6 pt-4">
                                         <h3 className="text-xl font-semibold">
@@ -814,33 +2493,6 @@ export default function Welcome({
                                     </div>
                                 </FeatureCard>
                             </div>
-                        </div>
-                    </section>
-
-                    <section className="px-4 py-12 sm:py-16 md:py-20">
-                        <div className="mx-auto max-w-7xl">
-                            <FeatureCard>
-                                <div className="grid items-center gap-0 sm:grid-cols-2">
-                                    <div className="p-2">
-                                        <FeatureScreenshot
-                                            light="/images/landing/features/cashflow_light.png"
-                                            dark="/images/landing/features/cashflow_dark.png"
-                                            alt={__('Cashflow visualization')}
-                                            className="aspect-auto min-h-[320px]"
-                                        />
-                                    </div>
-                                    <div className="p-8 sm:p-12">
-                                        <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
-                                            {__('Cashflow at a Glance')}
-                                        </h2>
-                                        <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                            {__(
-                                                'Visualize your money flow over time. See income vs. expenses and spot trends before they become problems.',
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-                            </FeatureCard>
                         </div>
                     </section>
 

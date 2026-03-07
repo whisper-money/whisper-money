@@ -17,14 +17,46 @@ use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserLeadController;
+use App\Models\Bank;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use Laravel\Pennant\Feature;
 
 Route::get('/', function () {
+    $user = request()->user();
+
+    $popularBanks = $user && Feature::for($user)->active('open-banking')
+        ? Cache::remember('popular-banks', now()->addDay(), function () {
+            return Bank::query()
+                ->whereNull('user_id')
+                ->whereNotNull('logo')
+                ->where('logo', '!=', '')
+                ->withCount('accounts')
+                ->withExists([
+                    'accounts as has_spanish_accounts' => fn ($query) => $query->whereHas(
+                        'bankingConnection',
+                        fn ($bankingConnectionQuery) => $bankingConnectionQuery->where('aspsp_country', 'ES')
+                    ),
+                ])
+                ->orderByDesc('accounts_count')
+                ->orderByDesc('has_spanish_accounts')
+                ->orderBy('name')
+                ->limit(300)
+                ->get(['name', 'logo'])
+                ->map(fn (Bank $bank): array => [
+                    'name' => $bank->name,
+                    'logo' => $bank->logo,
+                ])
+                ->values();
+        })
+        : collect();
+
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
         'hideAuthButtons' => config('landing.hide_auth_buttons', false),
+        'popularBanks' => $popularBanks,
     ]);
 })->name('home');
 

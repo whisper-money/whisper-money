@@ -125,7 +125,7 @@ export function ImportStepPreview({
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
                     <p className="text-sm text-amber-700 dark:text-amber-300">
                         {__(
-                            'All transactions appear to be duplicates. No new\n                        transactions will be imported.',
+                            'All transactions appear to be duplicates. No new transactions will be imported.',
                         )}
                     </p>
                 </div>
