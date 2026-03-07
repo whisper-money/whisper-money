@@ -248,40 +248,6 @@ function getBillingLabel(billingPeriod: string | null): string {
     return '/month';
 }
 
-function FeatureScreenshot({
-    light,
-    dark,
-    alt,
-    className,
-}: {
-    light: string;
-    dark: string;
-    alt: string;
-    className?: string;
-}) {
-    return (
-        <div
-            className={cn(
-                'overflow-hidden rounded-xl border border-[#e3e3e0]/70 bg-gradient-to-br from-zinc-50 to-zinc-100 dark:border-[#3E3E3A]/30 dark:from-zinc-900 dark:to-zinc-950',
-                className,
-            )}
-        >
-            <img
-                src={light}
-                alt={alt}
-                className="w-full dark:hidden"
-                loading="lazy"
-            />
-            <img
-                src={dark}
-                alt={alt}
-                className="hidden w-full dark:block"
-                loading="lazy"
-            />
-        </div>
-    );
-}
-
 function FeatureCard({
     children,
     className,
@@ -1477,13 +1443,7 @@ function BudgetDetailPreview({
     );
 }
 
-function BudgetEditPreview({
-    currency,
-    locale,
-}: {
-    currency: string;
-    locale: string;
-}) {
+function BudgetEditPreview() {
     const [scrollProgress, setScrollProgress] = useState(0);
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -2519,10 +2479,7 @@ export default function Welcome({
 
                                 <FeatureCard>
                                     <div className="p-2">
-                                        <BudgetEditPreview
-                                            currency={pricing.currency}
-                                            locale={locale}
-                                        />
+                                        <BudgetEditPreview />
                                     </div>
                                     <div className="p-6 pt-4">
                                         <h3 className="text-xl font-semibold">
