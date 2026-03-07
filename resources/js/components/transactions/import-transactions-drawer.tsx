@@ -178,9 +178,8 @@ export function ImportTransactionsDrawer({
             let detectedFormat = DateFormat.YearMonthDay;
             let formatDetected = false;
             if (autoMapping.transaction_date) {
-                const { autoDetectDateFormat } = await import(
-                    '@/lib/file-parser'
-                );
+                const { autoDetectDateFormat } =
+                    await import('@/lib/file-parser');
                 const detected = autoDetectDateFormat(
                     data,
                     autoMapping.transaction_date,
@@ -371,9 +370,8 @@ export function ImportTransactionsDrawer({
                                 categoryId = ruleMatch.categoryId;
                             }
                             if (ruleMatch.note && ruleMatch.noteIv) {
-                                const { decrypt } = await import(
-                                    '@/lib/crypto'
-                                );
+                                const { decrypt } =
+                                    await import('@/lib/crypto');
                                 notes = await decrypt(
                                     ruleMatch.note,
                                     key,
@@ -715,9 +713,7 @@ export function ImportTransactionsDrawer({
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
                             {importProgress} of {importTotal}
-                            {__(
-                                'transactions\n                            imported',
-                            )}
+                            {__('transactions imported')}
                         </span>
                         <span>{Math.round(percentage)}%</span>
                     </div>
