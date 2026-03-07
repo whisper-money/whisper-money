@@ -274,24 +274,39 @@ jobs:
     steps:
       - name: Trigger deployment
         run: |
-          response=$(curl -s -w "\n%{http_code}" \
-            --connect-timeout 30 \
-            --max-time 120 \
-            --retry 3 \
-            --retry-delay 5 \
-            --retry-connrefused \
-            -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_TOKEN }}" \
-            "http://147.93.126.54:8000/api/v1/deploy?uuid=ww00sswosco8w80k08c0occ8&force=false")
+          max_attempts=5
+          attempt=1
 
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | sed '$d')
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts..."
 
-          echo "Response: $body"
-          echo "HTTP Status: $http_code"
+            response=$(curl -s -w "\n%{http_code}" \
+              --connect-timeout 30 \
+              --max-time 120 \
+              -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_TOKEN }}" \
+              "http://147.93.126.54:8000/api/v1/deploy?uuid=ww00sswosco8w80k08c0occ8&force=false")
 
-          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+
+            echo "Response: $body"
+            echo "HTTP Status: $http_code"
+
+            if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+              echo "Deployment triggered successfully!"
+              exit 0
+            fi
+
             echo "Deployment request failed with status $http_code"
-            exit 1
-          fi
 
-          echo "Deployment triggered successfully!"
+            if [ $attempt -lt $max_attempts ]; then
+              delay=$((attempt * 10))
+              echo "Retrying in ${delay}s..."
+              sleep $delay
+            fi
+
+            attempt=$((attempt + 1))
+          done
+
+          echo "All $max_attempts attempts failed. Giving up."
+          exit 1
