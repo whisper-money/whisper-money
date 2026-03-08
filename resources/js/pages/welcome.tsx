@@ -1911,6 +1911,39 @@ export default function Welcome({
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
 
+    const hasMonthlyAndYearly =
+        planEntries.some(([, p]) => p.billing_period === 'month') &&
+        planEntries.some(([, p]) => p.billing_period === 'year');
+
+    const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>(
+        'year',
+    );
+
+    const yearlyDiscount = useMemo(() => {
+        const monthlyPlan = planEntries.find(
+            ([, p]) => p.billing_period === 'month',
+        )?.[1];
+        const yearlyPlan = planEntries.find(
+            ([, p]) => p.billing_period === 'year',
+        )?.[1];
+
+        if (!monthlyPlan || !yearlyPlan || monthlyPlan.price === 0) {
+            return null;
+        }
+
+        const yearlyMonthlyEquivalent = yearlyPlan.price / 12;
+        const discount = Math.round(
+            (1 - yearlyMonthlyEquivalent / monthlyPlan.price) * 100,
+        );
+
+        return discount > 0 ? discount : null;
+    }, [planEntries]);
+
+    const displayedPlanEntries =
+        features['open-banking'] && hasMonthlyAndYearly
+            ? planEntries.filter(([, p]) => p.billing_period === billingPeriod)
+            : planEntries;
+
     // Handle localStorage for language preference
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -2617,23 +2650,84 @@ export default function Welcome({
                                                 'Choose the plan that works for you. No hidden fees.',
                                             )}
                                         </p>
+
+                                        {features['open-banking'] &&
+                                            hasMonthlyAndYearly && (
+                                                <div className="mt-2 flex items-center rounded-full border border-[#e3e3e0] p-1 dark:border-[#3E3E3A]">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setBillingPeriod(
+                                                                'month',
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                                                            billingPeriod ===
+                                                                'month'
+                                                                ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                                                                : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
+                                                        )}
+                                                    >
+                                                        {__('Monthly')}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setBillingPeriod(
+                                                                'year',
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                                                            billingPeriod ===
+                                                                'year'
+                                                                ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                                                                : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
+                                                        )}
+                                                    >
+                                                        {__('Yearly')}
+                                                        {yearlyDiscount !==
+                                                            null && (
+                                                            <span
+                                                                className={cn(
+                                                                    'rounded-full px-2 py-0.5 text-xs font-semibold',
+                                                                    billingPeriod ===
+                                                                        'year'
+                                                                        ? 'bg-emerald-500/20 text-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                                                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+                                                                )}
+                                                            >
+                                                                {__(
+                                                                    'Save :percent%',
+                                                                ).replace(
+                                                                    ':percent',
+                                                                    String(
+                                                                        yearlyDiscount,
+                                                                    ),
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            )}
                                     </div>
 
                                     <div
                                         className={cn(
                                             'grid w-full gap-6',
-                                            planEntries.length +
+                                            displayedPlanEntries.length +
                                                 (features['open-banking']
                                                     ? 1
                                                     : 0) ===
                                                 1 && 'mx-auto max-w-md',
-                                            planEntries.length +
+                                            displayedPlanEntries.length +
                                                 (features['open-banking']
                                                     ? 1
                                                     : 0) ===
                                                 2 &&
                                                 'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
-                                            planEntries.length +
+                                            displayedPlanEntries.length +
                                                 (features['open-banking']
                                                     ? 1
                                                     : 0) >=
@@ -2650,25 +2744,30 @@ export default function Welcome({
                                                 )}
                                             />
                                         )}
-                                        {planEntries.map(([key, plan]) => (
-                                            <LandingPlanCard
-                                                key={key}
-                                                plan={plan}
-                                                isDefault={
-                                                    key === pricing.defaultPlan
-                                                }
-                                                isBestValue={
-                                                    key ===
-                                                    pricing.bestValuePlan
-                                                }
-                                                promoEnabled={
-                                                    pricing.promo.enabled
-                                                }
-                                                promoBadge={pricing.promo.badge}
-                                                currency={pricing.currency}
-                                                locale={locale}
-                                            />
-                                        ))}
+                                        {displayedPlanEntries.map(
+                                            ([key, plan]) => (
+                                                <LandingPlanCard
+                                                    key={key}
+                                                    plan={plan}
+                                                    isDefault={
+                                                        key ===
+                                                        pricing.defaultPlan
+                                                    }
+                                                    isBestValue={
+                                                        key ===
+                                                        pricing.bestValuePlan
+                                                    }
+                                                    promoEnabled={
+                                                        pricing.promo.enabled
+                                                    }
+                                                    promoBadge={
+                                                        pricing.promo.badge
+                                                    }
+                                                    currency={pricing.currency}
+                                                    locale={locale}
+                                                />
+                                            ),
+                                        )}
                                     </div>
                                 </div>
                             </section>
