@@ -72,12 +72,12 @@ test('open-banking feature flag is shared with frontend when disabled', function
     );
 });
 
-test('guests see open-banking feature as true on landing page', function () {
+test('guests see open-banking feature as false', function () {
     $response = $this->get('/');
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->where('features.open-banking', true)
+        ->where('features.open-banking', false)
     );
 });
 
