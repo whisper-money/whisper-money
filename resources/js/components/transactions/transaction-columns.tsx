@@ -184,7 +184,7 @@ export function createTransactionColumns({
             meta: {
                 label: __('Description'),
                 cellClassName:
-                    'max-w-[200px] sm:max-w-[400px] md:max-w-none md:w-full md:min-w-0 md:overflow-hidden',
+                    'max-w-[200px] sm:max-w-[250px] md:max-w-[300px] md:w-full md:min-w-0 md:overflow-hidden whitespace-normal',
             },
             header: () => __('Description'),
             cell: ({ row, table }) => {
