@@ -3,6 +3,7 @@
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
 use App\Jobs\SyncBankingConnectionJob;
+use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
@@ -235,4 +236,215 @@ test('callback with valid code stores pending accounts and redirects to mapping 
     ]);
 
     Queue::assertNothingPushed();
+});
+
+// Reauthorize tests
+
+test('reauthorize returns 403 when user does not own the connection', function () {
+    $owner = User::factory()->onboarded()->create();
+    $other = User::factory()->onboarded()->create();
+    Feature::for($other)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->error()->create([
+        'user_id' => $owner->id,
+    ]);
+
+    $response = $this->actingAs($other)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertForbidden();
+});
+
+test('reauthorize returns 422 for non-EnableBanking connections', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->indexaCapital()->error()->create([
+        'user_id' => $user->id,
+    ]);
+
+    $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertUnprocessable();
+    $response->assertJson(['error' => 'Only EnableBanking connections can be re-authorized.']);
+});
+
+test('reauthorize returns 422 for active connections', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+    ]);
+
+    $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertUnprocessable();
+    $response->assertJson(['error' => 'Only connections with an error or expired status can be re-authorized.']);
+});
+
+test('reauthorize starts new authorization and sets connection to pending for error connections', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    $originalAuthorizationId = $connection->authorization_id;
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->with('CaixaBank', 'ES', config('services.enablebanking.redirect_url'))
+        ->once()
+        ->andReturn([
+            'url' => 'https://bank.example.com/reauthorize',
+            'authorization_id' => 'new-auth-id-456',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertOk();
+    $response->assertJsonStructure(['redirect_url', 'connection_id']);
+    $response->assertJson([
+        'redirect_url' => 'https://bank.example.com/reauthorize',
+        'connection_id' => $connection->id,
+    ]);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Pending);
+    expect($connection->authorization_id)->toBe('new-auth-id-456');
+    expect($connection->authorization_id)->not->toBe($originalAuthorizationId);
+    expect($connection->error_message)->toBeNull();
+});
+
+test('reauthorize starts new authorization for expired connections', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->expired()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Santander',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->once()
+        ->andReturn([
+            'url' => 'https://bank.example.com/reauthorize',
+            'authorization_id' => 'new-auth-id-789',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertOk();
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Pending);
+    expect($connection->authorization_id)->toBe('new-auth-id-789');
+});
+
+// Reconnect callback tests
+
+test('callback with existing accounts updates session without creating new accounts', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'last_synced_at' => now()->subWeek(),
+    ]);
+
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'existing-ext-account-1',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'new-session-456',
+            'accounts' => [
+                [
+                    'uid' => 'existing-ext-account-1',
+                    'currency' => 'EUR',
+                    'name' => 'CaixaBank Account',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+            ],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $response->assertRedirect(route('settings.connections.index'));
+    $response->assertSessionHas('success', 'Bank account reconnected successfully.');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->session_id)->toBe('new-session-456');
+    expect($connection->error_message)->toBeNull();
+
+    // No duplicate accounts should have been created
+    $this->assertDatabaseCount('accounts', 1);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
+});
+
+test('callback with existing accounts skips account-mapping even when feature flag is enabled', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+    Feature::for($user)->activate('account-mapping');
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'existing-ext-account-1',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->once()
+        ->andReturn([
+            'session_id' => 'new-session-789',
+            'accounts' => [],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    // Must redirect to connections page, NOT to the account-mapping route
+    $response->assertRedirect(route('settings.connections.index'));
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
 });
