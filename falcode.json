@@ -1,0 +1,10 @@
+{
+    "$schema": "https://github.com/victor-falcon/falcode/raw/refs/heads/main/internal/config/schema.json",
+    "appended_tabs": [
+        {
+            "name": "server",
+            "command": "composer run dev",
+            "auto_run": false
+        }
+    ]
+}
