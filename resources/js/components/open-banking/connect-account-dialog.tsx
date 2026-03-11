@@ -16,7 +16,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import type { EnableBankingInstitution } from '@/types/banking';
+import type {
+    BankingConnection,
+    EnableBankingInstitution,
+} from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -65,6 +68,7 @@ const BITPANDA_INSTITUTION: EnableBankingInstitution = {
 interface ConnectAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    connections?: BankingConnection[];
 }
 
 type Step = 'country' | 'bank' | 'confirm';
@@ -81,6 +85,7 @@ function getCsrfToken(): string {
 export function ConnectAccountDialog({
     open,
     onOpenChange,
+    connections = [],
 }: ConnectAccountDialogProps) {
     const [step, setStep] = useState<Step>('country');
     const [country, setCountry] = useState<string>('');
@@ -171,6 +176,14 @@ export function ConnectAccountDialog({
 
             const data = await response.json();
 
+            const connectedEnableBankingNames = new Set(
+                connections
+                    .filter((c) => c.provider === 'enablebanking')
+                    .map((c) => c.aspsp_name),
+            );
+            const hasProvider = (provider: string) =>
+                connections.some((c) => c.provider === provider);
+
             const extraInstitutions = [
                 BINANCE_INSTITUTION,
                 BITPANDA_INSTITUTION,
@@ -179,9 +192,20 @@ export function ConnectAccountDialog({
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
             }
 
-            const allInstitutions = [...extraInstitutions, ...data].sort(
-                (a, b) => a.name.localeCompare(b.name),
-            );
+            const allInstitutions = [...extraInstitutions, ...data]
+                .filter((institution) => {
+                    if (institution.name === 'Binance') {
+                        return !hasProvider('binance');
+                    }
+                    if (institution.name === 'Bitpanda') {
+                        return !hasProvider('bitpanda');
+                    }
+                    if (institution.name === 'Indexa Capital') {
+                        return !hasProvider('indexacapital');
+                    }
+                    return !connectedEnableBankingNames.has(institution.name);
+                })
+                .sort((a, b) => a.name.localeCompare(b.name));
 
             setInstitutions(allInstitutions);
             setFilteredInstitutions(allInstitutions);

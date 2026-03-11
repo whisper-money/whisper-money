@@ -397,3 +397,42 @@ test('credential update validates required fields for binance', function () {
 
     $response->assertSessionHasErrors('api_secret');
 });
+
+test('connections page includes provider and aspsp_name fields needed for frontend duplicate filtering', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'provider' => 'enablebanking',
+        'aspsp_name' => 'CaixaBank',
+    ]);
+
+    $response = $this->actingAs($user)->get('/settings/connections');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('connections', 1)
+        ->where('connections.0.provider', 'enablebanking')
+        ->where('connections.0.aspsp_name', 'CaixaBank')
+    );
+});
+
+test('connections page includes connections from all provider types for frontend filtering', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    BankingConnection::factory()->create(['user_id' => $user->id, 'provider' => 'enablebanking', 'aspsp_name' => 'CaixaBank']);
+    BankingConnection::factory()->binance()->create(['user_id' => $user->id]);
+    BankingConnection::factory()->bitpanda()->create(['user_id' => $user->id]);
+    BankingConnection::factory()->indexaCapital()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->get('/settings/connections');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->has('connections', 4)
+        ->has('connections.0.provider')
+        ->has('connections.0.aspsp_name')
+    );
+});
