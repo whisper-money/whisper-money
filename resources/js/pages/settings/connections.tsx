@@ -351,6 +351,7 @@ export default function ConnectionsPage({ connections }: Props) {
                 <ConnectAccountDialog
                     open={connectDialogOpen}
                     onOpenChange={setConnectDialogOpen}
+                    connections={connections}
                 />
 
                 <UpgradeConnectionDialog
