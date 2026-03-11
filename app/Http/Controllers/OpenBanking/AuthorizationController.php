@@ -55,6 +55,43 @@ class AuthorizationController extends Controller
     }
 
     /**
+     * Re-authorize an existing EnableBanking connection whose session has been revoked.
+     */
+    public function reauthorize(Request $request, BankingConnection $connection, BankingProviderInterface $provider): JsonResponse
+    {
+        if ($connection->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if (! $connection->isEnableBanking()) {
+            return response()->json(['error' => 'Only EnableBanking connections can be re-authorized.'], 422);
+        }
+
+        if ($connection->status !== BankingConnectionStatus::Error && ! $connection->isExpired()) {
+            return response()->json(['error' => 'Only connections with an error or expired status can be re-authorized.'], 422);
+        }
+
+        $redirectUrl = config('services.enablebanking.redirect_url');
+
+        $result = $provider->startAuthorization(
+            $connection->aspsp_name,
+            $connection->aspsp_country,
+            $redirectUrl,
+        );
+
+        $connection->update([
+            'authorization_id' => $result['authorization_id'],
+            'status' => BankingConnectionStatus::Pending,
+            'error_message' => null,
+        ]);
+
+        return response()->json([
+            'redirect_url' => $result['url'],
+            'connection_id' => $connection->id,
+        ]);
+    }
+
+    /**
      * Handle the callback from bank authorization.
      */
     public function callback(Request $request, BankingProviderInterface $provider): RedirectResponse
@@ -102,6 +139,22 @@ class AuthorizationController extends Controller
         if (! $connection) {
             return redirect()->route($errorRedirect)
                 ->with('error', 'No pending connection found.');
+        }
+
+        $isReconnect = $connection->accounts()->exists();
+
+        if ($isReconnect) {
+            $connection->update([
+                'session_id' => $sessionData['session_id'],
+                'status' => BankingConnectionStatus::Active,
+                'valid_until' => $sessionData['access']['valid_until'] ?? null,
+                'error_message' => null,
+            ]);
+
+            SyncBankingConnectionJob::dispatch($connection);
+
+            return redirect()->route('settings.connections.index')
+                ->with('success', __('Bank account reconnected successfully.'));
         }
 
         if (Feature::for($user)->active('account-mapping')) {

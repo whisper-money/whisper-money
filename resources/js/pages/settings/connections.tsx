@@ -31,10 +31,16 @@ import {
     KeyRound,
     MoreHorizontal,
     RefreshCw,
+    RotateCcw,
     Unplug,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+
+function getCsrfToken(): string {
+    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+}
 
 interface Props {
     connections: BankingConnection[];
@@ -50,6 +56,7 @@ export default function ConnectionsPage({ connections }: Props) {
         useState<BankingConnection | null>(null);
     const [updateCredentialsConnection, setUpdateCredentialsConnection] =
         useState<BankingConnection | null>(null);
+    const [reconnectingId, setReconnectingId] = useState<string | null>(null);
 
     const hasSyncing = connections.some(
         (c) => c.status === 'active' && !c.last_synced_at,
@@ -78,6 +85,40 @@ export default function ConnectionsPage({ connections }: Props) {
         router.post(`/settings/connections/${connection.id}/sync`);
     }
 
+    async function handleReconnect(connection: BankingConnection) {
+        setReconnectingId(connection.id);
+        try {
+            const response = await fetch(
+                `/open-banking/connections/${connection.id}/reauthorize`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-XSRF-TOKEN': getCsrfToken(),
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(
+                    data.error || __('Failed to start re-authorization.'),
+                );
+            }
+
+            const data = await response.json();
+            window.location.href = data.redirect_url;
+        } catch (e) {
+            toast.error(
+                e instanceof Error
+                    ? e.message
+                    : __('Failed to reconnect. Please try again.'),
+            );
+            setReconnectingId(null);
+        }
+    }
+
     function isApiKeyProvider(connection: BankingConnection): boolean {
         return ['indexacapital', 'binance', 'bitpanda'].includes(
             connection.provider,
@@ -88,6 +129,15 @@ export default function ConnectionsPage({ connections }: Props) {
         return (
             connection.status === 'error' &&
             isApiKeyProvider(connection) &&
+            (connection.error_message?.includes('Authentication failed') ??
+                false)
+        );
+    }
+
+    function isEnableBankingAuthError(connection: BankingConnection): boolean {
+        return (
+            connection.status === 'error' &&
+            connection.provider === 'enablebanking' &&
             (connection.error_message?.includes('Authentication failed') ??
                 false)
         );
@@ -207,10 +257,31 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             )}
                                                         </DropdownMenuItem>
                                                     )}
+                                                    {isEnableBankingAuthError(
+                                                        connection,
+                                                    ) && (
+                                                        <DropdownMenuItem
+                                                            onClick={() =>
+                                                                handleReconnect(
+                                                                    connection,
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                reconnectingId ===
+                                                                connection.id
+                                                            }
+                                                        >
+                                                            <RotateCcw className="mr-2 h-4 w-4" />
+                                                            {__('Reconnect')}
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     {(connection.status ===
                                                         'active' ||
-                                                        connection.status ===
-                                                            'error') && (
+                                                        (connection.status ===
+                                                            'error' &&
+                                                            !isEnableBankingAuthError(
+                                                                connection,
+                                                            ))) && (
                                                         <DropdownMenuItem
                                                             onClick={() =>
                                                                 handleSync(
@@ -313,19 +384,50 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                     )}
                                                                 </Button>
                                                             )}
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                className="h-7 text-xs"
-                                                                onClick={() =>
-                                                                    handleSync(
-                                                                        connection,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <RefreshCw className="mr-1.5 h-3 w-3" />
-                                                                {__('Retry')}
-                                                            </Button>
+                                                            {isEnableBankingAuthError(
+                                                                connection,
+                                                            ) ? (
+                                                                <Button
+                                                                    variant="secondary"
+                                                                    size="sm"
+                                                                    className="h-7 text-xs"
+                                                                    disabled={
+                                                                        reconnectingId ===
+                                                                        connection.id
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleReconnect(
+                                                                            connection,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {reconnectingId ===
+                                                                    connection.id ? (
+                                                                        <Spinner className="mr-1.5 size-3" />
+                                                                    ) : (
+                                                                        <RotateCcw className="mr-1.5 h-3 w-3" />
+                                                                    )}
+                                                                    {__(
+                                                                        'Reconnect',
+                                                                    )}
+                                                                </Button>
+                                                            ) : (
+                                                                <Button
+                                                                    variant="secondary"
+                                                                    size="sm"
+                                                                    className="h-7 text-xs"
+                                                                    onClick={() =>
+                                                                        handleSync(
+                                                                            connection,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <RefreshCw className="mr-1.5 h-3 w-3" />
+                                                                    {__(
+                                                                        'Retry',
+                                                                    )}
+                                                                </Button>
+                                                            )}
                                                             <a
                                                                 href="https://discord.gg/2WZmDW9QZ8"
                                                                 target="_blank"
