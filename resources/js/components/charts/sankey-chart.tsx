@@ -4,6 +4,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { SankeyCategory, SankeyData } from '@/hooks/use-cashflow-data';
 import { useLocale } from '@/hooks/use-locale';
 import {
@@ -57,6 +58,7 @@ interface OtherCategoriesBreakdownProps {
     currency: string;
     grandTotal: number;
     locale: string;
+    isPrivacyModeEnabled: boolean;
 }
 
 function OtherCategoriesBreakdown({
@@ -65,7 +67,13 @@ function OtherCategoriesBreakdown({
     currency,
     grandTotal,
     locale,
+    isPrivacyModeEnabled,
 }: OtherCategoriesBreakdownProps) {
+    const maskIfPrivate = (value: number) => {
+        const formatted = formatCurrency(value, currency, locale, 0, 0);
+        return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
+    };
+
     return (
         <div className="w-64">
             <div className="space-y-3">
@@ -106,13 +114,7 @@ function OtherCategoriesBreakdown({
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">
                                     <span className="font-medium">
-                                        {formatCurrency(
-                                            item.amount,
-                                            currency,
-                                            locale,
-                                            0,
-                                            0,
-                                        )}
+                                        {maskIfPrivate(item.amount)}
                                     </span>
                                     <span className="text-muted-foreground">
                                         {percentage.toFixed(1)}%
@@ -127,7 +129,7 @@ function OtherCategoriesBreakdown({
 
                 <div className="flex items-center justify-between text-sm font-medium">
                     <span>{__('Total')}</span>
-                    <span>{formatCurrency(total, currency, locale, 0, 0)}</span>
+                    <span>{maskIfPrivate(total)}</span>
                 </div>
             </div>
         </div>
@@ -144,6 +146,12 @@ export function SankeyChart({
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
     const locale = useLocale();
+    const { isPrivacyModeEnabled } = usePrivacyMode();
+
+    const maskIfPrivate = (value: number) => {
+        const formatted = formatCurrency(value, currency, locale, 0, 0);
+        return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
+    };
 
     const { nodes, links, isEmpty, otherGroups } = useMemo(() => {
         const {
@@ -507,13 +515,7 @@ export function SankeyChart({
                                     dominantBaseline="middle"
                                     className="fill-muted-foreground text-[9px]"
                                 >
-                                    {formatCurrency(
-                                        node.value,
-                                        currency,
-                                        locale,
-                                        0,
-                                        0,
-                                    )}
+                                    {maskIfPrivate(node.value)}
                                 </text>
                             </g>
                         );
@@ -528,7 +530,7 @@ export function SankeyChart({
                                 <Popover key={node.id}>
                                     <PopoverTrigger
                                         asChild
-                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${formatCurrency(otherGroup.total, currency, locale, 0, 0)}`}
+                                        aria-label={`View ${otherGroup.categories.length} grouped categories totaling ${maskIfPrivate(otherGroup.total)}`}
                                     >
                                         {nodeContent}
                                     </PopoverTrigger>
@@ -545,6 +547,9 @@ export function SankeyChart({
                                             currency={currency}
                                             grandTotal={grandTotal}
                                             locale={locale}
+                                            isPrivacyModeEnabled={
+                                                isPrivacyModeEnabled
+                                            }
                                         />
                                     </PopoverContent>
                                 </Popover>
