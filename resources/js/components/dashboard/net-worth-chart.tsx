@@ -175,8 +175,31 @@ export function NetWorthChart({
         accountsForHook,
     } = useMemo(() => {
         const accounts = activeData.accounts || {};
-        const accountIds = Object.keys(accounts);
         const chartDataArray = activeData.data || [];
+
+        // Sort accounts by descending average balance so the largest accounts
+        // are at the bottom of the stacked chart and smallest are on top.
+        // Using the average across all data points ensures a consistent order
+        // across every period (month or day).
+        const accountIds = Object.keys(accounts).sort((a, b) => {
+            const valuesA = chartDataArray
+                .map((p) => p[a])
+                .filter((v): v is number => typeof v === 'number');
+            const avgA =
+                valuesA.length > 0
+                    ? valuesA.reduce((s, v) => s + v, 0) / valuesA.length
+                    : 0;
+
+            const valuesB = chartDataArray
+                .map((p) => p[b])
+                .filter((v): v is number => typeof v === 'number');
+            const avgB =
+                valuesB.length > 0
+                    ? valuesB.reduce((s, v) => s + v, 0) / valuesB.length
+                    : 0;
+
+            return avgB - avgA;
+        });
 
         const config: ChartConfig = {};
         const currencies: Record<string, string> = {};
