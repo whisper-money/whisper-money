@@ -6,6 +6,7 @@ use App\Contracts\BankingProviderInterface;
 use App\Models\Account;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\RequestException;
 use Throwable;
 
 class BackfillAccountIbans extends Command
@@ -64,6 +65,7 @@ class BackfillAccountIbans extends Command
 
         $updated = 0;
         $skipped = 0;
+        $expiredSessions = 0;
         $failed = 0;
 
         foreach ($accounts as $account) {
@@ -83,6 +85,14 @@ class BackfillAccountIbans extends Command
                 }
 
                 $updated++;
+            } catch (RequestException $e) {
+                if ($e->response->status() === 404) {
+                    $expiredSessions++;
+                } else {
+                    $this->newLine();
+                    $this->warn("Failed for account {$account->id} ({$account->external_account_id}): {$e->getMessage()}");
+                    $failed++;
+                }
             } catch (Throwable $e) {
                 $this->newLine();
                 $this->warn("Failed for account {$account->id} ({$account->external_account_id}): {$e->getMessage()}");
@@ -96,7 +106,7 @@ class BackfillAccountIbans extends Command
         $this->newLine();
 
         $verb = $isDryRun ? 'would be updated' : 'updated';
-        $this->info("IBAN {$verb} for {$updated} account(s). Skipped (no IBAN): {$skipped}. Failed: {$failed}.");
+        $this->info("IBAN {$verb} for {$updated} account(s). Skipped (no IBAN in API response): {$skipped}. Skipped (expired/revoked session): {$expiredSessions}. Failed: {$failed}.");
 
         return $failed > 0 ? Command::FAILURE : Command::SUCCESS;
     }

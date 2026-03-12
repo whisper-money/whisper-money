@@ -4,6 +4,9 @@ use App\Contracts\BankingProviderInterface;
 use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\User;
+use GuzzleHttp\Psr7\Response as GuzzleResponse;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response as HttpClientResponse;
 
 beforeEach(function () {
     config([
@@ -53,7 +56,7 @@ test('skips accounts where api returns no iban', function () {
 
     $this->artisan('banking:backfill-ibans')
         ->assertSuccessful()
-        ->expectsOutputToContain('Skipped (no IBAN): 1');
+        ->expectsOutputToContain('Skipped (no IBAN in API response): 1');
 
     expect($account->fresh()->iban)->toBeNull();
 });
@@ -184,7 +187,32 @@ test('filters by connection id', function () {
     $this->artisan('banking:backfill-ibans', ['--connection' => $connection->id])->assertSuccessful();
 });
 
-test('continues and reports failure when api call throws', function () {
+test('treats 404 as expired session and does not count as failure', function () {
+    $user = User::factory()->create();
+    $connection = BankingConnection::factory()->for($user)->create(['provider' => 'enablebanking']);
+    $account = Account::factory()->for($user)->create([
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'uid-expired',
+        'iban' => null,
+    ]);
+
+    $exception = new RequestException(new HttpClientResponse(new GuzzleResponse(404)));
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getAccount')
+        ->once()
+        ->andThrow($exception);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->artisan('banking:backfill-ibans')
+        ->assertSuccessful()
+        ->expectsOutputToContain('Skipped (expired/revoked session): 1');
+
+    expect($account->fresh()->iban)->toBeNull();
+});
+
+test('continues and reports failure when api call throws a non-404 error', function () {
     $user = User::factory()->create();
     $connection = BankingConnection::factory()->for($user)->create(['provider' => 'enablebanking']);
     $account = Account::factory()->for($user)->create([
