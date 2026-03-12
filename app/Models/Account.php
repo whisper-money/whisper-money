@@ -28,6 +28,7 @@ class Account extends Model
         'encrypted',
         'banking_connection_id',
         'external_account_id',
+        'iban',
         'linked_at',
     ];
 

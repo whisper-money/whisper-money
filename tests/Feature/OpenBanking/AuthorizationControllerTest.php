@@ -448,3 +448,212 @@ test('callback with existing accounts skips account-mapping even when feature fl
 
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
+
+// refreshAccountIds tests
+
+test('reconnect callback updates external_account_id when enable banking issues new account uids', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $account = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-uid-1',
+        'iban' => 'ES1234567890123456789012',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'new-session-abc',
+            'accounts' => [
+                [
+                    'uid' => 'new-uid-1',
+                    'currency' => 'EUR',
+                    'name' => 'CaixaBank Account',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+            ],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $account->refresh();
+    expect($account->external_account_id)->toBe('new-uid-1');
+    expect($account->iban)->toBe('ES1234567890123456789012');
+});
+
+test('reconnect callback matches accounts by iban before falling back to position', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    // Two accounts; create them in reverse IBAN order to confirm positional matching
+    // would produce wrong results, while IBAN matching produces correct results.
+    $accountA = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-uid-a',
+        'iban' => 'ES0000000000000000000001',
+        'created_at' => now()->subMinutes(2),
+    ]);
+
+    $accountB = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-uid-b',
+        'iban' => 'ES0000000000000000000002',
+        'created_at' => now()->subMinutes(1),
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->once()
+        ->andReturn([
+            'session_id' => 'new-session-abc',
+            // Enable Banking returns accounts in a different order this time
+            'accounts' => [
+                [
+                    'uid' => 'new-uid-b',
+                    'currency' => 'EUR',
+                    'name' => 'Account B',
+                    'account_id' => ['iban' => 'ES0000000000000000000002'],
+                ],
+                [
+                    'uid' => 'new-uid-a',
+                    'currency' => 'EUR',
+                    'name' => 'Account A',
+                    'account_id' => ['iban' => 'ES0000000000000000000001'],
+                ],
+            ],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    expect($accountA->refresh()->external_account_id)->toBe('new-uid-a');
+    expect($accountB->refresh()->external_account_id)->toBe('new-uid-b');
+});
+
+test('reconnect callback uses positional fallback for accounts without stored iban', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $accountA = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-uid-a',
+        'iban' => null, // legacy account without IBAN stored
+        'created_at' => now()->subMinutes(2),
+    ]);
+
+    $accountB = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'old-uid-b',
+        'iban' => null,
+        'created_at' => now()->subMinutes(1),
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->once()
+        ->andReturn([
+            'session_id' => 'new-session-abc',
+            'accounts' => [
+                [
+                    'uid' => 'new-uid-a',
+                    'currency' => 'EUR',
+                    'name' => 'Account A',
+                    'account_id' => ['iban' => 'ES0000000000000000000001'],
+                ],
+                [
+                    'uid' => 'new-uid-b',
+                    'currency' => 'EUR',
+                    'name' => 'Account B',
+                    'account_id' => ['iban' => 'ES0000000000000000000002'],
+                ],
+            ],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    // Positional match: index 0 → accountA (oldest), index 1 → accountB
+    expect($accountA->refresh()->external_account_id)->toBe('new-uid-a');
+    expect($accountA->refresh()->iban)->toBe('ES0000000000000000000001'); // IBAN populated from new session
+    expect($accountB->refresh()->external_account_id)->toBe('new-uid-b');
+    expect($accountB->refresh()->iban)->toBe('ES0000000000000000000002');
+});
+
+test('callback stores iban when creating accounts for the first time', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-new',
+            'accounts' => [
+                [
+                    'uid' => 'ext-account-1',
+                    'currency' => 'EUR',
+                    'name' => 'My Account',
+                    'account_id' => ['iban' => 'ES9999999999999999999999'],
+                ],
+            ],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'external_account_id' => 'ext-account-1',
+        'iban' => 'ES9999999999999999999999',
+    ]);
+});
