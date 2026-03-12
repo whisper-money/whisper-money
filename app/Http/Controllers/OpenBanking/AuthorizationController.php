@@ -151,6 +151,8 @@ class AuthorizationController extends Controller
                 'error_message' => null,
             ]);
 
+            $this->refreshAccountIds($connection, $sessionData['accounts']);
+
             SyncBankingConnectionJob::dispatch($connection);
 
             return redirect()->route('settings.connections.index')
@@ -194,6 +196,61 @@ class AuthorizationController extends Controller
     }
 
     /**
+     * Refresh external_account_id and iban on existing accounts after a reconnect.
+     *
+     * Enable Banking issues new account UIDs with every new session, so the stored
+     * external_account_id values become invalid as soon as the old session expires.
+     *
+     * Matching strategy (in priority order):
+     *   1. Match by IBAN — reliable when the account was created after the iban column existed.
+     *   2. Positional fallback — match by creation order for legacy accounts without a stored IBAN.
+     *
+     * @param  array<int, array<string, mixed>>  $newAccounts
+     */
+    private function refreshAccountIds(BankingConnection $connection, array $newAccounts): void
+    {
+        if (empty($newAccounts)) {
+            return;
+        }
+
+        $existingAccounts = $connection->accounts()->orderBy('created_at')->get();
+
+        $unmatchedNew = collect($newAccounts);
+        $unmatchedExisting = collect();
+
+        foreach ($existingAccounts as $account) {
+            if ($account->iban) {
+                $matched = $unmatchedNew->first(fn (array $data) => ($data['account_id']['iban'] ?? null) === $account->iban);
+
+                if ($matched) {
+                    $account->update([
+                        'external_account_id' => $matched['uid'],
+                        'iban' => $matched['account_id']['iban'] ?? $account->iban,
+                    ]);
+                    $unmatchedNew = $unmatchedNew->reject(fn (array $data) => ($data['uid'] ?? null) === $matched['uid'])->values();
+
+                    continue;
+                }
+            }
+
+            $unmatchedExisting->push($account);
+        }
+
+        foreach ($unmatchedExisting as $index => $account) {
+            $newAccountData = $unmatchedNew->get($index);
+
+            if (! $newAccountData) {
+                continue;
+            }
+
+            $account->update([
+                'external_account_id' => $newAccountData['uid'],
+                'iban' => $newAccountData['account_id']['iban'] ?? null,
+            ]);
+        }
+    }
+
+    /**
      * Auto-create accounts from pending_accounts_data without user interaction.
      */
     private function createAccountsFromPending($user, BankingConnection $connection): void
@@ -228,13 +285,9 @@ class AuthorizationController extends Controller
                 'type' => AccountType::Checking->value,
                 'banking_connection_id' => $connection->id,
                 'external_account_id' => $uid,
+                'iban' => $accountData['account_id']['iban'] ?? null,
             ]);
         }
-
-        $connection->update([
-            'status' => BankingConnectionStatus::Active,
-            'pending_accounts_data' => null,
-        ]);
     }
 
     /**
@@ -283,6 +336,7 @@ class AuthorizationController extends Controller
                 'type' => AccountType::Checking->value,
                 'banking_connection_id' => $connection->id,
                 'external_account_id' => $uid,
+                'iban' => $accountData['account_id']['iban'] ?? null,
             ]);
         }
     }
