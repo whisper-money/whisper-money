@@ -119,6 +119,15 @@ class EnableBankingProvider implements BankingProviderInterface
         return $response->json();
     }
 
+    public function getAccount(string $accountId): array
+    {
+        $response = $this->client()->get("/accounts/{$accountId}");
+
+        $response->throw();
+
+        return $response->json();
+    }
+
     public function revokeSession(string $sessionId): void
     {
         $response = $this->client()->delete("/sessions/{$sessionId}");
