@@ -185,7 +185,7 @@ export function TransactionActionsMenu({
                             disabled={isReEvaluating}
                         >
                             <WandSparkles className="mr-2 h-4 w-4" />
-                            {__('Re-evaluate All Expenses')}
+                            {__('Update categories automatically')}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
