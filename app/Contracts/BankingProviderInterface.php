@@ -47,6 +47,13 @@ interface BankingProviderInterface
     public function getSession(string $sessionId): array;
 
     /**
+     * Get details for a single account, including IBAN.
+     *
+     * @return array{uid: string, account_id: array{iban?: string}, currency: string, name: string|null}
+     */
+    public function getAccount(string $accountId): array;
+
+    /**
      * Revoke a session and its consent.
      */
     public function revokeSession(string $sessionId): void;
