@@ -121,7 +121,7 @@ class EnableBankingProvider implements BankingProviderInterface
 
     public function getAccount(string $accountId): array
     {
-        $response = $this->client()->get("/accounts/{$accountId}");
+        $response = $this->client()->get("/accounts/{$accountId}/details");
 
         $response->throw();
 
