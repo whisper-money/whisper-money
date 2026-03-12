@@ -151,7 +151,7 @@ class AuthorizationController extends Controller
                 'error_message' => null,
             ]);
 
-            $this->refreshAccountIds($connection, $sessionData['accounts'] ?? []);
+            $this->refreshAccountIds($connection, $sessionData['accounts']);
 
             SyncBankingConnectionJob::dispatch($connection);
 
