@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.1.18](https://github.com/whisper-money/whisper-money/compare/v0.1.17...v0.1.18) (2026-03-12)
+
+
+### Bug Fixes
+
+* **banking:** correct backfill-ibans endpoint and handle expired sessions gracefully ([#222](https://github.com/whisper-money/whisper-money/issues/222)) ([08dfb07](https://github.com/whisper-money/whisper-money/commit/08dfb07a90ac4e29b10d5412853d6d11579f3d52))
+* **banking:** correct backfill-ibans endpoint, handle expired sessions, and update labels ([#223](https://github.com/whisper-money/whisper-money/issues/223)) ([b92c4ed](https://github.com/whisper-money/whisper-money/commit/b92c4ed149974e1cb1b48af215dbbd6d10f419e4))
+* **banking:** update external_account_id on reconnect and store IBAN ([#220](https://github.com/whisper-money/whisper-money/issues/220)) ([4408f71](https://github.com/whisper-money/whisper-money/commit/4408f719b49cb16ea306ab945ce79e507d948ec0))
+* **banks:set-logo:** add JPEG support test coverage and prompt for missing arguments ([#214](https://github.com/whisper-money/whisper-money/issues/214)) ([cbe28ff](https://github.com/whisper-money/whisper-money/commit/cbe28ff708a2f94df4f590d913f3f370514be9e9))
+* **cashflow:** hide amounts on sankey chart when privacy mode is enabled ([8eb7a0c](https://github.com/whisper-money/whisper-money/commit/8eb7a0cfd79f7b4ed931b696dde5d9ba42039a2e))
+* **transactions:** cap description column width to prevent horizontal overflow ([#216](https://github.com/whisper-money/whisper-money/issues/216)) ([28c8df3](https://github.com/whisper-money/whisper-money/commit/28c8df34d5fc8242cc91df3c119caa5832f9a394))
+
+
+### Features
+
+* **banking:** add banking:backfill-ibans command to populate missing IBANs ([#221](https://github.com/whisper-money/whisper-money/issues/221)) ([07ab9d5](https://github.com/whisper-money/whisper-money/commit/07ab9d5b963de4f7083d86f470923a144b5652ac))
+* **connections:** add EnableBanking reconnect flow ([#218](https://github.com/whisper-money/whisper-money/issues/218)) ([1f5e6ac](https://github.com/whisper-money/whisper-money/commit/1f5e6ac450f0240020db92c369c30d291e01c512))
+* **connections:** filter already-connected institutions from connect bank dialog ([#217](https://github.com/whisper-money/whisper-money/issues/217)) ([1058904](https://github.com/whisper-money/whisper-money/commit/1058904b14ac82df7dd1a1e8848b08b1ca64a143))
+* **dashboard:** sort net worth chart accounts by average balance ([#219](https://github.com/whisper-money/whisper-money/issues/219)) ([b1cf133](https://github.com/whisper-money/whisper-money/commit/b1cf133b5ae059a4aa830195d412a77796f66530))
+* **emails:** co-founder language, welcome rewrite, and Spanish translations ([#208](https://github.com/whisper-money/whisper-money/issues/208)) ([8ca4c8d](https://github.com/whisper-money/whisper-money/commit/8ca4c8d6c685fe214941dea4374f8af9dc30e7ac))
+* **landing:** billing period toggle with yearly discount on pricing section ([#215](https://github.com/whisper-money/whisper-money/issues/215)) ([e9572e4](https://github.com/whisper-money/whisper-money/commit/e9572e4031416a5daa982a4f87e9615157ccd29d))
+* **landing:** open-banking feature section with conditional grid layout ([#209](https://github.com/whisper-money/whisper-money/issues/209)) ([93369d8](https://github.com/whisper-money/whisper-money/commit/93369d8b6fb378cd16b086a1c65fd31dbd519350))
+* **pricing:** update landing page pricing table ([#207](https://github.com/whisper-money/whisper-money/issues/207)) ([21b03c7](https://github.com/whisper-money/whisper-money/commit/21b03c7c36a9017cc899a67cfcf3b01a54be5920))
+
 ## [0.1.17](https://github.com/whisper-money/whisper-money/compare/v0.1.16...v0.1.17) (2026-03-05)
 
 
