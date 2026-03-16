@@ -828,3 +828,34 @@ test('sends auth failed email for binance 403 error on final attempt', function 
             && $mail->bankingConnection->id === $connection->id;
     });
 });
+
+test('rate limit error does not set connection status to error', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(
+        new \Illuminate\Http\Client\RequestException(
+            new \Illuminate\Http\Client\Response(
+                new \GuzzleHttp\Psr7\Response(429)
+            )
+        )
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->error_message)->toBeNull();
+});
