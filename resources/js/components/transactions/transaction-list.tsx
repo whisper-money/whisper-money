@@ -1083,6 +1083,45 @@ export function TransactionList({
         }
     }
 
+    async function handleBulkLabelsChange(labelIds: string[]) {
+        const selectedIds = Object.keys(rowSelection);
+        if (selectedIds.length === 0) {
+            return;
+        }
+
+        setIsBulkUpdating(true);
+        try {
+            await transactionSyncService.updateMany(selectedIds, {
+                label_ids: labelIds,
+            });
+
+            const selectedLabels = labels.filter((label) =>
+                labelIds.includes(label.id),
+            );
+
+            setTransactions((previous) =>
+                previous.map((transaction) => {
+                    if (!selectedIds.includes(transaction.id.toString())) {
+                        return transaction;
+                    }
+
+                    return {
+                        ...transaction,
+                        label_ids: labelIds,
+                        labels: selectedLabels,
+                    };
+                }),
+            );
+
+            setRowSelection({});
+            setRefreshKey((prev) => prev + 1);
+        } catch (error) {
+            console.error('Failed to update transactions with labels:', error);
+        } finally {
+            setIsBulkUpdating(false);
+        }
+    }
+
     function handleBulkDeleteClick() {
         const selectedIds = Object.keys(rowSelection);
 
@@ -1337,7 +1376,9 @@ export function TransactionList({
             <BulkActionsBar
                 selectedCount={Object.keys(rowSelection).length}
                 categories={categories}
+                labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
+                onLabelsChange={handleBulkLabelsChange}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
                 onClear={handleClearSelection}

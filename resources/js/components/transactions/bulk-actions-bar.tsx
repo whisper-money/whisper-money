@@ -29,7 +29,7 @@ interface BulkActionsBarProps {
     selectedCount: number;
     isSelectingAll?: boolean;
     categories: Category[];
-    labels: Label[];
+    labels?: Label[];
     onCategoryChange: (categoryId: number | null) => void;
     onLabelsChange: (labelIds: string[]) => void;
     onDelete: () => void;
@@ -43,7 +43,7 @@ export function BulkActionsBar({
     selectedCount,
     isSelectingAll = false,
     categories,
-    labels,
+    labels = [],
     onCategoryChange,
     onLabelsChange,
     onDelete,

@@ -1,4 +1,5 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/LabelController';
+import { normalizeLabelComboboxState } from '@/components/shared/label-combobox-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,9 +21,9 @@ import { Check, ChevronsUpDown, Plus, Tag, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface LabelComboboxProps {
-    value: string[];
+    value?: string[] | null;
     onValueChange: (value: string[]) => void;
-    labels: Label[];
+    labels?: Label[] | null;
     disabled?: boolean;
     placeholder?: string;
     triggerClassName?: string;
@@ -46,29 +47,32 @@ export function LabelCombobox({
     const [inputValue, setInputValue] = useState('');
     const [isCreating, setIsCreating] = useState(false);
 
-    const selectedLabels = labels.filter((l) => value.includes(l.id));
+    const { value: safeValue, labels: safeLabels } =
+        normalizeLabelComboboxState(value, labels);
 
-    const sortedLabels = [...labels].sort((a, b) =>
+    const selectedLabels = safeLabels.filter((l) => safeValue.includes(l.id));
+
+    const sortedLabels = [...safeLabels].sort((a, b) =>
         a.name.localeCompare(b.name),
     );
 
     const handleSelect = (labelId: string) => {
-        if (value.includes(labelId)) {
-            onValueChange(value.filter((id) => id !== labelId));
+        if (safeValue.includes(labelId)) {
+            onValueChange(safeValue.filter((id) => id !== labelId));
         } else {
-            onValueChange([...value, labelId]);
+            onValueChange([...safeValue, labelId]);
         }
     };
 
     const handleRemove = (labelId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        onValueChange(value.filter((id) => id !== labelId));
+        onValueChange(safeValue.filter((id) => id !== labelId));
     };
 
     const handleCreate = async () => {
         if (!inputValue.trim() || isCreating) return;
 
-        const existingLabel = labels.find(
+        const existingLabel = safeLabels.find(
             (l) => l.name.toLowerCase() === inputValue.toLowerCase(),
         );
         if (existingLabel) {
@@ -108,7 +112,7 @@ export function LabelCombobox({
             const newLabel = data.data || data;
 
             if (newLabel) {
-                onValueChange([...value, newLabel.id]);
+                onValueChange([...safeValue, newLabel.id]);
                 setInputValue('');
                 onLabelCreated?.(newLabel);
             }
@@ -122,7 +126,9 @@ export function LabelCombobox({
     const showCreateOption =
         allowCreate &&
         inputValue.trim() &&
-        !labels.some((l) => l.name.toLowerCase() === inputValue.toLowerCase());
+        !safeLabels.some(
+            (l) => l.name.toLowerCase() === inputValue.toLowerCase(),
+        );
 
     return (
         <Popover modal open={open} onOpenChange={setOpen}>
@@ -238,7 +244,7 @@ export function LabelCombobox({
                                 const colorClasses = getLabelColorClasses(
                                     label.color,
                                 );
-                                const isSelected = value.includes(label.id);
+                                const isSelected = safeValue.includes(label.id);
                                 return (
                                     <CommandItem
                                         key={label.id}
