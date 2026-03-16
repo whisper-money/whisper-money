@@ -80,6 +80,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 'error' => $e->getMessage(),
             ]);
 
+            if ($this->isRateLimitError($e)) {
+                return;
+            }
+
             $connection->update([
                 'status' => BankingConnectionStatus::Error,
                 'error_message' => $this->friendlyErrorMessage($e),
@@ -201,6 +205,11 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
 
         return __('An unexpected error occurred during sync. Please try again later.');
+    }
+
+    private function isRateLimitError(\Throwable $e): bool
+    {
+        return $e instanceof RequestException && $e->response->status() === 429;
     }
 
     private function isAuthError(\Throwable $e): bool
