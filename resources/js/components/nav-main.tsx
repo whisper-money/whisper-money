@@ -5,11 +5,11 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { resolveUrl } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
-import { useWebHaptics } from 'web-haptics/react';
 
 export function NavMain({ items = [] }: { items: NavItem[] }) {
     const page = usePage();

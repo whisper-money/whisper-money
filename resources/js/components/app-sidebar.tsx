@@ -10,6 +10,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { cn, resolveUrl } from '@/lib/utils';
 import {
     footerNavItems,
@@ -20,7 +21,6 @@ import { SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 import { useMemo } from 'react';
-import { useWebHaptics } from 'web-haptics/react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {

@@ -1,8 +1,8 @@
+import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useWebHaptics } from 'web-haptics/react';
 
 interface Props {
     href: string;
