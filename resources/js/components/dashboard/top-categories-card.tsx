@@ -8,7 +8,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
+import { useChartColors } from '@/hooks/use-chart-colors';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import { Category, getCategoryColorClasses } from '@/types/category';
@@ -109,7 +109,7 @@ export function TopCategoriesCard({
                             <Link
                                 key={item.category.id}
                                 href={categoryUrl}
-                                className="-mx-1.5 my-1.5 block space-y-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted group"
+                                className="group -mx-1.5 my-1.5 block space-y-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                             >
                                 <div className="flex min-w-0 items-center gap-2">
                                     <div

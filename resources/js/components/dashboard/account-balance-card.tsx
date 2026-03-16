@@ -4,7 +4,7 @@ import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog
 import { BankLogo } from '@/components/bank-logo';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
+import { useChartColors } from '@/hooks/use-chart-colors';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';

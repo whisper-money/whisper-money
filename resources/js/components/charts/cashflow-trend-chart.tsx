@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import { TrendDataPoint } from '@/hooks/use-cashflow-data';
-import { useChartColors } from '@/hooks/use-chart-color-scheme';
+import { useChartColors } from '@/hooks/use-chart-colors';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { formatCompactNumber, formatMonthFromYearMonth } from '@/utils/date';
