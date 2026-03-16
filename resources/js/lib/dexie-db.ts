@@ -1,10 +1,6 @@
-import type {
-    Budget,
-    BudgetCategory,
-    BudgetPeriod,
-    BudgetPeriodAllocation,
-} from '@/types/budget';
+import type { Budget, BudgetPeriod } from '@/types/budget';
 import type { Transaction } from '@/types/transaction';
+import type { UUID } from '@/types/uuid';
 import Dexie, { type EntityTable } from 'dexie';
 
 export interface SyncMetadata {
@@ -15,11 +11,32 @@ export interface SyncMetadata {
 type WhisperMoneyDB = Dexie & {
     transactions: EntityTable<Transaction, 'id'>;
     budgets: EntityTable<Budget, 'id'>;
-    budget_categories: EntityTable<BudgetCategory, 'id'>;
+    budget_categories: EntityTable<{ id: UUID }, 'id'>;
     budget_periods: EntityTable<BudgetPeriod, 'id'>;
-    budget_period_allocations: EntityTable<BudgetPeriodAllocation, 'id'>;
+    budget_period_allocations: EntityTable<{ id: UUID }, 'id'>;
     sync_metadata: EntityTable<SyncMetadata, 'key'>;
 };
+
+export interface TransactionStoreLike {
+    toArray(): Promise<Transaction[]>;
+    get(key: UUID): Promise<Transaction | undefined>;
+    where(index: string): {
+        equals(key: UUID): {
+            toArray(): Promise<Transaction[]>;
+        };
+    };
+    bulkPut(records: readonly Transaction[]): Promise<unknown>;
+    clear(): Promise<void>;
+    delete(key: UUID): Promise<void>;
+}
+
+export interface TransactionDatabaseLike {
+    open(): Promise<unknown>;
+    close(): void;
+    delete(): Promise<void>;
+    tables: Array<{ name: string }>;
+    transactions?: TransactionStoreLike;
+}
 
 let dbInstance: WhisperMoneyDB | null = null;
 
@@ -81,6 +98,67 @@ function initializeDatabase(): WhisperMoneyDB {
     });
 
     return database;
+}
+
+function hasTransactionsTable(database: TransactionDatabaseLike): boolean {
+    return database.tables.some((table) => table.name === 'transactions');
+}
+
+async function resetTransactionDatabase(
+    database: TransactionDatabaseLike,
+): Promise<void> {
+    database.close();
+    await database.delete();
+    await database.open();
+}
+
+export async function ensureTransactionsTable(
+    database: TransactionDatabaseLike = db,
+): Promise<TransactionStoreLike | null> {
+    try {
+        await database.open();
+    } catch (error) {
+        console.warn(
+            'Failed to open IndexedDB transaction cache. Resetting local cache.',
+            error,
+        );
+
+        try {
+            await resetTransactionDatabase(database);
+        } catch (resetError) {
+            console.error(
+                'Failed to reset IndexedDB transaction cache.',
+                resetError,
+            );
+
+            return null;
+        }
+    }
+
+    if (database.transactions && hasTransactionsTable(database)) {
+        return database.transactions;
+    }
+
+    console.warn(
+        'IndexedDB transaction cache is missing the transactions table. Resetting local cache.',
+    );
+
+    try {
+        await resetTransactionDatabase(database);
+    } catch (resetError) {
+        console.error(
+            'Failed to rebuild IndexedDB transaction cache.',
+            resetError,
+        );
+
+        return null;
+    }
+
+    if (database.transactions && hasTransactionsTable(database)) {
+        return database.transactions;
+    }
+
+    return null;
 }
 
 export const db = new Proxy({} as WhisperMoneyDB, {

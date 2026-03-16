@@ -57,7 +57,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
-import { db } from '@/lib/dexie-db';
+import { ensureTransactionsTable } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
@@ -660,7 +660,14 @@ export function TransactionList({
                 const key = await importKey(keyString);
                 const searchLower = filters.searchText.toLowerCase();
 
-                let allIndexedTransactions = await db.transactions.toArray();
+                const transactionsTable = await ensureTransactionsTable();
+
+                if (!transactionsTable) {
+                    setSearchMatchedIds(new Set());
+                    return;
+                }
+
+                let allIndexedTransactions = await transactionsTable.toArray();
 
                 if (accountId) {
                     allIndexedTransactions = allIndexedTransactions.filter(

@@ -1,7 +1,7 @@
 import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
 import axios from 'axios';
-import { db } from './dexie-db';
+import { db, ensureTransactionsTable } from './dexie-db';
 
 export interface SyncResult {
     success: boolean;
@@ -74,6 +74,16 @@ export class TransactionSyncManager {
     }
 
     private async syncFromServer(result: SyncResult): Promise<void> {
+        const transactionsTable = await ensureTransactionsTable();
+
+        if (!transactionsTable) {
+            result.errors.push(
+                'Transaction cache is unavailable. Please retry the sync.',
+            );
+
+            return;
+        }
+
         const lastSync = await this.getLastSyncTime();
 
         const params: Record<string, string> = {};
@@ -89,7 +99,7 @@ export class TransactionSyncManager {
             throw new Error('Invalid server response format');
         }
 
-        const localRecords = await db.transactions.toArray();
+        const localRecords = await transactionsTable.toArray();
         const localMap = new Map(localRecords.map((r) => [r.id, r]));
 
         const toInsert: Transaction[] = [];
@@ -117,26 +127,44 @@ export class TransactionSyncManager {
         }
 
         if (toInsert.length > 0) {
-            await db.transactions.bulkPut(toInsert);
+            await transactionsTable.bulkPut(toInsert);
             result.inserted += toInsert.length;
         }
 
         if (toUpdate.length > 0) {
-            await db.transactions.bulkPut(toUpdate);
+            await transactionsTable.bulkPut(toUpdate);
             result.updated += toUpdate.length;
         }
     }
 
     async getAll(): Promise<Transaction[]> {
-        return await db.transactions.toArray();
+        const transactionsTable = await ensureTransactionsTable();
+
+        if (!transactionsTable) {
+            return [];
+        }
+
+        return await transactionsTable.toArray();
     }
 
     async getById(id: UUID): Promise<Transaction | null> {
-        return (await db.transactions.get(id)) || null;
+        const transactionsTable = await ensureTransactionsTable();
+
+        if (!transactionsTable) {
+            return null;
+        }
+
+        return (await transactionsTable.get(id)) || null;
     }
 
     async getByAccountId(accountId: UUID): Promise<Transaction[]> {
-        return await db.transactions
+        const transactionsTable = await ensureTransactionsTable();
+
+        if (!transactionsTable) {
+            return [];
+        }
+
+        return await transactionsTable
             .where('account_id')
             .equals(accountId)
             .toArray();
@@ -147,7 +175,12 @@ export class TransactionSyncManager {
     }
 
     async clearAll(): Promise<void> {
-        await db.transactions.clear();
+        const transactionsTable = await ensureTransactionsTable();
+
+        if (transactionsTable) {
+            await transactionsTable.clear();
+        }
+
         await db.sync_metadata.delete(LAST_SYNC_KEY);
     }
 }

@@ -1,5 +1,5 @@
 import { importKey } from '@/lib/crypto';
-import { db } from '@/lib/dexie-db';
+import { ensureTransactionsTable } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
 import { TransactionSyncManager } from '@/lib/sync-manager';
 import type { Transaction } from '@/types/transaction';
@@ -28,9 +28,12 @@ class TransactionSyncService {
         this.syncManager = new TransactionSyncManager({
             endpoint: '/api/sync/transactions',
             transformFromServer: (data) => {
-                const label_ids = data.labels?.map((l: { id: string }) => l.id);
+                const labels = Array.isArray(data.labels)
+                    ? (data.labels as Array<{ id: string }>)
+                    : [];
+                const label_ids = labels.map((label) => label.id);
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { labels, ...rest } = data;
+                const { labels: _labels, ...rest } = data;
                 return {
                     ...rest,
                     transaction_date: String(data.transaction_date).slice(
@@ -170,7 +173,14 @@ class TransactionSyncService {
 
     async delete(id: string): Promise<void> {
         await axios.delete(`/transactions/${id}`);
-        await db.transactions.delete(id);
+
+        const transactionsTable = await ensureTransactionsTable();
+
+        if (!transactionsTable) {
+            return;
+        }
+
+        await transactionsTable.delete(id);
     }
 
     async updateManyIndividual(
@@ -234,7 +244,7 @@ class TransactionSyncService {
                         }
                         return {
                             transaction_date: normalizeDate(t.transaction_date),
-                            amount: parseFloat(t.amount),
+                            amount: Number(t.amount),
                             description: decryptedDescription
                                 .toLowerCase()
                                 .trim()
