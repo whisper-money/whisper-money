@@ -1,6 +1,5 @@
 import { index, show } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceChart } from '@/components/accounts/account-balance-chart';
-import { AccountName } from '@/components/accounts/account-name';
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
@@ -27,7 +26,9 @@ import {
     formatAccountType,
     isTransactionalAccount,
 } from '@/types/account';
+import { AutomationRule } from '@/types/automation-rule';
 import { Category } from '@/types/category';
+import { Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Head } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
@@ -38,6 +39,8 @@ interface Props {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    labels?: Label[];
+    automationRules?: AutomationRule[];
 }
 
 export default function AccountShow({
@@ -45,6 +48,8 @@ export default function AccountShow({
     categories,
     accounts,
     banks,
+    labels = [],
+    automationRules = [],
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -65,9 +70,7 @@ export default function AccountShow({
             href: index().url,
         },
         {
-            title: (
-                <AccountName account={account} length={{ min: 5, max: 20 }} />
-            ),
+            title: account.name,
 
             href: show.url(account.id),
         },
@@ -90,12 +93,7 @@ export default function AccountShow({
                             fallback="letter"
                         />
                         <HeadingSmall
-                            title={
-                                <AccountName
-                                    account={account}
-                                    length={{ min: 8, max: 30 }}
-                                />
-                            }
+                            title={account.name}
                             description={`${account.bank?.name || 'Unknown Bank'} · ${formatAccountType(account.type)}`}
                         />
                     </div>
@@ -176,6 +174,8 @@ export default function AccountShow({
                         categories={categories}
                         accounts={accounts}
                         banks={banks}
+                        labels={labels}
+                        automationRules={automationRules}
                         accountId={account.id}
                         pageSize={10}
                         hideAccountFilter={true}

@@ -3,8 +3,10 @@
 use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\AutomationRule;
 use App\Models\Bank;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\User;
 
 beforeEach(function () {
@@ -146,6 +148,35 @@ test('account show includes categories, accounts, and banks', function () {
             ->has('categories', 3)
             ->has('accounts', 1)
             ->has('banks')
+        );
+});
+
+test('account show includes shared labels and automation rules for transaction tools', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $label = Label::factory()->create([
+        'user_id' => $this->user->id,
+        'name' => 'Groceries',
+    ]);
+
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'title' => 'Apply groceries label',
+    ]);
+
+    $rule->labels()->attach($label);
+
+    $response = $this->withoutVite()->get(route('accounts.show', $account));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Show')
+            ->has('labels', 1)
+            ->where('labels.0.id', $label->id)
+            ->has('automationRules', 1)
+            ->where('automationRules.0.id', $rule->id)
         );
 });
 
