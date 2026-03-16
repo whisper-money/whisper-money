@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCategorizeTransactions } from '@/hooks/use-categorize-transactions';
+import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type Transaction } from '@/types/transaction';
@@ -20,7 +21,6 @@ import {
     SkipForward,
 } from 'lucide-react';
 import { useEffect } from 'react';
-import { useWebHaptics } from 'web-haptics/react';
 
 interface Props {
     categories: Category[];
