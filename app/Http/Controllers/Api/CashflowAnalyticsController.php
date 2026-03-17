@@ -44,8 +44,10 @@ class CashflowAnalyticsController extends Controller
         $to = Carbon::parse($validated['to']);
         $userId = $request->user()->id;
 
-        $incomeCategories = $this->getCategoryBreakdown($userId, $from, $to, CategoryType::Income);
-        $expenseCategories = $this->getCategoryBreakdown($userId, $from, $to, CategoryType::Expense);
+        // Split by sign, not by category type: a single category can appear on
+        // both sides when it has both incoming and outgoing transactions.
+        $incomeCategories = $this->getSankeyBreakdown($userId, $from, $to, '>');
+        $expenseCategories = $this->getSankeyBreakdown($userId, $from, $to, '<');
 
         $totalIncome = $incomeCategories->sum('amount');
         $totalExpense = $expenseCategories->sum('amount');
@@ -171,12 +173,67 @@ class CashflowAnalyticsController extends Controller
             ->sum('transactions.amount');
     }
 
-    private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type)
+    private function getSankeyBreakdown(string $userId, Carbon $from, Carbon $to, string $operator)
     {
-        // Get categorized transactions
+        $isIncome = $operator === '>';
+
+        // Group all transactions by category using the amount sign, not the category
+        // type. This allows one category to appear on both sides of the Sankey when
+        // it contains transactions of both signs (e.g. an income category that also
+        // holds property expense payments will show income on the left and the
+        // outgoing payments on the right).
         $categorized = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->where('transactions.amount', $operator, 0)
+            ->whereNotNull('transactions.category_id')
+            ->join('categories', 'transactions.category_id', '=', 'categories.id')
+            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
+            ->groupBy('transactions.category_id')
+            ->with('category')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'category_id' => $item->category_id,
+                    'category' => $item->category,
+                    'amount' => abs($item->total_amount),
+                ];
+            });
+
+        $uncategorized = Transaction::query()
+            ->where('user_id', $userId)
+            ->whereBetween('transaction_date', [$from, $to])
+            ->whereNull('category_id')
+            ->where('amount', $operator, 0)
+            ->sum('amount');
+
+        if ($uncategorized != 0) {
+            $categorized->push([
+                'category_id' => null,
+                'category' => (new Category)->forceFill([
+                    'id' => null,
+                    'name' => $isIncome ? 'Unknown Income' : 'Unknown Expense',
+                    'type' => $isIncome ? CategoryType::Income : CategoryType::Expense,
+                    'color' => 'gray',
+                    'icon' => 'HelpCircle',
+                ]),
+                'amount' => abs($uncategorized),
+            ]);
+        }
+
+        return $categorized;
+    }
+
+    private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type)
+    {
+        // Get categorized transactions — filter by sign so that outgoing payments
+        // in an income category (or refunds in an expense category) are excluded.
+        // This ensures the Sankey shows the actual gross flow for each side, not
+        // the net which could be misleading when categories contain mixed-sign entries.
+        $categorized = Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->where('transactions.amount', $type === CategoryType::Income ? '>' : '<', 0)
             ->join('categories', function ($join) use ($type) {
                 $join->on('transactions.category_id', '=', 'categories.id')
                     ->where('categories.type', '=', $type);
