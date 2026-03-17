@@ -134,6 +134,7 @@ export default function CashflowPage() {
                                 data={sankey}
                                 height={400}
                                 currency={auth.user.currency_code}
+                                period={period}
                             />
                         )}
                     </CardContent>
@@ -146,6 +147,7 @@ export default function CashflowPage() {
                         data={incomeBreakdown}
                         loading={isLoading}
                         currency={auth.user.currency_code}
+                        period={period}
                     />
 
                     <BreakdownCard
@@ -153,6 +155,7 @@ export default function CashflowPage() {
                         data={expenseBreakdown}
                         loading={isLoading}
                         currency={auth.user.currency_code}
+                        period={period}
                     />
                 </div>
             </div>

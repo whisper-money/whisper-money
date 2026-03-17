@@ -1,3 +1,4 @@
+import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import {
     Popover,
     PopoverContent,
@@ -16,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { Category } from '@/types/category';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
+import { router } from '@inertiajs/react';
+import { format } from 'date-fns';
 import { useMemo, useState } from 'react';
 
 interface SankeyChartProps {
@@ -24,6 +27,7 @@ interface SankeyChartProps {
     className?: string;
     currency?: string;
     groupingThreshold?: number;
+    period?: { from: Date; to: Date };
 }
 
 interface NodeData {
@@ -142,6 +146,7 @@ export function SankeyChart({
     className,
     currency = 'USD',
     groupingThreshold = 0.03,
+    period,
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
@@ -428,16 +433,62 @@ export function SankeyChart({
                         const otherGroup = isOtherNode
                             ? otherGroups[node.id]
                             : null;
+                        const categoryUrl =
+                            node.category && period
+                                ? transactionsIndex({
+                                      query: {
+                                          category_ids: node.category.id,
+                                          date_from: format(
+                                              period.from,
+                                              'yyyy-MM-dd',
+                                          ),
+                                          date_to: format(
+                                              period.to,
+                                              'yyyy-MM-dd',
+                                          ),
+                                      },
+                                  }).url
+                                : null;
+                        const isNavigable =
+                            !isOtherNode && categoryUrl !== null;
 
                         const nodeContent = (
                             <g
                                 key={node.id}
                                 onMouseEnter={() => setHoveredNode(node.id)}
                                 onMouseLeave={() => setHoveredNode(null)}
+                                onClick={() => {
+                                    if (categoryUrl) {
+                                        router.visit(categoryUrl);
+                                    }
+                                }}
+                                onKeyDown={(event) => {
+                                    if (!categoryUrl) {
+                                        return;
+                                    }
+
+                                    if (
+                                        event.key === 'Enter' ||
+                                        event.key === ' '
+                                    ) {
+                                        event.preventDefault();
+                                        router.visit(categoryUrl);
+                                    }
+                                }}
+                                role={isNavigable ? 'link' : undefined}
+                                tabIndex={isNavigable ? 0 : undefined}
+                                aria-label={
+                                    isNavigable
+                                        ? `View ${node.label} transactions`
+                                        : undefined
+                                }
                                 className={cn(
                                     'transition-all duration-200',
                                     isOtherNode && 'cursor-pointer',
-                                    !isOtherNode && 'cursor-default',
+                                    isNavigable && 'cursor-pointer',
+                                    !isOtherNode &&
+                                        !isNavigable &&
+                                        'cursor-default',
                                 )}
                             >
                                 <rect

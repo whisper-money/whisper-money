@@ -1,3 +1,4 @@
+import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import { PercentageTrendIndicator } from '@/components/dashboard/percentage-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import {
@@ -13,6 +14,8 @@ import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { cn } from '@/lib/utils';
 import { getCategoryColorClasses } from '@/types/category';
 import { __ } from '@/utils/i18n';
+import { Link } from '@inertiajs/react';
+import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
@@ -21,6 +24,7 @@ interface BreakdownCardProps {
     data: BreakdownData;
     loading?: boolean;
     currency?: string;
+    period?: { from: Date; to: Date };
 }
 
 export function BreakdownCard({
@@ -28,6 +32,7 @@ export function BreakdownCard({
     data,
     loading,
     currency = 'USD',
+    period,
 }: BreakdownCardProps) {
     const { categoryBarColor } = useChartColors();
     const title =
@@ -82,7 +87,7 @@ export function BreakdownCard({
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {data.data.map((item, index) => {
                         const Icon = (Icons[
                             item.category.icon as keyof typeof Icons
@@ -103,8 +108,21 @@ export function BreakdownCard({
                             index,
                         );
 
-                        return (
-                            <div key={item.category_id} className="space-y-1.5">
+                        const categoryUrl = period
+                            ? transactionsIndex({
+                                  query: {
+                                      category_ids: item.category_id,
+                                      date_from: format(
+                                          period.from,
+                                          'yyyy-MM-dd',
+                                      ),
+                                      date_to: format(period.to, 'yyyy-MM-dd'),
+                                  },
+                              }).url
+                            : null;
+
+                        const rowContent = (
+                            <>
                                 <div className="flex min-w-0 items-center justify-between gap-2 overflow-hidden">
                                     <div className="flex max-w-[60%] grow gap-2">
                                         <div
@@ -154,6 +172,20 @@ export function BreakdownCard({
                                     className="h-1.5"
                                     indicatorColor={chartColor}
                                 />
+                            </>
+                        );
+
+                        return categoryUrl ? (
+                            <Link
+                                key={item.category_id}
+                                href={categoryUrl}
+                                className="group -mx-1.5 my-1.5 block space-y-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                            >
+                                {rowContent}
+                            </Link>
+                        ) : (
+                            <div key={item.category_id} className="space-y-1.5">
+                                {rowContent}
                             </div>
                         );
                     })}
