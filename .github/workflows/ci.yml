@@ -284,15 +284,15 @@ jobs:
               --connect-timeout 30 \
               --max-time 120 \
               -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_TOKEN }}" \
-              "http://147.93.126.54:8000/api/v1/deploy?uuid=ww00sswosco8w80k08c0occ8&force=false")
+              "http://147.93.126.54:8000/api/v1/deploy?uuid=ww00sswosco8w80k08c0occ8&force=false") || true
 
             http_code=$(echo "$response" | tail -n1)
             body=$(echo "$response" | sed '$d')
 
             echo "Response: $body"
-            echo "HTTP Status: $http_code"
+            echo "HTTP Status: ${http_code:-timeout}"
 
-            if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            if [ -n "$http_code" ] && [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
               echo "Deployment triggered successfully!"
               exit 0
             fi
