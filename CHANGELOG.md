@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.19](https://github.com/whisper-money/whisper-money/compare/v0.1.18...v0.1.19) (2026-03-17)
+
+
+### Bug Fixes
+
+* **banking:** treat 429 rate limit as transient, skip error status on sync ([#224](https://github.com/whisper-money/whisper-money/issues/224)) ([5b9ae2a](https://github.com/whisper-money/whisper-money/commit/5b9ae2a5259ecf1e55e4074295c52dcc0429ef71))
+* **cashflow:** only count sign-matching transactions in Sankey category breakdown ([#232](https://github.com/whisper-money/whisper-money/issues/232)) ([9e2a9ca](https://github.com/whisper-money/whisper-money/commit/9e2a9cadfe0210e0f2a45da8dbcaab1552dc0844))
+* **ci:** allow deploy retry loop to survive curl timeout ([#233](https://github.com/whisper-money/whisper-money/issues/233)) ([cd40bc7](https://github.com/whisper-money/whisper-money/commit/cd40bc75d9b60acede4fc519f3f8f66ad8f560c3))
+* **haptics:** use a local WebHaptics wrapper ([#225](https://github.com/whisper-money/whisper-money/issues/225)) ([f600524](https://github.com/whisper-money/whisper-money/commit/f600524c2b834b9322fda1ca7a6881b43c5d5194))
+* prevent account label combobox crash ([#230](https://github.com/whisper-money/whisper-money/issues/230)) ([a60fd6f](https://github.com/whisper-money/whisper-money/commit/a60fd6f452b58d8ba9e4033dffc27a4f0c0fff15))
+* **settings:** restore budgets settings redirect ([#228](https://github.com/whisper-money/whisper-money/issues/228)) ([e5fcaee](https://github.com/whisper-money/whisper-money/commit/e5fcaee8f8a0c9badf0450fb209ff7cd7e4c0d2e))
+
+
+### Features
+
+* **cashflow:** make income/expense category rows clickable to transactions ([#234](https://github.com/whisper-money/whisper-money/issues/234)) ([ec24565](https://github.com/whisper-money/whisper-money/commit/ec245655b8f5541a6bafec92edede97bf75573aa))
+
 ## [0.1.18](https://github.com/whisper-money/whisper-money/compare/v0.1.17...v0.1.18) (2026-03-12)
 
 
