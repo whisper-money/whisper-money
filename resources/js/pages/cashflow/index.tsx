@@ -134,6 +134,7 @@ export default function CashflowPage() {
                                 data={sankey}
                                 height={400}
                                 currency={auth.user.currency_code}
+                                period={period}
                             />
                         )}
                     </CardContent>
