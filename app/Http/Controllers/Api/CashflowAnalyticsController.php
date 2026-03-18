@@ -187,7 +187,10 @@ class CashflowAnalyticsController extends Controller
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->where('transactions.amount', $operator, 0)
             ->whereNotNull('transactions.category_id')
-            ->join('categories', 'transactions.category_id', '=', 'categories.id')
+            ->join('categories', function ($join) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', '!=', CategoryType::Transfer);
+            })
             ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
             ->groupBy('transactions.category_id')
             ->with('category')

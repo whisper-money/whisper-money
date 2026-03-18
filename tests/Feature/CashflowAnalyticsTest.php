@@ -562,6 +562,69 @@ test('sankey income category with mixed positive and negative transactions shows
     expect($data['total_expense'])->toBe(26799);
 });
 
+test('sankey excludes transfer categories from both sides', function () {
+    $incomeCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Income,
+        'name' => 'Salary',
+    ]);
+    $expenseCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Groceries',
+    ]);
+    $transferCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'name' => 'Internal Transfer',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 200000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $expenseCategory->id,
+        'amount' => -50000,
+        'transaction_date' => now(),
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $transferCategory->id,
+        'amount' => 100000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $transferCategory->id,
+        'amount' => -75000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['total_income'])->toBe(200000);
+    expect($data['total_expense'])->toBe(50000);
+    expect(collect($data['income_categories'])->pluck('category.name'))->not->toContain('Internal Transfer');
+    expect(collect($data['expense_categories'])->pluck('category.name'))->not->toContain('Internal Transfer');
+});
+
 test('breakdown includes unknown income category', function () {
     $incomeCategory = Category::factory()->create([
         'user_id' => $this->user->id,
