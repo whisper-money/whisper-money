@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
@@ -81,12 +82,16 @@ class CashflowAnalyticsController extends Controller
 
             $income = $this->getTransactionSum($userId, $monthStart, $monthEnd, CategoryType::Income);
             $expense = $this->getTransactionSum($userId, $monthStart, $monthEnd, CategoryType::Expense);
+            $trackedTransferInflow = $this->getTrackedTransferSum($userId, $monthStart, $monthEnd, CategoryCashflowDirection::Inflow);
+            $trackedTransferOutflow = $this->getTrackedTransferSum($userId, $monthStart, $monthEnd, CategoryCashflowDirection::Outflow);
 
             $data[] = [
                 'month' => $current->format('Y-m'),
                 'income' => $income,
                 'expense' => abs($expense),
                 'net' => $income + $expense, // expense is negative, so this gives net
+                'transfer_inflow' => $trackedTransferInflow,
+                'transfer_outflow' => $trackedTransferOutflow,
             ];
 
             $current->addMonth();
@@ -225,6 +230,28 @@ class CashflowAnalyticsController extends Controller
         }
 
         return $categorized;
+    }
+
+    private function getTrackedTransferSum(
+        string $userId,
+        Carbon $from,
+        Carbon $to,
+        CategoryCashflowDirection $direction,
+    ): int {
+        $sum = Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->where('transactions.amount', $direction === CategoryCashflowDirection::Inflow ? '>' : '<', 0)
+            ->whereExists(function ($sub) use ($direction) {
+                $sub->select(DB::raw(1))
+                    ->from('categories')
+                    ->whereColumn('categories.id', 'transactions.category_id')
+                    ->where('categories.type', CategoryType::Transfer)
+                    ->where('categories.cashflow_direction', $direction);
+            })
+            ->sum('transactions.amount');
+
+        return abs($sum);
     }
 
     private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type)

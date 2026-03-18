@@ -1,4 +1,5 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/CategoryController';
+import { CategoryCashflowDirectionFields } from '@/components/categories/category-cashflow-direction-fields';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -198,6 +199,16 @@ export function EditCategoryDialog({
                                     </Alert>
                                 )}
                             </div>
+
+                            <CategoryCashflowDirectionFields
+                                selectedType={
+                                    selectedType as
+                                        | 'income'
+                                        | 'expense'
+                                        | 'transfer'
+                                }
+                                defaultValue={category.cashflow_direction}
+                            />
 
                             <div className="flex justify-end gap-2">
                                 <Button

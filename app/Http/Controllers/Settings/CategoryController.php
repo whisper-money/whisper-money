@@ -23,7 +23,7 @@ class CategoryController extends Controller
         $categories = auth()->user()
             ->categories()
             ->orderBy('name')
-            ->get(['id', 'name', 'icon', 'color', 'type']);
+            ->get(['id', 'name', 'icon', 'color', 'type', 'cashflow_direction']);
 
         return Inertia::render('settings/categories', [
             'categories' => $categories,

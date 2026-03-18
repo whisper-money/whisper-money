@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,7 @@ class Category extends Model
         'icon',
         'color',
         'type',
+        'cashflow_direction',
         'user_id',
     ];
 
@@ -27,6 +29,7 @@ class Category extends Model
     {
         return [
             'type' => CategoryType::class,
+            'cashflow_direction' => CategoryCashflowDirection::class,
         ];
     }
 

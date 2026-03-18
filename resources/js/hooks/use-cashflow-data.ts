@@ -27,6 +27,8 @@ export interface TrendDataPoint {
     income: number;
     expense: number;
     net: number;
+    transfer_inflow: number;
+    transfer_outflow: number;
 }
 
 export interface BreakdownItem {

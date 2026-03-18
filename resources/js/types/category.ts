@@ -107,12 +107,22 @@ export const CATEGORY_TYPES = ['income', 'expense', 'transfer'] as const;
 
 export type CategoryType = (typeof CATEGORY_TYPES)[number];
 
+export const CATEGORY_CASHFLOW_DIRECTIONS = [
+    'hidden',
+    'inflow',
+    'outflow',
+] as const;
+
+export type CategoryCashflowDirection =
+    (typeof CATEGORY_CASHFLOW_DIRECTIONS)[number];
+
 export interface Category {
     id: UUID;
     name: string;
     icon: CategoryIcon;
     color: CategoryColor;
     type: CategoryType;
+    cashflow_direction: CategoryCashflowDirection;
 }
 
 export function getCategoryColorClasses(color: CategoryColor): {

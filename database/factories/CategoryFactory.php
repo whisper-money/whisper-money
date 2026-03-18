@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -23,6 +24,7 @@ class CategoryFactory extends Factory
             'icon' => fake()->randomElement(['AlertCircle', 'AlertTriangle', 'ArrowDownCircle', 'ArrowLeftRight', 'ArrowUpCircle', 'Baby', 'Banknote', 'Briefcase', 'Building', 'Building2', 'Car', 'Clock', 'CreditCard', 'Dices', 'FileText', 'Gift', 'GraduationCap', 'HandHeart', 'Heart', 'HelpCircle', 'Home', 'Landmark', 'Mail', 'PiggyBank', 'Plane', 'Receipt', 'ReceiptText', 'Repeat', 'RotateCcw', 'Scale', 'Shield', 'ShieldCheck', 'ShoppingBag', 'TrendingUp', 'Undo2', 'Users', 'Users2', 'Utensils', 'Wallet']),
             'color' => fake()->randomElement(['amber', 'blue', 'cyan', 'emerald', 'gray', 'green', 'indigo', 'orange', 'pink', 'purple', 'red', 'slate', 'teal', 'yellow']),
             'type' => fake()->randomElement(CategoryType::cases()),
+            'cashflow_direction' => CategoryCashflowDirection::Hidden,
             'user_id' => User::factory(),
         ];
     }
