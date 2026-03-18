@@ -10,6 +10,7 @@ import {
 import { CategoryCashflowDirection, CategoryType } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Info } from 'lucide-react';
+import { useState } from 'react';
 
 const cashflowDirectionOptions: Array<{
     value: CategoryCashflowDirection;
@@ -46,6 +47,12 @@ export function CategoryCashflowDirectionFields({
     selectedType,
     defaultValue = 'hidden',
 }: CategoryCashflowDirectionFieldsProps) {
+    const [cashflowDirection, setCashflowDirection] =
+        useState<CategoryCashflowDirection>(defaultValue);
+    const selectedOption = cashflowDirectionOptions.find(
+        (option) => option.value === cashflowDirection,
+    );
+
     if (selectedType !== 'transfer') {
         return null;
     }
@@ -66,6 +73,9 @@ export function CategoryCashflowDirectionFields({
             <Select
                 name="cashflow_direction"
                 defaultValue={defaultValue}
+                onValueChange={(value) =>
+                    setCashflowDirection(value as CategoryCashflowDirection)
+                }
                 required
             >
                 <SelectTrigger id="cashflow_direction">
@@ -76,20 +86,21 @@ export function CategoryCashflowDirectionFields({
                 <SelectContent>
                     {cashflowDirectionOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
-                            <div className="flex flex-col items-start gap-0.5">
-                                <span>{option.label}</span>
-                                <span className="text-xs text-muted-foreground">
-                                    {option.description}
-                                </span>
-                            </div>
+                            {option.label}
                         </SelectItem>
                     ))}
                 </SelectContent>
             </Select>
 
+            {selectedOption && (
+                <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+                    {selectedOption.description}
+                </p>
+            )}
+
             <Alert>
                 <Info className="h-4 w-4 opacity-50" />
-                <AlertDescription className="text-sm">
+                <AlertDescription className="text-xs leading-relaxed">
                     {__(
                         'Tracked transfers appear only in the monthly cashflow trend. They are not counted as income, expenses, or shown in the money flow Sankey.',
                     )}

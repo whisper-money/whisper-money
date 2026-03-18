@@ -113,8 +113,8 @@ export function useCashflowData({
                     fetch(`/api/cashflow/sankey${periodQuery}`).then((r) =>
                         r.json(),
                     ),
-                    fetch('/api/cashflow/trend?months=12').then((r) =>
-                        r.json(),
+                    fetch(`/api/cashflow/trend?months=12&to=${toStr}`).then(
+                        (r) => r.json(),
                     ),
                     fetch(
                         `/api/cashflow/breakdown${periodQuery}&type=income`,

@@ -35,6 +35,29 @@ it('shows existing categories in list', function () {
         ->assertNoJavascriptErrors();
 });
 
+it('vertically centers category table cells', function () {
+    $user = User::factory()->onboarded()->create();
+    Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Investments',
+        'icon' => 'ChartNoAxesColumnIncreasing',
+        'color' => 'lime',
+        'type' => 'transfer',
+    ]);
+
+    actingAs($user);
+
+    $page = visit('/settings/categories');
+
+    $page->waitForText('Investments')
+        ->assertAttributeContains(
+            'tbody tr td[data-slot="table-cell"]:first-child',
+            'class',
+            'align-middle',
+        )
+        ->assertNoJavascriptErrors();
+});
+
 it('can open create category dialog', function () {
     $user = User::factory()->onboarded()->create();
 

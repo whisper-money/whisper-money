@@ -324,6 +324,45 @@ test('cashflow trend includes tracked transfer inflows and outflows without affe
     expect($point['transfer_inflow'])->toBe(15000);
 });
 
+test('cashflow trend anchors the 12-month series to the requested period end month', function () {
+    $transferCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+        'name' => 'Investment',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $transferCategory->id,
+        'amount' => -32000,
+        'transaction_date' => '2025-04-14',
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $transferCategory->id,
+        'amount' => -48000,
+        'transaction_date' => '2025-05-07',
+    ]);
+
+    $response = $this->getJson('/api/cashflow/trend?months=12&to=2025-05-31');
+
+    $response->assertOk();
+
+    $data = collect($response->json('data'))->keyBy('month');
+
+    expect($data)->toHaveCount(12);
+    expect($data->keys()->first())->toBe('2024-06');
+    expect($data->keys()->last())->toBe('2025-05');
+    expect($data['2025-04']['transfer_outflow'])->toBe(32000);
+    expect($data['2025-05']['transfer_outflow'])->toBe(48000);
+});
+
 test('cashflow trend defaults to 12 months', function () {
     $response = $this->getJson('/api/cashflow/trend');
 

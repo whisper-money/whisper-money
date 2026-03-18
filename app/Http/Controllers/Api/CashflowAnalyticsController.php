@@ -65,13 +65,16 @@ class CashflowAnalyticsController extends Controller
     {
         $validated = $request->validate([
             'months' => 'nullable|integer|min:1|max:24',
+            'to' => 'nullable|date',
         ]);
 
         $months = $validated['months'] ?? 12;
         $userId = $request->user()->id;
 
-        $end = Carbon::now()->endOfMonth();
-        $start = Carbon::now()->subMonthsNoOverflow($months - 1)->startOfMonth();
+        $end = isset($validated['to'])
+            ? Carbon::parse($validated['to'])->endOfMonth()
+            : Carbon::now()->endOfMonth();
+        $start = $end->copy()->subMonthsNoOverflow($months - 1)->startOfMonth();
         $monthlyTotals = $this->getMonthlyTrendTotals($userId, $start, $end);
 
         $data = [];
