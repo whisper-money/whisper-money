@@ -46,6 +46,8 @@ interface CustomTooltipProps {
     currency?: string;
     incomeColor?: string;
     expenseColor?: string;
+    transferInflowColor?: string;
+    transferOutflowColor?: string;
 }
 
 function CustomTooltip({
@@ -54,6 +56,8 @@ function CustomTooltip({
     currency = 'USD',
     incomeColor,
     expenseColor,
+    transferInflowColor,
+    transferOutflowColor,
 }: CustomTooltipProps) {
     const locale = useLocale();
 
@@ -100,6 +104,38 @@ function CustomTooltip({
                         className="font-mono font-medium tabular-nums"
                     />
                 </div>
+                <div className="flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-2">
+                        <span
+                            className="size-2 rounded-full"
+                            style={{ background: transferInflowColor }}
+                        />
+                        {__('Tracked Inflows')}
+                    </span>
+                    <AmountDisplay
+                        amountInCents={data.transfer_inflow}
+                        currencyCode={currency}
+                        minimumFractionDigits={0}
+                        maximumFractionDigits={0}
+                        className="font-mono font-medium tabular-nums"
+                    />
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                    <span className="flex items-center gap-2">
+                        <span
+                            className="size-2 rounded-full"
+                            style={{ background: transferOutflowColor }}
+                        />
+                        {__('Tracked Outflows')}
+                    </span>
+                    <AmountDisplay
+                        amountInCents={data.transfer_outflow}
+                        currencyCode={currency}
+                        minimumFractionDigits={0}
+                        maximumFractionDigits={0}
+                        className="font-mono font-medium tabular-nums"
+                    />
+                </div>
                 <div className="flex items-center justify-between gap-4 border-t pt-1">
                     <span className="flex items-center gap-2">
                         <span className="size-2 rounded-full bg-[var(--color-chart-1)]" />
@@ -131,6 +167,8 @@ export function CashflowTrendChart({
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minChartWidth = data.length * 60;
     const { cashflowIncomeColor, cashflowExpenseColor } = useChartColors();
+    const transferInflowColor = 'var(--color-chart-4)';
+    const transferOutflowColor = 'var(--color-chart-6)';
 
     const chartConfig: ChartConfig = {
         income: {
@@ -140,6 +178,14 @@ export function CashflowTrendChart({
         expense: {
             label: __('Expenses'),
             color: cashflowExpenseColor,
+        },
+        transfer_inflow: {
+            label: __('Tracked Inflows'),
+            color: transferInflowColor,
+        },
+        transfer_outflow: {
+            label: __('Tracked Outflows'),
+            color: transferOutflowColor,
         },
         net: {
             label: __('Net'),
@@ -177,7 +223,7 @@ export function CashflowTrendChart({
                 </CardTitle>
                 <CardDescription>
                     {__(
-                        'Monthly income, expenses, and net cashflow over the last 12 months',
+                        'Monthly income, expenses, tracked transfers, and net cashflow over the last 12 months',
                     )}
                 </CardDescription>
             </CardHeader>
@@ -231,6 +277,12 @@ export function CashflowTrendChart({
                                         currency={currency}
                                         incomeColor={cashflowIncomeColor}
                                         expenseColor={cashflowExpenseColor}
+                                        transferInflowColor={
+                                            transferInflowColor
+                                        }
+                                        transferOutflowColor={
+                                            transferOutflowColor
+                                        }
                                     />
                                 }
                                 cursor={{
@@ -253,6 +305,22 @@ export function CashflowTrendChart({
                                 radius={[4, 4, 0, 0]}
                                 stackId="b"
                                 name="Expenses"
+                            />
+
+                            <Bar
+                                dataKey="transfer_inflow"
+                                fill={transferInflowColor}
+                                radius={[4, 4, 0, 0]}
+                                stackId="c"
+                                name="Tracked Inflows"
+                            />
+
+                            <Bar
+                                dataKey="transfer_outflow"
+                                fill={transferOutflowColor}
+                                radius={[4, 4, 0, 0]}
+                                stackId="d"
+                                name="Tracked Outflows"
                             />
 
                             <Line
@@ -285,6 +353,20 @@ export function CashflowTrendChart({
                             style={{ background: cashflowExpenseColor }}
                         />
                         <span>{__('Expenses')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span
+                            className="size-3 rounded"
+                            style={{ background: transferInflowColor }}
+                        />
+                        <span>{__('Tracked Inflows')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span
+                            className="size-3 rounded"
+                            style={{ background: transferOutflowColor }}
+                        />
+                        <span>{__('Tracked Outflows')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="size-3 rounded-full bg-[var(--color-chart-1)]" />

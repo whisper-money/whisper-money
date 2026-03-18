@@ -47,6 +47,11 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
@@ -122,7 +127,10 @@ function CategoryRow({ row }: { row: Row<Category> }) {
                         {row
                             .getVisibleCells()
                             .map((cell: Cell<Category, unknown>) => (
-                                <TableCell key={cell.id}>
+                                <TableCell
+                                    key={cell.id}
+                                    className="align-middle"
+                                >
                                     {flexRender(
                                         cell.column.columnDef.cell,
                                         cell.getContext(),
@@ -232,6 +240,7 @@ export default function Categories() {
             header: __('Type'),
             cell: ({ row }) => {
                 const type = row.getValue('type') as Category['type'];
+                const cashflowDirection = row.original.cashflow_direction;
                 const typeConfig = {
                     income: {
                         label: __('Income'),
@@ -249,13 +258,40 @@ export default function Categories() {
                             'bg-zinc-50 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100',
                     },
                 };
+                const cashflowDirectionConfig = {
+                    hidden: __('Do not show'),
+                    inflow: __('Cash inflow'),
+                    outflow: __('Cash outflow'),
+                };
+                const CashflowVisibilityIcon =
+                    cashflowDirection === 'hidden' ? Icons.EyeOff : Icons.Eye;
                 const config = typeConfig[type];
+
                 return (
-                    <Badge
-                        className={`${config.className} text-[10px] tracking-widest`}
-                    >
-                        {config.label.toLocaleUpperCase()}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                        <Badge
+                            className={`${config.className} text-[10px] tracking-widest`}
+                        >
+                            {config.label.toLocaleUpperCase()}
+                        </Badge>
+
+                        {type === 'transfer' && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className="text-muted-foreground transition-colors hover:text-foreground"
+                                        aria-label={__('Cashflow analytics')}
+                                    >
+                                        <CashflowVisibilityIcon className="h-3.5 w-3.5" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    {cashflowDirectionConfig[cashflowDirection]}
+                                </TooltipContent>
+                            </Tooltip>
+                        )}
+                    </div>
                 );
             },
         },
@@ -356,7 +392,7 @@ export default function Categories() {
                                         <TableRow>
                                             <TableCell
                                                 colSpan={columns.length}
-                                                className="h-24 text-center"
+                                                className="h-24 text-center align-middle"
                                             >
                                                 {__('No categories found.')}
                                             </TableCell>

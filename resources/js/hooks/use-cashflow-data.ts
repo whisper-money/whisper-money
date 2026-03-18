@@ -27,6 +27,8 @@ export interface TrendDataPoint {
     income: number;
     expense: number;
     net: number;
+    transfer_inflow: number;
+    transfer_outflow: number;
 }
 
 export interface BreakdownItem {
@@ -111,8 +113,8 @@ export function useCashflowData({
                     fetch(`/api/cashflow/sankey${periodQuery}`).then((r) =>
                         r.json(),
                     ),
-                    fetch('/api/cashflow/trend?months=12').then((r) =>
-                        r.json(),
+                    fetch(`/api/cashflow/trend?months=12&to=${toStr}`).then(
+                        (r) => r.json(),
                     ),
                     fetch(
                         `/api/cashflow/breakdown${periodQuery}&type=income`,

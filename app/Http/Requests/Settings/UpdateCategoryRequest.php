@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryColor;
 use App\Enums\CategoryType;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -16,6 +17,21 @@ class UpdateCategoryRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->input('type') !== CategoryType::Transfer->value) {
+            $this->merge([
+                'cashflow_direction' => CategoryCashflowDirection::Hidden->value,
+            ]);
+
+            return;
+        }
+
+        $this->merge([
+            'cashflow_direction' => $this->input('cashflow_direction', CategoryCashflowDirection::Hidden->value),
+        ]);
     }
 
     /**
@@ -37,6 +53,11 @@ class UpdateCategoryRequest extends FormRequest
                 'required',
                 'string',
                 Rule::enum(CategoryType::class),
+            ],
+            'cashflow_direction' => [
+                'required',
+                'string',
+                Rule::enum(CategoryCashflowDirection::class),
             ],
         ];
     }

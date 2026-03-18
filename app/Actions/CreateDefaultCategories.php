@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Enums\CategoryCashflowDirection;
 use App\Models\User;
 
 class CreateDefaultCategories
@@ -25,7 +26,7 @@ class CreateDefaultCategories
     /**
      * Get the default categories configuration for a given locale.
      *
-     * @return array<int, array{name: string, icon: string, color: string, type: string}>
+     * @return array<int, array{name: string, icon: string, color: string, type: string, cashflow_direction?: string}>
      */
     public static function getDefaultCategories(string $locale = 'en'): array
     {
@@ -47,7 +48,7 @@ class CreateDefaultCategories
     /**
      * Get the base (English) categories configuration.
      *
-     * @return array<int, array{name: string, icon: string, color: string, type: string}>
+     * @return array<int, array{name: string, icon: string, color: string, type: string, cashflow_direction?: string}>
      */
     private static function getBaseCategories(): array
     {
@@ -260,19 +261,22 @@ class CreateDefaultCategories
                 'name' => 'Investments',
                 'icon' => 'LineChart',
                 'color' => 'lime',
-                'type' => 'expense',
+                'type' => 'transfer',
+                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
                 'name' => 'Savings',
                 'icon' => 'PiggyBank',
                 'color' => 'lime',
-                'type' => 'expense',
+                'type' => 'transfer',
+                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
                 'name' => 'Other investments',
                 'icon' => 'TrendingUp',
                 'color' => 'lime',
-                'type' => 'expense',
+                'type' => 'transfer',
+                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
                 'name' => 'Financial services and commission',
@@ -411,6 +415,7 @@ class CreateDefaultCategories
                 'icon' => 'Users',
                 'color' => 'blue',
                 'type' => 'transfer',
+                'cashflow_direction' => CategoryCashflowDirection::Inflow->value,
             ],
             [
                 'name' => 'Returned payments',

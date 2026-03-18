@@ -18,7 +18,7 @@ class CashflowController extends Controller
         $categories = Category::query()
             ->where('user_id', $user->id)
             ->orderBy('name')
-            ->get(['id', 'name', 'type', 'icon', 'color']);
+            ->get(['id', 'name', 'type', 'icon', 'color', 'cashflow_direction']);
 
         $accounts = Account::query()
             ->where('user_id', $user->id)

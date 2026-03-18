@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Category;
@@ -240,7 +241,126 @@ test('cashflow trend returns monthly data for specified months', function () {
     $data = $response->json();
 
     expect($data['data'])->toHaveCount(3);
-    expect($data['data'][0])->toHaveKeys(['month', 'income', 'expense', 'net']);
+    expect($data['data'][0])->toHaveKeys(['month', 'income', 'expense', 'net', 'transfer_inflow', 'transfer_outflow']);
+    expect($data['data'][0]['transfer_inflow'])->toBe(0);
+    expect($data['data'][0]['transfer_outflow'])->toBe(0);
+});
+
+test('cashflow trend includes tracked transfer inflows and outflows without affecting net', function () {
+    $incomeCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Income,
+    ]);
+    $expenseCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+    $investmentCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+        'name' => 'Investment',
+    ]);
+    $rebalanceCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Inflow,
+        'name' => 'Investment Return Transfer',
+    ]);
+    $hiddenTransferCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+        'name' => 'Own Account',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 100000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $expenseCategory->id,
+        'amount' => -40000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $investmentCategory->id,
+        'amount' => -25000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $rebalanceCategory->id,
+        'amount' => 15000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $hiddenTransferCategory->id,
+        'amount' => -5000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/trend?months=1');
+
+    $response->assertOk();
+    $point = $response->json('data.0');
+
+    expect($point['income'])->toBe(100000);
+    expect($point['expense'])->toBe(40000);
+    expect($point['net'])->toBe(60000);
+    expect($point['transfer_outflow'])->toBe(25000);
+    expect($point['transfer_inflow'])->toBe(15000);
+});
+
+test('cashflow trend anchors the 12-month series to the requested period end month', function () {
+    $transferCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+        'name' => 'Investment',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $transferCategory->id,
+        'amount' => -32000,
+        'transaction_date' => '2025-04-14',
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $transferCategory->id,
+        'amount' => -48000,
+        'transaction_date' => '2025-05-07',
+    ]);
+
+    $response = $this->getJson('/api/cashflow/trend?months=12&to=2025-05-31');
+
+    $response->assertOk();
+
+    $data = collect($response->json('data'))->keyBy('month');
+
+    expect($data)->toHaveCount(12);
+    expect($data->keys()->first())->toBe('2024-06');
+    expect($data->keys()->last())->toBe('2025-05');
+    expect($data['2025-04']['transfer_outflow'])->toBe(32000);
+    expect($data['2025-05']['transfer_outflow'])->toBe(48000);
 });
 
 test('cashflow trend defaults to 12 months', function () {
@@ -389,6 +509,7 @@ test('cashflow page returns categories with type', function () {
         ->component('cashflow/index')
         ->has('categories', 2)
         ->has('categories.0.type')
+        ->has('categories.0.cashflow_direction')
     );
 });
 

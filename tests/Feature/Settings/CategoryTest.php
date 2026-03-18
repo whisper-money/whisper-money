@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CategoryCashflowDirection;
 use App\Models\Category;
 use App\Models\User;
 
@@ -41,6 +42,7 @@ test('authenticated users can create a category', function () {
         'icon' => 'ShoppingBag',
         'color' => 'blue',
         'type' => 'expense',
+        'cashflow_direction' => 'outflow',
     ];
 
     $response = $this->actingAs($user)->post(route('categories.store'), $categoryData);
@@ -53,6 +55,7 @@ test('authenticated users can create a category', function () {
         'icon' => 'ShoppingBag',
         'color' => 'blue',
         'type' => 'expense',
+        'cashflow_direction' => CategoryCashflowDirection::Hidden->value,
     ]);
 });
 
@@ -63,6 +66,7 @@ test('category name is required', function () {
         'icon' => 'ShoppingBag',
         'color' => 'blue',
         'type' => 'expense',
+        'cashflow_direction' => 'hidden',
     ]);
 
     $response->assertSessionHasErrors(['name']);
@@ -138,7 +142,8 @@ test('authenticated users can update their own category', function () {
         'name' => 'Updated Name',
         'icon' => 'Home',
         'color' => 'green',
-        'type' => 'income',
+        'type' => 'transfer',
+        'cashflow_direction' => 'outflow',
     ];
 
     $response = $this->actingAs($user)->patch(
@@ -153,7 +158,50 @@ test('authenticated users can update their own category', function () {
         'name' => 'Updated Name',
         'icon' => 'Home',
         'color' => 'green',
+        'type' => 'transfer',
+        'cashflow_direction' => 'outflow',
+    ]);
+});
+
+test('transfer categories can store a cashflow direction', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => 'Investment',
+        'icon' => 'TrendingUp',
+        'color' => 'green',
+        'type' => 'transfer',
+        'cashflow_direction' => 'outflow',
+    ]);
+
+    $response->assertRedirect(route('categories.index'));
+
+    $this->assertDatabaseHas('categories', [
+        'user_id' => $user->id,
+        'name' => 'Investment',
+        'type' => 'transfer',
+        'cashflow_direction' => 'outflow',
+    ]);
+});
+
+test('non-transfer categories are forced to hidden cashflow direction', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => 'Salary',
+        'icon' => 'Coins',
+        'color' => 'green',
         'type' => 'income',
+        'cashflow_direction' => 'outflow',
+    ]);
+
+    $response->assertRedirect(route('categories.index'));
+
+    $this->assertDatabaseHas('categories', [
+        'user_id' => $user->id,
+        'name' => 'Salary',
+        'type' => 'income',
+        'cashflow_direction' => CategoryCashflowDirection::Hidden->value,
     ]);
 });
 
@@ -221,6 +269,21 @@ test('default categories are created when user registers', function () {
 
     $categoryNames = $user->categories->pluck('name')->toArray();
     expect($categoryNames)->toContain('Food', 'Transportation', 'Salary', 'Insurance');
+
+    $user->refresh();
+
+    expect($user->categories()->firstWhere('name', 'Investments'))
+        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->firstWhere('name', 'Savings'))
+        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->firstWhere('name', 'Other investments'))
+        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->firstWhere('name', 'From account of relatives'))
+        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Inflow);
 });
 
 test('default categories are not created twice for the same user', function () {
