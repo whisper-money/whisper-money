@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\CategoryCashflowDirection;
+use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\User;
 
@@ -20,6 +22,15 @@ test('command resets categories for a user by ID', function () {
 
     $categoryNames = $user->categories->pluck('name')->toArray();
     expect($categoryNames)->toContain('Food', 'Transportation', 'Salary', 'Insurance');
+
+    $user->refresh();
+
+    expect($user->categories()->where('name', 'Investments')->first())
+        ->type->toBe(CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->where('name', 'From account of relatives')->first())
+        ->type->toBe(CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Inflow);
 });
 
 test('command resets categories for a user by email', function () {

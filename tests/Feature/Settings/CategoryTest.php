@@ -269,6 +269,21 @@ test('default categories are created when user registers', function () {
 
     $categoryNames = $user->categories->pluck('name')->toArray();
     expect($categoryNames)->toContain('Food', 'Transportation', 'Salary', 'Insurance');
+
+    $user->refresh();
+
+    expect($user->categories()->firstWhere('name', 'Investments'))
+        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->firstWhere('name', 'Savings'))
+        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->firstWhere('name', 'Other investments'))
+        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->firstWhere('name', 'From account of relatives'))
+        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Inflow);
 });
 
 test('default categories are not created twice for the same user', function () {
