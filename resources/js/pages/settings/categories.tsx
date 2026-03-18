@@ -296,6 +296,31 @@ export default function Categories() {
             },
         },
         {
+            accessorKey: 'cashflow_direction',
+            header: __('Cashflow analytics'),
+            cell: ({ row }) => {
+                if (row.original.type !== 'transfer') {
+                    return (
+                        <span className="text-sm text-muted-foreground">
+                            {__('Standard')}
+                        </span>
+                    );
+                }
+
+                const directionConfig = {
+                    hidden: __('Do not show'),
+                    inflow: __('Cash inflow'),
+                    outflow: __('Cash outflow'),
+                };
+
+                return (
+                    <span className="text-sm text-muted-foreground">
+                        {directionConfig[row.original.cashflow_direction]}
+                    </span>
+                );
+            },
+        },
+        {
             id: 'actions',
             enableHiding: false,
             cell: ({ row }) => <CategoryActions category={row.original} />,
