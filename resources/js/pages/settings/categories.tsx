@@ -313,9 +313,11 @@ export default function Categories() {
                     outflow: __('Cash outflow'),
                 };
 
+                const direction = row.original.cashflow_direction;
+
                 return (
-                    <span className="text-sm text-muted-foreground">
-                        {directionConfig[row.original.cashflow_direction]}
+                    <span className="text-sm">
+                        {directionConfig[direction] ?? direction}
                     </span>
                 );
             },
