@@ -72,24 +72,24 @@ class CashflowAnalyticsController extends Controller
 
         $end = Carbon::now()->endOfMonth();
         $start = Carbon::now()->subMonthsNoOverflow($months - 1)->startOfMonth();
+        $monthlyTotals = $this->getMonthlyTrendTotals($userId, $start, $end);
 
         $data = [];
         $current = $start->copy();
 
         while ($current->lte($end)) {
-            $monthStart = $current->copy()->startOfMonth();
-            $monthEnd = $current->copy()->endOfMonth();
-
-            $income = $this->getTransactionSum($userId, $monthStart, $monthEnd, CategoryType::Income);
-            $expense = $this->getTransactionSum($userId, $monthStart, $monthEnd, CategoryType::Expense);
-            $trackedTransferInflow = $this->getTrackedTransferSum($userId, $monthStart, $monthEnd, CategoryCashflowDirection::Inflow);
-            $trackedTransferOutflow = $this->getTrackedTransferSum($userId, $monthStart, $monthEnd, CategoryCashflowDirection::Outflow);
+            $monthKey = $current->format('Y-m');
+            $totals = $monthlyTotals->get($monthKey);
+            $income = (int) ($totals->income ?? 0);
+            $expense = (int) ($totals->expense ?? 0);
+            $trackedTransferInflow = (int) ($totals->transfer_inflow ?? 0);
+            $trackedTransferOutflow = (int) ($totals->transfer_outflow ?? 0);
 
             $data[] = [
-                'month' => $current->format('Y-m'),
+                'month' => $monthKey,
                 'income' => $income,
-                'expense' => abs($expense),
-                'net' => $income + $expense, // expense is negative, so this gives net
+                'expense' => $expense,
+                'net' => $income - $expense,
                 'transfer_inflow' => $trackedTransferInflow,
                 'transfer_outflow' => $trackedTransferOutflow,
             ];
@@ -232,26 +232,33 @@ class CashflowAnalyticsController extends Controller
         return $categorized;
     }
 
-    private function getTrackedTransferSum(
-        string $userId,
-        Carbon $from,
-        Carbon $to,
-        CategoryCashflowDirection $direction,
-    ): int {
-        $sum = Transaction::query()
+    private function getMonthlyTrendTotals(string $userId, Carbon $from, Carbon $to)
+    {
+        return Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->where('transactions.amount', $direction === CategoryCashflowDirection::Inflow ? '>' : '<', 0)
-            ->whereExists(function ($sub) use ($direction) {
-                $sub->select(DB::raw(1))
-                    ->from('categories')
-                    ->whereColumn('categories.id', 'transactions.category_id')
-                    ->where('categories.type', CategoryType::Transfer)
-                    ->where('categories.cashflow_direction', $direction);
-            })
-            ->sum('transactions.amount');
-
-        return abs($sum);
+            ->leftJoin('categories', 'transactions.category_id', '=', 'categories.id')
+            ->selectRaw("DATE_FORMAT(transactions.transaction_date, '%Y-%m') as month")
+            ->selectRaw(
+                'SUM(CASE WHEN ((categories.type = ? AND transactions.amount > 0) OR (transactions.category_id IS NULL AND transactions.amount > 0)) THEN transactions.amount ELSE 0 END) as income',
+                [CategoryType::Income->value]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN ((categories.type = ? AND transactions.amount < 0) OR (transactions.category_id IS NULL AND transactions.amount < 0)) THEN -transactions.amount ELSE 0 END) as expense',
+                [CategoryType::Expense->value]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN categories.type = ? AND categories.cashflow_direction = ? AND transactions.amount > 0 THEN transactions.amount ELSE 0 END) as transfer_inflow',
+                [CategoryType::Transfer->value, CategoryCashflowDirection::Inflow->value]
+            )
+            ->selectRaw(
+                'SUM(CASE WHEN categories.type = ? AND categories.cashflow_direction = ? AND transactions.amount < 0 THEN -transactions.amount ELSE 0 END) as transfer_outflow',
+                [CategoryType::Transfer->value, CategoryCashflowDirection::Outflow->value]
+            )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->keyBy('month');
     }
 
     private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type)
