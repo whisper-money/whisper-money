@@ -1590,5 +1590,7 @@
     "Tracked Inflows": "Entradas seguidas",
     "Tracked Outflows": "Salidas seguidas",
     "Tracked transfers appear only in the monthly cashflow trend. They are not counted as income, expenses, or shown in the money flow Sankey.": "Las transferencias seguidas solo aparecen en la tendencia mensual del flujo de caja. No cuentan como ingresos ni gastos, ni se muestran en el Sankey de flujo de dinero.",
-    "Transfer categories stay out of income and expense totals, but you can still track them in the monthly chart.": "Las categorias de transferencia quedan fuera de los totales de ingresos y gastos, pero aun puedes seguirlas en el grafico mensual."
+    "Tracked transfers appear in the money flow Sankey chart. They are not counted as income or expenses.": "Las transferencias seguidas aparecen en el diagrama Sankey de flujo de dinero. No se cuentan como ingresos ni gastos.",
+    "Transfer categories stay out of income and expense totals, but you can still track them in the monthly chart.": "Las categorias de transferencia quedan fuera de los totales de ingresos y gastos, pero aun puedes seguirlas en el grafico mensual.",
+    "Transfer categories stay out of income and expense totals, but you can still track them in the money flow chart.": "Las categorías de transferencia quedan fuera de los totales de ingresos y gastos, pero aún puedes seguirlas en el gráfico de flujo de dinero."
 }
