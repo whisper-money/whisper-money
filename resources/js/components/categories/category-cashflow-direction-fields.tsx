@@ -65,7 +65,7 @@ export function CategoryCashflowDirectionFields({
                 </Label>
                 <p className="text-xs text-muted-foreground">
                     {__(
-                        'Transfer categories stay out of income and expense totals, but you can still track them in the monthly chart.',
+                        'Transfer categories stay out of income and expense totals, but you can still track them in the money flow chart.',
                     )}
                 </p>
             </div>
@@ -102,7 +102,7 @@ export function CategoryCashflowDirectionFields({
                 <Info className="h-4 w-4 opacity-50" />
                 <AlertDescription className="text-xs leading-relaxed">
                     {__(
-                        'Tracked transfers appear only in the monthly cashflow trend. They are not counted as income, expenses, or shown in the money flow Sankey.',
+                        'Tracked transfers appear in the money flow Sankey chart. They are not counted as income or expenses.',
                     )}
                 </AlertDescription>
             </Alert>

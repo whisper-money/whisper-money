@@ -85,16 +85,12 @@ class CashflowAnalyticsController extends Controller
             $totals = $monthlyTotals->get($monthKey);
             $income = (int) ($totals->income ?? 0);
             $expense = (int) ($totals->expense ?? 0);
-            $trackedTransferInflow = (int) ($totals->transfer_inflow ?? 0);
-            $trackedTransferOutflow = (int) ($totals->transfer_outflow ?? 0);
 
             $data[] = [
                 'month' => $monthKey,
                 'income' => $income,
                 'expense' => $expense,
                 'net' => $income - $expense,
-                'transfer_inflow' => $trackedTransferInflow,
-                'transfer_outflow' => $trackedTransferOutflow,
             ];
 
             $current->addMonth();
@@ -195,9 +191,20 @@ class CashflowAnalyticsController extends Controller
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->where('transactions.amount', $operator, 0)
             ->whereNotNull('transactions.category_id')
-            ->join('categories', function ($join) {
+            ->join('categories', function ($join) use ($isIncome) {
                 $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '!=', CategoryType::Transfer);
+                    ->where(function ($q) use ($isIncome) {
+                        $q->where('categories.type', '!=', CategoryType::Transfer)
+                            ->orWhere(function ($q) use ($isIncome) {
+                                $q->where('categories.type', CategoryType::Transfer)
+                                    ->where(
+                                        'categories.cashflow_direction',
+                                        $isIncome
+                                            ? CategoryCashflowDirection::Inflow
+                                            : CategoryCashflowDirection::Outflow,
+                                    );
+                            });
+                    });
             })
             ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
             ->groupBy('transactions.category_id')
@@ -249,14 +256,6 @@ class CashflowAnalyticsController extends Controller
             ->selectRaw(
                 'SUM(CASE WHEN ((categories.type = ? AND transactions.amount < 0) OR (transactions.category_id IS NULL AND transactions.amount < 0)) THEN -transactions.amount ELSE 0 END) as expense',
                 [CategoryType::Expense->value]
-            )
-            ->selectRaw(
-                'SUM(CASE WHEN categories.type = ? AND categories.cashflow_direction = ? AND transactions.amount > 0 THEN transactions.amount ELSE 0 END) as transfer_inflow',
-                [CategoryType::Transfer->value, CategoryCashflowDirection::Inflow->value]
-            )
-            ->selectRaw(
-                'SUM(CASE WHEN categories.type = ? AND categories.cashflow_direction = ? AND transactions.amount < 0 THEN -transactions.amount ELSE 0 END) as transfer_outflow',
-                [CategoryType::Transfer->value, CategoryCashflowDirection::Outflow->value]
             )
             ->groupBy('month')
             ->orderBy('month')

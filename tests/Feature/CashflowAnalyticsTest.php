@@ -241,12 +241,10 @@ test('cashflow trend returns monthly data for specified months', function () {
     $data = $response->json();
 
     expect($data['data'])->toHaveCount(3);
-    expect($data['data'][0])->toHaveKeys(['month', 'income', 'expense', 'net', 'transfer_inflow', 'transfer_outflow']);
-    expect($data['data'][0]['transfer_inflow'])->toBe(0);
-    expect($data['data'][0]['transfer_outflow'])->toBe(0);
+    expect($data['data'][0])->toHaveKeys(['month', 'income', 'expense', 'net']);
 });
 
-test('cashflow trend includes tracked transfer inflows and outflows without affecting net', function () {
+test('cashflow trend does not include tracked transfers', function () {
     $incomeCategory = Category::factory()->create([
         'user_id' => $this->user->id,
         'type' => CategoryType::Income,
@@ -266,12 +264,6 @@ test('cashflow trend includes tracked transfer inflows and outflows without affe
         'type' => CategoryType::Transfer,
         'cashflow_direction' => CategoryCashflowDirection::Inflow,
         'name' => 'Investment Return Transfer',
-    ]);
-    $hiddenTransferCategory = Category::factory()->create([
-        'user_id' => $this->user->id,
-        'type' => CategoryType::Transfer,
-        'cashflow_direction' => CategoryCashflowDirection::Hidden,
-        'name' => 'Own Account',
     ]);
 
     $account = Account::factory()->create(['user_id' => $this->user->id]);
@@ -304,32 +296,25 @@ test('cashflow trend includes tracked transfer inflows and outflows without affe
         'amount' => 15000,
         'transaction_date' => now(),
     ]);
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $account->id,
-        'category_id' => $hiddenTransferCategory->id,
-        'amount' => -5000,
-        'transaction_date' => now(),
-    ]);
 
     $response = $this->getJson('/api/cashflow/trend?months=1');
 
     $response->assertOk();
     $point = $response->json('data.0');
 
+    // Only income/expense categories affect the trend — transfers are excluded
     expect($point['income'])->toBe(100000);
     expect($point['expense'])->toBe(40000);
     expect($point['net'])->toBe(60000);
-    expect($point['transfer_outflow'])->toBe(25000);
-    expect($point['transfer_inflow'])->toBe(15000);
+    expect($point)->not->toHaveKey('transfer_outflow');
+    expect($point)->not->toHaveKey('transfer_inflow');
 });
 
 test('cashflow trend anchors the 12-month series to the requested period end month', function () {
-    $transferCategory = Category::factory()->create([
+    $incomeCategory = Category::factory()->create([
         'user_id' => $this->user->id,
-        'type' => CategoryType::Transfer,
-        'cashflow_direction' => CategoryCashflowDirection::Outflow,
-        'name' => 'Investment',
+        'type' => CategoryType::Income,
+        'name' => 'Salary',
     ]);
 
     $account = Account::factory()->create(['user_id' => $this->user->id]);
@@ -337,16 +322,16 @@ test('cashflow trend anchors the 12-month series to the requested period end mon
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
-        'category_id' => $transferCategory->id,
-        'amount' => -32000,
+        'category_id' => $incomeCategory->id,
+        'amount' => 32000,
         'transaction_date' => '2025-04-14',
     ]);
 
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
-        'category_id' => $transferCategory->id,
-        'amount' => -48000,
+        'category_id' => $incomeCategory->id,
+        'amount' => 48000,
         'transaction_date' => '2025-05-07',
     ]);
 
@@ -359,8 +344,8 @@ test('cashflow trend anchors the 12-month series to the requested period end mon
     expect($data)->toHaveCount(12);
     expect($data->keys()->first())->toBe('2024-06');
     expect($data->keys()->last())->toBe('2025-05');
-    expect($data['2025-04']['transfer_outflow'])->toBe(32000);
-    expect($data['2025-05']['transfer_outflow'])->toBe(48000);
+    expect($data['2025-04']['income'])->toBe(32000);
+    expect($data['2025-05']['income'])->toBe(48000);
 });
 
 test('cashflow trend defaults to 12 months', function () {
@@ -683,7 +668,7 @@ test('sankey income category with mixed positive and negative transactions shows
     expect($data['total_expense'])->toBe(26799);
 });
 
-test('sankey excludes transfer categories from both sides', function () {
+test('sankey excludes hidden transfer categories from both sides', function () {
     $incomeCategory = Category::factory()->create([
         'user_id' => $this->user->id,
         'type' => CategoryType::Income,
@@ -694,9 +679,10 @@ test('sankey excludes transfer categories from both sides', function () {
         'type' => CategoryType::Expense,
         'name' => 'Groceries',
     ]);
-    $transferCategory = Category::factory()->create([
+    $hiddenTransferCategory = Category::factory()->create([
         'user_id' => $this->user->id,
         'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
         'name' => 'Internal Transfer',
     ]);
 
@@ -720,14 +706,14 @@ test('sankey excludes transfer categories from both sides', function () {
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
-        'category_id' => $transferCategory->id,
+        'category_id' => $hiddenTransferCategory->id,
         'amount' => 100000,
         'transaction_date' => now(),
     ]);
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
-        'category_id' => $transferCategory->id,
+        'category_id' => $hiddenTransferCategory->id,
         'amount' => -75000,
         'transaction_date' => now(),
     ]);
@@ -744,6 +730,104 @@ test('sankey excludes transfer categories from both sides', function () {
     expect($data['total_expense'])->toBe(50000);
     expect(collect($data['income_categories'])->pluck('category.name'))->not->toContain('Internal Transfer');
     expect(collect($data['expense_categories'])->pluck('category.name'))->not->toContain('Internal Transfer');
+});
+
+test('sankey includes outflow transfer categories on the expense side', function () {
+    $incomeCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Income,
+        'name' => 'Salary',
+    ]);
+    $investmentCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+        'name' => 'Investments',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 300000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $investmentCategory->id,
+        'amount' => -50000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['total_income'])->toBe(300000);
+    expect($data['total_expense'])->toBe(50000);
+
+    $investmentExpense = collect($data['expense_categories'])->firstWhere('category.name', 'Investments');
+    expect($investmentExpense)->not->toBeNull();
+    expect($investmentExpense['amount'])->toBe(50000);
+
+    // Outflow transfers should not appear on the income side
+    expect(collect($data['income_categories'])->pluck('category.name'))->not->toContain('Investments');
+});
+
+test('sankey includes inflow transfer categories on the income side', function () {
+    $expenseCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Groceries',
+    ]);
+    $inflowCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Inflow,
+        'name' => 'From Relatives',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $inflowCategory->id,
+        'amount' => 80000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $expenseCategory->id,
+        'amount' => -20000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['total_income'])->toBe(80000);
+    expect($data['total_expense'])->toBe(20000);
+
+    $inflowIncome = collect($data['income_categories'])->firstWhere('category.name', 'From Relatives');
+    expect($inflowIncome)->not->toBeNull();
+    expect($inflowIncome['amount'])->toBe(80000);
+
+    // Inflow transfers should not appear on the expense side
+    expect(collect($data['expense_categories'])->pluck('category.name'))->not->toContain('From Relatives');
 });
 
 test('breakdown includes unknown income category', function () {
