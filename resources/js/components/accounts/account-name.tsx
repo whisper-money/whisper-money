@@ -13,6 +13,7 @@ interface AccountNameProps {
 export function AccountName({
     account,
     className = '',
-}: Omit<AccountNameProps, 'length'>) {
+    length: _length,
+}: AccountNameProps) {
     return <span className={className}>{account.name}</span>;
 }

@@ -25,9 +25,11 @@ import {
 } from '@/hooks/use-dashboard-data';
 import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AccountInfo } from '@/lib/chart-calculations';
+import { AccountInfo, getAccountSign } from '@/lib/chart-calculations';
+import { SharedData } from '@/types';
 import { formatDayFromDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import { router, usePage } from '@inertiajs/react';
 import { format, subDays } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
@@ -69,7 +71,7 @@ function formatXAxisLabel(
 
 function calculateTrend(
     data: Array<Record<string, string | number | OriginalAmount>>,
-    accountIds: string[],
+    accounts: Record<string, AccountInfo>,
     periodsBack: number,
 ): TrendData | null {
     if (data.length < 2) return null;
@@ -79,14 +81,28 @@ function calculateTrend(
 
     if (currentIndex === previousIndex) return null;
 
+    const accountIds = Object.keys(accounts);
+
     const currentTotal = accountIds.reduce((sum, id) => {
         const value = data[currentIndex][id];
-        return sum + (typeof value === 'number' ? value : 0);
+        if (typeof value !== 'number') {
+            return sum;
+        }
+
+        const account = accounts[id];
+
+        return sum + getAccountSign(account.type) * Math.abs(value);
     }, 0);
 
     const previousTotal = accountIds.reduce((sum, id) => {
         const value = data[previousIndex][id];
-        return sum + (typeof value === 'number' ? value : 0);
+        if (typeof value !== 'number') {
+            return sum;
+        }
+
+        const account = accounts[id];
+
+        return sum + getAccountSign(account.type) * Math.abs(value);
     }, 0);
 
     if (previousTotal === 0) return null;
@@ -112,6 +128,7 @@ export function NetWorthChart({
     loading,
     showLegend = false,
 }: NetWorthChartProps) {
+    const { props } = usePage<SharedData>();
     const locale = useLocale();
     const isMobile = useIsMobile();
     const [granularity, setGranularity] = useState<ChartGranularity>('monthly');
@@ -119,6 +136,8 @@ export function NetWorthChart({
         null,
     );
     const [isDailyLoading, setIsDailyLoading] = useState(false);
+    const includeLoansInNetWorthChart =
+        props.includeLoansInNetWorthChart ?? true;
 
     const fetchDailyData = useCallback(async () => {
         setIsDailyLoading(true);
@@ -177,11 +196,17 @@ export function NetWorthChart({
         const accounts = activeData.accounts || {};
         const chartDataArray = activeData.data || [];
 
+        const filteredAccounts = Object.fromEntries(
+            Object.entries(accounts).filter(([, account]) => {
+                return includeLoansInNetWorthChart || account.type !== 'loan';
+            }),
+        );
+
         // Sort accounts by descending average balance so the largest accounts
         // are at the bottom of the stacked chart and smallest are on top.
         // Using the average across all data points ensures a consistent order
         // across every period (month or day).
-        const accountIds = Object.keys(accounts).sort((a, b) => {
+        const accountIds = Object.keys(filteredAccounts).sort((a, b) => {
             const valuesA = chartDataArray
                 .map((p) => p[a])
                 .filter((v): v is number => typeof v === 'number');
@@ -204,9 +229,29 @@ export function NetWorthChart({
         const config: ChartConfig = {};
         const currencies: Record<string, string> = {};
         const hookAccounts: Record<string, AccountInfo> = {};
+        const signedChartData = chartDataArray.map((point) => {
+            const signedPoint: Record<
+                string,
+                string | number | OriginalAmount
+            > = {
+                ...point,
+            };
+
+            accountIds.forEach((id) => {
+                const value = point[id];
+                const account = filteredAccounts[id];
+
+                if (typeof value === 'number' && account) {
+                    signedPoint[id] =
+                        getAccountSign(account.type) * Math.abs(value);
+                }
+            });
+
+            return signedPoint;
+        });
 
         accountIds.forEach((id) => {
-            const account = accounts[id];
+            const account = filteredAccounts[id];
             config[id] = {
                 label: account ? <EncryptedLabel account={account} /> : id,
             };
@@ -224,8 +269,8 @@ export function NetWorthChart({
 
         // All values are now in the user's currency, so compute a single total
         let total = 0;
-        if (chartDataArray.length > 0) {
-            const lastDataPoint = chartDataArray[chartDataArray.length - 1];
+        if (signedChartData.length > 0) {
+            const lastDataPoint = signedChartData[signedChartData.length - 1];
             accountIds.forEach((id) => {
                 const value = lastDataPoint[id];
                 if (typeof value === 'number') {
@@ -235,27 +280,44 @@ export function NetWorthChart({
         }
 
         return {
-            chartData: chartDataArray,
+            chartData: signedChartData,
             dataKeys: accountIds,
             chartConfig: config,
-            shortTrend: calculateTrend(chartDataArray, accountIds, 1),
+            shortTrend: calculateTrend(signedChartData, hookAccounts, 1),
             longTrend: calculateTrend(
-                chartDataArray,
-                accountIds,
-                chartDataArray.length - 1,
+                signedChartData,
+                hookAccounts,
+                signedChartData.length - 1,
             ),
             totalAmount: total,
             accountCurrencies: currencies,
             accountsForHook: hookAccounts,
         };
-    }, [activeData]);
+    }, [activeData, includeLoansInNetWorthChart]);
 
     const chartViews = useChartViews({
         data: chartData as Array<Record<string, string | number>>,
         accounts: accountsForHook,
         initialView: 'stacked',
         hasStackedView: true,
+        netWorthOptions: {
+            includeLoanAccounts: includeLoansInNetWorthChart,
+        },
     });
+
+    const handleIncludeLoansChange = useCallback((includeLoans: boolean) => {
+        router.patch(
+            '/settings/net-worth-chart-loan-preference',
+            {
+                include_loans_in_net_worth_chart: includeLoans,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['includeLoansInNetWorthChart'],
+            },
+        );
+    }, []);
 
     const valueFormatter = useMemo(() => {
         return (value: number): React.ReactNode => {
@@ -353,6 +415,9 @@ export function NetWorthChart({
                                 currentView={chartViews.currentView}
                                 onViewChange={chartViews.setCurrentView}
                                 availableViews={chartViews.availableViews}
+                                includeLoansLabel={__('Include loans')}
+                                includeLoans={includeLoansInNetWorthChart}
+                                onIncludeLoansChange={handleIncludeLoansChange}
                             />
                         ) : (
                             <>
@@ -365,6 +430,19 @@ export function NetWorthChart({
                                     onValueChange={chartViews.setCurrentView}
                                     availableViews={chartViews.availableViews}
                                     granularity={granularity}
+                                />
+                                <ChartSettingsPopover
+                                    granularity={granularity}
+                                    onGranularityChange={setGranularity}
+                                    currentView={chartViews.currentView}
+                                    onViewChange={chartViews.setCurrentView}
+                                    availableViews={chartViews.availableViews}
+                                    showChartControls={false}
+                                    includeLoansLabel={__('Include loans')}
+                                    includeLoans={includeLoansInNetWorthChart}
+                                    onIncludeLoansChange={
+                                        handleIncludeLoansChange
+                                    }
                                 />
                             </>
                         )}

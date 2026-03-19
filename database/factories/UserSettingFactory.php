@@ -21,6 +21,7 @@ class UserSettingFactory extends Factory
         return [
             'user_id' => User::factory(),
             'chart_color_scheme' => ChartColorScheme::Colorful,
+            'include_loans_in_net_worth_chart' => true,
         ];
     }
 

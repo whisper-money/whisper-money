@@ -5,6 +5,7 @@ import {
     computeMoMPercent,
     computeNetWorthSeries,
     MonthDataPoint,
+    NetWorthSeriesOptions,
     PercentDataPoint,
 } from '@/lib/chart-calculations';
 import { useCallback, useMemo, useState } from 'react';
@@ -20,6 +21,8 @@ export interface UseChartViewsOptions {
     initialView?: ChartViewType;
     /** Whether to show stacked view option (false for single account charts) */
     hasStackedView?: boolean;
+    /** Options for computing net worth series */
+    netWorthOptions?: NetWorthSeriesOptions;
 }
 
 export interface UseChartViewsReturn {
@@ -43,6 +46,7 @@ export function useChartViews({
     accounts,
     initialView = 'stacked',
     hasStackedView = true,
+    netWorthOptions,
 }: UseChartViewsOptions): UseChartViewsReturn {
     // View state
     const [currentView, setCurrentViewState] = useState<ChartViewType>(
@@ -75,7 +79,11 @@ export function useChartViews({
     // The first month is needed for MoM calculations but shouldn't be displayed,
     // so we slice(1) to show only 12 bars
     const { netWorthSeries, deltaSeries, momPercentSeries } = useMemo(() => {
-        const fullNetWorth = computeNetWorthSeries(data, accounts);
+        const fullNetWorth = computeNetWorthSeries(
+            data,
+            accounts,
+            netWorthOptions,
+        );
         const fullDelta = computeDeltaSeries(fullNetWorth);
         const fullMomPercent = computeMoMPercent(fullNetWorth);
 
@@ -84,7 +92,7 @@ export function useChartViews({
             deltaSeries: fullDelta.slice(1),
             momPercentSeries: fullMomPercent.slice(1),
         };
-    }, [data, accounts]);
+    }, [data, accounts, netWorthOptions]);
 
     return {
         // View state

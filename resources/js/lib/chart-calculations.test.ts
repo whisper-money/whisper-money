@@ -131,6 +131,26 @@ describe('computeNetWorthSeries', () => {
         expect(result[0].value).toBe(-40000); // 10000 - 50000
     });
 
+    it('normalizes negative liability balances before subtracting them', () => {
+        const data = [{ month: '2025-01', checking: 10000, loan: -50000 }];
+        const accounts = createAccounts({ checking: 'checking', loan: 'loan' });
+
+        const result = computeNetWorthSeries(data, accounts);
+
+        expect(result[0].value).toBe(-40000);
+    });
+
+    it('can exclude loan accounts from net worth calculations', () => {
+        const data = [{ month: '2025-01', checking: 10000, loan: 50000 }];
+        const accounts = createAccounts({ checking: 'checking', loan: 'loan' });
+
+        const result = computeNetWorthSeries(data, accounts, {
+            includeLoanAccounts: false,
+        });
+
+        expect(result[0].value).toBe(10000);
+    });
+
     it('preserves timestamp if present', () => {
         const data = [{ month: '2025-01', timestamp: 1704067200, acc1: 10000 }];
         const accounts = createAccounts({ acc1: 'checking' });

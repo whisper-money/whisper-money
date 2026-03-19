@@ -282,12 +282,16 @@ class DashboardAnalyticsController extends Controller
                 ->orderBy('balance_date', 'desc')
                 ->value('balance') ?? 0;
 
-            $total += $this->exchangeRateService->convert(
+            $convertedBalance = $this->exchangeRateService->convert(
                 $account->currency_code,
                 $userCurrency,
                 $balance,
                 $date->toDateString(),
             );
+
+            $total += $account->type->reducesNetWorth()
+                ? -abs($convertedBalance)
+                : $convertedBalance;
         }
 
         return $total;

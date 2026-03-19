@@ -79,6 +79,56 @@ test('net worth response includes currency_code', function () {
         ->assertJson(['currency_code' => 'USD']);
 });
 
+test('net worth treats positive loan balances as liabilities', function () {
+    $checking = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+        'currency_code' => 'USD',
+    ]);
+
+    $loan = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+        'currency_code' => 'USD',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $checking->id,
+        'balance_date' => now(),
+        'balance' => 500000,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $loan->id,
+        'balance_date' => now(),
+        'balance' => 100000,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $checking->id,
+        'balance_date' => now()->subDays(30),
+        'balance' => 450000,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $loan->id,
+        'balance_date' => now()->subDays(30),
+        'balance' => 150000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/net-worth?'.http_build_query([
+        'from' => now()->subDays(29)->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk()
+        ->assertJson([
+            'current' => 400000,
+            'previous' => 300000,
+            'currency_code' => 'USD',
+        ]);
+});
+
 test('monthly spending calculates expenses correctly', function () {
     $category = Category::factory()->create([
         'user_id' => $this->user->id,
