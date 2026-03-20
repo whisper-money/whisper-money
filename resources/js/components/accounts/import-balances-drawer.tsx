@@ -504,10 +504,13 @@ export function ImportBalancesDrawer({
 
         const successCount = createdBalances.length;
         const errorCount = errors.length;
+        const isLoan = selectedAccount?.type === 'loan';
+        const term = isLoan ? 'owed amount' : 'balance';
+        const termPlural = isLoan ? 'owed amounts' : 'balances';
 
         if (errorCount === 0 && successCount > 0) {
             toast.success(
-                `${successCount} balance${successCount !== 1 ? 's' : ''} imported successfully`,
+                `${successCount} ${successCount !== 1 ? termPlural : term} imported successfully`,
                 {
                     icon: <Check className="h-4 w-4" />,
                 },
@@ -516,12 +519,12 @@ export function ImportBalancesDrawer({
             onOpenChange(false);
         } else if (successCount > 0 && errorCount > 0) {
             toast.warning(
-                `${successCount} balance${successCount !== 1 ? 's' : ''} imported, ${errorCount} failed`,
+                `${successCount} ${successCount !== 1 ? termPlural : term} imported, ${errorCount} failed`,
             );
             onSuccess?.();
         } else if (successCount > 0) {
             toast.success(
-                `${successCount} balance${successCount !== 1 ? 's' : ''} imported successfully`,
+                `${successCount} ${successCount !== 1 ? termPlural : term} imported successfully`,
                 {
                     icon: <Check className="h-4 w-4" />,
                 },
@@ -529,7 +532,11 @@ export function ImportBalancesDrawer({
             onSuccess?.();
             onOpenChange(false);
         } else {
-            toast.error('All balances failed to import');
+            toast.error(
+                isLoan
+                    ? 'All owed amounts failed to import'
+                    : 'All balances failed to import',
+            );
         }
     };
 
@@ -538,12 +545,15 @@ export function ImportBalancesDrawer({
     };
 
     const getStepInfo = () => {
+        const isLoan = selectedAccount?.type === 'loan';
+
         switch (state.step) {
             case BalanceImportStep.SelectAccount:
                 return {
                     title: 'Select Account',
-                    description:
-                        'Choose the account where balances will be imported',
+                    description: isLoan
+                        ? 'Choose the account where owed amounts will be imported'
+                        : 'Choose the account where balances will be imported',
                 };
             case BalanceImportStep.UploadFile:
                 return {
@@ -554,25 +564,34 @@ export function ImportBalancesDrawer({
             case BalanceImportStep.MapColumns:
                 return {
                     title: 'Map Columns',
-                    description: 'Match your file columns to balance fields',
+                    description: isLoan
+                        ? 'Match your file columns to owed amount fields'
+                        : 'Match your file columns to balance fields',
                 };
             case BalanceImportStep.Preview:
                 return {
-                    title: 'Preview Balances',
-                    description: 'Review balances before importing',
+                    title: isLoan ? 'Preview Owed Amounts' : 'Preview Balances',
+                    description: isLoan
+                        ? 'Review owed amounts before importing'
+                        : 'Review balances before importing',
                 };
             default:
                 if (isImporting) {
                     return {
-                        title: 'Importing Balances',
-                        description:
-                            'Please wait while we import your balances',
+                        title: isLoan
+                            ? 'Importing Owed Amounts'
+                            : 'Importing Balances',
+                        description: isLoan
+                            ? 'Please wait while we import your owed amounts'
+                            : 'Please wait while we import your balances',
                     };
                 }
 
                 return {
-                    title: 'Import Balances',
-                    description: 'Import balances from CSV or Excel files',
+                    title: isLoan ? 'Import Owed Amounts' : 'Import Balances',
+                    description: isLoan
+                        ? 'Import owed amounts from CSV or Excel files'
+                        : 'Import balances from CSV or Excel files',
                 };
         }
     };
@@ -624,6 +643,7 @@ export function ImportBalancesDrawer({
                         parsedData={state.parsedData}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
                         showInvestedAmount={showInvestedAmount}
+                        isLoan={selectedAccount?.type === 'loan'}
                         onMappingChange={handleMappingChange}
                         onDateFormatChange={handleDateFormatChange}
                         onNext={handlePreviewBalances}
@@ -637,6 +657,7 @@ export function ImportBalancesDrawer({
                         balances={state.balances}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
                         showInvestedAmount={showInvestedAmount}
+                        isLoan={selectedAccount?.type === 'loan'}
                         onConfirm={handleConfirmImport}
                         onBack={handleBack}
                         isImporting={isImporting}
@@ -651,6 +672,7 @@ export function ImportBalancesDrawer({
     const renderImportProgress = () => {
         const percentage =
             importTotal > 0 ? (importProgress / importTotal) * 100 : 0;
+        const isLoan = selectedAccount?.type === 'loan';
 
         return (
             <div className="flex flex-col gap-6">
@@ -658,7 +680,9 @@ export function ImportBalancesDrawer({
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
                             {importProgress} of {importTotal}
-                            {__('balances imported')}
+                            {isLoan
+                                ? __('owed amounts imported')
+                                : __('balances imported')}
                         </span>
                         <span>{Math.round(percentage)}%</span>
                     </div>
@@ -684,7 +708,9 @@ export function ImportBalancesDrawer({
                                             {__('Date')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
-                                            {__('Balance')}
+                                            {isLoan
+                                                ? __('Owed Amount')
+                                                : __('Balance')}
                                         </th>
                                         <th className="px-4 py-2 text-left font-medium">
                                             {__('Error')}

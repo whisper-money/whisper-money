@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import {
     type Account,
     type AccountBalance,
+    balanceTermCapitalized,
     supportsInvestedAmount,
 } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -52,6 +53,7 @@ export function UpdateBalanceDialog({
     const [isLoadingLastBalance, setIsLoadingLastBalance] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const showInvestedAmount = supportsInvestedAmount(account);
+    const isLoan = account.type === 'loan';
 
     useEffect(() => {
         async function fetchLastBalance() {
@@ -162,20 +164,32 @@ export function UpdateBalanceDialog({
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent hasKeyboard className="sm:max-w-[400px]">
                 <DialogHeader>
-                    <DialogTitle>{__('Update balance')}</DialogTitle>
+                    <DialogTitle>
+                        {isLoan
+                            ? __('Update owed amount')
+                            : __('Update balance')}
+                    </DialogTitle>
                     <DialogDescription>
-                        {__(
-                            'Set the balance for this account on a specific date.',
-                        )}
+                        {isLoan
+                            ? __(
+                                  'Set the owed amount for this account on a specific date.',
+                              )
+                            : __(
+                                  'Set the balance for this account on a specific date.',
+                              )}
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="balance-amount">{__('Balance')}</Label>
+                        <Label htmlFor="balance-amount">
+                            {balanceTermCapitalized(account.type)}
+                        </Label>
                         {isLoadingLastBalance ? (
                             <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                                {__('Loading last balance...')}
+                                {isLoan
+                                    ? __('Loading last owed amount...')
+                                    : __('Loading last balance...')}
                             </div>
                         ) : (
                             <AmountInput

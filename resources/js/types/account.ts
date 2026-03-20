@@ -124,3 +124,35 @@ export function filterTransactionalAccounts<T extends { type: AccountType }>(
         (account) => !NON_TRANSACTIONAL_ACCOUNT_TYPES.includes(account.type),
     );
 }
+
+export function isLoanAccount(account: Pick<Account, 'type'>): boolean {
+    return account.type === 'loan';
+}
+
+/**
+ * Returns the appropriate term for "balance" based on account type.
+ * Loan accounts use "owed amount" instead of "balance".
+ */
+export function balanceTerm(
+    type: AccountType,
+    variant: 'singular' | 'plural' = 'singular',
+): string {
+    if (type === 'loan') {
+        return variant === 'plural' ? __('owed amounts') : __('owed amount');
+    }
+    return variant === 'plural' ? __('balances') : __('balance');
+}
+
+/**
+ * Returns the appropriate capitalized term for "Balance" based on account type.
+ * Loan accounts use "Owed Amount" instead of "Balance".
+ */
+export function balanceTermCapitalized(
+    type: AccountType,
+    variant: 'singular' | 'plural' = 'singular',
+): string {
+    if (type === 'loan') {
+        return variant === 'plural' ? __('Owed Amounts') : __('Owed Amount');
+    }
+    return variant === 'plural' ? __('Balances') : __('Balance');
+}

@@ -35,7 +35,10 @@ import {
 } from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
 import type { Account, AccountBalance } from '@/types/account';
-import { supportsInvestedAmount } from '@/types/account';
+import {
+    balanceTermCapitalized,
+    supportsInvestedAmount,
+} from '@/types/account';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -87,6 +90,7 @@ export function BalancesModal({
         formatCurrency(valueInCents, account.currency_code, locale);
 
     const showInvestedAmount = supportsInvestedAmount(account);
+    const isLoan = account.type === 'loan';
 
     const fetchBalances = useCallback(
         async (page: number) => {
@@ -236,11 +240,19 @@ export function BalancesModal({
                     }
                 >
                     <DialogHeader>
-                        <DialogTitle>{__('Balance History')}</DialogTitle>
+                        <DialogTitle>
+                            {isLoan
+                                ? __('Owed Amount History')
+                                : __('Balance History')}
+                        </DialogTitle>
                         <DialogDescription>
-                            {__(
-                                'View and manage balance records for this account.',
-                            )}
+                            {isLoan
+                                ? __(
+                                      'View and manage owed amount records for this account.',
+                                  )
+                                : __(
+                                      'View and manage balance records for this account.',
+                                  )}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -257,7 +269,9 @@ export function BalancesModal({
                                     <TableRow>
                                         <TableHead>{__('Date')}</TableHead>
                                         <TableHead className="text-right">
-                                            {__('Balance')}
+                                            {balanceTermCapitalized(
+                                                account.type,
+                                            )}
                                         </TableHead>
                                         {showInvestedAmount && (
                                             <TableHead className="text-right">
@@ -289,9 +303,13 @@ export function BalancesModal({
                                                 }
                                                 className="h-24 text-center"
                                             >
-                                                {__(
-                                                    'No balance records found.',
-                                                )}
+                                                {isLoan
+                                                    ? __(
+                                                          'No owed amount records found.',
+                                                      )
+                                                    : __(
+                                                          'No balance records found.',
+                                                      )}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -356,8 +374,12 @@ export function BalancesModal({
                             <span className="text-sm text-muted-foreground">
                                 {total}{' '}
                                 {total === 1
-                                    ? __('balance record')
-                                    : __('balance records')}
+                                    ? isLoan
+                                        ? __('owed amount record')
+                                        : __('balance record')
+                                    : isLoan
+                                      ? __('owed amount records')
+                                      : __('balance records')}
                             </span>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -398,15 +420,23 @@ export function BalancesModal({
             >
                 <DialogContent className="sm:max-w-[400px]">
                     <DialogHeader>
-                        <DialogTitle>{__('Edit Balance')}</DialogTitle>
+                        <DialogTitle>
+                            {isLoan
+                                ? __('Edit Owed Amount')
+                                : __('Edit Balance')}
+                        </DialogTitle>
                         <DialogDescription>
-                            {__('Update the balance record.')}
+                            {isLoan
+                                ? __('Update the owed amount record.')
+                                : __('Update the balance record.')}
                         </DialogDescription>
                     </DialogHeader>
 
                     <form onSubmit={handleEditSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="edit-amount">{__('Balance')}</Label>
+                            <Label htmlFor="edit-amount">
+                                {balanceTermCapitalized(account.type)}
+                            </Label>
                             <AmountInput
                                 id="edit-amount"
                                 className="mt-1"
@@ -472,12 +502,18 @@ export function BalancesModal({
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {__('Delete balance')}
+                            {isLoan
+                                ? __('Delete owed amount')
+                                : __('Delete balance')}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {__(
-                                'Are you sure you want to delete this balance record? This action cannot be undone.',
-                            )}
+                            {isLoan
+                                ? __(
+                                      'Are you sure you want to delete this owed amount record? This action cannot be undone.',
+                                  )
+                                : __(
+                                      'Are you sure you want to delete this balance record? This action cannot be undone.',
+                                  )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
