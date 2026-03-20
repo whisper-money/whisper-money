@@ -54,6 +54,7 @@ export interface AccountInfo {
 
 export interface NetWorthSeriesOptions {
     includeLoanAccounts?: boolean;
+    includeRealEstateAccounts?: boolean;
 }
 
 /**
@@ -70,9 +71,14 @@ export function computeNetWorthSeries(
     }
 
     const includeLoanAccounts = options.includeLoanAccounts ?? true;
+    const includeRealEstateAccounts = options.includeRealEstateAccounts ?? true;
 
     const accountIds = Object.entries(accounts)
         .filter(([, account]) => includeLoanAccounts || account.type !== 'loan')
+        .filter(
+            ([, account]) =>
+                includeRealEstateAccounts || account.type !== 'real_estate',
+        )
         .map(([id]) => id);
 
     return data.map((point) => {

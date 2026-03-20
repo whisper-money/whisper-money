@@ -36,6 +36,7 @@ export function CreateAccountDialog({
         accounts: sharedAccounts,
     } = usePage<SharedData>().props;
     const openBankingEnabled = features['open-banking'];
+    const realEstateEnabled = features['real-estate'];
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const availableLoanAccounts = useMemo(
         () =>
@@ -279,6 +280,9 @@ export function CreateAccountDialog({
                             <AccountForm
                                 onChange={handleFormChange}
                                 availableLoanAccounts={availableLoanAccounts}
+                                hiddenAccountTypes={
+                                    realEstateEnabled ? [] : ['real_estate']
+                                }
                             />
 
                             <div className="flex justify-end gap-2 pt-4">

@@ -86,11 +86,13 @@ class HandleInertiaRequests extends Middleware
             ],
             'chartColorScheme' => $user?->setting?->chart_color_scheme->value ?? 'colorful',
             'includeLoansInNetWorthChart' => $user?->setting->include_loans_in_net_worth_chart ?? true,
+            'includeRealEstateInNetWorthChart' => $user?->setting->include_real_estate_in_net_worth_chart ?? true,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => [
                 'cashflow' => true,
                 'open-banking' => $user ? Feature::for($user)->active('open-banking') : false,
                 'account-mapping' => $user ? Feature::for($user)->active('account-mapping') : false,
+                'real-estate' => $user ? Feature::for($user)->active('real-estate') : false,
             ],
             'accounts' => fn () => $user ? $user->accounts()
                 ->with('bank:id,name,logo')

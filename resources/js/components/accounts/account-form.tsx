@@ -66,6 +66,7 @@ interface AccountFormProps {
         currencyCode: CurrencyCode;
     };
     forceAccountType?: AccountType;
+    hiddenAccountTypes?: AccountType[];
     availableLoanAccounts?: Account[];
     onChange: (data: AccountFormData) => void;
 }
@@ -90,6 +91,7 @@ const initialRealEstateData: RealEstateFormData = {
 export function AccountForm({
     initialValues,
     forceAccountType,
+    hiddenAccountTypes = [],
     availableLoanAccounts = [],
     onChange,
 }: AccountFormProps) {
@@ -207,7 +209,9 @@ export function AccountForm({
                             />
                         </SelectTrigger>
                         <SelectContent>
-                            {ACCOUNT_TYPES.map((type) => (
+                            {ACCOUNT_TYPES.filter(
+                                (type) => !hiddenAccountTypes.includes(type),
+                            ).map((type) => (
                                 <SelectItem key={type} value={type}>
                                     {formatAccountType(type)}
                                 </SelectItem>
