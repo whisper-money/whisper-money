@@ -43,7 +43,7 @@ it('can create a new account with plaintext name', function () {
 
     $response = $this->post(route('accounts.store'), $data);
 
-    $response->assertRedirect(route('accounts.index'));
+    $response->assertRedirect();
     assertDatabaseHas('accounts', [
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
@@ -210,7 +210,7 @@ it('can create an account with an initial balance', function () {
 
     $response = $this->post(route('accounts.store'), $data);
 
-    $response->assertRedirect(route('accounts.index'));
+    $response->assertRedirect();
 
     $account = Account::where('user_id', $this->user->id)
         ->where('name', 'My Savings Account')
@@ -237,7 +237,7 @@ it('creates account without balance record when balance is not provided', functi
 
     $response = $this->post(route('accounts.store'), $data);
 
-    $response->assertRedirect(route('accounts.index'));
+    $response->assertRedirect();
 
     $account = Account::where('user_id', $this->user->id)
         ->where('name', 'My Investment Account')

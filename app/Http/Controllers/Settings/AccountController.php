@@ -64,7 +64,7 @@ class AccountController extends Controller
             return response()->json($account, 201);
         }
 
-        return to_route('accounts.index');
+        return back();
     }
 
     /**
