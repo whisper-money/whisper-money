@@ -111,8 +111,8 @@ export function formatPropertyType(type: PropertyType): string {
 
 export function formatAreaUnit(unit: AreaUnit): string {
     const unitMap: Record<AreaUnit, string> = {
-        sqm: __('m\u00B2'),
-        sqft: __('ft\u00B2'),
+        sqm: __('m²'),
+        sqft: __('ft²'),
         acres: __('acres'),
         hectares: __('ha'),
     };
