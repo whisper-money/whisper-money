@@ -25,7 +25,11 @@ import {
 } from '@/hooks/use-dashboard-data';
 import { useLocale } from '@/hooks/use-locale';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AccountInfo, getAccountSign } from '@/lib/chart-calculations';
+import {
+    AccountInfo,
+    getAccountSign,
+    isLiabilityType,
+} from '@/lib/chart-calculations';
 import { SharedData } from '@/types';
 import { formatDayFromDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
@@ -184,7 +188,8 @@ export function NetWorthChart({
     const userCurrency = activeData.currency_code || 'USD';
 
     const {
-        chartData,
+        scaledChartData,
+        rawChartData,
         dataKeys,
         chartConfig,
         shortTrend,
@@ -192,21 +197,32 @@ export function NetWorthChart({
         totalAmount,
         accountCurrencies,
         accountsForHook,
+        hasLiabilities,
     } = useMemo(() => {
         const accounts = activeData.accounts || {};
         const chartDataArray = activeData.data || [];
 
-        const filteredAccounts = Object.fromEntries(
+        // All accounts included based on the loan toggle – used for totals & trends.
+        const includedAccounts = Object.fromEntries(
             Object.entries(accounts).filter(([, account]) => {
                 return includeLoansInNetWorthChart || account.type !== 'loan';
             }),
         );
 
-        // Sort accounts by descending average balance so the largest accounts
-        // are at the bottom of the stacked chart and smallest are on top.
-        // Using the average across all data points ensures a consistent order
-        // across every period (month or day).
-        const accountIds = Object.keys(filteredAccounts).sort((a, b) => {
+        // Split into assets (chart segments) and liabilities (affect totals only).
+        const assetAccounts = Object.fromEntries(
+            Object.entries(includedAccounts).filter(
+                ([, account]) => !isLiabilityType(account.type),
+            ),
+        );
+        const liabilityAccountIds = Object.keys(includedAccounts).filter((id) =>
+            isLiabilityType(includedAccounts[id].type),
+        );
+        const hasLiabs = liabilityAccountIds.length > 0;
+
+        // Sort asset accounts by descending average balance so the largest
+        // accounts are at the bottom of the stacked chart and smallest on top.
+        const chartAccountIds = Object.keys(assetAccounts).sort((a, b) => {
             const valuesA = chartDataArray
                 .map((p) => p[a])
                 .filter((v): v is number => typeof v === 'number');
@@ -229,29 +245,10 @@ export function NetWorthChart({
         const config: ChartConfig = {};
         const currencies: Record<string, string> = {};
         const hookAccounts: Record<string, AccountInfo> = {};
-        const signedChartData = chartDataArray.map((point) => {
-            const signedPoint: Record<
-                string,
-                string | number | OriginalAmount
-            > = {
-                ...point,
-            };
 
-            accountIds.forEach((id) => {
-                const value = point[id];
-                const account = filteredAccounts[id];
-
-                if (typeof value === 'number' && account) {
-                    signedPoint[id] =
-                        getAccountSign(account.type) * Math.abs(value);
-                }
-            });
-
-            return signedPoint;
-        });
-
-        accountIds.forEach((id) => {
-            const account = filteredAccounts[id];
+        // Build config and currencies only for asset accounts (chart segments).
+        chartAccountIds.forEach((id) => {
+            const account = assetAccounts[id];
             config[id] = {
                 label: account ? <EncryptedLabel account={account} /> : id,
             };
@@ -267,36 +264,134 @@ export function NetWorthChart({
             }
         });
 
-        // All values are now in the user's currency, so compute a single total
+        // Also register liability accounts so the useChartViews MoM/percent
+        // series and calculateTrend include them in net worth.
+        const allIncludedIds = Object.keys(includedAccounts);
+        const allHookAccounts: Record<string, AccountInfo> = {
+            ...hookAccounts,
+        };
+        allIncludedIds.forEach((id) => {
+            if (!allHookAccounts[id]) {
+                const account = includedAccounts[id];
+                if (account) {
+                    allHookAccounts[id] = {
+                        id: account.id,
+                        type: account.type,
+                        currency_code: account.currency_code,
+                    };
+                }
+            }
+        });
+
+        // Build scaled chart data:
+        // - Each asset value is proportionally scaled so total bar height = net worth
+        // - Original values stored as `${id}_display` for tooltip display
+        // - Liability total and net worth stored as metadata
+        const scaled = chartDataArray.map((point) => {
+            const newPoint: Record<string, string | number | OriginalAmount> =
+                {};
+
+            // Copy non-account fields
+            if (point.month !== undefined) newPoint.month = point.month;
+            if (point.timestamp !== undefined)
+                newPoint.timestamp = point.timestamp;
+
+            // Compute totals for this data point
+            let totalAssets = 0;
+            let totalLiabilities = 0;
+
+            chartAccountIds.forEach((id) => {
+                const value = point[id];
+                if (typeof value === 'number') {
+                    totalAssets += Math.abs(value);
+                }
+            });
+
+            liabilityAccountIds.forEach((id) => {
+                const value = point[id];
+                if (typeof value === 'number') {
+                    totalLiabilities += Math.abs(value);
+                }
+            });
+
+            const netWorth = totalAssets - totalLiabilities;
+            const scaleFactor =
+                hasLiabs && totalAssets > 0
+                    ? Math.max(0, netWorth / totalAssets)
+                    : 1;
+
+            // Asset values: scaled for rendering, original for tooltip
+            chartAccountIds.forEach((id) => {
+                const value = point[id];
+                if (typeof value === 'number') {
+                    newPoint[id] = value * scaleFactor;
+                    if (hasLiabs) {
+                        newPoint[`${id}_display`] = value;
+                    }
+                }
+
+                // Copy _original entries for multi-currency display
+                const originalKey = `${id}_original`;
+                if (point[originalKey] !== undefined) {
+                    newPoint[originalKey] = point[originalKey];
+                }
+            });
+
+            // Per-liability account data for tooltip (one row per loan)
+            if (hasLiabs) {
+                const liabilities: Array<{ name: string; amount: number }> = [];
+                liabilityAccountIds.forEach((id) => {
+                    const value = point[id];
+                    if (typeof value === 'number' && Math.abs(value) > 0) {
+                        const account = includedAccounts[id];
+                        liabilities.push({
+                            name: account.name,
+                            amount: Math.abs(value),
+                        });
+                    }
+                });
+                // Store as JSON string since data points only hold primitives
+                newPoint.__liabilities = JSON.stringify(liabilities);
+                newPoint.__liabilities_total = totalLiabilities;
+                newPoint.__net_worth = netWorth;
+            }
+
+            return newPoint;
+        });
+
+        // Compute the signed total across ALL included accounts.
         let total = 0;
-        if (signedChartData.length > 0) {
-            const lastDataPoint = signedChartData[signedChartData.length - 1];
-            accountIds.forEach((id) => {
+        if (chartDataArray.length > 0) {
+            const lastDataPoint = chartDataArray[chartDataArray.length - 1];
+            allIncludedIds.forEach((id) => {
                 const value = lastDataPoint[id];
                 if (typeof value === 'number') {
-                    total += value;
+                    const account = includedAccounts[id];
+                    total += getAccountSign(account.type) * Math.abs(value);
                 }
             });
         }
 
         return {
-            chartData: signedChartData,
-            dataKeys: accountIds,
+            scaledChartData: scaled,
+            rawChartData: chartDataArray,
+            dataKeys: chartAccountIds,
             chartConfig: config,
-            shortTrend: calculateTrend(signedChartData, hookAccounts, 1),
+            shortTrend: calculateTrend(chartDataArray, allHookAccounts, 1),
             longTrend: calculateTrend(
-                signedChartData,
-                hookAccounts,
-                signedChartData.length - 1,
+                chartDataArray,
+                allHookAccounts,
+                chartDataArray.length - 1,
             ),
             totalAmount: total,
             accountCurrencies: currencies,
-            accountsForHook: hookAccounts,
+            accountsForHook: allHookAccounts,
+            hasLiabilities: hasLiabs,
         };
     }, [activeData, includeLoansInNetWorthChart]);
 
     const chartViews = useChartViews({
-        data: chartData as Array<Record<string, string | number>>,
+        data: rawChartData as Array<Record<string, string | number>>,
         accounts: accountsForHook,
         initialView: 'stacked',
         hasStackedView: true,
@@ -453,7 +548,7 @@ export function NetWorthChart({
                 {chartViews.currentView === 'stacked' &&
                     (granularity === 'daily' ? (
                         <StackedAreaChart
-                            data={chartData.slice(1)}
+                            data={scaledChartData.slice(1)}
                             dataKeys={dataKeys}
                             config={chartConfig}
                             xAxisKey="month"
@@ -463,10 +558,15 @@ export function NetWorthChart({
                             displayCurrency={userCurrency}
                             className="h-[300px] w-full"
                             showLegend={showLegend}
+                            netWorthMode={
+                                hasLiabilities
+                                    ? { liabilityTypeLabel: __('Loan') }
+                                    : undefined
+                            }
                         />
                     ) : (
                         <StackedBarChart
-                            data={chartData.slice(1)}
+                            data={scaledChartData.slice(1)}
                             dataKeys={dataKeys}
                             config={chartConfig}
                             xAxisKey="month"
@@ -476,6 +576,11 @@ export function NetWorthChart({
                             displayCurrency={userCurrency}
                             className="h-[300px] w-full"
                             showLegend={showLegend}
+                            netWorthMode={
+                                hasLiabilities
+                                    ? { liabilityTypeLabel: __('Loan') }
+                                    : undefined
+                            }
                         />
                     ))}
                 {chartViews.currentView === 'mom' && (

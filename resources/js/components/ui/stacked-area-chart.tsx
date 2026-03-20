@@ -36,6 +36,7 @@ export interface StackedAreaChartProps<T extends Record<string, unknown>> {
     className?: string;
     showLegend?: boolean;
     minBarWidth?: number;
+    netWorthMode?: { liabilityTypeLabel: string };
 }
 
 export function StackedAreaChart<T extends Record<string, unknown>>({
@@ -50,6 +51,7 @@ export function StackedAreaChart<T extends Record<string, unknown>>({
     className,
     showLegend = true,
     minBarWidth = 20,
+    netWorthMode,
 }: StackedAreaChartProps<T>) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +126,7 @@ export function StackedAreaChart<T extends Record<string, unknown>>({
                                 valueFormatter={valueFormatter}
                                 accountCurrencies={accountCurrencies}
                                 displayCurrency={displayCurrency}
+                                netWorthMode={netWorthMode}
                             />
                         }
                     />

@@ -9,6 +9,7 @@ import {
 import { ChartViewType } from '@/hooks/use-chart-views';
 import { __ } from '@/utils/i18n';
 import { Settings2 } from 'lucide-react';
+import { Separator } from '../ui/separator';
 import {
     type ChartGranularity,
     ChartGranularityToggle,
@@ -71,34 +72,37 @@ export function ChartSettingsPopover({
                                     showTooltip={false}
                                 />
                             </div>
+                            <Separator />
                         </>
                     ) : null}
                     {onIncludeLoansChange &&
                     typeof includeLoans === 'boolean' &&
                     includeLoansLabel ? (
-                        <div className="flex items-start justify-between gap-4 rounded-lg border border-border/50 px-3 py-2">
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="include-loans-in-net-worth-chart"
-                                    className="text-sm leading-5 font-medium"
-                                >
-                                    {includeLoansLabel}
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                    {__(
-                                        'Include loan balances in the net worth totals and chart',
-                                    )}
-                                </p>
+                        <>
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="space-y-1">
+                                    <Label
+                                        htmlFor="include-loans-in-net-worth-chart"
+                                        className="text-sm leading-5 font-medium"
+                                    >
+                                        {includeLoansLabel}
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        {__(
+                                            'Include loan balances in the net worth totals and chart',
+                                        )}
+                                    </p>
+                                </div>
+                                <Checkbox
+                                    id="include-loans-in-net-worth-chart"
+                                    checked={includeLoans}
+                                    onCheckedChange={(checked) =>
+                                        onIncludeLoansChange(checked === true)
+                                    }
+                                    className="mt-0.5"
+                                />
                             </div>
-                            <Checkbox
-                                id="include-loans-in-net-worth-chart"
-                                checked={includeLoans}
-                                onCheckedChange={(checked) =>
-                                    onIncludeLoansChange(checked === true)
-                                }
-                                className="mt-0.5"
-                            />
-                        </div>
+                        </>
                     ) : null}
                 </div>
             </PopoverContent>
