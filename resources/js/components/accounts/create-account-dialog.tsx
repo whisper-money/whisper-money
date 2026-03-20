@@ -46,6 +46,7 @@ export function CreateAccountDialog({
         type: null,
         currencyCode: null,
         customBank: null,
+        balance: null,
     });
 
     const handleFormChange = useCallback((data: AccountFormData) => {
@@ -140,6 +141,9 @@ export function CreateAccountDialog({
                     bank_id: finalBankId,
                     type: type,
                     currency_code: currencyCode,
+                    ...(formDataRef.current.balance
+                        ? { balance: formDataRef.current.balance }
+                        : {}),
                 },
                 {
                     onSuccess: () => {

@@ -8,6 +8,7 @@ use App\Models\User;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertDatabaseHas;
+use function Pest\Laravel\assertDatabaseMissing;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -42,7 +43,7 @@ it('can create a new account with plaintext name', function () {
 
     $response = $this->post(route('accounts.store'), $data);
 
-    $response->assertRedirect(route('accounts.index'));
+    $response->assertRedirect();
     assertDatabaseHas('accounts', [
         'user_id' => $this->user->id,
         'bank_id' => $this->bank->id,
@@ -194,4 +195,71 @@ it('prevents deleting another users account', function () {
 
     $response->assertForbidden();
     assertDatabaseHas('accounts', ['id' => $account->id]);
+});
+
+it('can create an account with an initial balance', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'My Savings Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Savings->value,
+        'balance' => 150000,
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+
+    $response->assertRedirect();
+
+    $account = Account::where('user_id', $this->user->id)
+        ->where('name', 'My Savings Account')
+        ->first();
+
+    expect($account)->not->toBeNull();
+
+    assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 150000,
+    ]);
+});
+
+it('creates account without balance record when balance is not provided', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'My Investment Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Investment->value,
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+
+    $response->assertRedirect();
+
+    $account = Account::where('user_id', $this->user->id)
+        ->where('name', 'My Investment Account')
+        ->first();
+
+    expect($account)->not->toBeNull();
+
+    assertDatabaseMissing('account_balances', [
+        'account_id' => $account->id,
+    ]);
+});
+
+it('validates balance must be an integer when provided', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'My Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Savings->value,
+        'balance' => 'not-a-number',
+    ]);
+
+    $response->assertSessionHasErrors(['balance']);
 });

@@ -38,11 +38,22 @@ class AccountController extends Controller
     public function store(StoreAccountRequest $request): RedirectResponse|JsonResponse
     {
         $user = auth()->user();
+        $validated = $request->validated();
+        $balance = $validated['balance'] ?? null;
+        unset($validated['balance']);
+
         $account = $user->accounts()->create([
-            ...$request->validated(),
+            ...$validated,
             'encrypted' => false,
             'name_iv' => null,
         ]);
+
+        if ($balance !== null) {
+            $account->balances()->create([
+                'balance_date' => now()->toDateString(),
+                'balance' => $balance,
+            ]);
+        }
 
         // Set user's currency_code from first account
         if ($user->accounts()->count() === 1) {
@@ -53,7 +64,7 @@ class AccountController extends Controller
             return response()->json($account, 201);
         }
 
-        return to_route('accounts.index');
+        return back();
     }
 
     /**
