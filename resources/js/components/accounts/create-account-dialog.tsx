@@ -13,10 +13,11 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { SharedData } from '@/types';
+import { Account } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { Link2, PenLine } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
 
 type Mode = 'choice' | 'manual';
@@ -28,10 +29,21 @@ export function CreateAccountDialog({
     onSuccess?: () => void;
     trigger?: React.ReactNode;
 }) {
-    const { features, auth, subscriptionsEnabled } =
-        usePage<SharedData>().props;
+    const {
+        features,
+        auth,
+        subscriptionsEnabled,
+        accounts: sharedAccounts,
+    } = usePage<SharedData>().props;
     const openBankingEnabled = features['open-banking'];
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
+    const availableLoanAccounts = useMemo(
+        () =>
+            ((sharedAccounts as Account[]) || []).filter(
+                (a) => a.type === 'loan',
+            ),
+        [sharedAccounts],
+    );
 
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState<Mode>(
@@ -264,7 +276,10 @@ export function CreateAccountDialog({
 
                     {mode === 'manual' && (
                         <form onSubmit={handleSubmit} className="space-y-2">
-                            <AccountForm onChange={handleFormChange} />
+                            <AccountForm
+                                onChange={handleFormChange}
+                                availableLoanAccounts={availableLoanAccounts}
+                            />
 
                             <div className="flex justify-end gap-2 pt-4">
                                 <Button
