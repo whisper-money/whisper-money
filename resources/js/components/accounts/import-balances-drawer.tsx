@@ -42,6 +42,7 @@ interface ImportBalancesDrawerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     accounts?: Account[];
+    account?: Account;
     accountId?: UUID;
     onSuccess?: () => void;
 }
@@ -59,6 +60,7 @@ export function ImportBalancesDrawer({
     open,
     onOpenChange,
     accounts = [],
+    account: providedAccount,
     accountId,
     onSuccess,
 }: ImportBalancesDrawerProps) {
@@ -94,15 +96,17 @@ export function ImportBalancesDrawer({
     });
 
     useEffect(() => {
-        if (state.selectedAccountId) {
-            const account = accounts.find(
-                (a) => a.id === state.selectedAccountId,
-            );
+        if (open && state.selectedAccountId) {
+            const account =
+                (providedAccount?.id === state.selectedAccountId
+                    ? providedAccount
+                    : undefined) ??
+                accounts.find((a) => a.id === state.selectedAccountId);
             if (account) {
                 setSelectedAccount(account);
             }
         }
-    }, [state.selectedAccountId, accounts]);
+    }, [open, state.selectedAccountId, accounts, providedAccount]);
 
     useEffect(() => {
         if (!open) {

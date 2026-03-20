@@ -225,6 +225,7 @@ export default function AccountShow({
                 open={importBalancesOpen}
                 onOpenChange={setImportBalancesOpen}
                 accounts={accounts}
+                account={account}
                 accountId={account.id}
                 onSuccess={handleBalanceUpdated}
             />

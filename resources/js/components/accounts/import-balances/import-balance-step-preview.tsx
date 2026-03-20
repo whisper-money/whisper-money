@@ -54,8 +54,8 @@ export function ImportBalanceStepPreview({
                             : __('owed amount')
                         : total !== 1
                           ? __('balances')
-                          : __('balance')}
-                    {__('will be updated or\n                    created.')}
+                          : __('balance')}{' '}
+                    {__('will be updated or created.')}
                 </p>
             </div>
 
