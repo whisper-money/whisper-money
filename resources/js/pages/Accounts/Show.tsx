@@ -63,6 +63,7 @@ export default function AccountShow({
     }
 
     const isConnected = !!account.banking_connection_id;
+    const isLoan = account.type === 'loan';
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -112,7 +113,9 @@ export default function AccountShow({
                                     variant="outline"
                                     onClick={() => setUpdateBalanceOpen(true)}
                                 >
-                                    {__('Update balance')}
+                                    {isLoan
+                                        ? __('Update owed amount')
+                                        : __('Update balance')}
                                 </Button>
                             </ButtonGroup>
                             <ButtonGroup>
@@ -120,7 +123,9 @@ export default function AccountShow({
                                     variant="outline"
                                     onClick={() => setImportBalancesOpen(true)}
                                 >
-                                    {__('Import balances')}
+                                    {isLoan
+                                        ? __('Import owed amounts')
+                                        : __('Import balances')}
                                 </Button>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -138,7 +143,9 @@ export default function AccountShow({
                                                 setBalancesOpen(true)
                                             }
                                         >
-                                            {__('See balances')}
+                                            {isLoan
+                                                ? __('See owed amounts')
+                                                : __('See balances')}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                             onClick={() => setEditOpen(true)}
@@ -218,6 +225,7 @@ export default function AccountShow({
                 open={importBalancesOpen}
                 onOpenChange={setImportBalancesOpen}
                 accounts={accounts}
+                account={account}
                 accountId={account.id}
                 onSuccess={handleBalanceUpdated}
             />

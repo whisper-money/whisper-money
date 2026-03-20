@@ -6,6 +6,7 @@ use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\ChartColorSchemeController;
 use App\Http\Controllers\Settings\LabelController;
+use App\Http\Controllers\Settings\NetWorthChartLoanPreferenceController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
@@ -60,6 +61,9 @@ Route::middleware('auth')->group(function () {
 
     Route::patch('settings/chart-color-scheme', [ChartColorSchemeController::class, 'update'])
         ->name('chart-color-scheme.update');
+
+    Route::patch('settings/net-worth-chart-loan-preference', [NetWorthChartLoanPreferenceController::class, 'update'])
+        ->name('net-worth-chart-loan-preference.update');
 
     Route::get('settings/billing', [SubscriptionController::class, 'billing'])->name('settings.billing');
     Route::get('settings/billing/portal', [SubscriptionController::class, 'billingPortal'])->name('settings.billing.portal');

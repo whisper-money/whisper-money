@@ -19,4 +19,9 @@ enum AccountType: string
     {
         return in_array($this, [self::Investment, self::Retirement, self::Savings], true);
     }
+
+    public function reducesNetWorth(): bool
+    {
+        return in_array($this, [self::CreditCard, self::Loan], true);
+    }
 }

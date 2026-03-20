@@ -52,6 +52,10 @@ export interface AccountInfo {
     currency_code: string;
 }
 
+export interface NetWorthSeriesOptions {
+    includeLoanAccounts?: boolean;
+}
+
 /**
  * Compute net worth series from raw balance data
  * Handles sign correctly: assets add to NW, liabilities subtract
@@ -59,12 +63,17 @@ export interface AccountInfo {
 export function computeNetWorthSeries(
     data: Array<Record<string, string | number>>,
     accounts: Record<string, AccountInfo>,
+    options: NetWorthSeriesOptions = {},
 ): MonthDataPoint[] {
     if (!data || data.length === 0) {
         return [];
     }
 
-    const accountIds = Object.keys(accounts);
+    const includeLoanAccounts = options.includeLoanAccounts ?? true;
+
+    const accountIds = Object.entries(accounts)
+        .filter(([, account]) => includeLoanAccounts || account.type !== 'loan')
+        .map(([id]) => id);
 
     return data.map((point) => {
         const month = point.month as string;
@@ -78,7 +87,9 @@ export function computeNetWorthSeries(
             if (!account) return sum + balance;
 
             const sign = getAccountSign(account.type);
-            return sum + sign * balance;
+            const normalizedBalance = sign === -1 ? Math.abs(balance) : balance;
+
+            return sum + sign * normalizedBalance;
         }, 0);
 
         return {

@@ -60,6 +60,7 @@ export interface SharedData {
     auth: Auth;
     flash: Flash;
     chartColorScheme: ChartColorScheme;
+    includeLoansInNetWorthChart: boolean;
     subscriptionsEnabled: boolean;
     pricing: PricingConfig;
     sidebarOpen: boolean;

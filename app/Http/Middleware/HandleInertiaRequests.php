@@ -85,6 +85,7 @@ class HandleInertiaRequests extends Middleware
                 'currency' => strtoupper(config('cashier.currency', 'eur')),
             ],
             'chartColorScheme' => $user?->setting?->chart_color_scheme->value ?? 'colorful',
+            'includeLoansInNetWorthChart' => $user?->setting->include_loans_in_net_worth_chart ?? true,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => [
                 'cashflow' => true,

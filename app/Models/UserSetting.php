@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property \App\Enums\ChartColorScheme $chart_color_scheme
+ * @property bool $include_loans_in_net_worth_chart
  */
 class UserSetting extends Model
 {
@@ -19,12 +20,14 @@ class UserSetting extends Model
     protected $fillable = [
         'user_id',
         'chart_color_scheme',
+        'include_loans_in_net_worth_chart',
     ];
 
     protected function casts(): array
     {
         return [
             'chart_color_scheme' => ChartColorScheme::class,
+            'include_loans_in_net_worth_chart' => 'boolean',
         ];
     }
 

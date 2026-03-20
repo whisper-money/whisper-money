@@ -134,6 +134,10 @@ interface ChartTooltipContentProps {
     valueFormatter?: (value: number, accountId?: string) => React.ReactNode;
     accountCurrencies?: Record<string, string>;
     displayCurrency?: string;
+    /** When set, tooltip shows liability rows and net-worth total instead of simple sum. */
+    netWorthMode?: {
+        liabilityTypeLabel: string;
+    };
 }
 
 function formatCurrencyWithCode(value: number, currencyCode: string, locale: string): string {
@@ -160,6 +164,7 @@ const ChartTooltipContent = React.forwardRef<
             valueFormatter,
             accountCurrencies,
             displayCurrency,
+            netWorthMode,
         },
         ref,
     ) => {
@@ -210,6 +215,14 @@ const ChartTooltipContent = React.forwardRef<
                 return null;
             }
 
+            // In net worth mode, use pre-computed net worth from data point
+            if (netWorthMode && displayCurrency) {
+                const netWorth = payload[0]?.payload?.__net_worth as number | undefined;
+                if (netWorth !== undefined) {
+                    return [[displayCurrency, netWorth] as [string, number]];
+                }
+            }
+
             // When displayCurrency is set, all values are in a single currency
             if (displayCurrency) {
                 const total = payload.reduce((sum, item) => {
@@ -232,7 +245,7 @@ const ChartTooltipContent = React.forwardRef<
             });
 
             return Object.entries(totals).sort((a, b) => b[1] - a[1]);
-        }, [payload, accountCurrencies, displayCurrency]);
+        }, [payload, accountCurrencies, displayCurrency, netWorthMode]);
 
         if (!active || !payload?.length) {
             return null;
@@ -263,6 +276,12 @@ const ChartTooltipContent = React.forwardRef<
                             const accountId = String(
                                 item.dataKey || item.name || '',
                             );
+
+                            // In net worth mode, use the original unscaled
+                            // value stored in the data point for display.
+                            const displayValue = netWorthMode
+                                ? ((item.payload?.[`${accountId}_display`] as number | undefined) ?? item.value)
+                                : item.value;
 
                             return (
                                 <div
@@ -320,13 +339,13 @@ const ChartTooltipContent = React.forwardRef<
                                                         })()}
                                                         {valueFormatter
                                                             ? valueFormatter(
-                                                                item.value as number,
+                                                                displayValue as number,
                                                                 accountId,
                                                             )
-                                                            : typeof item.value ===
+                                                            : typeof displayValue ===
                                                                 'number'
-                                                                ? item.value.toLocaleString(locale)
-                                                                : item.value}
+                                                                ? displayValue.toLocaleString(locale)
+                                                                : displayValue}
                                                     </span>
                                                 )}
                                             </div>
@@ -336,58 +355,91 @@ const ChartTooltipContent = React.forwardRef<
                             );
                         },
                     )}
-                    {payload.length > 1 && (
-                        <div className="border-border/50 flex flex-col gap-1 border-t pt-1.5">
-                            {hasMultipleCurrencies ? (
-                                currencyTotals.map(([currency, total]) => (
-                                    <div
-                                        key={currency}
-                                        className="flex justify-between"
-                                    >
-                                        <span className="text-muted-foreground font-medium">
-                                            Total {currency}
-                                        </span>
+                    {(() => {
+                        const liabilitiesTotal = netWorthMode
+                            ? (payload[0]?.payload?.__liabilities_total as number | undefined)
+                            : undefined;
+                        const liabilitiesJson = netWorthMode
+                            ? (payload[0]?.payload?.__liabilities as string | undefined)
+                            : undefined;
+                        const liabilities: Array<{ name: string; amount: number }> = liabilitiesJson
+                            ? (JSON.parse(liabilitiesJson) as Array<{ name: string; amount: number }>)
+                            : [];
+                        const hasLiabilities = typeof liabilitiesTotal === 'number' && liabilitiesTotal > 0;
+                        const showTotalSection = payload.length > 1 || hasLiabilities;
+
+                        if (!showTotalSection) return null;
+
+                        const totalLabel = hasLiabilities ? 'Net Worth' : 'Total';
+
+                        return (
+                            <div className="border-border/50 flex flex-col gap-1 border-t pt-1.5">
+                                {hasLiabilities && displayCurrency && liabilities.map((liability, index) => (
+                                    <div key={index} className="flex justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="size-2.5 rounded-xs bg-destructive" />
+                                            <span className="text-muted-foreground font-medium">
+                                                {netWorthMode?.liabilityTypeLabel}: {liability.name}
+                                            </span>
+                                        </div>
                                         <span className="text-foreground font-mono font-medium tabular-nums">
                                             {isPrivacyModeEnabled
-                                                ? formatCurrencyWithCode(total, currency, locale).replace(/\d/g, '*')
-                                                : formatCurrencyWithCode(total, currency, locale)}
+                                                ? formatCurrencyWithCode(-liability.amount, displayCurrency, locale).replace(/\d/g, '*')
+                                                : formatCurrencyWithCode(-liability.amount, displayCurrency, locale)}
                                         </span>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground font-medium">
-                                        Total
-                                    </span>
-                                    <span className="text-foreground font-mono font-medium tabular-nums">
-                                        {currencyTotals && currencyTotals[0]
-                                            ? isPrivacyModeEnabled
-                                                ? formatCurrencyWithCode(currencyTotals[0][1], currencyTotals[0][0], locale).replace(/\d/g, '*')
-                                                : formatCurrencyWithCode(currencyTotals[0][1], currencyTotals[0][0], locale)
-                                            : payload
-                                                .reduce(
-                                                    (
-                                                        sum: number,
-                                                        item: TooltipPayloadItem,
-                                                    ) => {
-                                                        const value =
-                                                            item.value;
-                                                        return (
-                                                            sum +
-                                                            (typeof value ===
-                                                                'number'
-                                                                ? value
-                                                                : 0)
-                                                        );
-                                                    },
-                                                    0,
-                                                )
-                                                .toLocaleString(locale)}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                ))}
+                                {hasMultipleCurrencies ? (
+                                    currencyTotals.map(([currency, total]) => (
+                                        <div
+                                            key={currency}
+                                            className="flex justify-between"
+                                        >
+                                            <span className="text-muted-foreground font-medium">
+                                                {totalLabel} {currency}
+                                            </span>
+                                            <span className="text-foreground font-mono font-medium tabular-nums">
+                                                {isPrivacyModeEnabled
+                                                    ? formatCurrencyWithCode(total, currency, locale).replace(/\d/g, '*')
+                                                    : formatCurrencyWithCode(total, currency, locale)}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground font-medium">
+                                            {totalLabel}
+                                        </span>
+                                        <span className="text-foreground font-mono font-medium tabular-nums">
+                                            {currencyTotals && currencyTotals[0]
+                                                ? isPrivacyModeEnabled
+                                                    ? formatCurrencyWithCode(currencyTotals[0][1], currencyTotals[0][0], locale).replace(/\d/g, '*')
+                                                    : formatCurrencyWithCode(currencyTotals[0][1], currencyTotals[0][0], locale)
+                                                : payload
+                                                    .reduce(
+                                                        (
+                                                            sum: number,
+                                                            item: TooltipPayloadItem,
+                                                        ) => {
+                                                            const value =
+                                                                item.value;
+                                                            return (
+                                                                sum +
+                                                                (typeof value ===
+                                                                    'number'
+                                                                    ? value
+                                                                    : 0)
+                                                            );
+                                                        },
+                                                        0,
+                                                    )
+                                                    .toLocaleString(locale)}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
         );

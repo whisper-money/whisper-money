@@ -10,9 +10,6 @@ interface AccountNameProps {
     length?: Length;
 }
 
-export function AccountName({
-    account,
-    className = '',
-}: Omit<AccountNameProps, 'length'>) {
+export function AccountName({ account, className = '' }: AccountNameProps) {
     return <span className={className}>{account.name}</span>;
 }

@@ -252,7 +252,9 @@ export function AccountListCard({
                                 variant="secondary"
                                 onClick={() => setUpdateBalanceOpen(true)}
                             >
-                                {__('Update balance')}
+                                {account.type === 'loan'
+                                    ? __('Update owed amount')
+                                    : __('Update balance')}
                             </Button>
                         )}
 

@@ -227,6 +227,7 @@ export function AccountBalanceChart({
 }: AccountBalanceChartProps) {
     const locale = useLocale();
     const isMobile = useIsMobile();
+    const isLoan = account.type === 'loan';
     const [granularity, setGranularity] = useState<ChartGranularity>('monthly');
     const [balanceData, setBalanceData] = useState<AccountBalanceData | null>(
         null,
@@ -384,7 +385,11 @@ export function AccountBalanceChart({
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>{__('Balance evolution')}</CardTitle>
+                    <CardTitle>
+                        {isLoan
+                            ? __('Owed amount evolution')
+                            : __('Balance evolution')}
+                    </CardTitle>
                     <CardDescription>
                         <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
                     </CardDescription>
@@ -400,11 +405,17 @@ export function AccountBalanceChart({
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>{__('Balance evolution')}</CardTitle>
+                    <CardTitle>
+                        {isLoan
+                            ? __('Owed amount evolution')
+                            : __('Balance evolution')}
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                        {__('No balance data available')}
+                        {isLoan
+                            ? __('No owed amount data available')
+                            : __('No balance data available')}
                     </div>
                 </CardContent>
             </Card>
@@ -416,7 +427,11 @@ export function AccountBalanceChart({
             <CardHeader>
                 <div className="flex flex-row items-start justify-between">
                     <div className="flex flex-col gap-1 sm:gap-2">
-                        <CardTitle>{__('Balance evolution')}</CardTitle>
+                        <CardTitle>
+                            {isLoan
+                                ? __('Owed amount evolution')
+                                : __('Balance evolution')}
+                        </CardTitle>
                         <button
                             type="button"
                             onClick={onBalanceClick}

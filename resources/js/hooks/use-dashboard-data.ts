@@ -1,4 +1,5 @@
 import { useLocale } from '@/hooks/use-locale';
+import { getAccountSign } from '@/lib/chart-calculations';
 import { Account, AccountType, Bank } from '@/types/account';
 import { Category } from '@/types/category';
 import { format, subDays, subMonths } from 'date-fns';
@@ -65,7 +66,11 @@ export function deriveAccountMetrics(
         const investedKey = account.id + '_invested';
         const history = data.map((point) => ({
             date: formatMonth(point.month as string, locale),
-            value: (point[account.id] as number) ?? 0,
+            value:
+                typeof point[account.id] === 'number'
+                    ? getAccountSign(account.type) *
+                      Math.abs(point[account.id] as number)
+                    : 0,
             investedAmount:
                 investedKey in point
                     ? (point[investedKey] as number | null)

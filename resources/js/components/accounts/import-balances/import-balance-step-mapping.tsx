@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { useLocale } from '@/hooks/use-locale';
 import { parseAmount, parseDate } from '@/lib/file-parser';
+import { balanceTermCapitalized } from '@/types/account';
 import type {
     BalanceColumnMapping,
     ColumnOption,
@@ -26,6 +27,7 @@ interface ImportBalanceStepMappingProps {
     parsedData: ParsedRow[];
     currencyCode: string;
     showInvestedAmount: boolean;
+    isLoan?: boolean;
     onMappingChange: (field: keyof BalanceColumnMapping, value: string) => void;
     onDateFormatChange: (format: DateFormat) => void;
     onNext: () => void;
@@ -40,6 +42,7 @@ export function ImportBalanceStepMapping({
     parsedData,
     currencyCode,
     showInvestedAmount,
+    isLoan = false,
     onMappingChange,
     onDateFormatChange,
     onNext,
@@ -128,7 +131,7 @@ export function ImportBalanceStepMapping({
 
                 <div className="space-y-2">
                     <Label htmlFor="balance-column">
-                        {__('Balance')}
+                        {balanceTermCapitalized(isLoan ? 'loan' : 'checking')}
                         <span className="text-destructive">*</span>
                     </Label>
                     <Select
@@ -139,7 +142,11 @@ export function ImportBalanceStepMapping({
                     >
                         <SelectTrigger id="balance-column">
                             <SelectValue
-                                placeholder={__('Select balance column')}
+                                placeholder={
+                                    isLoan
+                                        ? __('Select owed amount column')
+                                        : __('Select balance column')
+                                }
                             />
                         </SelectTrigger>
                         <SelectContent>
@@ -275,7 +282,9 @@ export function ImportBalanceStepMapping({
                     {__('Back')}
                 </Button>
                 <Button onClick={onNext} disabled={!isValid}>
-                    {__('Preview Balances')}
+                    {isLoan
+                        ? __('Preview Owed Amounts')
+                        : __('Preview Balances')}
                 </Button>
             </div>
         </div>

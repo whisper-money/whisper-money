@@ -8,6 +8,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
+import { balanceTermCapitalized } from '@/types/account';
 import { type ParsedBalance } from '@/types/balance-import';
 import { formatCurrency } from '@/utils/currency';
 import { formatDateMedium } from '@/utils/date';
@@ -17,6 +18,7 @@ interface ImportBalanceStepPreviewProps {
     balances: ParsedBalance[];
     currencyCode: string;
     showInvestedAmount: boolean;
+    isLoan?: boolean;
     onConfirm: () => void;
     onBack: () => void;
     isImporting: boolean;
@@ -26,6 +28,7 @@ export function ImportBalanceStepPreview({
     balances,
     currencyCode,
     showInvestedAmount,
+    isLoan = false,
     onConfirm,
     onBack,
     isImporting,
@@ -44,8 +47,15 @@ export function ImportBalanceStepPreview({
         <div className="flex flex-col gap-6">
             <div className="rounded-lg border bg-muted/50 p-4">
                 <p className="text-sm text-muted-foreground">
-                    {total} balance{total !== 1 ? 's' : ''}
-                    {__('will be updated or\n                    created.')}
+                    {total}{' '}
+                    {isLoan
+                        ? total !== 1
+                            ? __('owed amounts')
+                            : __('owed amount')
+                        : total !== 1
+                          ? __('balances')
+                          : __('balance')}{' '}
+                    {__('will be updated or created.')}
                 </p>
             </div>
 
@@ -60,7 +70,9 @@ export function ImportBalanceStepPreview({
                                 </TableHead>
                             )}
                             <TableHead className="text-right">
-                                {__('Balance')}
+                                {balanceTermCapitalized(
+                                    isLoan ? 'loan' : 'checking',
+                                )}
                             </TableHead>
                         </TableRow>
                     </TableHeader>
@@ -71,7 +83,9 @@ export function ImportBalanceStepPreview({
                                     colSpan={colSpan}
                                     className="text-center text-muted-foreground"
                                 >
-                                    No valid balances found
+                                    {isLoan
+                                        ? __('No valid owed amounts found')
+                                        : __('No valid balances found')}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -116,7 +130,9 @@ export function ImportBalanceStepPreview({
                 >
                     {isImporting
                         ? 'Importing...'
-                        : `Import ${total} Balance${total !== 1 ? 's' : ''}`}
+                        : isLoan
+                          ? `Import ${total} Owed Amount${total !== 1 ? 's' : ''}`
+                          : `Import ${total} Balance${total !== 1 ? 's' : ''}`}
                 </Button>
             </div>
         </div>

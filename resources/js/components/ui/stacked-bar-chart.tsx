@@ -128,6 +128,7 @@ export interface StackedBarChartProps<T extends Record<string, unknown>> {
     className?: string;
     showLegend?: boolean;
     minBarWidth?: number;
+    netWorthMode?: { liabilityTypeLabel: string };
 }
 
 export function StackedBarChart<T extends Record<string, unknown>>({
@@ -142,6 +143,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
     className,
     showLegend = true,
     minBarWidth = 50,
+    netWorthMode,
 }: StackedBarChartProps<T>) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -206,6 +208,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                                 valueFormatter={valueFormatter}
                                 accountCurrencies={accountCurrencies}
                                 displayCurrency={displayCurrency}
+                                netWorthMode={netWorthMode}
                             />
                         }
                     />
