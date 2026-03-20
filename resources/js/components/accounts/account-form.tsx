@@ -1,3 +1,4 @@
+import { AmountInput } from '@/components/ui/amount-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,6 +11,7 @@ import {
 import {
     ACCOUNT_TYPES,
     CURRENCY_OPTIONS,
+    balanceTermCapitalized,
     formatAccountType,
     type AccountType,
     type Bank,
@@ -20,12 +22,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { BankCombobox } from './bank-combobox';
 import { CustomBankData, CustomBankForm } from './custom-bank-form';
 
+const BALANCE_ACCOUNT_TYPES: AccountType[] = [
+    'investment',
+    'loan',
+    'retirement',
+    'savings',
+];
+
 export interface AccountFormData {
     displayName: string;
     bankId: number | null;
     type: AccountType | null;
     currencyCode: CurrencyCode | null;
     customBank: CustomBankData | null;
+    balance: number | null;
 }
 
 interface AccountFormProps {
@@ -65,6 +75,10 @@ export function AccountForm({
     const [customBankData, setCustomBankData] = useState<CustomBankData>(
         initialCustomBankData,
     );
+    const [balance, setBalance] = useState<number | null>(null);
+
+    const showBalanceField =
+        selectedType !== null && BALANCE_ACCOUNT_TYPES.includes(selectedType);
 
     useEffect(() => {
         onChange({
@@ -73,6 +87,7 @@ export function AccountForm({
             type: selectedType,
             currencyCode: selectedCurrency,
             customBank: isCreatingCustomBank ? customBankData : null,
+            balance: showBalanceField ? balance : null,
         });
     }, [
         displayName,
@@ -81,6 +96,8 @@ export function AccountForm({
         selectedCurrency,
         isCreatingCustomBank,
         customBankData,
+        balance,
+        showBalanceField,
         onChange,
     ]);
 
@@ -215,6 +232,27 @@ export function AccountForm({
                     </Select>
                 </div>
             </div>
+
+            {showBalanceField && selectedCurrency && (
+                <div className="space-y-2">
+                    <Label htmlFor="balance">
+                        {balanceTermCapitalized(selectedType!)}
+                    </Label>
+                    <div className="mt-1">
+                        <AmountInput
+                            id="balance"
+                            value={balance ?? 0}
+                            onChange={setBalance}
+                            currencyCode={selectedCurrency}
+                        />
+                    </div>
+                    <p className="pl-1 text-xs text-muted-foreground">
+                        {__(
+                            'Optional. Set the current balance for this account.',
+                        )}
+                    </p>
+                </div>
+            )}
         </>
     );
 }

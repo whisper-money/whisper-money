@@ -37,6 +37,7 @@ class StoreAccountRequest extends FormRequest
                 'string',
                 Rule::in(array_map(fn ($type) => $type->value, AccountType::cases())),
             ],
+            'balance' => ['nullable', 'integer'],
         ];
     }
 }
