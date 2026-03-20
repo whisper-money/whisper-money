@@ -54,8 +54,8 @@ export function AccountBalanceCard({
                         className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                     >
                         <BankLogo
-                            src={account.bank.logo}
-                            name={account.bank.name}
+                            src={account.bank?.logo ?? null}
+                            name={account.bank?.name}
                             className="mr-2 inline-block size-5"
                         />
 

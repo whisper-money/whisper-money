@@ -49,7 +49,7 @@ export function CategoryCell({
                 (a) => a.id === transaction.account_id,
             );
             const bank = account?.bank?.id
-                ? banks.find((b) => b.id === account.bank.id)
+                ? banks.find((b) => b.id === account.bank!.id)
                 : undefined;
 
             const updatedTransaction: DecryptedTransaction = {

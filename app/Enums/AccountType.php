@@ -9,6 +9,7 @@ enum AccountType: string
     case Investment = 'investment';
     case Loan = 'loan';
     case Retirement = 'retirement';
+    case RealEstate = 'real_estate';
     case Savings = 'savings';
     case Others = 'others';
 
@@ -23,5 +24,13 @@ enum AccountType: string
     public function reducesNetWorth(): bool
     {
         return in_array($this, [self::CreditCard, self::Loan], true);
+    }
+
+    /**
+     * Whether this account type is non-transactional (balance tracking only).
+     */
+    public function isNonTransactional(): bool
+    {
+        return in_array($this, [self::Investment, self::Retirement, self::RealEstate], true);
     }
 }

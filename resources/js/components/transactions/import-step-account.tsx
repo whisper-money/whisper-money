@@ -3,7 +3,11 @@ import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { filterTransactionalAccounts, type Account } from '@/types/account';
+import {
+    filterTransactionalAccounts,
+    formatAccountType,
+    type Account,
+} from '@/types/account';
 import type { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
 import { useEffect } from 'react';
@@ -60,8 +64,8 @@ export function ImportStepAccount({
                             />
 
                             <BankLogo
-                                src={account.bank.logo}
-                                name={account.bank.name}
+                                src={account.bank?.logo ?? null}
+                                name={account.bank?.name}
                                 className="h-10 w-10"
                                 fallback="icon"
                             />
@@ -73,8 +77,9 @@ export function ImportStepAccount({
                                     />
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                    {account.bank.name} •{' '}
-                                    {account.currency_code}
+                                    {account.bank?.name ??
+                                        formatAccountType(account.type)}{' '}
+                                    • {account.currency_code}
                                 </span>
                             </div>
                         </Label>

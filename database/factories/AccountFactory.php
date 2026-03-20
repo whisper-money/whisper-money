@@ -47,4 +47,12 @@ class AccountFactory extends Factory
             'linked_at' => now(),
         ]);
     }
+
+    public function realEstate(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => AccountType::RealEstate,
+            'bank_id' => null,
+        ]);
+    }
 }

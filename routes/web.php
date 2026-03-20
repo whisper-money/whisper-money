@@ -11,6 +11,7 @@ use App\Http\Controllers\OpenBanking\BinanceController;
 use App\Http\Controllers\OpenBanking\BitpandaController;
 use App\Http\Controllers\OpenBanking\IndexaCapitalController;
 use App\Http\Controllers\OpenBanking\InstitutionController;
+use App\Http\Controllers\RealEstateDetailController;
 use App\Http\Controllers\ReEvaluateTransactionRulesController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SitemapController;
@@ -98,6 +99,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
     Route::get('accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');
+    Route::patch('accounts/{account}/real-estate-detail', [RealEstateDetailController::class, 'update'])->name('accounts.real-estate-detail.update');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('transactions/categorize', [TransactionController::class, 'categorize'])->name('transactions.categorize');

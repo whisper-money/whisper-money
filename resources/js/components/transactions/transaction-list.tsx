@@ -497,7 +497,7 @@ export function TransactionList({
                                 ? categoriesMap.get(transaction.category_id)
                                 : null;
                             const bank = account?.bank?.id
-                                ? banksMap.get(account.bank.id)
+                                ? banksMap.get(account.bank!.id)
                                 : undefined;
 
                             return {
