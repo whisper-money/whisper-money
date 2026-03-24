@@ -88,12 +88,7 @@ class HandleInertiaRequests extends Middleware
             'includeLoansInNetWorthChart' => $user?->setting->include_loans_in_net_worth_chart ?? true,
             'includeRealEstateInNetWorthChart' => $user?->setting->include_real_estate_in_net_worth_chart ?? true,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'features' => [
-                'cashflow' => true,
-                'open-banking' => $user ? Feature::for($user)->active('open-banking') : false,
-                'account-mapping' => $user ? Feature::for($user)->active('account-mapping') : false,
-                'real-estate' => $user ? Feature::for($user)->active('real-estate') : false,
-            ],
+            'features' => $this->resolveFeatureFlags($user),
             'accounts' => fn () => $user ? $user->accounts()
                 ->with('bank:id,name,logo')
                 ->orderBy('name')
@@ -122,6 +117,30 @@ class HandleInertiaRequests extends Middleware
             'hasEncryptedTransactions' => $hasEncryptedTransactions,
             'locale' => app()->getLocale(),
             'translations' => $this->getTranslations(),
+        ];
+    }
+
+    /**
+     * Eagerly load all feature flags in a single query instead of N+1.
+     *
+     * @return array<string, bool>
+     */
+    protected function resolveFeatureFlags(?object $user): array
+    {
+        $flags = ['open-banking', 'account-mapping', 'real-estate'];
+
+        if (! $user) {
+            return ['cashflow' => true, ...array_fill_keys($flags, false)];
+        }
+
+        // Single batched SELECT + single bulk INSERT for unresolved flags
+        Feature::for($user)->load($flags);
+
+        return [
+            'cashflow' => true,
+            ...collect($flags)->mapWithKeys(
+                fn (string $flag) => [$flag => Feature::for($user)->active($flag)]
+            )->all(),
         ];
     }
 
