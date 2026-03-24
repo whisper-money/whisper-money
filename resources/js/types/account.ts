@@ -96,6 +96,8 @@ export interface RealEstateDetail {
     notes: string | null;
     linked_loan_account_id: UUID | null;
     linked_loan_account: Account | null;
+    current_market_value: number | null;
+    current_loan_balance: number | null;
 }
 
 export function formatPropertyType(type: PropertyType): string {

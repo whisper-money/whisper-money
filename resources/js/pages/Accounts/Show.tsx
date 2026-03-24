@@ -1,12 +1,17 @@
 import { index, show } from '@/actions/App/Http/Controllers/AccountController';
 import { update as updateRealEstateDetail } from '@/actions/App/Http/Controllers/RealEstateDetailController';
-import { AccountBalanceChart } from '@/components/accounts/account-balance-chart';
+import {
+    AccountBalanceChart,
+    type BalanceDataPoint,
+    type ChartComputedData,
+} from '@/components/accounts/account-balance-chart';
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { BankLogo } from '@/components/bank-logo';
+import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import HeadingSmall from '@/components/heading-small';
 import { MobileBackButton } from '@/components/mobile-back-button';
 import { TransactionList } from '@/components/transactions/transaction-list';
@@ -32,6 +37,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import {
@@ -54,7 +60,8 @@ import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import { ChevronDown, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface AccountWithRealEstate extends Account {
     real_estate_detail?: RealEstateDetail;
@@ -85,6 +92,12 @@ export default function AccountShow({
     const [balancesOpen, setBalancesOpen] = useState(false);
     const [chartRefreshKey, setChartRefreshKey] = useState(0);
     const [editingDetails, setEditingDetails] = useState(false);
+    const [chartComputedData, setChartComputedData] =
+        useState<ChartComputedData | null>(null);
+
+    const handleChartDataLoaded = useCallback((data: ChartComputedData) => {
+        setChartComputedData(data);
+    }, []);
 
     function handleBalanceUpdated() {
         setChartRefreshKey((prev) => prev + 1);
@@ -218,7 +231,21 @@ export default function AccountShow({
                             ? undefined
                             : () => setUpdateBalanceOpen(true)
                     }
+                    onDataLoaded={handleChartDataLoaded}
                 />
+
+                {isRealEstate &&
+                    realEstateDetail &&
+                    chartComputedData?.hasMortgageData && (
+                        <EquitySummaryCards
+                            chartData={chartComputedData.chartData}
+                            currentBalance={chartComputedData.currentBalance}
+                            currentMortgageBalance={
+                                chartComputedData.currentMortgageBalance
+                            }
+                            currencyCode={account.currency_code}
+                        />
+                    )}
 
                 {isRealEstate && realEstateDetail && (
                     <PropertyDetailsCard
@@ -286,6 +313,219 @@ export default function AccountShow({
                 onSuccess={handleBalanceUpdated}
             />
         </AppSidebarLayout>
+    );
+}
+
+interface EquitySummaryCardsProps {
+    chartData: BalanceDataPoint[];
+    currentBalance: number;
+    currentMortgageBalance: number | null;
+    currencyCode: string;
+}
+
+function EquitySummaryCards({
+    chartData,
+    currentBalance,
+    currentMortgageBalance,
+    currencyCode,
+}: EquitySummaryCardsProps) {
+    const { accountMainLineColor } = useChartColors();
+
+    const { marketHistory, mortgageHistory, equityHistory, equity } =
+        useMemo(() => {
+            const market = chartData.map((d) => ({
+                date: d.month,
+                value: d.value,
+            }));
+            const mortgage = chartData
+                .filter(
+                    (d) =>
+                        d.mortgage_balance !== null &&
+                        d.mortgage_balance !== undefined,
+                )
+                .map((d) => ({ date: d.month, value: d.mortgage_balance! }));
+            const equityArr = chartData
+                .filter(
+                    (d) =>
+                        d.mortgage_balance !== null &&
+                        d.mortgage_balance !== undefined,
+                )
+                .map((d) => ({
+                    date: d.month,
+                    value: d.value - d.mortgage_balance!,
+                }));
+
+            const currentEquity =
+                currentMortgageBalance !== null
+                    ? currentBalance - currentMortgageBalance
+                    : null;
+
+            return {
+                marketHistory: market,
+                mortgageHistory: mortgage,
+                equityHistory: equityArr,
+                equity: currentEquity,
+            };
+        }, [chartData, currentBalance, currentMortgageBalance]);
+
+    const marketTrend = useMemo(() => {
+        if (marketHistory.length < 2) return null;
+        const prev = marketHistory[0].value;
+        const curr = marketHistory[marketHistory.length - 1].value;
+        if (prev === 0) return null;
+        return { diff: curr - prev, previous: prev, current: curr };
+    }, [marketHistory]);
+
+    const mortgageTrend = useMemo(() => {
+        if (mortgageHistory.length < 2) return null;
+        const prev = mortgageHistory[0].value;
+        const curr = mortgageHistory[mortgageHistory.length - 1].value;
+        if (prev === 0) return null;
+        return { diff: curr - prev, previous: prev, current: curr };
+    }, [mortgageHistory]);
+
+    const equityTrend = useMemo(() => {
+        if (equityHistory.length < 2) return null;
+        const prev = equityHistory[0].value;
+        const curr = equityHistory[equityHistory.length - 1].value;
+        if (prev === 0) return null;
+        return { diff: curr - prev, previous: prev, current: curr };
+    }, [equityHistory]);
+
+    const equityLineColor = 'var(--color-emerald-500)';
+    const mortgageLineColor = 'var(--color-amber-500)';
+
+    return (
+        <div className="grid gap-4 md:grid-cols-3">
+            <SparklineCard
+                title={__('Market Value')}
+                amountInCents={currentBalance}
+                currencyCode={currencyCode}
+                history={marketHistory}
+                lineColor={accountMainLineColor}
+                trend={marketTrend}
+            />
+            <SparklineCard
+                title={__('Mortgage Owed')}
+                amountInCents={currentMortgageBalance ?? 0}
+                currencyCode={currencyCode}
+                history={mortgageHistory}
+                lineColor={mortgageLineColor}
+                trend={mortgageTrend}
+            />
+            <SparklineCard
+                title={__('Equity')}
+                amountInCents={equity ?? 0}
+                currencyCode={currencyCode}
+                history={equityHistory}
+                lineColor={equityLineColor}
+                trend={equityTrend}
+            />
+        </div>
+    );
+}
+
+function SparklineCard({
+    title,
+    amountInCents,
+    currencyCode,
+    history,
+    lineColor,
+    trend,
+}: {
+    title: string;
+    amountInCents: number;
+    currencyCode: string;
+    history: Array<{ date: string; value: number }>;
+    lineColor: string;
+    trend: { diff: number; previous: number; current: number } | null;
+}) {
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between gap-6">
+                    <div className="flex flex-col gap-1">
+                        <div className="px-0 py-1">
+                            <AmountDisplay
+                                amountInCents={amountInCents}
+                                currencyCode={currencyCode}
+                                size="2xl"
+                                weight="medium"
+                                minimumFractionDigits={0}
+                                maximumFractionDigits={0}
+                            />
+                        </div>
+                        {trend && (
+                            <AmountTrendIndicator
+                                isPositive={trend.diff >= 0}
+                                trend={Math.abs(trend.diff)}
+                                label={__('vs start')}
+                                className="text-sm"
+                                previousAmount={trend.previous}
+                                currentAmount={trend.current}
+                                tooltipSide="bottom"
+                                currencyCode={currencyCode}
+                            />
+                        )}
+                    </div>
+                    {history.length > 1 && (
+                        <div className="h-[70px] w-full max-w-[250px] flex-1">
+                            <ResponsiveContainer
+                                width="100%"
+                                height="100%"
+                                initialDimension={{ width: 1, height: 1 }}
+                            >
+                                <LineChart data={history}>
+                                    <Tooltip
+                                        content={({ active, payload }) => {
+                                            if (!active || !payload?.length)
+                                                return null;
+                                            const data = payload[0].payload as {
+                                                date: string;
+                                                value: number;
+                                            };
+                                            return (
+                                                <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                                                    <p className="mb-1 text-muted-foreground">
+                                                        {data.date}
+                                                    </p>
+                                                    <p className="font-mono font-medium text-foreground tabular-nums">
+                                                        <AmountDisplay
+                                                            amountInCents={
+                                                                data.value
+                                                            }
+                                                            currencyCode={
+                                                                currencyCode
+                                                            }
+                                                            minimumFractionDigits={
+                                                                0
+                                                            }
+                                                            maximumFractionDigits={
+                                                                0
+                                                            }
+                                                        />
+                                                    </p>
+                                                </div>
+                                            );
+                                        }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="value"
+                                        stroke={lineColor}
+                                        strokeWidth={2}
+                                        dot={false}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 

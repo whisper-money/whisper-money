@@ -109,7 +109,10 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
-        $lookup = BalanceLookup::forAccounts([$account->id], $start->copy()->startOfMonth(), $end);
+        $linkedLoanId = $this->getLinkedLoanAccountId($account);
+        $accountIds = $linkedLoanId ? [$account->id, $linkedLoanId] : [$account->id];
+
+        $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $end);
 
         $points = [];
         $current = $start->copy()->startOfMonth();
@@ -125,6 +128,10 @@ class DashboardAnalyticsController extends Controller
 
             if ($account->type->supportsInvestedAmount()) {
                 $point['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $date);
+            }
+
+            if ($linkedLoanId) {
+                $point['mortgage_balance'] = $lookup->getBalanceAt($linkedLoanId, $date);
             }
 
             $points[] = $point;
@@ -158,7 +165,10 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
-        $lookup = BalanceLookup::forAccounts([$account->id], $start, $end);
+        $linkedLoanId = $this->getLinkedLoanAccountId($account);
+        $accountIds = $linkedLoanId ? [$account->id, $linkedLoanId] : [$account->id];
+
+        $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
 
         $points = [];
         $current = $start->copy();
@@ -173,6 +183,10 @@ class DashboardAnalyticsController extends Controller
 
             if ($account->type->supportsInvestedAmount()) {
                 $point['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $date);
+            }
+
+            if ($linkedLoanId) {
+                $point['mortgage_balance'] = $lookup->getBalanceAt($linkedLoanId, $date);
             }
 
             $points[] = $point;
@@ -335,5 +349,17 @@ class DashboardAnalyticsController extends Controller
             'income' => $income,
             'expense' => abs($expense),
         ];
+    }
+
+    /**
+     * Get the linked loan account ID for a real estate account, if any.
+     */
+    private function getLinkedLoanAccountId(Account $account): ?string
+    {
+        if ($account->type !== \App\Enums\AccountType::RealEstate) {
+            return null;
+        }
+
+        return $account->realEstateDetail?->linked_loan_account_id;
     }
 }
