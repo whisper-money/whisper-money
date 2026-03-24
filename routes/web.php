@@ -50,9 +50,10 @@ Route::get('/', function () {
                     'name' => $bank->name,
                     'logo' => $bank->logo,
                 ])
-                ->values();
+                ->values()
+                ->toArray();
         })
-        : collect();
+        : [];
 
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
