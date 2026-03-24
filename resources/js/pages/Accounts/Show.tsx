@@ -50,6 +50,7 @@ import {
 import { AutomationRule } from '@/types/automation-rule';
 import { Category } from '@/types/category';
 import { Label as LabelType } from '@/types/label';
+import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import { ChevronDown, Pencil } from 'lucide-react';
@@ -628,7 +629,7 @@ function PropertyDetailsCard({
                                 {__('Purchase Date')}
                             </dt>
                             <dd className="font-medium">
-                                {detail.purchase_date}
+                                {formatDateMedium(detail.purchase_date)}
                             </dd>
                         </div>
                     )}
