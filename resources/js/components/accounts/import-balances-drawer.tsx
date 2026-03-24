@@ -683,7 +683,7 @@ export function ImportBalancesDrawer({
                 <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
-                            {importProgress} of {importTotal}
+                            {importProgress} of {importTotal}{' '}
                             {isLoan
                                 ? __('owed amounts imported')
                                 : __('balances imported')}
