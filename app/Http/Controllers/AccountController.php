@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Services\AccountMetricsService;
@@ -41,7 +42,7 @@ class AccountController extends Controller
 
         $data = $account->only(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id', 'bank']);
 
-        if ($account->type === \App\Enums\AccountType::RealEstate) {
+        if ($account->type === AccountType::RealEstate) {
             $account->load('realEstateDetail.linkedLoanAccount.bank:id,name,logo');
             $realEstateDetail = $account->realEstateDetail;
 
@@ -78,7 +79,7 @@ class AccountController extends Controller
             // Provide available loan accounts for linking
             $data['available_loan_accounts'] = $request->user()
                 ->accounts()
-                ->where('type', \App\Enums\AccountType::Loan->value)
+                ->where('type', AccountType::Loan->value)
                 ->with('bank:id,name,logo')
                 ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
         }
