@@ -49,8 +49,8 @@ export function ImportBalanceStepAccount({
                             />
 
                             <BankLogo
-                                src={account.bank.logo}
-                                name={account.bank.name}
+                                src={account.bank?.logo ?? null}
+                                name={account.bank?.name}
                                 className="h-10 w-10"
                                 fallback="icon"
                             />
@@ -62,8 +62,9 @@ export function ImportBalanceStepAccount({
                                     />
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                    {account.bank.name} •{' '}
-                                    {account.currency_code}
+                                    {account.bank?.name ??
+                                        account.currency_code}{' '}
+                                    • {account.currency_code}
                                 </span>
                             </div>
                         </Label>

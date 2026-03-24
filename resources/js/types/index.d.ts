@@ -43,6 +43,7 @@ export interface Features {
     cashflow: boolean;
     'open-banking': boolean;
     'account-mapping': boolean;
+    'real-estate': boolean;
 }
 
 export interface Flash {
@@ -61,6 +62,7 @@ export interface SharedData {
     flash: Flash;
     chartColorScheme: ChartColorScheme;
     includeLoansInNetWorthChart: boolean;
+    includeRealEstateInNetWorthChart: boolean;
     subscriptionsEnabled: boolean;
     pricing: PricingConfig;
     sidebarOpen: boolean;

@@ -35,10 +35,11 @@ export function EditAccountDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
-        bankId: account.bank.id,
+        bankId: account.bank?.id ?? null,
         type: account.type,
         currencyCode: account.currency_code,
         customBank: null,
+        realEstate: null,
     });
 
     useEffect(() => {
@@ -135,36 +136,40 @@ export function EditAccountDialog({
             return;
         }
 
+        const isRealEstate = type === 'real_estate';
+
         setIsSubmitting(true);
 
         try {
-            let finalBankId: string;
+            let finalBankId: string | null = null;
 
-            if (customBank) {
-                if (!customBank.name.trim()) {
-                    alert('Please enter a bank name.');
-                    setIsSubmitting(false);
-                    return;
+            if (!isRealEstate) {
+                if (customBank) {
+                    if (!customBank.name.trim()) {
+                        alert('Please enter a bank name.');
+                        setIsSubmitting(false);
+                        return;
+                    }
+                    const createdBankId = await createBankAndGetId();
+                    if (!createdBankId) {
+                        throw new Error('Failed to create bank');
+                    }
+                    finalBankId = createdBankId;
+                } else {
+                    if (!bankId) {
+                        alert('Please select a bank.');
+                        setIsSubmitting(false);
+                        return;
+                    }
+                    finalBankId = String(bankId);
                 }
-                const createdBankId = await createBankAndGetId();
-                if (!createdBankId) {
-                    throw new Error('Failed to create bank');
-                }
-                finalBankId = createdBankId;
-            } else {
-                if (!bankId) {
-                    alert('Please select a bank.');
-                    setIsSubmitting(false);
-                    return;
-                }
-                finalBankId = String(bankId);
             }
 
             router.patch(
                 update.url(account.id),
                 {
                     name: displayName,
-                    bank_id: finalBankId,
+                    ...(finalBankId ? { bank_id: finalBankId } : {}),
                     type: type,
                     currency_code: currencyCode,
                 },

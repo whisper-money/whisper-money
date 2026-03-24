@@ -6,7 +6,7 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
-import { supportsInvestedAmount } from '@/types/account';
+import { formatAccountType, supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
@@ -68,12 +68,14 @@ export function AccountListCard({
                                     className="-my-1 -ml-1.5 flex min-w-0 items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                                 >
                                     <h3 className="flex min-w-0 items-center gap-2 font-semibold">
-                                        <BankLogo
-                                            src={account.bank?.logo}
-                                            name={account.bank?.name}
-                                            className="size-4 shrink-0"
-                                            fallback="letter"
-                                        />
+                                        {account.bank && (
+                                            <BankLogo
+                                                src={account.bank.logo}
+                                                name={account.bank.name}
+                                                className="size-4 shrink-0"
+                                                fallback="letter"
+                                            />
+                                        )}
                                         <AccountName
                                             account={account}
                                             length={{ min: 8, max: 25 }}
@@ -83,7 +85,8 @@ export function AccountListCard({
                                 </Link>
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <span>
-                                        {account.bank?.name || 'Unknown Bank'}
+                                        {account.bank?.name ||
+                                            formatAccountType(account.type)}
                                     </span>
                                 </div>
                             </div>
@@ -254,7 +257,9 @@ export function AccountListCard({
                             >
                                 {account.type === 'loan'
                                     ? __('Update owed amount')
-                                    : __('Update balance')}
+                                    : account.type === 'real_estate'
+                                      ? __('Update market value')
+                                      : __('Update balance')}
                             </Button>
                         )}
 

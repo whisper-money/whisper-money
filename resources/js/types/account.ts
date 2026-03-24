@@ -4,6 +4,7 @@ import {
     Building2,
     CreditCard,
     FolderKanban,
+    Home,
     LineChart,
     LucideIcon,
     PiggyBank,
@@ -17,6 +18,7 @@ export const ACCOUNT_TYPES = [
     'credit_card',
     'investment',
     'loan',
+    'real_estate',
     'retirement',
     'savings',
     'others',
@@ -51,7 +53,7 @@ export interface Account {
     name: string;
     name_iv: string | null;
     encrypted: boolean;
-    bank: Bank;
+    bank: Bank | null;
     type: AccountType;
     currency_code: CurrencyCode;
     banking_connection_id: UUID | null;
@@ -69,12 +71,61 @@ export interface AccountBalance {
     updated_at: string;
 }
 
+export const PROPERTY_TYPES = [
+    'residential',
+    'commercial',
+    'land',
+    'vacation',
+    'other',
+] as const;
+
+export type PropertyType = (typeof PROPERTY_TYPES)[number];
+
+export const AREA_UNITS = ['sqm', 'sqft', 'acres', 'hectares'] as const;
+
+export type AreaUnit = (typeof AREA_UNITS)[number];
+
+export interface RealEstateDetail {
+    id: UUID;
+    property_type: PropertyType;
+    address: string | null;
+    purchase_price: number | null;
+    purchase_date: string | null;
+    area_value: string | null;
+    area_unit: AreaUnit | null;
+    notes: string | null;
+    linked_loan_account_id: UUID | null;
+    linked_loan_account: Account | null;
+}
+
+export function formatPropertyType(type: PropertyType): string {
+    const typeMap: Record<PropertyType, string> = {
+        residential: __('Residential'),
+        commercial: __('Commercial'),
+        land: __('Land'),
+        vacation: __('Vacation'),
+        other: __('Other'),
+    };
+    return typeMap[type] || type;
+}
+
+export function formatAreaUnit(unit: AreaUnit): string {
+    const unitMap: Record<AreaUnit, string> = {
+        sqm: __('m²'),
+        sqft: __('ft²'),
+        acres: __('acres'),
+        hectares: __('ha'),
+    };
+    return unitMap[unit] || unit;
+}
+
 export function formatAccountType(type: AccountType): string {
     const typeMap: Record<AccountType, string> = {
         checking: __('Checking'),
         credit_card: __('Credit Card'),
         investment: __('Investment'),
         loan: __('Loan'),
+        real_estate: __('Real Estate'),
         retirement: __('Retirement / Pension'),
         savings: __('Savings'),
         others: __('Others'),
@@ -84,6 +135,7 @@ export function formatAccountType(type: AccountType): string {
 
 const NON_TRANSACTIONAL_ACCOUNT_TYPES: AccountType[] = [
     'investment',
+    'real_estate',
     'retirement',
 ];
 
@@ -109,6 +161,7 @@ export function accountIconByType(type: AccountType): LucideIcon {
         credit_card: CreditCard,
         investment: LineChart,
         loan: Building2,
+        real_estate: Home,
         retirement: TrendingUp,
         savings: PiggyBank,
         others: FolderKanban,
@@ -129,9 +182,13 @@ export function isLoanAccount(account: Pick<Account, 'type'>): boolean {
     return account.type === 'loan';
 }
 
+export function isRealEstateAccount(account: Pick<Account, 'type'>): boolean {
+    return account.type === 'real_estate';
+}
+
 /**
  * Returns the appropriate term for "balance" based on account type.
- * Loan accounts use "owed amount" instead of "balance".
+ * Loan accounts use "owed amount", real estate uses "market value".
  */
 export function balanceTerm(
     type: AccountType,
@@ -140,12 +197,15 @@ export function balanceTerm(
     if (type === 'loan') {
         return variant === 'plural' ? __('owed amounts') : __('owed amount');
     }
+    if (type === 'real_estate') {
+        return variant === 'plural' ? __('market values') : __('market value');
+    }
     return variant === 'plural' ? __('balances') : __('balance');
 }
 
 /**
  * Returns the appropriate capitalized term for "Balance" based on account type.
- * Loan accounts use "Owed Amount" instead of "Balance".
+ * Loan accounts use "Owed Amount", real estate uses "Market Value".
  */
 export function balanceTermCapitalized(
     type: AccountType,
@@ -153,6 +213,9 @@ export function balanceTermCapitalized(
 ): string {
     if (type === 'loan') {
         return variant === 'plural' ? __('Owed Amounts') : __('Owed Amount');
+    }
+    if (type === 'real_estate') {
+        return variant === 'plural' ? __('Market Values') : __('Market Value');
     }
     return variant === 'plural' ? __('Balances') : __('Balance');
 }

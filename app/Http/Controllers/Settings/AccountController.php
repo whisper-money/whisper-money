@@ -40,10 +40,13 @@ class AccountController extends Controller
         $user = auth()->user();
         $validated = $request->validated();
         $balance = $validated['balance'] ?? null;
-        unset($validated['balance']);
+
+        $accountData = collect($validated)->only([
+            'name', 'bank_id', 'currency_code', 'type',
+        ])->toArray();
 
         $account = $user->accounts()->create([
-            ...$validated,
+            ...$accountData,
             'encrypted' => false,
             'name_iv' => null,
         ]);
@@ -53,6 +56,18 @@ class AccountController extends Controller
                 'balance_date' => now()->toDateString(),
                 'balance' => $balance,
             ]);
+        }
+
+        // Create real estate detail if account type is real_estate
+        if ($account->type === \App\Enums\AccountType::RealEstate) {
+            $realEstateData = collect($validated)->only([
+                'property_type', 'address', 'purchase_price', 'purchase_date',
+                'area_value', 'area_unit', 'linked_loan_account_id', 'notes',
+            ])->filter(fn ($value) => $value !== null)->toArray();
+
+            if (! empty($realEstateData)) {
+                $account->realEstateDetail()->create($realEstateData);
+            }
         }
 
         // Set user's currency_code from first account

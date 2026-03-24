@@ -13,10 +13,11 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { SharedData } from '@/types';
+import { Account } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { Link2, PenLine } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { AccountForm, AccountFormData } from './account-form';
 
 type Mode = 'choice' | 'manual';
@@ -28,10 +29,22 @@ export function CreateAccountDialog({
     onSuccess?: () => void;
     trigger?: React.ReactNode;
 }) {
-    const { features, auth, subscriptionsEnabled } =
-        usePage<SharedData>().props;
+    const {
+        features,
+        auth,
+        subscriptionsEnabled,
+        accounts: sharedAccounts,
+    } = usePage<SharedData>().props;
     const openBankingEnabled = features['open-banking'];
+    const realEstateEnabled = features['real-estate'];
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
+    const availableLoanAccounts = useMemo(
+        () =>
+            ((sharedAccounts as Account[]) || []).filter(
+                (a) => a.type === 'loan',
+            ),
+        [sharedAccounts],
+    );
 
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState<Mode>(
@@ -47,6 +60,7 @@ export function CreateAccountDialog({
         currencyCode: null,
         customBank: null,
         balance: null,
+        realEstate: null,
     });
 
     const handleFormChange = useCallback((data: AccountFormData) => {
@@ -109,40 +123,69 @@ export function CreateAccountDialog({
             return;
         }
 
+        const isRealEstate = type === 'real_estate';
+
         setIsSubmitting(true);
 
         try {
-            let finalBankId: string;
+            let finalBankId: string | null = null;
 
-            if (customBank) {
-                if (!customBank.name.trim()) {
-                    alert('Please enter a bank name.');
-                    setIsSubmitting(false);
-                    return;
+            if (!isRealEstate) {
+                if (customBank) {
+                    if (!customBank.name.trim()) {
+                        alert('Please enter a bank name.');
+                        setIsSubmitting(false);
+                        return;
+                    }
+                    const createdBankId = await createBankAndGetId();
+                    if (!createdBankId) {
+                        throw new Error('Failed to create bank');
+                    }
+                    finalBankId = createdBankId;
+                } else {
+                    if (!bankId) {
+                        alert('Please select a bank.');
+                        setIsSubmitting(false);
+                        return;
+                    }
+                    finalBankId = String(bankId);
                 }
-                const createdBankId = await createBankAndGetId();
-                if (!createdBankId) {
-                    throw new Error('Failed to create bank');
-                }
-                finalBankId = createdBankId;
-            } else {
-                if (!bankId) {
-                    alert('Please select a bank.');
-                    setIsSubmitting(false);
-                    return;
-                }
-                finalBankId = String(bankId);
             }
 
             router.post(
                 store.url(),
                 {
                     name: displayName,
-                    bank_id: finalBankId,
+                    ...(finalBankId ? { bank_id: finalBankId } : {}),
                     type: type,
                     currency_code: currencyCode,
                     ...(formDataRef.current.balance
                         ? { balance: formDataRef.current.balance }
+                        : {}),
+                    ...(formDataRef.current.realEstate
+                        ? {
+                              property_type:
+                                  formDataRef.current.realEstate.propertyType,
+                              address:
+                                  formDataRef.current.realEstate.address ||
+                                  null,
+                              purchase_price:
+                                  formDataRef.current.realEstate
+                                      .purchasePrice || null,
+                              purchase_date:
+                                  formDataRef.current.realEstate.purchaseDate ||
+                                  null,
+                              area_value:
+                                  formDataRef.current.realEstate.areaValue ||
+                                  null,
+                              area_unit:
+                                  formDataRef.current.realEstate.areaUnit,
+                              linked_loan_account_id:
+                                  formDataRef.current.realEstate
+                                      .linkedLoanAccountId,
+                              notes:
+                                  formDataRef.current.realEstate.notes || null,
+                          }
                         : {}),
                 },
                 {
@@ -234,7 +277,13 @@ export function CreateAccountDialog({
 
                     {mode === 'manual' && (
                         <form onSubmit={handleSubmit} className="space-y-2">
-                            <AccountForm onChange={handleFormChange} />
+                            <AccountForm
+                                onChange={handleFormChange}
+                                availableLoanAccounts={availableLoanAccounts}
+                                hiddenAccountTypes={
+                                    realEstateEnabled ? [] : ['real_estate']
+                                }
+                            />
 
                             <div className="flex justify-end gap-2 pt-4">
                                 <Button

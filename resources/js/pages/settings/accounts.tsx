@@ -228,6 +228,13 @@ export default function Accounts({ accounts }: AccountsPageProps) {
             header: () => __('Bank'),
             cell: ({ row }) => {
                 const bank = row.original.bank;
+                if (!bank) {
+                    return (
+                        <div className="min-w-32 text-sm text-muted-foreground">
+                            —
+                        </div>
+                    );
+                }
                 return (
                     <div className="flex min-w-32 items-center gap-2">
                         <BankLogo

@@ -16,6 +16,14 @@ import {
 } from './chart-granularity-toggle';
 import { ChartViewToggle } from './chart-view-toggle';
 
+interface ToggleOption {
+    id: string;
+    label: string;
+    description: string;
+    checked: boolean;
+    onChange: (value: boolean) => void;
+}
+
 interface ChartSettingsPopoverProps {
     granularity: ChartGranularity;
     onGranularityChange: (value: ChartGranularity) => void;
@@ -26,6 +34,7 @@ interface ChartSettingsPopoverProps {
     includeLoansLabel?: string;
     includeLoans?: boolean;
     onIncludeLoansChange?: (value: boolean) => void;
+    toggles?: ToggleOption[];
 }
 
 export function ChartSettingsPopover({
@@ -38,7 +47,29 @@ export function ChartSettingsPopover({
     includeLoansLabel,
     includeLoans,
     onIncludeLoansChange,
+    toggles = [],
 }: ChartSettingsPopoverProps) {
+    // Build the effective list of toggles: legacy loan prop + explicit toggles
+    const allToggles: ToggleOption[] = [];
+
+    if (
+        onIncludeLoansChange &&
+        typeof includeLoans === 'boolean' &&
+        includeLoansLabel
+    ) {
+        allToggles.push({
+            id: 'include-loans-in-net-worth-chart',
+            label: includeLoansLabel,
+            description: __(
+                'Include loan balances in the net worth totals and chart',
+            ),
+            checked: includeLoans,
+            onChange: onIncludeLoansChange,
+        });
+    }
+
+    allToggles.push(...toggles);
+
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -72,38 +103,35 @@ export function ChartSettingsPopover({
                                     showTooltip={false}
                                 />
                             </div>
-                            <Separator />
+                            {allToggles.length > 0 && <Separator />}
                         </>
                     ) : null}
-                    {onIncludeLoansChange &&
-                    typeof includeLoans === 'boolean' &&
-                    includeLoansLabel ? (
-                        <>
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-1">
-                                    <Label
-                                        htmlFor="include-loans-in-net-worth-chart"
-                                        className="text-sm leading-5 font-medium"
-                                    >
-                                        {includeLoansLabel}
-                                    </Label>
-                                    <p className="text-xs text-muted-foreground">
-                                        {__(
-                                            'Include loan balances in the net worth totals and chart',
-                                        )}
-                                    </p>
-                                </div>
-                                <Checkbox
-                                    id="include-loans-in-net-worth-chart"
-                                    checked={includeLoans}
-                                    onCheckedChange={(checked) =>
-                                        onIncludeLoansChange(checked === true)
-                                    }
-                                    className="mt-0.5"
-                                />
+                    {allToggles.map((toggle) => (
+                        <div
+                            key={toggle.id}
+                            className="flex items-start justify-between gap-4"
+                        >
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor={toggle.id}
+                                    className="text-sm leading-5 font-medium"
+                                >
+                                    {toggle.label}
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                    {toggle.description}
+                                </p>
                             </div>
-                        </>
-                    ) : null}
+                            <Checkbox
+                                id={toggle.id}
+                                checked={toggle.checked}
+                                onCheckedChange={(checked) =>
+                                    toggle.onChange(checked === true)
+                                }
+                                className="mt-0.5"
+                            />
+                        </div>
+                    ))}
                 </div>
             </PopoverContent>
         </Popover>

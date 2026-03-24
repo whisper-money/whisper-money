@@ -1,4 +1,5 @@
 import { index, show } from '@/actions/App/Http/Controllers/AccountController';
+import { update as updateRealEstateDetail } from '@/actions/App/Http/Controllers/RealEstateDetailController';
 import { AccountBalanceChart } from '@/components/accounts/account-balance-chart';
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
@@ -9,8 +10,11 @@ import { BankLogo } from '@/components/bank-logo';
 import HeadingSmall from '@/components/heading-small';
 import { MobileBackButton } from '@/components/mobile-back-button';
 import { TransactionList } from '@/components/transactions/transaction-list';
+import { AmountDisplay } from '@/components/ui/amount-display';
+import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -18,28 +22,51 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
 import {
     Account,
+    AREA_UNITS,
     Bank,
     formatAccountType,
+    formatAreaUnit,
+    formatPropertyType,
     isTransactionalAccount,
+    PROPERTY_TYPES,
+    type AreaUnit,
+    type PropertyType,
+    type RealEstateDetail,
 } from '@/types/account';
 import { AutomationRule } from '@/types/automation-rule';
 import { Category } from '@/types/category';
-import { Label } from '@/types/label';
+import { Label as LabelType } from '@/types/label';
+import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { Head } from '@inertiajs/react';
-import { ChevronDown } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { ChevronDown, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
+interface AccountWithRealEstate extends Account {
+    real_estate_detail?: RealEstateDetail;
+    available_loan_accounts?: Account[];
+}
+
 interface Props {
-    account: Account;
+    account: AccountWithRealEstate;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
-    labels?: Label[];
+    labels?: LabelType[];
     automationRules?: AutomationRule[];
 }
 
@@ -57,6 +84,7 @@ export default function AccountShow({
     const [importBalancesOpen, setImportBalancesOpen] = useState(false);
     const [balancesOpen, setBalancesOpen] = useState(false);
     const [chartRefreshKey, setChartRefreshKey] = useState(0);
+    const [editingDetails, setEditingDetails] = useState(false);
 
     function handleBalanceUpdated() {
         setChartRefreshKey((prev) => prev + 1);
@@ -64,6 +92,8 @@ export default function AccountShow({
 
     const isConnected = !!account.banking_connection_id;
     const isLoan = account.type === 'loan';
+    const isRealEstate = account.type === 'real_estate';
+    const realEstateDetail = account.real_estate_detail;
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -77,6 +107,24 @@ export default function AccountShow({
         },
     ];
 
+    const updateBalanceLabel = isLoan
+        ? __('Update owed amount')
+        : isRealEstate
+          ? __('Update market value')
+          : __('Update balance');
+
+    const importBalancesLabel = isLoan
+        ? __('Import owed amounts')
+        : isRealEstate
+          ? __('Import market values')
+          : __('Import balances');
+
+    const seeBalancesLabel = isLoan
+        ? __('See owed amounts')
+        : isRealEstate
+          ? __('See market values')
+          : __('See balances');
+
     return (
         <AppSidebarLayout
             breadcrumbs={breadcrumbs}
@@ -87,15 +135,17 @@ export default function AccountShow({
             <div className="space-y-6 p-6">
                 <div className="sm flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div className="flex items-center gap-4 pl-1">
-                        <BankLogo
-                            src={account.bank?.logo}
-                            name={account.bank?.name}
-                            className="size-12"
-                            fallback="letter"
-                        />
+                        {account.bank && (
+                            <BankLogo
+                                src={account.bank.logo}
+                                name={account.bank.name}
+                                className="size-12"
+                                fallback="letter"
+                            />
+                        )}
                         <HeadingSmall
                             title={account.name}
-                            description={`${account.bank?.name || 'Unknown Bank'} · ${formatAccountType(account.type)}`}
+                            description={`${account.bank ? `${account.bank.name} · ` : ''}${formatAccountType(account.type)}`}
                         />
                     </div>
 
@@ -113,9 +163,7 @@ export default function AccountShow({
                                     variant="outline"
                                     onClick={() => setUpdateBalanceOpen(true)}
                                 >
-                                    {isLoan
-                                        ? __('Update owed amount')
-                                        : __('Update balance')}
+                                    {updateBalanceLabel}
                                 </Button>
                             </ButtonGroup>
                             <ButtonGroup>
@@ -123,9 +171,7 @@ export default function AccountShow({
                                     variant="outline"
                                     onClick={() => setImportBalancesOpen(true)}
                                 >
-                                    {isLoan
-                                        ? __('Import owed amounts')
-                                        : __('Import balances')}
+                                    {importBalancesLabel}
                                 </Button>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -143,9 +189,7 @@ export default function AccountShow({
                                                 setBalancesOpen(true)
                                             }
                                         >
-                                            {isLoan
-                                                ? __('See owed amounts')
-                                                : __('See balances')}
+                                            {seeBalancesLabel}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                             onClick={() => setEditOpen(true)}
@@ -175,6 +219,18 @@ export default function AccountShow({
                             : () => setUpdateBalanceOpen(true)
                     }
                 />
+
+                {isRealEstate && realEstateDetail && (
+                    <PropertyDetailsCard
+                        detail={realEstateDetail}
+                        account={account}
+                        availableLoanAccounts={
+                            account.available_loan_accounts ?? []
+                        }
+                        isEditing={editingDetails}
+                        onEditToggle={setEditingDetails}
+                    />
+                )}
 
                 {isTransactionalAccount(account) && (
                     <TransactionList
@@ -230,5 +286,397 @@ export default function AccountShow({
                 onSuccess={handleBalanceUpdated}
             />
         </AppSidebarLayout>
+    );
+}
+
+function PropertyDetailsCard({
+    detail,
+    account,
+    availableLoanAccounts,
+    isEditing,
+    onEditToggle,
+}: {
+    detail: RealEstateDetail;
+    account: AccountWithRealEstate;
+    availableLoanAccounts: Account[];
+    isEditing: boolean;
+    onEditToggle: (editing: boolean) => void;
+}) {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formData, setFormData] = useState({
+        property_type: detail.property_type,
+        address: detail.address ?? '',
+        purchase_price: detail.purchase_price ?? 0,
+        purchase_date: detail.purchase_date ?? '',
+        area_value: detail.area_value ?? '',
+        area_unit: detail.area_unit ?? (null as AreaUnit | null),
+        linked_loan_account_id:
+            detail.linked_loan_account_id ?? (null as string | null),
+        notes: detail.notes ?? '',
+    });
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setIsSubmitting(true);
+
+        router.patch(
+            updateRealEstateDetail.url(account.id),
+            {
+                property_type: formData.property_type,
+                address: formData.address || null,
+                purchase_price: formData.purchase_price || null,
+                purchase_date: formData.purchase_date || null,
+                area_value: formData.area_value || null,
+                area_unit: formData.area_unit,
+                linked_loan_account_id: formData.linked_loan_account_id,
+                notes: formData.notes || null,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => onEditToggle(false),
+                onFinish: () => setIsSubmitting(false),
+            },
+        );
+    }
+
+    function handleCancel() {
+        setFormData({
+            property_type: detail.property_type,
+            address: detail.address ?? '',
+            purchase_price: detail.purchase_price ?? 0,
+            purchase_date: detail.purchase_date ?? '',
+            area_value: detail.area_value ?? '',
+            area_unit: detail.area_unit ?? null,
+            linked_loan_account_id: detail.linked_loan_account_id ?? null,
+            notes: detail.notes ?? '',
+        });
+        onEditToggle(false);
+    }
+
+    if (isEditing) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>{__('Edit Property Details')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_property_type">
+                                    {__('Property Type')}
+                                </Label>
+                                <Select
+                                    value={formData.property_type}
+                                    onValueChange={(value) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            property_type:
+                                                value as PropertyType,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {PROPERTY_TYPES.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {formatPropertyType(type)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_purchase_date">
+                                    {__('Purchase Date')}
+                                </Label>
+                                <Input
+                                    id="edit_purchase_date"
+                                    type="date"
+                                    value={formData.purchase_date}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            purchase_date: e.target.value,
+                                        }))
+                                    }
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="edit_address">
+                                {__('Address')}
+                            </Label>
+                            <Input
+                                id="edit_address"
+                                value={formData.address}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        address: e.target.value,
+                                    }))
+                                }
+                                placeholder={__('Property address')}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="edit_purchase_price">
+                                {__('Purchase Price')}
+                            </Label>
+                            <AmountInput
+                                id="edit_purchase_price"
+                                value={formData.purchase_price}
+                                onChange={(value) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        purchase_price: value,
+                                    }))
+                                }
+                                currencyCode={account.currency_code}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_area_value">
+                                    {__('Area')}
+                                </Label>
+                                <Input
+                                    id="edit_area_value"
+                                    type="number"
+                                    value={formData.area_value}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            area_value: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="0"
+                                    min="0"
+                                    step="0.01"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_area_unit">
+                                    {__('Unit')}
+                                </Label>
+                                <Select
+                                    value={formData.area_unit ?? 'none'}
+                                    onValueChange={(value) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            area_unit:
+                                                value === 'none'
+                                                    ? null
+                                                    : (value as AreaUnit),
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue
+                                            placeholder={__('Select unit')}
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">
+                                            {__('None')}
+                                        </SelectItem>
+                                        {AREA_UNITS.map((unit) => (
+                                            <SelectItem key={unit} value={unit}>
+                                                {formatAreaUnit(unit)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {availableLoanAccounts.length > 0 && (
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_linked_loan">
+                                    {__('Linked Mortgage / Loan')}
+                                </Label>
+                                <Select
+                                    value={
+                                        formData.linked_loan_account_id ??
+                                        'none'
+                                    }
+                                    onValueChange={(value) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            linked_loan_account_id:
+                                                value === 'none' ? null : value,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">
+                                            {__('No linked loan')}
+                                        </SelectItem>
+                                        {availableLoanAccounts.map((loan) => (
+                                            <SelectItem
+                                                key={loan.id}
+                                                value={loan.id}
+                                            >
+                                                {loan.name}{' '}
+                                                {loan.bank
+                                                    ? `(${loan.bank.name})`
+                                                    : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label htmlFor="edit_notes">{__('Notes')}</Label>
+                            <Textarea
+                                id="edit_notes"
+                                value={formData.notes}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        notes: e.target.value,
+                                    }))
+                                }
+                                placeholder={__(
+                                    'Additional notes about this property',
+                                )}
+                                rows={3}
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCancel}
+                                disabled={isSubmitting}
+                            >
+                                {__('Cancel')}
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? __('Saving...') : __('Save')}
+                            </Button>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const linkedLoan = detail.linked_loan_account;
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>{__('Property Details')}</CardTitle>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEditToggle(true)}
+                >
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                    {__('Edit')}
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <dl className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <dt className="text-sm text-muted-foreground">
+                            {__('Property Type')}
+                        </dt>
+                        <dd className="font-medium">
+                            {formatPropertyType(detail.property_type)}
+                        </dd>
+                    </div>
+
+                    {detail.address && (
+                        <div>
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Address')}
+                            </dt>
+                            <dd className="font-medium">{detail.address}</dd>
+                        </div>
+                    )}
+
+                    {detail.purchase_price !== null && (
+                        <div>
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Purchase Price')}
+                            </dt>
+                            <dd className="font-medium">
+                                <AmountDisplay
+                                    amountInCents={detail.purchase_price}
+                                    currencyCode={account.currency_code}
+                                />
+                            </dd>
+                        </div>
+                    )}
+
+                    {detail.purchase_date && (
+                        <div>
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Purchase Date')}
+                            </dt>
+                            <dd className="font-medium">
+                                {formatDateMedium(detail.purchase_date)}
+                            </dd>
+                        </div>
+                    )}
+
+                    {detail.area_value && detail.area_unit && (
+                        <div>
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Area')}
+                            </dt>
+                            <dd className="font-medium">
+                                {detail.area_value}{' '}
+                                {formatAreaUnit(detail.area_unit)}
+                            </dd>
+                        </div>
+                    )}
+
+                    {linkedLoan && (
+                        <div>
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Linked Mortgage / Loan')}
+                            </dt>
+                            <dd className="font-medium">
+                                <a
+                                    href={show.url(linkedLoan.id)}
+                                    className="text-primary underline-offset-4 hover:underline"
+                                >
+                                    {linkedLoan.name}
+                                    {linkedLoan.bank
+                                        ? ` (${linkedLoan.bank.name})`
+                                        : ''}
+                                </a>
+                            </dd>
+                        </div>
+                    )}
+                </dl>
+
+                {detail.notes && (
+                    <div className="mt-4 border-t pt-4">
+                        <dt className="text-sm text-muted-foreground">
+                            {__('Notes')}
+                        </dt>
+                        <dd className="mt-1 text-sm whitespace-pre-wrap">
+                            {detail.notes}
+                        </dd>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }

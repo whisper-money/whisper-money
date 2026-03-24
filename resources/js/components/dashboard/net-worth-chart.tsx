@@ -142,6 +142,8 @@ export function NetWorthChart({
     const [isDailyLoading, setIsDailyLoading] = useState(false);
     const includeLoansInNetWorthChart =
         props.includeLoansInNetWorthChart ?? true;
+    const includeRealEstateInNetWorthChart =
+        props.includeRealEstateInNetWorthChart ?? true;
 
     const fetchDailyData = useCallback(async () => {
         setIsDailyLoading(true);
@@ -202,10 +204,19 @@ export function NetWorthChart({
         const accounts = activeData.accounts || {};
         const chartDataArray = activeData.data || [];
 
-        // All accounts included based on the loan toggle – used for totals & trends.
+        // All accounts included based on the toggles – used for totals & trends.
         const includedAccounts = Object.fromEntries(
             Object.entries(accounts).filter(([, account]) => {
-                return includeLoansInNetWorthChart || account.type !== 'loan';
+                if (!includeLoansInNetWorthChart && account.type === 'loan') {
+                    return false;
+                }
+                if (
+                    !includeRealEstateInNetWorthChart &&
+                    account.type === 'real_estate'
+                ) {
+                    return false;
+                }
+                return true;
             }),
         );
 
@@ -388,7 +399,11 @@ export function NetWorthChart({
             accountsForHook: allHookAccounts,
             hasLiabilities: hasLiabs,
         };
-    }, [activeData, includeLoansInNetWorthChart]);
+    }, [
+        activeData,
+        includeLoansInNetWorthChart,
+        includeRealEstateInNetWorthChart,
+    ]);
 
     const chartViews = useChartViews({
         data: rawChartData as Array<Record<string, string | number>>,
@@ -397,6 +412,7 @@ export function NetWorthChart({
         hasStackedView: true,
         netWorthOptions: {
             includeLoanAccounts: includeLoansInNetWorthChart,
+            includeRealEstateAccounts: includeRealEstateInNetWorthChart,
         },
     });
 
@@ -413,6 +429,38 @@ export function NetWorthChart({
             },
         );
     }, []);
+
+    const handleIncludeRealEstateChange = useCallback(
+        (includeRealEstate: boolean) => {
+            router.patch(
+                '/settings/net-worth-chart-real-estate-preference',
+                {
+                    include_real_estate_in_net_worth_chart: includeRealEstate,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    only: ['includeRealEstateInNetWorthChart'],
+                },
+            );
+        },
+        [],
+    );
+
+    const settingsToggles = useMemo(
+        () => [
+            {
+                id: 'include-real-estate-in-net-worth-chart',
+                label: __('Include real estate'),
+                description: __(
+                    'Include real estate assets in the net worth totals and chart',
+                ),
+                checked: includeRealEstateInNetWorthChart,
+                onChange: handleIncludeRealEstateChange,
+            },
+        ],
+        [includeRealEstateInNetWorthChart, handleIncludeRealEstateChange],
+    );
 
     const valueFormatter = useMemo(() => {
         return (value: number): React.ReactNode => {
@@ -513,6 +561,7 @@ export function NetWorthChart({
                                 includeLoansLabel={__('Include loans')}
                                 includeLoans={includeLoansInNetWorthChart}
                                 onIncludeLoansChange={handleIncludeLoansChange}
+                                toggles={settingsToggles}
                             />
                         ) : (
                             <>
@@ -538,6 +587,7 @@ export function NetWorthChart({
                                     onIncludeLoansChange={
                                         handleIncludeLoansChange
                                     }
+                                    toggles={settingsToggles}
                                 />
                             </>
                         )}
