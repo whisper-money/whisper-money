@@ -7,6 +7,7 @@ use App\Models\AutomationRule;
 use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
+use App\Models\RealEstateDetail;
 use App\Models\User;
 
 beforeEach(function () {
@@ -333,4 +334,197 @@ test('account show includes bank information', function () {
             ->has('account.bank')
             ->where('account.bank.name', 'Test Bank')
         );
+});
+
+test('real estate account show includes real estate detail with linked loan', function () {
+    $loanAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+    ]);
+
+    $realEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'linked_loan_account_id' => $loanAccount->id,
+    ]);
+
+    $response = $this->withoutVite()->get(route('accounts.show', $realEstateAccount));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Show')
+            ->has('account.real_estate_detail')
+            ->where('account.real_estate_detail.linked_loan_account_id', $loanAccount->id)
+            ->has('account.real_estate_detail.linked_loan_account')
+            ->where('account.real_estate_detail.linked_loan_account.id', $loanAccount->id)
+            ->has('account.available_loan_accounts')
+        );
+});
+
+test('real estate account show includes current market value and loan balance for equity', function () {
+    $loanAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $loanAccount->id,
+        'balance_date' => now(),
+        'balance' => 20000000, // $200,000
+    ]);
+
+    $realEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'balance_date' => now(),
+        'balance' => 35000000, // $350,000
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'linked_loan_account_id' => $loanAccount->id,
+    ]);
+
+    $response = $this->withoutVite()->get(route('accounts.show', $realEstateAccount));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Show')
+            ->where('account.real_estate_detail.current_market_value', 35000000)
+            ->where('account.real_estate_detail.current_loan_balance', 20000000)
+        );
+});
+
+test('real estate account show includes market value without linked loan', function () {
+    $realEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'balance_date' => now(),
+        'balance' => 35000000,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $realEstateAccount->id,
+    ]);
+
+    $response = $this->withoutVite()->get(route('accounts.show', $realEstateAccount));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Show')
+            ->where('account.real_estate_detail.current_market_value', 35000000)
+            ->missing('account.real_estate_detail.current_loan_balance')
+        );
+});
+
+test('real estate balance evolution includes mortgage balance data', function () {
+    $loanAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $loanAccount->id,
+        'balance_date' => now()->subMonthNoOverflow()->endOfMonth(),
+        'balance' => 22000000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $loanAccount->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 21500000,
+    ]);
+
+    $realEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'balance_date' => now()->subMonthNoOverflow()->endOfMonth(),
+        'balance' => 35000000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 36000000,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'linked_loan_account_id' => $loanAccount->id,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$realEstateAccount->id.'/balance-evolution?'.http_build_query([
+        'from' => now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'])->toHaveCount(3);
+    expect($data['data'][0])->toHaveKey('mortgage_balance');
+
+    // The last point should have the most recent mortgage balance
+    $lastPoint = end($data['data']);
+    expect($lastPoint['mortgage_balance'])->toBe(21500000);
+    expect($lastPoint['value'])->toBe(36000000);
+});
+
+test('real estate balance evolution without linked loan has no mortgage data', function () {
+    $realEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 35000000,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $realEstateAccount->id,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$realEstateAccount->id.'/balance-evolution?'.http_build_query([
+        'from' => now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0])->not->toHaveKey('mortgage_balance');
+});
+
+test('non-real-estate account balance evolution has no mortgage data', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => now()->endOfMonth(),
+        'balance' => 100000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
+        'from' => now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0])->not->toHaveKey('mortgage_balance');
 });

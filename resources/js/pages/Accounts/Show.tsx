@@ -575,6 +575,12 @@ function PropertyDetailsCard({
     }
 
     const linkedLoan = detail.linked_loan_account;
+    const currentMarketValue = detail.current_market_value ?? null;
+    const currentLoanBalance = detail.current_loan_balance ?? null;
+    const equity =
+        currentMarketValue !== null && currentLoanBalance !== null
+            ? currentMarketValue - currentLoanBalance
+            : null;
 
     return (
         <Card>
@@ -590,6 +596,52 @@ function PropertyDetailsCard({
                 </Button>
             </CardHeader>
             <CardContent>
+                {linkedLoan && equity !== null && (
+                    <div className="mb-6 grid gap-4 sm:grid-cols-3">
+                        <div className="rounded-lg border bg-muted/50 p-4">
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Market Value')}
+                            </dt>
+                            <dd className="mt-1 text-xl font-semibold tabular-nums">
+                                <AmountDisplay
+                                    amountInCents={currentMarketValue ?? 0}
+                                    currencyCode={account.currency_code}
+                                    minimumFractionDigits={0}
+                                    maximumFractionDigits={0}
+                                />
+                            </dd>
+                        </div>
+                        <div className="rounded-lg border bg-muted/50 p-4">
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Mortgage Owed')}
+                            </dt>
+                            <dd className="mt-1 text-xl font-semibold tabular-nums">
+                                <AmountDisplay
+                                    amountInCents={currentLoanBalance ?? 0}
+                                    currencyCode={account.currency_code}
+                                    minimumFractionDigits={0}
+                                    maximumFractionDigits={0}
+                                />
+                            </dd>
+                        </div>
+                        <div className="rounded-lg border bg-muted/50 p-4">
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Equity')}
+                            </dt>
+                            <dd
+                                className={`mt-1 text-xl font-semibold tabular-nums ${equity >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                            >
+                                <AmountDisplay
+                                    amountInCents={equity}
+                                    currencyCode={account.currency_code}
+                                    minimumFractionDigits={0}
+                                    maximumFractionDigits={0}
+                                />
+                            </dd>
+                        </div>
+                    </div>
+                )}
+
                 <dl className="grid gap-4 sm:grid-cols-2">
                     <div>
                         <dt className="text-sm text-muted-foreground">

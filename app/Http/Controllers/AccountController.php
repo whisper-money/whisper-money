@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\AccountBalance;
 use App\Services\AccountMetricsService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -45,16 +46,33 @@ class AccountController extends Controller
             $realEstateDetail = $account->realEstateDetail;
 
             if ($realEstateDetail) {
+                $linkedLoan = $realEstateDetail->linkedLoanAccount;
+
                 $data['real_estate_detail'] = [
                     ...$realEstateDetail->only([
                         'id', 'property_type', 'address', 'purchase_price',
                         'purchase_date', 'area_value', 'area_unit', 'notes',
                         'linked_loan_account_id',
                     ]),
-                    'linked_loan_account' => $realEstateDetail->linkedLoanAccount
-                        ? $realEstateDetail->linkedLoanAccount->only(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank'])
+                    'linked_loan_account' => $linkedLoan
+                        ? $linkedLoan->only(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank'])
                         : null,
                 ];
+
+                // Include current balances for equity calculation
+                if ($linkedLoan) {
+                    $data['real_estate_detail']['current_loan_balance'] = AccountBalance::query()
+                        ->where('account_id', $linkedLoan->id)
+                        ->where('balance_date', '<=', now()->toDateString())
+                        ->orderByDesc('balance_date')
+                        ->value('balance') ?? 0;
+                }
+
+                $data['real_estate_detail']['current_market_value'] = AccountBalance::query()
+                    ->where('account_id', $account->id)
+                    ->where('balance_date', '<=', now()->toDateString())
+                    ->orderByDesc('balance_date')
+                    ->value('balance') ?? 0;
             }
 
             // Provide available loan accounts for linking
