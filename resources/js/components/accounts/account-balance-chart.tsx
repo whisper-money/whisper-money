@@ -218,7 +218,7 @@ function RealEstateTooltipContent({
     );
 }
 
-interface BalanceDataPoint {
+export interface BalanceDataPoint {
     month: string;
     timestamp: number;
     value: number;
@@ -256,11 +256,21 @@ interface AccountDailyBalanceData {
     };
 }
 
+export interface ChartComputedData {
+    chartData: BalanceDataPoint[];
+    currentBalance: number;
+    currentMortgageBalance: number | null;
+    hasMortgageData: boolean;
+    shortTrend: ReturnType<typeof calculateTrend>;
+    longTrend: ReturnType<typeof calculateTrend>;
+}
+
 interface AccountBalanceChartProps {
     account: Account;
     loading?: boolean;
     refreshKey?: number;
     onBalanceClick?: () => void;
+    onDataLoaded?: (data: ChartComputedData) => void;
 }
 
 function createXAxisFormatter(locale: string, granularity: ChartGranularity) {
@@ -325,6 +335,7 @@ export function AccountBalanceChart({
     loading: initialLoading,
     refreshKey,
     onBalanceClick,
+    onDataLoaded,
 }: AccountBalanceChartProps) {
     const locale = useLocale();
     const isMobile = useIsMobile();
@@ -446,6 +457,27 @@ export function AccountBalanceChart({
             longTrend: calculateTrend(data, data.length - 1),
         };
     }, [balanceData]);
+
+    useEffect(() => {
+        if (onDataLoaded && chartData.length > 0) {
+            onDataLoaded({
+                chartData,
+                currentBalance,
+                currentMortgageBalance,
+                hasMortgageData,
+                shortTrend,
+                longTrend,
+            });
+        }
+    }, [
+        chartData,
+        currentBalance,
+        currentMortgageBalance,
+        hasMortgageData,
+        shortTrend,
+        longTrend,
+        onDataLoaded,
+    ]);
 
     // Convert data for useChartViews hook
     const { data: hookData, accounts: hookAccounts } = useMemo(() => {
