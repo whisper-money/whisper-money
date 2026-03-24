@@ -329,7 +329,7 @@ function EquitySummaryCards({
     currentMortgageBalance,
     currencyCode,
 }: EquitySummaryCardsProps) {
-    const { accountMainLineColor, accountGainLineColor } = useChartColors();
+    const { accountMainLineColor } = useChartColors();
 
     const { marketHistory, mortgageHistory, equityHistory, equity } =
         useMemo(() => {
@@ -420,7 +420,6 @@ function EquitySummaryCards({
                 history={equityHistory}
                 lineColor={equityLineColor}
                 trend={equityTrend}
-                highlightPositive={equity !== null ? equity >= 0 : undefined}
             />
         </div>
     );
@@ -433,7 +432,6 @@ function SparklineCard({
     history,
     lineColor,
     trend,
-    highlightPositive,
 }: {
     title: string;
     amountInCents: number;
@@ -441,7 +439,6 @@ function SparklineCard({
     history: Array<{ date: string; value: number }>;
     lineColor: string;
     trend: { diff: number; previous: number; current: number } | null;
-    highlightPositive?: boolean;
 }) {
     return (
         <Card>
