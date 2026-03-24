@@ -4,10 +4,11 @@ namespace Database\Factories;
 
 use App\Enums\DripEmailType;
 use App\Models\User;
+use App\Models\UserMailLog;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\UserMailLog>
+ * @extends Factory<UserMailLog>
  */
 class UserMailLogFactory extends Factory
 {

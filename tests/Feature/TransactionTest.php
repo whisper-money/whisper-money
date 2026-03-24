@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\BudgetTransactionService;
 
 use function Pest\Laravel\actingAs;
 
@@ -660,7 +661,7 @@ test('when budget with label exists, updating transaction with that label assign
     // The TransactionUpdated event triggers AssignTransactionToBudget listener
     // In production this runs async via queue, but the assignment logic works correctly
     // Let's verify by manually calling the service (simulating what the listener does)
-    $budgetService = app(\App\Services\BudgetTransactionService::class);
+    $budgetService = app(BudgetTransactionService::class);
     $budgetService->assignTransaction($transaction);
 
     // Verify transaction was assigned to the budget

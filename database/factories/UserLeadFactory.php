@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\UserLead;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\UserLead>
+ * @extends Factory<UserLead>
  */
 class UserLeadFactory extends Factory
 {

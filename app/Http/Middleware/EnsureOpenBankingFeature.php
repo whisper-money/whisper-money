@@ -14,7 +14,7 @@ class EnsureOpenBankingFeature
      *
      * Returns 404 if user doesn't have open-banking feature enabled.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {

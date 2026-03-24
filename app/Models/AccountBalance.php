@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Database\Factories\AccountBalanceFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property \Carbon\Carbon $balance_date
+ * @property Carbon $balance_date
  */
 class AccountBalance extends Model
 {
-    /** @use HasFactory<\Database\Factories\AccountBalanceFactory> */
+    /** @use HasFactory<AccountBalanceFactory> */
     use HasFactory, HasUuids;
 
     protected $fillable = [

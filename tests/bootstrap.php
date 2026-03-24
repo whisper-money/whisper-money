@@ -45,7 +45,7 @@ if ($useContainers) {
     $cleanup = function () use ($container): void {
         try {
             $container->stop();
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Silently ignore — best-effort cleanup.
         }
     };

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AccountType;
+use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,11 +13,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property \App\Enums\AccountType $type
+ * @property AccountType $type
  */
 class Account extends Model
 {
-    /** @use HasFactory<\Database\Factories\AccountFactory> */
+    /** @use HasFactory<AccountFactory> */
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [

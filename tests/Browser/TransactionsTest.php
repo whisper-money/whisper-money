@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Account;
+use App\Models\Bank;
 use App\Models\Category;
 use App\Models\User;
 
@@ -38,7 +39,7 @@ it('can open add transaction dialog', function () {
 
 it('can create a transaction', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = \App\Models\Bank::factory()->create(['name' => 'Test Bank']);
+    $bank = Bank::factory()->create(['name' => 'Test Bank']);
 
     actingAs($user);
 

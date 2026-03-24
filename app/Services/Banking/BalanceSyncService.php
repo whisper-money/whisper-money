@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
 use App\Models\Account;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class BalanceSyncService
@@ -69,7 +70,7 @@ class BalanceSyncService
 
         $existingDates = $account->balances()
             ->pluck('balance_date')
-            ->map(fn (mixed $date) => $date instanceof \Carbon\Carbon ? $date->toDateString() : (string) $date)
+            ->map(fn (mixed $date) => $date instanceof Carbon ? $date->toDateString() : (string) $date)
             ->flip()
             ->all();
 

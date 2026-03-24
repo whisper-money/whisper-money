@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Account;
+use App\Models\AccountBalance;
+use App\Models\Transaction;
+
 /*
 |--------------------------------------------------------------------------
 | Page Query Count Tests
@@ -121,16 +125,16 @@ test('dashboard query count does not scale with number of accounts', function ()
     // Add 7 more accounts (10 total) with transactions and balances
     $categories = $this->user->categories;
 
-    $extraAccounts = App\Models\Account::factory(7)->create(['user_id' => $this->user->id]);
+    $extraAccounts = Account::factory(7)->create(['user_id' => $this->user->id]);
     foreach ($extraAccounts as $index => $account) {
-        App\Models\Transaction::factory(10)->plaintext()->create([
+        Transaction::factory(10)->plaintext()->create([
             'user_id' => $this->user->id,
             'account_id' => $account->id,
             'category_id' => $categories->random()->id,
         ]);
 
         for ($i = 0; $i < 5; $i++) {
-            App\Models\AccountBalance::factory()->create([
+            AccountBalance::factory()->create([
                 'account_id' => $account->id,
                 'balance_date' => now()->subDays(($index * 5) + $i + 20)->toDateString(),
             ]);
@@ -148,7 +152,7 @@ test('transactions page query count does not scale with number of transactions',
     $category = $this->user->categories()->first();
 
     // Add 90 more transactions (120 total)
-    App\Models\Transaction::factory(90)->plaintext()->create([
+    Transaction::factory(90)->plaintext()->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
         'category_id' => $category->id,

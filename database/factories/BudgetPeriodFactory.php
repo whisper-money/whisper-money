@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Budget;
+use App\Models\BudgetPeriod;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\BudgetPeriod>
+ * @extends Factory<BudgetPeriod>
  */
 class BudgetPeriodFactory extends Factory
 {

@@ -14,7 +14,7 @@ class EnsureOnboardingComplete
      * Redirects non-onboarded users to the onboarding flow.
      * Redirects onboarded users away from the onboarding page.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {

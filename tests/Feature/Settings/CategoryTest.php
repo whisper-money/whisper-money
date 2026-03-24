@@ -1,8 +1,11 @@
 <?php
 
+use App\Actions\CreateDefaultCategories;
 use App\Enums\CategoryCashflowDirection;
+use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 test('authenticated users can view their categories', function () {
     $user = User::factory()->create();
@@ -262,7 +265,7 @@ test('guests cannot access category management', function () {
 test('default categories are created when user registers', function () {
     $user = User::factory()->create();
 
-    $service = new \App\Actions\CreateDefaultCategories;
+    $service = new CreateDefaultCategories;
     $service->handle($user);
 
     expect($user->categories()->count())->toBe(64);
@@ -273,23 +276,23 @@ test('default categories are created when user registers', function () {
     $user->refresh();
 
     expect($user->categories()->firstWhere('name', 'Investments'))
-        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->type->toBe(CategoryType::Transfer)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
     expect($user->categories()->firstWhere('name', 'Savings'))
-        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->type->toBe(CategoryType::Transfer)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
     expect($user->categories()->firstWhere('name', 'Other investments'))
-        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->type->toBe(CategoryType::Transfer)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
     expect($user->categories()->firstWhere('name', 'From account of relatives'))
-        ->type->toBe(\App\Enums\CategoryType::Transfer)
+        ->type->toBe(CategoryType::Transfer)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Inflow);
 });
 
 test('default categories are not created twice for the same user', function () {
     $user = User::factory()->create();
 
-    $service = new \App\Actions\CreateDefaultCategories;
+    $service = new CreateDefaultCategories;
     $service->handle($user);
 
     expect($user->categories()->count())->toBe(64);
@@ -309,9 +312,9 @@ test('category names are unique per user', function () {
         'type' => 'expense',
     ]);
 
-    expect($category)->toBeInstanceOf(\App\Models\Category::class);
+    expect($category)->toBeInstanceOf(Category::class);
 
-    $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+    $this->expectException(UniqueConstraintViolationException::class);
 
     $user->categories()->create([
         'name' => 'Test Category',

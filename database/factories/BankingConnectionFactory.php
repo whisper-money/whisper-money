@@ -3,11 +3,12 @@
 namespace Database\Factories;
 
 use App\Enums\BankingConnectionStatus;
+use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\BankingConnection>
+ * @extends Factory<BankingConnection>
  */
 class BankingConnectionFactory extends Factory
 {
