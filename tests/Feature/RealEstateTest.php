@@ -592,3 +592,156 @@ it('preserves real estate detail when account is soft deleted', function () {
     // Real estate detail still exists (FK cascade only applies to hard deletes)
     assertDatabaseHas('real_estate_details', ['id' => $detail->id]);
 });
+
+// -------------------------------------------------------------------
+// Creating real estate accounts with balance and revaluation percentage
+// -------------------------------------------------------------------
+
+it('can create a real estate account with initial market value', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'My House',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'balance' => 30000000, // 300,000.00 in cents
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+
+    $response->assertRedirect();
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 30000000,
+        'balance_date' => now()->toDateString(),
+    ]);
+});
+
+it('can create a real estate account with revaluation percentage', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'Appreciating Property',
+        'currency_code' => 'USD',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'balance' => 50000000,
+        'revaluation_percentage' => 3.50,
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+
+    $response->assertRedirect();
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    assertDatabaseHas('real_estate_details', [
+        'account_id' => $account->id,
+        'revaluation_percentage' => '3.50',
+    ]);
+
+    assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance' => 50000000,
+    ]);
+});
+
+it('can create a real estate account with negative revaluation percentage', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'Depreciating Property',
+        'currency_code' => 'USD',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Commercial->value,
+        'revaluation_percentage' => -2.00,
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+
+    $response->assertRedirect();
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    assertDatabaseHas('real_estate_details', [
+        'account_id' => $account->id,
+        'revaluation_percentage' => '-2.00',
+    ]);
+});
+
+it('validates revaluation percentage is between -100 and 100', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'My House',
+        'currency_code' => 'USD',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'revaluation_percentage' => 150,
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+
+    $response->assertSessionHasErrors(['revaluation_percentage']);
+});
+
+it('can update revaluation percentage via real estate detail endpoint', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $detail = RealEstateDetail::factory()->create([
+        'account_id' => $account->id,
+        'revaluation_percentage' => null,
+    ]);
+
+    $response = $this->patch(route('accounts.real-estate-detail.update', $account), [
+        'revaluation_percentage' => 5.25,
+    ]);
+
+    $response->assertRedirect(route('accounts.show', $account));
+
+    assertDatabaseHas('real_estate_details', [
+        'id' => $detail->id,
+        'revaluation_percentage' => '5.25',
+    ]);
+});
+
+it('can clear revaluation percentage by setting null', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $account->id,
+        'revaluation_percentage' => 3.50,
+    ]);
+
+    $response = $this->patch(route('accounts.real-estate-detail.update', $account), [
+        'revaluation_percentage' => null,
+    ]);
+
+    $response->assertRedirect(route('accounts.show', $account));
+
+    assertDatabaseHas('real_estate_details', [
+        'account_id' => $account->id,
+        'revaluation_percentage' => null,
+    ]);
+});

@@ -553,6 +553,10 @@ function PropertyDetailsCard({
         linked_loan_account_id:
             detail.linked_loan_account_id ?? (null as string | null),
         notes: detail.notes ?? '',
+        revaluation_percentage:
+            detail.revaluation_percentage != null
+                ? String(detail.revaluation_percentage)
+                : '',
     });
 
     function handleSubmit(e: React.FormEvent) {
@@ -570,6 +574,7 @@ function PropertyDetailsCard({
                 area_unit: formData.area_unit,
                 linked_loan_account_id: formData.linked_loan_account_id,
                 notes: formData.notes || null,
+                revaluation_percentage: formData.revaluation_percentage || null,
             },
             {
                 preserveScroll: true,
@@ -589,6 +594,10 @@ function PropertyDetailsCard({
             area_unit: detail.area_unit ?? null,
             linked_loan_account_id: detail.linked_loan_account_id ?? null,
             notes: detail.notes ?? '',
+            revaluation_percentage:
+                detail.revaluation_percentage != null
+                    ? String(detail.revaluation_percentage)
+                    : '',
         });
         onEditToggle(false);
     }
@@ -795,6 +804,32 @@ function PropertyDetailsCard({
                             />
                         </div>
 
+                        <div className="space-y-2">
+                            <Label htmlFor="edit_revaluation_percentage">
+                                {__('Annual Revaluation (%)')}
+                            </Label>
+                            <Input
+                                id="edit_revaluation_percentage"
+                                type="number"
+                                value={formData.revaluation_percentage}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        revaluation_percentage: e.target.value,
+                                    }))
+                                }
+                                placeholder="0.00"
+                                min="-100"
+                                max="100"
+                                step="0.01"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {__(
+                                    'Annual percentage applied monthly. Use negative values for depreciation.',
+                                )}
+                            </p>
+                        </div>
+
                         <div className="flex justify-end gap-2">
                             <Button
                                 type="button"
@@ -901,6 +936,20 @@ function PropertyDetailsCard({
                                         ? ` (${linkedLoan.bank.name})`
                                         : ''}
                                 </a>
+                            </dd>
+                        </div>
+                    )}
+
+                    {detail.revaluation_percentage != null && (
+                        <div>
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Annual Revaluation')}
+                            </dt>
+                            <dd className="font-medium">
+                                {Number(detail.revaluation_percentage) > 0
+                                    ? '+'
+                                    : ''}
+                                {detail.revaluation_percentage}%{__('/year')}
                             </dd>
                         </div>
                     )}

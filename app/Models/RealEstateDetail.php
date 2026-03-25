@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property \App\Enums\PropertyType $property_type
  * @property int|null $purchase_price
+ * @property string|null $revaluation_percentage
  */
 class RealEstateDetail extends Model
 {
@@ -27,6 +28,7 @@ class RealEstateDetail extends Model
         'area_value',
         'area_unit',
         'notes',
+        'revaluation_percentage',
     ];
 
     protected function casts(): array
@@ -36,6 +38,7 @@ class RealEstateDetail extends Model
             'purchase_price' => 'integer',
             'purchase_date' => 'date',
             'area_value' => 'decimal:2',
+            'revaluation_percentage' => 'decimal:2',
         ];
     }
 

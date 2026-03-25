@@ -94,6 +94,7 @@ export interface RealEstateDetail {
     area_value: string | null;
     area_unit: AreaUnit | null;
     notes: string | null;
+    revaluation_percentage: number | null;
     linked_loan_account_id: UUID | null;
     linked_loan_account: Account | null;
     current_market_value: number | null;
