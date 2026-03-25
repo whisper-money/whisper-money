@@ -1,5 +1,17 @@
 <?php
 
+use App\Models\Account;
+use App\Models\AccountBalance;
+use App\Models\Budget;
+use App\Models\BudgetPeriod;
+use App\Models\Category;
+use App\Models\Label;
+use App\Models\Transaction;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -11,8 +23,8 @@
 |
 */
 
-pest()->extend(Tests\TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature', 'Browser', 'Performance');
 
 pest()->browser()->timeout(15000);
@@ -49,32 +61,32 @@ pest()->browser()->timeout(15000);
  * Includes 3 accounts, 30 transactions, 15 balances, 5 categories,
  * 3 labels, and 1 budget with a current period.
  */
-function performanceSeedUser(): App\Models\User
+function performanceSeedUser(): User
 {
-    $user = App\Models\User::factory()->onboarded()->create();
+    $user = User::factory()->onboarded()->create();
 
-    $categories = App\Models\Category::factory(5)->create(['user_id' => $user->id]);
-    App\Models\Label::factory(3)->create(['user_id' => $user->id]);
+    $categories = Category::factory(5)->create(['user_id' => $user->id]);
+    Label::factory(3)->create(['user_id' => $user->id]);
 
-    $accounts = App\Models\Account::factory(3)->create(['user_id' => $user->id]);
+    $accounts = Account::factory(3)->create(['user_id' => $user->id]);
 
     foreach ($accounts as $index => $account) {
-        App\Models\Transaction::factory(10)->plaintext()->create([
+        Transaction::factory(10)->plaintext()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
             'category_id' => $categories->random()->id,
         ]);
 
         for ($i = 0; $i < 5; $i++) {
-            App\Models\AccountBalance::factory()->create([
+            AccountBalance::factory()->create([
                 'account_id' => $account->id,
                 'balance_date' => now()->subDays(($index * 5) + $i + 1)->toDateString(),
             ]);
         }
     }
 
-    $budget = App\Models\Budget::factory()->monthly()->create(['user_id' => $user->id]);
-    App\Models\BudgetPeriod::factory()->create([
+    $budget = Budget::factory()->monthly()->create(['user_id' => $user->id]);
+    BudgetPeriod::factory()->create([
         'budget_id' => $budget->id,
         'start_date' => now()->startOfMonth(),
         'end_date' => now()->endOfMonth(),
@@ -88,11 +100,11 @@ function performanceSeedUser(): App\Models\User
  *
  * @return array{count: int, queries: list<string>}
  */
-function countQueries(\Closure $callback): array
+function countQueries(Closure $callback): array
 {
     $queryLog = [];
 
-    Illuminate\Support\Facades\DB::listen(function ($query) use (&$queryLog) {
+    DB::listen(function ($query) use (&$queryLog) {
         $queryLog[] = $query->sql;
     });
 
@@ -106,7 +118,7 @@ function countQueries(\Closure $callback): array
  *
  * On failure, dumps all executed queries for easy debugging.
  */
-function assertMaxQueries(int $max, \Closure $callback, string $context = ''): void
+function assertMaxQueries(int $max, Closure $callback, string $context = ''): void
 {
     $result = countQueries($callback);
 

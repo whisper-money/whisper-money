@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\OpenBanking\ConnectionController;
 use App\Http\Controllers\Settings\AccountController;
+use App\Http\Controllers\Settings\AutomationRuleController;
 use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Controllers\Settings\ChartColorSchemeController;
@@ -51,10 +52,10 @@ Route::middleware('auth')->group(function () {
 
     Route::redirect('settings/budgets', '/budgets')->name('budgets.settings');
 
-    Route::get('settings/automation-rules', [\App\Http\Controllers\Settings\AutomationRuleController::class, 'index'])->name('automation-rules.index');
-    Route::post('settings/automation-rules', [\App\Http\Controllers\Settings\AutomationRuleController::class, 'store'])->name('automation-rules.store');
-    Route::patch('settings/automation-rules/{automationRule}', [\App\Http\Controllers\Settings\AutomationRuleController::class, 'update'])->name('automation-rules.update');
-    Route::delete('settings/automation-rules/{automationRule}', [\App\Http\Controllers\Settings\AutomationRuleController::class, 'destroy'])->name('automation-rules.destroy');
+    Route::get('settings/automation-rules', [AutomationRuleController::class, 'index'])->name('automation-rules.index');
+    Route::post('settings/automation-rules', [AutomationRuleController::class, 'store'])->name('automation-rules.store');
+    Route::patch('settings/automation-rules/{automationRule}', [AutomationRuleController::class, 'update'])->name('automation-rules.update');
+    Route::delete('settings/automation-rules/{automationRule}', [AutomationRuleController::class, 'destroy'])->name('automation-rules.destroy');
 
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');

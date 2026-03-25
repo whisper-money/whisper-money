@@ -3,18 +3,19 @@
 namespace App\Models;
 
 use App\Enums\PropertyType;
+use Database\Factories\RealEstateDetailFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property \App\Enums\PropertyType $property_type
+ * @property PropertyType $property_type
  * @property int|null $purchase_price
  */
 class RealEstateDetail extends Model
 {
-    /** @use HasFactory<\Database\Factories\RealEstateDetailFactory> */
+    /** @use HasFactory<RealEstateDetailFactory> */
     use HasFactory, HasUuids;
 
     protected $fillable = [

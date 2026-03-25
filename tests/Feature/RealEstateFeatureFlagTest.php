@@ -2,6 +2,7 @@
 
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
+use App\Models\Bank;
 use App\Models\User;
 use Laravel\Pennant\Feature;
 
@@ -37,7 +38,7 @@ test('users with real-estate feature can create real estate accounts', function 
 
 test('users without real-estate feature can still create non-real-estate accounts', function () {
     $user = User::factory()->onboarded()->create();
-    $bank = \App\Models\Bank::factory()->create();
+    $bank = Bank::factory()->create();
 
     Feature::for($user)->deactivate('real-estate');
 

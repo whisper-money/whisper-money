@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property \App\Enums\RolloverType $rollover_type
- * @property \App\Enums\BudgetPeriodType $period_type
+ * @property RolloverType $rollover_type
+ * @property BudgetPeriodType $period_type
  */
 class Budget extends Model
 {

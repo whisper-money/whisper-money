@@ -3,19 +3,20 @@
 namespace App\Models;
 
 use App\Enums\ChartColorScheme;
+use Database\Factories\UserSettingFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property \App\Enums\ChartColorScheme $chart_color_scheme
+ * @property ChartColorScheme $chart_color_scheme
  * @property bool $include_loans_in_net_worth_chart
  * @property bool $include_real_estate_in_net_worth_chart
  */
 class UserSetting extends Model
 {
-    /** @use HasFactory<\Database\Factories\UserSettingFactory> */
+    /** @use HasFactory<UserSettingFactory> */
     use HasFactory, HasUuids;
 
     protected $fillable = [

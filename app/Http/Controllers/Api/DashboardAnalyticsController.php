@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AccountType;
 use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
@@ -356,7 +357,7 @@ class DashboardAnalyticsController extends Controller
      */
     private function getLinkedLoanAccountId(Account $account): ?string
     {
-        if ($account->type !== \App\Enums\AccountType::RealEstate) {
+        if ($account->type !== AccountType::RealEstate) {
             return null;
         }
 

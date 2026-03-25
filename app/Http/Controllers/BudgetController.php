@@ -5,9 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Http\Requests\UpdateBudgetRequest;
 use App\Jobs\AssignHistoricalTransactionsToBudget;
+use App\Models\Account;
+use App\Models\Bank;
 use App\Models\Budget;
+use App\Models\Category;
 use App\Services\BudgetPeriodService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -78,18 +82,18 @@ class BudgetController extends Controller
 
         $budget->load(['category', 'label']);
 
-        $categories = \App\Models\Category::query()
+        $categories = Category::query()
             ->where('user_id', $user->id)
             ->orderBy('name')
             ->get(['id', 'name', 'icon', 'color']);
 
-        $accounts = \App\Models\Account::query()
+        $accounts = Account::query()
             ->where('user_id', $user->id)
             ->with('bank:id,name,logo')
             ->orderBy('name')
             ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
 
-        $banks = \App\Models\Bank::query()
+        $banks = Bank::query()
             ->where(function ($q) use ($user) {
                 $q->whereNull('user_id')
                     ->orWhere('user_id', $user->id);
@@ -109,7 +113,7 @@ class BudgetController extends Controller
         ]);
     }
 
-    public function store(StoreBudgetRequest $request): \Illuminate\Http\RedirectResponse
+    public function store(StoreBudgetRequest $request): RedirectResponse
     {
         $result = DB::transaction(function () use ($request) {
             $budget = $request->user()->budgets()->create([
@@ -133,7 +137,7 @@ class BudgetController extends Controller
         return redirect()->route('budgets.show', $result['budget']);
     }
 
-    public function update(UpdateBudgetRequest $request, Budget $budget): \Illuminate\Http\RedirectResponse
+    public function update(UpdateBudgetRequest $request, Budget $budget): RedirectResponse
     {
         $this->authorize('update', $budget);
 
@@ -159,7 +163,7 @@ class BudgetController extends Controller
         return redirect()->route('budgets.show', $budget);
     }
 
-    public function destroy(Request $request, Budget $budget): \Illuminate\Http\RedirectResponse
+    public function destroy(Request $request, Budget $budget): RedirectResponse
     {
         $this->authorize('delete', $budget);
 

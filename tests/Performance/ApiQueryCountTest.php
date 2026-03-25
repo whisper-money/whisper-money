@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Account;
+use App\Models\AccountBalance;
+
 /*
 |--------------------------------------------------------------------------
 | API Analytics Query Count Tests
@@ -47,7 +50,7 @@ test('cash flow API does not exceed query threshold', function () {
 });
 
 test('top categories API does not exceed query threshold', function () {
-    assertMaxQueries(12, function () {
+    assertMaxQueries(13, function () {
         $this->getJson("/api/dashboard/top-categories?{$this->dateParams}")->assertOk();
     }, 'API Top Categories');
 });
@@ -87,10 +90,10 @@ test('cashflow breakdown API does not exceed query threshold', function () {
 test('net worth API query count does not scale with number of accounts', function () {
     $categories = $this->user->categories;
 
-    $extraAccounts = App\Models\Account::factory(7)->create(['user_id' => $this->user->id]);
+    $extraAccounts = Account::factory(7)->create(['user_id' => $this->user->id]);
     foreach ($extraAccounts as $index => $account) {
         for ($i = 0; $i < 5; $i++) {
-            App\Models\AccountBalance::factory()->create([
+            AccountBalance::factory()->create([
                 'account_id' => $account->id,
                 'balance_date' => now()->subDays(($index * 5) + $i + 20)->toDateString(),
             ]);

@@ -224,7 +224,7 @@ test('continues and reports failure when api call throws a non-404 error', funct
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('getAccount')
         ->once()
-        ->andThrow(new \RuntimeException('API unavailable'));
+        ->andThrow(new RuntimeException('API unavailable'));
 
     $this->app->instance(BankingProviderInterface::class, $mockProvider);
 

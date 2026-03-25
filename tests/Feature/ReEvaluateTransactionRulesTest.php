@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\AutomationRuleService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 
@@ -281,7 +282,7 @@ test('job applies rules to non-encrypted transactions and tracks progress', func
 
     $jobId = 'test-job-'.uniqid();
     $job = new ReEvaluateTransactionRulesJob($this->user, $jobId);
-    $job->handle(app(\App\Services\AutomationRuleService::class));
+    $job->handle(app(AutomationRuleService::class));
 
     expect($matchingTransaction->fresh()->category_id)->toBe($this->category->id);
     expect($nonMatchingTransaction->fresh()->category_id)->toBeNull();
@@ -311,7 +312,7 @@ test('job skips encrypted transactions', function () {
 
     $jobId = 'test-job-'.uniqid();
     $job = new ReEvaluateTransactionRulesJob($this->user, $jobId);
-    $job->handle(app(\App\Services\AutomationRuleService::class));
+    $job->handle(app(AutomationRuleService::class));
 
     $progress = Cache::get(ReEvaluateTransactionRulesJob::cacheKeyForJobId($jobId));
     // 0 processed because the encrypted transaction is excluded from the query
@@ -346,7 +347,7 @@ test('job only processes provided transaction_ids', function () {
 
     $jobId = 'test-job-'.uniqid();
     $job = new ReEvaluateTransactionRulesJob($this->user, $jobId, [$t1->id]);
-    $job->handle(app(\App\Services\AutomationRuleService::class));
+    $job->handle(app(AutomationRuleService::class));
 
     expect($t1->fresh()->category_id)->toBe($this->category->id);
     expect($t2->fresh()->category_id)->toBeNull();
@@ -406,7 +407,7 @@ test('job applies rules to transactions matching filters', function () {
         'date_from' => '2024-01-01',
         'date_to' => '2024-12-31',
     ]);
-    $job->handle(app(\App\Services\AutomationRuleService::class));
+    $job->handle(app(AutomationRuleService::class));
 
     expect($matchingTransaction->fresh()->category_id)->toBe($this->category->id);
     expect($outsideRangeTransaction->fresh()->category_id)->toBeNull();

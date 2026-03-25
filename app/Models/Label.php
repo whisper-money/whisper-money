@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\LabelFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Label extends Model
 {
-    /** @use HasFactory<\Database\Factories\LabelFactory> */
+    /** @use HasFactory<LabelFactory> */
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [

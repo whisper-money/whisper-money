@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\AccountType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreAccountRequest;
 use App\Http\Requests\Settings\UpdateAccountRequest;
@@ -59,7 +60,7 @@ class AccountController extends Controller
         }
 
         // Create real estate detail if account type is real_estate
-        if ($account->type === \App\Enums\AccountType::RealEstate) {
+        if ($account->type === AccountType::RealEstate) {
             $realEstateData = collect($validated)->only([
                 'property_type', 'address', 'purchase_price', 'purchase_date',
                 'area_value', 'area_unit', 'linked_loan_account_id', 'notes',

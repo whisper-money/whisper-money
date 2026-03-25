@@ -12,6 +12,9 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
+use GuzzleHttp\Psr7\Response;
+use Illuminate\Contracts\Queue\Job;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -646,7 +649,7 @@ test('sends auth failed email on final retry for indexa capital 401 error', func
 
     // Simulate final attempt (3 of 3) - SHOULD send email
     $job = new SyncBankingConnectionJob($connection);
-    $mockQueueJob = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $mockQueueJob = Mockery::mock(Job::class);
     $mockQueueJob->shouldReceive('attempts')->andReturn(3);
     $mockQueueJob->shouldReceive('isReleased')->andReturn(false);
     $mockQueueJob->shouldReceive('isDeletedOrReleased')->andReturn(false);
@@ -660,9 +663,9 @@ test('sends auth failed email on final retry for indexa capital 401 error', func
 
     try {
         $job->handle($transactionSync, $balanceSync);
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         $threw = true;
-        expect($e)->toBeInstanceOf(\Illuminate\Http\Client\RequestException::class);
+        expect($e)->toBeInstanceOf(RequestException::class);
         expect($e->response->status())->toBe(401);
     }
 
@@ -698,7 +701,7 @@ test('does not send auth failed email before final retry attempt', function () {
 
     // Simulate attempt 1 of 3 - should NOT send email
     $job = new SyncBankingConnectionJob($connection);
-    $job->job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(1);
     $job->job->shouldReceive('isReleased')->andReturn(false);
     $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
@@ -706,7 +709,7 @@ test('does not send auth failed email before final retry attempt', function () {
 
     try {
         $job->handle($transactionSync, $balanceSync);
-    } catch (\Throwable) {
+    } catch (Throwable) {
         // Expected
     }
 
@@ -735,7 +738,7 @@ test('does not send auth failed email for non-auth errors', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(3);
     $job->job->shouldReceive('isReleased')->andReturn(false);
     $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
@@ -743,7 +746,7 @@ test('does not send auth failed email for non-auth errors', function () {
 
     try {
         $job->handle($transactionSync, $balanceSync);
-    } catch (\Throwable) {
+    } catch (Throwable) {
         // Expected
     }
 
@@ -768,12 +771,12 @@ test('does not send auth failed email for enablebanking connections', function (
     // For EnableBanking, even if the job throws, it should NOT send the auth failed email
     // because isApiKeyProvider() returns false for enablebanking.
     $transactionSync = Mockery::mock(TransactionSyncService::class);
-    $transactionSync->shouldReceive('sync')->andThrow(new \RuntimeException('Auth error'));
+    $transactionSync->shouldReceive('sync')->andThrow(new RuntimeException('Auth error'));
 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(3);
     $job->job->shouldReceive('isReleased')->andReturn(false);
     $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
@@ -781,7 +784,7 @@ test('does not send auth failed email for enablebanking connections', function (
 
     try {
         $job->handle($transactionSync, $balanceSync);
-    } catch (\RuntimeException) {
+    } catch (RuntimeException) {
         // Expected
     }
 
@@ -811,7 +814,7 @@ test('sends auth failed email for binance 403 error on final attempt', function 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+    $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(3);
     $job->job->shouldReceive('isReleased')->andReturn(false);
     $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
@@ -819,7 +822,7 @@ test('sends auth failed email for binance 403 error on final attempt', function 
 
     try {
         $job->handle($transactionSync, $balanceSync);
-    } catch (\Throwable) {
+    } catch (Throwable) {
         // Expected
     }
 
@@ -843,9 +846,9 @@ test('rate limit error does not set connection status to error', function () {
 
     $transactionSync = Mockery::mock(TransactionSyncService::class);
     $transactionSync->shouldReceive('sync')->andThrow(
-        new \Illuminate\Http\Client\RequestException(
-            new \Illuminate\Http\Client\Response(
-                new \GuzzleHttp\Psr7\Response(429)
+        new RequestException(
+            new Illuminate\Http\Client\Response(
+                new Response(429)
             )
         )
     );

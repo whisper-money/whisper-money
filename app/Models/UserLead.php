@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserLeadFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use Illuminate\Support\Str;
 
 class UserLead extends Model
 {
-    /** @use HasFactory<\Database\Factories\UserLeadFactory> */
+    /** @use HasFactory<UserLeadFactory> */
     use HasFactory, HasUuids;
 
     protected $fillable = [

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BankingConnectionStatus;
 use App\Jobs\SyncBinanceHistoricalBalancesJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
@@ -87,7 +88,7 @@ test('failed method logs error but does not update connection status', function 
     $job->failed(new RuntimeException('API rate limit'));
 
     $connection->refresh();
-    expect($connection->status)->toBe(\App\Enums\BankingConnectionStatus::Active);
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
 });
 
 test('uniqueId returns account-based identifier', function () {

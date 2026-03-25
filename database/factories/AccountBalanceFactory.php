@@ -2,10 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Account;
+use App\Models\AccountBalance;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\AccountBalance>
+ * @extends Factory<AccountBalance>
  */
 class AccountBalanceFactory extends Factory
 {
@@ -17,7 +19,7 @@ class AccountBalanceFactory extends Factory
     public function definition(): array
     {
         return [
-            'account_id' => \App\Models\Account::factory(),
+            'account_id' => Account::factory(),
             'balance_date' => fake()->date(),
             'balance' => fake()->numberBetween(100000, 10000000),
         ];

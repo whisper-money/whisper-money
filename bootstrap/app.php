@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\ActivateDevelopmentFeatures;
+use App\Http\Middleware\BlockDemoAccountActions;
+use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureOpenBankingFeature;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
@@ -35,14 +37,14 @@ return Application::configure(basePath: dirname(__DIR__))
             SetLocale::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
-            \App\Http\Middleware\BlockDemoAccountActions::class.':auto',
+            BlockDemoAccountActions::class.':auto',
             ActivateDevelopmentFeatures::class,
         ]);
 
         $middleware->alias([
             'subscribed' => EnsureUserIsSubscribed::class,
-            'onboarded' => \App\Http\Middleware\EnsureOnboardingComplete::class,
-            'block-demo' => \App\Http\Middleware\BlockDemoAccountActions::class,
+            'onboarded' => EnsureOnboardingComplete::class,
+            'block-demo' => BlockDemoAccountActions::class,
             'open-banking' => EnsureOpenBankingFeature::class,
         ]);
     })

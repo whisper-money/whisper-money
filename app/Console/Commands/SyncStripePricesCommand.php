@@ -102,7 +102,7 @@ class SyncStripePricesCommand extends Command
     }
 
     /**
-     * @return \Stripe\Price|null
+     * @return Price|null
      */
     private function findPriceByLookupKey(string $lookupKey): mixed
     {
@@ -138,7 +138,7 @@ class SyncStripePricesCommand extends Command
     }
 
     /**
-     * @param  \Stripe\Price  $price
+     * @param  Price  $price
      */
     private function priceMatches(mixed $price, int $amountInCents, string $currency, ?string $billingPeriod): bool
     {

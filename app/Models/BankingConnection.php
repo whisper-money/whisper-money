@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\BankingConnectionStatus;
+use Carbon\Carbon;
+use Database\Factories\BankingConnectionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,14 +14,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property bool $has_pending_accounts
- * @property \App\Enums\BankingConnectionStatus $status
- * @property \Carbon\Carbon|null $valid_until
- * @property \Carbon\Carbon|null $last_synced_at
+ * @property BankingConnectionStatus $status
+ * @property Carbon|null $valid_until
+ * @property Carbon|null $last_synced_at
  * @property array<int, mixed>|null $pending_accounts_data
  */
 class BankingConnection extends Model
 {
-    /** @use HasFactory<\Database\Factories\BankingConnectionFactory> */
+    /** @use HasFactory<BankingConnectionFactory> */
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [

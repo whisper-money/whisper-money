@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DripEmailType;
 use App\Notifications\VerifyEmailNotification;
+use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +20,7 @@ use Laravel\Pennant\Concerns\HasFeatures;
 
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use Billable, HasFactory, HasFeatures, HasUuids, Notifiable, TwoFactorAuthenticatable;
 
     /**

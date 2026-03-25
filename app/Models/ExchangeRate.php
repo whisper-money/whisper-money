@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ExchangeRateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ExchangeRate extends Model
 {
-    /** @use HasFactory<\Database\Factories\ExchangeRateFactory> */
+    /** @use HasFactory<ExchangeRateFactory> */
     use HasFactory;
 
     protected $fillable = [
