@@ -329,7 +329,7 @@ jobs:
             echo "Deployment request failed with status $http_code"
 
             if [ $attempt -lt $max_attempts ]; then
-              delay=$((attempt * 10))
+              delay=$((30 * (2 ** (attempt - 1))))
               echo "Retrying in ${delay}s..."
               sleep $delay
             fi
