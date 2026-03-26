@@ -1003,7 +1003,7 @@ function LoanDetailsCard({
         loan_term_months: detail?.loan_term_months
             ? String(detail.loan_term_months)
             : '',
-        start_date: detail?.start_date ?? '',
+        start_date: detail?.start_date?.slice(0, 10) ?? '',
         original_amount: detail?.original_amount ?? 0,
     });
 
