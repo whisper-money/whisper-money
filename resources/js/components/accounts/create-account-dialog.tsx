@@ -185,6 +185,9 @@ export function CreateAccountDialog({
                                       .linkedLoanAccountId,
                               notes:
                                   formDataRef.current.realEstate.notes || null,
+                              revaluation_percentage:
+                                  formDataRef.current.realEstate
+                                      .revaluationPercentage || null,
                           }
                         : {}),
                 },

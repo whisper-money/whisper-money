@@ -33,6 +33,7 @@ import { CustomBankData, CustomBankForm } from './custom-bank-form';
 const BALANCE_ACCOUNT_TYPES: AccountType[] = [
     'investment',
     'loan',
+    'real_estate',
     'retirement',
     'savings',
 ];
@@ -46,6 +47,7 @@ export interface RealEstateFormData {
     areaUnit: AreaUnit | null;
     linkedLoanAccountId: string | null;
     notes: string;
+    revaluationPercentage: string;
 }
 
 export interface AccountFormData {
@@ -86,6 +88,7 @@ const initialRealEstateData: RealEstateFormData = {
     areaUnit: null,
     linkedLoanAccountId: null,
     notes: '',
+    revaluationPercentage: '',
 };
 
 export function AccountForm({
@@ -521,6 +524,33 @@ export function AccountForm({
                             )}
                             rows={3}
                         />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="revaluation_percentage">
+                            {__('Annual Revaluation (%)')}
+                        </Label>
+                        <Input
+                            id="revaluation_percentage"
+                            type="number"
+                            className="mt-1"
+                            value={realEstateData.revaluationPercentage}
+                            onChange={(e) =>
+                                setRealEstateData((prev) => ({
+                                    ...prev,
+                                    revaluationPercentage: e.target.value,
+                                }))
+                            }
+                            placeholder="0.00"
+                            min="-100"
+                            max="100"
+                            step="0.01"
+                        />
+                        <p className="pl-1 text-xs text-muted-foreground">
+                            {__(
+                                'Annual percentage applied monthly. Use negative values for depreciation.',
+                            )}
+                        </p>
                     </div>
                 </>
             )}

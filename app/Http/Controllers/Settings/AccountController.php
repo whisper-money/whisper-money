@@ -64,6 +64,7 @@ class AccountController extends Controller
             $realEstateData = collect($validated)->only([
                 'property_type', 'address', 'purchase_price', 'purchase_date',
                 'area_value', 'area_unit', 'linked_loan_account_id', 'notes',
+                'revaluation_percentage',
             ])->filter(fn ($value) => $value !== null)->toArray();
 
             if (! empty($realEstateData)) {

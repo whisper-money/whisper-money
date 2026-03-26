@@ -29,6 +29,7 @@ class RealEstateDetailFactory extends Factory
             'area_value' => fake()->randomFloat(2, 50, 500),
             'area_unit' => fake()->randomElement(['sqm', 'sqft']),
             'notes' => fake()->optional()->sentence(),
+            'revaluation_percentage' => fake()->optional()->randomFloat(2, -5, 10),
         ];
     }
 

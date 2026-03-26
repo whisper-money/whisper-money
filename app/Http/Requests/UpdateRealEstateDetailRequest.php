@@ -46,6 +46,7 @@ class UpdateRealEstateDetailRequest extends FormRequest
                 }),
             ],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'revaluation_percentage' => ['nullable', 'numeric', 'min:-100', 'max:100'],
         ];
     }
 }
