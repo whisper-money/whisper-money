@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property PropertyType $property_type
  * @property int|null $purchase_price
+ * @property \Illuminate\Support\Carbon|null $purchase_date
  * @property string|null $revaluation_percentage
  */
 class RealEstateDetail extends Model
