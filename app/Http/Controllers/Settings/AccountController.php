@@ -72,6 +72,26 @@ class AccountController extends Controller
             }
         }
 
+        // Create loan detail if account type is loan and loan fields are provided
+        if ($account->type === \App\Enums\AccountType::Loan) {
+            $loanData = collect($validated)->only([
+                'annual_interest_rate', 'loan_term_months', 'original_amount',
+            ])->filter(fn ($value) => $value !== null)->toArray();
+
+            $loanStartDate = $validated['loan_start_date'] ?? null;
+            if ($loanStartDate) {
+                $loanData['start_date'] = $loanStartDate;
+            }
+
+            if (! empty($loanData) && isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
+                if (! isset($loanData['start_date'])) {
+                    $loanData['start_date'] = now()->toDateString();
+                }
+
+                $account->loanDetail()->create($loanData);
+            }
+        }
+
         // Set user's currency_code from first account
         if ($user->accounts()->count() === 1) {
             $user->update(['currency_code' => $account->currency_code]);
@@ -91,11 +111,36 @@ class AccountController extends Controller
     {
         $this->authorize('update', $account);
 
+        $validated = $request->validated();
+
+        $accountData = collect($validated)->only([
+            'name', 'bank_id', 'currency_code', 'type',
+        ])->toArray();
+
         $account->update([
-            ...$request->validated(),
+            ...$accountData,
             'encrypted' => false,
             'name_iv' => null,
         ]);
+
+        // Update or create loan detail if account type is loan
+        if ($account->type === \App\Enums\AccountType::Loan) {
+            $loanData = collect($validated)->only([
+                'annual_interest_rate', 'loan_term_months', 'original_amount',
+            ])->filter(fn ($value) => $value !== null)->toArray();
+
+            $loanStartDate = $validated['loan_start_date'] ?? null;
+            if ($loanStartDate) {
+                $loanData['start_date'] = $loanStartDate;
+            }
+
+            if (! empty($loanData)) {
+                $account->loanDetail()->updateOrCreate(
+                    ['account_id' => $account->id],
+                    $loanData,
+                );
+            }
+        }
 
         return to_route('accounts.index');
     }

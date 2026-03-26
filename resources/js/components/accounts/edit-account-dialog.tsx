@@ -10,14 +10,18 @@ import {
 } from '@/components/ui/dialog';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import type { Account } from '@/types/account';
+import type { Account, LoanDetail } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccountForm, AccountFormData } from './account-form';
+import { AccountForm, AccountFormData, LoanFormData } from './account-form';
+
+interface AccountWithLoanDetail extends Account {
+    loan_detail?: LoanDetail | null;
+}
 
 interface EditAccountDialogProps {
-    account: Account;
+    account: AccountWithLoanDetail;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
@@ -40,6 +44,7 @@ export function EditAccountDialog({
         currencyCode: account.currency_code,
         customBank: null,
         realEstate: null,
+        loan: null,
     });
 
     useEffect(() => {
@@ -70,6 +75,17 @@ export function EditAccountDialog({
         decryptName();
     }, [open, account.name, account.name_iv, account.encrypted]);
 
+    const loanInitialData: LoanFormData | null = useMemo(() => {
+        const detail = account.loan_detail;
+        if (!detail) return null;
+        return {
+            annualInterestRate: detail.annual_interest_rate ?? '',
+            loanTermMonths: detail.loan_term_months?.toString() ?? '',
+            startDate: detail.start_date ?? '',
+            originalAmount: detail.original_amount ?? 0,
+        };
+    }, [account.loan_detail]);
+
     const initialValues = useMemo(
         () =>
             decryptedName && decryptedName !== '[Encrypted]'
@@ -78,9 +94,16 @@ export function EditAccountDialog({
                       bank: account.bank,
                       type: account.type,
                       currencyCode: account.currency_code,
+                      loan: loanInitialData,
                   }
                 : undefined,
-        [decryptedName, account.bank, account.type, account.currency_code],
+        [
+            decryptedName,
+            account.bank,
+            account.type,
+            account.currency_code,
+            loanInitialData,
+        ],
     );
 
     const handleFormChange = useCallback((data: AccountFormData) => {
@@ -172,6 +195,21 @@ export function EditAccountDialog({
                     ...(finalBankId ? { bank_id: finalBankId } : {}),
                     type: type,
                     currency_code: currencyCode,
+                    ...(formDataRef.current.loan
+                        ? {
+                              annual_interest_rate:
+                                  formDataRef.current.loan.annualInterestRate ||
+                                  null,
+                              loan_term_months:
+                                  formDataRef.current.loan.loanTermMonths ||
+                                  null,
+                              loan_start_date:
+                                  formDataRef.current.loan.startDate || null,
+                              original_amount:
+                                  formDataRef.current.loan.originalAmount ||
+                                  null,
+                          }
+                        : {}),
                 },
                 {
                     preserveScroll: true,

@@ -61,6 +61,7 @@ export function CreateAccountDialog({
         customBank: null,
         balance: null,
         realEstate: null,
+        loan: null,
     });
 
     const handleFormChange = useCallback((data: AccountFormData) => {
@@ -188,6 +189,21 @@ export function CreateAccountDialog({
                               revaluation_percentage:
                                   formDataRef.current.realEstate
                                       .revaluationPercentage || null,
+                          }
+                        : {}),
+                    ...(formDataRef.current.loan
+                        ? {
+                              annual_interest_rate:
+                                  formDataRef.current.loan.annualInterestRate ||
+                                  null,
+                              loan_term_months:
+                                  formDataRef.current.loan.loanTermMonths ||
+                                  null,
+                              loan_start_date:
+                                  formDataRef.current.loan.startDate || null,
+                              original_amount:
+                                  formDataRef.current.loan.originalAmount ||
+                                  null,
                           }
                         : {}),
                 },

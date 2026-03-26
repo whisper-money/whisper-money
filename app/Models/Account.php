@@ -79,6 +79,12 @@ class Account extends Model
         return $this->hasOne(RealEstateDetail::class);
     }
 
+    /** @return HasOne<LoanDetail, $this> */
+    public function loanDetail(): HasOne
+    {
+        return $this->hasOne(LoanDetail::class);
+    }
+
     public function isConnected(): bool
     {
         return $this->banking_connection_id !== null;

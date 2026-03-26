@@ -56,4 +56,11 @@ class AccountFactory extends Factory
             'bank_id' => null,
         ]);
     }
+
+    public function loan(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => AccountType::Loan,
+        ]);
+    }
 }

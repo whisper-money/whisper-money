@@ -75,6 +75,17 @@ class StoreAccountRequest extends FormRequest
             ]);
         }
 
+        $isLoan = $this->input('type') === AccountType::Loan->value;
+
+        if ($isLoan) {
+            $rules = array_merge($rules, [
+                'annual_interest_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+                'loan_term_months' => ['nullable', 'integer', 'min:1', 'max:600'],
+                'loan_start_date' => ['nullable', 'date'],
+                'original_amount' => ['nullable', 'integer', 'min:0'],
+            ]);
+        }
+
         return $rules;
     }
 }
