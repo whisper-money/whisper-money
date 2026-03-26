@@ -10,14 +10,24 @@ import {
 } from '@/components/ui/dialog';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import type { Account } from '@/types/account';
+import type { Account, LoanDetail, RealEstateDetail } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccountForm, AccountFormData } from './account-form';
+import {
+    AccountForm,
+    AccountFormData,
+    LoanFormData,
+    RealEstateFormData,
+} from './account-form';
+
+interface AccountWithDetails extends Account {
+    loan_detail?: LoanDetail | null;
+    real_estate_detail?: RealEstateDetail | null;
+}
 
 interface EditAccountDialogProps {
-    account: Account;
+    account: AccountWithDetails;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
@@ -33,13 +43,16 @@ export function EditAccountDialog({
 }: EditAccountDialogProps) {
     const [decryptedName, setDecryptedName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
-        bankId: account.bank?.id ?? null,
+        bankId: (account.bank?.id ?? null) as number | null,
         type: account.type,
         currencyCode: account.currency_code,
         customBank: null,
+        balance: null,
         realEstate: null,
+        loan: null,
     });
 
     useEffect(() => {
@@ -70,6 +83,36 @@ export function EditAccountDialog({
         decryptName();
     }, [open, account.name, account.name_iv, account.encrypted]);
 
+    const loanInitialData: LoanFormData | null = useMemo(() => {
+        const detail = account.loan_detail;
+        if (!detail) return null;
+        return {
+            annualInterestRate: detail.annual_interest_rate ?? '',
+            loanTermMonths: detail.loan_term_months?.toString() ?? '',
+            startDate: detail.start_date?.slice(0, 10) ?? '',
+            originalAmount: detail.original_amount ?? 0,
+        };
+    }, [account.loan_detail]);
+
+    const realEstateInitialData: RealEstateFormData | null = useMemo(() => {
+        const detail = account.real_estate_detail;
+        if (!detail) return null;
+        return {
+            propertyType: detail.property_type ?? null,
+            address: detail.address ?? '',
+            purchasePrice: detail.purchase_price ?? 0,
+            purchaseDate: detail.purchase_date ?? '',
+            areaValue: detail.area_value ?? '',
+            areaUnit: detail.area_unit ?? null,
+            linkedLoanAccountId: detail.linked_loan_account_id ?? null,
+            notes: detail.notes ?? '',
+            revaluationPercentage:
+                detail.revaluation_percentage != null
+                    ? String(detail.revaluation_percentage)
+                    : '',
+        };
+    }, [account.real_estate_detail]);
+
     const initialValues = useMemo(
         () =>
             decryptedName && decryptedName !== '[Encrypted]'
@@ -78,14 +121,29 @@ export function EditAccountDialog({
                       bank: account.bank,
                       type: account.type,
                       currencyCode: account.currency_code,
+                      loan: loanInitialData,
+                      realEstate: realEstateInitialData,
                   }
                 : undefined,
-        [decryptedName, account.bank, account.type, account.currency_code],
+        [
+            decryptedName,
+            account.bank,
+            account.type,
+            account.currency_code,
+            loanInitialData,
+            realEstateInitialData,
+        ],
     );
 
     const handleFormChange = useCallback((data: AccountFormData) => {
         formDataRef.current = data;
     }, []);
+
+    useEffect(() => {
+        if (open) {
+            setErrors({});
+        }
+    }, [open]);
 
     async function createBankAndGetId(): Promise<string | null> {
         const customBank = formDataRef.current.customBank;
@@ -172,10 +230,55 @@ export function EditAccountDialog({
                     ...(finalBankId ? { bank_id: finalBankId } : {}),
                     type: type,
                     currency_code: currencyCode,
+                    ...(formDataRef.current.loan
+                        ? {
+                              annual_interest_rate:
+                                  formDataRef.current.loan.annualInterestRate ||
+                                  null,
+                              loan_term_months:
+                                  formDataRef.current.loan.loanTermMonths ||
+                                  null,
+                              loan_start_date:
+                                  formDataRef.current.loan.startDate || null,
+                              original_amount:
+                                  formDataRef.current.loan.originalAmount ??
+                                  null,
+                          }
+                        : {}),
+                    ...(formDataRef.current.realEstate
+                        ? {
+                              property_type:
+                                  formDataRef.current.realEstate.propertyType,
+                              address:
+                                  formDataRef.current.realEstate.address ||
+                                  null,
+                              purchase_price:
+                                  formDataRef.current.realEstate
+                                      .purchasePrice ?? null,
+                              purchase_date:
+                                  formDataRef.current.realEstate.purchaseDate ||
+                                  null,
+                              area_value:
+                                  formDataRef.current.realEstate.areaValue ||
+                                  null,
+                              area_unit:
+                                  formDataRef.current.realEstate.areaUnit ||
+                                  null,
+                              linked_loan_account_id:
+                                  formDataRef.current.realEstate
+                                      .linkedLoanAccountId || null,
+                              notes:
+                                  formDataRef.current.realEstate.notes || null,
+                              revaluation_percentage:
+                                  formDataRef.current.realEstate
+                                      .revaluationPercentage || null,
+                          }
+                        : {}),
                 },
                 {
                     preserveScroll: true,
                     onSuccess: () => {
+                        setErrors({});
                         onOpenChange(false);
                         if (redirectTo) {
                             router.visit(redirectTo);
@@ -183,6 +286,7 @@ export function EditAccountDialog({
                             onSuccess?.();
                         }
                     },
+                    onError: (errors) => setErrors(errors),
                     onFinish: () => {
                         setIsSubmitting(false);
                     },
@@ -213,6 +317,7 @@ export function EditAccountDialog({
                         <AccountForm
                             initialValues={initialValues}
                             onChange={handleFormChange}
+                            errors={errors}
                         />
                     ) : (
                         <div className="space-y-4">

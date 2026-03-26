@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Services\AccountMetricsService;
+use App\Services\LoanAmortizationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,7 +16,10 @@ class AccountController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(private AccountMetricsService $accountMetricsService) {}
+    public function __construct(
+        private AccountMetricsService $accountMetricsService,
+        private LoanAmortizationService $loanAmortizationService,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -52,9 +56,10 @@ class AccountController extends Controller
                 $data['real_estate_detail'] = [
                     ...$realEstateDetail->only([
                         'id', 'property_type', 'address', 'purchase_price',
-                        'purchase_date', 'area_value', 'area_unit', 'notes',
-                        'linked_loan_account_id',
+                        'area_value', 'area_unit', 'notes',
+                        'revaluation_percentage', 'linked_loan_account_id',
                     ]),
+                    'purchase_date' => $realEstateDetail->purchase_date?->format('Y-m-d'),
                     'linked_loan_account' => $linkedLoan
                         ? $linkedLoan->only(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank'])
                         : null,
@@ -82,6 +87,35 @@ class AccountController extends Controller
                 ->where('type', AccountType::Loan->value)
                 ->with('bank:id,name,logo')
                 ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+        }
+
+        if ($account->type === AccountType::Loan) {
+            $account->load('loanDetail');
+            $loanDetail = $account->loanDetail;
+
+            if ($loanDetail) {
+                $remainingMonths = $this->loanAmortizationService->calculateRemainingMonths($loanDetail, now());
+
+                $lastBalance = AccountBalance::query()
+                    ->where('account_id', $account->id)
+                    ->orderBy('balance_date', 'desc')
+                    ->value('balance');
+
+                $monthlyPayment = $this->loanAmortizationService->calculateMonthlyPayment(
+                    $lastBalance ?? $loanDetail->original_amount,
+                    (float) $loanDetail->annual_interest_rate,
+                    $lastBalance ? $remainingMonths : $loanDetail->loan_term_months,
+                );
+
+                $data['loan_detail'] = [
+                    ...$loanDetail->only([
+                        'id', 'annual_interest_rate', 'loan_term_months',
+                        'start_date', 'original_amount',
+                    ]),
+                    'monthly_payment' => $monthlyPayment,
+                    'remaining_months' => $remainingMonths,
+                ];
+            }
         }
 
         return Inertia::render('Accounts/Show', [

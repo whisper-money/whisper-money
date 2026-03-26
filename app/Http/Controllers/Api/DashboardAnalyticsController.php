@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\BalanceLookup;
 use App\Services\ExchangeRateService;
+use App\Services\LoanAmortizationService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class DashboardAnalyticsController extends Controller
     public function __construct(
         private ExchangeRateService $exchangeRateService,
         private AccountMetricsService $accountMetricsService,
+        private LoanAmortizationService $loanAmortizationService,
     ) {}
 
     public function netWorth(Request $request)
@@ -137,6 +139,32 @@ class DashboardAnalyticsController extends Controller
 
             $points[] = $point;
             $current->addMonth();
+        }
+
+        // Append projected future months for loan accounts with loan details
+        if ($account->type === AccountType::Loan) {
+            $loanDetail = $account->loanDetail;
+
+            if ($loanDetail) {
+                $projection = $this->loanAmortizationService->generateProjection($loanDetail, 12);
+                $now = Carbon::now();
+
+                foreach ($projection as $yearMonth => $balanceCents) {
+                    $projectedDate = Carbon::createFromFormat('Y-m', $yearMonth)->endOfMonth();
+
+                    // Only add future months that are beyond the current date
+                    if ($projectedDate->lte($now)) {
+                        continue;
+                    }
+
+                    $points[] = [
+                        'month' => $yearMonth,
+                        'timestamp' => $projectedDate->timestamp,
+                        'value' => $balanceCents,
+                        'projected' => true,
+                    ];
+                }
+            }
         }
 
         return response()->json([

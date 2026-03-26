@@ -101,6 +101,16 @@ export interface RealEstateDetail {
     current_loan_balance: number | null;
 }
 
+export interface LoanDetail {
+    id: UUID;
+    annual_interest_rate: string;
+    loan_term_months: number;
+    start_date: string;
+    original_amount: number;
+    monthly_payment: number | null;
+    remaining_months: number | null;
+}
+
 export function formatPropertyType(type: PropertyType): string {
     const typeMap: Record<PropertyType, string> = {
         residential: __('Residential'),
@@ -138,6 +148,7 @@ export function formatAccountType(type: AccountType): string {
 
 const NON_TRANSACTIONAL_ACCOUNT_TYPES: AccountType[] = [
     'investment',
+    'loan',
     'real_estate',
     'retirement',
 ];

@@ -224,6 +224,7 @@ export interface BalanceDataPoint {
     value: number;
     invested_amount?: number | null;
     mortgage_balance?: number | null;
+    projected?: boolean;
 }
 
 interface AccountBalanceData {
@@ -397,6 +398,7 @@ export function AccountBalanceChart({
         currentInvestedAmount,
         currentMortgageBalance,
         hasMortgageData,
+        hasProjectedData,
         shortTrend,
         longTrend,
     } = useMemo(() => {
@@ -407,13 +409,17 @@ export function AccountBalanceChart({
                 currentInvestedAmount: null as number | null,
                 currentMortgageBalance: null as number | null,
                 hasMortgageData: false,
+                hasProjectedData: false,
                 shortTrend: null,
                 longTrend: null,
             };
         }
 
         const data = balanceData.data;
-        const current = data[data.length - 1]?.value ?? 0;
+
+        // For trend calculations, use only non-projected data points
+        const historicalData = data.filter((d) => !d.projected);
+        const current = historicalData[historicalData.length - 1]?.value ?? 0;
 
         // Find the most recent non-null invested_amount
         let invested: number | null = null;
@@ -447,14 +453,36 @@ export function AccountBalanceChart({
             }
         }
 
+        const hasProjection = data.some((d) => d.projected);
+
+        // Add projected_value field for chart rendering:
+        // - Historical points: value only, no projected_value
+        // - Last historical point: also gets projected_value to connect the lines
+        // - Projected points: both value and projected_value
+        let augmentedData = data;
+        if (hasProjection) {
+            const lastHistoricalIndex = data.findIndex((d) => d.projected) - 1;
+            augmentedData = data.map((d, i) => ({
+                ...d,
+                projected_value:
+                    d.projected || i === lastHistoricalIndex
+                        ? d.value
+                        : undefined,
+            }));
+        }
+
         return {
-            chartData: data,
+            chartData: augmentedData,
             currentBalance: current,
             currentInvestedAmount: invested,
             currentMortgageBalance: mortgage,
             hasMortgageData: hasMortgage,
-            shortTrend: calculateTrend(data, 1),
-            longTrend: calculateTrend(data, data.length - 1),
+            hasProjectedData: hasProjection,
+            shortTrend: calculateTrend(historicalData, 1),
+            longTrend: calculateTrend(
+                historicalData,
+                historicalData.length - 1,
+            ),
         };
     }, [balanceData]);
 
@@ -517,6 +545,14 @@ export function AccountBalanceChart({
                   mortgage_balance: {
                       label: __('Mortgage owed'),
                       color: 'var(--color-chart-5)',
+                  },
+              }
+            : {}),
+        ...(hasProjectedData
+            ? {
+                  projected_value: {
+                      label: __('Projected'),
+                      color: 'var(--color-chart-2)',
                   },
               }
             : {}),
@@ -850,6 +886,67 @@ export function AccountBalanceChart({
                                         stroke="var(--color-chart-6)"
                                         strokeWidth={1.5}
                                         strokeDasharray="2 2"
+                                        dot={false}
+                                        activeDot={{ r: 4 }}
+                                        connectNulls
+                                    />
+                                </ComposedChart>
+                            ) : hasProjectedData ? (
+                                <ComposedChart
+                                    accessibilityLayer
+                                    data={chartData.slice(1)}
+                                >
+                                    <defs>
+                                        <linearGradient
+                                            id="fillBalance"
+                                            x1="0"
+                                            y1="0"
+                                            x2="0"
+                                            y2="1"
+                                        >
+                                            <stop
+                                                offset="5%"
+                                                stopColor="var(--color-chart-2)"
+                                                stopOpacity={0.3}
+                                            />
+                                            <stop
+                                                offset="95%"
+                                                stopColor="var(--color-chart-2)"
+                                                stopOpacity={0.05}
+                                            />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis
+                                        dataKey="month"
+                                        tickLine={false}
+                                        tickMargin={10}
+                                        axisLine={false}
+                                        tickFormatter={formatXAxisLabel}
+                                    />
+                                    <ChartTooltip
+                                        content={
+                                            <ChartTooltipContent
+                                                hideLabel
+                                                valueFormatter={valueFormatter}
+                                            />
+                                        }
+                                    />
+                                    <Area
+                                        dataKey="value"
+                                        type="monotone"
+                                        fill="url(#fillBalance)"
+                                        stroke="var(--color-chart-2)"
+                                        strokeWidth={2}
+                                        dot={false}
+                                        activeDot={{ r: 5 }}
+                                        fillOpacity={1}
+                                    />
+                                    <Line
+                                        dataKey="projected_value"
+                                        type="monotone"
+                                        stroke="var(--color-chart-2)"
+                                        strokeWidth={2}
+                                        strokeDasharray="6 4"
                                         dot={false}
                                         activeDot={{ r: 4 }}
                                         connectNulls

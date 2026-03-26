@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LoanDetailController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OpenBanking\AccountMappingController;
 use App\Http\Controllers\OpenBanking\AuthorizationController;
@@ -101,6 +102,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
     Route::get('accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');
     Route::patch('accounts/{account}/real-estate-detail', [RealEstateDetailController::class, 'update'])->name('accounts.real-estate-detail.update');
+    Route::patch('accounts/{account}/loan-detail', [LoanDetailController::class, 'update'])->name('accounts.loan-detail.update');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('transactions/categorize', [TransactionController::class, 'categorize'])->name('transactions.categorize');

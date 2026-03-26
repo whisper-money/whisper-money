@@ -1,4 +1,5 @@
 import { index, show } from '@/actions/App/Http/Controllers/AccountController';
+import { update as updateLoanDetail } from '@/actions/App/Http/Controllers/LoanDetailController';
 import { update as updateRealEstateDetail } from '@/actions/App/Http/Controllers/RealEstateDetailController';
 import {
     AccountBalanceChart,
@@ -13,6 +14,7 @@ import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog
 import { BankLogo } from '@/components/bank-logo';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import HeadingSmall from '@/components/heading-small';
+import InputError from '@/components/input-error';
 import { MobileBackButton } from '@/components/mobile-back-button';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { AmountDisplay } from '@/components/ui/amount-display';
@@ -50,6 +52,7 @@ import {
     isTransactionalAccount,
     PROPERTY_TYPES,
     type AreaUnit,
+    type LoanDetail,
     type PropertyType,
     type RealEstateDetail,
 } from '@/types/account';
@@ -63,13 +66,14 @@ import { ChevronDown, Pencil } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 
-interface AccountWithRealEstate extends Account {
+interface AccountWithDetails extends Account {
     real_estate_detail?: RealEstateDetail;
     available_loan_accounts?: Account[];
+    loan_detail?: LoanDetail;
 }
 
 interface Props {
-    account: AccountWithRealEstate;
+    account: AccountWithDetails;
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
@@ -92,6 +96,7 @@ export default function AccountShow({
     const [balancesOpen, setBalancesOpen] = useState(false);
     const [chartRefreshKey, setChartRefreshKey] = useState(0);
     const [editingDetails, setEditingDetails] = useState(false);
+    const [editingLoanDetails, setEditingLoanDetails] = useState(false);
     const [chartComputedData, setChartComputedData] =
         useState<ChartComputedData | null>(null);
 
@@ -107,6 +112,7 @@ export default function AccountShow({
     const isLoan = account.type === 'loan';
     const isRealEstate = account.type === 'real_estate';
     const realEstateDetail = account.real_estate_detail;
+    const loanDetail = account.loan_detail;
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -256,6 +262,15 @@ export default function AccountShow({
                         }
                         isEditing={editingDetails}
                         onEditToggle={setEditingDetails}
+                    />
+                )}
+
+                {isLoan && (
+                    <LoanDetailsCard
+                        detail={loanDetail ?? null}
+                        account={account}
+                        isEditing={editingLoanDetails}
+                        onEditToggle={setEditingLoanDetails}
                     />
                 )}
 
@@ -537,7 +552,7 @@ function PropertyDetailsCard({
     onEditToggle,
 }: {
     detail: RealEstateDetail;
-    account: AccountWithRealEstate;
+    account: AccountWithDetails;
     availableLoanAccounts: Account[];
     isEditing: boolean;
     onEditToggle: (editing: boolean) => void;
@@ -965,6 +980,300 @@ function PropertyDetailsCard({
                         </dd>
                     </div>
                 )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function LoanDetailsCard({
+    detail,
+    account,
+    isEditing,
+    onEditToggle,
+}: {
+    detail: LoanDetail | null;
+    account: AccountWithDetails;
+    isEditing: boolean;
+    onEditToggle: (editing: boolean) => void;
+}) {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [formData, setFormData] = useState({
+        annual_interest_rate: detail?.annual_interest_rate ?? '',
+        loan_term_months: detail?.loan_term_months
+            ? String(detail.loan_term_months)
+            : '',
+        start_date: detail?.start_date?.slice(0, 10) ?? '',
+        original_amount: detail?.original_amount ?? 0,
+    });
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setIsSubmitting(true);
+        setErrors({});
+
+        router.patch(
+            updateLoanDetail.url(account.id),
+            {
+                annual_interest_rate: formData.annual_interest_rate,
+                loan_term_months: Number(formData.loan_term_months),
+                start_date: formData.start_date,
+                original_amount: formData.original_amount,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => onEditToggle(false),
+                onError: (errors) => setErrors(errors),
+                onFinish: () => setIsSubmitting(false),
+            },
+        );
+    }
+
+    function handleCancel() {
+        setFormData({
+            annual_interest_rate: detail?.annual_interest_rate ?? '',
+            loan_term_months: detail?.loan_term_months
+                ? String(detail.loan_term_months)
+                : '',
+            start_date: detail?.start_date?.slice(0, 10) ?? '',
+            original_amount: detail?.original_amount ?? 0,
+        });
+        setErrors({});
+        onEditToggle(false);
+    }
+
+    if (isEditing) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>{__('Edit Loan Details')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_annual_interest_rate">
+                                    {__('Annual Interest Rate (%)')}
+                                </Label>
+                                <Input
+                                    id="edit_annual_interest_rate"
+                                    type="number"
+                                    value={formData.annual_interest_rate}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            annual_interest_rate:
+                                                e.target.value,
+                                        }))
+                                    }
+                                    placeholder="3.500"
+                                    min="0"
+                                    max="99.999"
+                                    step="0.001"
+                                />
+                                <InputError
+                                    message={errors.annual_interest_rate}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_loan_term_months">
+                                    {__('Loan Term (months)')}
+                                </Label>
+                                <Input
+                                    id="edit_loan_term_months"
+                                    type="number"
+                                    value={formData.loan_term_months}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            loan_term_months: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="360"
+                                    min="1"
+                                    max="600"
+                                />
+                                <InputError message={errors.loan_term_months} />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_loan_start_date">
+                                    {__('Start Date')}
+                                </Label>
+                                <Input
+                                    id="edit_loan_start_date"
+                                    type="date"
+                                    value={formData.start_date}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            start_date: e.target.value,
+                                        }))
+                                    }
+                                />
+                                <InputError message={errors.start_date} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="edit_original_amount">
+                                    {__('Original Amount')}
+                                </Label>
+                                <AmountInput
+                                    id="edit_original_amount"
+                                    value={formData.original_amount}
+                                    onChange={(value) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            original_amount: value,
+                                        }))
+                                    }
+                                    currencyCode={account.currency_code}
+                                />
+                                <InputError message={errors.original_amount} />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCancel}
+                                disabled={isSubmitting}
+                            >
+                                {__('Cancel')}
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? __('Saving...') : __('Save')}
+                            </Button>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!detail) {
+        return (
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>{__('Loan Details')}</CardTitle>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEditToggle(true)}
+                    >
+                        <Pencil className="mr-1 h-3.5 w-3.5" />
+                        {__('Add')}
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                        {__(
+                            'No loan details yet. Add interest rate, term, and amount to track amortization.',
+                        )}
+                    </p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>{__('Loan Details')}</CardTitle>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEditToggle(true)}
+                >
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                    {__('Edit')}
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <dl className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <dt className="text-sm text-muted-foreground">
+                            {__('Annual Interest Rate')}
+                        </dt>
+                        <dd className="font-medium">
+                            {detail.annual_interest_rate}%
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt className="text-sm text-muted-foreground">
+                            {__('Loan Term')}
+                        </dt>
+                        <dd className="font-medium">
+                            {detail.loan_term_months} {__('months')}
+                            {detail.loan_term_months >= 12 && (
+                                <span className="ml-1 text-sm text-muted-foreground">
+                                    ({Math.floor(detail.loan_term_months / 12)}{' '}
+                                    {__('years')})
+                                </span>
+                            )}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt className="text-sm text-muted-foreground">
+                            {__('Start Date')}
+                        </dt>
+                        <dd className="font-medium">
+                            {formatDateMedium(detail.start_date)}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt className="text-sm text-muted-foreground">
+                            {__('Original Amount')}
+                        </dt>
+                        <dd className="font-medium">
+                            <AmountDisplay
+                                amountInCents={detail.original_amount}
+                                currencyCode={account.currency_code}
+                            />
+                        </dd>
+                    </div>
+
+                    {detail.monthly_payment !== null && (
+                        <div>
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Monthly Payment')}
+                            </dt>
+                            <dd className="font-medium">
+                                <AmountDisplay
+                                    amountInCents={detail.monthly_payment}
+                                    currencyCode={account.currency_code}
+                                />
+                            </dd>
+                        </div>
+                    )}
+
+                    {detail.remaining_months !== null && (
+                        <div>
+                            <dt className="text-sm text-muted-foreground">
+                                {__('Remaining')}
+                            </dt>
+                            <dd className="font-medium">
+                                {detail.remaining_months} {__('months')}
+                                {detail.remaining_months >= 12 && (
+                                    <span className="ml-1 text-sm text-muted-foreground">
+                                        (
+                                        {Math.floor(
+                                            detail.remaining_months / 12,
+                                        )}{' '}
+                                        {__('years')})
+                                    </span>
+                                )}
+                            </dd>
+                        </div>
+                    )}
+                </dl>
             </CardContent>
         </Card>
     );

@@ -24,7 +24,7 @@ class AccountController extends Controller
     {
         $accounts = auth()->user()
             ->accounts()
-            ->with('bank:id,name,logo')
+            ->with(['bank:id,name,logo', 'loanDetail'])
             ->orderBy('name')
             ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 
@@ -72,6 +72,26 @@ class AccountController extends Controller
             }
         }
 
+        // Create loan detail if account type is loan and loan fields are provided
+        if ($account->type === AccountType::Loan) {
+            $loanData = collect($validated)->only([
+                'annual_interest_rate', 'loan_term_months', 'original_amount',
+            ])->filter(fn ($value) => $value !== null)->toArray();
+
+            $loanStartDate = $validated['loan_start_date'] ?? null;
+            if ($loanStartDate) {
+                $loanData['start_date'] = $loanStartDate;
+            }
+
+            if (! empty($loanData) && isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
+                if (! isset($loanData['start_date'])) {
+                    $loanData['start_date'] = now()->toDateString();
+                }
+
+                $account->loanDetail()->create($loanData);
+            }
+        }
+
         // Set user's currency_code from first account
         if ($user->accounts()->count() === 1) {
             $user->update(['currency_code' => $account->currency_code]);
@@ -91,11 +111,74 @@ class AccountController extends Controller
     {
         $this->authorize('update', $account);
 
+        $validated = $request->validated();
+
+        $accountData = collect($validated)->only([
+            'name', 'bank_id', 'currency_code', 'type',
+        ])->toArray();
+
         $account->update([
-            ...$request->validated(),
+            ...$accountData,
             'encrypted' => false,
             'name_iv' => null,
         ]);
+
+        // Update or create real estate detail if account type is real_estate
+        if ($account->type === AccountType::RealEstate) {
+            $realEstateData = collect($validated)->only([
+                'property_type', 'address', 'purchase_price', 'purchase_date',
+                'area_value', 'area_unit', 'linked_loan_account_id', 'notes',
+                'revaluation_percentage',
+            ])->filter(fn ($value) => $value !== null)->toArray();
+
+            if (! empty($realEstateData)) {
+                $account->realEstateDetail()->updateOrCreate(
+                    ['account_id' => $account->id],
+                    $realEstateData,
+                );
+            }
+        }
+
+        // Update or create loan detail if account type is loan
+        if ($account->type === AccountType::Loan) {
+            $loanData = collect($validated)->only([
+                'annual_interest_rate', 'loan_term_months', 'original_amount',
+            ])->filter(fn ($value) => $value !== null)->toArray();
+
+            $loanStartDate = $validated['loan_start_date'] ?? null;
+            if ($loanStartDate) {
+                $loanData['start_date'] = $loanStartDate;
+            }
+
+            if (! empty($loanData)) {
+                $existingLoanDetail = $account->loanDetail;
+
+                if ($existingLoanDetail) {
+                    $existingLoanDetail->update($loanData);
+                } elseif (isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
+                    if (! isset($loanData['start_date'])) {
+                        $loanData['start_date'] = now()->toDateString();
+                    }
+
+                    $account->loanDetail()->create($loanData);
+                } else {
+                    $errors = [];
+                    $requiredFields = [
+                        'annual_interest_rate' => 'annual_interest_rate',
+                        'loan_term_months' => 'loan_term_months',
+                        'original_amount' => 'original_amount',
+                    ];
+
+                    foreach ($requiredFields as $field => $errorKey) {
+                        if (! isset($loanData[$field])) {
+                            $errors[$errorKey] = __('This field is required.');
+                        }
+                    }
+
+                    return to_route('accounts.index')->withErrors($errors);
+                }
+            }
+        }
 
         return to_route('accounts.index');
     }

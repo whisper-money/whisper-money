@@ -745,3 +745,106 @@ it('can clear revaluation percentage by setting null', function () {
         'revaluation_percentage' => null,
     ]);
 });
+
+// -------------------------------------------------------------------
+// Show page returns revaluation_percentage and purchase_date correctly
+// -------------------------------------------------------------------
+
+it('loads revaluation_percentage and purchase_date on account show page', function () {
+    $this->withoutVite();
+    actingAs($this->user);
+
+    $account = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $account->id,
+        'property_type' => PropertyType::Residential,
+        'purchase_date' => '2023-06-15',
+        'revaluation_percentage' => 5.25,
+    ]);
+
+    $response = $this->get(route('accounts.show', $account));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Show')
+            ->has('account.real_estate_detail')
+            ->where('account.real_estate_detail.revaluation_percentage', '5.25')
+            ->where('account.real_estate_detail.purchase_date', '2023-06-15')
+        );
+});
+
+// -------------------------------------------------------------------
+// Updating real estate accounts via Settings\AccountController@update
+// -------------------------------------------------------------------
+
+it('can update real estate details via account update endpoint', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $account->id,
+        'property_type' => PropertyType::Residential,
+        'address' => 'Old Address',
+        'purchase_date' => '2020-01-01',
+        'revaluation_percentage' => 2.00,
+    ]);
+
+    $response = $this->patch(route('accounts.update', $account), [
+        'name' => 'Updated Property',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Commercial->value,
+        'address' => 'New Address',
+        'purchase_price' => 30000000,
+        'purchase_date' => '2023-06-15',
+        'revaluation_percentage' => 4.50,
+    ]);
+
+    $response->assertRedirect(route('accounts.index'));
+
+    assertDatabaseHas('accounts', [
+        'id' => $account->id,
+        'name' => 'Updated Property',
+    ]);
+
+    assertDatabaseHas('real_estate_details', [
+        'account_id' => $account->id,
+        'property_type' => PropertyType::Commercial->value,
+        'address' => 'New Address',
+        'purchase_price' => 30000000,
+        'revaluation_percentage' => '4.50',
+    ]);
+});
+
+it('creates real estate detail via account update if it does not exist', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    // No RealEstateDetail created yet
+
+    $response = $this->patch(route('accounts.update', $account), [
+        'name' => 'New Property',
+        'currency_code' => 'USD',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Land->value,
+        'purchase_date' => '2024-01-01',
+        'revaluation_percentage' => 1.50,
+    ]);
+
+    $response->assertRedirect(route('accounts.index'));
+
+    assertDatabaseHas('real_estate_details', [
+        'account_id' => $account->id,
+        'property_type' => PropertyType::Land->value,
+        'revaluation_percentage' => '1.50',
+    ]);
+});

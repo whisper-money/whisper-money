@@ -1,3 +1,4 @@
+import InputError from '@/components/input-error';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,6 +51,13 @@ export interface RealEstateFormData {
     revaluationPercentage: string;
 }
 
+export interface LoanFormData {
+    annualInterestRate: string;
+    loanTermMonths: string;
+    startDate: string;
+    originalAmount: number;
+}
+
 export interface AccountFormData {
     displayName: string;
     bankId: number | null;
@@ -58,6 +66,7 @@ export interface AccountFormData {
     customBank: CustomBankData | null;
     balance: number | null;
     realEstate: RealEstateFormData | null;
+    loan: LoanFormData | null;
 }
 
 interface AccountFormProps {
@@ -66,11 +75,14 @@ interface AccountFormProps {
         bank: Bank | null;
         type: AccountType;
         currencyCode: CurrencyCode;
+        loan?: LoanFormData | null;
+        realEstate?: RealEstateFormData | null;
     };
     forceAccountType?: AccountType;
     hiddenAccountTypes?: AccountType[];
     availableLoanAccounts?: Account[];
     onChange: (data: AccountFormData) => void;
+    errors?: Record<string, string>;
 }
 
 const initialCustomBankData: CustomBankData = {
@@ -91,12 +103,20 @@ const initialRealEstateData: RealEstateFormData = {
     revaluationPercentage: '',
 };
 
+const initialLoanData: LoanFormData = {
+    annualInterestRate: '',
+    loanTermMonths: '',
+    startDate: '',
+    originalAmount: 0,
+};
+
 export function AccountForm({
     initialValues,
     forceAccountType,
     hiddenAccountTypes = [],
     availableLoanAccounts = [],
     onChange,
+    errors = {},
 }: AccountFormProps) {
     const [displayName, setDisplayName] = useState(
         initialValues?.displayName ?? '',
@@ -115,12 +135,16 @@ export function AccountForm({
     );
     const [balance, setBalance] = useState<number | null>(null);
     const [realEstateData, setRealEstateData] = useState<RealEstateFormData>(
-        initialRealEstateData,
+        initialValues?.realEstate ?? initialRealEstateData,
+    );
+    const [loanData, setLoanData] = useState<LoanFormData>(
+        initialValues?.loan ?? initialLoanData,
     );
 
     const showBalanceField =
         selectedType !== null && BALANCE_ACCOUNT_TYPES.includes(selectedType);
     const isRealEstate = selectedType === 'real_estate';
+    const isLoan = selectedType === 'loan';
 
     useEffect(() => {
         onChange({
@@ -131,6 +155,7 @@ export function AccountForm({
             customBank: isCreatingCustomBank ? customBankData : null,
             balance: showBalanceField ? balance : null,
             realEstate: isRealEstate ? realEstateData : null,
+            loan: isLoan ? loanData : null,
         });
     }, [
         displayName,
@@ -142,7 +167,9 @@ export function AccountForm({
         balance,
         showBalanceField,
         isRealEstate,
+        isLoan,
         realEstateData,
+        loanData,
         onChange,
     ]);
 
@@ -154,7 +181,10 @@ export function AccountForm({
             setSelectedCurrency(initialValues.currencyCode);
             setIsCreatingCustomBank(false);
             setCustomBankData(initialCustomBankData);
-            setRealEstateData(initialRealEstateData);
+            setRealEstateData(
+                initialValues.realEstate ?? initialRealEstateData,
+            );
+            setLoanData(initialValues.loan ?? initialLoanData);
         }
     }, [initialValues]);
 
@@ -298,7 +328,7 @@ export function AccountForm({
                 </div>
             </div>
 
-            {showBalanceField && selectedCurrency && (
+            {showBalanceField && selectedCurrency && !initialValues && (
                 <div className="space-y-2">
                     <Label htmlFor="balance">
                         {balanceTermCapitalized(selectedType!)}
@@ -317,6 +347,103 @@ export function AccountForm({
                         )}
                     </p>
                 </div>
+            )}
+
+            {isLoan && selectedCurrency && (
+                <>
+                    <div className="space-y-2">
+                        <Label htmlFor="annual_interest_rate">
+                            {__('Annual Interest Rate (%)')}
+                        </Label>
+                        <Input
+                            id="annual_interest_rate"
+                            type="number"
+                            className="mt-1"
+                            value={loanData.annualInterestRate}
+                            onChange={(e) =>
+                                setLoanData((prev) => ({
+                                    ...prev,
+                                    annualInterestRate: e.target.value,
+                                }))
+                            }
+                            placeholder="3.5"
+                            min="0"
+                            max="100"
+                            step="0.001"
+                        />
+                        <InputError message={errors.annual_interest_rate} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="loan_term_months">
+                            {__('Loan Term (months)')}
+                        </Label>
+                        <Input
+                            id="loan_term_months"
+                            type="number"
+                            className="mt-1"
+                            value={loanData.loanTermMonths}
+                            onChange={(e) =>
+                                setLoanData((prev) => ({
+                                    ...prev,
+                                    loanTermMonths: e.target.value,
+                                }))
+                            }
+                            placeholder="360"
+                            min="1"
+                            max="600"
+                        />
+                        <InputError message={errors.loan_term_months} />
+                        <p className="pl-1 text-xs text-muted-foreground">
+                            {__('e.g. 360 for a 30-year mortgage')}
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="loan_start_date">
+                            {__('Loan Start Date')}
+                        </Label>
+                        <Input
+                            id="loan_start_date"
+                            type="date"
+                            className="mt-1"
+                            value={loanData.startDate}
+                            onChange={(e) =>
+                                setLoanData((prev) => ({
+                                    ...prev,
+                                    startDate: e.target.value,
+                                }))
+                            }
+                        />
+                        <InputError message={errors.loan_start_date} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="original_amount">
+                            {__('Original Loan Amount')}
+                        </Label>
+                        <div className="mt-1">
+                            <AmountInput
+                                id="original_amount"
+                                value={loanData.originalAmount}
+                                onChange={(value) =>
+                                    setLoanData((prev) => ({
+                                        ...prev,
+                                        originalAmount: value,
+                                    }))
+                                }
+                                currencyCode={selectedCurrency}
+                            />
+                        </div>
+                        <InputError message={errors.original_amount} />
+                    </div>
+
+                    <p className="pl-1 text-xs text-muted-foreground">
+                        {__(
+                            'Optional. Provide loan details to automatically project your owed amount over time.',
+                        )}
+                    </p>
+                </>
             )}
 
             {isRealEstate && (
