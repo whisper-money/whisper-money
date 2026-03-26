@@ -62,6 +62,8 @@ export function useChartColorScheme() {
  *
  * - `accountMainLineColor`  – stroke for the main balance line in account cards
  * - `accountGainLineColor`  – stroke for the invested/gain line in account cards
+ * - `mortgageLineColor`     – stroke for the mortgage owed line in real estate charts
+ * - `equityLineColor`       – stroke for the equity line in real estate charts
  * - `categoryBarColor`      – progress bar color for a given category (colorful
  *                             uses the category's own color; other schemes cycle
  *                             through --chart-* variables by index)
@@ -77,6 +79,14 @@ export function useChartColors() {
     const accountGainLineColor = isColorful
         ? 'var(--color-emerald-500)'
         : 'var(--color-chart-6)';
+
+    const mortgageLineColor = isColorful
+        ? 'var(--color-amber-500)'
+        : 'var(--color-chart-5)';
+
+    const equityLineColor = isColorful
+        ? 'var(--color-emerald-500)'
+        : 'var(--color-chart-4)';
 
     const cashflowIncomeColor = isColorful
         ? 'var(--cashflow-income)'
@@ -105,6 +115,8 @@ export function useChartColors() {
     return {
         accountMainLineColor,
         accountGainLineColor,
+        mortgageLineColor,
+        equityLineColor,
         cashflowIncomeColor,
         cashflowExpenseColor,
         categoryBarColor,

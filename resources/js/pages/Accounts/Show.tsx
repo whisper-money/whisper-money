@@ -344,7 +344,8 @@ function EquitySummaryCards({
     currentMortgageBalance,
     currencyCode,
 }: EquitySummaryCardsProps) {
-    const { accountMainLineColor } = useChartColors();
+    const { accountMainLineColor, mortgageLineColor, equityLineColor } =
+        useChartColors();
 
     const { marketHistory, mortgageHistory, equityHistory, equity } =
         useMemo(() => {
@@ -406,9 +407,6 @@ function EquitySummaryCards({
         if (prev === 0) return null;
         return { diff: curr - prev, previous: prev, current: curr };
     }, [equityHistory]);
-
-    const equityLineColor = 'var(--color-emerald-500)';
-    const mortgageLineColor = 'var(--color-amber-500)';
 
     return (
         <div className="grid gap-4 md:grid-cols-3">
