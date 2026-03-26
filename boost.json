@@ -5,7 +5,6 @@
         "copilot"
     ],
     "guidelines": true,
-    "herd_mcp": false,
     "mcp": true,
     "nightwatch_mcp": false,
     "packages": [
@@ -13,11 +12,13 @@
     ],
     "sail": false,
     "skills": [
+        "cashier-stripe-development",
+        "laravel-best-practices",
         "pennant-development",
         "wayfinder-development",
         "pest-testing",
         "inertia-react-development",
         "tailwindcss-development",
-        "developing-with-fortify"
+        "fortify-development"
     ]
 }
