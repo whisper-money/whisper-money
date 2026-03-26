@@ -75,6 +75,7 @@ interface AccountFormProps {
         type: AccountType;
         currencyCode: CurrencyCode;
         loan?: LoanFormData | null;
+        realEstate?: RealEstateFormData | null;
     };
     forceAccountType?: AccountType;
     hiddenAccountTypes?: AccountType[];
@@ -131,7 +132,7 @@ export function AccountForm({
     );
     const [balance, setBalance] = useState<number | null>(null);
     const [realEstateData, setRealEstateData] = useState<RealEstateFormData>(
-        initialRealEstateData,
+        initialValues?.realEstate ?? initialRealEstateData,
     );
     const [loanData, setLoanData] = useState<LoanFormData>(
         initialValues?.loan ?? initialLoanData,
@@ -177,7 +178,9 @@ export function AccountForm({
             setSelectedCurrency(initialValues.currencyCode);
             setIsCreatingCustomBank(false);
             setCustomBankData(initialCustomBankData);
-            setRealEstateData(initialRealEstateData);
+            setRealEstateData(
+                initialValues.realEstate ?? initialRealEstateData,
+            );
             setLoanData(initialValues.loan ?? initialLoanData);
         }
     }, [initialValues]);

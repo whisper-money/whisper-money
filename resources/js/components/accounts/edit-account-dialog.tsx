@@ -10,18 +10,24 @@ import {
 } from '@/components/ui/dialog';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
-import type { Account, LoanDetail } from '@/types/account';
+import type { Account, LoanDetail, RealEstateDetail } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccountForm, AccountFormData, LoanFormData } from './account-form';
+import {
+    AccountForm,
+    AccountFormData,
+    LoanFormData,
+    RealEstateFormData,
+} from './account-form';
 
-interface AccountWithLoanDetail extends Account {
+interface AccountWithDetails extends Account {
     loan_detail?: LoanDetail | null;
+    real_estate_detail?: RealEstateDetail | null;
 }
 
 interface EditAccountDialogProps {
-    account: AccountWithLoanDetail;
+    account: AccountWithDetails;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
@@ -86,6 +92,25 @@ export function EditAccountDialog({
         };
     }, [account.loan_detail]);
 
+    const realEstateInitialData: RealEstateFormData | null = useMemo(() => {
+        const detail = account.real_estate_detail;
+        if (!detail) return null;
+        return {
+            propertyType: detail.property_type ?? null,
+            address: detail.address ?? '',
+            purchasePrice: detail.purchase_price ?? 0,
+            purchaseDate: detail.purchase_date ?? '',
+            areaValue: detail.area_value ?? '',
+            areaUnit: detail.area_unit ?? null,
+            linkedLoanAccountId: detail.linked_loan_account_id ?? null,
+            notes: detail.notes ?? '',
+            revaluationPercentage:
+                detail.revaluation_percentage != null
+                    ? String(detail.revaluation_percentage)
+                    : '',
+        };
+    }, [account.real_estate_detail]);
+
     const initialValues = useMemo(
         () =>
             decryptedName && decryptedName !== '[Encrypted]'
@@ -95,6 +120,7 @@ export function EditAccountDialog({
                       type: account.type,
                       currencyCode: account.currency_code,
                       loan: loanInitialData,
+                      realEstate: realEstateInitialData,
                   }
                 : undefined,
         [
@@ -103,6 +129,7 @@ export function EditAccountDialog({
             account.type,
             account.currency_code,
             loanInitialData,
+            realEstateInitialData,
         ],
     );
 
@@ -208,6 +235,35 @@ export function EditAccountDialog({
                               original_amount:
                                   formDataRef.current.loan.originalAmount ||
                                   null,
+                          }
+                        : {}),
+                    ...(formDataRef.current.realEstate
+                        ? {
+                              property_type:
+                                  formDataRef.current.realEstate.propertyType,
+                              address:
+                                  formDataRef.current.realEstate.address ||
+                                  null,
+                              purchase_price:
+                                  formDataRef.current.realEstate
+                                      .purchasePrice || null,
+                              purchase_date:
+                                  formDataRef.current.realEstate.purchaseDate ||
+                                  null,
+                              area_value:
+                                  formDataRef.current.realEstate.areaValue ||
+                                  null,
+                              area_unit:
+                                  formDataRef.current.realEstate.areaUnit ||
+                                  null,
+                              linked_loan_account_id:
+                                  formDataRef.current.realEstate
+                                      .linkedLoanAccountId || null,
+                              notes:
+                                  formDataRef.current.realEstate.notes || null,
+                              revaluation_percentage:
+                                  formDataRef.current.realEstate
+                                      .revaluationPercentage || null,
                           }
                         : {}),
                 },

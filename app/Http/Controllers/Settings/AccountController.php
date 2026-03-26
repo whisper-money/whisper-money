@@ -73,7 +73,7 @@ class AccountController extends Controller
         }
 
         // Create loan detail if account type is loan and loan fields are provided
-        if ($account->type === \App\Enums\AccountType::Loan) {
+        if ($account->type === AccountType::Loan) {
             $loanData = collect($validated)->only([
                 'annual_interest_rate', 'loan_term_months', 'original_amount',
             ])->filter(fn ($value) => $value !== null)->toArray();
@@ -123,8 +123,24 @@ class AccountController extends Controller
             'name_iv' => null,
         ]);
 
+        // Update or create real estate detail if account type is real_estate
+        if ($account->type === AccountType::RealEstate) {
+            $realEstateData = collect($validated)->only([
+                'property_type', 'address', 'purchase_price', 'purchase_date',
+                'area_value', 'area_unit', 'linked_loan_account_id', 'notes',
+                'revaluation_percentage',
+            ])->filter(fn ($value) => $value !== null)->toArray();
+
+            if (! empty($realEstateData)) {
+                $account->realEstateDetail()->updateOrCreate(
+                    ['account_id' => $account->id],
+                    $realEstateData,
+                );
+            }
+        }
+
         // Update or create loan detail if account type is loan
-        if ($account->type === \App\Enums\AccountType::Loan) {
+        if ($account->type === AccountType::Loan) {
             $loanData = collect($validated)->only([
                 'annual_interest_rate', 'loan_term_months', 'original_amount',
             ])->filter(fn ($value) => $value !== null)->toArray();
@@ -135,10 +151,17 @@ class AccountController extends Controller
             }
 
             if (! empty($loanData)) {
-                $account->loanDetail()->updateOrCreate(
-                    ['account_id' => $account->id],
-                    $loanData,
-                );
+                $existingLoanDetail = $account->loanDetail;
+
+                if ($existingLoanDetail) {
+                    $existingLoanDetail->update($loanData);
+                } elseif (isset($loanData['annual_interest_rate'], $loanData['loan_term_months'], $loanData['original_amount'])) {
+                    if (! isset($loanData['start_date'])) {
+                        $loanData['start_date'] = now()->toDateString();
+                    }
+
+                    $account->loanDetail()->create($loanData);
+                }
             }
         }
 

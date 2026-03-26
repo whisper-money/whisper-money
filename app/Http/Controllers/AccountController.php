@@ -56,9 +56,10 @@ class AccountController extends Controller
                 $data['real_estate_detail'] = [
                     ...$realEstateDetail->only([
                         'id', 'property_type', 'address', 'purchase_price',
-                        'purchase_date', 'area_value', 'area_unit', 'notes',
-                        'linked_loan_account_id',
+                        'area_value', 'area_unit', 'notes',
+                        'revaluation_percentage', 'linked_loan_account_id',
                     ]),
+                    'purchase_date' => $realEstateDetail->purchase_date?->format('Y-m-d'),
                     'linked_loan_account' => $linkedLoan
                         ? $linkedLoan->only(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank'])
                         : null,
