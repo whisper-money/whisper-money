@@ -15,6 +15,7 @@ export interface NetWorthEvolutionAccount {
     bank: Bank;
     banking_connection_id: string | null;
     invested_amount?: number | null;
+    linked_loan_account_id?: string | null;
 }
 
 export interface OriginalAmount {
@@ -89,6 +90,7 @@ export function deriveAccountMetrics(
             currency_code: account.currency_code,
             bank: account.bank,
             banking_connection_id: account.banking_connection_id,
+            linked_loan_account_id: account.linked_loan_account_id ?? null,
             currentBalance,
             previousBalance,
             diff: currentBalance - previousBalance,

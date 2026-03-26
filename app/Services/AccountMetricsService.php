@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -148,6 +149,10 @@ class AccountMetricsService
                 'bank' => $account->bank,
                 'banking_connection_id' => $account->banking_connection_id,
             ];
+
+            if ($account->type === AccountType::RealEstate && $account->relationLoaded('realEstateDetail') && $account->realEstateDetail?->linked_loan_account_id) {
+                $config['linked_loan_account_id'] = $account->realEstateDetail->linked_loan_account_id;
+            }
 
             if ($account->type->supportsInvestedAmount()) {
                 $investedAmount = $lookup->getInvestedAmountAt($account->id, $now);
