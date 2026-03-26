@@ -19,15 +19,20 @@ class LoanDetailController extends Controller
         $this->authorize('update', $account);
 
         $loanDetail = $account->loanDetail;
+        $data = $request->validated();
 
         if (! $loanDetail) {
-            // Create if it doesn't exist yet
-            $account->loanDetail()->create($request->validated());
+            if (! isset($data['annual_interest_rate'], $data['loan_term_months'], $data['start_date'], $data['original_amount'])) {
+                return to_route('accounts.show', $account)
+                    ->withErrors(['loan_detail' => 'All loan detail fields are required when creating a new loan detail.']);
+            }
+
+            $account->loanDetail()->create($data);
 
             return to_route('accounts.show', $account);
         }
 
-        $loanDetail->update($request->validated());
+        $loanDetail->update($data);
 
         return to_route('accounts.show', $account);
     }

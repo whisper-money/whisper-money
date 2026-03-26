@@ -304,6 +304,69 @@ it('can update existing loan detail via account update', function () {
     expect(LoanDetail::where('account_id', $account->id)->count())->toBe(1);
 });
 
+it('does not crash when updating a loan account with partial loan data and no existing loan detail', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    $data = [
+        'name' => $account->name,
+        'bank_id' => $this->bank->id,
+        'currency_code' => $account->currency_code,
+        'type' => AccountType::Loan->value,
+        'loan_start_date' => '2011-09-23',
+    ];
+
+    $response = $this->patch(route('accounts.update', $account), $data);
+
+    $response->assertRedirect(route('accounts.index'));
+
+    // Should not have created a loan detail with incomplete data
+    assertDatabaseMissing('loan_details', [
+        'account_id' => $account->id,
+    ]);
+});
+
+it('can partially update existing loan detail via account update', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    LoanDetail::factory()->create([
+        'account_id' => $account->id,
+        'annual_interest_rate' => 3.5,
+        'loan_term_months' => 360,
+        'start_date' => '2020-01-01',
+        'original_amount' => 20000000,
+    ]);
+
+    $data = [
+        'name' => $account->name,
+        'bank_id' => $this->bank->id,
+        'currency_code' => $account->currency_code,
+        'type' => AccountType::Loan->value,
+        'loan_start_date' => '2011-09-23',
+    ];
+
+    $response = $this->patch(route('accounts.update', $account), $data);
+
+    $response->assertRedirect(route('accounts.index'));
+
+    assertDatabaseHas('loan_details', [
+        'account_id' => $account->id,
+        'start_date' => '2011-09-23',
+        'annual_interest_rate' => 3.500,
+        'loan_term_months' => 360,
+        'original_amount' => 20000000,
+    ]);
+});
+
 // -------------------------------------------------------------------
 // LoanDetailController — updating loan details from show page
 // -------------------------------------------------------------------
@@ -359,6 +422,26 @@ it('can create loan detail via loan detail controller when none exists', functio
         'loan_term_months' => 360,
         'start_date' => '2024-01-01',
         'original_amount' => 20000000,
+    ]);
+});
+
+it('does not crash when creating loan detail via loan detail controller with partial data', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    $response = $this->patch(route('accounts.loan-detail.update', $account), [
+        'start_date' => '2024-01-01',
+    ]);
+
+    $response->assertRedirect(route('accounts.show', $account));
+    $response->assertSessionHasErrors('loan_detail');
+
+    assertDatabaseMissing('loan_details', [
+        'account_id' => $account->id,
     ]);
 });
 
