@@ -95,10 +95,16 @@ class AccountController extends Controller
 
             if ($loanDetail) {
                 $remainingMonths = $this->loanAmortizationService->calculateRemainingMonths($loanDetail, now());
+
+                $lastBalance = \App\Models\AccountBalance::query()
+                    ->where('account_id', $account->id)
+                    ->orderBy('balance_date', 'desc')
+                    ->value('balance');
+
                 $monthlyPayment = $this->loanAmortizationService->calculateMonthlyPayment(
-                    $loanDetail->original_amount,
+                    $lastBalance ?? $loanDetail->original_amount,
                     (float) $loanDetail->annual_interest_rate,
-                    $loanDetail->loan_term_months,
+                    $lastBalance ? $remainingMonths : $loanDetail->loan_term_months,
                 );
 
                 $data['loan_detail'] = [

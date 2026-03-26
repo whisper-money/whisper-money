@@ -22,9 +22,16 @@ class LoanDetailController extends Controller
         $data = $request->validated();
 
         if (! $loanDetail) {
-            if (! isset($data['annual_interest_rate'], $data['loan_term_months'], $data['start_date'], $data['original_amount'])) {
-                return to_route('accounts.show', $account)
-                    ->withErrors(['loan_detail' => 'All loan detail fields are required when creating a new loan detail.']);
+            $required = ['annual_interest_rate', 'loan_term_months', 'start_date', 'original_amount'];
+            $missing = array_filter($required, fn (string $field): bool => ! isset($data[$field]));
+
+            if (! empty($missing)) {
+                $errors = [];
+                foreach ($missing as $field) {
+                    $errors[$field] = __('This field is required.');
+                }
+
+                return to_route('accounts.show', $account)->withErrors($errors);
             }
 
             $account->loanDetail()->create($data);

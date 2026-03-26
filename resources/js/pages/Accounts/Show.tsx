@@ -14,6 +14,7 @@ import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog
 import { BankLogo } from '@/components/bank-logo';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import HeadingSmall from '@/components/heading-small';
+import InputError from '@/components/input-error';
 import { MobileBackButton } from '@/components/mobile-back-button';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { AmountDisplay } from '@/components/ui/amount-display';
@@ -996,6 +997,7 @@ function LoanDetailsCard({
     onEditToggle: (editing: boolean) => void;
 }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [formData, setFormData] = useState({
         annual_interest_rate: detail?.annual_interest_rate ?? '',
         loan_term_months: detail?.loan_term_months
@@ -1008,6 +1010,7 @@ function LoanDetailsCard({
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setIsSubmitting(true);
+        setErrors({});
 
         router.patch(
             updateLoanDetail.url(account.id),
@@ -1020,6 +1023,7 @@ function LoanDetailsCard({
             {
                 preserveScroll: true,
                 onSuccess: () => onEditToggle(false),
+                onError: (errors) => setErrors(errors),
                 onFinish: () => setIsSubmitting(false),
             },
         );
@@ -1031,9 +1035,10 @@ function LoanDetailsCard({
             loan_term_months: detail?.loan_term_months
                 ? String(detail.loan_term_months)
                 : '',
-            start_date: detail?.start_date ?? '',
+            start_date: detail?.start_date?.slice(0, 10) ?? '',
             original_amount: detail?.original_amount ?? 0,
         });
+        setErrors({});
         onEditToggle(false);
     }
 
@@ -1066,6 +1071,9 @@ function LoanDetailsCard({
                                     max="99.999"
                                     step="0.001"
                                 />
+                                <InputError
+                                    message={errors.annual_interest_rate}
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -1086,6 +1094,7 @@ function LoanDetailsCard({
                                     min="1"
                                     max="600"
                                 />
+                                <InputError message={errors.loan_term_months} />
                             </div>
                         </div>
 
@@ -1105,6 +1114,7 @@ function LoanDetailsCard({
                                         }))
                                     }
                                 />
+                                <InputError message={errors.start_date} />
                             </div>
 
                             <div className="space-y-2">
@@ -1122,6 +1132,7 @@ function LoanDetailsCard({
                                     }
                                     currencyCode={account.currency_code}
                                 />
+                                <InputError message={errors.original_amount} />
                             </div>
                         </div>
 

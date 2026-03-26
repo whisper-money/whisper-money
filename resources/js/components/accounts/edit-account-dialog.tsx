@@ -43,6 +43,7 @@ export function EditAccountDialog({
 }: EditAccountDialogProps) {
     const [decryptedName, setDecryptedName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: (account.bank?.id ?? null) as number | null,
@@ -88,7 +89,7 @@ export function EditAccountDialog({
         return {
             annualInterestRate: detail.annual_interest_rate ?? '',
             loanTermMonths: detail.loan_term_months?.toString() ?? '',
-            startDate: detail.start_date ?? '',
+            startDate: detail.start_date?.slice(0, 10) ?? '',
             originalAmount: detail.original_amount ?? 0,
         };
     }, [account.loan_detail]);
@@ -137,6 +138,12 @@ export function EditAccountDialog({
     const handleFormChange = useCallback((data: AccountFormData) => {
         formDataRef.current = data;
     }, []);
+
+    useEffect(() => {
+        if (open) {
+            setErrors({});
+        }
+    }, [open]);
 
     async function createBankAndGetId(): Promise<string | null> {
         const customBank = formDataRef.current.customBank;
@@ -271,6 +278,7 @@ export function EditAccountDialog({
                 {
                     preserveScroll: true,
                     onSuccess: () => {
+                        setErrors({});
                         onOpenChange(false);
                         if (redirectTo) {
                             router.visit(redirectTo);
@@ -278,6 +286,7 @@ export function EditAccountDialog({
                             onSuccess?.();
                         }
                     },
+                    onError: (errors) => setErrors(errors),
                     onFinish: () => {
                         setIsSubmitting(false);
                     },
@@ -308,6 +317,7 @@ export function EditAccountDialog({
                         <AccountForm
                             initialValues={initialValues}
                             onChange={handleFormChange}
+                            errors={errors}
                         />
                     ) : (
                         <div className="space-y-4">

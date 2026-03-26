@@ -356,6 +356,7 @@ it('does not crash when updating a loan account with partial loan data and no ex
     $response = $this->patch(route('accounts.update', $account), $data);
 
     $response->assertRedirect(route('accounts.index'));
+    $response->assertSessionHasErrors(['annual_interest_rate', 'loan_term_months', 'original_amount']);
 
     // Should not have created a loan detail with incomplete data
     assertDatabaseMissing('loan_details', [
@@ -471,7 +472,7 @@ it('does not crash when creating loan detail via loan detail controller with par
     ]);
 
     $response->assertRedirect(route('accounts.show', $account));
-    $response->assertSessionHasErrors('loan_detail');
+    $response->assertSessionHasErrors(['annual_interest_rate', 'loan_term_months', 'original_amount']);
 
     assertDatabaseMissing('loan_details', [
         'account_id' => $account->id,
@@ -565,6 +566,57 @@ it('does not load loan detail for non-loan accounts', function () {
         ->assertInertia(fn ($page) => $page
             ->component('Accounts/Show')
             ->missing('account.loan_detail')
+        );
+});
+
+it('calculates monthly payment from current balance when balance entries exist', function () {
+    $this->withoutVite();
+    actingAs($this->user);
+
+    $account = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    $loanDetail = LoanDetail::factory()->create([
+        'account_id' => $account->id,
+        'annual_interest_rate' => 4.110,
+        'loan_term_months' => 333,
+        'start_date' => now()->subMonths(138),
+        'original_amount' => 7991346,
+    ]);
+
+    // Simulate an early payment reducing the balance below the amortization schedule
+    AccountBalance::create([
+        'account_id' => $account->id,
+        'balance' => 4489670,
+        'balance_date' => now()->subDays(5),
+    ]);
+
+    $service = app(\App\Services\LoanAmortizationService::class);
+    $remainingMonths = $service->calculateRemainingMonths($loanDetail, now());
+
+    $expectedPayment = $service->calculateMonthlyPayment(
+        4489670,
+        4.110,
+        $remainingMonths,
+    );
+
+    $originalPayment = $service->calculateMonthlyPayment(
+        7991346,
+        4.110,
+        333,
+    );
+
+    // The payment based on current balance should be less than original
+    expect($expectedPayment)->toBeLessThan($originalPayment);
+
+    $response = $this->get(route('accounts.show', $account));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Accounts/Show')
+            ->where('account.loan_detail.monthly_payment', $expectedPayment)
         );
 });
 

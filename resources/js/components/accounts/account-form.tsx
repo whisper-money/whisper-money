@@ -1,3 +1,4 @@
+import InputError from '@/components/input-error';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,6 +82,7 @@ interface AccountFormProps {
     hiddenAccountTypes?: AccountType[];
     availableLoanAccounts?: Account[];
     onChange: (data: AccountFormData) => void;
+    errors?: Record<string, string>;
 }
 
 const initialCustomBankData: CustomBankData = {
@@ -114,6 +116,7 @@ export function AccountForm({
     hiddenAccountTypes = [],
     availableLoanAccounts = [],
     onChange,
+    errors = {},
 }: AccountFormProps) {
     const [displayName, setDisplayName] = useState(
         initialValues?.displayName ?? '',
@@ -325,7 +328,7 @@ export function AccountForm({
                 </div>
             </div>
 
-            {showBalanceField && selectedCurrency && (
+            {showBalanceField && selectedCurrency && !initialValues && (
                 <div className="space-y-2">
                     <Label htmlFor="balance">
                         {balanceTermCapitalized(selectedType!)}
@@ -368,6 +371,7 @@ export function AccountForm({
                             max="100"
                             step="0.001"
                         />
+                        <InputError message={errors.annual_interest_rate} />
                     </div>
 
                     <div className="space-y-2">
@@ -389,6 +393,7 @@ export function AccountForm({
                             min="1"
                             max="600"
                         />
+                        <InputError message={errors.loan_term_months} />
                         <p className="pl-1 text-xs text-muted-foreground">
                             {__('e.g. 360 for a 30-year mortgage')}
                         </p>
@@ -410,6 +415,7 @@ export function AccountForm({
                                 }))
                             }
                         />
+                        <InputError message={errors.loan_start_date} />
                     </div>
 
                     <div className="space-y-2">
@@ -429,6 +435,7 @@ export function AccountForm({
                                 currencyCode={selectedCurrency}
                             />
                         </div>
+                        <InputError message={errors.original_amount} />
                     </div>
 
                     <p className="pl-1 text-xs text-muted-foreground">

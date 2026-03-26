@@ -161,6 +161,21 @@ class AccountController extends Controller
                     }
 
                     $account->loanDetail()->create($loanData);
+                } else {
+                    $errors = [];
+                    $requiredFields = [
+                        'annual_interest_rate' => 'annual_interest_rate',
+                        'loan_term_months' => 'loan_term_months',
+                        'original_amount' => 'original_amount',
+                    ];
+
+                    foreach ($requiredFields as $field => $errorKey) {
+                        if (! isset($loanData[$field])) {
+                            $errors[$errorKey] = __('This field is required.');
+                        }
+                    }
+
+                    return to_route('accounts.index')->withErrors($errors);
                 }
             }
         }

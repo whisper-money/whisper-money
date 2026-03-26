@@ -148,6 +148,7 @@ export function formatAccountType(type: AccountType): string {
 
 const NON_TRANSACTIONAL_ACCOUNT_TYPES: AccountType[] = [
     'investment',
+    'loan',
     'real_estate',
     'retirement',
 ];
