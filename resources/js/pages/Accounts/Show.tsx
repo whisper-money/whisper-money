@@ -264,9 +264,9 @@ export default function AccountShow({
                     />
                 )}
 
-                {isLoan && loanDetail && (
+                {isLoan && (
                     <LoanDetailsCard
-                        detail={loanDetail}
+                        detail={loanDetail ?? null}
                         account={account}
                         isEditing={editingLoanDetails}
                         onEditToggle={setEditingLoanDetails}
@@ -990,17 +990,19 @@ function LoanDetailsCard({
     isEditing,
     onEditToggle,
 }: {
-    detail: LoanDetail;
+    detail: LoanDetail | null;
     account: AccountWithDetails;
     isEditing: boolean;
     onEditToggle: (editing: boolean) => void;
 }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
-        annual_interest_rate: detail.annual_interest_rate,
-        loan_term_months: String(detail.loan_term_months),
-        start_date: detail.start_date,
-        original_amount: detail.original_amount,
+        annual_interest_rate: detail?.annual_interest_rate ?? '',
+        loan_term_months: detail?.loan_term_months
+            ? String(detail.loan_term_months)
+            : '',
+        start_date: detail?.start_date ?? '',
+        original_amount: detail?.original_amount ?? 0,
     });
 
     function handleSubmit(e: React.FormEvent) {
@@ -1025,10 +1027,12 @@ function LoanDetailsCard({
 
     function handleCancel() {
         setFormData({
-            annual_interest_rate: detail.annual_interest_rate,
-            loan_term_months: String(detail.loan_term_months),
-            start_date: detail.start_date,
-            original_amount: detail.original_amount,
+            annual_interest_rate: detail?.annual_interest_rate ?? '',
+            loan_term_months: detail?.loan_term_months
+                ? String(detail.loan_term_months)
+                : '',
+            start_date: detail?.start_date ?? '',
+            original_amount: detail?.original_amount ?? 0,
         });
         onEditToggle(false);
     }
@@ -1135,6 +1139,31 @@ function LoanDetailsCard({
                             </Button>
                         </div>
                     </form>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!detail) {
+        return (
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>{__('Loan Details')}</CardTitle>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEditToggle(true)}
+                    >
+                        <Pencil className="mr-1 h-3.5 w-3.5" />
+                        {__('Add')}
+                    </Button>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                        {__(
+                            'No loan details yet. Add interest rate, term, and amount to track amortization.',
+                        )}
+                    </p>
                 </CardContent>
             </Card>
         );

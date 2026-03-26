@@ -304,6 +304,39 @@ it('can update existing loan detail via account update', function () {
     expect(LoanDetail::where('account_id', $account->id)->count())->toBe(1);
 });
 
+it('creates loan detail when updating a loan account with all required fields and no existing loan detail', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    // No loan detail exists — simulate the edit dialog filling in all fields
+    $data = [
+        'name' => $account->name,
+        'bank_id' => $this->bank->id,
+        'currency_code' => $account->currency_code,
+        'type' => AccountType::Loan->value,
+        'annual_interest_rate' => '3.5',
+        'loan_term_months' => '360',
+        'loan_start_date' => '2026-01-01',
+        'original_amount' => 200000,
+    ];
+
+    $response = $this->patch(route('accounts.update', $account), $data);
+
+    $response->assertRedirect(route('accounts.index'));
+
+    assertDatabaseHas('loan_details', [
+        'account_id' => $account->id,
+        'annual_interest_rate' => 3.500,
+        'loan_term_months' => 360,
+        'start_date' => '2026-01-01',
+        'original_amount' => 200000,
+    ]);
+});
+
 it('does not crash when updating a loan account with partial loan data and no existing loan detail', function () {
     actingAs($this->user);
 
