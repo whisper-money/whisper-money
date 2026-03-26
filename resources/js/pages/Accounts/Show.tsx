@@ -9,6 +9,7 @@ import {
 import { BalancesModal } from '@/components/accounts/balances-modal';
 import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
+import { EditLoanDetailDialog } from '@/components/accounts/edit-loan-detail-dialog';
 import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
 import { UpdateBalanceDialog } from '@/components/accounts/update-balance-dialog';
 import { BankLogo } from '@/components/bank-logo';
@@ -70,6 +71,7 @@ interface AccountWithDetails extends Account {
     real_estate_detail?: RealEstateDetail;
     available_loan_accounts?: Account[];
     loan_detail?: LoanDetail;
+    linked_loan_account?: Account;
 }
 
 interface Props {
@@ -92,11 +94,13 @@ export default function AccountShow({
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
+    const [updateLoanBalanceOpen, setUpdateLoanBalanceOpen] = useState(false);
     const [importBalancesOpen, setImportBalancesOpen] = useState(false);
     const [balancesOpen, setBalancesOpen] = useState(false);
     const [chartRefreshKey, setChartRefreshKey] = useState(0);
     const [editingDetails, setEditingDetails] = useState(false);
     const [editingLoanDetails, setEditingLoanDetails] = useState(false);
+    const [editLoanDialogOpen, setEditLoanDialogOpen] = useState(false);
     const [chartComputedData, setChartComputedData] =
         useState<ChartComputedData | null>(null);
 
@@ -113,6 +117,8 @@ export default function AccountShow({
     const isRealEstate = account.type === 'real_estate';
     const realEstateDetail = account.real_estate_detail;
     const loanDetail = account.loan_detail;
+    const linkedLoanAccount = account.linked_loan_account;
+    const hasLinkedLoan = isRealEstate && !!linkedLoanAccount;
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -168,13 +174,96 @@ export default function AccountShow({
                         />
                     </div>
 
-                    {isConnected ? (
+                    {isConnected && !hasLinkedLoan ? (
                         <Button
                             variant="outline"
                             onClick={() => setEditOpen(true)}
                         >
                             {__('Edit account')}
                         </Button>
+                    ) : isConnected && hasLinkedLoan ? (
+                        <ButtonGroup>
+                            <Button
+                                variant="outline"
+                                onClick={() => setEditOpen(true)}
+                            >
+                                {__('Edit account')}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setEditLoanDialogOpen(true)}
+                            >
+                                {__('Edit loan details')}
+                            </Button>
+                        </ButtonGroup>
+                    ) : !isConnected && hasLinkedLoan ? (
+                        <ButtonGroup>
+                            <ButtonGroup>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setUpdateBalanceOpen(true)}
+                                >
+                                    {__('Update market value')}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        setUpdateLoanBalanceOpen(true)
+                                    }
+                                >
+                                    {__('Update owed amount')}
+                                </Button>
+                            </ButtonGroup>
+                            <ButtonGroup>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            aria-label={__('More options')}
+                                        >
+                                            <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                setBalancesOpen(true)
+                                            }
+                                        >
+                                            {__('See market values')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                setImportBalancesOpen(true)
+                                            }
+                                        >
+                                            {__('Import market values')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={() => setEditOpen(true)}
+                                        >
+                                            {__('Edit account')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() =>
+                                                setEditLoanDialogOpen(true)
+                                            }
+                                        >
+                                            {__('Edit loan details')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={() => setDeleteOpen(true)}
+                                            variant="destructive"
+                                        >
+                                            {__('Delete')}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </ButtonGroup>
+                        </ButtonGroup>
                     ) : (
                         <ButtonGroup>
                             <ButtonGroup>
@@ -265,6 +354,17 @@ export default function AccountShow({
                     />
                 )}
 
+                {isRealEstate && hasLinkedLoan && (
+                    <LoanDetailsCard
+                        detail={loanDetail ?? null}
+                        account={account}
+                        loanAccountId={linkedLoanAccount.id}
+                        isEditing={editingLoanDetails}
+                        onEditToggle={setEditingLoanDetails}
+                        onEditDialogOpen={() => setEditLoanDialogOpen(true)}
+                    />
+                )}
+
                 {isLoan && (
                     <LoanDetailsCard
                         detail={loanDetail ?? null}
@@ -327,6 +427,27 @@ export default function AccountShow({
                 accountId={account.id}
                 onSuccess={handleBalanceUpdated}
             />
+
+            {hasLinkedLoan && (
+                <>
+                    <EditLoanDetailDialog
+                        loanAccountId={linkedLoanAccount.id}
+                        currencyCode={
+                            linkedLoanAccount.currency_code ??
+                            account.currency_code
+                        }
+                        detail={loanDetail ?? null}
+                        open={editLoanDialogOpen}
+                        onOpenChange={setEditLoanDialogOpen}
+                    />
+                    <UpdateBalanceDialog
+                        account={linkedLoanAccount}
+                        open={updateLoanBalanceOpen}
+                        onOpenChange={setUpdateLoanBalanceOpen}
+                        onSuccess={handleBalanceUpdated}
+                    />
+                </>
+            )}
         </AppSidebarLayout>
     );
 }
@@ -986,14 +1107,19 @@ function PropertyDetailsCard({
 function LoanDetailsCard({
     detail,
     account,
+    loanAccountId,
     isEditing,
     onEditToggle,
+    onEditDialogOpen,
 }: {
     detail: LoanDetail | null;
     account: AccountWithDetails;
+    loanAccountId?: string;
     isEditing: boolean;
     onEditToggle: (editing: boolean) => void;
+    onEditDialogOpen?: () => void;
 }) {
+    const targetAccountId = loanAccountId ?? account.id;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [formData, setFormData] = useState({
@@ -1011,7 +1137,7 @@ function LoanDetailsCard({
         setErrors({});
 
         router.patch(
-            updateLoanDetail.url(account.id),
+            updateLoanDetail.url(targetAccountId),
             {
                 annual_interest_rate: formData.annual_interest_rate,
                 loan_term_months: Number(formData.loan_term_months),
@@ -1161,7 +1287,11 @@ function LoanDetailsCard({
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onEditToggle(true)}
+                        onClick={() =>
+                            onEditDialogOpen
+                                ? onEditDialogOpen()
+                                : onEditToggle(true)
+                        }
                     >
                         <Pencil className="mr-1 h-3.5 w-3.5" />
                         {__('Add')}
@@ -1185,7 +1315,11 @@ function LoanDetailsCard({
                 <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onEditToggle(true)}
+                    onClick={() =>
+                        onEditDialogOpen
+                            ? onEditDialogOpen()
+                            : onEditToggle(true)
+                    }
                 >
                     <Pencil className="mr-1 h-3.5 w-3.5" />
                     {__('Edit')}

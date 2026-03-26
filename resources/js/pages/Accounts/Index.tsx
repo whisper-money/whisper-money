@@ -50,6 +50,20 @@ interface Props {
 export default function AccountsIndex({ accounts, accountMetrics }: Props) {
     const isLoading = !accountMetrics;
 
+    // Identify loan account IDs that are linked to a real estate account
+    const linkedLoanAccountIds = useMemo(() => {
+        const ids = new Set<string>();
+        accounts.forEach((account) => {
+            if (
+                account.type === 'real_estate' &&
+                account.linked_loan_account_id
+            ) {
+                ids.add(account.linked_loan_account_id);
+            }
+        });
+        return ids;
+    }, [accounts]);
+
     const accountsWithMetrics: AccountWithMetrics[] = useMemo(() => {
         return accounts.map((account) => {
             const metrics = accountMetrics?.[account.id];
@@ -78,6 +92,12 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
 
         accountsWithMetrics.forEach((account) => {
             const type = account.type as AccountType;
+
+            // Hide loan accounts that are linked to a real estate account
+            if (type === 'loan' && linkedLoanAccountIds.has(account.id)) {
+                return;
+            }
+
             if (groups[type]) {
                 groups[type].push(account);
             } else {
@@ -86,7 +106,39 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
         });
 
         return groups;
-    }, [accountsWithMetrics]);
+    }, [accountsWithMetrics, linkedLoanAccountIds]);
+
+    // Build a map of linked loan metrics keyed by real estate account ID
+    const linkedLoanMetricsMap = useMemo(() => {
+        if (!accountMetrics) return {};
+        const map: Record<
+            string,
+            AccountMetrics & {
+                loanAccount?: {
+                    name: string;
+                    bank: { name: string; logo: string | null } | null;
+                };
+            }
+        > = {};
+        accounts.forEach((account) => {
+            if (
+                account.type === 'real_estate' &&
+                account.linked_loan_account_id &&
+                accountMetrics[account.linked_loan_account_id]
+            ) {
+                const loanAccount = accounts.find(
+                    (a) => a.id === account.linked_loan_account_id,
+                );
+                map[account.id] = {
+                    ...accountMetrics[account.linked_loan_account_id],
+                    loanAccount: loanAccount
+                        ? { name: loanAccount.name, bank: loanAccount.bank }
+                        : undefined,
+                };
+            }
+        });
+        return map;
+    }, [accounts, accountMetrics]);
 
     const handleBalanceUpdated = useCallback(() => {
         router.reload({ only: ['accountMetrics'] });
@@ -120,6 +172,9 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
                                 account={account}
                                 loading={isLoading}
                                 onBalanceUpdated={handleBalanceUpdated}
+                                linkedLoanMetrics={
+                                    linkedLoanMetricsMap[account.id]
+                                }
                             />
                         ));
                     })}

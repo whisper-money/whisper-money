@@ -59,6 +59,7 @@ export interface Account {
     banking_connection_id: UUID | null;
     external_account_id: string | null;
     linked_at: string | null;
+    linked_loan_account_id?: UUID | null;
 }
 
 export interface AccountBalance {

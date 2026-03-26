@@ -9,24 +9,87 @@ import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { formatAccountType, supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
 import { UpdateBalanceDialog } from './update-balance-dialog';
+
+interface LinkedLoanMetrics {
+    currentBalance: number;
+    previousBalance: number;
+    diff: number;
+    history: Array<{
+        date: string;
+        value: number;
+    }>;
+    loanAccount?: {
+        name: string;
+        bank: { name: string; logo: string | null } | null;
+    };
+}
 
 interface AccountListCardProps {
     account: AccountWithMetrics;
     loading?: boolean;
     onBalanceUpdated?: () => void;
+    linkedLoanMetrics?: LinkedLoanMetrics;
 }
 
 export function AccountListCard({
     account,
     loading,
     onBalanceUpdated,
+    linkedLoanMetrics,
 }: AccountListCardProps) {
-    const { accountMainLineColor, accountGainLineColor } = useChartColors();
+    const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
+        useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
+
+    const hasMortgage = !!linkedLoanMetrics;
+
+    // Compute equity data when this is a real estate account with a linked mortgage
+    const equityData = useMemo(() => {
+        if (!hasMortgage) return null;
+
+        const marketValue = account.currentBalance;
+        const mortgageOwed = linkedLoanMetrics.currentBalance;
+        const equity = marketValue - mortgageOwed;
+
+        const prevMarketValue = account.previousBalance;
+        const prevMortgageOwed = linkedLoanMetrics.previousBalance;
+        const prevEquity = prevMarketValue - prevMortgageOwed;
+        const equityDiff = equity - prevEquity;
+
+        // Build dual-line sparkline: market value (solid) + mortgage owed (dashed)
+        const marketMap = new Map(
+            account.history.map((h) => [h.date, h.value]),
+        );
+        const mortgageMap = new Map(
+            linkedLoanMetrics.history.map((h) => [h.date, h.value]),
+        );
+        const allDates = [
+            ...new Set([...marketMap.keys(), ...mortgageMap.keys()]),
+        ].sort();
+
+        let lastMarket = 0;
+        let lastMortgage = 0;
+        const dualHistory = allDates.map((date) => {
+            const mv = marketMap.get(date) ?? lastMarket;
+            const mo = mortgageMap.get(date) ?? lastMortgage;
+            lastMarket = mv;
+            lastMortgage = mo;
+            return { date, value: mv, mortgageOwed: mo };
+        });
+
+        return {
+            equity,
+            prevEquity,
+            equityDiff,
+            mortgageOwed,
+            marketValue,
+            dualHistory,
+        };
+    }, [hasMortgage, account, linkedLoanMetrics]);
 
     if (loading) {
         return (
@@ -53,8 +116,18 @@ export function AccountListCard({
         );
     }
 
-    const isPositive = account.diff >= 0;
+    const displayBalance = equityData
+        ? equityData.equity
+        : account.currentBalance;
+    const displayDiff = equityData ? equityData.equityDiff : account.diff;
+    const displayPreviousBalance = equityData
+        ? equityData.prevEquity
+        : account.previousBalance;
+    const isPositive = displayDiff >= 0;
     const isConnected = !!account.banking_connection_id;
+
+    // Choose sparkline data: dual-line history for merged, account history for normal
+    const sparklineData = equityData ? equityData.dualHistory : account.history;
 
     return (
         <Card className="w-full py-0">
@@ -84,10 +157,38 @@ export function AccountListCard({
                                     </h3>
                                 </Link>
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <span>
-                                        {account.bank?.name ||
-                                            formatAccountType(account.type)}
-                                    </span>
+                                    {hasMortgage &&
+                                    linkedLoanMetrics.loanAccount ? (
+                                        <span className="flex items-center gap-1">
+                                            {__('Mortgage at')}{' '}
+                                            {linkedLoanMetrics.loanAccount
+                                                .bank && (
+                                                <BankLogo
+                                                    src={
+                                                        linkedLoanMetrics
+                                                            .loanAccount.bank
+                                                            .logo
+                                                    }
+                                                    name={
+                                                        linkedLoanMetrics
+                                                            .loanAccount.bank
+                                                            .name
+                                                    }
+                                                    className="size-3.5 shrink-0"
+                                                    fallback="letter"
+                                                />
+                                            )}
+                                            {linkedLoanMetrics.loanAccount.bank
+                                                ?.name ??
+                                                linkedLoanMetrics.loanAccount
+                                                    .name}
+                                        </span>
+                                    ) : (
+                                        <span>
+                                            {account.bank?.name ||
+                                                formatAccountType(account.type)}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -95,7 +196,7 @@ export function AccountListCard({
                             {isConnected ? (
                                 <div className="-mr-2 px-2 py-1">
                                     <AmountDisplay
-                                        amountInCents={account.currentBalance}
+                                        amountInCents={displayBalance}
                                         currencyCode={account.currency_code}
                                         size="2xl"
                                         weight="bold"
@@ -108,7 +209,7 @@ export function AccountListCard({
                                     className="-mr-2 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted"
                                 >
                                     <AmountDisplay
-                                        amountInCents={account.currentBalance}
+                                        amountInCents={displayBalance}
                                         currencyCode={account.currency_code}
                                         size="2xl"
                                         weight="bold"
@@ -117,23 +218,24 @@ export function AccountListCard({
                             )}
                             <AmountTrendIndicator
                                 isPositive={isPositive}
-                                trend={Math.abs(account.diff)}
+                                trend={Math.abs(displayDiff)}
                                 label={__('vs last month')}
                                 className="text-sm"
-                                previousAmount={account.previousBalance}
-                                currentAmount={account.currentBalance}
+                                previousAmount={displayPreviousBalance}
+                                currentAmount={displayBalance}
                                 tooltipSide="bottom"
                                 currencyCode={account.currency_code}
                             />
                         </div>
                     </div>
+
                     <div className="h-[100px] w-full">
                         <ResponsiveContainer
                             width="100%"
                             height="100%"
                             initialDimension={{ width: 1, height: 1 }}
                         >
-                            <LineChart data={account.history}>
+                            <LineChart data={sparklineData}>
                                 <Tooltip
                                     content={({ active, payload }) => {
                                         if (!active || !payload?.length)
@@ -142,7 +244,68 @@ export function AccountListCard({
                                             date: string;
                                             value: number;
                                             investedAmount?: number | null;
+                                            mortgageOwed?: number;
                                         };
+
+                                        if (equityData) {
+                                            const equity =
+                                                data.value -
+                                                (data.mortgageOwed ?? 0);
+                                            return (
+                                                <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-sm shadow-xl">
+                                                    <p className="mb-1 text-muted-foreground">
+                                                        {data.date}
+                                                    </p>
+                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                                                        <span className="text-muted-foreground">
+                                                            {__('Market Value')}
+                                                        </span>
+                                                        <span className="text-right font-mono font-medium text-foreground tabular-nums">
+                                                            <AmountDisplay
+                                                                amountInCents={
+                                                                    data.value
+                                                                }
+                                                                currencyCode={
+                                                                    account.currency_code
+                                                                }
+                                                            />
+                                                        </span>
+                                                        <span className="text-muted-foreground">
+                                                            {__(
+                                                                'Mortgage Owed',
+                                                            )}
+                                                        </span>
+                                                        <span className="text-right font-mono text-muted-foreground tabular-nums">
+                                                            <AmountDisplay
+                                                                amountInCents={
+                                                                    data.mortgageOwed ??
+                                                                    0
+                                                                }
+                                                                currencyCode={
+                                                                    account.currency_code
+                                                                }
+                                                            />
+                                                        </span>
+                                                        <span className="text-muted-foreground">
+                                                            {__('Equity')}
+                                                        </span>
+                                                        <span
+                                                            className={`text-right font-mono whitespace-nowrap tabular-nums ${equity >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                        >
+                                                            <AmountDisplay
+                                                                amountInCents={
+                                                                    equity
+                                                                }
+                                                                currencyCode={
+                                                                    account.currency_code
+                                                                }
+                                                            />
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
                                         const invested = supportsInvestedAmount(
                                             account,
                                         )
@@ -234,17 +397,29 @@ export function AccountListCard({
                                     strokeWidth={2}
                                     dot={false}
                                 />
-                                {supportsInvestedAmount(account) && (
+                                {equityData && (
                                     <Line
                                         type="monotone"
-                                        dataKey="investedAmount"
-                                        stroke={accountGainLineColor}
+                                        dataKey="mortgageOwed"
+                                        stroke={mortgageLineColor}
                                         strokeWidth={1.5}
                                         strokeDasharray="4 3"
                                         dot={false}
                                         connectNulls
                                     />
                                 )}
+                                {!equityData &&
+                                    supportsInvestedAmount(account) && (
+                                        <Line
+                                            type="monotone"
+                                            dataKey="investedAmount"
+                                            stroke={accountGainLineColor}
+                                            strokeWidth={1.5}
+                                            strokeDasharray="4 3"
+                                            dot={false}
+                                            connectNulls
+                                        />
+                                    )}
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
