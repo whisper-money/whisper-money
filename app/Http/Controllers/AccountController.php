@@ -89,14 +89,14 @@ class AccountController extends Controller
                 ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
         }
 
-        if ($account->type === \App\Enums\AccountType::Loan) {
+        if ($account->type === AccountType::Loan) {
             $account->load('loanDetail');
             $loanDetail = $account->loanDetail;
 
             if ($loanDetail) {
                 $remainingMonths = $this->loanAmortizationService->calculateRemainingMonths($loanDetail, now());
 
-                $lastBalance = \App\Models\AccountBalance::query()
+                $lastBalance = AccountBalance::query()
                     ->where('account_id', $account->id)
                     ->orderBy('balance_date', 'desc')
                     ->value('balance');

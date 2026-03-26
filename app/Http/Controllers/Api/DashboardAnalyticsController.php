@@ -142,7 +142,7 @@ class DashboardAnalyticsController extends Controller
         }
 
         // Append projected future months for loan accounts with loan details
-        if ($account->type === \App\Enums\AccountType::Loan) {
+        if ($account->type === AccountType::Loan) {
             $loanDetail = $account->loanDetail;
 
             if ($loanDetail) {

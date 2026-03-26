@@ -4,10 +4,11 @@ namespace Database\Factories;
 
 use App\Enums\AccountType;
 use App\Models\Account;
+use App\Models\LoanDetail;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\LoanDetail>
+ * @extends Factory<LoanDetail>
  */
 class LoanDetailFactory extends Factory
 {

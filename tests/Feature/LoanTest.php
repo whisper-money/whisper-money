@@ -593,7 +593,7 @@ it('calculates monthly payment from current balance when balance entries exist',
         'balance_date' => now()->subDays(5),
     ]);
 
-    $service = app(\App\Services\LoanAmortizationService::class);
+    $service = app(LoanAmortizationService::class);
     $remainingMonths = $service->calculateRemainingMonths($loanDetail, now());
 
     $expectedPayment = $service->calculateMonthlyPayment(
