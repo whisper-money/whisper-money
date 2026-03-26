@@ -22,6 +22,7 @@ import {
     ChartTooltip,
     ChartTooltipContent,
 } from '@/components/ui/chart';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import {
     convertSingleAccountData,
     useChartViews,
@@ -139,6 +140,8 @@ function RealEstateTooltipContent({
     }>;
     valueFormatter: (value: number) => string;
 }) {
+    const { accountMainLineColor, mortgageLineColor } = useChartColors();
+
     if (!active || !payload?.length) return null;
 
     const marketValueItem = payload.find((p) => p.dataKey === 'value');
@@ -165,7 +168,7 @@ function RealEstateTooltipContent({
                             style={{
                                 backgroundColor:
                                     marketValueItem?.color ??
-                                    'var(--color-chart-2)',
+                                    accountMainLineColor,
                             }}
                         />
                         <div className="flex flex-1 justify-between gap-4">
@@ -184,8 +187,7 @@ function RealEstateTooltipContent({
                             className="size-2.5 rounded-xs"
                             style={{
                                 backgroundColor:
-                                    mortgageItem?.color ??
-                                    'var(--color-chart-5)',
+                                    mortgageItem?.color ?? mortgageLineColor,
                             }}
                         />
                         <div className="flex flex-1 justify-between gap-4">
@@ -524,13 +526,15 @@ export function AccountBalanceChart({
         hasStackedView: true,
     });
 
+    const { accountMainLineColor, mortgageLineColor } = useChartColors();
+
     const chartConfig: ChartConfig = {
         value: {
             label: (
                 <AccountName account={account} length={{ min: 5, max: 20 }} />
             ),
 
-            color: 'var(--color-chart-2)',
+            color: accountMainLineColor,
         },
         ...(showInvestmentBenefits
             ? {
@@ -544,7 +548,7 @@ export function AccountBalanceChart({
             ? {
                   mortgage_balance: {
                       label: __('Mortgage owed'),
-                      color: 'var(--color-chart-5)',
+                      color: mortgageLineColor,
                   },
               }
             : {}),
@@ -736,12 +740,12 @@ export function AccountBalanceChart({
                                         >
                                             <stop
                                                 offset="5%"
-                                                stopColor="var(--color-chart-2)"
+                                                stopColor={accountMainLineColor}
                                                 stopOpacity={0.3}
                                             />
                                             <stop
                                                 offset="95%"
-                                                stopColor="var(--color-chart-2)"
+                                                stopColor={accountMainLineColor}
                                                 stopOpacity={0.05}
                                             />
                                         </linearGradient>
@@ -764,7 +768,7 @@ export function AccountBalanceChart({
                                         dataKey="value"
                                         type="monotone"
                                         fill="url(#fillBalance)"
-                                        stroke="var(--color-chart-2)"
+                                        stroke={accountMainLineColor}
                                         strokeWidth={2}
                                         dot={false}
                                         activeDot={{ r: 5 }}
@@ -773,7 +777,7 @@ export function AccountBalanceChart({
                                     <Line
                                         dataKey="mortgage_balance"
                                         type="monotone"
-                                        stroke="var(--color-chart-5)"
+                                        stroke={mortgageLineColor}
                                         strokeWidth={1.5}
                                         strokeDasharray="4 3"
                                         dot={false}
