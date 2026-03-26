@@ -24,7 +24,7 @@ class AccountController extends Controller
     {
         $accounts = auth()->user()
             ->accounts()
-            ->with('bank:id,name,logo')
+            ->with(['bank:id,name,logo', 'loanDetail'])
             ->orderBy('name')
             ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 

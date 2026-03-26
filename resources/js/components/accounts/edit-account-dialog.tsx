@@ -45,10 +45,11 @@ export function EditAccountDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
-        bankId: account.bank?.id ?? null,
+        bankId: (account.bank?.id ?? null) as number | null,
         type: account.type,
         currencyCode: account.currency_code,
         customBank: null,
+        balance: null,
         realEstate: null,
         loan: null,
     });
@@ -233,7 +234,7 @@ export function EditAccountDialog({
                               loan_start_date:
                                   formDataRef.current.loan.startDate || null,
                               original_amount:
-                                  formDataRef.current.loan.originalAmount ||
+                                  formDataRef.current.loan.originalAmount ??
                                   null,
                           }
                         : {}),
@@ -246,7 +247,7 @@ export function EditAccountDialog({
                                   null,
                               purchase_price:
                                   formDataRef.current.realEstate
-                                      .purchasePrice || null,
+                                      .purchasePrice ?? null,
                               purchase_date:
                                   formDataRef.current.realEstate.purchaseDate ||
                                   null,
