@@ -118,26 +118,26 @@ export function AccountBalanceCard({
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                    <Link
-                        href={show.url(account.id)}
-                        className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
-                    >
-                        <BankLogo
-                            src={account.bank?.logo ?? null}
-                            name={account.bank?.name}
-                            className="mr-2 inline-block size-5"
-                        />
+                <div className="flex flex-col gap-0.5">
+                    <CardTitle className="text-sm font-medium">
+                        <Link
+                            href={show.url(account.id)}
+                            className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                        >
+                            <BankLogo
+                                src={account.bank?.logo ?? null}
+                                name={account.bank?.name}
+                                className="mr-2 inline-block size-5"
+                            />
 
-                        <AccountName
-                            account={account}
-                            length={{ min: 5, max: 15 }}
-                        />
-                    </Link>
-                </CardTitle>
-                <div className="text-xs font-medium text-muted-foreground">
-                    {hasMortgage && linkedLoanMetrics.loanAccount ? (
-                        <span className="flex items-center gap-1">
+                            <AccountName
+                                account={account}
+                                length={{ min: 5, max: 15 }}
+                            />
+                        </Link>
+                    </CardTitle>
+                    {hasMortgage && linkedLoanMetrics.loanAccount && (
+                        <span className="flex items-center gap-1 pt-0.5 text-xs text-muted-foreground">
                             {__('Mortgage at')}{' '}
                             {linkedLoanMetrics.loanAccount.bank && (
                                 <BankLogo
@@ -154,12 +154,13 @@ export function AccountBalanceCard({
                             {linkedLoanMetrics.loanAccount.bank?.name ??
                                 linkedLoanMetrics.loanAccount.name}
                         </span>
-                    ) : (
-                        <AccountTypeIcon
-                            type={account.type}
-                            className="mr-1 inline-block"
-                        />
                     )}
+                </div>
+                <div className="text-xs font-medium text-muted-foreground">
+                    <AccountTypeIcon
+                        type={account.type}
+                        className="mr-1 inline-block"
+                    />
                 </div>
             </CardHeader>
             <CardContent>
