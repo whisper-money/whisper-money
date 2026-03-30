@@ -57,6 +57,7 @@ class ConnectionController extends Controller
         $connection->update([
             'status' => BankingConnectionStatus::Active,
             'error_message' => null,
+            'consecutive_sync_failures' => 0,
         ]);
 
         SyncBankingConnectionJob::dispatch($connection);
@@ -88,6 +89,7 @@ class ConnectionController extends Controller
             ...$updateData,
             'status' => BankingConnectionStatus::Active,
             'error_message' => null,
+            'consecutive_sync_failures' => 0,
         ]);
 
         SyncBankingConnectionJob::dispatch($connection);

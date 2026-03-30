@@ -122,6 +122,7 @@ class BankingConnectionFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => BankingConnectionStatus::Error,
             'error_message' => 'Connection failed: bank returned an error',
+            'consecutive_sync_failures' => 1,
         ]);
     }
 }

@@ -626,7 +626,7 @@ test('bitpanda sync does not send email', function () {
     Mail::assertNothingQueued();
 });
 
-test('sends auth failed email on final retry for indexa capital 401 error', function () {
+test('sends auth failed email immediately for indexa capital 401 error', function () {
     Mail::fake();
 
     $user = User::factory()->onboarded()->create();
@@ -647,38 +647,26 @@ test('sends auth failed email on final retry for indexa capital 401 error', func
     $transactionSync = Mockery::mock(TransactionSyncService::class);
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
-    // Simulate final attempt (3 of 3) - SHOULD send email
     $job = new SyncBankingConnectionJob($connection);
     $mockQueueJob = Mockery::mock(Job::class);
-    $mockQueueJob->shouldReceive('attempts')->andReturn(3);
+    $mockQueueJob->shouldReceive('attempts')->andReturn(1);
     $mockQueueJob->shouldReceive('isReleased')->andReturn(false);
     $mockQueueJob->shouldReceive('isDeletedOrReleased')->andReturn(false);
     $mockQueueJob->shouldReceive('hasFailed')->andReturn(false);
+    $mockQueueJob->shouldReceive('fail')->once();
     $job->job = $mockQueueJob;
 
-    expect($connection->isActive())->toBeTrue();
-    expect($job->attempts())->toBe(3);
-
-    $threw = false;
-
-    try {
-        $job->handle($transactionSync, $balanceSync);
-    } catch (Throwable $e) {
-        $threw = true;
-        expect($e)->toBeInstanceOf(RequestException::class);
-        expect($e->response->status())->toBe(401);
-    }
-
-    expect($threw)->toBeTrue();
+    $job->handle($transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Error);
     expect($connection->error_message)->toContain('Authentication failed');
+    expect($connection->consecutive_sync_failures)->toBe(SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES + 1);
 
     Mail::assertQueued(BankingConnectionAuthFailedEmail::class);
 });
 
-test('does not send auth failed email before final retry attempt', function () {
+test('auth error sends email and fails job on any attempt', function () {
     Mail::fake();
 
     $user = User::factory()->onboarded()->create();
@@ -699,21 +687,22 @@ test('does not send auth failed email before final retry attempt', function () {
     $transactionSync = Mockery::mock(TransactionSyncService::class);
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
-    // Simulate attempt 1 of 3 - should NOT send email
+    // Simulate attempt 1 of 3 - auth errors should STILL send email immediately
     $job = new SyncBankingConnectionJob($connection);
     $job->job = Mockery::mock(Job::class);
     $job->job->shouldReceive('attempts')->andReturn(1);
     $job->job->shouldReceive('isReleased')->andReturn(false);
     $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
     $job->job->shouldReceive('hasFailed')->andReturn(false);
+    $job->job->shouldReceive('fail')->once();
 
-    try {
-        $job->handle($transactionSync, $balanceSync);
-    } catch (Throwable) {
-        // Expected
-    }
+    $job->handle($transactionSync, $balanceSync);
 
-    Mail::assertNotQueued(BankingConnectionAuthFailedEmail::class);
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+    expect($connection->consecutive_sync_failures)->toBe(SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES + 1);
+
+    Mail::assertQueued(BankingConnectionAuthFailedEmail::class);
 });
 
 test('does not send auth failed email for non-auth errors', function () {
@@ -791,7 +780,7 @@ test('does not send auth failed email for enablebanking connections', function (
     Mail::assertNotQueued(BankingConnectionAuthFailedEmail::class);
 });
 
-test('sends auth failed email for binance 403 error on final attempt', function () {
+test('sends auth failed email immediately for binance 403 error', function () {
     Mail::fake();
 
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
@@ -815,16 +804,13 @@ test('sends auth failed email for binance 403 error on final attempt', function 
 
     $job = new SyncBankingConnectionJob($connection);
     $job->job = Mockery::mock(Job::class);
-    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('attempts')->andReturn(1);
     $job->job->shouldReceive('isReleased')->andReturn(false);
     $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
     $job->job->shouldReceive('hasFailed')->andReturn(false);
+    $job->job->shouldReceive('fail')->once();
 
-    try {
-        $job->handle($transactionSync, $balanceSync);
-    } catch (Throwable) {
-        // Expected
-    }
+    $job->handle($transactionSync, $balanceSync);
 
     Mail::assertQueued(BankingConnectionAuthFailedEmail::class, function ($mail) use ($user, $connection) {
         return $mail->hasTo($user->email)

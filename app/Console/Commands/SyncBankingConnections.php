@@ -41,7 +41,13 @@ class SyncBankingConnections extends Command
         }
 
         $query = BankingConnection::query()
-            ->where('status', BankingConnectionStatus::Active)
+            ->where(function ($query) {
+                $query->where('status', BankingConnectionStatus::Active)
+                    ->orWhere(function ($query) {
+                        $query->where('status', BankingConnectionStatus::Error)
+                            ->where('consecutive_sync_failures', '<', SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES);
+                    });
+            })
             ->where(function ($query) {
                 $query->whereNull('valid_until')
                     ->orWhere('valid_until', '>', now());
