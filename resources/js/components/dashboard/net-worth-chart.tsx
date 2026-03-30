@@ -18,6 +18,7 @@ import {
 import { ChartConfig } from '@/components/ui/chart';
 import { StackedAreaChart } from '@/components/ui/stacked-area-chart';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useChartViews } from '@/hooks/use-chart-views';
 import {
     NetWorthEvolutionData,
@@ -135,6 +136,7 @@ export function NetWorthChart({
     const { props } = usePage<SharedData>();
     const locale = useLocale();
     const isMobile = useIsMobile();
+    const { liabilityDotColor } = useChartColors();
     const [granularity, setGranularity] = useState<ChartGranularity>('monthly');
     const [dailyData, setDailyData] = useState<NetWorthEvolutionData | null>(
         null,
@@ -611,7 +613,10 @@ export function NetWorthChart({
                             showLegend={showLegend}
                             netWorthMode={
                                 hasLiabilities
-                                    ? { liabilityTypeLabel: __('Loan') }
+                                    ? {
+                                          liabilityTypeLabel: __('Loan'),
+                                          liabilityDotColor,
+                                      }
                                     : undefined
                             }
                         />
@@ -630,7 +635,10 @@ export function NetWorthChart({
                             showLegend={showLegend}
                             netWorthMode={
                                 hasLiabilities
-                                    ? { liabilityTypeLabel: __('Loan') }
+                                    ? {
+                                          liabilityTypeLabel: __('Loan'),
+                                          liabilityDotColor,
+                                      }
                                     : undefined
                             }
                         />

@@ -137,6 +137,7 @@ interface ChartTooltipContentProps {
     /** When set, tooltip shows liability rows and net-worth total instead of simple sum. */
     netWorthMode?: {
         liabilityTypeLabel: string;
+        liabilityDotColor?: string;
     };
 }
 
@@ -377,7 +378,10 @@ const ChartTooltipContent = React.forwardRef<
                                 {hasLiabilities && displayCurrency && liabilities.map((liability, index) => (
                                     <div key={index} className="flex justify-between gap-2">
                                         <div className="flex items-center gap-2">
-                                            <div className="size-2.5 rounded-xs bg-destructive" />
+                                            <div
+                                                className="size-2.5 shrink-0 rounded-xs"
+                                                style={{ backgroundColor: netWorthMode?.liabilityDotColor ?? 'var(--color-destructive)' }}
+                                            />
                                             <span className="text-muted-foreground font-medium">
                                                 {netWorthMode?.liabilityTypeLabel}: {liability.name}
                                             </span>
