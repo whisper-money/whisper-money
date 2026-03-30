@@ -598,6 +598,7 @@ export function NetWorthChart({
                 {chartViews.currentView === 'stacked' &&
                     (granularity === 'daily' ? (
                         <StackedAreaChart
+                            key={dataKeys.join(',')}
                             data={scaledChartData.slice(1)}
                             dataKeys={dataKeys}
                             config={chartConfig}
@@ -616,6 +617,7 @@ export function NetWorthChart({
                         />
                     ) : (
                         <StackedBarChart
+                            key={dataKeys.join(',')}
                             data={scaledChartData.slice(1)}
                             dataKeys={dataKeys}
                             config={chartConfig}
