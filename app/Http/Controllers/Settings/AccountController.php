@@ -8,6 +8,8 @@ use App\Http\Requests\Settings\StoreAccountRequest;
 use App\Http\Requests\Settings\UpdateAccountRequest;
 use App\Models\Account;
 use App\Models\User;
+use App\Services\RealEstateBalanceGeneratorService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -75,6 +77,16 @@ class AccountController extends Controller
 
             if (! empty($realEstateData)) {
                 $account->realEstateDetail()->create($realEstateData);
+            }
+
+            // Generate historical balances when purchase data and current value are provided
+            if ($balance !== null && isset($validated['purchase_price'], $validated['purchase_date'])) {
+                app(RealEstateBalanceGeneratorService::class)->generateHistoricalBalances(
+                    $account,
+                    $validated['purchase_price'],
+                    Carbon::parse($validated['purchase_date']),
+                    $balance,
+                );
             }
         }
 
