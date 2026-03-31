@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\OpenBanking;
 
 use App\Contracts\BankingProviderInterface;
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Requests\OpenBanking\StartAuthorizationRequest;
 use App\Jobs\SyncBankingConnectionJob;
-use App\Models\Bank;
 use App\Models\BankingConnection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 
 class AuthorizationController extends Controller
 {
+    use CreatesAccountsFromPending;
+
     /**
      * Start the bank authorization flow.
      */
@@ -227,46 +228,6 @@ class AuthorizationController extends Controller
             $account->update([
                 'external_account_id' => $newAccountData['uid'],
                 'iban' => $newAccountData['account_id']['iban'] ?? null,
-            ]);
-        }
-    }
-
-    /**
-     * Auto-create accounts from pending_accounts_data without user interaction.
-     */
-    private function createAccountsFromPending($user, BankingConnection $connection): void
-    {
-        $bank = Bank::firstOrCreate(
-            ['name' => $connection->aspsp_name, 'user_id' => null],
-            ['name' => $connection->aspsp_name, 'logo' => $connection->aspsp_logo],
-        );
-
-        if (! $bank->logo && $connection->aspsp_logo) {
-            $bank->update(['logo' => $connection->aspsp_logo]);
-        }
-
-        foreach ($connection->pending_accounts_data ?? [] as $accountData) {
-            $uid = $accountData['uid'] ?? null;
-
-            if (! $uid) {
-                continue;
-            }
-
-            $currency = $accountData['currency'] ?? 'EUR';
-            $name = $accountData['name']
-                ?? $accountData['account_id']['iban']
-                ?? $connection->aspsp_name.' Account';
-
-            $user->accounts()->create([
-                'name' => $name,
-                'name_iv' => null,
-                'encrypted' => false,
-                'bank_id' => $bank->id,
-                'currency_code' => $currency,
-                'type' => AccountType::Checking->value,
-                'banking_connection_id' => $connection->id,
-                'external_account_id' => $uid,
-                'iban' => $accountData['account_id']['iban'] ?? null,
             ]);
         }
     }
