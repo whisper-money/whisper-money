@@ -313,7 +313,7 @@ test('net worth evolution converts foreign currency accounts using cached exchan
         'currency_code' => 'EUR',
     ]);
 
-    $lastMonth = now()->subMonth();
+    $lastMonth = now()->subMonthNoOverflow();
     $endOfMonth = $lastMonth->copy()->endOfMonth();
 
     AccountBalance::factory()->create([
@@ -369,7 +369,7 @@ test('net worth evolution uses last balance of each month per account', function
         'currency_code' => 'USD',
     ]);
 
-    $lastMonth = now()->subMonth();
+    $lastMonth = now()->subMonthNoOverflow();
 
     AccountBalance::factory()->create([
         'account_id' => $account->id,
