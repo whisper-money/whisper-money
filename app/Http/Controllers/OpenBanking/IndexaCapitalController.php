@@ -2,16 +2,13 @@
 
 namespace App\Http\Controllers\OpenBanking;
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OpenBanking\ConnectIndexaCapitalRequest;
-use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Services\Banking\IndexaCapitalClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Laravel\Pennant\Feature;
 
 class IndexaCapitalController extends Controller
 {
@@ -51,40 +48,13 @@ class IndexaCapitalController extends Controller
 
         $pendingAccounts = $this->buildPendingAccounts($userData);
 
-        if (Feature::for($user)->active('account-mapping')) {
-            $connection->update([
-                'status' => BankingConnectionStatus::AwaitingMapping,
-                'pending_accounts_data' => $pendingAccounts,
-            ]);
-
-            return response()->json([
-                'redirect_url' => route('open-banking.map-accounts', $connection),
-                'connection_id' => $connection->id,
-            ]);
-        }
-
-        $connection->update(['status' => BankingConnectionStatus::Active]);
-
-        foreach ($pendingAccounts as $accountData) {
-            $user->accounts()->create([
-                'name' => $accountData['name'],
-                'name_iv' => null,
-                'encrypted' => false,
-                'bank_id' => $bank->id,
-                'currency_code' => $accountData['currency'],
-                'type' => AccountType::Investment->value,
-                'banking_connection_id' => $connection->id,
-                'external_account_id' => $accountData['uid'],
-            ]);
-        }
-
-        SyncBankingConnectionJob::dispatch($connection);
-
-        $successRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
-        $redirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
+        $connection->update([
+            'status' => BankingConnectionStatus::AwaitingMapping,
+            'pending_accounts_data' => $pendingAccounts,
+        ]);
 
         return response()->json([
-            'redirect_url' => route($successRedirect, $redirectParams),
+            'redirect_url' => route('open-banking.map-accounts', $connection),
             'connection_id' => $connection->id,
         ]);
     }

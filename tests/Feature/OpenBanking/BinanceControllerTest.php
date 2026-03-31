@@ -1,8 +1,6 @@
 <?php
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
-use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
@@ -32,23 +30,19 @@ test('users can connect a binance account with valid credentials', function () {
     $response->assertOk();
     $response->assertJsonStructure(['redirect_url', 'connection_id']);
 
-    $this->assertDatabaseHas('banking_connections', [
+    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'binance')->first();
+
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->pending_accounts_data)->toHaveCount(1);
+    expect($connection->pending_accounts_data[0]['uid'])->toBe('binance-portfolio');
+    expect($connection->pending_accounts_data[0]['name'])->toBe('Crypto Portfolio');
+
+    $this->assertDatabaseMissing('accounts', [
         'user_id' => $user->id,
-        'provider' => 'binance',
-        'aspsp_name' => 'Binance',
-        'aspsp_country' => 'ES',
-        'status' => BankingConnectionStatus::Active->value,
+        'banking_connection_id' => $connection->id,
     ]);
 
-    $this->assertDatabaseHas('accounts', [
-        'user_id' => $user->id,
-        'external_account_id' => 'binance-portfolio',
-        'type' => AccountType::Investment->value,
-        'currency_code' => 'EUR',
-        'name' => 'Crypto Portfolio',
-    ]);
-
-    Queue::assertPushed(SyncBankingConnectionJob::class);
+    Queue::assertNothingPushed();
 });
 
 test('invalid binance credentials return 422', function () {
@@ -72,44 +66,6 @@ test('invalid binance credentials return 422', function () {
         'user_id' => $user->id,
         'provider' => 'binance',
     ]);
-});
-
-test('binance connection with account-mapping flag returns mapping redirect', function () {
-    Queue::fake();
-
-    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    Feature::for($user)->activate('open-banking');
-    Feature::for($user)->activate('account-mapping');
-
-    Http::fake([
-        'api.binance.com/api/v3/account*' => Http::response([
-            'balances' => [
-                ['asset' => 'BTC', 'free' => '1.0', 'locked' => '0.0'],
-            ],
-        ]),
-    ]);
-
-    $response = $this->actingAs($user)->postJson('/open-banking/binance/connect', [
-        'api_key' => 'valid-test-api-key-12345',
-        'api_secret' => 'valid-test-api-secret-12345',
-        'country' => 'ES',
-    ]);
-
-    $response->assertOk();
-
-    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'binance')->first();
-
-    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
-    expect($connection->pending_accounts_data)->toHaveCount(1);
-    expect($connection->pending_accounts_data[0]['uid'])->toBe('binance-portfolio');
-    expect($connection->pending_accounts_data[0]['name'])->toBe('Crypto Portfolio');
-
-    $this->assertDatabaseMissing('accounts', [
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-    ]);
-
-    Queue::assertNothingPushed();
 });
 
 test('binance requires open-banking feature flag', function () {
@@ -141,7 +97,7 @@ test('binance api_key and api_secret are required and must be at least 10 charac
         ->assertJsonValidationErrors(['api_key', 'api_secret']);
 });
 
-test('binance creates single crypto portfolio account with user currency', function () {
+test('binance stores pending accounts with user currency', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
@@ -163,13 +119,9 @@ test('binance creates single crypto portfolio account with user currency', funct
 
     $response->assertOk();
 
-    expect($user->accounts()->count())->toBe(1);
+    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'binance')->first();
 
-    $this->assertDatabaseHas('accounts', [
-        'user_id' => $user->id,
-        'name' => 'Crypto Portfolio',
-        'currency_code' => 'USD',
-        'type' => AccountType::Investment->value,
-        'external_account_id' => 'binance-portfolio',
-    ]);
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->pending_accounts_data)->toHaveCount(1);
+    expect($connection->pending_accounts_data[0]['currency'])->toBe('USD');
 });

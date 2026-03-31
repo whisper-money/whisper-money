@@ -127,7 +127,7 @@ class HandleInertiaRequests extends Middleware
      */
     protected function resolveFeatureFlags(?object $user): array
     {
-        $flags = ['open-banking', 'account-mapping', 'real-estate'];
+        $flags = ['open-banking', 'real-estate'];
 
         if (! $user) {
             return ['cashflow' => true, ...array_fill_keys($flags, false)];

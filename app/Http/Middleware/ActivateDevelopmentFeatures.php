@@ -19,7 +19,6 @@ class ActivateDevelopmentFeatures
         if (app()->isLocal() && $request->user()) {
             Feature::for($request->user())->activate([
                 'open-banking',
-                'account-mapping',
                 'real-estate',
             ]);
         }

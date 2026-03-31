@@ -51,7 +51,6 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Feature::define('open-banking', fn (User $user) => false);
-        Feature::define('account-mapping', fn (User $user) => false);
         Feature::define('real-estate', fn (User $user) => false);
     }
 }
