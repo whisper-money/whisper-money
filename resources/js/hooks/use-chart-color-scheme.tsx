@@ -96,6 +96,10 @@ export function useChartColors() {
         ? 'var(--cashflow-expense)'
         : 'var(--color-chart-5)';
 
+    const liabilityDotColor = isColorful
+        ? 'var(--color-destructive)'
+        : 'var(--color-chart-5)';
+
     const CHART_COLORS = [
         'var(--chart-1)',
         'var(--chart-2)',
@@ -119,6 +123,7 @@ export function useChartColors() {
         equityLineColor,
         cashflowIncomeColor,
         cashflowExpenseColor,
+        liabilityDotColor,
         categoryBarColor,
     };
 }

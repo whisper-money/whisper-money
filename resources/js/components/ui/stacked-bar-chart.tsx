@@ -128,7 +128,7 @@ export interface StackedBarChartProps<T extends Record<string, unknown>> {
     className?: string;
     showLegend?: boolean;
     minBarWidth?: number;
-    netWorthMode?: { liabilityTypeLabel: string };
+    netWorthMode?: { liabilityTypeLabel: string; liabilityDotColor?: string };
 }
 
 export function StackedBarChart<T extends Record<string, unknown>>({

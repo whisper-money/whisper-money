@@ -117,8 +117,8 @@ test('budget show returns previous period when it exists', function () {
 
     // Create a previous period (last month)
     $budget->periods()->create([
-        'start_date' => now()->subMonth()->startOfMonth(),
-        'end_date' => now()->subMonth()->endOfMonth(),
+        'start_date' => now()->subMonthNoOverflow()->startOfMonth(),
+        'end_date' => now()->subMonthNoOverflow()->endOfMonth(),
         'allocated_amount' => 30000,
         'carried_over_amount' => 0,
     ]);
@@ -138,7 +138,7 @@ test('budget show returns previous period when it exists', function () {
         ->component('budgets/show')
         ->has('currentPeriod')
         ->has('previousPeriod')
-        ->where('previousPeriod.start_date', now()->subMonth()->startOfMonth()->toJSON())
+        ->where('previousPeriod.start_date', now()->subMonthNoOverflow()->startOfMonth()->toJSON())
     );
 });
 
@@ -252,8 +252,8 @@ test('budget show can navigate to a specific period via query param', function (
 
     // Create a previous period
     $previousPeriod = $budget->periods()->create([
-        'start_date' => now()->subMonth()->startOfMonth(),
-        'end_date' => now()->subMonth()->endOfMonth(),
+        'start_date' => now()->subMonthNoOverflow()->startOfMonth(),
+        'end_date' => now()->subMonthNoOverflow()->endOfMonth(),
         'allocated_amount' => 20000,
         'carried_over_amount' => 0,
     ]);

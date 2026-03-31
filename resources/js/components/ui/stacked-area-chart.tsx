@@ -36,7 +36,7 @@ export interface StackedAreaChartProps<T extends Record<string, unknown>> {
     className?: string;
     showLegend?: boolean;
     minBarWidth?: number;
-    netWorthMode?: { liabilityTypeLabel: string };
+    netWorthMode?: { liabilityTypeLabel: string; liabilityDotColor?: string };
 }
 
 export function StackedAreaChart<T extends Record<string, unknown>>({

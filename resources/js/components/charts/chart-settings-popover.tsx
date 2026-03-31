@@ -109,16 +109,17 @@ export function ChartSettingsPopover({
                     {allToggles.map((toggle) => (
                         <div
                             key={toggle.id}
-                            className="flex items-start justify-between gap-4"
+                            className="flex cursor-pointer items-start justify-between gap-4"
+                            onClick={() => toggle.onChange(!toggle.checked)}
                         >
                             <div className="space-y-1">
                                 <Label
                                     htmlFor={toggle.id}
-                                    className="text-sm leading-5 font-medium"
+                                    className="pointer-events-none text-sm leading-5 font-medium"
                                 >
                                     {toggle.label}
                                 </Label>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="pointer-events-none text-xs text-muted-foreground">
                                     {toggle.description}
                                 </p>
                             </div>
