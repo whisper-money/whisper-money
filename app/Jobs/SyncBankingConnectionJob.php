@@ -3,9 +3,11 @@
 namespace App\Jobs;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingSyncLogStatus;
 use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\BankingConnection;
+use App\Models\BankingSyncLog;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\BinanceBalanceSyncService;
 use App\Services\Banking\BinanceClient;
@@ -32,6 +34,12 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     public int $backoff = 30;
 
+    /**
+     * Maximum number of scheduled sync cycles that will auto-retry
+     * a connection in Error state before requiring manual intervention.
+     */
+    public const int MAX_SCHEDULED_RETRIES = 3;
+
     public function __construct(
         public BankingConnection $bankingConnection,
         public bool $fullSync = false,
@@ -45,20 +53,26 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     public function handle(TransactionSyncService $transactionSync, BalanceSyncService $balanceSync): void
     {
         $connection = $this->bankingConnection;
+        $startTime = microtime(true);
 
         if ($connection->isEnableBanking() && $connection->isExpired()) {
             $connection->update(['status' => BankingConnectionStatus::Expired]);
             Log::info('Banking connection expired, skipping sync', ['connection_id' => $connection->id]);
 
+            $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: ['reason' => 'expired']);
+
             return;
         }
 
-        if (! $connection->isActive()) {
+        if (! $this->isSyncableStatus($connection)) {
+            $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: ['reason' => 'not_syncable', 'status' => $connection->status->value]);
+
             return;
         }
 
         try {
             $isFirstSync = ! $connection->last_synced_at || $this->fullSync;
+            $metadata = [];
 
             if ($connection->isIndexaCapital()) {
                 $this->syncIndexaCapital($connection, $isFirstSync);
@@ -67,37 +81,112 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             } elseif ($connection->isBitpanda()) {
                 $this->syncBitpanda($connection);
             } else {
-                $this->syncEnableBanking($connection, $transactionSync, $balanceSync, $isFirstSync);
+                $metadata = $this->syncEnableBanking($connection, $transactionSync, $balanceSync, $isFirstSync);
             }
 
             $connection->update([
+                'status' => BankingConnectionStatus::Active,
                 'last_synced_at' => now(),
                 'error_message' => null,
+                'consecutive_sync_failures' => 0,
             ]);
+
+            $this->logSyncAttempt($connection, BankingSyncLogStatus::Success, $startTime, metadata: $metadata ?: null);
         } catch (\Throwable $e) {
             Log::error('Banking sync failed', [
                 'connection_id' => $connection->id,
                 'error' => $e->getMessage(),
+                'attempt' => $this->attempts(),
             ]);
 
             if ($this->isRateLimitError($e)) {
+                $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
+
                 return;
             }
 
+            $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
+
+            if ($this->isAuthError($e)) {
+                $this->handlePermanentError($connection, $e);
+
+                return;
+            }
+
+            $this->handleTemporaryError($connection, $e);
+        }
+    }
+
+    /**
+     * Handle permanent errors (auth failures) that should not be retried.
+     */
+    private function handlePermanentError(BankingConnection $connection, \Throwable $e): void
+    {
+        $connection->update([
+            'status' => BankingConnectionStatus::Error,
+            'error_message' => $this->friendlyErrorMessage($e),
+            'consecutive_sync_failures' => self::MAX_SCHEDULED_RETRIES + 1,
+        ]);
+
+        if ($this->isApiKeyProvider($connection)) {
+            Mail::to($connection->user)->send(new BankingConnectionAuthFailedEmail(
+                $connection->user,
+                $connection,
+            ));
+        }
+
+        $this->fail($e);
+    }
+
+    /**
+     * Handle temporary errors that may resolve on retry.
+     */
+    private function handleTemporaryError(BankingConnection $connection, \Throwable $e): void
+    {
+        $isFinalAttempt = $this->attempts() >= $this->tries;
+
+        if ($isFinalAttempt) {
             $connection->update([
                 'status' => BankingConnectionStatus::Error,
                 'error_message' => $this->friendlyErrorMessage($e),
+                'consecutive_sync_failures' => $connection->consecutive_sync_failures + 1,
             ]);
-
-            if ($this->isAuthError($e) && $this->isApiKeyProvider($connection) && $this->attempts() >= $this->tries) {
-                Mail::to($connection->user)->send(new BankingConnectionAuthFailedEmail(
-                    $connection->user,
-                    $connection,
-                ));
-            }
-
-            throw $e;
         }
+
+        throw $e;
+    }
+
+    /**
+     * Whether the connection status allows syncing.
+     * Allows both Active and Error (for auto-retry from scheduled runs).
+     */
+    private function isSyncableStatus(BankingConnection $connection): bool
+    {
+        return in_array($connection->status, [
+            BankingConnectionStatus::Active,
+            BankingConnectionStatus::Error,
+        ]);
+    }
+
+    private function logSyncAttempt(
+        BankingConnection $connection,
+        BankingSyncLogStatus $status,
+        float $startTime,
+        ?\Throwable $error = null,
+        ?array $metadata = null,
+    ): void {
+        $durationMs = (int) round((microtime(true) - $startTime) * 1000);
+
+        BankingSyncLog::create([
+            'banking_connection_id' => $connection->id,
+            'status' => $status,
+            'attempt' => $this->attempts(),
+            'error_message' => $error?->getMessage(),
+            'error_class' => $error ? get_class($error) : null,
+            'duration_ms' => $durationMs,
+            'metadata' => $metadata,
+            'created_at' => now(),
+        ]);
     }
 
     private function syncIndexaCapital(BankingConnection $connection, bool $isFirstSync): void
@@ -141,7 +230,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    private function syncEnableBanking(BankingConnection $connection, TransactionSyncService $transactionSync, BalanceSyncService $balanceSync, bool $isFirstSync): void
+    /**
+     * @return array<string, mixed>
+     */
+    private function syncEnableBanking(BankingConnection $connection, TransactionSyncService $transactionSync, BalanceSyncService $balanceSync, bool $isFirstSync): array
     {
         $dateFrom = $isFirstSync
             ? now()->subYear()->toDateString()
@@ -189,6 +281,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 $transactionsPerBank,
             ));
         }
+
+        return ['transactions_synced' => $totalTransactions, 'transactions_per_bank' => $transactionsPerBank];
     }
 
     private function friendlyErrorMessage(\Throwable $e): string

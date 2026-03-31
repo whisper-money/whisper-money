@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property BankingConnectionStatus $status
  * @property Carbon|null $valid_until
  * @property Carbon|null $last_synced_at
+ * @property int $consecutive_sync_failures
  * @property array<int, mixed>|null $pending_accounts_data
  */
 class BankingConnection extends Model
@@ -36,6 +38,7 @@ class BankingConnection extends Model
         'valid_until',
         'last_synced_at',
         'error_message',
+        'consecutive_sync_failures',
         'pending_accounts_data',
         'api_token',
         'api_secret',
@@ -71,6 +74,18 @@ class BankingConnection extends Model
     public function accounts(): HasMany
     {
         return $this->hasMany(Account::class);
+    }
+
+    /** @return HasMany<BankingSyncLog, $this> */
+    public function syncLogs(): HasMany
+    {
+        return $this->hasMany(BankingSyncLog::class);
+    }
+
+    /** @return HasOne<BankingSyncLog, $this> */
+    public function latestSyncLog(): HasOne
+    {
+        return $this->hasOne(BankingSyncLog::class)->latestOfMany();
     }
 
     public function isActive(): bool
