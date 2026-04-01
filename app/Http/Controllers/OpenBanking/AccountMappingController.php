@@ -104,6 +104,7 @@ class AccountMappingController extends Controller
                     'type' => $accountType->value,
                     'banking_connection_id' => $connection->id,
                     'external_account_id' => $uid,
+                    'iban' => $accountData['account_id']['iban'] ?? null,
                 ]);
             } elseif ($action === 'link') {
                 $existingAccount = $user->accounts()->find($mapping['existing_account_id']);

@@ -105,6 +105,7 @@ test('store with action create creates new accounts', function () {
         'external_account_id' => 'ext-1',
         'name' => 'Test Checking',
         'currency_code' => 'EUR',
+        'iban' => 'ES1234567890',
     ]);
 
     $connection->refresh();
