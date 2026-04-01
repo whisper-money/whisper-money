@@ -202,6 +202,7 @@ test('store with action link links existing account', function () {
     expect($existingAccount->banking_connection_id)->toBe($connection->id);
     expect($existingAccount->external_account_id)->toBe('ext-1');
     expect($existingAccount->linked_at)->not->toBeNull();
+    expect($existingAccount->iban)->toBe('ES1234567890');
 
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
