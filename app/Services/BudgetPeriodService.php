@@ -23,14 +23,18 @@ class BudgetPeriodService
             $allocatedAmount = $lastPeriod !== null ? $lastPeriod->allocated_amount : 0;
         }
 
-        return BudgetPeriod::create([
-            'budget_id' => $budget->id,
-            'start_date' => $periodStart,
-            'end_date' => $periodEnd,
-            'allocated_amount' => $allocatedAmount,
-            'carried_over_amount' => 0,
-            'processing_historical' => $processHistorical,
-        ]);
+        return BudgetPeriod::firstOrCreate(
+            [
+                'budget_id' => $budget->id,
+                'start_date' => $periodStart,
+            ],
+            [
+                'end_date' => $periodEnd,
+                'allocated_amount' => $allocatedAmount,
+                'carried_over_amount' => 0,
+                'processing_historical' => $processHistorical,
+            ],
+        );
     }
 
     public function closePeriod(BudgetPeriod $period): void
