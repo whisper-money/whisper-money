@@ -181,30 +181,16 @@ class CashflowAnalyticsController extends Controller
     {
         $isIncome = $operator === '>';
 
-        // Group all transactions by category using the amount sign, not the category
-        // type. This allows one category to appear on both sides of the Sankey when
-        // it contains transactions of both signs (e.g. an income category that also
-        // holds property expense payments will show income on the left and the
-        // outgoing payments on the right).
-        $categorized = Transaction::query()
+        // Non-transfer categories keep the existing sign-based behavior so a
+        // category with mixed signs can appear on both sides of the Sankey.
+        $regularCategories = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->where('transactions.amount', $operator, 0)
             ->whereNotNull('transactions.category_id')
-            ->join('categories', function ($join) use ($isIncome) {
+            ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where(function ($q) use ($isIncome) {
-                        $q->where('categories.type', '!=', CategoryType::Transfer)
-                            ->orWhere(function ($q) use ($isIncome) {
-                                $q->where('categories.type', CategoryType::Transfer)
-                                    ->where(
-                                        'categories.cashflow_direction',
-                                        $isIncome
-                                            ? CategoryCashflowDirection::Inflow
-                                            : CategoryCashflowDirection::Outflow,
-                                    );
-                            });
-                    });
+                    ->where('categories.type', '!=', CategoryType::Transfer);
             })
             ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
             ->groupBy('transactions.category_id')
@@ -217,6 +203,37 @@ class CashflowAnalyticsController extends Controller
                     'amount' => abs($item->total_amount),
                 ];
             });
+
+        $transferCategories = Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->whereNotNull('transactions.category_id')
+            ->join('categories', function ($join) use ($isIncome) {
+                $join->on('transactions.category_id', '=', 'categories.id')
+                    ->where('categories.type', CategoryType::Transfer)
+                    ->where(
+                        'categories.cashflow_direction',
+                        $isIncome
+                            ? CategoryCashflowDirection::Inflow
+                            : CategoryCashflowDirection::Outflow,
+                    );
+            })
+            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
+            ->groupBy('transactions.category_id')
+            ->with('category')
+            ->get()
+            ->filter(function ($item) use ($isIncome) {
+                return $isIncome ? $item->total_amount > 0 : $item->total_amount < 0;
+            })
+            ->map(function ($item) {
+                return [
+                    'category_id' => $item->category_id,
+                    'category' => $item->category,
+                    'amount' => abs($item->total_amount),
+                ];
+            });
+
+        $categorized = $regularCategories->concat($transferCategories)->values();
 
         $uncategorized = Transaction::query()
             ->where('user_id', $userId)

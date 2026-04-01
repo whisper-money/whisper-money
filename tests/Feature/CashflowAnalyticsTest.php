@@ -830,6 +830,129 @@ test('sankey includes inflow transfer categories on the income side', function (
     expect(collect($data['expense_categories'])->pluck('category.name'))->not->toContain('From Relatives');
 });
 
+test('sankey nets mixed-sign inflow transfer categories on the income side', function () {
+    $inflowCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Inflow,
+        'name' => 'From account of relatives',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $inflowCategory->id,
+        'amount' => 300000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $inflowCategory->id,
+        'amount' => -300000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['total_income'])->toBe(0);
+    expect($data['total_expense'])->toBe(0);
+    expect(collect($data['income_categories'])->pluck('category.name'))->not->toContain('From account of relatives');
+    expect(collect($data['expense_categories'])->pluck('category.name'))->not->toContain('From account of relatives');
+});
+
+test('sankey includes only the net positive amount for inflow transfer categories', function () {
+    $inflowCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Inflow,
+        'name' => 'From account of relatives',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $inflowCategory->id,
+        'amount' => 500000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $inflowCategory->id,
+        'amount' => -200000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['total_income'])->toBe(300000);
+    expect($data['total_expense'])->toBe(0);
+
+    $inflowIncome = collect($data['income_categories'])->firstWhere('category.name', 'From account of relatives');
+    expect($inflowIncome)->not->toBeNull();
+    expect($inflowIncome['amount'])->toBe(300000);
+    expect(collect($data['expense_categories'])->pluck('category.name'))->not->toContain('From account of relatives');
+});
+
+test('sankey includes only the net negative amount for outflow transfer categories', function () {
+    $outflowCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+        'name' => 'Investments',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $outflowCategory->id,
+        'amount' => -500000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $outflowCategory->id,
+        'amount' => 200000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['total_income'])->toBe(0);
+    expect($data['total_expense'])->toBe(300000);
+
+    $outflowExpense = collect($data['expense_categories'])->firstWhere('category.name', 'Investments');
+    expect($outflowExpense)->not->toBeNull();
+    expect($outflowExpense['amount'])->toBe(300000);
+    expect(collect($data['income_categories'])->pluck('category.name'))->not->toContain('Investments');
+});
+
 test('breakdown includes unknown income category', function () {
     $incomeCategory = Category::factory()->create([
         'user_id' => $this->user->id,
