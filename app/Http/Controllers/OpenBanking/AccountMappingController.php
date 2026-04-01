@@ -113,6 +113,7 @@ class AccountMappingController extends Controller
                     $existingAccount->update([
                         'banking_connection_id' => $connection->id,
                         'external_account_id' => $uid,
+                        'iban' => $accountData['account_id']['iban'] ?? $existingAccount->iban,
                         'bank_id' => $bank->id,
                         'linked_at' => now(),
                     ]);
