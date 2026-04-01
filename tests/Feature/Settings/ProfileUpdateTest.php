@@ -35,6 +35,38 @@ test('profile information can be updated', function () {
     expect($user->currency_code)->toBe('EUR');
 });
 
+test('profile accepts new latam primary currency', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'currency_code' => 'ARS',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('account.edit'));
+
+    expect($user->refresh()->currency_code)->toBe('ARS');
+});
+
+test('profile rejects bitcoin as primary currency', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'currency_code' => 'BTC',
+        ]);
+
+    $response->assertSessionHasErrors(['currency_code']);
+});
+
 test('email verification status is unchanged when the email address is unchanged', function () {
     $user = User::factory()->create();
 

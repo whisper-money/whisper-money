@@ -105,3 +105,18 @@ test('different dates make separate requests', function () {
 
     Http::assertSentCount(2);
 });
+
+test('converts new latam fiat currency using CDN rates', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*currencies/usd*' => Http::response([
+            'usd' => [
+                'ars' => 1400.0,
+            ],
+        ]),
+    ]);
+
+    $service = new CurrencyConversionService;
+    $result = $service->convert('ARS', 'USD', 2800.0, '2026-01-15');
+
+    expect($result)->toBe(2.0);
+});

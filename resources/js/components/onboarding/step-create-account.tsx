@@ -87,6 +87,9 @@ export function StepCreateAccount({
         type: null,
         currencyCode: null,
         customBank: null,
+        balance: null,
+        realEstate: null,
+        loan: null,
     });
 
     // Compute cheapest monthly equivalent across all plans

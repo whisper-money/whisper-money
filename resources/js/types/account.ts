@@ -26,20 +26,12 @@ export const ACCOUNT_TYPES = [
 
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
-export const CURRENCY_OPTIONS = [
-    'USD',
-    'EUR',
-    'GBP',
-    'JPY',
-    'CHF',
-    'CAD',
-    'AUD',
-    'CNY',
-    'INR',
-    'MXN',
-] as const;
+export type CurrencyCode = string;
 
-export type CurrencyCode = (typeof CURRENCY_OPTIONS)[number];
+export interface CurrencyOption {
+    code: CurrencyCode;
+    name: string;
+}
 
 export interface Bank {
     id: UUID;

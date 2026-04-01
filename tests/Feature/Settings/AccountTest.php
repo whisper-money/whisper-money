@@ -76,6 +76,44 @@ it('validates currency_code must be in allowed list', function () {
     $response->assertSessionHasErrors(['currency_code']);
 });
 
+it('accepts new latam currency when creating account', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Argentina Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'ARS',
+        'type' => AccountType::Checking->value,
+    ]);
+
+    $response->assertRedirect();
+
+    assertDatabaseHas('accounts', [
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'ARS',
+    ]);
+});
+
+it('accepts bitcoin when creating account', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Bitcoin Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'BTC',
+        'type' => AccountType::Investment->value,
+    ]);
+
+    $response->assertRedirect();
+
+    assertDatabaseHas('accounts', [
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'BTC',
+    ]);
+});
+
 it('validates type must be valid AccountType', function () {
     actingAs($this->user);
 

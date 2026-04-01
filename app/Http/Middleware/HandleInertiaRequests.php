@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -9,6 +10,8 @@ use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
+    public function __construct(private CurrencyOptions $currencyOptions) {}
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -117,6 +120,10 @@ class HandleInertiaRequests extends Middleware
             'hasEncryptedTransactions' => $hasEncryptedTransactions,
             'locale' => app()->getLocale(),
             'translations' => $this->getTranslations(),
+            'currencies' => [
+                'profile' => $this->currencyOptions->primaryOptions(),
+                'accounts' => $this->currencyOptions->accountOptions(),
+            ],
         ];
     }
 

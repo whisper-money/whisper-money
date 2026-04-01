@@ -4,6 +4,7 @@ namespace App\Http\Requests\Settings;
 
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
+use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -26,6 +27,7 @@ class UpdateAccountRequest extends FormRequest
     public function rules(): array
     {
         $isRealEstate = $this->input('type') === AccountType::RealEstate->value;
+        $currencyOptions = app(CurrencyOptions::class);
 
         $rules = [
             'name' => ['required', 'string'],
@@ -35,7 +37,7 @@ class UpdateAccountRequest extends FormRequest
             'currency_code' => [
                 'required',
                 'string',
-                Rule::in(['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'CNY', 'INR', 'MXN']),
+                Rule::in($currencyOptions->accountCodes()),
             ],
             'type' => [
                 'required',

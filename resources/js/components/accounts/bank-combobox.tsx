@@ -22,8 +22,8 @@ import { Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 interface BankComboboxProps {
-    value: number | null;
-    onValueChange: (value: number | null) => void;
+    value: string | null;
+    onValueChange: (value: string | null) => void;
     defaultBank?: Bank;
     onCreateCustomBank?: (searchQuery: string) => void;
 }

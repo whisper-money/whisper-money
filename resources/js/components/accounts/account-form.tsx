@@ -10,11 +10,12 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { SharedData } from '@/types';
 import {
     ACCOUNT_TYPES,
     AREA_UNITS,
     Account,
-    CURRENCY_OPTIONS,
+    CurrencyOption,
     PROPERTY_TYPES,
     balanceTermCapitalized,
     formatAccountType,
@@ -27,6 +28,7 @@ import {
     type PropertyType,
 } from '@/types/account';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 import { BankCombobox } from './bank-combobox';
 import { CustomBankData, CustomBankForm } from './custom-bank-form';
@@ -60,7 +62,7 @@ export interface LoanFormData {
 
 export interface AccountFormData {
     displayName: string;
-    bankId: number | null;
+    bankId: string | null;
     type: AccountType | null;
     currencyCode: CurrencyCode | null;
     customBank: CustomBankData | null;
@@ -118,10 +120,13 @@ export function AccountForm({
     onChange,
     errors = {},
 }: AccountFormProps) {
+    const {
+        currencies: { accounts: currencyOptions },
+    } = usePage<SharedData>().props;
     const [displayName, setDisplayName] = useState(
         initialValues?.displayName ?? '',
     );
-    const [selectedBankId, setSelectedBankId] = useState<number | null>(
+    const [selectedBankId, setSelectedBankId] = useState<string | null>(
         initialValues?.bank?.id ?? null,
     );
     const [selectedType, setSelectedType] = useState<AccountType | null>(
@@ -318,9 +323,12 @@ export function AccountForm({
                             <SelectValue placeholder={__('Select currency')} />
                         </SelectTrigger>
                         <SelectContent>
-                            {CURRENCY_OPTIONS.map((currency) => (
-                                <SelectItem key={currency} value={currency}>
-                                    {currency}
+                            {currencyOptions.map((currency: CurrencyOption) => (
+                                <SelectItem
+                                    key={currency.code}
+                                    value={currency.code}
+                                >
+                                    {currency.code} - {currency.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>

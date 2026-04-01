@@ -31,3 +31,18 @@ test('all pages receive app url in shared props', function () {
         ->where('appUrl', config('app.url'))
     );
 });
+
+test('shared currency options split profile and account currencies', function () {
+    $response = $this->get(route('home'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('currencies.profile.0.code', 'USD')
+        ->where('currencies.accounts.0.code', 'USD')
+    );
+
+    $props = $response->viewData('page')['props'];
+
+    expect(collect($props['currencies']['profile'])->pluck('code'))->toContain('ARS');
+    expect(collect($props['currencies']['profile'])->pluck('code'))->not->toContain('BTC');
+    expect(collect($props['currencies']['accounts'])->pluck('code'))->toContain('BTC');
+});
