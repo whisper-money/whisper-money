@@ -136,6 +136,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
 
         $this->fail($e);
+
+        throw $e;
     }
 
     /**

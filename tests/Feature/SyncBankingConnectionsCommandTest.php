@@ -4,6 +4,8 @@ use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\User;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\artisan;
@@ -139,4 +141,32 @@ test('banking:sync does not set fullSync by default', function () {
     Queue::assertPushed(SyncAllBankingConnectionsJob::class, function ($job) {
         return $job->fullSync === false;
     });
+});
+
+test('banking:sync --sync fails for auth errors instead of reporting success', function () {
+    $user = User::factory()->create(['email' => 'test@example.com']);
+    $connection = BankingConnection::factory()->indexaCapital()->for($user)->create([
+        'last_synced_at' => now()->subDay(),
+    ]);
+
+    $user->accounts()->create([
+        'name' => 'Indexa Capital Account',
+        'name_iv' => null,
+        'encrypted' => false,
+        'bank_id' => null,
+        'currency_code' => 'EUR',
+        'type' => 'investment',
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/*' => Http::response(['error' => 'Unauthorized'], 401),
+    ]);
+
+    expect(fn () => artisan('banking:sync', [
+        '--user' => 'test@example.com',
+        '--connection' => $connection->id,
+        '--sync' => true,
+    ]))->toThrow(RequestException::class);
 });
