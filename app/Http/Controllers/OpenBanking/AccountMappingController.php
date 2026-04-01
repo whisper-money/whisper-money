@@ -5,17 +5,19 @@ namespace App\Http\Controllers\OpenBanking;
 use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Requests\OpenBanking\MapAccountsRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AccountMappingController extends Controller
 {
+    use CreatesAccountsFromPending;
+
     public function show(BankingConnection $connection): Response|RedirectResponse
     {
         if ($connection->user_id !== auth()->id()) {
@@ -33,7 +35,7 @@ class AccountMappingController extends Controller
 
         // During onboarding, skip the mapping UI — auto-create all accounts directly
         if (! $user->isOnboarded()) {
-            $this->autoCreateAccounts($user, $connection);
+            $this->createAccountsFromPending($user, $connection);
             SyncBankingConnectionJob::dispatch($connection);
 
             return redirect()->route('onboarding', ['step' => 'create-account'])
@@ -74,7 +76,7 @@ class AccountMappingController extends Controller
         $pendingAccounts = collect($connection->pending_accounts_data)
             ->keyBy('uid');
 
-        $accountType = ($connection->isIndexaCapital() || $connection->isBinance())
+        $accountType = ($connection->isIndexaCapital() || $connection->isBinance() || $connection->isBitpanda())
             ? AccountType::Investment
             : AccountType::Checking;
 
@@ -102,6 +104,7 @@ class AccountMappingController extends Controller
                     'type' => $accountType->value,
                     'banking_connection_id' => $connection->id,
                     'external_account_id' => $uid,
+                    'iban' => $accountData['account_id']['iban'] ?? null,
                 ]);
             } elseif ($action === 'link') {
                 $existingAccount = $user->accounts()->find($mapping['existing_account_id']);
@@ -110,6 +113,7 @@ class AccountMappingController extends Controller
                     $existingAccount->update([
                         'banking_connection_id' => $connection->id,
                         'external_account_id' => $uid,
+                        'iban' => $accountData['account_id']['iban'] ?? $existingAccount->iban,
                         'bank_id' => $bank->id,
                         'linked_at' => now(),
                     ]);
@@ -129,53 +133,5 @@ class AccountMappingController extends Controller
 
         return redirect()->route($successRedirect, $redirectParams)
             ->with('success', 'Bank account connected successfully.');
-    }
-
-    /**
-     * Auto-create all pending accounts without user interaction.
-     */
-    private function autoCreateAccounts(User $user, BankingConnection $connection): void
-    {
-        $bank = Bank::firstOrCreate(
-            ['name' => $connection->aspsp_name, 'user_id' => null],
-            ['name' => $connection->aspsp_name, 'logo' => $connection->aspsp_logo],
-        );
-
-        if (! $bank->logo && $connection->aspsp_logo) {
-            $bank->update(['logo' => $connection->aspsp_logo]);
-        }
-
-        $accountType = ($connection->isIndexaCapital() || $connection->isBinance())
-            ? AccountType::Investment
-            : AccountType::Checking;
-
-        foreach ($connection->pending_accounts_data ?? [] as $accountData) {
-            $uid = $accountData['uid'] ?? null;
-
-            if (! $uid) {
-                continue;
-            }
-
-            $currency = $accountData['currency'] ?? 'EUR';
-            $name = $accountData['name']
-                ?? $accountData['account_id']['iban']
-                ?? $connection->aspsp_name.' Account';
-
-            $user->accounts()->create([
-                'name' => $name,
-                'name_iv' => null,
-                'encrypted' => false,
-                'bank_id' => $bank->id,
-                'currency_code' => $currency,
-                'type' => $accountType->value,
-                'banking_connection_id' => $connection->id,
-                'external_account_id' => $uid,
-            ]);
-        }
-
-        $connection->update([
-            'status' => BankingConnectionStatus::Active,
-            'pending_accounts_data' => null,
-        ]);
     }
 }

@@ -656,7 +656,11 @@ test('sends auth failed email immediately for indexa capital 401 error', functio
     $mockQueueJob->shouldReceive('fail')->once();
     $job->job = $mockQueueJob;
 
-    $job->handle($transactionSync, $balanceSync);
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (RequestException) {
+        // Expected for auth failures after manually failing the job.
+    }
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Error);
@@ -696,7 +700,11 @@ test('auth error sends email and fails job on any attempt', function () {
     $job->job->shouldReceive('hasFailed')->andReturn(false);
     $job->job->shouldReceive('fail')->once();
 
-    $job->handle($transactionSync, $balanceSync);
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (RequestException) {
+        // Expected for auth failures after manually failing the job.
+    }
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Error);
@@ -810,7 +818,11 @@ test('sends auth failed email immediately for binance 403 error', function () {
     $job->job->shouldReceive('hasFailed')->andReturn(false);
     $job->job->shouldReceive('fail')->once();
 
-    $job->handle($transactionSync, $balanceSync);
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (RequestException) {
+        // Expected for auth failures after manually failing the job.
+    }
 
     Mail::assertQueued(BankingConnectionAuthFailedEmail::class, function ($mail) use ($user, $connection) {
         return $mail->hasTo($user->email)

@@ -226,7 +226,11 @@ test('auth error sets consecutive failures beyond the cap', function () {
     $job->job->shouldReceive('hasFailed')->andReturn(false);
     $job->job->shouldReceive('fail')->once();
 
-    $job->handle($transactionSync, $balanceSync);
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (RequestException) {
+        // Expected for auth failures after manually failing the job.
+    }
 
     $connection->refresh();
     expect($connection->consecutive_sync_failures)->toBe(SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES + 1);

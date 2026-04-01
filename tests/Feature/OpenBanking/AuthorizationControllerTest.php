@@ -136,62 +136,11 @@ test('callback without code redirects with error', function () {
     $response->assertSessionHas('error');
 });
 
-test('callback with valid code creates accounts directly when account-mapping is disabled', function () {
+test('callback with valid code stores pending accounts and redirects to mapping', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
     Feature::for($user)->activate('open-banking');
-
-    $connection = BankingConnection::factory()->pending()->create([
-        'user_id' => $user->id,
-        'aspsp_name' => 'Test Bank',
-        'aspsp_country' => 'ES',
-    ]);
-
-    $mockProvider = Mockery::mock(BankingProviderInterface::class);
-    $mockProvider->shouldReceive('createSession')
-        ->with('test-code')
-        ->once()
-        ->andReturn([
-            'session_id' => 'session-123',
-            'accounts' => [
-                [
-                    'uid' => 'ext-account-1',
-                    'currency' => 'EUR',
-                    'name' => 'My Checking Account',
-                    'account_id' => ['iban' => 'ES1234567890123456789012'],
-                ],
-            ],
-            'aspsp' => ['name' => 'Test Bank', 'country' => 'ES'],
-            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
-        ]);
-
-    $this->app->instance(BankingProviderInterface::class, $mockProvider);
-
-    $response = $this->actingAs($user)->get('/open-banking/callback?code=test-code');
-
-    $response->assertRedirect(route('settings.connections.index'));
-
-    $connection->refresh();
-    expect($connection->status)->toBe(BankingConnectionStatus::Active);
-    expect($connection->session_id)->toBe('session-123');
-
-    $this->assertDatabaseHas('accounts', [
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-        'external_account_id' => 'ext-account-1',
-        'encrypted' => false,
-    ]);
-
-    Queue::assertPushed(SyncBankingConnectionJob::class);
-});
-
-test('callback with valid code stores pending accounts and redirects to mapping when account-mapping is enabled', function () {
-    Queue::fake();
-
-    $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-    Feature::for($user)->activate('account-mapping');
 
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
@@ -408,12 +357,11 @@ test('callback with existing accounts updates session without creating new accou
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
 
-test('callback with existing accounts skips account-mapping even when feature flag is enabled', function () {
+test('callback with existing accounts skips mapping on reconnect', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
     Feature::for($user)->activate('open-banking');
-    Feature::for($user)->activate('account-mapping');
 
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
@@ -618,7 +566,7 @@ test('reconnect callback uses positional fallback for accounts without stored ib
     expect($accountB->refresh()->iban)->toBe('ES0000000000000000000002');
 });
 
-test('callback stores iban when creating accounts for the first time', function () {
+test('callback stores iban in pending accounts data', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
@@ -651,9 +599,7 @@ test('callback stores iban when creating accounts for the first time', function 
 
     $this->actingAs($user)->get('/open-banking/callback?code=test-code');
 
-    $this->assertDatabaseHas('accounts', [
-        'user_id' => $user->id,
-        'external_account_id' => 'ext-account-1',
-        'iban' => 'ES9999999999999999999999',
-    ]);
+    $connection->refresh();
+    expect($connection->pending_accounts_data)->toHaveCount(1);
+    expect($connection->pending_accounts_data[0]['account_id']['iban'])->toBe('ES9999999999999999999999');
 });

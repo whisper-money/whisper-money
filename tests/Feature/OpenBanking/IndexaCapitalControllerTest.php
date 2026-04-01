@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
@@ -39,21 +38,18 @@ test('users can connect an indexa capital account with valid token', function ()
     $response->assertOk();
     $response->assertJsonStructure(['redirect_url', 'connection_id']);
 
-    $this->assertDatabaseHas('banking_connections', [
+    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'indexacapital')->first();
+
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->pending_accounts_data)->toHaveCount(1);
+    expect($connection->pending_accounts_data[0]['uid'])->toBe('IC-001');
+
+    $this->assertDatabaseMissing('accounts', [
         'user_id' => $user->id,
-        'provider' => 'indexacapital',
-        'aspsp_name' => 'Indexa Capital',
-        'aspsp_country' => 'ES',
-        'status' => BankingConnectionStatus::Active->value,
+        'banking_connection_id' => $connection->id,
     ]);
 
-    $this->assertDatabaseHas('accounts', [
-        'user_id' => $user->id,
-        'external_account_id' => 'IC-001',
-        'type' => AccountType::Investment->value,
-    ]);
-
-    Queue::assertPushed(SyncBankingConnectionJob::class);
+    Queue::assertNothingPushed();
 });
 
 test('invalid token returns 422', function () {
@@ -75,43 +71,6 @@ test('invalid token returns 422', function () {
         'user_id' => $user->id,
         'provider' => 'indexacapital',
     ]);
-});
-
-test('connection with account-mapping flag returns mapping redirect', function () {
-    Queue::fake();
-
-    $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-    Feature::for($user)->activate('account-mapping');
-
-    Http::fake([
-        'api.indexacapital.com/users/me' => Http::response([
-            'accounts' => [
-                ['account_number' => 'IC-001', 'status' => 'active', 'type' => 'mutual'],
-                ['account_number' => 'IC-002', 'status' => 'active', 'type' => 'pension'],
-            ],
-        ]),
-    ]);
-
-    $response = $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [
-        'api_token' => 'valid-test-token-12345',
-    ]);
-
-    $response->assertOk();
-
-    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'indexacapital')->first();
-
-    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
-    expect($connection->pending_accounts_data)->toHaveCount(2);
-    expect($connection->pending_accounts_data[0]['uid'])->toBe('IC-001');
-    expect($connection->pending_accounts_data[1]['uid'])->toBe('IC-002');
-
-    $this->assertDatabaseMissing('accounts', [
-        'user_id' => $user->id,
-        'banking_connection_id' => $connection->id,
-    ]);
-
-    Queue::assertNothingPushed();
 });
 
 test('requires open-banking feature flag', function () {
@@ -139,7 +98,7 @@ test('api_token is required and must be at least 10 characters', function () {
         ->assertJsonValidationErrors(['api_token']);
 });
 
-test('creates multiple accounts for multiple indexa portfolios', function () {
+test('stores multiple pending accounts for multiple indexa portfolios', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
@@ -160,16 +119,56 @@ test('creates multiple accounts for multiple indexa portfolios', function () {
 
     $response->assertOk();
 
-    expect($user->accounts()->where('type', AccountType::Investment->value)->count())->toBe(2);
+    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'indexacapital')->first();
+
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->pending_accounts_data)->toHaveCount(2);
+    expect($connection->pending_accounts_data[0]['uid'])->toBe('IC-001');
+    expect($connection->pending_accounts_data[0]['name'])->toBe('Investment Portfolio (IC-001)');
+    expect($connection->pending_accounts_data[1]['uid'])->toBe('IC-002');
+    expect($connection->pending_accounts_data[1]['name'])->toBe('Pension Plan (IC-002)');
+});
+
+test('indexa capital auto-creates accounts during onboarding', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    Http::fake([
+        'api.indexacapital.com/users/me' => Http::response([
+            'accounts' => [
+                ['account_number' => 'IC-001', 'status' => 'active', 'type' => 'mutual'],
+                ['account_number' => 'IC-002', 'status' => 'active', 'type' => 'pension'],
+            ],
+        ]),
+    ]);
+
+    $response = $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [
+        'api_token' => 'valid-test-token-12345',
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('redirect_url', route('onboarding', ['step' => 'create-account']));
+
+    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'indexacapital')->first();
+
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->pending_accounts_data)->toBeNull();
 
     $this->assertDatabaseHas('accounts', [
         'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
         'external_account_id' => 'IC-001',
-        'name' => 'Investment Portfolio (IC-001)',
+        'type' => 'investment',
     ]);
+
     $this->assertDatabaseHas('accounts', [
         'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
         'external_account_id' => 'IC-002',
-        'name' => 'Pension Plan (IC-002)',
+        'type' => 'investment',
     ]);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
 });

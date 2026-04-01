@@ -105,11 +105,55 @@ test('store with action create creates new accounts', function () {
         'external_account_id' => 'ext-1',
         'name' => 'Test Checking',
         'currency_code' => 'EUR',
+        'iban' => 'ES1234567890',
     ]);
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
     expect($connection->pending_accounts_data)->toBeNull();
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
+});
+
+test('store creates investment accounts for bitpanda connections', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'provider' => 'bitpanda',
+        'aspsp_name' => 'Bitpanda',
+        'pending_accounts_data' => [
+            [
+                'uid' => 'bitpanda-portfolio',
+                'currency' => 'EUR',
+                'name' => 'Crypto Portfolio',
+                'account_id' => [],
+            ],
+        ],
+    ]);
+
+    $response = $this->actingAs($user)
+        ->post(route('open-banking.map-accounts.store', $connection), [
+            'mappings' => [
+                [
+                    'bank_account_uid' => 'bitpanda-portfolio',
+                    'action' => 'create',
+                    'existing_account_id' => null,
+                ],
+            ],
+        ]);
+
+    $response->assertRedirect(route('settings.connections.index'));
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'bitpanda-portfolio',
+        'type' => 'investment',
+    ]);
 
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
@@ -158,6 +202,7 @@ test('store with action link links existing account', function () {
     expect($existingAccount->banking_connection_id)->toBe($connection->id);
     expect($existingAccount->external_account_id)->toBe('ext-1');
     expect($existingAccount->linked_at)->not->toBeNull();
+    expect($existingAccount->iban)->toBe('ES1234567890');
 
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
