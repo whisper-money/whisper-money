@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\User;
@@ -126,4 +127,48 @@ test('stores multiple pending accounts for multiple indexa portfolios', function
     expect($connection->pending_accounts_data[0]['name'])->toBe('Investment Portfolio (IC-001)');
     expect($connection->pending_accounts_data[1]['uid'])->toBe('IC-002');
     expect($connection->pending_accounts_data[1]['name'])->toBe('Pension Plan (IC-002)');
+});
+
+test('indexa capital auto-creates accounts during onboarding', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create();
+    Feature::for($user)->activate('open-banking');
+
+    Http::fake([
+        'api.indexacapital.com/users/me' => Http::response([
+            'accounts' => [
+                ['account_number' => 'IC-001', 'status' => 'active', 'type' => 'mutual'],
+                ['account_number' => 'IC-002', 'status' => 'active', 'type' => 'pension'],
+            ],
+        ]),
+    ]);
+
+    $response = $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [
+        'api_token' => 'valid-test-token-12345',
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('redirect_url', route('onboarding', ['step' => 'create-account']));
+
+    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'indexacapital')->first();
+
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->pending_accounts_data)->toBeNull();
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-001',
+        'type' => 'investment',
+    ]);
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-002',
+        'type' => 'investment',
+    ]);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
 });

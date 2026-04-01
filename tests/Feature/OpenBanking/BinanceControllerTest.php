@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
@@ -124,4 +125,42 @@ test('binance stores pending accounts with user currency', function () {
     expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
     expect($connection->pending_accounts_data)->toHaveCount(1);
     expect($connection->pending_accounts_data[0]['currency'])->toBe('USD');
+});
+
+test('binance auto-creates accounts during onboarding', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create(['currency_code' => 'EUR']);
+    Feature::for($user)->activate('open-banking');
+
+    Http::fake([
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'BTC', 'free' => '0.5', 'locked' => '0.0'],
+            ],
+        ]),
+    ]);
+
+    $response = $this->actingAs($user)->postJson('/open-banking/binance/connect', [
+        'api_key' => 'valid-test-api-key-12345',
+        'api_secret' => 'valid-test-api-secret-12345',
+        'country' => 'ES',
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('redirect_url', route('onboarding', ['step' => 'create-account']));
+
+    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'binance')->first();
+
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->pending_accounts_data)->toBeNull();
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'type' => 'investment',
+    ]);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
 });

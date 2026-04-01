@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
@@ -141,4 +142,52 @@ test('bitpanda stores pending accounts with user currency', function () {
     expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
     expect($connection->pending_accounts_data)->toHaveCount(1);
     expect($connection->pending_accounts_data[0]['currency'])->toBe('USD');
+});
+
+test('bitpanda auto-creates accounts during onboarding', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create(['currency_code' => 'EUR']);
+    Feature::for($user)->activate('open-banking');
+
+    Http::fake([
+        'api.bitpanda.com/v1/wallets' => Http::response([
+            'data' => [
+                [
+                    'type' => 'wallet',
+                    'attributes' => [
+                        'cryptocoin_id' => '1',
+                        'cryptocoin_symbol' => 'BTC',
+                        'balance' => '0.50000000',
+                        'is_default' => true,
+                        'name' => 'BTC wallet',
+                        'deleted' => false,
+                    ],
+                    'id' => 'wallet-uuid-1',
+                ],
+            ],
+        ]),
+    ]);
+
+    $response = $this->actingAs($user)->postJson('/open-banking/bitpanda/connect', [
+        'api_key' => 'valid-test-api-key-12345',
+        'country' => 'ES',
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonPath('redirect_url', route('onboarding', ['step' => 'create-account']));
+
+    $connection = BankingConnection::where('user_id', $user->id)->where('provider', 'bitpanda')->first();
+
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->pending_accounts_data)->toBeNull();
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'bitpanda-portfolio',
+        'type' => 'investment',
+    ]);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
 });

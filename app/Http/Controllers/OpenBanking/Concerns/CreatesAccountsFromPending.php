@@ -14,7 +14,7 @@ trait CreatesAccountsFromPending
      * Auto-create all pending accounts from a banking connection without user interaction.
      *
      * This resolves the correct account type based on the provider (Investment for
-     * Indexa Capital and Binance, Checking for everything else) and clears the
+     * Indexa Capital, Binance, and Bitpanda; Checking for everything else) and clears the
      * pending data once accounts have been created.
      */
     private function createAccountsFromPending(User $user, BankingConnection $connection): void
@@ -28,7 +28,7 @@ trait CreatesAccountsFromPending
             $bank->update(['logo' => $connection->aspsp_logo]);
         }
 
-        $accountType = ($connection->isIndexaCapital() || $connection->isBinance())
+        $accountType = ($connection->isIndexaCapital() || $connection->isBinance() || $connection->isBitpanda())
             ? AccountType::Investment
             : AccountType::Checking;
 

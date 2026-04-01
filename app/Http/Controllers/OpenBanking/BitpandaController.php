@@ -4,7 +4,9 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Requests\OpenBanking\ConnectBitpandaRequest;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Services\Banking\BitpandaClient;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +14,8 @@ use Illuminate\Support\Facades\Log;
 
 class BitpandaController extends Controller
 {
+    use CreatesAccountsFromPending;
+
     /**
      * Validate Bitpanda API key and create a connection.
      */
@@ -58,6 +62,16 @@ class BitpandaController extends Controller
             'status' => BankingConnectionStatus::AwaitingMapping,
             'pending_accounts_data' => $pendingAccounts,
         ]);
+
+        if (! $user->isOnboarded()) {
+            $this->createAccountsFromPending($user, $connection);
+            SyncBankingConnectionJob::dispatch($connection);
+
+            return response()->json([
+                'redirect_url' => route('onboarding', ['step' => 'create-account']),
+                'connection_id' => $connection->id,
+            ]);
+        }
 
         return response()->json([
             'redirect_url' => route('open-banking.map-accounts', $connection),
