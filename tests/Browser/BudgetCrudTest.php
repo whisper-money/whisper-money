@@ -80,9 +80,13 @@ test('user can update budget name', function () {
         ->fill('#allocated-amount', '500')
         ->wait(2)
         ->click('button:has-text("Save Changes")')
-        ->wait(4) // Wait for form submission
-        ->waitForText('New Budget Name', 15)
-        ->assertDontSee('Old Name')
+        ->waitForText('Saving...', 5)
+        ->waitForEvent('networkidle')
+        ->assertScript("document.querySelector('[role=\"dialog\"]') === null")
+        ->assertPathIs("/budgets/{$budget->id}")
+        ->assertSee('Budget Spending')
+        ->assertSee('New Budget Name')
+        ->assertTitleContains('New Budget Name')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('budgets', [
