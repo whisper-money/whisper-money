@@ -214,6 +214,9 @@ export default function Dashboard() {
                                 linkedLoanMetrics={
                                     linkedLoanMetricsMap[account.id]
                                 }
+                                displayCurrencyCode={
+                                    netWorthEvolution.currency_code
+                                }
                             />
                         ))}
                     </div>

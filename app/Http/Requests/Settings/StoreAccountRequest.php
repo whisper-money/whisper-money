@@ -33,6 +33,9 @@ class StoreAccountRequest extends FormRequest
     {
         $isRealEstate = $this->input('type') === AccountType::RealEstate->value;
         $currencyOptions = app(CurrencyOptions::class);
+        $allowedCurrencyCodes = $this->user()->accounts()->exists()
+            ? $currencyOptions->accountCodes()
+            : $currencyOptions->primaryCodes();
 
         $rules = [
             'name' => ['required', 'string'],
@@ -42,7 +45,7 @@ class StoreAccountRequest extends FormRequest
             'currency_code' => [
                 'required',
                 'string',
-                Rule::in($currencyOptions->accountCodes()),
+                Rule::in($allowedCurrencyCodes),
             ],
             'type' => [
                 'required',

@@ -117,24 +117,44 @@ class DashboardAnalyticsController extends Controller
 
         $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $end);
 
+        $userCurrency = $request->user()->currency_code;
+        $needsConversion = strtolower($account->currency_code) !== strtolower($userCurrency);
+
         $points = [];
         $current = $start->copy()->startOfMonth();
         $endMonth = $end->copy()->startOfMonth();
 
         while ($current->lte($endMonth)) {
             $date = $current->copy()->endOfMonth();
+            $value = $lookup->getBalanceAt($account->id, $date);
             $point = [
                 'month' => $date->format('Y-m'),
                 'timestamp' => $date->timestamp,
-                'value' => $lookup->getBalanceAt($account->id, $date),
+                'value' => $value,
             ];
 
             if ($account->type->supportsInvestedAmount()) {
-                $point['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $date);
+                $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
+                $point['invested_amount'] = $investedAmount;
+
+                if ($needsConversion) {
+                    $point['display_invested_amount'] = $investedAmount !== null
+                        ? $this->exchangeRateService->convert($account->currency_code, $userCurrency, $investedAmount, $date->toDateString())
+                        : null;
+                }
             }
 
             if ($linkedLoanId) {
-                $point['mortgage_balance'] = $lookup->getBalanceAt($linkedLoanId, $date);
+                $mortgageBalance = $lookup->getBalanceAt($linkedLoanId, $date);
+                $point['mortgage_balance'] = $mortgageBalance;
+
+                if ($needsConversion) {
+                    $point['display_mortgage_balance'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $mortgageBalance, $date->toDateString());
+                }
+            }
+
+            if ($needsConversion) {
+                $point['display_value'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $value, $date->toDateString());
             }
 
             $points[] = $point;
@@ -157,17 +177,23 @@ class DashboardAnalyticsController extends Controller
                         continue;
                     }
 
-                    $points[] = [
+                    $projectedPoint = [
                         'month' => $yearMonth,
                         'timestamp' => $projectedDate->timestamp,
                         'value' => $balanceCents,
                         'projected' => true,
                     ];
+
+                    if ($needsConversion) {
+                        $projectedPoint['display_value'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $balanceCents, Carbon::today()->toDateString());
+                    }
+
+                    $points[] = $projectedPoint;
                 }
             }
         }
 
-        return response()->json([
+        $response = [
             'data' => $points,
             'account' => [
                 'id' => $account->id,
@@ -177,7 +203,13 @@ class DashboardAnalyticsController extends Controller
                 'type' => $account->type,
                 'currency_code' => $account->currency_code,
             ],
-        ]);
+        ];
+
+        if ($needsConversion) {
+            $response['display_currency_code'] = $userCurrency;
+        }
+
+        return response()->json($response);
     }
 
     public function accountDailyBalanceEvolution(Request $request, Account $account)
@@ -199,30 +231,50 @@ class DashboardAnalyticsController extends Controller
 
         $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
 
+        $userCurrency = $request->user()->currency_code;
+        $needsConversion = strtolower($account->currency_code) !== strtolower($userCurrency);
+
         $points = [];
         $current = $start->copy();
 
         while ($current->lte($end)) {
             $date = $current->copy();
+            $value = $lookup->getBalanceAt($account->id, $date);
             $point = [
                 'date' => $date->format('Y-m-d'),
                 'timestamp' => $date->endOfDay()->timestamp,
-                'value' => $lookup->getBalanceAt($account->id, $date),
+                'value' => $value,
             ];
 
             if ($account->type->supportsInvestedAmount()) {
-                $point['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $date);
+                $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
+                $point['invested_amount'] = $investedAmount;
+
+                if ($needsConversion) {
+                    $point['display_invested_amount'] = $investedAmount !== null
+                        ? $this->exchangeRateService->convert($account->currency_code, $userCurrency, $investedAmount, $date->toDateString())
+                        : null;
+                }
             }
 
             if ($linkedLoanId) {
-                $point['mortgage_balance'] = $lookup->getBalanceAt($linkedLoanId, $date);
+                $mortgageBalance = $lookup->getBalanceAt($linkedLoanId, $date);
+                $point['mortgage_balance'] = $mortgageBalance;
+
+                if ($needsConversion) {
+                    $point['display_mortgage_balance'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $mortgageBalance, $date->toDateString());
+                }
+            }
+
+            if ($needsConversion) {
+                $point['display_value'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $value, $date->toDateString());
             }
 
             $points[] = $point;
             $current->addDay();
         }
 
-        return response()->json([
+        $response = [
             'data' => $points,
             'account' => [
                 'id' => $account->id,
@@ -232,7 +284,13 @@ class DashboardAnalyticsController extends Controller
                 'type' => $account->type,
                 'currency_code' => $account->currency_code,
             ],
-        ]);
+        ];
+
+        if ($needsConversion) {
+            $response['display_currency_code'] = $userCurrency;
+        }
+
+        return response()->json($response);
     }
 
     public function netWorthDailyEvolution(Request $request)

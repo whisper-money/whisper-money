@@ -83,6 +83,7 @@ interface AccountFormProps {
     forceAccountType?: AccountType;
     hiddenAccountTypes?: AccountType[];
     availableLoanAccounts?: Account[];
+    usePrimaryCurrenciesOnly?: boolean;
     onChange: (data: AccountFormData) => void;
     errors?: Record<string, string>;
 }
@@ -117,12 +118,14 @@ export function AccountForm({
     forceAccountType,
     hiddenAccountTypes = [],
     availableLoanAccounts = [],
+    usePrimaryCurrenciesOnly = false,
     onChange,
     errors = {},
 }: AccountFormProps) {
-    const {
-        currencies: { accounts: currencyOptions },
-    } = usePage<SharedData>().props;
+    const { currencies } = usePage<SharedData>().props;
+    const currencyOptions = usePrimaryCurrenciesOnly
+        ? currencies.profile
+        : currencies.accounts;
     const [displayName, setDisplayName] = useState(
         initialValues?.displayName ?? '',
     );
