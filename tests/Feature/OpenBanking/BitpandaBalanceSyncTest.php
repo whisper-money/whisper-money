@@ -741,6 +741,11 @@ test('converts bitpanda fiat transactions that do not match the target currency 
                 'links' => [],
             ]),
         'api.bitpanda.com/v1/fiatwallets' => Http::response(['data' => []]),
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => [
+                'usd' => 1.10,
+            ],
+        ]),
     ]);
 
     $client = new BitpandaClient('test-key');
@@ -748,8 +753,8 @@ test('converts bitpanda fiat transactions that do not match the target currency 
     $service->sync($account, $client);
 
     $balance = $account->balances()->first();
-    // 1000 EUR + 250 EUR + (500 USD / 1.10) = 1682.97 EUR → 168297 cents
-    expect($balance->invested_amount)->toBe(168297);
+    // 1000 EUR + 250 EUR + (500 USD / 1.10) = 1704.55 EUR → 170455 cents
+    expect($balance->invested_amount)->toBe(170455);
 });
 
 test('converts bitpanda fiat transactions to newly allowed primary currency for invested amount', function () {
