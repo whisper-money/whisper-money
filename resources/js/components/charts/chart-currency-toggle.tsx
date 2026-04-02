@@ -56,7 +56,7 @@ export function ChartCurrencyToggle({
             }}
             variant="outline"
             size="sm"
-            className={cn('', className)}
+            className={cn(className)}
         >
             {items.map((item) => {
                 const toggleItem = (
