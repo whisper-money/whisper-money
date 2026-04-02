@@ -51,7 +51,7 @@ The easiest way to get started is using our automated setup script:
 bash <(curl -fsSL https://whisper.money/setup.sh)
 ```
 
-After installation, just visit **<https://whisper.money.local>** in your browser.
+After installation, just visit **<https://whisper.money.localhost>** in your browser.
 
 ### Manual Setup
 
@@ -100,12 +100,12 @@ composer run dev
 
 This will concurrently start:
 
-- PHP development server
+- PHP development server (via [Portless](https://portless.sh) HTTPS proxy)
 - Queue worker
 - Log viewer (Pail)
 - Vite dev server
 
-The application will be available at **<https://whisper.money.local>** or **<http://localhost:8000>** (direct PHP server).
+The application will be available at **<https://dev.whisper.money.localhost>**. In git worktrees, the branch name is automatically prepended (e.g. `https://fix-ui.dev.whisper.money.localhost`).
 
 ## Running with Docker (Production Image)
 

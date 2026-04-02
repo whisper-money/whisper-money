@@ -1,20 +1,4 @@
 services:
-    caddy:
-        image: 'caddy:latest'
-        ports:
-            - '80:80'
-            - '443:443'
-            - '443:443/udp'
-        volumes:
-            - './Caddyfile:/etc/caddy/Caddyfile:ro'
-            - './docker/caddy/certs:/etc/caddy/certs:ro'
-            - 'caddy_data:/data'
-            - 'caddy_config:/config'
-        networks:
-            - sail
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
-        restart: unless-stopped
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:
@@ -96,8 +80,4 @@ volumes:
     sail-mysql:
         driver: local
     sail-redis:
-        driver: local
-    caddy_data:
-        driver: local
-    caddy_config:
         driver: local
