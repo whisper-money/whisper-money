@@ -62,7 +62,7 @@ class CurrencyOptions
         return array_values(array_map(
             fn (array $currency): array => [
                 'code' => $currency['code'],
-                'name' => $currency['name'],
+                'name' => __($currency['name']),
             ],
             array_filter($options, fn (array $currency): bool => $currency[$capability])
         ));
