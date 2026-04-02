@@ -1,6 +1,8 @@
 import { AccountName } from '@/components/accounts/account-name';
 import {
+    type ChartCurrencyMode,
     type ChartGranularity,
+    ChartCurrencyToggle,
     ChartGranularityToggle,
     ChartSettingsPopover,
     ChartViewToggle,
@@ -227,6 +229,9 @@ export interface BalanceDataPoint {
     invested_amount?: number | null;
     mortgage_balance?: number | null;
     projected?: boolean;
+    display_value?: number;
+    display_invested_amount?: number | null;
+    display_mortgage_balance?: number;
 }
 
 interface AccountBalanceData {
@@ -238,6 +243,7 @@ interface AccountBalanceData {
         type: string;
         currency_code: string;
     };
+    display_currency_code?: string;
 }
 
 interface DailyBalanceDataPoint {
@@ -246,6 +252,9 @@ interface DailyBalanceDataPoint {
     value: number;
     invested_amount?: number | null;
     mortgage_balance?: number | null;
+    display_value?: number;
+    display_invested_amount?: number | null;
+    display_mortgage_balance?: number;
 }
 
 interface AccountDailyBalanceData {
@@ -257,12 +266,14 @@ interface AccountDailyBalanceData {
         type: string;
         currency_code: string;
     };
+    display_currency_code?: string;
 }
 
 export interface ChartComputedData {
     chartData: BalanceDataPoint[];
     currentBalance: number;
     currentMortgageBalance: number | null;
+    currencyCode: string;
     hasMortgageData: boolean;
     shortTrend: ReturnType<typeof calculateTrend>;
     longTrend: ReturnType<typeof calculateTrend>;
@@ -330,6 +341,9 @@ function normalizeDailyData(data: DailyBalanceDataPoint[]): BalanceDataPoint[] {
         value: point.value,
         invested_amount: point.invested_amount,
         mortgage_balance: point.mortgage_balance,
+        display_value: point.display_value,
+        display_invested_amount: point.display_invested_amount,
+        display_mortgage_balance: point.display_mortgage_balance,
     }));
 }
 
@@ -345,6 +359,8 @@ export function AccountBalanceChart({
     const isLoan = account.type === 'loan';
     const isRealEstate = isRealEstateAccount(account);
     const [granularity, setGranularity] = useState<ChartGranularity>('monthly');
+    const [currencyMode, setCurrencyMode] =
+        useState<ChartCurrencyMode>('account');
     const [balanceData, setBalanceData] = useState<AccountBalanceData | null>(
         null,
     );
@@ -369,6 +385,7 @@ export function AccountBalanceChart({
                     setBalanceData({
                         data: normalizeDailyData(data.data),
                         account: data.account,
+                        display_currency_code: data.display_currency_code,
                     });
                 } else {
                     const from = format(subMonths(now, 12), 'yyyy-MM-dd');
@@ -488,36 +505,126 @@ export function AccountBalanceChart({
         };
     }, [balanceData]);
 
+    // Determine if currency toggle is available
+    const displayCurrencyCode = balanceData?.display_currency_code ?? null;
+    const hasCurrencyToggle = displayCurrencyCode !== null;
+
+    // When in user-currency mode, swap display_* values into the primary fields
+    const activeCurrencyCode =
+        currencyMode === 'user' && displayCurrencyCode
+            ? displayCurrencyCode
+            : account.currency_code;
+
+    const activeChartData = useMemo(() => {
+        if (currencyMode !== 'user' || !hasCurrencyToggle) {
+            return chartData;
+        }
+
+        return chartData.map((point) => ({
+            ...point,
+            value: point.display_value ?? point.value,
+            invested_amount:
+                point.display_invested_amount !== undefined
+                    ? point.display_invested_amount
+                    : point.invested_amount,
+            mortgage_balance:
+                point.display_mortgage_balance !== undefined
+                    ? point.display_mortgage_balance
+                    : point.mortgage_balance,
+            projected_value:
+                'projected_value' in point && point.display_value !== undefined
+                    ? point.display_value
+                    : ((point as unknown as Record<string, unknown>)
+                          .projected_value as number | undefined),
+        }));
+    }, [chartData, currencyMode, hasCurrencyToggle]);
+
+    const activeCurrentBalance = useMemo(() => {
+        if (currencyMode !== 'user' || !hasCurrencyToggle) {
+            return currentBalance;
+        }
+        const historicalData = activeChartData.filter((d) => !d.projected);
+        return historicalData[historicalData.length - 1]?.value ?? 0;
+    }, [activeChartData, currentBalance, currencyMode, hasCurrencyToggle]);
+
+    const activeCurrentMortgageBalance = useMemo(() => {
+        if (currencyMode !== 'user' || !hasCurrencyToggle) {
+            return currentMortgageBalance;
+        }
+        if (!hasMortgageData) return null;
+        for (let i = activeChartData.length - 1; i >= 0; i--) {
+            const mb = activeChartData[i].mortgage_balance;
+            if (mb !== null && mb !== undefined) return mb;
+        }
+        return null;
+    }, [
+        activeChartData,
+        currentMortgageBalance,
+        currencyMode,
+        hasCurrencyToggle,
+        hasMortgageData,
+    ]);
+
+    const activeCurrentInvestedAmount = useMemo(() => {
+        if (currencyMode !== 'user' || !hasCurrencyToggle) {
+            return currentInvestedAmount;
+        }
+        for (let i = activeChartData.length - 1; i >= 0; i--) {
+            const ia = activeChartData[i].invested_amount;
+            if (ia !== null && ia !== undefined) return ia;
+        }
+        return null;
+    }, [
+        activeChartData,
+        currentInvestedAmount,
+        currencyMode,
+        hasCurrencyToggle,
+    ]);
+
+    const activeShortTrend = useMemo(() => {
+        if (currencyMode !== 'user' || !hasCurrencyToggle) return shortTrend;
+        const historicalData = activeChartData.filter((d) => !d.projected);
+        return calculateTrend(historicalData, 1);
+    }, [activeChartData, currencyMode, hasCurrencyToggle, shortTrend]);
+
+    const activeLongTrend = useMemo(() => {
+        if (currencyMode !== 'user' || !hasCurrencyToggle) return longTrend;
+        const historicalData = activeChartData.filter((d) => !d.projected);
+        return calculateTrend(historicalData, historicalData.length - 1);
+    }, [activeChartData, currencyMode, hasCurrencyToggle, longTrend]);
+
     useEffect(() => {
-        if (onDataLoaded && chartData.length > 0) {
+        if (onDataLoaded && activeChartData.length > 0) {
             onDataLoaded({
-                chartData,
-                currentBalance,
-                currentMortgageBalance,
+                chartData: activeChartData,
+                currentBalance: activeCurrentBalance,
+                currentMortgageBalance: activeCurrentMortgageBalance,
+                currencyCode: activeCurrencyCode,
                 hasMortgageData,
-                shortTrend,
-                longTrend,
+                shortTrend: activeShortTrend,
+                longTrend: activeLongTrend,
             });
         }
     }, [
-        chartData,
-        currentBalance,
-        currentMortgageBalance,
+        activeChartData,
+        activeCurrentBalance,
+        activeCurrentMortgageBalance,
+        activeCurrencyCode,
         hasMortgageData,
-        shortTrend,
-        longTrend,
+        activeShortTrend,
+        activeLongTrend,
         onDataLoaded,
     ]);
 
     // Convert data for useChartViews hook
     const { data: hookData, accounts: hookAccounts } = useMemo(() => {
         return convertSingleAccountData(
-            chartData,
+            activeChartData,
             account.id,
             account.type,
-            account.currency_code,
+            activeCurrencyCode,
         );
-    }, [chartData, account.id, account.type, account.currency_code]);
+    }, [activeChartData, account.id, account.type, activeCurrencyCode]);
 
     const chartViews = useChartViews({
         data: hookData,
@@ -568,19 +675,19 @@ export function AccountBalanceChart({
     );
 
     const valueFormatter = (value: number): string => {
-        return formatChartCurrency(value, account.currency_code, locale);
+        return formatChartCurrency(value, activeCurrencyCode, locale);
     };
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const minBarWidth = granularity === 'daily' ? 20 : 50;
-    const minChartWidth = chartData.length * minBarWidth;
+    const minChartWidth = activeChartData.length * minBarWidth;
 
     useEffect(() => {
         if (scrollContainerRef.current) {
             scrollContainerRef.current.scrollLeft =
                 scrollContainerRef.current.scrollWidth;
         }
-    }, [chartData]);
+    }, [activeChartData]);
 
     const shortTrendLabel =
         granularity === 'daily' ? __('today') : __('this month');
@@ -600,8 +707,8 @@ export function AccountBalanceChart({
           ? __('No owed amount data available')
           : __('No balance data available');
     const currentEquity =
-        hasMortgageData && currentMortgageBalance !== null
-            ? currentBalance - currentMortgageBalance
+        hasMortgageData && activeCurrentMortgageBalance !== null
+            ? activeCurrentBalance - activeCurrentMortgageBalance
             : null;
 
     if (initialLoading || isLoading) {
@@ -647,8 +754,8 @@ export function AccountBalanceChart({
                             className="-ml-3 cursor-pointer rounded-md px-2 py-1 text-left text-4xl font-semibold tabular-nums transition-colors hover:bg-muted"
                         >
                             <AmountDisplay
-                                amountInCents={currentBalance}
-                                currencyCode={account.currency_code}
+                                amountInCents={activeCurrentBalance}
+                                currencyCode={activeCurrencyCode}
                                 minimumFractionDigits={0}
                                 maximumFractionDigits={0}
                             />
@@ -663,7 +770,7 @@ export function AccountBalanceChart({
                                 >
                                     <AmountDisplay
                                         amountInCents={currentEquity}
-                                        currencyCode={account.currency_code}
+                                        currencyCode={activeCurrencyCode}
                                         minimumFractionDigits={0}
                                         maximumFractionDigits={0}
                                     />
@@ -672,19 +779,19 @@ export function AccountBalanceChart({
                         )}
                         <CardDescription className="flex flex-col gap-1 text-sm">
                             <PercentageTrendIndicator
-                                trend={shortTrend?.percentage ?? null}
+                                trend={activeShortTrend?.percentage ?? null}
                                 label={shortTrendLabel}
-                                previousAmount={shortTrend?.previousValue}
-                                currentAmount={shortTrend?.currentValue}
-                                currencyCode={account.currency_code}
+                                previousAmount={activeShortTrend?.previousValue}
+                                currentAmount={activeShortTrend?.currentValue}
+                                currencyCode={activeCurrencyCode}
                             />
 
                             <PercentageTrendIndicator
-                                trend={longTrend?.percentage ?? null}
+                                trend={activeLongTrend?.percentage ?? null}
                                 label={longTrendLabel}
-                                previousAmount={longTrend?.previousValue}
-                                currentAmount={longTrend?.currentValue}
-                                currencyCode={account.currency_code}
+                                previousAmount={activeLongTrend?.previousValue}
+                                currentAmount={activeLongTrend?.currentValue}
+                                currencyCode={activeCurrencyCode}
                             />
                         </CardDescription>
                     </div>
@@ -696,9 +803,31 @@ export function AccountBalanceChart({
                                 currentView={chartViews.currentView}
                                 onViewChange={chartViews.setCurrentView}
                                 availableViews={chartViews.availableViews}
+                                currencyToggle={
+                                    hasCurrencyToggle
+                                        ? {
+                                              value: currencyMode,
+                                              onValueChange: setCurrencyMode,
+                                              accountCurrencyCode:
+                                                  account.currency_code,
+                                              userCurrencyCode:
+                                                  displayCurrencyCode!,
+                                          }
+                                        : undefined
+                                }
                             />
                         ) : (
                             <>
+                                {hasCurrencyToggle && (
+                                    <ChartCurrencyToggle
+                                        value={currencyMode}
+                                        onValueChange={setCurrencyMode}
+                                        accountCurrencyCode={
+                                            account.currency_code
+                                        }
+                                        userCurrencyCode={displayCurrencyCode!}
+                                    />
+                                )}
                                 <ChartGranularityToggle
                                     value={granularity}
                                     onValueChange={setGranularity}
@@ -728,7 +857,7 @@ export function AccountBalanceChart({
                             {hasMortgageData ? (
                                 <ComposedChart
                                     accessibilityLayer
-                                    data={chartData.slice(1)}
+                                    data={activeChartData.slice(1)}
                                 >
                                     <defs>
                                         <linearGradient
@@ -788,7 +917,7 @@ export function AccountBalanceChart({
                             ) : granularity === 'daily' ? (
                                 <AreaChart
                                     accessibilityLayer
-                                    data={chartData.slice(1)}
+                                    data={activeChartData.slice(1)}
                                 >
                                     <defs>
                                         <linearGradient
@@ -846,7 +975,8 @@ export function AccountBalanceChart({
                                         fillOpacity={1}
                                     />
                                     {showInvestmentBenefits &&
-                                        currentInvestedAmount !== null && (
+                                        activeCurrentInvestedAmount !==
+                                            null && (
                                             <Line
                                                 dataKey="invested_amount"
                                                 type="monotone"
@@ -860,10 +990,10 @@ export function AccountBalanceChart({
                                         )}
                                 </AreaChart>
                             ) : showInvestmentBenefits &&
-                              currentInvestedAmount !== null ? (
+                              activeCurrentInvestedAmount !== null ? (
                                 <ComposedChart
                                     accessibilityLayer
-                                    data={chartData.slice(1)}
+                                    data={activeChartData.slice(1)}
                                 >
                                     <XAxis
                                         dataKey="month"
@@ -898,7 +1028,7 @@ export function AccountBalanceChart({
                             ) : hasProjectedData ? (
                                 <ComposedChart
                                     accessibilityLayer
-                                    data={chartData.slice(1)}
+                                    data={activeChartData.slice(1)}
                                 >
                                     <defs>
                                         <linearGradient
@@ -959,7 +1089,7 @@ export function AccountBalanceChart({
                             ) : (
                                 <BarChart
                                     accessibilityLayer
-                                    data={chartData.slice(1)}
+                                    data={activeChartData.slice(1)}
                                 >
                                     <XAxis
                                         dataKey="month"
@@ -989,7 +1119,7 @@ export function AccountBalanceChart({
                 {chartViews.currentView === 'mom' && (
                     <MoMChart
                         data={chartViews.deltaSeries}
-                        currencyCode={account.currency_code}
+                        currencyCode={activeCurrencyCode}
                         xAxisFormatter={formatXAxisLabel}
                         className="h-[300px] w-full"
                     />

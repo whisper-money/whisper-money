@@ -33,6 +33,7 @@ interface AccountBalanceCardProps {
     loading?: boolean;
     onBalanceUpdated?: () => void;
     linkedLoanMetrics?: LinkedLoanMetrics;
+    displayCurrencyCode?: string;
 }
 
 export function AccountBalanceCard({
@@ -40,7 +41,9 @@ export function AccountBalanceCard({
     loading,
     onBalanceUpdated,
     linkedLoanMetrics,
+    displayCurrencyCode,
 }: AccountBalanceCardProps) {
+    const currencyCode = displayCurrencyCode ?? account.currency_code;
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
         useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
@@ -170,7 +173,7 @@ export function AccountBalanceCard({
                             <div className="-ml-2 px-2 py-1">
                                 <AmountDisplay
                                     amountInCents={displayBalance}
-                                    currencyCode={account.currency_code}
+                                    currencyCode={currencyCode}
                                     size="2xl"
                                     weight="medium"
                                 />
@@ -183,7 +186,7 @@ export function AccountBalanceCard({
                             >
                                 <AmountDisplay
                                     amountInCents={displayBalance}
-                                    currencyCode={account.currency_code}
+                                    currencyCode={currencyCode}
                                     size="2xl"
                                     weight="medium"
                                 />
@@ -197,7 +200,7 @@ export function AccountBalanceCard({
                             previousAmount={displayPreviousBalance}
                             currentAmount={displayBalance}
                             tooltipSide="bottom"
-                            currencyCode={account.currency_code}
+                            currencyCode={currencyCode}
                         />
                     </div>
                     <div className="h-[70px] w-full max-w-[250px] flex-1">
@@ -237,7 +240,7 @@ export function AccountBalanceCard({
                                                                     data.value
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -253,7 +256,7 @@ export function AccountBalanceCard({
                                                                     0
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -268,7 +271,7 @@ export function AccountBalanceCard({
                                                                     equity
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -302,7 +305,7 @@ export function AccountBalanceCard({
                                                                     data.value
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -315,7 +318,7 @@ export function AccountBalanceCard({
                                                                     invested
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -337,7 +340,7 @@ export function AccountBalanceCard({
                                                                             gain
                                                                         }
                                                                         currencyCode={
-                                                                            account.currency_code
+                                                                            currencyCode
                                                                         }
                                                                     />
                                                                 </span>
@@ -351,7 +354,7 @@ export function AccountBalanceCard({
                                                                 data.value
                                                             }
                                                             currencyCode={
-                                                                account.currency_code
+                                                                currencyCode
                                                             }
                                                         />
                                                     </p>

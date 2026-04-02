@@ -3,10 +3,13 @@
 namespace App\Services\Banking;
 
 use App\Models\Account;
+use App\Services\CurrencyConversionService;
 use Illuminate\Support\Facades\Log;
 
 class BitpandaBalanceSyncService
 {
+    public function __construct(private CurrencyConversionService $currencyConverter) {}
+
     /**
      * Sync the total portfolio value for a Bitpanda account.
      * Uses Bitpanda's own ticker prices to match the values shown in the Bitpanda dashboard.
@@ -103,12 +106,12 @@ class BitpandaBalanceSyncService
             if ($symbol === $targetCurrency) {
                 $total += $balance;
             } else {
-                // Fiat-to-fiat conversion is rare on Bitpanda; use simple rate if available
-                Log::warning('Bitpanda fiat wallet in different currency than target', [
-                    'fiat_symbol' => $symbol,
-                    'target_currency' => $targetCurrency,
-                    'balance' => $balance,
-                ]);
+                $total += $this->currencyConverter->convert(
+                    $symbol,
+                    $targetCurrency,
+                    $balance,
+                    now()->toDateString(),
+                );
             }
         }
 
@@ -172,11 +175,12 @@ class BitpandaBalanceSyncService
             $fiatId = strtoupper($attributes['fiat_id'] ?? '');
 
             if ($fiatId !== $targetCurrency) {
-                Log::warning('Bitpanda fiat transaction in different currency than target', [
-                    'fiat_id' => $fiatId,
-                    'target_currency' => $targetCurrency,
-                    'amount' => $amount,
-                ]);
+                $total += $this->currencyConverter->convert(
+                    $fiatId,
+                    $targetCurrency,
+                    $amount,
+                    now()->toDateString(),
+                );
 
                 continue;
             }

@@ -33,6 +33,7 @@ interface AccountListCardProps {
     loading?: boolean;
     onBalanceUpdated?: () => void;
     linkedLoanMetrics?: LinkedLoanMetrics;
+    displayCurrencyCode?: string;
 }
 
 export function AccountListCard({
@@ -40,7 +41,9 @@ export function AccountListCard({
     loading,
     onBalanceUpdated,
     linkedLoanMetrics,
+    displayCurrencyCode,
 }: AccountListCardProps) {
+    const currencyCode = displayCurrencyCode ?? account.currency_code;
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
         useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
@@ -197,7 +200,7 @@ export function AccountListCard({
                                 <div className="-mr-2 px-2 py-1">
                                     <AmountDisplay
                                         amountInCents={displayBalance}
-                                        currencyCode={account.currency_code}
+                                        currencyCode={currencyCode}
                                         size="2xl"
                                         weight="bold"
                                     />
@@ -210,7 +213,7 @@ export function AccountListCard({
                                 >
                                     <AmountDisplay
                                         amountInCents={displayBalance}
-                                        currencyCode={account.currency_code}
+                                        currencyCode={currencyCode}
                                         size="2xl"
                                         weight="bold"
                                     />
@@ -224,7 +227,7 @@ export function AccountListCard({
                                 previousAmount={displayPreviousBalance}
                                 currentAmount={displayBalance}
                                 tooltipSide="bottom"
-                                currencyCode={account.currency_code}
+                                currencyCode={currencyCode}
                             />
                         </div>
                     </div>
@@ -266,7 +269,7 @@ export function AccountListCard({
                                                                     data.value
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -282,7 +285,7 @@ export function AccountListCard({
                                                                     0
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -297,7 +300,7 @@ export function AccountListCard({
                                                                     equity
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -331,7 +334,7 @@ export function AccountListCard({
                                                                     data.value
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -344,7 +347,7 @@ export function AccountListCard({
                                                                     invested
                                                                 }
                                                                 currencyCode={
-                                                                    account.currency_code
+                                                                    currencyCode
                                                                 }
                                                             />
                                                         </span>
@@ -366,7 +369,7 @@ export function AccountListCard({
                                                                             gain
                                                                         }
                                                                         currencyCode={
-                                                                            account.currency_code
+                                                                            currencyCode
                                                                         }
                                                                     />
                                                                 </span>
@@ -380,7 +383,7 @@ export function AccountListCard({
                                                                 data.value
                                                             }
                                                             currencyCode={
-                                                                account.currency_code
+                                                                currencyCode
                                                             }
                                                         />
                                                     </p>

@@ -5,10 +5,10 @@ import HeadingSmall from '@/components/heading-small';
 import { Card, CardContent } from '@/components/ui/card';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
-import { BreadcrumbItem } from '@/types';
+import { BreadcrumbItem, SharedData } from '@/types';
 import { Account, AccountType } from '@/types/account';
 import { __ } from '@/utils/i18n';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
@@ -48,6 +48,7 @@ interface Props {
 }
 
 export default function AccountsIndex({ accounts, accountMetrics }: Props) {
+    const { auth } = usePage<SharedData>().props;
     const isLoading = !accountMetrics;
 
     // Identify loan account IDs that are linked to a real estate account
@@ -145,7 +146,7 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
     }, []);
 
     const handleAccountCreated = useCallback(() => {
-        router.reload({ only: ['accounts'] });
+        router.reload();
     }, []);
 
     return (
@@ -175,6 +176,7 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
                                 linkedLoanMetrics={
                                     linkedLoanMetricsMap[account.id]
                                 }
+                                displayCurrencyCode={auth.user.currency_code}
                             />
                         ));
                     })}

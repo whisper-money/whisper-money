@@ -46,7 +46,7 @@ export function EditAccountDialog({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
-        bankId: (account.bank?.id ?? null) as number | null,
+        bankId: account.bank?.id ?? null,
         type: account.type,
         currencyCode: account.currency_code,
         customBank: null,

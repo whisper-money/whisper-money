@@ -34,6 +34,8 @@ class BinanceBalanceSyncService
     /** Seconds to wait between API calls to avoid hitting Binance rate limits */
     private const THROTTLE_SECONDS = 1;
 
+    private const USD_CURRENCY = 'USD';
+
     public function __construct(private CurrencyConversionService $currencyConverter) {}
 
     /**
@@ -228,7 +230,6 @@ class BinanceBalanceSyncService
      */
     private function calculateTotalValue(array $balances, array $priceMap, string $targetCurrency): int
     {
-        $quoteAsset = self::FIAT_QUOTE_MAP[$targetCurrency] ?? 'USDT';
         $totalValue = 0.0;
 
         foreach ($balances as $balance) {
@@ -239,7 +240,7 @@ class BinanceBalanceSyncService
                 continue;
             }
 
-            $value = $this->convertAssetToFiat($asset, $quantity, $priceMap, $targetCurrency, $quoteAsset);
+            $value = $this->convertAssetToFiat($asset, $quantity, $priceMap, $targetCurrency);
             $totalValue += $value;
         }
 
@@ -254,12 +255,63 @@ class BinanceBalanceSyncService
         float $quantity,
         array $priceMap,
         string $targetCurrency,
-        string $quoteAsset,
     ): float {
         // Asset IS the target currency (e.g., EUR balance when target is EUR)
         if ($asset === $targetCurrency) {
             return $quantity;
         }
+
+        $quoteAsset = self::FIAT_QUOTE_MAP[$targetCurrency] ?? null;
+
+        if ($quoteAsset !== null) {
+            $tickerValue = $this->convertAssetUsingTickerPairs($asset, $quantity, $priceMap, $targetCurrency, $quoteAsset);
+
+            if ($tickerValue !== null) {
+                return $tickerValue;
+            }
+        }
+
+        $usdValue = $this->convertAssetToUsd($asset, $quantity, $priceMap);
+
+        if ($usdValue !== null) {
+            if ($targetCurrency === self::USD_CURRENCY) {
+                return $usdValue;
+            }
+
+            return $this->currencyConverter->convert(
+                self::USD_CURRENCY,
+                $targetCurrency,
+                $usdValue,
+                now()->toDateString(),
+            );
+        }
+
+        $converted = $this->currencyConverter->convert(
+            $asset,
+            $targetCurrency,
+            $quantity,
+            now()->toDateString(),
+        );
+
+        if ($converted > 0) {
+            return $converted;
+        }
+
+        Log::warning('Could not convert Binance asset to fiat', [
+            'asset' => $asset,
+            'target_currency' => $targetCurrency,
+        ]);
+
+        return 0.0;
+    }
+
+    private function convertAssetUsingTickerPairs(
+        string $asset,
+        float $quantity,
+        array $priceMap,
+        string $targetCurrency,
+        string $quoteAsset,
+    ): ?float {
 
         // USD stablecoins when target is USD → 1:1
         if ($targetCurrency === 'USD' && in_array($asset, self::USD_STABLECOINS, true)) {
@@ -290,12 +342,29 @@ class BinanceBalanceSyncService
             }
         }
 
-        Log::warning('Could not convert Binance asset to fiat', [
-            'asset' => $asset,
-            'target_currency' => $targetCurrency,
-        ]);
+        return null;
+    }
 
-        return 0.0;
+    private function convertAssetToUsd(string $asset, float $quantity, array $priceMap): ?float
+    {
+        if ($asset === self::USD_CURRENCY || in_array($asset, self::USD_STABLECOINS, true)) {
+            return $quantity;
+        }
+
+        $usdtPair = $asset.'USDT';
+
+        if (isset($priceMap[$usdtPair])) {
+            return $quantity * $priceMap[$usdtPair];
+        }
+
+        $converted = $this->currencyConverter->convert(
+            $asset,
+            self::USD_CURRENCY,
+            $quantity,
+            now()->toDateString(),
+        );
+
+        return $converted > 0 ? $converted : null;
     }
 
     /**

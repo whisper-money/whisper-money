@@ -23,7 +23,6 @@ import { edit as accountEdit } from '@/routes/account';
 import { disable, enable } from '@/routes/two-factor';
 import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
-import { CURRENCY_OPTIONS } from '@/types/account';
 import { LANGUAGE_OPTIONS } from '@/types/language';
 import { __ } from '@/utils/i18n';
 import { Transition } from '@headlessui/react';
@@ -49,7 +48,7 @@ export default function Account({
     requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;
 }) {
-    const { auth } = usePage<SharedData>().props;
+    const { auth, currencies } = usePage<SharedData>().props;
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
@@ -144,13 +143,14 @@ export default function Account({
                                             />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {CURRENCY_OPTIONS.map(
+                                            {currencies.profile.map(
                                                 (currency) => (
                                                     <SelectItem
-                                                        key={currency}
-                                                        value={currency}
+                                                        key={currency.code}
+                                                        value={currency.code}
                                                     >
-                                                        {currency}
+                                                        {currency.code} -{' '}
+                                                        {currency.name}
                                                     </SelectItem>
                                                 ),
                                             )}
@@ -170,7 +170,9 @@ export default function Account({
 
                                     <Select
                                         name="locale"
-                                        defaultValue={auth.user.locale}
+                                        defaultValue={
+                                            auth.user.locale ?? undefined
+                                        }
                                     >
                                         <SelectTrigger className="mt-1 w-full">
                                             <SelectValue

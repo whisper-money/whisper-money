@@ -11,6 +11,10 @@ import { __ } from '@/utils/i18n';
 import { Settings2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import {
+    type ChartCurrencyMode,
+    ChartCurrencyToggle,
+} from './chart-currency-toggle';
+import {
     type ChartGranularity,
     ChartGranularityToggle,
 } from './chart-granularity-toggle';
@@ -24,6 +28,13 @@ interface ToggleOption {
     onChange: (value: boolean) => void;
 }
 
+interface CurrencyToggleConfig {
+    value: ChartCurrencyMode;
+    onValueChange: (value: ChartCurrencyMode) => void;
+    accountCurrencyCode: string;
+    userCurrencyCode: string;
+}
+
 interface ChartSettingsPopoverProps {
     granularity: ChartGranularity;
     onGranularityChange: (value: ChartGranularity) => void;
@@ -35,6 +46,7 @@ interface ChartSettingsPopoverProps {
     includeLoans?: boolean;
     onIncludeLoansChange?: (value: boolean) => void;
     toggles?: ToggleOption[];
+    currencyToggle?: CurrencyToggleConfig;
 }
 
 export function ChartSettingsPopover({
@@ -48,6 +60,7 @@ export function ChartSettingsPopover({
     includeLoans,
     onIncludeLoansChange,
     toggles = [],
+    currencyToggle,
 }: ChartSettingsPopoverProps) {
     // Build the effective list of toggles: legacy loan prop + explicit toggles
     const allToggles: ToggleOption[] = [];
@@ -103,6 +116,26 @@ export function ChartSettingsPopover({
                                     showTooltip={false}
                                 />
                             </div>
+                            {currencyToggle && (
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="text-sm font-medium">
+                                        {__('Currency')}
+                                    </span>
+                                    <ChartCurrencyToggle
+                                        value={currencyToggle.value}
+                                        onValueChange={
+                                            currencyToggle.onValueChange
+                                        }
+                                        accountCurrencyCode={
+                                            currencyToggle.accountCurrencyCode
+                                        }
+                                        userCurrencyCode={
+                                            currencyToggle.userCurrencyCode
+                                        }
+                                        showTooltip={false}
+                                    />
+                                </div>
+                            )}
                             {allToggles.length > 0 && <Separator />}
                         </>
                     ) : null}

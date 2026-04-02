@@ -87,6 +87,9 @@ export function StepCreateAccount({
         type: null,
         currencyCode: null,
         customBank: null,
+        balance: null,
+        realEstate: null,
+        loan: null,
     });
 
     // Compute cheapest monthly equivalent across all plans
@@ -483,7 +486,14 @@ export function StepCreateAccount({
                     autoFocus
                     className="w-full max-w-md space-y-4"
                 >
-                    <AccountForm onChange={handleFormChange} />
+                    <AccountForm
+                        onChange={handleFormChange}
+                        usePrimaryCurrenciesOnly={
+                            isFirstAccount &&
+                            existingAccounts.length === 0 &&
+                            createdAccounts.length === 0
+                        }
+                    />
 
                     {error && (
                         <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">

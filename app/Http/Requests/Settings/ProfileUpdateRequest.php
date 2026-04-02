@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Settings;
 
 use App\Models\User;
+use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,8 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $currencyOptions = app(CurrencyOptions::class);
+
         return [
             'name' => ['required', 'string', 'max:255'],
 
@@ -27,7 +30,7 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
-            'currency_code' => ['required', 'string', 'max:3', Rule::in(['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'CNY', 'INR', 'MXN'])],
+            'currency_code' => ['required', 'string', 'max:3', Rule::in($currencyOptions->primaryCodes())],
             'locale' => ['nullable', 'string', Rule::in(['en', 'es'])],
         ];
     }

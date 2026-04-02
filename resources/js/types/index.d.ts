@@ -1,7 +1,7 @@
 import { InertiaLinkProps } from '@inertiajs/react';
 import { LucideIcon } from 'lucide-react';
 import { ReactNode } from 'react';
-import { CurrencyCode } from './account';
+import { CurrencyCode, CurrencyOption } from './account';
 import { PricingConfig } from './pricing';
 import { UUID } from './uuid';
 
@@ -71,6 +71,10 @@ export interface SharedData {
     hasEncryptionSetup: boolean;
     locale: string;
     translations: Record<string, string>;
+    currencies: {
+        profile: CurrencyOption[];
+        accounts: CurrencyOption[];
+    };
     [key: string]: unknown;
 }
 

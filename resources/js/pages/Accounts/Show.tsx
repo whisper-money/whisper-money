@@ -338,7 +338,7 @@ export default function AccountShow({
                             currentMortgageBalance={
                                 chartComputedData.currentMortgageBalance
                             }
-                            currencyCode={account.currency_code}
+                            currencyCode={chartComputedData.currencyCode}
                         />
                     )}
 

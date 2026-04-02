@@ -38,13 +38,12 @@ export function CreateAccountDialog({
     const openBankingEnabled = features['open-banking'];
     const realEstateEnabled = features['real-estate'];
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
+    const sharedAccountsList = (sharedAccounts as Account[]) || [];
     const availableLoanAccounts = useMemo(
-        () =>
-            ((sharedAccounts as Account[]) || []).filter(
-                (a) => a.type === 'loan',
-            ),
+        () => sharedAccountsList.filter((a) => a.type === 'loan'),
         [sharedAccounts],
     );
+    const isFirstAccount = sharedAccountsList.length === 0;
 
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState<Mode>(
@@ -302,6 +301,7 @@ export function CreateAccountDialog({
                                 hiddenAccountTypes={
                                     realEstateEnabled ? [] : ['real_estate']
                                 }
+                                usePrimaryCurrenciesOnly={isFirstAccount}
                             />
 
                             <div className="flex justify-end gap-2 pt-4">

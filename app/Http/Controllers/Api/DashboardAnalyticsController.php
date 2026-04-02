@@ -112,10 +112,16 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
-        $linkedLoanId = $this->getLinkedLoanAccountId($account);
+        $linkedLoanAccount = $this->getLinkedLoanAccount($account);
+        $linkedLoanId = $linkedLoanAccount?->id;
         $accountIds = $linkedLoanId ? [$account->id, $linkedLoanId] : [$account->id];
 
         $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $end);
+
+        $userCurrency = $request->user()->currency_code;
+        $displayCurrencyCode = strcasecmp($account->currency_code, $userCurrency) !== 0
+            ? $userCurrency
+            : null;
 
         $points = [];
         $current = $start->copy()->startOfMonth();
@@ -123,18 +129,50 @@ class DashboardAnalyticsController extends Controller
 
         while ($current->lte($endMonth)) {
             $date = $current->copy()->endOfMonth();
+            $value = $lookup->getBalanceAt($account->id, $date);
             $point = [
                 'month' => $date->format('Y-m'),
                 'timestamp' => $date->timestamp,
-                'value' => $lookup->getBalanceAt($account->id, $date),
+                'value' => $value,
             ];
 
             if ($account->type->supportsInvestedAmount()) {
-                $point['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $date);
+                $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
+                $point['invested_amount'] = $investedAmount;
+
+                if ($displayCurrencyCode !== null) {
+                    $point['display_invested_amount'] = $investedAmount !== null
+                        ? $this->convertBalanceForDate($account->currency_code, $displayCurrencyCode, $investedAmount, $date)
+                        : null;
+                }
             }
 
             if ($linkedLoanId) {
-                $point['mortgage_balance'] = $lookup->getBalanceAt($linkedLoanId, $date);
+                $mortgageBalance = $lookup->getBalanceAt($linkedLoanId, $date);
+                $point['mortgage_balance'] = $this->convertBalanceForDate(
+                    $linkedLoanAccount->currency_code,
+                    $account->currency_code,
+                    $mortgageBalance,
+                    $date,
+                );
+
+                if ($displayCurrencyCode !== null) {
+                    $point['display_mortgage_balance'] = $this->convertBalanceForDate(
+                        $linkedLoanAccount->currency_code,
+                        $displayCurrencyCode,
+                        $mortgageBalance,
+                        $date,
+                    );
+                }
+            }
+
+            if ($displayCurrencyCode !== null) {
+                $point['display_value'] = $this->convertBalanceForDate(
+                    $account->currency_code,
+                    $displayCurrencyCode,
+                    $value,
+                    $date,
+                );
             }
 
             $points[] = $point;
@@ -157,17 +195,28 @@ class DashboardAnalyticsController extends Controller
                         continue;
                     }
 
-                    $points[] = [
+                    $projectedPoint = [
                         'month' => $yearMonth,
                         'timestamp' => $projectedDate->timestamp,
                         'value' => $balanceCents,
                         'projected' => true,
                     ];
+
+                    if ($displayCurrencyCode !== null) {
+                        $projectedPoint['display_value'] = $this->convertBalanceForDate(
+                            $account->currency_code,
+                            $displayCurrencyCode,
+                            $balanceCents,
+                            Carbon::today(),
+                        );
+                    }
+
+                    $points[] = $projectedPoint;
                 }
             }
         }
 
-        return response()->json([
+        $response = [
             'data' => $points,
             'account' => [
                 'id' => $account->id,
@@ -177,7 +226,13 @@ class DashboardAnalyticsController extends Controller
                 'type' => $account->type,
                 'currency_code' => $account->currency_code,
             ],
-        ]);
+        ];
+
+        if ($displayCurrencyCode !== null) {
+            $response['display_currency_code'] = $displayCurrencyCode;
+        }
+
+        return response()->json($response);
     }
 
     public function accountDailyBalanceEvolution(Request $request, Account $account)
@@ -194,35 +249,73 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
-        $linkedLoanId = $this->getLinkedLoanAccountId($account);
+        $linkedLoanAccount = $this->getLinkedLoanAccount($account);
+        $linkedLoanId = $linkedLoanAccount?->id;
         $accountIds = $linkedLoanId ? [$account->id, $linkedLoanId] : [$account->id];
 
         $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
+
+        $userCurrency = $request->user()->currency_code;
+        $displayCurrencyCode = strcasecmp($account->currency_code, $userCurrency) !== 0
+            ? $userCurrency
+            : null;
 
         $points = [];
         $current = $start->copy();
 
         while ($current->lte($end)) {
             $date = $current->copy();
+            $value = $lookup->getBalanceAt($account->id, $date);
             $point = [
                 'date' => $date->format('Y-m-d'),
                 'timestamp' => $date->endOfDay()->timestamp,
-                'value' => $lookup->getBalanceAt($account->id, $date),
+                'value' => $value,
             ];
 
             if ($account->type->supportsInvestedAmount()) {
-                $point['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $date);
+                $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
+                $point['invested_amount'] = $investedAmount;
+
+                if ($displayCurrencyCode !== null) {
+                    $point['display_invested_amount'] = $investedAmount !== null
+                        ? $this->convertBalanceForDate($account->currency_code, $displayCurrencyCode, $investedAmount, $date)
+                        : null;
+                }
             }
 
             if ($linkedLoanId) {
-                $point['mortgage_balance'] = $lookup->getBalanceAt($linkedLoanId, $date);
+                $mortgageBalance = $lookup->getBalanceAt($linkedLoanId, $date);
+                $point['mortgage_balance'] = $this->convertBalanceForDate(
+                    $linkedLoanAccount->currency_code,
+                    $account->currency_code,
+                    $mortgageBalance,
+                    $date,
+                );
+
+                if ($displayCurrencyCode !== null) {
+                    $point['display_mortgage_balance'] = $this->convertBalanceForDate(
+                        $linkedLoanAccount->currency_code,
+                        $displayCurrencyCode,
+                        $mortgageBalance,
+                        $date,
+                    );
+                }
+            }
+
+            if ($displayCurrencyCode !== null) {
+                $point['display_value'] = $this->convertBalanceForDate(
+                    $account->currency_code,
+                    $displayCurrencyCode,
+                    $value,
+                    $date,
+                );
             }
 
             $points[] = $point;
             $current->addDay();
         }
 
-        return response()->json([
+        $response = [
             'data' => $points,
             'account' => [
                 'id' => $account->id,
@@ -232,7 +325,13 @@ class DashboardAnalyticsController extends Controller
                 'type' => $account->type,
                 'currency_code' => $account->currency_code,
             ],
-        ]);
+        ];
+
+        if ($displayCurrencyCode !== null) {
+            $response['display_currency_code'] = $displayCurrencyCode;
+        }
+
+        return response()->json($response);
     }
 
     public function netWorthDailyEvolution(Request $request)
@@ -381,14 +480,28 @@ class DashboardAnalyticsController extends Controller
     }
 
     /**
-     * Get the linked loan account ID for a real estate account, if any.
+     * Get the linked loan account for a real estate account, if any.
      */
-    private function getLinkedLoanAccountId(Account $account): ?string
+    private function getLinkedLoanAccount(Account $account): ?Account
     {
         if ($account->type !== AccountType::RealEstate) {
             return null;
         }
 
-        return $account->realEstateDetail?->linked_loan_account_id;
+        return $account->realEstateDetail?->linkedLoanAccount;
+    }
+
+    private function convertBalanceForDate(string $sourceCurrency, string $targetCurrency, int $amount, Carbon $date): int
+    {
+        if (strcasecmp($sourceCurrency, $targetCurrency) === 0) {
+            return $amount;
+        }
+
+        return $this->exchangeRateService->convert(
+            $sourceCurrency,
+            $targetCurrency,
+            $amount,
+            $date->toDateString(),
+        );
     }
 }
