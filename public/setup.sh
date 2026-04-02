@@ -318,19 +318,6 @@ find_available_port() {
 check_and_configure_ports() {
     echo -e "${BLUE}Checking port availability...${NC}"
 
-    # Check required ports (Caddy and PHP - these cannot be changed)
-    if ! is_port_available 80; then
-        echo -e "${RED}Port 80 is already in use. Caddy requires this port.${NC}"
-        echo -e "${YELLOW}Please stop the service using port 80 and try again.${NC}"
-        exit 1
-    fi
-
-    if ! is_port_available 443; then
-        echo -e "${RED}Port 443 is already in use. Caddy requires this port.${NC}"
-        echo -e "${YELLOW}Please stop the service using port 443 and try again.${NC}"
-        exit 1
-    fi
-
     if ! is_port_available 8000; then
         echo -e "${RED}Port 8000 is already in use. PHP requires this port.${NC}"
         echo -e "${YELLOW}Please stop the service using port 8000 and try again.${NC}"
@@ -553,232 +540,47 @@ wait_for_service() {
     return 1
 }
 
-# Update /etc/hosts file
-update_hosts_file() {
-    local hostname="whisper.money.local"
-    local ip="127.0.0.1"
-    local hosts_line="${ip} ${hostname}"
-    local hosts_file="/etc/hosts"
-
+# Setup portless for HTTPS reverse proxy
+setup_portless() {
     echo ""
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}Hosts File Update${NC}"
+    echo -e "${YELLOW}HTTPS Setup (Portless)${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo -e "${BLUE}To access your application at ${GREEN}https://${hostname}${NC}${BLUE}, we need to${NC}"
-    echo -e "${BLUE}add an entry to your system's hosts file (${hosts_file}).${NC}"
-    echo ""
-    echo -e "${YELLOW}What we'll do:${NC}"
-    echo -e "  • Add the line: ${GREEN}${hosts_line}${NC}"
-    echo -e "  • This maps ${hostname} to your local machine (127.0.0.1)"
-    echo ""
-    echo -e "${YELLOW}Why we need sudo access:${NC}"
-    echo -e "  • The hosts file is a system file that requires administrator privileges"
-    echo -e "  • We'll only add the entry if it doesn't already exist (idempotent)"
-    echo ""
 
-    # Check if the line already exists
-    if grep -q "${hostname}" "${hosts_file}" 2>/dev/null; then
-        if grep -q "${hosts_line}" "${hosts_file}" 2>/dev/null; then
-            echo -e "${GREEN}✓ The hosts entry already exists. No changes needed.${NC}"
-            return 0
-        else
-            echo -e "${YELLOW}⚠ Found a different entry for ${hostname} in ${hosts_file}${NC}"
-            echo -e "${YELLOW}  Please review it manually.${NC}"
-            echo ""
-        fi
-    fi
-
-    read -p "Would you like us to update the hosts file automatically? (y/n) " -n 1 -r
-    echo ""
-    echo ""
-
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}Updating hosts file (sudo access required)...${NC}"
-
-        # Use sudo to add the line if it doesn't exist
-        if sudo sh -c "grep -q '${hosts_line}' ${hosts_file} || echo '${hosts_line}' >> ${hosts_file}"; then
-            echo -e "${GREEN}✓ Successfully updated ${hosts_file}${NC}"
-            echo -e "${GREEN}  Added: ${hosts_line}${NC}"
-            return 0
-        else
-            echo -e "${RED}✗ Failed to update ${hosts_file}${NC}"
-            echo -e "${YELLOW}  You'll need to add it manually.${NC}"
-            show_manual_hosts_instructions
-            return 1
-        fi
-    else
-        echo -e "${YELLOW}Hosts file update skipped.${NC}"
-        show_manual_hosts_instructions
+    if ! command_exists npx; then
+        echo -e "${RED}npx is not available. Portless requires Node.js.${NC}"
+        echo -e "${YELLOW}Skipping HTTPS setup. The app will be available at http://localhost:8000${NC}"
         return 1
     fi
-}
 
-# Setup SSL certificates using mkcert for transparent trust
-setup_ssl_certificates() {
-    local certs_dir="docker/caddy/certs"
-    local domain="whisper.money.local"
-    local cert_file="${certs_dir}/${domain}.pem"
-    local key_file="${certs_dir}/${domain}-key.pem"
-
-    echo ""
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}SSL Certificate Setup${NC}"
-    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-
-    # Check if certificates already exist
-    if [ -f "$cert_file" ] && [ -f "$key_file" ]; then
-        echo -e "${GREEN}✓ SSL certificates already exist${NC}"
-        return 0
-    fi
-
-    # Check if mkcert is installed
-    if ! command_exists mkcert; then
-        echo -e "${YELLOW}mkcert is not installed. It's needed to generate trusted SSL certificates.${NC}"
-        echo ""
-        echo -e "${BLUE}mkcert creates locally-trusted certificates that browsers automatically trust.${NC}"
-        echo ""
-
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            echo -e "${YELLOW}Install mkcert:${NC}"
-            echo -e "  ${GREEN}brew install mkcert${NC}"
-            echo -e "  ${GREEN}brew install nss${NC}  # For Firefox support"
-            echo ""
-            read -p "Would you like to install mkcert now? (y/n) " -n 1 -r
-            echo ""
-            echo ""
-
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                if command_exists brew; then
-                    echo -e "${YELLOW}Installing mkcert...${NC}"
-                    brew install mkcert nss
-                    echo -e "${GREEN}✓ mkcert installed${NC}"
-                else
-                    echo -e "${RED}Homebrew is not installed. Please install mkcert manually:${NC}"
-                    echo -e "  ${YELLOW}brew install mkcert nss${NC}"
-                    echo ""
-                    echo -e "${YELLOW}Or visit: https://github.com/FiloSottile/mkcert#installation${NC}"
-                    create_fallback_certificates
-                    return 1
-                fi
-            else
-                echo -e "${YELLOW}Using fallback self-signed certificates...${NC}"
-                create_fallback_certificates
-                return 0
-            fi
-        else
-            echo -e "${YELLOW}Install mkcert:${NC}"
-            echo -e "  ${GREEN}sudo apt install libnss3-tools${NC}  # Debian/Ubuntu"
-            echo -e "  ${GREEN}wget -O /tmp/mkcert https://github.com/FiloSottile/mkcert/releases/latest/download/mkcert-v1.4.4-linux-amd64${NC}"
-            echo -e "  ${GREEN}chmod +x /tmp/mkcert && sudo mv /tmp/mkcert /usr/local/bin/mkcert${NC}"
-            echo ""
-            echo -e "${YELLOW}Or visit: https://github.com/FiloSottile/mkcert#installation${NC}"
-            echo ""
-            read -p "Continue with fallback self-signed certificates? (y/n) " -n 1 -r
-            echo ""
-            echo ""
-
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                echo -e "${YELLOW}Please install mkcert and run the setup again.${NC}"
-                exit 1
-            fi
-
-            create_fallback_certificates
-            return 0
-        fi
-    fi
-
-    # Install local CA if not already installed
-    if [ ! -f "$(mkcert -CAROOT)/rootCA.pem" ]; then
-        echo -e "${YELLOW}Installing mkcert local CA (requires sudo)...${NC}"
-        mkcert -install
-        echo -e "${GREEN}✓ Local CA installed${NC}"
+    # Trust the portless CA (one-time setup, auto-elevates with sudo)
+    echo -e "${YELLOW}Setting up portless HTTPS certificates...${NC}"
+    if npx portless trust 2>/dev/null; then
+        echo -e "${GREEN}✓ Portless CA trusted${NC}"
     else
-        echo -e "${GREEN}✓ Local CA already installed${NC}"
+        echo -e "${YELLOW}⚠ Could not trust portless CA automatically.${NC}"
+        echo -e "${YELLOW}  You can run 'npx portless trust' manually later.${NC}"
     fi
 
-    # Create certs directory
-    mkdir -p "$certs_dir"
-
-    # Generate certificate
-    echo -e "${YELLOW}Generating SSL certificate for ${domain}...${NC}"
-    if mkcert -cert-file "$cert_file" -key-file "$key_file" "$domain" "*.${domain}"; then
-        echo -e "${GREEN}✓ SSL certificate generated successfully${NC}"
-        echo -e "${GREEN}  Certificate: ${cert_file}${NC}"
-        echo -e "${GREEN}  Key: ${key_file}${NC}"
-        echo ""
-        echo -e "${BLUE}Your browser will automatically trust this certificate!${NC}"
-        return 0
+    # Start the portless proxy if not already running
+    echo -e "${YELLOW}Starting portless proxy...${NC}"
+    if npx portless proxy start 2>/dev/null; then
+        echo -e "${GREEN}✓ Portless proxy running${NC}"
     else
-        echo -e "${RED}✗ Failed to generate certificate${NC}"
-        create_fallback_certificates
-        return 1
-    fi
-}
-
-# Create fallback self-signed certificates
-create_fallback_certificates() {
-    local certs_dir="docker/caddy/certs"
-    local domain="whisper.money.local"
-    local cert_file="${certs_dir}/${domain}.pem"
-    local key_file="${certs_dir}/${domain}-key.pem"
-
-    echo ""
-    echo -e "${YELLOW}Creating self-signed certificates (browser will show a warning)...${NC}"
-
-    mkdir -p "$certs_dir"
-
-    # Check if openssl is available
-    if command_exists openssl; then
-        # Create certificate with proper SAN extension
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-            -keyout "$key_file" \
-            -out "$cert_file" \
-            -subj "/CN=${domain}/O=Development/C=US" \
-            -addext "subjectAltName=DNS:${domain},DNS:*.${domain},IP:127.0.0.1" \
-            2>/dev/null
-
-        if [ -f "$cert_file" ] && [ -f "$key_file" ]; then
-            # Set proper permissions
-            chmod 644 "$cert_file"
-            chmod 600 "$key_file"
-            echo -e "${GREEN}✓ Self-signed certificates created${NC}"
-            echo -e "${YELLOW}  Note: Your browser will show a security warning.${NC}"
-            echo -e "${YELLOW}  Click 'Advanced' → 'Proceed to ${domain}' to continue.${NC}"
-            return 0
-        fi
+        echo -e "${YELLOW}⚠ Could not start portless proxy automatically.${NC}"
+        echo -e "${YELLOW}  It may already be running, or you can start it with 'npx portless proxy start'.${NC}"
     fi
 
-    echo -e "${RED}✗ Could not create certificates${NC}"
-    echo -e "${YELLOW}  Please install mkcert or openssl to generate certificates.${NC}"
-    return 1
-}
+    # Register the fixed alias for whisper.money
+    echo -e "${YELLOW}Registering HTTPS route...${NC}"
+    if npx portless alias whisper.money 8000 --force 2>/dev/null; then
+        echo -e "${GREEN}✓ https://whisper.money.localhost → localhost:8000${NC}"
+    else
+        echo -e "${YELLOW}⚠ Could not register portless alias.${NC}"
+        echo -e "${YELLOW}  You can run 'npx portless alias whisper.money 8000' manually.${NC}"
+    fi
 
-# Show manual hosts file instructions
-show_manual_hosts_instructions() {
-    local hostname="whisper.money.local"
-    local hosts_line="127.0.0.1 ${hostname}"
-
-    echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}Manual Hosts File Update${NC}"
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    echo -e "${BLUE}To access your application, please add this line to ${YELLOW}/etc/hosts${NC}${BLUE}:${NC}"
-    echo ""
-    echo -e "  ${GREEN}${hosts_line}${NC}"
-    echo ""
-    echo -e "${YELLOW}Instructions:${NC}"
-    echo -e "  1. Open ${YELLOW}/etc/hosts${NC} with a text editor (requires sudo):"
-    echo -e "     ${YELLOW}sudo nano /etc/hosts${NC}  ${BLUE}(or use your preferred editor)${NC}"
-    echo ""
-    echo -e "  2. Add the line at the end of the file:"
-    echo -e "     ${GREEN}${hosts_line}${NC}"
-    echo ""
-    echo -e "  3. Save and close the file"
-    echo ""
-    echo -e "${YELLOW}Note:${NC} If the line already exists, you can skip this step."
     echo ""
 }
 
@@ -800,11 +602,25 @@ start_services() {
         wait_for_service "php"
     fi
 
-    echo -e "${GREEN}All services are running!${NC}"
+    # Register portless alias for HTTPS access
+    if command_exists npx; then
+        npx portless proxy start 2>/dev/null || true
+        npx portless alias whisper.money 8000 --force 2>/dev/null || true
+        echo -e "${GREEN}All services are running!${NC}"
+        echo -e "  ${GREEN}Visit: https://whisper.money.localhost${NC}"
+    else
+        echo -e "${GREEN}All services are running!${NC}"
+        echo -e "  ${GREEN}Visit: http://localhost:8000${NC}"
+    fi
 }
 
 # Stop Docker services
 stop_services() {
+    # Remove portless alias
+    if command_exists npx; then
+        npx portless alias --remove whisper.money 2>/dev/null || true
+    fi
+
     echo -e "${BLUE}Stopping Docker services...${NC}"
     docker compose down
     echo -e "${GREEN}Services stopped.${NC}"
@@ -839,11 +655,11 @@ install() {
 
     # Update APP_URL if needed
     if grep -q "APP_URL=https://whispermoney.test" .env 2>/dev/null || grep -q "APP_URL=$" .env 2>/dev/null; then
-        echo -e "${YELLOW}Updating APP_URL to https://whisper.money.local...${NC}"
+        echo -e "${YELLOW}Updating APP_URL to https://whisper.money.localhost...${NC}"
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' 's|APP_URL=.*|APP_URL=https://whisper.money.local|g' .env
+            sed -i '' 's|APP_URL=.*|APP_URL=https://whisper.money.localhost|g' .env
         else
-            sed -i 's|APP_URL=.*|APP_URL=https://whisper.money.local|g' .env
+            sed -i 's|APP_URL=.*|APP_URL=https://whisper.money.localhost|g' .env
         fi
         echo -e "${GREEN}APP_URL updated.${NC}"
     else
@@ -877,10 +693,6 @@ install() {
 
     echo ""
 
-    # Update hosts file early so the domain resolves before services start
-    update_hosts_file
-    echo ""
-
     # Install Composer dependencies BEFORE starting Docker services
     # (Docker Compose mounts files from vendor/laravel/sail that need to exist)
     echo -e "${BLUE}Installing Composer dependencies...${NC}"
@@ -888,16 +700,12 @@ install() {
     echo -e "${GREEN}Composer dependencies installed.${NC}"
     echo ""
 
-    # Setup SSL certificates before starting Caddy
-    setup_ssl_certificates
-    echo ""
-
     # Check and configure ports before starting Docker services
     check_and_configure_ports
 
     # Start Docker services (but don't start PHP yet - we'll start it after APP_KEY is generated)
     echo -e "${BLUE}Starting Docker services (excluding PHP for now)...${NC}"
-    docker compose up -d mysql redis caddy mailhog
+    docker compose up -d mysql redis mailhog
 
     wait_for_service "mysql"
     wait_for_service "redis"
@@ -1058,6 +866,10 @@ install() {
     fi
     echo ""
 
+    # Setup portless for HTTPS access
+    setup_portless
+    echo ""
+
     # Success message
     echo ""
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -1066,29 +878,13 @@ install() {
     echo ""
     echo -e "${BLUE}Your application is now running!${NC}"
     echo ""
-    echo -e "  ${GREEN}Visit: https://whisper.money.local${NC}"
+    echo -e "  ${GREEN}Visit: https://whisper.money.localhost${NC}"
     echo ""
-
-    # Check if mkcert certificates are being used
-    if [ -f "docker/caddy/certs/whisper.money.local.pem" ]; then
-        echo -e "${GREEN}✓ Using trusted SSL certificates (mkcert)${NC}"
-        echo -e "${BLUE}  Your browser will automatically trust the certificate!${NC}"
-    else
-        echo -e "${YELLOW}⚠ Using self-signed certificates${NC}"
-        echo -e "${BLUE}  Your browser may show a security warning.${NC}"
-        echo -e "${BLUE}  Click 'Advanced' → 'Proceed to whisper.money.local' to continue.${NC}"
-        echo ""
-        echo -e "${YELLOW}To avoid the warning, install mkcert and run setup again:${NC}"
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            echo -e "  ${GREEN}brew install mkcert nss && mkcert -install${NC}"
-        else
-            echo -e "  ${GREEN}# See: https://github.com/FiloSottile/mkcert#installation${NC}"
-        fi
-    fi
+    echo -e "${GREEN}✓ Using portless for HTTPS (auto-trusted certificates)${NC}"
     echo ""
     echo -e "${BLUE}Services running:${NC}"
     echo -e "  • PHP development server (port 8000)"
-    echo -e "  • Caddy reverse proxy (ports 80, 443)"
+    echo -e "  • Portless HTTPS proxy (port 443)"
     echo -e "  • MySQL database"
     echo -e "  • Redis cache"
     echo -e "  • MailHog (email testing)"
