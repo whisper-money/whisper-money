@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Category;
 use App\Models\ExchangeRate;
+use App\Models\RealEstateDetail;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
@@ -1107,5 +1108,120 @@ test('account balance evolution includes display_invested_amount for foreign cur
     expect($data['data'][0])->toHaveKey('display_value');
     expect($data['data'][0])->toHaveKey('display_invested_amount');
     expect($data['data'][0]['display_invested_amount'])->toBe((int) round(400000 / 0.90));
+    expect($data['display_currency_code'])->toBe('USD');
+});
+
+test('account balance evolution converts mortgage using loan currency when it differs from property currency', function () {
+    // User currency is USD, property is USD, loan is EUR — only the mortgage needs conversion
+    $property = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::RealEstate,
+        'currency_code' => 'USD',
+    ]);
+    $loan = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+        'currency_code' => 'EUR',
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $property->id,
+        'linked_loan_account_id' => $loan->id,
+    ]);
+
+    $lastMonth = now()->subMonthNoOverflow();
+    $endOfMonth = $lastMonth->copy()->endOfMonth();
+
+    AccountBalance::factory()->create([
+        'account_id' => $property->id,
+        'balance_date' => $endOfMonth,
+        'balance' => 50000000, // $500,000.00 USD
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $loan->id,
+        'balance_date' => $endOfMonth,
+        'balance' => 18000000, // €180,000.00 EUR
+    ]);
+
+    // 1 USD = 0.90 EUR, so EUR -> USD = 18000000 / 0.90
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => $endOfMonth->toDateString(),
+        'rates' => ['eur' => 0.90],
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$property->id.'/balance-evolution?'.http_build_query([
+        'from' => $lastMonth->copy()->startOfMonth()->toDateString(),
+        'to' => $endOfMonth->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    // Property value stays in USD (same as user currency — no display_value)
+    expect($data['data'][0]['value'])->toBe(50000000);
+    expect($data['data'][0])->not->toHaveKey('display_value');
+
+    // Mortgage balance in original EUR
+    expect($data['data'][0]['mortgage_balance'])->toBe(18000000);
+    // Converted mortgage balance using loan's EUR -> user's USD
+    expect($data['data'][0])->toHaveKey('display_mortgage_balance');
+    expect($data['data'][0]['display_mortgage_balance'])->toBe((int) round(18000000 / 0.90));
+
+    // display_currency_code should be present because loan needs conversion
+    expect($data)->toHaveKey('display_currency_code');
+    expect($data['display_currency_code'])->toBe('USD');
+});
+
+test('account daily balance evolution converts mortgage using loan currency when it differs from property currency', function () {
+    $property = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::RealEstate,
+        'currency_code' => 'USD',
+    ]);
+    $loan = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+        'currency_code' => 'EUR',
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $property->id,
+        'linked_loan_account_id' => $loan->id,
+    ]);
+
+    $today = now();
+
+    AccountBalance::factory()->create([
+        'account_id' => $property->id,
+        'balance_date' => $today,
+        'balance' => 50000000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $loan->id,
+        'balance_date' => $today,
+        'balance' => 18000000,
+    ]);
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => $today->toDateString(),
+        'rates' => ['eur' => 0.90],
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$property->id.'/daily-balance-evolution?'.http_build_query([
+        'from' => $today->toDateString(),
+        'to' => $today->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0]['value'])->toBe(50000000);
+    expect($data['data'][0])->not->toHaveKey('display_value');
+    expect($data['data'][0]['mortgage_balance'])->toBe(18000000);
+    expect($data['data'][0])->toHaveKey('display_mortgage_balance');
+    expect($data['data'][0]['display_mortgage_balance'])->toBe((int) round(18000000 / 0.90));
+    expect($data)->toHaveKey('display_currency_code');
     expect($data['display_currency_code'])->toBe('USD');
 });

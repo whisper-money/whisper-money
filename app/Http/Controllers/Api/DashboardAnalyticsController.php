@@ -112,13 +112,16 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
-        $linkedLoanId = $this->getLinkedLoanAccountId($account);
+        $linkedLoanAccount = $this->getLinkedLoanAccount($account);
+        $linkedLoanId = $linkedLoanAccount?->id;
         $accountIds = $linkedLoanId ? [$account->id, $linkedLoanId] : [$account->id];
 
         $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $end);
 
         $userCurrency = $request->user()->currency_code;
         $needsConversion = strtolower($account->currency_code) !== strtolower($userCurrency);
+        $loanNeedsConversion = $linkedLoanAccount
+            && strtolower($linkedLoanAccount->currency_code) !== strtolower($userCurrency);
 
         $points = [];
         $current = $start->copy()->startOfMonth();
@@ -148,8 +151,8 @@ class DashboardAnalyticsController extends Controller
                 $mortgageBalance = $lookup->getBalanceAt($linkedLoanId, $date);
                 $point['mortgage_balance'] = $mortgageBalance;
 
-                if ($needsConversion) {
-                    $point['display_mortgage_balance'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $mortgageBalance, $date->toDateString());
+                if ($loanNeedsConversion) {
+                    $point['display_mortgage_balance'] = $this->exchangeRateService->convert($linkedLoanAccount->currency_code, $userCurrency, $mortgageBalance, $date->toDateString());
                 }
             }
 
@@ -205,7 +208,7 @@ class DashboardAnalyticsController extends Controller
             ],
         ];
 
-        if ($needsConversion) {
+        if ($needsConversion || $loanNeedsConversion) {
             $response['display_currency_code'] = $userCurrency;
         }
 
@@ -226,13 +229,16 @@ class DashboardAnalyticsController extends Controller
         $start = Carbon::parse($validated['from']);
         $end = Carbon::parse($validated['to']);
 
-        $linkedLoanId = $this->getLinkedLoanAccountId($account);
+        $linkedLoanAccount = $this->getLinkedLoanAccount($account);
+        $linkedLoanId = $linkedLoanAccount?->id;
         $accountIds = $linkedLoanId ? [$account->id, $linkedLoanId] : [$account->id];
 
         $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
 
         $userCurrency = $request->user()->currency_code;
         $needsConversion = strtolower($account->currency_code) !== strtolower($userCurrency);
+        $loanNeedsConversion = $linkedLoanAccount
+            && strtolower($linkedLoanAccount->currency_code) !== strtolower($userCurrency);
 
         $points = [];
         $current = $start->copy();
@@ -261,8 +267,8 @@ class DashboardAnalyticsController extends Controller
                 $mortgageBalance = $lookup->getBalanceAt($linkedLoanId, $date);
                 $point['mortgage_balance'] = $mortgageBalance;
 
-                if ($needsConversion) {
-                    $point['display_mortgage_balance'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $mortgageBalance, $date->toDateString());
+                if ($loanNeedsConversion) {
+                    $point['display_mortgage_balance'] = $this->exchangeRateService->convert($linkedLoanAccount->currency_code, $userCurrency, $mortgageBalance, $date->toDateString());
                 }
             }
 
@@ -286,7 +292,7 @@ class DashboardAnalyticsController extends Controller
             ],
         ];
 
-        if ($needsConversion) {
+        if ($needsConversion || $loanNeedsConversion) {
             $response['display_currency_code'] = $userCurrency;
         }
 
@@ -439,14 +445,14 @@ class DashboardAnalyticsController extends Controller
     }
 
     /**
-     * Get the linked loan account ID for a real estate account, if any.
+     * Get the linked loan account for a real estate account, if any.
      */
-    private function getLinkedLoanAccountId(Account $account): ?string
+    private function getLinkedLoanAccount(Account $account): ?Account
     {
         if ($account->type !== AccountType::RealEstate) {
             return null;
         }
 
-        return $account->realEstateDetail?->linked_loan_account_id;
+        return $account->realEstateDetail?->linkedLoanAccount;
     }
 }
