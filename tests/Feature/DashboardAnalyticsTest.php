@@ -1158,19 +1158,14 @@ test('account balance evolution converts mortgage using loan currency when it di
     $response->assertOk();
     $data = $response->json();
 
-    // Property value stays in USD (same as user currency — no display_value)
+    // Property value stays in USD and no alternate display currency is exposed.
     expect($data['data'][0]['value'])->toBe(50000000);
     expect($data['data'][0])->not->toHaveKey('display_value');
 
-    // Mortgage balance in original EUR
-    expect($data['data'][0]['mortgage_balance'])->toBe(18000000);
-    // Converted mortgage balance using loan's EUR -> user's USD
-    expect($data['data'][0])->toHaveKey('display_mortgage_balance');
-    expect($data['data'][0]['display_mortgage_balance'])->toBe((int) round(18000000 / 0.90));
-
-    // display_currency_code should be present because loan needs conversion
-    expect($data)->toHaveKey('display_currency_code');
-    expect($data['display_currency_code'])->toBe('USD');
+    // Mortgage balance is normalized into the property's account currency.
+    expect($data['data'][0]['mortgage_balance'])->toBe((int) round(18000000 / 0.90));
+    expect($data['data'][0])->not->toHaveKey('display_mortgage_balance');
+    expect($data)->not->toHaveKey('display_currency_code');
 });
 
 test('account daily balance evolution converts mortgage using loan currency when it differs from property currency', function () {
@@ -1219,9 +1214,65 @@ test('account daily balance evolution converts mortgage using loan currency when
 
     expect($data['data'][0]['value'])->toBe(50000000);
     expect($data['data'][0])->not->toHaveKey('display_value');
-    expect($data['data'][0]['mortgage_balance'])->toBe(18000000);
-    expect($data['data'][0])->toHaveKey('display_mortgage_balance');
-    expect($data['data'][0]['display_mortgage_balance'])->toBe((int) round(18000000 / 0.90));
-    expect($data)->toHaveKey('display_currency_code');
+    expect($data['data'][0]['mortgage_balance'])->toBe((int) round(18000000 / 0.90));
+    expect($data['data'][0])->not->toHaveKey('display_mortgage_balance');
+    expect($data)->not->toHaveKey('display_currency_code');
+});
+
+test('account balance evolution exposes alternate user-currency mortgage values when property and user currencies differ', function () {
+    $this->user->update(['currency_code' => 'USD']);
+
+    $property = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::RealEstate,
+        'currency_code' => 'EUR',
+    ]);
+    $loan = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+        'currency_code' => 'GBP',
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $property->id,
+        'linked_loan_account_id' => $loan->id,
+    ]);
+
+    $endOfMonth = now()->subMonthNoOverflow()->endOfMonth();
+
+    AccountBalance::factory()->create([
+        'account_id' => $property->id,
+        'balance_date' => $endOfMonth,
+        'balance' => 50000000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $loan->id,
+        'balance_date' => $endOfMonth,
+        'balance' => 18000000,
+    ]);
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'eur',
+        'date' => $endOfMonth->toDateString(),
+        'rates' => ['gbp' => 0.80],
+    ]);
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => $endOfMonth->toDateString(),
+        'rates' => ['eur' => 0.90, 'gbp' => 0.72],
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$property->id.'/balance-evolution?'.http_build_query([
+        'from' => $endOfMonth->copy()->startOfMonth()->toDateString(),
+        'to' => $endOfMonth->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data['data'][0]['value'])->toBe(50000000);
+    expect($data['data'][0]['display_value'])->toBe((int) round(50000000 / 0.90));
+    expect($data['data'][0]['mortgage_balance'])->toBe((int) round(18000000 / 0.80));
+    expect($data['data'][0]['display_mortgage_balance'])->toBe((int) round(18000000 / 0.72));
     expect($data['display_currency_code'])->toBe('USD');
 });

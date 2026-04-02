@@ -119,9 +119,9 @@ class DashboardAnalyticsController extends Controller
         $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $end);
 
         $userCurrency = $request->user()->currency_code;
-        $needsConversion = strtolower($account->currency_code) !== strtolower($userCurrency);
-        $loanNeedsConversion = $linkedLoanAccount
-            && strtolower($linkedLoanAccount->currency_code) !== strtolower($userCurrency);
+        $displayCurrencyCode = strcasecmp($account->currency_code, $userCurrency) !== 0
+            ? $userCurrency
+            : null;
 
         $points = [];
         $current = $start->copy()->startOfMonth();
@@ -140,24 +140,39 @@ class DashboardAnalyticsController extends Controller
                 $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
                 $point['invested_amount'] = $investedAmount;
 
-                if ($needsConversion) {
+                if ($displayCurrencyCode !== null) {
                     $point['display_invested_amount'] = $investedAmount !== null
-                        ? $this->exchangeRateService->convert($account->currency_code, $userCurrency, $investedAmount, $date->toDateString())
+                        ? $this->convertBalanceForDate($account->currency_code, $displayCurrencyCode, $investedAmount, $date)
                         : null;
                 }
             }
 
             if ($linkedLoanId) {
                 $mortgageBalance = $lookup->getBalanceAt($linkedLoanId, $date);
-                $point['mortgage_balance'] = $mortgageBalance;
+                $point['mortgage_balance'] = $this->convertBalanceForDate(
+                    $linkedLoanAccount->currency_code,
+                    $account->currency_code,
+                    $mortgageBalance,
+                    $date,
+                );
 
-                if ($loanNeedsConversion) {
-                    $point['display_mortgage_balance'] = $this->exchangeRateService->convert($linkedLoanAccount->currency_code, $userCurrency, $mortgageBalance, $date->toDateString());
+                if ($displayCurrencyCode !== null) {
+                    $point['display_mortgage_balance'] = $this->convertBalanceForDate(
+                        $linkedLoanAccount->currency_code,
+                        $displayCurrencyCode,
+                        $mortgageBalance,
+                        $date,
+                    );
                 }
             }
 
-            if ($needsConversion) {
-                $point['display_value'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $value, $date->toDateString());
+            if ($displayCurrencyCode !== null) {
+                $point['display_value'] = $this->convertBalanceForDate(
+                    $account->currency_code,
+                    $displayCurrencyCode,
+                    $value,
+                    $date,
+                );
             }
 
             $points[] = $point;
@@ -187,8 +202,13 @@ class DashboardAnalyticsController extends Controller
                         'projected' => true,
                     ];
 
-                    if ($needsConversion) {
-                        $projectedPoint['display_value'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $balanceCents, Carbon::today()->toDateString());
+                    if ($displayCurrencyCode !== null) {
+                        $projectedPoint['display_value'] = $this->convertBalanceForDate(
+                            $account->currency_code,
+                            $displayCurrencyCode,
+                            $balanceCents,
+                            Carbon::today(),
+                        );
                     }
 
                     $points[] = $projectedPoint;
@@ -208,8 +228,8 @@ class DashboardAnalyticsController extends Controller
             ],
         ];
 
-        if ($needsConversion || $loanNeedsConversion) {
-            $response['display_currency_code'] = $userCurrency;
+        if ($displayCurrencyCode !== null) {
+            $response['display_currency_code'] = $displayCurrencyCode;
         }
 
         return response()->json($response);
@@ -236,9 +256,9 @@ class DashboardAnalyticsController extends Controller
         $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
 
         $userCurrency = $request->user()->currency_code;
-        $needsConversion = strtolower($account->currency_code) !== strtolower($userCurrency);
-        $loanNeedsConversion = $linkedLoanAccount
-            && strtolower($linkedLoanAccount->currency_code) !== strtolower($userCurrency);
+        $displayCurrencyCode = strcasecmp($account->currency_code, $userCurrency) !== 0
+            ? $userCurrency
+            : null;
 
         $points = [];
         $current = $start->copy();
@@ -256,24 +276,39 @@ class DashboardAnalyticsController extends Controller
                 $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
                 $point['invested_amount'] = $investedAmount;
 
-                if ($needsConversion) {
+                if ($displayCurrencyCode !== null) {
                     $point['display_invested_amount'] = $investedAmount !== null
-                        ? $this->exchangeRateService->convert($account->currency_code, $userCurrency, $investedAmount, $date->toDateString())
+                        ? $this->convertBalanceForDate($account->currency_code, $displayCurrencyCode, $investedAmount, $date)
                         : null;
                 }
             }
 
             if ($linkedLoanId) {
                 $mortgageBalance = $lookup->getBalanceAt($linkedLoanId, $date);
-                $point['mortgage_balance'] = $mortgageBalance;
+                $point['mortgage_balance'] = $this->convertBalanceForDate(
+                    $linkedLoanAccount->currency_code,
+                    $account->currency_code,
+                    $mortgageBalance,
+                    $date,
+                );
 
-                if ($loanNeedsConversion) {
-                    $point['display_mortgage_balance'] = $this->exchangeRateService->convert($linkedLoanAccount->currency_code, $userCurrency, $mortgageBalance, $date->toDateString());
+                if ($displayCurrencyCode !== null) {
+                    $point['display_mortgage_balance'] = $this->convertBalanceForDate(
+                        $linkedLoanAccount->currency_code,
+                        $displayCurrencyCode,
+                        $mortgageBalance,
+                        $date,
+                    );
                 }
             }
 
-            if ($needsConversion) {
-                $point['display_value'] = $this->exchangeRateService->convert($account->currency_code, $userCurrency, $value, $date->toDateString());
+            if ($displayCurrencyCode !== null) {
+                $point['display_value'] = $this->convertBalanceForDate(
+                    $account->currency_code,
+                    $displayCurrencyCode,
+                    $value,
+                    $date,
+                );
             }
 
             $points[] = $point;
@@ -292,8 +327,8 @@ class DashboardAnalyticsController extends Controller
             ],
         ];
 
-        if ($needsConversion || $loanNeedsConversion) {
-            $response['display_currency_code'] = $userCurrency;
+        if ($displayCurrencyCode !== null) {
+            $response['display_currency_code'] = $displayCurrencyCode;
         }
 
         return response()->json($response);
@@ -454,5 +489,19 @@ class DashboardAnalyticsController extends Controller
         }
 
         return $account->realEstateDetail?->linkedLoanAccount;
+    }
+
+    private function convertBalanceForDate(string $sourceCurrency, string $targetCurrency, int $amount, Carbon $date): int
+    {
+        if (strcasecmp($sourceCurrency, $targetCurrency) === 0) {
+            return $amount;
+        }
+
+        return $this->exchangeRateService->convert(
+            $sourceCurrency,
+            $targetCurrency,
+            $amount,
+            $date->toDateString(),
+        );
     }
 }
