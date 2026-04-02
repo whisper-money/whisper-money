@@ -146,7 +146,7 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
     }, []);
 
     const handleAccountCreated = useCallback(() => {
-        router.reload({ only: ['accounts'] });
+        router.reload();
     }, []);
 
     return (

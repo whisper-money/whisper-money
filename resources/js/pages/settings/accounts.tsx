@@ -192,7 +192,7 @@ export default function Accounts({ accounts }: AccountsPageProps) {
     ];
 
     const handleAccountCreated = () => {
-        router.reload({ only: ['accounts'] });
+        router.reload();
     };
 
     const columns: ColumnDef<Account>[] = [
