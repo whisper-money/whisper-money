@@ -88,6 +88,47 @@ test('syncs binance balance using USDT fallback conversion', function () {
     expect($balance->balance)->toBe(90909); // 909.09 EUR * 100
 });
 
+test('syncs binance balance for unsupported quote currencies via usd conversion', function () {
+    $user = User::factory()->onboarded()->create(['currency_code' => 'ARS']);
+    $connection = BankingConnection::factory()->binance()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'binance-portfolio',
+        'currency_code' => 'ARS',
+    ]);
+
+    Http::fake([
+        'api.binance.com/sapi/v1/capital/deposit/hisrec*' => Http::response([]),
+        'api.binance.com/sapi/v1/capital/withdraw/history*' => Http::response([]),
+        'api.binance.com/sapi/v1/accountSnapshot*' => Http::response(['snapshotVos' => []]),
+        'api.binance.com/api/v3/account*' => Http::response([
+            'balances' => [
+                ['asset' => 'SOL', 'free' => '10.0', 'locked' => '0.0'],
+            ],
+        ]),
+        'api.binance.com/api/v3/ticker/price' => Http::response([
+            ['symbol' => 'SOLUSDT', 'price' => '100.00'],
+        ]),
+        'cdn.jsdelivr.net/*currencies/ars*' => Http::response([
+            'ars' => [
+                'usd' => 0.0007142857,
+            ],
+        ]),
+    ]);
+
+    $client = new BinanceClient('test-key', 'test-secret');
+    $service = app(BinanceBalanceSyncService::class);
+    $service->sync($account, $client);
+
+    expect($account->balances()->count())->toBe(1);
+
+    $balance = $account->balances()->first();
+    expect($balance->balance)->toBe((int) round((1000 / 0.0007142857) * 100));
+});
+
 test('handles USD stablecoins as 1:1 when target is USD', function () {
     $user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
     $connection = BankingConnection::factory()->binance()->create([
