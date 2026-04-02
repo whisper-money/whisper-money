@@ -273,6 +273,7 @@ export interface ChartComputedData {
     chartData: BalanceDataPoint[];
     currentBalance: number;
     currentMortgageBalance: number | null;
+    currencyCode: string;
     hasMortgageData: boolean;
     shortTrend: ReturnType<typeof calculateTrend>;
     longTrend: ReturnType<typeof calculateTrend>;
@@ -504,27 +505,6 @@ export function AccountBalanceChart({
         };
     }, [balanceData]);
 
-    useEffect(() => {
-        if (onDataLoaded && chartData.length > 0) {
-            onDataLoaded({
-                chartData,
-                currentBalance,
-                currentMortgageBalance,
-                hasMortgageData,
-                shortTrend,
-                longTrend,
-            });
-        }
-    }, [
-        chartData,
-        currentBalance,
-        currentMortgageBalance,
-        hasMortgageData,
-        shortTrend,
-        longTrend,
-        onDataLoaded,
-    ]);
-
     // Determine if currency toggle is available
     const displayCurrencyCode = balanceData?.display_currency_code ?? null;
     const hasCurrencyToggle = displayCurrencyCode !== null;
@@ -612,6 +592,29 @@ export function AccountBalanceChart({
         const historicalData = activeChartData.filter((d) => !d.projected);
         return calculateTrend(historicalData, historicalData.length - 1);
     }, [activeChartData, currencyMode, hasCurrencyToggle, longTrend]);
+
+    useEffect(() => {
+        if (onDataLoaded && activeChartData.length > 0) {
+            onDataLoaded({
+                chartData: activeChartData,
+                currentBalance: activeCurrentBalance,
+                currentMortgageBalance: activeCurrentMortgageBalance,
+                currencyCode: activeCurrencyCode,
+                hasMortgageData,
+                shortTrend: activeShortTrend,
+                longTrend: activeLongTrend,
+            });
+        }
+    }, [
+        activeChartData,
+        activeCurrentBalance,
+        activeCurrentMortgageBalance,
+        activeCurrencyCode,
+        hasMortgageData,
+        activeShortTrend,
+        activeLongTrend,
+        onDataLoaded,
+    ]);
 
     // Convert data for useChartViews hook
     const { data: hookData, accounts: hookAccounts } = useMemo(() => {
