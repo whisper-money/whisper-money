@@ -41,7 +41,7 @@ export function CreateAccountDialog({
     const sharedAccountsList = (sharedAccounts as Account[]) || [];
     const availableLoanAccounts = useMemo(
         () => sharedAccountsList.filter((a) => a.type === 'loan'),
-        [sharedAccountsList],
+        [sharedAccounts],
     );
     const isFirstAccount = sharedAccountsList.length === 0;
 
