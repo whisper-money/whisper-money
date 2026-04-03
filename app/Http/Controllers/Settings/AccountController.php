@@ -133,7 +133,7 @@ class AccountController extends Controller
             return response()->json($account, 201);
         }
 
-        return back();
+        return redirect(url()->previousPath());
     }
 
     /**
