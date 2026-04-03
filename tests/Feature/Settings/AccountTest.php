@@ -3,6 +3,7 @@
 use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\Bank;
+use App\Models\RealEstateDetail;
 use App\Models\Transaction;
 use App\Models\User;
 
@@ -340,4 +341,28 @@ it('validates balance must be an integer when provided', function () {
     ]);
 
     $response->assertSessionHasErrors(['balance']);
+});
+
+it('includes real estate detail when listing accounts with real estate type', function () {
+    actingAs($this->user);
+
+    $account = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $realEstateDetail = RealEstateDetail::factory()->create([
+        'account_id' => $account->id,
+    ]);
+
+    $response = $this->get(route('accounts.index'));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('settings/accounts')
+        ->has('accounts', 1)
+        ->has('accounts.0.real_estate_detail')
+        ->where('accounts.0.real_estate_detail.property_type', $realEstateDetail->property_type->value)
+        ->where('accounts.0.real_estate_detail.address', $realEstateDetail->address)
+        ->where('accounts.0.real_estate_detail.purchase_price', $realEstateDetail->purchase_price)
+    );
 });

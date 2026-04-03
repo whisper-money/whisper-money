@@ -101,7 +101,7 @@ export function EditAccountDialog({
             propertyType: detail.property_type ?? null,
             address: detail.address ?? '',
             purchasePrice: detail.purchase_price ?? 0,
-            purchaseDate: detail.purchase_date ?? '',
+            purchaseDate: detail.purchase_date?.slice(0, 10) ?? '',
             areaValue: detail.area_value ?? '',
             areaUnit: detail.area_unit ?? null,
             linkedLoanAccountId: detail.linked_loan_account_id ?? null,

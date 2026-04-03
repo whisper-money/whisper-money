@@ -31,7 +31,7 @@ class AccountController extends Controller
 
         $accounts = $user
             ->accounts()
-            ->with(['bank:id,name,logo', 'loanDetail'])
+            ->with(['bank:id,name,logo', 'loanDetail', 'realEstateDetail'])
             ->orderBy('name')
             ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 
