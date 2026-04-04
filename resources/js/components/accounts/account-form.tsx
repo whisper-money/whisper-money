@@ -294,7 +294,6 @@ export function AccountForm({
                                     type="hidden"
                                     name="bank_id"
                                     value={selectedBankId ?? ''}
-                                    required
                                 />
 
                                 <BankCombobox
