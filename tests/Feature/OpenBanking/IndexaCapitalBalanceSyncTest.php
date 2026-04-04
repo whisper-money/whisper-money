@@ -29,7 +29,7 @@ test('syncs historical balances from indexa capital portfolios', function () {
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(3);
@@ -62,7 +62,7 @@ test('syncs all available historical data', function () {
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(4);
@@ -93,7 +93,7 @@ test('updates existing balance for same date', function () {
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(1);
@@ -110,7 +110,7 @@ test('skips account without external_account_id', function () {
     $client = Mockery::mock(IndexaCapitalClient::class);
     $client->shouldNotReceive('getPerformance');
 
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(0);
@@ -134,7 +134,7 @@ test('handles missing portfolios gracefully', function () {
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(0);
@@ -158,7 +158,7 @@ test('handles empty portfolios array gracefully', function () {
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(0);
@@ -173,6 +173,7 @@ test('stores invested_amount from net_amounts data', function () {
         'user_id' => $user->id,
         'banking_connection_id' => $connection->id,
         'external_account_id' => 'IC-001',
+        'currency_code' => 'USD',
     ]);
 
     $today = now()->toDateString();
@@ -206,7 +207,7 @@ test('stores invested_amount from net_amounts data', function () {
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(2);
@@ -229,6 +230,7 @@ test('stores null invested_amount when net_amounts is missing', function () {
         'user_id' => $user->id,
         'banking_connection_id' => $connection->id,
         'external_account_id' => 'IC-001',
+        'currency_code' => 'USD',
     ]);
 
     Http::fake([
@@ -240,7 +242,7 @@ test('stores null invested_amount when net_amounts is missing', function () {
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     expect($account->balances()->count())->toBe(1);
@@ -259,6 +261,7 @@ test('falls back to total_amount minus return when net_amounts is missing', func
         'user_id' => $user->id,
         'banking_connection_id' => $connection->id,
         'external_account_id' => 'IC-001',
+        'currency_code' => 'USD',
     ]);
 
     Http::fake([
@@ -271,7 +274,7 @@ test('falls back to total_amount minus return when net_amounts is missing', func
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client);
 
     $balance = $account->balances()->first();
@@ -318,7 +321,7 @@ test('subsequent sync only processes entries since last balance date', function 
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: false);
 
     // 2 pre-existing + 3 new entries = 5 total (the one on the boundary date gets updated, not duplicated)
@@ -365,7 +368,7 @@ test('full sync processes all entries regardless of existing balances', function
     ]);
 
     $client = new IndexaCapitalClient('test-token');
-    $service = new IndexaCapitalBalanceSyncService;
+    $service = app(IndexaCapitalBalanceSyncService::class);
     $service->sync($account, $client, isFirstSync: true);
 
     // All 3 entries processed (1 existing updated + 2 new)

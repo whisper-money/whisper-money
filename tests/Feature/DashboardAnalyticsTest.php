@@ -1094,6 +1094,12 @@ test('account balance evolution includes display_invested_amount for foreign cur
         'rates' => ['eur' => 0.90],
     ]);
 
+    ExchangeRate::factory()->create([
+        'base_currency' => 'eur',
+        'date' => $endOfMonth->toDateString(),
+        'rates' => ['usd' => 1 / 0.90],
+    ]);
+
     $response = $this->getJson('/api/dashboard/account/'.$account->id.'/balance-evolution?'.http_build_query([
         'from' => $lastMonth->copy()->startOfMonth()->toDateString(),
         'to' => $endOfMonth->toDateString(),
@@ -1102,12 +1108,12 @@ test('account balance evolution includes display_invested_amount for foreign cur
     $response->assertOk();
     $data = $response->json();
 
-    // Original invested_amount in EUR
+    // invested_amount is now stored in user currency (USD)
     expect($data['data'][0]['invested_amount'])->toBe(400000);
-    // Converted display values
+    // Converted display values (invested_amount converted from user currency USD → account currency EUR)
     expect($data['data'][0])->toHaveKey('display_value');
     expect($data['data'][0])->toHaveKey('display_invested_amount');
-    expect($data['data'][0]['display_invested_amount'])->toBe((int) round(400000 / 0.90));
+    expect($data['data'][0]['display_invested_amount'])->toBe((int) round(400000 * 0.90));
     expect($data['display_currency_code'])->toBe('USD');
 });
 

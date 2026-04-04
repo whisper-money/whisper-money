@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { SharedData } from '@/types';
 import {
     type Account,
     type AccountBalance,
@@ -21,6 +22,7 @@ import {
     supportsInvestedAmount,
 } from '@/types/account';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
 interface UpdateBalanceDialogProps {
@@ -54,6 +56,8 @@ export function UpdateBalanceDialog({
     const inputRef = useRef<HTMLInputElement>(null);
     const showInvestedAmount = supportsInvestedAmount(account);
     const isLoan = account.type === 'loan';
+    const userCurrencyCode =
+        usePage<SharedData>().props.auth.user.currency_code;
 
     useEffect(() => {
         async function fetchLastBalance() {
@@ -228,7 +232,7 @@ export function UpdateBalanceDialog({
                                             value === 0 ? null : value,
                                         )
                                     }
-                                    currencyCode={account.currency_code}
+                                    currencyCode={userCurrencyCode}
                                 />
                             )}
                         </div>

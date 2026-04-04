@@ -47,9 +47,7 @@ class AccountMetricsService
 
                 if ($account->type->supportsInvestedAmount()) {
                     $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
-                    $point['investedAmount'] = $investedAmount !== null
-                        ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $date->toDateString())
-                        : null;
+                    $point['investedAmount'] = $investedAmount;
                 }
 
                 $history[] = $point;
@@ -61,10 +59,7 @@ class AccountMetricsService
 
             $investedAmount = null;
             if ($account->type->supportsInvestedAmount()) {
-                $rawInvested = $lookup->getInvestedAmountAt($account->id, $now);
-                $investedAmount = $rawInvested !== null
-                    ? $this->convertBalance($rawInvested, $account->currency_code, $userCurrency, $now->toDateString())
-                    : null;
+                $investedAmount = $lookup->getInvestedAmountAt($account->id, $now);
             }
 
             $metrics[$account->id] = [
@@ -126,10 +121,7 @@ class AccountMetricsService
                 }
 
                 if ($account->type->supportsInvestedAmount()) {
-                    $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
-                    $point[$account->id.'_invested'] = $investedAmount !== null
-                        ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $date->toDateString())
-                        : null;
+                    $point[$account->id.'_invested'] = $lookup->getInvestedAmountAt($account->id, $date);
                 }
             }
 
@@ -138,7 +130,7 @@ class AccountMetricsService
         }
 
         $now = Carbon::now();
-        $accountsConfig = $accounts->mapWithKeys(function ($account) use ($userCurrency, $lookup, $now) {
+        $accountsConfig = $accounts->mapWithKeys(function ($account) use ($lookup, $now) {
             $config = [
                 'id' => $account->id,
                 'name' => $account->name,
@@ -155,10 +147,7 @@ class AccountMetricsService
             }
 
             if ($account->type->supportsInvestedAmount()) {
-                $investedAmount = $lookup->getInvestedAmountAt($account->id, $now);
-                $config['invested_amount'] = $investedAmount !== null
-                    ? $this->convertBalance($investedAmount, $account->currency_code, $userCurrency, $now->toDateString())
-                    : null;
+                $config['invested_amount'] = $lookup->getInvestedAmountAt($account->id, $now);
             }
 
             return [$account->id => $config];

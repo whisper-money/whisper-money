@@ -3,10 +3,13 @@
 namespace App\Services\Banking;
 
 use App\Models\Account;
+use App\Services\CurrencyConversionService;
 use Illuminate\Support\Facades\Log;
 
 class IndexaCapitalBalanceSyncService
 {
+    public function __construct(private CurrencyConversionService $currencyConverter) {}
+
     /**
      * Sync portfolio balances for an Indexa Capital account.
      * On first sync, stores all available daily historical balances.
@@ -41,6 +44,9 @@ class IndexaCapitalBalanceSyncService
             }
         }
 
+        $accountCurrency = strtoupper($account->currency_code);
+        $userCurrency = strtoupper($account->user->currency_code);
+
         $count = 0;
 
         foreach ($portfolios as $entry) {
@@ -56,7 +62,7 @@ class IndexaCapitalBalanceSyncService
             }
 
             $balanceCents = (int) round(floatval($value) * 100);
-            $investedAmountCents = $this->calculateInvestedAmount($entry, $netAmounts);
+            $investedAmountCents = $this->calculateInvestedAmount($entry, $netAmounts, $accountCurrency, $userCurrency, $date);
 
             $account->balances()->updateOrCreate(
                 ['balance_date' => $date],
@@ -77,7 +83,7 @@ class IndexaCapitalBalanceSyncService
     }
 
     /**
-     * Calculate invested amount from the net_amounts data.
+     * Calculate invested amount from the net_amounts data, converted to the user's currency.
      *
      * Uses net_amounts (cumulative net inflows keyed by YYYYMMDD) which represents
      * the actual money invested (inflows - outflows - tax_outflows), matching
@@ -88,25 +94,36 @@ class IndexaCapitalBalanceSyncService
      * @param  array<string, mixed>  $entry
      * @param  array<string, float>  $netAmounts
      */
-    private function calculateInvestedAmount(array $entry, array $netAmounts): ?int
+    private function calculateInvestedAmount(array $entry, array $netAmounts, string $accountCurrency, string $userCurrency, string $date): ?int
     {
-        $date = $entry['date'] ?? null;
+        $entryDate = $entry['date'] ?? null;
+        $amount = null;
 
-        if ($date !== null && ! empty($netAmounts)) {
-            $dateKey = str_replace('-', '', $date);
+        if ($entryDate !== null && ! empty($netAmounts)) {
+            $dateKey = str_replace('-', '', $entryDate);
 
             if (isset($netAmounts[$dateKey])) {
-                return (int) round(floatval($netAmounts[$dateKey]) * 100);
+                $amount = floatval($netAmounts[$dateKey]);
             }
         }
 
-        $totalAmount = $entry['total_amount'] ?? null;
-        $returnValue = $entry['return'] ?? null;
+        if ($amount === null) {
+            $totalAmount = $entry['total_amount'] ?? null;
+            $returnValue = $entry['return'] ?? null;
 
-        if ($totalAmount !== null && $returnValue !== null) {
-            return (int) round((floatval($totalAmount) - floatval($returnValue)) * 100);
+            if ($totalAmount !== null && $returnValue !== null) {
+                $amount = floatval($totalAmount) - floatval($returnValue);
+            }
         }
 
-        return null;
+        if ($amount === null) {
+            return null;
+        }
+
+        if (strcasecmp($accountCurrency, $userCurrency) !== 0) {
+            $amount = $this->currencyConverter->convert($accountCurrency, $userCurrency, $amount, $date);
+        }
+
+        return (int) round($amount * 100);
     }
 }
