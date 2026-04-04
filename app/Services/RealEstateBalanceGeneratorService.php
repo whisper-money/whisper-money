@@ -15,12 +15,17 @@ class RealEstateBalanceGeneratorService
      * - The purchase date (with purchase price)
      * - The 1st of each month from the month after purchase to the current month
      * - Today (with current value)
+     *
+     * Use $from/$to to generate only a specific date range while still
+     * interpolating against the full purchase-to-today timeline.
      */
     public function generateHistoricalBalances(
         Account $account,
         int $purchasePrice,
         Carbon $purchaseDate,
         int $currentValue,
+        ?Carbon $from = null,
+        ?Carbon $to = null,
     ): void {
         $today = Carbon::today();
 
@@ -40,7 +45,10 @@ class RealEstateBalanceGeneratorService
             return;
         }
 
-        $dates = $this->buildDateList($purchaseDate, $today);
+        $rangeStart = $from ?? $purchaseDate;
+        $rangeEnd = $to ?? $today;
+
+        $dates = $this->buildDateList($purchaseDate, $today, $rangeStart, $rangeEnd);
 
         foreach ($dates as $date) {
             $elapsedDays = (int) $purchaseDate->diffInDays($date);
@@ -59,29 +67,35 @@ class RealEstateBalanceGeneratorService
      * Build the list of dates for balance generation:
      * purchase date, 1st of each intermediate month, and today.
      *
+     * Only dates within $rangeStart..$rangeEnd are included.
+     *
      * @return Carbon[]
      */
-    private function buildDateList(Carbon $purchaseDate, Carbon $today): array
+    private function buildDateList(Carbon $purchaseDate, Carbon $today, Carbon $rangeStart, Carbon $rangeEnd): array
     {
         $dates = [];
 
-        // Start with the purchase date
-        $dates[] = $purchaseDate->copy();
+        // Start with the purchase date if it falls within the range
+        if ($purchaseDate->gte($rangeStart) && $purchaseDate->lte($rangeEnd)) {
+            $dates[] = $purchaseDate->copy();
+        }
 
         // Add the 1st of each month from the month after purchase to the current month
         $firstOfNextMonth = $purchaseDate->copy()->addMonth()->startOfMonth();
 
         while ($firstOfNextMonth->lte($today)) {
-            // Avoid duplicate if today is the 1st and matches this date
-            if (! $firstOfNextMonth->isSameDay($today)) {
-                $dates[] = $firstOfNextMonth->copy();
+            if ($firstOfNextMonth->gte($rangeStart) && $firstOfNextMonth->lte($rangeEnd)) {
+                // Avoid duplicate if today is the 1st and matches this date
+                if (! $firstOfNextMonth->isSameDay($today)) {
+                    $dates[] = $firstOfNextMonth->copy();
+                }
             }
 
             $firstOfNextMonth->addMonth();
         }
 
-        // End with today (unless purchase date is today, handled above)
-        if (! $purchaseDate->isSameDay($today)) {
+        // End with today if it falls within the range (unless purchase date is today, handled above)
+        if (! $purchaseDate->isSameDay($today) && $today->gte($rangeStart) && $today->lte($rangeEnd)) {
             $dates[] = $today->copy();
         }
 

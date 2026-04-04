@@ -2,6 +2,7 @@
 
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
+use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\RealEstateDetail;
@@ -1035,4 +1036,71 @@ it('does not generate historical balances when balance is not provided', functio
 
     // No balances should be created
     expect($account->balances)->toHaveCount(0);
+});
+
+it('dispatches a job for older balances when purchase predates 12-month window', function () {
+    Bus::fake(GenerateHistoricalRealEstateBalancesJob::class);
+
+    $this->travelTo(Carbon\Carbon::parse('2026-03-15'));
+
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'Old Property',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_price' => 10000000,
+        'purchase_date' => '2020-06-15', // ~6 years ago
+        'balance' => 18000000,
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+    $response->assertRedirect();
+
+    Bus::assertDispatched(GenerateHistoricalRealEstateBalancesJob::class, function ($job) {
+        return $job->purchaseDate->toDateString() === '2020-06-15'
+            && $job->purchasePrice === 10000000
+            && $job->currentValue === 18000000;
+    });
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    // Only the last 12 months of balances should exist synchronously
+    $balances = $account->balances()->orderBy('balance_date')->get();
+    $twelveMonthsAgo = Carbon\Carbon::parse('2025-03-01');
+
+    foreach ($balances as $balance) {
+        expect($balance->balance_date->gte($twelveMonthsAgo))->toBeTrue();
+    }
+
+    // Today's balance should be the current value
+    $todayBalance = $balances->last();
+    expect($todayBalance->balance_date->toDateString())->toBe('2026-03-15');
+    expect($todayBalance->balance)->toBe(18000000);
+});
+
+it('does not dispatch a job when purchase is within 12-month window', function () {
+    Bus::fake(GenerateHistoricalRealEstateBalancesJob::class);
+
+    $this->travelTo(Carbon\Carbon::parse('2026-03-15'));
+
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'Recent Property',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_price' => 20000000,
+        'purchase_date' => '2025-11-15', // within last 12 months
+        'balance' => 24000000,
+    ];
+
+    $this->post(route('accounts.store'), $data);
+
+    Bus::assertNotDispatched(GenerateHistoricalRealEstateBalancesJob::class);
 });

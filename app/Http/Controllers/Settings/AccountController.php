@@ -6,6 +6,7 @@ use App\Enums\AccountType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreAccountRequest;
 use App\Http\Requests\Settings\UpdateAccountRequest;
+use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Models\Account;
 use App\Models\User;
 use App\Services\RealEstateBalanceGeneratorService;
@@ -81,12 +82,29 @@ class AccountController extends Controller
 
             // Generate historical balances when purchase data and current value are provided
             if ($balance !== null && isset($validated['purchase_price'], $validated['purchase_date'])) {
+                $purchaseDate = Carbon::parse($validated['purchase_date']);
+                $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
+
+                // Generate the last 12 months synchronously
                 app(RealEstateBalanceGeneratorService::class)->generateHistoricalBalances(
                     $account,
                     $validated['purchase_price'],
-                    Carbon::parse($validated['purchase_date']),
+                    $purchaseDate,
                     $balance,
+                    from: $twelveMonthsAgo,
                 );
+
+                // Dispatch older balances asynchronously if the purchase predates the sync window
+                if ($purchaseDate->isBefore($twelveMonthsAgo)) {
+                    GenerateHistoricalRealEstateBalancesJob::dispatch(
+                        $account,
+                        $validated['purchase_price'],
+                        $purchaseDate,
+                        $balance,
+                        $purchaseDate,
+                        $twelveMonthsAgo->copy()->subDay(),
+                    );
+                }
             }
         }
 
