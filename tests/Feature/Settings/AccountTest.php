@@ -55,12 +55,33 @@ it('can create a new account with plaintext name', function () {
     ]);
 });
 
+it('can create a new account without a bank', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'My Savings Account',
+        'currency_code' => 'USD',
+        'type' => AccountType::Savings->value,
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+
+    $response->assertRedirect();
+    assertDatabaseHas('accounts', [
+        'user_id' => $this->user->id,
+        'bank_id' => null,
+        'name' => 'My Savings Account',
+        'currency_code' => 'USD',
+        'type' => AccountType::Savings->value,
+    ]);
+});
+
 it('validates required fields when creating account', function () {
     actingAs($this->user);
 
     $response = $this->post(route('accounts.store'), []);
 
-    $response->assertSessionHasErrors(['name', 'bank_id', 'currency_code', 'type']);
+    $response->assertSessionHasErrors(['name', 'currency_code', 'type']);
 });
 
 it('validates currency_code must be in allowed list', function () {

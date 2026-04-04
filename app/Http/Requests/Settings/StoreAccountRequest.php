@@ -39,9 +39,7 @@ class StoreAccountRequest extends FormRequest
 
         $rules = [
             'name' => ['required', 'string'],
-            'bank_id' => $isRealEstate
-                ? ['nullable', 'exists:banks,id']
-                : ['required', 'exists:banks,id'],
+            'bank_id' => ['nullable', 'exists:banks,id'],
             'currency_code' => [
                 'required',
                 'string',

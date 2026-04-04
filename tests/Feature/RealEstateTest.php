@@ -210,7 +210,7 @@ it('does not require property_type for non-real-estate accounts', function () {
     $response->assertRedirect();
 });
 
-it('requires bank_id for non-real-estate account types', function () {
+it('does not require bank_id for non-real-estate account types', function () {
     actingAs($this->user);
 
     $data = [
@@ -222,7 +222,7 @@ it('requires bank_id for non-real-estate account types', function () {
 
     $response = $this->post(route('accounts.store'), $data);
 
-    $response->assertSessionHasErrors(['bank_id']);
+    $response->assertSessionMissing('errors');
 });
 
 // -------------------------------------------------------------------
