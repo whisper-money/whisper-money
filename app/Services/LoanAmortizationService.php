@@ -191,11 +191,40 @@ class LoanAmortizationService
     /**
      * Calculate the projected balance at a specific date for a loan.
      *
-     * First checks for a real account_balance entry. If none exists,
-     * calculates from the loan's amortization schedule.
+     * First checks for a real account_balance entry. If one exists,
+     * projects forward from that known balance point. Otherwise,
+     * calculates from the loan's original amortization schedule.
      */
     public function getBalanceAtDate(LoanDetail $loanDetail, Carbon $date): int
     {
+        $latestBalance = AccountBalance::query()
+            ->where('account_id', $loanDetail->account_id)
+            ->where('balance_date', '<=', $date->toDateString())
+            ->orderBy('balance_date', 'desc')
+            ->first();
+
+        if ($latestBalance) {
+            $monthsBetween = (int) $latestBalance->balance_date->startOfMonth()
+                ->diffInMonths($date->copy()->startOfMonth());
+
+            if ($monthsBetween <= 0) {
+                return $latestBalance->balance;
+            }
+
+            $remainingMonths = $this->calculateRemainingMonths($loanDetail, $latestBalance->balance_date);
+
+            if ($remainingMonths <= 0) {
+                return 0;
+            }
+
+            return $this->calculateRemainingBalance(
+                $latestBalance->balance,
+                $loanDetail->annual_interest_rate,
+                $remainingMonths,
+                $monthsBetween,
+            );
+        }
+
         $monthsElapsed = (int) $loanDetail->start_date->startOfMonth()->diffInMonths($date->copy()->startOfMonth());
 
         if ($monthsElapsed >= $loanDetail->loan_term_months) {
