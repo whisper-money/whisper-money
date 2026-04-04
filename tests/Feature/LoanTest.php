@@ -96,6 +96,89 @@ it('returns zero for balance after loan term ends', function () {
     expect($balance)->toBe(0);
 });
 
+it('projects from existing balance entries instead of original loan params', function () {
+    $account = Account::factory()->loan()->create(['user_id' => $this->user->id, 'bank_id' => $this->bank->id]);
+    $loanDetail = LoanDetail::factory()->create([
+        'account_id' => $account->id,
+        'start_date' => now()->subMonths(138),
+        'loan_term_months' => 333,
+        'annual_interest_rate' => 4.110,
+        'original_amount' => 7991346,
+    ]);
+
+    // Simulate a real balance that's lower than the theoretical amortization schedule
+    // (e.g. the user has been making extra payments)
+    AccountBalance::create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subMonth()->startOfMonth()->toDateString(),
+        'balance' => 4489670,
+    ]);
+
+    $balance = $this->service->getBalanceAtDate($loanDetail, now());
+
+    // The result should project from 4,489,670, NOT recalculate from original 7,991,346.
+    // Theoretical from original params would give ~5,700,000+ which is wrong.
+    expect($balance)->toBeLessThan(4489670)
+        ->toBeGreaterThan(4400000);
+});
+
+it('returns existing balance when target date is in the same month', function () {
+    $account = Account::factory()->loan()->create(['user_id' => $this->user->id, 'bank_id' => $this->bank->id]);
+    $loanDetail = LoanDetail::factory()->create([
+        'account_id' => $account->id,
+        'start_date' => now()->subMonths(12),
+        'loan_term_months' => 360,
+        'annual_interest_rate' => 3.5,
+        'original_amount' => 20000000,
+    ]);
+
+    AccountBalance::create([
+        'account_id' => $account->id,
+        'balance_date' => now()->startOfMonth()->toDateString(),
+        'balance' => 19500000,
+    ]);
+
+    $balance = $this->service->getBalanceAtDate($loanDetail, now());
+
+    expect($balance)->toBe(19500000);
+});
+
+it('generates correct monthly balance when existing entries differ from theoretical', function () {
+    $account = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    LoanDetail::factory()->create([
+        'account_id' => $account->id,
+        'start_date' => now()->subMonths(138),
+        'loan_term_months' => 333,
+        'annual_interest_rate' => 4.110,
+        'original_amount' => 7991346,
+    ]);
+
+    // Balance from last month that's lower than theoretical schedule
+    AccountBalance::create([
+        'account_id' => $account->id,
+        'balance_date' => now()->subMonth()->startOfMonth()->toDateString(),
+        'balance' => 4489670,
+    ]);
+
+    artisan('loans:generate-balances')->assertSuccessful();
+
+    $generated = AccountBalance::query()
+        ->where('account_id', $account->id)
+        ->where('balance_date', now()->startOfMonth()->toDateString())
+        ->first();
+
+    expect($generated)->not->toBeNull();
+
+    // The generated balance should be projected from the real 4,489,670
+    // and should be slightly lower (one month of amortization), not jump up
+    expect($generated->balance)->toBeLessThan(4489670)
+        ->toBeGreaterThan(4400000);
+});
+
 it('generates projection from last account balance entry', function () {
     $account = Account::factory()->loan()->create(['user_id' => $this->user->id, 'bank_id' => $this->bank->id]);
     $loanDetail = LoanDetail::factory()->create([
