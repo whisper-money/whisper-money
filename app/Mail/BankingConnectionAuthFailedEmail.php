@@ -43,7 +43,7 @@ class BankingConnectionAuthFailedEmail extends Mailable implements ShouldQueue
             subject: __('Action required: :provider connection needs attention', [
                 'provider' => $this->bankingConnection->aspsp_name,
             ]),
-        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
+        );
     }
 
     public function content(): Content

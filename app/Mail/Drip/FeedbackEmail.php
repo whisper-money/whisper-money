@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\Middleware\RateLimited;
@@ -37,8 +38,12 @@ class FeedbackEmail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new Address(
+                config('mail.drip_from.address', 'hi@whisper.money'),
+                config('mail.drip_from.name', 'Álvaro and Víctor'),
+            ),
             subject: __("How's Your Experience So Far?"),
-        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
+        );
     }
 
     public function content(): Content

@@ -46,7 +46,10 @@ class WaitlistWelcome extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('victor@whisper.money', 'Victor from Whisper Money'),
+            from: new Address(
+                config('mail.from.address', 'no-reply@whisper.money'),
+                config('mail.from.name', 'Whisper Money'),
+            ),
             subject: __("You're on the Whisper Money waiting list!"),
         );
     }

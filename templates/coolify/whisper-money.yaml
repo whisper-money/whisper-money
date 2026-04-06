@@ -5,64 +5,76 @@
 # port: 80
 
 services:
-  whisper-money:
-    image: ghcr.io/whisper-money/whisper-money:latest
-    environment:
-      - SERVICE_FQDN_WHISPERMONEY_80
-      - APP_NAME=Whisper Money
-      - APP_ENV=production
-      - APP_DEBUG=false
-      - APP_URL=${SERVICE_FQDN_WHISPERMONEY_80}
-      # APP_KEY is auto-generated on first startup if not provided
-      - DB_CONNECTION=mysql
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_DATABASE=${MYSQL_DATABASE:-whisper_money}
-      - DB_USERNAME=${SERVICE_USER_MYSQL}
-      - DB_PASSWORD=${SERVICE_PASSWORD_MYSQL}
-      - CACHE_STORE=redis
-      - SESSION_DRIVER=redis
-      - QUEUE_CONNECTION=database
-      - REDIS_HOST=127.0.0.1
-      - HIDE_AUTH_BUTTONS=${HIDE_AUTH_BUTTONS:-false}
-      - MAIL_MAILER=${MAIL_MAILER:-log}
-      - MAIL_HOST=${MAIL_HOST:-}
-      - MAIL_PORT=${MAIL_PORT:-587}
-      - MAIL_USERNAME=${MAIL_USERNAME:-}
-      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
-      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-hi@whisper.money}
-      - MAIL_FROM_NAME=${MAIL_FROM_NAME:-Whisper Money}
-      - RESEND_API_KEY=${RESEND_API_KEY:-}
-      - STRIPE_KEY=${STRIPE_KEY:-}
-      - STRIPE_SECRET=${STRIPE_SECRET:-}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
-      - SUBSCRIPTIONS_ENABLED=${SUBSCRIPTIONS_ENABLED:-false}
-    volumes:
-      - whisper-money-storage:/app/storage
-    depends_on:
-      mysql:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/up"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    whisper-money:
+        image: ghcr.io/whisper-money/whisper-money:latest
+        environment:
+            - SERVICE_FQDN_WHISPERMONEY_80
+            - APP_NAME=Whisper Money
+            - APP_ENV=production
+            - APP_DEBUG=false
+            - APP_URL=${SERVICE_FQDN_WHISPERMONEY_80}
+            # APP_KEY is auto-generated on first startup if not provided
+            - DB_CONNECTION=mysql
+            - DB_HOST=mysql
+            - DB_PORT=3306
+            - DB_DATABASE=${MYSQL_DATABASE:-whisper_money}
+            - DB_USERNAME=${SERVICE_USER_MYSQL}
+            - DB_PASSWORD=${SERVICE_PASSWORD_MYSQL}
+            - CACHE_STORE=redis
+            - SESSION_DRIVER=redis
+            - QUEUE_CONNECTION=database
+            - REDIS_HOST=127.0.0.1
+            - HIDE_AUTH_BUTTONS=${HIDE_AUTH_BUTTONS:-false}
+            - MAIL_MAILER=${MAIL_MAILER:-log}
+            - MAIL_HOST=${MAIL_HOST:-}
+            - MAIL_PORT=${MAIL_PORT:-587}
+            - MAIL_USERNAME=${MAIL_USERNAME:-}
+            - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+            - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-no-reply@whisper.money}
+            - MAIL_FROM_NAME=${MAIL_FROM_NAME:-Whisper Money}
+            - MAIL_DRIP_FROM_ADDRESS=${MAIL_DRIP_FROM_ADDRESS:-hi@whisper.money}
+            - MAIL_DRIP_FROM_NAME=${MAIL_DRIP_FROM_NAME:-Álvaro and Víctor}
+            - RESEND_API_KEY=${RESEND_API_KEY:-}
+            - STRIPE_KEY=${STRIPE_KEY:-}
+            - STRIPE_SECRET=${STRIPE_SECRET:-}
+            - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+            - SUBSCRIPTIONS_ENABLED=${SUBSCRIPTIONS_ENABLED:-false}
+        volumes:
+            - whisper-money-storage:/app/storage
+        depends_on:
+            mysql:
+                condition: service_healthy
+        healthcheck:
+            test: ['CMD', 'curl', '-f', 'http://localhost/up']
+            interval: 30s
+            timeout: 10s
+            retries: 3
 
-  mysql:
-    image: mysql:8.0
-    environment:
-      - MYSQL_ROOT_PASSWORD=${SERVICE_PASSWORD_MYSQLROOT}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-whisper_money}
-      - MYSQL_USER=${SERVICE_USER_MYSQL}
-      - MYSQL_PASSWORD=${SERVICE_PASSWORD_MYSQL}
-    volumes:
-      - whisper-money-mysql:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${SERVICE_PASSWORD_MYSQLROOT}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    mysql:
+        image: mysql:8.0
+        environment:
+            - MYSQL_ROOT_PASSWORD=${SERVICE_PASSWORD_MYSQLROOT}
+            - MYSQL_DATABASE=${MYSQL_DATABASE:-whisper_money}
+            - MYSQL_USER=${SERVICE_USER_MYSQL}
+            - MYSQL_PASSWORD=${SERVICE_PASSWORD_MYSQL}
+        volumes:
+            - whisper-money-mysql:/var/lib/mysql
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'mysqladmin',
+                    'ping',
+                    '-h',
+                    'localhost',
+                    '-u',
+                    'root',
+                    '-p${SERVICE_PASSWORD_MYSQLROOT}',
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 10
 
 volumes:
-  whisper-money-storage:
-  whisper-money-mysql:
+    whisper-money-storage:
+    whisper-money-mysql:

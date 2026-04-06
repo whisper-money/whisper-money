@@ -139,8 +139,13 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', 'Example'),
+        'address' => env('MAIL_FROM_ADDRESS', 'no-reply@whisper.money'),
+        'name' => env('MAIL_FROM_NAME', 'Whisper Money'),
+    ],
+
+    'drip_from' => [
+        'address' => env('MAIL_DRIP_FROM_ADDRESS', 'hi@whisper.money'),
+        'name' => env('MAIL_DRIP_FROM_NAME', 'Álvaro and Víctor'),
     ],
 
 ];

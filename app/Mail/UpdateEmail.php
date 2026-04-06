@@ -41,7 +41,7 @@ class UpdateEmail extends Mailable implements ShouldQueue
     {
         return new Envelope(
             subject: $this->emailSubject,
-        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
+        );
     }
 
     public function content(): Content

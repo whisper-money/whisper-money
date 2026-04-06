@@ -45,7 +45,10 @@ class WaitlistReferralNotification extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('victor@whisper.money', 'Victor & Alvaro from Whisper Money'),
+            from: new Address(
+                config('mail.from.address', 'no-reply@whisper.money'),
+                config('mail.from.name', 'Whisper Money'),
+            ),
             subject: __('Someone just joined Whisper Money with your link!'),
         );
     }
