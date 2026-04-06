@@ -21,7 +21,7 @@ class BitpandaBalanceSyncService
             return;
         }
 
-        $investedAmountCents = $this->calculateInvestedAmount($client, strtoupper($account->currency_code));
+        $investedAmountCents = $this->calculateInvestedAmount($client, strtoupper($account->user->currency_code));
         $this->syncCurrentBalance($account, $client, $investedAmountCents);
     }
 

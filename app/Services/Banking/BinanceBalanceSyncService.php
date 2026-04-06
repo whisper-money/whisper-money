@@ -380,12 +380,12 @@ class BinanceBalanceSyncService
 
     /**
      * Calculate the net invested amount by fetching all deposit and withdrawal history.
-     * Net invested = sum of completed deposits - sum of completed withdrawals, converted to fiat.
+     * Net invested = sum of completed deposits - sum of completed withdrawals, converted to the user's currency.
      * Fetches history in 90-day windows going as far back as possible.
      */
     private function calculateInvestedAmount(Account $account, BinanceClient $client): ?int
     {
-        $targetCurrency = strtoupper($account->currency_code);
+        $targetCurrency = strtoupper($account->user->currency_code);
 
         $deposits = $this->fetchAllDepositHistory($client);
         Sleep::for(self::THROTTLE_SECONDS)->seconds();

@@ -64,7 +64,8 @@ export function ImportBalancesDrawer({
     accountId,
     onSuccess,
 }: ImportBalancesDrawerProps) {
-    const { locale } = usePage<SharedData>().props;
+    const { locale, auth } = usePage<SharedData>().props;
+    const userCurrencyCode = auth.user.currency_code;
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
     const [importTotal, setImportTotal] = useState(0);
@@ -646,6 +647,7 @@ export function ImportBalancesDrawer({
                         dateFormatDetected={state.dateFormatDetected}
                         parsedData={state.parsedData}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
+                        investedAmountCurrencyCode={userCurrencyCode}
                         showInvestedAmount={showInvestedAmount}
                         isLoan={selectedAccount?.type === 'loan'}
                         onMappingChange={handleMappingChange}
@@ -660,6 +662,7 @@ export function ImportBalancesDrawer({
                     <ImportBalanceStepPreview
                         balances={state.balances}
                         currencyCode={selectedAccount?.currency_code || 'USD'}
+                        investedAmountCurrencyCode={userCurrencyCode}
                         showInvestedAmount={showInvestedAmount}
                         isLoan={selectedAccount?.type === 'loan'}
                         onConfirm={handleConfirmImport}

@@ -194,7 +194,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     private function syncIndexaCapital(BankingConnection $connection, bool $isFirstSync): void
     {
         $client = new IndexaCapitalClient($connection->api_token);
-        $syncService = new IndexaCapitalBalanceSyncService;
+        $syncService = app(IndexaCapitalBalanceSyncService::class);
 
         $connection->load('accounts');
 

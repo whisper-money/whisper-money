@@ -140,10 +140,8 @@ class DashboardAnalyticsController extends Controller
                 $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
                 $point['invested_amount'] = $investedAmount;
 
-                if ($displayCurrencyCode !== null) {
-                    $point['display_invested_amount'] = $investedAmount !== null
-                        ? $this->convertBalanceForDate($account->currency_code, $displayCurrencyCode, $investedAmount, $date)
-                        : null;
+                if ($displayCurrencyCode !== null && $investedAmount !== null) {
+                    $point['display_invested_amount'] = $this->convertBalanceForDate($userCurrency, $account->currency_code, $investedAmount, $date);
                 }
             }
 
@@ -276,10 +274,8 @@ class DashboardAnalyticsController extends Controller
                 $investedAmount = $lookup->getInvestedAmountAt($account->id, $date);
                 $point['invested_amount'] = $investedAmount;
 
-                if ($displayCurrencyCode !== null) {
-                    $point['display_invested_amount'] = $investedAmount !== null
-                        ? $this->convertBalanceForDate($account->currency_code, $displayCurrencyCode, $investedAmount, $date)
-                        : null;
+                if ($displayCurrencyCode !== null && $investedAmount !== null) {
+                    $point['display_invested_amount'] = $this->convertBalanceForDate($userCurrency, $account->currency_code, $investedAmount, $date);
                 }
             }
 
