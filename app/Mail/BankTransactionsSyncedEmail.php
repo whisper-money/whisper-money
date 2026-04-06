@@ -44,7 +44,7 @@ class BankTransactionsSyncedEmail extends Mailable implements ShouldQueue
     {
         return new Envelope(
             subject: __(':count new transactions synced on Whisper Money', ['count' => $this->totalTransactions]),
-        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
+        );
     }
 
     public function content(): Content

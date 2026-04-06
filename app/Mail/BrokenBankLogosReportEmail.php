@@ -25,7 +25,7 @@ class BrokenBankLogosReportEmail extends Mailable
 
         return new Envelope(
             subject: trans_choice('Weekly bank logo audit: :count broken logo|Weekly bank logo audit: :count broken logos', $updatedCount, ['count' => $updatedCount]),
-        )->from(config('mail.from.address', 'hello@example.com'), 'Victor');
+        );
     }
 
     public function content(): Content
