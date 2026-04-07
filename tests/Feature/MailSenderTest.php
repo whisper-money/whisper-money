@@ -129,6 +129,14 @@ test('default sender is used for active non-drip mailables', function (string $m
     WaitlistOvertaken::class,
 ]);
 
+test('transaction sync email envelope explicitly uses the default sender', function () {
+    $user = User::factory()->create();
+
+    $mailable = new BankTransactionsSyncedEmail($user, 3, ['Test Bank' => 3]);
+
+    expect($mailable->envelope()->from)->toEqual(new Address('no-reply@whisper.money', 'Whisper Money'));
+});
+
 test('verification notification uses the default sender', function () {
     $user = User::factory()->unverified()->create();
 

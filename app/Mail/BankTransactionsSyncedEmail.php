@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\Middleware\RateLimited;
@@ -43,6 +44,10 @@ class BankTransactionsSyncedEmail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new Address(
+                config('mail.from.address', 'no-reply@whisper.money'),
+                config('mail.from.name', 'Whisper Money'),
+            ),
             subject: __(':count new transactions synced on Whisper Money', ['count' => $this->totalTransactions]),
         );
     }
