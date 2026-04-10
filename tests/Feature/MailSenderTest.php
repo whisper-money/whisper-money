@@ -147,3 +147,29 @@ test('verification notification uses the default sender', function () {
     expect($from->getAddress())->toBe('no-reply@whisper.money')
         ->and($from->getName())->toBe('Whisper Money');
 });
+
+test('mail blade signatures use alvaro before victor', function () {
+    $mailViews = [
+        'mail/verify-email.blade.php',
+        'mail/waitlist-welcome.blade.php',
+        'mail/waitlist-referral-notification.blade.php',
+        'mail/user-lead-invitation.blade.php',
+        'mail/waitlist-overtaken.blade.php',
+        'mail/drip/import-help.blade.php',
+        'mail/drip/onboarding-reminder.blade.php',
+        'mail/drip/promo-code.blade.php',
+        'mail/drip/subscription-cancelled.blade.php',
+        'mail/drip/welcome.blade.php',
+        'mail/bank-transactions-synced.blade.php',
+        'mail/drip/feedback.blade.php',
+        'mail/banking-connection-auth-failed.blade.php',
+    ];
+
+    foreach ($mailViews as $mailView) {
+        $contents = File::get(resource_path("views/{$mailView}"));
+
+        expect($contents)
+            ->toContain("{{ __('Álvaro & Víctor') }}<br>")
+            ->not->toContain("{{ __('Víctor & Álvaro') }}<br>");
+    }
+});

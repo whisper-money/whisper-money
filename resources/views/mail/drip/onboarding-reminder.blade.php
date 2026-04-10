@@ -23,6 +23,6 @@
 {{ __("Looking forward to hearing from you! And if you decide Whisper Money isn't for you, that's totally fine - but we'd love to know why so we can improve.") }}
 
 {{ __('Best,') }}<br>
-{{ __('Víctor & Álvaro') }}<br>
+{{ __('Álvaro & Víctor') }}<br>
 {{ __('Founders of Whisper Money') }}
 </x-mail::message>

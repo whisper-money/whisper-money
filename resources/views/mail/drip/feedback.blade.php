@@ -20,6 +20,6 @@
 {{ __('Thanks for being part of Whisper Money. It really means a lot.') }}
 
 {{ __('Best,') }}<br>
-{{ __('Víctor & Álvaro') }}<br>
+{{ __('Álvaro & Víctor') }}<br>
 {{ __('Founders of Whisper Money') }}
 </x-mail::message>

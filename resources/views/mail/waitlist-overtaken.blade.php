@@ -34,6 +34,6 @@
 {{ __("Share it with friends, family, or anyone who cares about their financial privacy. Every sign-up moves you 10 spots closer to the front.") }}
 
 {{ __("Best,") }}<br>
-{{ __('Víctor & Álvaro') }}<br>
+{{ __('Álvaro & Víctor') }}<br>
 {{ __("Founders of Whisper Money") }}
 </x-mail::message>

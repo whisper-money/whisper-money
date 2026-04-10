@@ -12,6 +12,6 @@
 </x-mail::button>
 
 {{ __('Best,') }}<br>
-{{ __('Víctor & Álvaro') }}<br>
+{{ __('Álvaro & Víctor') }}<br>
 {{ __('Founders of Whisper Money') }}
 </x-mail::message>
