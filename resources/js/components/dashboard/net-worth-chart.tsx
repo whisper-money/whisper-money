@@ -470,8 +470,6 @@ export function NetWorthChart({
                 <AmountDisplay
                     amountInCents={value}
                     currencyCode={userCurrency}
-                    minimumFractionDigits={0}
-                    maximumFractionDigits={0}
                 />
             );
         };
@@ -530,8 +528,6 @@ export function NetWorthChart({
                                     amountInCents={totalAmount}
                                     currencyCode={userCurrency}
                                     variant="large"
-                                    minimumFractionDigits={0}
-                                    maximumFractionDigits={0}
                                 />
                             </div>
                             <PercentageTrendIndicator

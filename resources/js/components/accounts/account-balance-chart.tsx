@@ -303,7 +303,7 @@ function formatChartCurrency(
     currencyCode: string,
     locale: string,
 ): string {
-    return formatCurrency(value, currencyCode, locale, 0, 0);
+    return formatCurrency(value, currencyCode, locale);
 }
 
 function calculateTrend(
@@ -763,8 +763,6 @@ export function AccountBalanceChart({
                             <AmountDisplay
                                 amountInCents={activeCurrentBalance}
                                 currencyCode={activeCurrencyCode}
-                                minimumFractionDigits={0}
-                                maximumFractionDigits={0}
                             />
                         </button>
                         {currentEquity !== null && (
@@ -778,8 +776,6 @@ export function AccountBalanceChart({
                                     <AmountDisplay
                                         amountInCents={currentEquity}
                                         currencyCode={activeCurrencyCode}
-                                        minimumFractionDigits={0}
-                                        maximumFractionDigits={0}
                                     />
                                 </span>
                             </div>
