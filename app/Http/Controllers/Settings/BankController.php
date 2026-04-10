@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreBankRequest;
 use App\Models\Bank;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,17 +15,22 @@ class BankController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Bank::query()
-            ->where(function ($q) {
+            ->where(function (Builder $q) {
                 $q->whereNull('user_id')
                     ->orWhere('user_id', auth()->id());
             });
 
-        if ($request->has('search')) {
-            $search = $request->input('search');
-            $query->where('name', 'like', "%{$search}%");
-        }
+        $search = trim((string) $request->input('search', ''));
 
-        $banks = $query->orderBy('name')->limit(20)->get();
+        $query->when($search !== '', function (Builder $query) use ($search) {
+            $query->where('name', 'like', "%{$search}%")
+                ->orderByRaw(
+                    'CASE WHEN name = ? THEN 0 WHEN name LIKE ? THEN 1 ELSE 2 END',
+                    [$search, "{$search}%"]
+                );
+        });
+
+        $banks = $query->orderBy('name')->get();
 
         return response()->json(['data' => $banks]);
     }
