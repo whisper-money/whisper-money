@@ -22,7 +22,7 @@ const mobileLabels: Record<string, Record<string, string>> = {
     },
     es: {
         dashboard: 'Inicio',
-        cashflow: 'Flujo',
+        cashflow: 'Cashflow',
         accounts: 'Cuentas',
         transactions: 'Movim.',
         budgets: 'Presup.',
