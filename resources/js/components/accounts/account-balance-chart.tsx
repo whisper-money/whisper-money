@@ -359,8 +359,7 @@ export function AccountBalanceChart({
     const isLoan = account.type === 'loan';
     const isRealEstate = isRealEstateAccount(account);
     const [granularity, setGranularity] = useState<ChartGranularity>('monthly');
-    const [currencyMode, setCurrencyMode] =
-        useState<ChartCurrencyMode>('account');
+    const [currencyMode, setCurrencyMode] = useState<ChartCurrencyMode>('user');
     const [balanceData, setBalanceData] = useState<AccountBalanceData | null>(
         null,
     );
