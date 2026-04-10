@@ -10,6 +10,7 @@ import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { clearKey } from '@/lib/key-storage';
 import { logout } from '@/routes';
 import accounts from '@/routes/accounts';
+import { edit as editAppearance } from '@/routes/appearance';
 import { type SharedData, type User } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
@@ -19,6 +20,7 @@ import {
     LogOut,
     Map,
     MessageSquare,
+    Monitor,
     Settings,
 } from 'lucide-react';
 
@@ -63,6 +65,18 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                 </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuGroup>
+                <DropdownMenuItem asChild>
+                    <Link
+                        className="block w-full"
+                        href={editAppearance()}
+                        as="button"
+                        prefetch
+                        onClick={cleanup}
+                    >
+                        <Monitor className="mr-2" />
+                        {__('Appearance')}
+                    </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full"
