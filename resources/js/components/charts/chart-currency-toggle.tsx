@@ -32,17 +32,17 @@ export function ChartCurrencyToggle({
         tooltip: string;
     }> = [
         {
-            mode: 'account',
-            label: accountCurrencyCode,
-            tooltip: __('Show in account currency (:currency)', {
-                currency: accountCurrencyCode,
-            }),
-        },
-        {
             mode: 'user',
             label: userCurrencyCode,
             tooltip: __('Show in your currency (:currency)', {
                 currency: userCurrencyCode,
+            }),
+        },
+        {
+            mode: 'account',
+            label: accountCurrencyCode,
+            tooltip: __('Show in account currency (:currency)', {
+                currency: accountCurrencyCode,
             }),
         },
     ];
