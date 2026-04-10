@@ -141,8 +141,12 @@ interface ChartTooltipContentProps {
     };
 }
 
-function formatCurrencyWithCode(value: number, currencyCode: string, locale: string): string {
-    return formatCurrency(value, currencyCode, locale, 0, 0);
+function formatCurrencyWithCode(
+    value: number,
+    currencyCode: string,
+    locale: string,
+): string {
+    return formatCurrency(value, currencyCode, locale);
 }
 
 const ChartTooltipContent = React.forwardRef<

@@ -74,8 +74,6 @@ export function PercentageTrendIndicator({
                         currencyCode={currencyCode}
                         variant="trend"
                         highlightPositive={amountDiff >= 0}
-                        minimumFractionDigits={0}
-                        maximumFractionDigits={0}
                     />{' '}
                     {label}
                 </TooltipContent>

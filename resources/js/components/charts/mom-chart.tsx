@@ -67,8 +67,6 @@ function CustomTooltip({ active, payload, currencyCode }: CustomTooltipProps) {
                     <AmountDisplay
                         amountInCents={change ?? 0}
                         currencyCode={currencyCode}
-                        minimumFractionDigits={0}
-                        maximumFractionDigits={0}
                     />
                 </span>
             </div>

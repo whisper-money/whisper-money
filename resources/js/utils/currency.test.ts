@@ -64,6 +64,11 @@ describe('formatCurrency', () => {
         expect(formatCurrency(100000, 'USD', 'en-US', 0, 0)).toBe('$1,000');
     });
 
+    it('preserves two decimals for chart-style balance amounts', () => {
+        expect(formatCurrency(164545, 'EUR', 'de-DE')).toBe('1.645,45\u202F€');
+        expect(formatCurrency(164545, 'USD', 'en-US')).toBe('$1,645.45');
+    });
+
     it('formats es-ES EUR 4-digit amounts with thousands separator', () => {
         // In some ICU/CLDR versions, es-ES uses useGrouping:'auto' which omits the thousands
         // separator for 4-digit numbers (1,000–9,999). We force useGrouping:'always' so that
