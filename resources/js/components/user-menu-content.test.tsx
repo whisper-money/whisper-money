@@ -3,7 +3,6 @@ import {
     DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
 import { PrivacyModeProvider } from '@/contexts/privacy-mode-context';
-import { edit as editAppearance } from '@/routes/appearance';
 import { render, screen } from '@testing-library/react';
 import { type ComponentProps, forwardRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -102,7 +101,7 @@ describe('UserMenuContent', () => {
             name: 'Settings',
         });
 
-        expect(appearanceItem).toHaveAttribute('href', editAppearance().url);
+        expect(appearanceItem).toHaveAttribute('href', '/settings/appearance');
 
         const itemLabels = screen
             .getAllByRole('menuitem')
