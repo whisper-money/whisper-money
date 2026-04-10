@@ -28,6 +28,7 @@ import {
 } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
+import { Menu } from 'lucide-react';
 import { type PropsWithChildren } from 'react';
 
 const getNavItems = (
@@ -207,7 +208,10 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
             <div className="flex flex-col lg:flex-row lg:space-x-12">
                 {/* Mobile: dropdown select */}
-                <div className="lg:hidden">
+                <div
+                    className="-mt-4 sm:mt-0 lg:hidden"
+                    data-testid="settings-mobile-nav"
+                >
                     <Select
                         value={
                             activeNavItem
@@ -216,8 +220,20 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                         }
                         onValueChange={(value) => router.visit(value)}
                     >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder={__('Navigate to...')} />
+                        <SelectTrigger
+                            className="w-full"
+                            data-testid="settings-mobile-nav-trigger"
+                        >
+                            <div className="flex w-full flex-row items-center gap-2">
+                                <Menu
+                                    aria-hidden="true"
+                                    className="size-4 text-muted-foreground"
+                                    data-testid="settings-mobile-nav-icon"
+                                />
+                                <SelectValue
+                                    placeholder={__('Navigate to...')}
+                                />
+                            </div>
                         </SelectTrigger>
                         <SelectContent>
                             {renderMobileNavGroups(sidebarNavItems)}
