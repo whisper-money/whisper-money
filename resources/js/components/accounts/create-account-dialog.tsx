@@ -240,9 +240,11 @@ export function CreateAccountDialog({
                         <DialogTitle>{__('Create Account')}</DialogTitle>
                         <DialogDescription>
                             {mode === 'choice'
-                                ? __('Choose how you want to add your account.')
+                                ? __(
+                                      'Add a bank account, loan, or property to your workspace.',
+                                  )
                                 : __(
-                                      'Add a new bank account to track your transactions.',
+                                      'Create a bank account, loan, or property to track it manually.',
                                   )}
                         </DialogDescription>
                     </DialogHeader>
@@ -261,7 +263,7 @@ export function CreateAccountDialog({
                                     </p>
                                     <p className="text-xs text-balance text-muted-foreground">
                                         {__(
-                                            'Add an account and import transactions manually.',
+                                            'Create bank accounts, loans, or properties manually and import transactions.',
                                         )}
                                     </p>
                                 </div>
