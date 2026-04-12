@@ -74,6 +74,7 @@ export function StepCreateAccount({
     const { pricing, subscriptionsEnabled, features, locale } =
         usePage<SharedData>().props;
     const openBankingEnabled = features['open-banking'];
+    const realEstateEnabled = features['real-estate'];
     const [mode, setMode] = useState<AccountMode>('select');
     const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
         'manual',
@@ -164,35 +165,87 @@ export function StepCreateAccount({
         setIsSubmitting(true);
 
         try {
-            let finalBankId: string;
+            const isRealEstate = type === 'real_estate';
+            let finalBankId: string | null = null;
 
-            if (customBank) {
-                if (!customBank.name.trim()) {
-                    setError(__('Please enter a bank name.'));
-                    setIsSubmitting(false);
-                    return;
+            if (!isRealEstate) {
+                if (customBank) {
+                    if (!customBank.name.trim()) {
+                        setError(__('Please enter a bank name.'));
+                        setIsSubmitting(false);
+                        return;
+                    }
+
+                    const createdBankId = await createBankAndGetId();
+                    if (!createdBankId) {
+                        throw new Error('Failed to create bank');
+                    }
+
+                    finalBankId = createdBankId;
+                } else {
+                    if (!bankId) {
+                        setError(__('Please select a bank.'));
+                        setIsSubmitting(false);
+                        return;
+                    }
+
+                    finalBankId = String(bankId);
                 }
-                const createdBankId = await createBankAndGetId();
-                if (!createdBankId) {
-                    throw new Error('Failed to create bank');
-                }
-                finalBankId = createdBankId;
-            } else {
-                if (!bankId) {
-                    setError(__('Please select a bank.'));
-                    setIsSubmitting(false);
-                    return;
-                }
-                finalBankId = String(bankId);
             }
 
             const response = await fetch(store.url(), {
                 method: 'POST',
                 body: JSON.stringify({
                     name: displayName,
-                    bank_id: finalBankId,
+                    ...(finalBankId ? { bank_id: finalBankId } : {}),
                     type: type,
                     currency_code: currencyCode,
+                    ...(formDataRef.current.balance !== null
+                        ? { balance: formDataRef.current.balance }
+                        : {}),
+                    ...(formDataRef.current.realEstate
+                        ? {
+                              property_type:
+                                  formDataRef.current.realEstate.propertyType,
+                              address:
+                                  formDataRef.current.realEstate.address ||
+                                  null,
+                              purchase_price:
+                                  formDataRef.current.realEstate
+                                      .purchasePrice || null,
+                              purchase_date:
+                                  formDataRef.current.realEstate.purchaseDate ||
+                                  null,
+                              area_value:
+                                  formDataRef.current.realEstate.areaValue ||
+                                  null,
+                              area_unit:
+                                  formDataRef.current.realEstate.areaUnit,
+                              linked_loan_account_id:
+                                  formDataRef.current.realEstate
+                                      .linkedLoanAccountId,
+                              notes:
+                                  formDataRef.current.realEstate.notes || null,
+                              revaluation_percentage:
+                                  formDataRef.current.realEstate
+                                      .revaluationPercentage || null,
+                          }
+                        : {}),
+                    ...(formDataRef.current.loan
+                        ? {
+                              annual_interest_rate:
+                                  formDataRef.current.loan.annualInterestRate ||
+                                  null,
+                              loan_term_months:
+                                  formDataRef.current.loan.loanTermMonths ||
+                                  null,
+                              loan_start_date:
+                                  formDataRef.current.loan.startDate || null,
+                              original_amount:
+                                  formDataRef.current.loan.originalAmount ||
+                                  null,
+                          }
+                        : {}),
                 }),
                 headers: {
                     'Content-Type': 'application/json',
@@ -488,6 +541,9 @@ export function StepCreateAccount({
                 >
                     <AccountForm
                         onChange={handleFormChange}
+                        hiddenAccountTypes={
+                            realEstateEnabled ? [] : ['real_estate']
+                        }
                         usePrimaryCurrenciesOnly={
                             isFirstAccount &&
                             existingAccounts.length === 0 &&

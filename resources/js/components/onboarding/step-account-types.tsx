@@ -1,7 +1,9 @@
 import { StepButton } from '@/components/onboarding/step-button';
 import { StepHeader } from '@/components/onboarding/step-header';
+import { type SharedData } from '@/types';
 import { accountIconByType } from '@/types/account';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { Banknote } from 'lucide-react';
 
 interface StepAccountTypesProps {
@@ -30,7 +32,7 @@ const accountTypes = [
     {
         type: 'investment' as const,
         nameKey: 'Investment',
-        descriptionKey: 'Stocks, ETFs, and portfolios',
+        descriptionKey: 'Stocks, ETFs, crypto, and cold wallets',
         hasTransactions: false,
     },
     {
@@ -45,9 +47,20 @@ const accountTypes = [
         descriptionKey: 'Mortgages and loans',
         hasTransactions: false,
     },
+    {
+        type: 'real_estate' as const,
+        nameKey: 'Real Estate',
+        descriptionKey: 'Properties and real estate assets',
+        hasTransactions: false,
+    },
 ];
 
 export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
+    const { features } = usePage<SharedData>().props;
+    const visibleAccountTypes = features['real-estate']
+        ? accountTypes
+        : accountTypes.filter((account) => account.type !== 'real_estate');
+
     return (
         <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
             <StepHeader
@@ -60,7 +73,7 @@ export function StepAccountTypes({ onContinue }: StepAccountTypesProps) {
             />
 
             <div className="grid w-full max-w-2xl gap-3 sm:grid-cols-2">
-                {accountTypes.map((account) => {
+                {visibleAccountTypes.map((account) => {
                     const Icon = accountIconByType(account.type);
 
                     return (

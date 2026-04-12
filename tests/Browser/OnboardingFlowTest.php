@@ -84,7 +84,27 @@ it('navigates from welcome to account types', function () {
         ->assertSee('Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
+        ->assertSee('Stocks, ETFs, crypto, and cold wallets')
         ->assertSee('Account Types')
+        ->assertNoJavascriptErrors();
+});
+
+it('shows real estate on onboarding account types when feature is enabled', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    Feature::for($user)->activate('real-estate');
+
+    $this->actingAs($user);
+
+    $page = visit('/onboarding');
+
+    $page->click("Let's Get Started")
+        ->wait(1)
+        ->assertSee('Account Types')
+        ->assertSee('Real Estate')
+        ->assertSee('Properties and real estate assets')
         ->assertNoJavascriptErrors();
 });
 
@@ -210,6 +230,57 @@ it('shows add another account form without first account restriction', function 
         ->assertSee('Your Accounts')
         ->assertSee('Primary Bank')
         ->assertNoJavascriptErrors();
+});
+
+it('creates a real estate account during onboarding when feature is enabled', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    Feature::for($user)->activate('real-estate');
+
+    $this->actingAs($user);
+
+    $page = visit('/onboarding');
+
+    $page->click("Let's Get Started")
+        ->wait(1)
+        ->click('Create Your First Account')
+        ->wait(1)
+        ->assertSee('Create an Account')
+        ->click('Manual')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
+        ->fill('#display_name', 'My Apartment')
+        ->click('Select account type')
+        ->wait(1)
+        ->click('[role="option"]:has-text("Real Estate")')
+        ->wait(1)
+        ->click('Select currency')
+        ->wait(1)
+        ->click('[role="option"]:has-text("EUR")')
+        ->wait(1)
+        ->click('Select property type')
+        ->wait(1)
+        ->click('[role="option"]:has-text("Residential")')
+        ->wait(1)
+        ->click('Create Account')
+        ->wait(5)
+        ->assertSee('Set Account Balance')
+        ->assertNoJavascriptErrors();
+
+    $user->refresh();
+
+    $account = $user->accounts()->first();
+
+    expect($account)->not->toBeNull();
+    expect($account->type->value)->toBe('real_estate');
+    expect($account->name)->toBe('My Apartment');
+    expect($account->currency_code)->toBe('EUR');
+    expect($account->bank_id)->toBeNull();
+    expect($account->realEstateDetail)->not->toBeNull();
+    expect($account->realEstateDetail->property_type->value)->toBe('residential');
 });
 
 // =============================================================================
