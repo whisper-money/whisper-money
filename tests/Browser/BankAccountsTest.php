@@ -51,7 +51,7 @@ it('can open create account dialog', function () {
     $page->assertSee('Bank accounts')
         ->click('Create Account')
         ->wait(0.5)
-        ->assertSee('Add a new bank account to track your transactions')
+        ->assertSee('Create a bank account, loan, or property to track it manually')
         ->assertNoJavascriptErrors();
 });
 
