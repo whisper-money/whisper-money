@@ -16,6 +16,9 @@ test('app template includes pwa meta tags and service worker registration', func
 
     $response->assertStatus(200)
         ->assertSee('apple-mobile-web-app-capable', false)
+        ->assertSee('apple-mobile-web-app-status-bar-style', false)
+        ->assertSee('content="default"', false)
+        ->assertDontSee('black-translucent', false)
         ->assertSee('serviceWorker', false)
         ->assertSee('viewport-fit=cover', false);
 });
