@@ -77,7 +77,7 @@ export function StepCreateAccount({
     const realEstateEnabled = features['real-estate'];
     const [mode, setMode] = useState<AccountMode>('select');
     const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
-        'manual',
+        openBankingEnabled ? 'connected' : 'manual',
     );
     const [isAddingAnother, setIsAddingAnother] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -512,7 +512,7 @@ export function StepCreateAccount({
             <div className="flex animate-in flex-col items-center duration-500 fade-in slide-in-from-bottom-4">
                 <StepHeader
                     icon={Link2}
-                    iconContainerClassName="bg-gradient-to-br from-blue-400 to-indigo-500"
+                    iconContainerClassName="bg-gradient-to-br from-emerald-400 to-teal-500"
                     title={__('Connect Your Bank')}
                     description={__(
                         'Select your country and bank to get started.',
@@ -628,17 +628,17 @@ export function StepCreateAccount({
                             className={cn(
                                 'relative flex flex-col rounded-xl border p-4 text-left transition-all duration-200',
                                 selectedMode === 'connected'
-                                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 dark:bg-blue-950/30'
+                                    ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500 dark:bg-emerald-950/30'
                                     : 'border-border bg-card hover:border-muted-foreground/40',
                             )}
                         >
                             {subscriptionsEnabled && (
-                                <span className="absolute top-2.5 right-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+                                <span className="absolute top-2.5 right-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
                                     Standard
                                 </span>
                             )}
-                            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/40">
-                                <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                                <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <p className="text-sm font-semibold">
                                 {__('Connected')}
@@ -650,7 +650,7 @@ export function StepCreateAccount({
                             </p>
                             {subscriptionsEnabled &&
                                 cheapestMonthlyPrice !== null && (
-                                    <p className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400">
+                                    <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                                         {__('From')}{' '}
                                         {formatCurrency(
                                             cheapestMonthlyPrice * 100,
@@ -667,8 +667,8 @@ export function StepCreateAccount({
                 {openBankingEnabled &&
                     selectedMode === 'connected' &&
                     subscriptionsEnabled && (
-                        <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm dark:border-blue-900/50 dark:bg-blue-900/20">
-                            <p className="text-center text-sm text-blue-700 dark:text-blue-300">
+                        <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-900/20">
+                            <p className="text-center text-sm text-emerald-700 dark:text-emerald-300">
                                 {__(
                                     "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.",
                                 )}
