@@ -7,10 +7,12 @@ use Resend\Exceptions\ErrorException;
 use function Pest\Laravel\artisan;
 use function Pest\Laravel\mock;
 
+const TEST_RESEND_LEADS_SEGMENT_ID = 'test-segment-id';
+
 test('resend:sync-leads syncs all user leads to resend', function () {
     config([
         'services.resend.key' => 'test-api-key',
-        'services.resend.leads_segment_id' => 'a4c14fa2-84a7-484a-9699-3de716f1b3ef',
+        'services.resend.leads_segment_id' => TEST_RESEND_LEADS_SEGMENT_ID,
     ]);
 
     UserLead::factory()->count(3)->create();
@@ -27,7 +29,7 @@ test('resend:sync-leads syncs all user leads to resend', function () {
 test('resend:sync-leads fails when api key is not configured', function () {
     config([
         'services.resend.key' => null,
-        'services.resend.leads_segment_id' => 'a4c14fa2-84a7-484a-9699-3de716f1b3ef',
+        'services.resend.leads_segment_id' => TEST_RESEND_LEADS_SEGMENT_ID,
     ]);
 
     artisan('resend:sync-leads')
@@ -49,7 +51,7 @@ test('resend:sync-leads fails when leads segment id is not configured', function
 test('resend:sync-leads handles empty user leads', function () {
     config([
         'services.resend.key' => 'test-api-key',
-        'services.resend.leads_segment_id' => 'a4c14fa2-84a7-484a-9699-3de716f1b3ef',
+        'services.resend.leads_segment_id' => TEST_RESEND_LEADS_SEGMENT_ID,
     ]);
 
     artisan('resend:sync-leads')
@@ -60,7 +62,7 @@ test('resend:sync-leads handles empty user leads', function () {
 test('resend:sync-leads reports failures and continues syncing', function () {
     config([
         'services.resend.key' => 'test-api-key',
-        'services.resend.leads_segment_id' => 'a4c14fa2-84a7-484a-9699-3de716f1b3ef',
+        'services.resend.leads_segment_id' => TEST_RESEND_LEADS_SEGMENT_ID,
     ]);
 
     $firstLead = UserLead::factory()->create(['email' => 'first@example.com']);
@@ -83,7 +85,7 @@ test('resend:sync-leads reports failures and continues syncing', function () {
 test('syncLead adds an existing resend contact to the leads segment', function () {
     config([
         'services.resend.key' => 'test-api-key',
-        'services.resend.leads_segment_id' => 'a4c14fa2-84a7-484a-9699-3de716f1b3ef',
+        'services.resend.leads_segment_id' => TEST_RESEND_LEADS_SEGMENT_ID,
     ]);
 
     $lead = UserLead::factory()->create(['email' => 'lead@example.com']);
@@ -91,7 +93,7 @@ test('syncLead adds an existing resend contact to the leads segment', function (
     $segmentsService = Mockery::mock();
     $segmentsService->shouldReceive('add')
         ->once()
-        ->with('lead@example.com', 'a4c14fa2-84a7-484a-9699-3de716f1b3ef');
+        ->with('lead@example.com', TEST_RESEND_LEADS_SEGMENT_ID);
 
     $contactsService = new class($segmentsService)
     {
