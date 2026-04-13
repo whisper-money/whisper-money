@@ -317,7 +317,7 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Create Your First Account')
         ->wait(1);
 
-    // Step 3: Create Account - select Manual mode then fill the form
+    // Step 3: Create Account - connected mode is preselected, switch to manual and fill the form
     $page->assertSee('Create an Account')
         ->assertSee('Manual')
         ->assertSee('Connected')
