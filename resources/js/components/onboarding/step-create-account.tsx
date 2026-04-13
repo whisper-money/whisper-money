@@ -244,6 +244,9 @@ export function StepCreateAccount({
                               original_amount:
                                   formDataRef.current.loan.originalAmount ||
                                   null,
+                              linked_real_estate_account_id:
+                                  formDataRef.current.loan
+                                      .linkedRealEstateAccountId,
                           }
                         : {}),
                 }),

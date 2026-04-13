@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AccountType;
 use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -93,9 +94,27 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => $this->resolveFeatureFlags($user),
             'accounts' => fn () => $user ? $user->accounts()
-                ->with('bank:id,name,logo')
+                ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']) : [],
+                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code'])
+                ->map(function ($account) {
+                    $data = $account->only([
+                        'id',
+                        'name',
+                        'name_iv',
+                        'encrypted',
+                        'bank_id',
+                        'type',
+                        'currency_code',
+                        'bank',
+                    ]);
+
+                    if ($account->type === AccountType::RealEstate) {
+                        $data['linked_loan_account_id'] = $account->realEstateDetail?->linked_loan_account_id;
+                    }
+
+                    return $data;
+                }) : [],
             'categories' => fn () => $user ? $user->categories()
                 ->orderBy('name')
                 ->get(['id', 'name', 'icon', 'color']) : [],
