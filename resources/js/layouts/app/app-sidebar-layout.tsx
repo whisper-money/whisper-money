@@ -23,7 +23,7 @@ export default function AppSidebarLayout({
             <AppSidebar />
             <AppContent
                 variant="sidebar"
-                className="overflow-x-hidden pb-[90px] sm:pb-0"
+                className="pt-safe overflow-x-hidden pb-[90px] sm:pb-0"
             >
                 <AppSidebarHeader
                     breadcrumbs={breadcrumbs}
