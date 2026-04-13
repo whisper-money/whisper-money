@@ -9,6 +9,35 @@ use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
+function createManualAccountTypeViaUi($page, string $displayName, string $bankName, string $type, string $currency = 'EUR', ?string $balance = null): void
+{
+    $page->assertSee('Bank accounts')
+        ->click('Create Account')
+        ->wait(0.5)
+        ->fill('#display_name', $displayName)
+        ->click('[data-testid="bank-select"]')
+        ->wait(0.5)
+        ->fill('input[placeholder="Search bank..."]', $bankName)
+        ->wait(0.5)
+        ->click($bankName)
+        ->click('button[name="type"]')
+        ->wait(0.5)
+        ->click("[role=\"option\"]:has-text(\"{$type}\")")
+        ->wait(0.3)
+        ->click('button[name="currency_code"]')
+        ->wait(0.5)
+        ->click("[role=\"option\"]:has-text(\"{$currency}\")")
+        ->wait(0.3);
+
+    if ($balance !== null) {
+        $page->fill('#balance', $balance);
+    }
+
+    $page->click('[data-testid="submit-account"]')
+        ->wait(2)
+        ->assertNoJavascriptErrors();
+}
+
 it('can view bank accounts page', function () {
     $user = User::factory()->onboarded()->create();
 
@@ -143,6 +172,43 @@ it('can create a loan account with balance and loan details', function () {
     expect((string) $loan->loanDetail->annual_interest_rate)->toBe('3.500');
     expect($loan->loanDetail->original_amount)->toBe(25000000);
 });
+
+it('can create the remaining manual account types', function (string $typeLabel, AccountType $type, ?string $balance) {
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'Coverage Bank', 'logo' => null]);
+
+    actingAs($user);
+
+    $page = visit('/settings/accounts');
+
+    createManualAccountTypeViaUi(
+        $page,
+        "{$typeLabel} Coverage Account",
+        'Coverage Bank',
+        $typeLabel,
+        'EUR',
+        $balance,
+    );
+
+    $account = Account::query()
+        ->where('user_id', $user->id)
+        ->where('type', $type)
+        ->first();
+
+    expect($account)->not->toBeNull();
+    expect($account->currency_code)->toBe('EUR');
+
+    if ($balance === null) {
+        expect($account->balances)->toHaveCount(0);
+    } else {
+        expect($account->balances)->toHaveCount(1);
+    }
+})->with([
+    'credit card' => ['Credit Card', AccountType::CreditCard, null],
+    'investment' => ['Investment', AccountType::Investment, '125000'],
+    'retirement' => ['Retirement / Pension', AccountType::Retirement, '250000'],
+    'others' => ['Others', AccountType::Others, null],
+]);
 
 it('can create a real estate account linked to an existing loan', function () {
     $user = User::factory()->onboarded()->create();
