@@ -5,6 +5,7 @@ use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Bank;
 use App\Models\LoanDetail;
+use App\Models\RealEstateDetail;
 use App\Models\User;
 use App\Services\LoanAmortizationService;
 
@@ -247,6 +248,115 @@ it('can create a loan account with loan details', function () {
         'start_date' => '2024-01-15',
         'original_amount' => 20000000,
     ]);
+});
+
+it('can create a loan account linked to an existing unlinked real estate account', function () {
+    actingAs($this->user);
+
+    $realEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+        'currency_code' => 'USD',
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $realEstateAccount->id,
+    ]);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Mortgage Loan',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+        'linked_real_estate_account_id' => $realEstateAccount->id,
+        'annual_interest_rate' => 3.5,
+        'loan_term_months' => 360,
+        'original_amount' => 20000000,
+    ]);
+
+    $response->assertRedirect();
+
+    $loanAccount = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::Loan->value)
+        ->where('name', 'Mortgage Loan')
+        ->first();
+
+    expect($loanAccount)->not->toBeNull();
+
+    assertDatabaseHas('real_estate_details', [
+        'account_id' => $realEstateAccount->id,
+        'linked_loan_account_id' => $loanAccount->id,
+    ]);
+});
+
+it('validates linked_real_estate_account_id must be a real estate account owned by the user', function () {
+    actingAs($this->user);
+
+    $checkingAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Checking,
+    ]);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Mortgage Loan',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+        'linked_real_estate_account_id' => $checkingAccount->id,
+    ]);
+
+    $response->assertSessionHasErrors(['linked_real_estate_account_id']);
+});
+
+it('validates linked_real_estate_account_id cannot be another users property', function () {
+    actingAs($this->user);
+
+    $otherUser = User::factory()->create();
+    $otherRealEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $otherUser->id,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $otherRealEstateAccount->id,
+    ]);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Mortgage Loan',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+        'linked_real_estate_account_id' => $otherRealEstateAccount->id,
+    ]);
+
+    $response->assertSessionHasErrors(['linked_real_estate_account_id']);
+});
+
+it('validates linked_real_estate_account_id cannot be an already linked property', function () {
+    actingAs($this->user);
+
+    $existingLoan = Account::factory()->loan()->create([
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+    ]);
+
+    $realEstateAccount = Account::factory()->realEstate()->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $realEstateAccount->id,
+        'linked_loan_account_id' => $existingLoan->id,
+    ]);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Mortgage Loan',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'USD',
+        'type' => AccountType::Loan->value,
+        'linked_real_estate_account_id' => $realEstateAccount->id,
+    ]);
+
+    $response->assertSessionHasErrors(['linked_real_estate_account_id']);
 });
 
 it('can create a loan account without loan details', function () {

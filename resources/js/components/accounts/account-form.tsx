@@ -58,6 +58,7 @@ export interface LoanFormData {
     loanTermMonths: string;
     startDate: string;
     originalAmount: number;
+    linkedRealEstateAccountId: string | null;
 }
 
 export interface AccountFormData {
@@ -111,6 +112,7 @@ const initialLoanData: LoanFormData = {
     loanTermMonths: '',
     startDate: '',
     originalAmount: 0,
+    linkedRealEstateAccountId: null,
 };
 
 export function AccountForm({
@@ -153,6 +155,12 @@ export function AccountForm({
         selectedType !== null && BALANCE_ACCOUNT_TYPES.includes(selectedType);
     const isRealEstate = selectedType === 'real_estate';
     const isLoan = selectedType === 'loan';
+    const availableRealEstateAccounts = availableLoanAccounts.filter(
+        (account) =>
+            account.type === 'real_estate' &&
+            (account.linked_loan_account_id === null ||
+                account.linked_loan_account_id === undefined),
+    );
 
     useEffect(() => {
         onChange({
@@ -447,6 +455,61 @@ export function AccountForm({
                         </div>
                         <InputError message={errors.original_amount} />
                     </div>
+
+                    {availableRealEstateAccounts.length > 0 && (
+                        <div className="space-y-2">
+                            <Label htmlFor="linked_real_estate_account_id">
+                                {__('Linked Property')}
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                                {__(
+                                    'Optionally link this loan to an existing unlinked real-estate account.',
+                                )}
+                            </p>
+                            <div className="mt-1">
+                                <Select
+                                    name="linked_real_estate_account_id"
+                                    value={
+                                        loanData.linkedRealEstateAccountId ??
+                                        'none'
+                                    }
+                                    onValueChange={(value) =>
+                                        setLoanData((prev) => ({
+                                            ...prev,
+                                            linkedRealEstateAccountId:
+                                                value === 'none' ? null : value,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger name="linked_real_estate_account_id">
+                                        <SelectValue
+                                            placeholder={__(
+                                                'No linked property',
+                                            )}
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">
+                                            {__('No linked property')}
+                                        </SelectItem>
+                                        {availableRealEstateAccounts.map(
+                                            (realEstateAccount) => (
+                                                <SelectItem
+                                                    key={realEstateAccount.id}
+                                                    value={realEstateAccount.id}
+                                                >
+                                                    {realEstateAccount.name}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <InputError
+                                message={errors.linked_real_estate_account_id}
+                            />
+                        </div>
+                    )}
 
                     <p className="pl-1 text-xs text-muted-foreground">
                         {__(

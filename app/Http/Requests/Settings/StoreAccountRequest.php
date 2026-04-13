@@ -4,6 +4,7 @@ namespace App\Http\Requests\Settings;
 
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
+use App\Models\Account;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -86,6 +87,36 @@ class StoreAccountRequest extends FormRequest
                 'loan_term_months' => ['nullable', 'integer', 'min:1', 'max:600'],
                 'loan_start_date' => ['nullable', 'date'],
                 'original_amount' => ['nullable', 'integer', 'min:0'],
+                'linked_real_estate_account_id' => [
+                    'nullable',
+                    'string',
+                    Rule::exists('accounts', 'id')->where(function ($query) {
+                        $query->where('user_id', $this->user()->id)
+                            ->where('type', AccountType::RealEstate->value);
+                    }),
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        if (! is_string($value)) {
+                            return;
+                        }
+
+                        $account = Account::query()
+                            ->whereKey($value)
+                            ->where('user_id', $this->user()->id)
+                            ->where('type', AccountType::RealEstate->value)
+                            ->with('realEstateDetail')
+                            ->first();
+
+                        if (! $account?->realEstateDetail) {
+                            $fail(__('The selected property cannot be linked.'));
+
+                            return;
+                        }
+
+                        if ($account->realEstateDetail->linked_loan_account_id !== null) {
+                            $fail(__('The selected property is already linked to a loan.'));
+                        }
+                    },
+                ],
             ]);
         }
 

@@ -7,9 +7,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreAccountRequest;
 use App\Http\Requests\Settings\UpdateAccountRequest;
 use App\Models\Account;
+use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,7 +24,10 @@ class AccountController extends Controller
      */
     public function index(): Response
     {
-        $accounts = auth()->user()
+        /** @var User $user */
+        $user = Auth::user();
+
+        $accounts = $user
             ->accounts()
             ->with(['bank:id,name,logo', 'loanDetail'])
             ->orderBy('name')
@@ -38,7 +43,8 @@ class AccountController extends Controller
      */
     public function store(StoreAccountRequest $request): RedirectResponse|JsonResponse
     {
-        $user = auth()->user();
+        /** @var User $user */
+        $user = Auth::user();
         $validated = $request->validated();
         $balance = $validated['balance'] ?? null;
 
@@ -89,6 +95,20 @@ class AccountController extends Controller
                 }
 
                 $account->loanDetail()->create($loanData);
+            }
+
+            $linkedRealEstateAccountId = $validated['linked_real_estate_account_id'] ?? null;
+
+            if ($linkedRealEstateAccountId !== null) {
+                $realEstateAccount = $user->accounts()
+                    ->whereKey($linkedRealEstateAccountId)
+                    ->where('type', AccountType::RealEstate->value)
+                    ->with('realEstateDetail')
+                    ->first();
+
+                $realEstateAccount?->realEstateDetail?->update([
+                    'linked_loan_account_id' => $account->id,
+                ]);
             }
         }
 
