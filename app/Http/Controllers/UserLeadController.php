@@ -54,6 +54,7 @@ class UserLeadController extends Controller
         $lead->markEmailAsVerified();
         $lead->assignWaitlistSpot();
 
+        /** @var UserLead|null $referrer */
         $referrer = $lead->referredBy?->fresh();
 
         if ($referrer && $referrer->hasVerifiedEmail() && $referrer->position !== null) {
