@@ -18,6 +18,13 @@ class WaitlistReferralNotification extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     /**
+     * Delete the job if its models no longer exist (e.g. lead was cleaned up after DDoS).
+     *
+     * @var bool
+     */
+    public $deleteWhenMissingModels = true;
+
+    /**
      * The number of times the job may be attempted.
      *
      * @var int
