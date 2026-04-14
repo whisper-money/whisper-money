@@ -23,9 +23,19 @@ class UserLeadFactory extends Factory
 
         return [
             'email' => fake()->unique()->safeEmail(),
+            'email_verified_at' => now(),
             'position' => $position,
             'referral_code' => strtoupper(Str::random(8)),
             'locale' => 'en',
         ];
+    }
+
+    public function unverified(): static
+    {
+        return $this->state(fn (): array => [
+            'email_verified_at' => null,
+            'position' => null,
+            'referral_code' => null,
+        ]);
     }
 }

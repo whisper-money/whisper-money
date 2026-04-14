@@ -26,7 +26,9 @@ class ResendSyncLeadsCommand extends Command
             return self::FAILURE;
         }
 
-        $leads = UserLead::query()->get();
+        $leads = UserLead::query()
+            ->whereNotNull('email_verified_at')
+            ->get();
 
         if ($leads->isEmpty()) {
             $this->info('No user leads to sync.');

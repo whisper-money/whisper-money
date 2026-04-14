@@ -4,37 +4,88 @@ use App\Mail\WaitlistOvertaken;
 use App\Mail\WaitlistReferralNotification;
 use App\Mail\WaitlistWelcome;
 use App\Models\UserLead;
+use App\Notifications\VerifyUserLeadEmailNotification;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 
 beforeEach(function () {
     Mail::fake();
+    Notification::fake();
 });
 
-test('user lead is created with position starting at 500', function () {
+test('user lead is created as unverified and pending confirmation', function () {
     $response = $this->post(route('user-leads.store'), [
         'email' => 'first@example.com',
     ]);
 
     $lead = UserLead::where('email', 'first@example.com')->first();
+
     expect($lead)->not->toBeNull();
-    expect($lead->position)->toBe(500);
+    expect($lead->email_verified_at)->toBeNull();
+    expect($lead->position)->toBeNull();
+    expect($lead->referral_code)->toBeNull();
+
+    $response->assertRedirect(route('waitlist.check-email', $lead));
 });
 
-test('each subsequent lead gets a higher position', function () {
+test('verification email is sent when a user lead is created', function () {
+    $this->post(route('user-leads.store'), ['email' => 'test@example.com']);
+
+    $lead = UserLead::where('email', 'test@example.com')->firstOrFail();
+
+    Notification::assertSentTo($lead, VerifyUserLeadEmailNotification::class);
+    Mail::assertNothingQueued();
+});
+
+test('verified lead gets a position starting at 500', function () {
+    $this->post(route('user-leads.store'), ['email' => 'first@example.com']);
+
+    $lead = UserLead::where('email', 'first@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
+    expect($lead->fresh()->position)->toBe(500);
+});
+
+test('each subsequent verified lead gets a higher position', function () {
     UserLead::factory()->create(['position' => 500]);
 
     $this->post(route('user-leads.store'), ['email' => 'second@example.com']);
 
-    $lead = UserLead::where('email', 'second@example.com')->first();
-    expect($lead->position)->toBe(501);
+    $lead = UserLead::where('email', 'second@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
+    expect($lead->fresh()->position)->toBe(501);
 });
 
-test('user lead gets a referral code on creation', function () {
+test('user lead gets a referral code after verification', function () {
     $this->post(route('user-leads.store'), ['email' => 'test@example.com']);
 
-    $lead = UserLead::where('email', 'test@example.com')->first();
-    expect($lead->referral_code)->not->toBeEmpty();
-    expect(strlen($lead->referral_code))->toBe(8);
+    $lead = UserLead::where('email', 'test@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
+    expect($lead->fresh()->referral_code)->not->toBeEmpty();
+    expect(strlen($lead->fresh()->referral_code))->toBe(8);
 });
 
 test('user lead referral url is correct', function () {
@@ -43,24 +94,56 @@ test('user lead referral url is correct', function () {
     expect($lead->referral_url)->toContain('?ref=TESTCODE');
 });
 
-test('user lead redirects to the thank you page', function () {
-    $response = $this->post(route('user-leads.store'), [
-        'email' => 'test@example.com',
-    ]);
+test('verified user lead redirects to the thank you page', function () {
+    $this->post(route('user-leads.store'), ['email' => 'test@example.com']);
 
-    $lead = UserLead::where('email', 'test@example.com')->first();
-    $response->assertRedirect(route('waitlist.thank-you', $lead));
+    $lead = UserLead::where('email', 'test@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl)
+        ->assertRedirect(route('waitlist.thank-you', $lead));
 });
 
-test('welcome email is sent when a user lead is created', function () {
+test('welcome email is sent when a user lead verifies their email', function () {
     $this->post(route('user-leads.store'), ['email' => 'test@example.com']);
+
+    $lead = UserLead::where('email', 'test@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
 
     Mail::assertQueued(WaitlistWelcome::class, function (WaitlistWelcome $mail) {
         return $mail->hasTo('test@example.com');
     });
 });
 
-test('referrer moves forward 10 positions when someone uses their link', function () {
+test('lead verification dispatches the verified event', function () {
+    $this->post(route('user-leads.store'), ['email' => 'verified-test@example.com']);
+
+    $lead = UserLead::where('email', 'verified-test@example.com')->firstOrFail();
+
+    Event::fake([Verified::class]);
+
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
+    Event::assertDispatched(Verified::class);
+});
+
+test('referrer moves forward 10 positions when a verified lead uses their link', function () {
     $referrer = UserLead::factory()->create(['position' => 510]);
 
     $this->post(route('user-leads.store'), [
@@ -68,7 +151,27 @@ test('referrer moves forward 10 positions when someone uses their link', functio
         'referrer_code' => $referrer->referral_code,
     ]);
 
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
     expect($referrer->fresh()->position)->toBe(500);
+});
+
+test('unverified referred lead does not move referrer forward yet', function () {
+    $referrer = UserLead::factory()->create(['position' => 510]);
+
+    $this->post(route('user-leads.store'), [
+        'email' => 'new@example.com',
+        'referrer_code' => $referrer->referral_code,
+    ]);
+
+    expect($referrer->fresh()->position)->toBe(510);
 });
 
 test('referrer position cannot go below 1', function () {
@@ -79,16 +182,34 @@ test('referrer position cannot go below 1', function () {
         'referrer_code' => $referrer->referral_code,
     ]);
 
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
     expect($referrer->fresh()->position)->toBe(1);
 });
 
-test('referral notification email is sent to the referrer', function () {
+test('referral notification email is sent to the referrer after verification', function () {
     $referrer = UserLead::factory()->create(['position' => 510]);
 
     $this->post(route('user-leads.store'), [
         'email' => 'new@example.com',
         'referrer_code' => $referrer->referral_code,
     ]);
+
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
 
     Mail::assertQueued(WaitlistReferralNotification::class, function (WaitlistReferralNotification $mail) use ($referrer) {
         return $mail->hasTo($referrer->email);
@@ -103,7 +224,7 @@ test('new lead is linked to the referrer', function () {
         'referrer_code' => $referrer->referral_code,
     ]);
 
-    $newLead = UserLead::where('email', 'new@example.com')->first();
+    $newLead = UserLead::where('email', 'new@example.com')->firstOrFail();
     expect($newLead->referred_by_id)->toBe($referrer->id);
 });
 
@@ -116,7 +237,7 @@ test('invalid referrer code is silently ignored', function () {
     $lead = UserLead::where('email', 'test@example.com')->first();
     expect($lead)->not->toBeNull();
     expect($lead->referred_by_id)->toBeNull();
-    Mail::assertQueued(WaitlistWelcome::class);
+    Notification::assertSentTo($lead, VerifyUserLeadEmailNotification::class);
     Mail::assertNotQueued(WaitlistReferralNotification::class);
 });
 
@@ -173,6 +294,33 @@ test('user lead defaults to app locale when no locale is submitted', function ()
     expect($lead->locale)->toBe(app()->getLocale());
 });
 
+test('check email page shows the pending email address', function () {
+    $lead = UserLead::factory()->unverified()->create(['email' => 'pending@example.com']);
+
+    $response = $this->withoutVite()->get(route('waitlist.check-email', $lead));
+
+    $response->assertSuccessful();
+    $response->assertInertia(fn ($page) => $page
+        ->component('waitlist/check-email')
+        ->where('email', 'pending@example.com')
+    );
+});
+
+test('verification link with invalid hash does not verify the lead', function () {
+    $lead = UserLead::factory()->unverified()->create(['email' => 'pending@example.com']);
+
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1('wrong-email')],
+    );
+
+    $this->get($verificationUrl)
+        ->assertSessionHasErrors('email');
+
+    expect($lead->fresh()->hasVerifiedEmail())->toBeFalse();
+});
+
 test('overtaken email is sent using the overtaken lead locale', function () {
     $referrer = UserLead::factory()->create(['position' => 520]);
     $between = UserLead::factory()->create(['position' => 515, 'locale' => 'es']);
@@ -181,6 +329,15 @@ test('overtaken email is sent using the overtaken lead locale', function () {
         'email' => 'new@example.com',
         'referrer_code' => $referrer->referral_code,
     ]);
+
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
 
     Mail::assertQueued(WaitlistOvertaken::class, function (WaitlistOvertaken $mail) use ($between) {
         return $mail->hasTo($between->email) && $mail->locale === 'es';
@@ -198,6 +355,15 @@ test('overtaken leads are pushed back one position when referrer jumps forward',
         'referrer_code' => $referrer->referral_code,
     ]);
 
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
     expect($between1->fresh()->position)->toBe(512);
     expect($between2->fresh()->position)->toBe(516);
     expect($outsideRange->fresh()->position)->toBe(525);
@@ -212,6 +378,15 @@ test('overtaken leads receive the overtaken email', function () {
         'referrer_code' => $referrer->referral_code,
     ]);
 
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
     Mail::assertQueued(WaitlistOvertaken::class, function (WaitlistOvertaken $mail) use ($between) {
         return $mail->hasTo($between->email);
     });
@@ -224,6 +399,15 @@ test('referrer does not receive the overtaken email', function () {
         'email' => 'new@example.com',
         'referrer_code' => $referrer->referral_code,
     ]);
+
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
 
     Mail::assertNotQueued(WaitlistOvertaken::class, function (WaitlistOvertaken $mail) use ($referrer) {
         return $mail->hasTo($referrer->email);
@@ -238,6 +422,15 @@ test('no overtaken emails when referrer is alone in their range', function () {
         'referrer_code' => $referrer->referral_code,
     ]);
 
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
+
     Mail::assertNotQueued(WaitlistOvertaken::class);
 });
 
@@ -250,6 +443,15 @@ test('clamped referrer only pushes back leads within the actual range', function
         'email' => 'new@example.com',
         'referrer_code' => $referrer->referral_code,
     ]);
+
+    $lead = UserLead::where('email', 'new@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'user-leads.verify',
+        now()->addMinutes(60),
+        ['lead' => $lead->id, 'hash' => sha1(strtolower($lead->email))],
+    );
+
+    $this->get($verificationUrl);
 
     // Referrer clamps to 1, overtaken range is positions 1–4
     expect($referrer->fresh()->position)->toBe(1);
