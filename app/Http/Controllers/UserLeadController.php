@@ -7,8 +7,10 @@ use App\Mail\WaitlistOvertaken;
 use App\Mail\WaitlistReferralNotification;
 use App\Mail\WaitlistWelcome;
 use App\Models\UserLead;
+use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,13 +35,37 @@ class UserLeadController extends Controller
             'locale' => $validated['locale'] ?? null,
         ]);
 
-        if ($referrer) {
+        $lead->sendEmailVerificationNotification();
+
+        return to_route('waitlist.check-email', $lead);
+    }
+
+    public function verify(UserLead $lead): RedirectResponse
+    {
+        if (! hash_equals((string) request()->query('hash'), sha1(Str::lower($lead->email)))) {
+            return to_route('waitlist.check-email', $lead)
+                ->withErrors(['email' => __('The verification link is invalid.')]);
+        }
+
+        if ($lead->hasVerifiedEmail()) {
+            return to_route('waitlist.thank-you', $lead);
+        }
+
+        $lead->markEmailAsVerified();
+        $lead->assignWaitlistSpot();
+
+        /** @var UserLead|null $referrer */
+        $referrer = $lead->referredBy?->fresh();
+
+        if ($referrer && $referrer->hasVerifiedEmail() && $referrer->position !== null) {
             $oldPosition = $referrer->position;
             $newPosition = max(1, $oldPosition - 10);
 
             $referrer->update(['position' => $newPosition]);
 
-            $overtaken = UserLead::whereBetween('position', [$newPosition, $oldPosition - 1])
+            $overtaken = UserLead::query()
+                ->whereNotNull('email_verified_at')
+                ->whereBetween('position', [$newPosition, $oldPosition - 1])
                 ->where('id', '!=', $referrer->id)
                 ->get();
 
@@ -57,17 +83,34 @@ class UserLeadController extends Controller
         }
 
         Mail::to($lead->email)->send(
-            (new WaitlistWelcome($lead))->locale($lead->locale),
+            (new WaitlistWelcome($lead->fresh()))->locale($lead->locale),
         );
 
+        event(new Verified($lead));
+
         return to_route('waitlist.thank-you', $lead);
+    }
+
+    public function checkEmail(UserLead $lead): Response|RedirectResponse
+    {
+        if ($lead->hasVerifiedEmail()) {
+            return to_route('waitlist.thank-you', $lead);
+        }
+
+        return Inertia::render('waitlist/check-email', [
+            'email' => $lead->email,
+        ]);
     }
 
     /**
      * Show the waitlist thank you page.
      */
-    public function thankYou(UserLead $lead): Response
+    public function thankYou(UserLead $lead): Response|RedirectResponse
     {
+        if (! $lead->hasVerifiedEmail()) {
+            return to_route('waitlist.check-email', $lead);
+        }
+
         return Inertia::render('waitlist/thank-you', [
             'position' => $lead->position,
             'referralUrl' => $lead->referral_url,

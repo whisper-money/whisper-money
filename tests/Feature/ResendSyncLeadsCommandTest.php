@@ -26,6 +26,24 @@ test('resend:sync-leads syncs all user leads to resend', function () {
         ->assertSuccessful();
 });
 
+test('resend:sync-leads only syncs verified user leads to resend', function () {
+    config([
+        'services.resend.key' => 'test-api-key',
+        'services.resend.leads_segment_id' => TEST_RESEND_LEADS_SEGMENT_ID,
+    ]);
+
+    UserLead::factory()->count(2)->create();
+    UserLead::factory()->unverified()->count(2)->create();
+
+    $resendService = mock(ResendService::class);
+    $resendService->shouldReceive('syncLead')->times(2);
+
+    artisan('resend:sync-leads')
+        ->expectsOutputToContain('Syncing 2 user leads to Resend...')
+        ->expectsOutputToContain('Synced 2 user leads to Resend.')
+        ->assertSuccessful();
+});
+
 test('resend:sync-leads fails when api key is not configured', function () {
     config([
         'services.resend.key' => null,

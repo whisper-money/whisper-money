@@ -67,6 +67,10 @@ Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('robots.txt', [RobotsController::class, 'index'])->name('robots');
 
 Route::post('user-leads', [UserLeadController::class, 'store'])->name('user-leads.store');
+Route::get('waitlist/check-email/{lead}', [UserLeadController::class, 'checkEmail'])->name('waitlist.check-email');
+Route::get('user-leads/{lead}/verify', [UserLeadController::class, 'verify'])
+    ->middleware('signed')
+    ->name('user-leads.verify');
 Route::get('waitlist/thank-you/{lead}', [UserLeadController::class, 'thankYou'])->name('waitlist.thank-you');
 
 Route::get('privacy', function () {
