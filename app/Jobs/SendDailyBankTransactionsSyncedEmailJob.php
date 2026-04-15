@@ -36,20 +36,20 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
 
     public function handle(): void
     {
-        if ($this->wasAlreadySentToday()) {
-            return;
-        }
-
-        $lastSentAt = UserMailLog::query()
+        $lastSentMailLog = UserMailLog::query()
             ->where('user_id', $this->user->id)
             ->where('email_type', DripEmailType::BankTransactionsSynced)
             ->latest('sent_at')
-            ->value('sent_at');
+            ->first();
+
+        if ($lastSentMailLog?->email_identifier === $this->reportDate) {
+            return;
+        }
 
         $pendingTransactions = Transaction::query()
             ->where('user_id', $this->user->id)
             ->where('source', TransactionSource::EnableBanking)
-            ->when($lastSentAt, fn ($query) => $query->where('created_at', '>', $lastSentAt))
+            ->when($lastSentMailLog?->sent_at, fn ($query, $lastSentAt) => $query->where('created_at', '>', $lastSentAt))
             ->whereHas('account.bankingConnection')
             ->with('account.bank')
             ->get();
@@ -80,14 +80,5 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
     public function uniqueId(): string
     {
         return $this->user->id.':'.$this->reportDate;
-    }
-
-    private function wasAlreadySentToday(): bool
-    {
-        return UserMailLog::query()
-            ->where('user_id', $this->user->id)
-            ->where('email_type', DripEmailType::BankTransactionsSynced)
-            ->where('email_identifier', $this->reportDate)
-            ->exists();
     }
 }
