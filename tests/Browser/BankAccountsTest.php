@@ -270,8 +270,9 @@ it('can create a real estate account linked to an existing loan', function () {
         ->first();
 
     expect($account)->not->toBeNull();
-    expect($account->balances)->toHaveCount(1);
-    expect($account->balances->first()->balance)->toBe(32000000);
+    // Historical balances are generated from purchase_date (2024-02-01) to today
+    expect($account->balances()->count())->toBeGreaterThan(1);
+    expect($account->balances()->whereDate('balance_date', today())->first()->balance)->toBe(32000000);
 
     $detail = RealEstateDetail::query()
         ->where('account_id', $account->id)

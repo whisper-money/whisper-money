@@ -2,6 +2,7 @@
 
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
+use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\RealEstateDetail;
@@ -847,4 +848,259 @@ it('creates real estate detail via account update if it does not exist', functio
         'property_type' => PropertyType::Land->value,
         'revaluation_percentage' => '1.50',
     ]);
+});
+
+// -------------------------------------------------------------------
+// Historical balance generation on account creation
+// -------------------------------------------------------------------
+
+it('generates historical balances when creating real estate account with purchase data', function () {
+    $this->travelTo(Carbon\Carbon::parse('2026-03-15'));
+
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'My House',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_price' => 20000000, // 200,000.00
+        'purchase_date' => '2025-11-15',
+        'balance' => 24000000, // 240,000.00 (current value)
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+    $response->assertRedirect();
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    $balances = $account->balances()->orderBy('balance_date')->get();
+
+    // Expect: purchase date, Dec 1, Jan 1, Feb 1, Mar 1, and today (Mar 15)
+    expect($balances)->toHaveCount(6);
+
+    // First balance should be the purchase price on the purchase date
+    expect($balances[0]->balance_date->toDateString())->toBe('2025-11-15');
+    expect($balances[0]->balance)->toBe(20000000);
+
+    // Last balance should be the current value on today
+    expect($balances[5]->balance_date->toDateString())->toBe('2026-03-15');
+    expect($balances[5]->balance)->toBe(24000000);
+
+    // Intermediate balances should be linearly interpolated
+    // Total days: Nov 15 to Mar 15 = 120 days
+    $totalDays = 120;
+
+    // Dec 1: 16 days elapsed
+    expect($balances[1]->balance_date->toDateString())->toBe('2025-12-01');
+    expect($balances[1]->balance)->toBe((int) round(20000000 + 4000000 * (16 / $totalDays)));
+
+    // Jan 1: 47 days elapsed
+    expect($balances[2]->balance_date->toDateString())->toBe('2026-01-01');
+    expect($balances[2]->balance)->toBe((int) round(20000000 + 4000000 * (47 / $totalDays)));
+
+    // Feb 1: 78 days elapsed
+    expect($balances[3]->balance_date->toDateString())->toBe('2026-02-01');
+    expect($balances[3]->balance)->toBe((int) round(20000000 + 4000000 * (78 / $totalDays)));
+
+    // Mar 1: 106 days elapsed
+    expect($balances[4]->balance_date->toDateString())->toBe('2026-03-01');
+    expect($balances[4]->balance)->toBe((int) round(20000000 + 4000000 * (106 / $totalDays)));
+});
+
+it('does not generate historical balances when purchase_price is missing', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'My House',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_date' => '2025-06-01',
+        'balance' => 30000000,
+    ];
+
+    $this->post(route('accounts.store'), $data);
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    // Only today's balance should exist (from the regular balance creation)
+    expect($account->balances)->toHaveCount(1);
+    expect($account->balances->first()->balance)->toBe(30000000);
+});
+
+it('does not generate historical balances when purchase_date is missing', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'My House',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_price' => 20000000,
+        'balance' => 30000000,
+    ];
+
+    $this->post(route('accounts.store'), $data);
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    // Only today's balance should exist
+    expect($account->balances)->toHaveCount(1);
+    expect($account->balances->first()->balance)->toBe(30000000);
+});
+
+it('handles purchase_date equal to today when generating historical balances', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'New Purchase',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Land->value,
+        'purchase_price' => 15000000,
+        'purchase_date' => now()->toDateString(),
+        'balance' => 15000000,
+    ];
+
+    $this->post(route('accounts.store'), $data);
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    // Only one balance for today
+    expect($account->balances)->toHaveCount(1);
+    expect($account->balances->first()->balance_date->toDateString())->toBe(now()->toDateString());
+    expect($account->balances->first()->balance)->toBe(15000000);
+});
+
+it('generates flat balances when purchase_price equals current value', function () {
+    $this->travelTo(Carbon\Carbon::parse('2026-03-15'));
+
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'Flat Value Property',
+        'currency_code' => 'USD',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Commercial->value,
+        'purchase_price' => 50000000,
+        'purchase_date' => '2026-01-01',
+        'balance' => 50000000,
+    ];
+
+    $this->post(route('accounts.store'), $data);
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    $balances = $account->balances()->orderBy('balance_date')->get();
+
+    // All balances should be the same value
+    foreach ($balances as $balance) {
+        expect($balance->balance)->toBe(50000000);
+    }
+});
+
+it('does not generate historical balances when balance is not provided', function () {
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'No Balance Property',
+        'currency_code' => 'USD',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_price' => 20000000,
+        'purchase_date' => '2025-06-01',
+    ];
+
+    $this->post(route('accounts.store'), $data);
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    // No balances should be created
+    expect($account->balances)->toHaveCount(0);
+});
+
+it('dispatches a job for older balances when purchase predates 12-month window', function () {
+    Bus::fake(GenerateHistoricalRealEstateBalancesJob::class);
+
+    $this->travelTo(Carbon\Carbon::parse('2026-03-15'));
+
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'Old Property',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_price' => 10000000,
+        'purchase_date' => '2020-06-15', // ~6 years ago
+        'balance' => 18000000,
+    ];
+
+    $response = $this->post(route('accounts.store'), $data);
+    $response->assertRedirect();
+
+    Bus::assertDispatched(GenerateHistoricalRealEstateBalancesJob::class, function ($job) {
+        return $job->purchaseDate->toDateString() === '2020-06-15'
+            && $job->purchasePrice === 10000000
+            && $job->currentValue === 18000000;
+    });
+
+    $account = Account::query()
+        ->where('user_id', $this->user->id)
+        ->where('type', AccountType::RealEstate->value)
+        ->first();
+
+    // Only the last 12 months of balances should exist synchronously
+    $balances = $account->balances()->orderBy('balance_date')->get();
+    $twelveMonthsAgo = Carbon\Carbon::parse('2025-03-01');
+
+    foreach ($balances as $balance) {
+        expect($balance->balance_date->gte($twelveMonthsAgo))->toBeTrue();
+    }
+
+    // Today's balance should be the current value
+    $todayBalance = $balances->last();
+    expect($todayBalance->balance_date->toDateString())->toBe('2026-03-15');
+    expect($todayBalance->balance)->toBe(18000000);
+});
+
+it('does not dispatch a job when purchase is within 12-month window', function () {
+    Bus::fake(GenerateHistoricalRealEstateBalancesJob::class);
+
+    $this->travelTo(Carbon\Carbon::parse('2026-03-15'));
+
+    actingAs($this->user);
+
+    $data = [
+        'name' => 'Recent Property',
+        'currency_code' => 'EUR',
+        'type' => AccountType::RealEstate->value,
+        'property_type' => PropertyType::Residential->value,
+        'purchase_price' => 20000000,
+        'purchase_date' => '2025-11-15', // within last 12 months
+        'balance' => 24000000,
+    ];
+
+    $this->post(route('accounts.store'), $data);
+
+    Bus::assertNotDispatched(GenerateHistoricalRealEstateBalancesJob::class);
 });

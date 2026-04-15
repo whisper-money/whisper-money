@@ -29,7 +29,7 @@ import {
 } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BankCombobox } from './bank-combobox';
 import { CustomBankData, CustomBankForm } from './custom-bank-form';
 
@@ -150,6 +150,7 @@ export function AccountForm({
     const [loanData, setLoanData] = useState<LoanFormData>(
         initialValues?.loan ?? initialLoanData,
     );
+    const isRevaluationManuallySet = useRef(false);
 
     const showBalanceField =
         selectedType !== null && BALANCE_ACCOUNT_TYPES.includes(selectedType);
@@ -161,6 +162,51 @@ export function AccountForm({
             (account.linked_loan_account_id === null ||
                 account.linked_loan_account_id === undefined),
     );
+
+    // Auto-calculate revaluation % (CAGR) when purchase data and current value are provided
+    useEffect(() => {
+        if (!isRealEstate || isRevaluationManuallySet.current) {
+            return;
+        }
+
+        const purchasePrice = realEstateData.purchasePrice;
+        const purchaseDate = realEstateData.purchaseDate;
+        const currentValue = balance;
+
+        if (
+            !purchasePrice ||
+            purchasePrice <= 0 ||
+            !purchaseDate ||
+            !currentValue ||
+            currentValue <= 0
+        ) {
+            return;
+        }
+
+        const purchaseDateObj = new Date(purchaseDate);
+        const today = new Date();
+        const diffMs = today.getTime() - purchaseDateObj.getTime();
+        const years = diffMs / (365.25 * 24 * 60 * 60 * 1000);
+
+        if (years <= 0) {
+            return;
+        }
+
+        const cagr =
+            (Math.pow(currentValue / purchasePrice, 1 / years) - 1) * 100;
+        const clampedCagr = Math.max(-100, Math.min(100, cagr));
+        const rounded = Math.round(clampedCagr * 100) / 100;
+
+        setRealEstateData((prev) => ({
+            ...prev,
+            revaluationPercentage: String(rounded),
+        }));
+    }, [
+        isRealEstate,
+        realEstateData.purchasePrice,
+        realEstateData.purchaseDate,
+        balance,
+    ]);
 
     useEffect(() => {
         onChange({
@@ -578,12 +624,13 @@ export function AccountForm({
                             id="purchase_price"
                             className="mt-1"
                             value={realEstateData.purchasePrice}
-                            onChange={(value) =>
+                            onChange={(value) => {
+                                isRevaluationManuallySet.current = false;
                                 setRealEstateData((prev) => ({
                                     ...prev,
                                     purchasePrice: value,
-                                }))
-                            }
+                                }));
+                            }}
                             currencyCode={selectedCurrency ?? 'USD'}
                         />
                     </div>
@@ -597,12 +644,13 @@ export function AccountForm({
                             type="date"
                             className="mt-1"
                             value={realEstateData.purchaseDate}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                                isRevaluationManuallySet.current = false;
                                 setRealEstateData((prev) => ({
                                     ...prev,
                                     purchaseDate: e.target.value,
-                                }))
-                            }
+                                }));
+                            }}
                         />
                     </div>
 
@@ -735,12 +783,13 @@ export function AccountForm({
                             type="number"
                             className="mt-1"
                             value={realEstateData.revaluationPercentage}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                                isRevaluationManuallySet.current = true;
                                 setRealEstateData((prev) => ({
                                     ...prev,
                                     revaluationPercentage: e.target.value,
-                                }))
-                            }
+                                }));
+                            }}
                             placeholder="0.00"
                             min="-100"
                             max="100"

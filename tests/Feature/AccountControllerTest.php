@@ -430,7 +430,7 @@ test('real estate balance evolution includes mortgage balance data', function ()
     $loanAccount = Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Loan,
-        'currency_code' => 'USD',
+        'currency_code' => 'EUR',
     ]);
 
     AccountBalance::factory()->create([
@@ -446,7 +446,7 @@ test('real estate balance evolution includes mortgage balance data', function ()
 
     $realEstateAccount = Account::factory()->realEstate()->create([
         'user_id' => $this->user->id,
-        'currency_code' => 'USD',
+        'currency_code' => 'EUR',
     ]);
 
     AccountBalance::factory()->create([

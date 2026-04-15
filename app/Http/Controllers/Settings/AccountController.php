@@ -6,8 +6,11 @@ use App\Enums\AccountType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreAccountRequest;
 use App\Http\Requests\Settings\UpdateAccountRequest;
+use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Models\Account;
 use App\Models\User;
+use App\Services\RealEstateBalanceGeneratorService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -29,7 +32,7 @@ class AccountController extends Controller
 
         $accounts = $user
             ->accounts()
-            ->with(['bank:id,name,logo', 'loanDetail'])
+            ->with(['bank:id,name,logo', 'loanDetail', 'realEstateDetail'])
             ->orderBy('name')
             ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 
@@ -41,7 +44,7 @@ class AccountController extends Controller
     /**
      * Store a newly created account.
      */
-    public function store(StoreAccountRequest $request): RedirectResponse|JsonResponse
+    public function store(StoreAccountRequest $request, RealEstateBalanceGeneratorService $balanceGenerator): RedirectResponse|JsonResponse
     {
         /** @var User $user */
         $user = Auth::user();
@@ -75,6 +78,33 @@ class AccountController extends Controller
 
             if (! empty($realEstateData)) {
                 $account->realEstateDetail()->create($realEstateData);
+            }
+
+            // Generate historical balances when purchase data and current value are provided
+            if ($balance !== null && isset($validated['purchase_price'], $validated['purchase_date'])) {
+                $purchaseDate = Carbon::parse($validated['purchase_date']);
+                $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
+
+                // Generate the last 12 months synchronously
+                $balanceGenerator->generateHistoricalBalances(
+                    $account,
+                    $validated['purchase_price'],
+                    $purchaseDate,
+                    $balance,
+                    from: $twelveMonthsAgo,
+                );
+
+                // Dispatch older balances asynchronously if the purchase predates the sync window
+                if ($purchaseDate->isBefore($twelveMonthsAgo)) {
+                    GenerateHistoricalRealEstateBalancesJob::dispatch(
+                        $account,
+                        $validated['purchase_price'],
+                        $purchaseDate,
+                        $balance,
+                        $purchaseDate,
+                        $twelveMonthsAgo->copy()->subDay(),
+                    );
+                }
             }
         }
 
@@ -121,7 +151,7 @@ class AccountController extends Controller
             return response()->json($account, 201);
         }
 
-        return back();
+        return redirect(url()->previousPath());
     }
 
     /**
