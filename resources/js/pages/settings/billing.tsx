@@ -96,11 +96,15 @@ function PlanCard({
     plan,
     isSelected,
     onSelect,
+    currency,
+    locale,
 }: {
     planKey: string;
     plan: Plan;
     isSelected: boolean;
     onSelect: () => void;
+    currency: string;
+    locale: string;
 }) {
     const savingsPercent =
         plan.original_price && plan.billing_period === 'year'
@@ -137,7 +141,7 @@ function PlanCard({
             </div>
             <div className="mt-1 flex items-baseline gap-1">
                 <span className="text-xl font-bold">
-                    ${monthlyEquivalent.toFixed(0)}
+                    {formatCurrency(monthlyEquivalent * 100, currency, locale)}
                 </span>
                 <span className="text-sm text-muted-foreground">
                     {__('/month')}
@@ -145,7 +149,8 @@ function PlanCard({
             </div>
             {plan.billing_period === 'year' && (
                 <span className="mt-2 text-xs text-muted-foreground">
-                    {__('Billed annually at')} ${plan.price}
+                    {__('Billed annually at')}{' '}
+                    {formatCurrency(plan.price * 100, currency, locale)}
                 </span>
             )}
         </button>
@@ -155,9 +160,13 @@ function PlanCard({
 function UpgradeSection({
     planEntries,
     defaultPlan,
+    currency,
+    locale,
 }: {
     planEntries: [string, Plan][];
     defaultPlan: string;
+    currency: string;
+    locale: string;
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
     const selectedPlanData = planEntries.find(
@@ -188,6 +197,8 @@ function UpgradeSection({
                             plan={plan}
                             isSelected={key === selectedPlan}
                             onSelect={() => setSelectedPlan(key)}
+                            currency={currency}
+                            locale={locale}
                         />
                     ))}
                 </div>
@@ -310,6 +321,8 @@ export default function Billing() {
                     <UpgradeSection
                         planEntries={planEntries}
                         defaultPlan={pricing.defaultPlan}
+                        currency={pricing.currency}
+                        locale={locale}
                     />
                 )}
             </SettingsLayout>

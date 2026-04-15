@@ -48,7 +48,7 @@ return [
     'plans' => [
         'monthly' => [
             'name' => 'Standard Monthly',
-            'price' => 7.80,
+            'price' => 3.99,
             'original_price' => null,
             'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly'),
             'billing_period' => 'month',
@@ -64,8 +64,8 @@ return [
         ],
         'yearly' => [
             'name' => 'Standard Yearly',
-            'price' => 46.80,
-            'original_price' => 93.60,
+            'price' => 23.88,
+            'original_price' => 47.88,
             'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly'),
             'billing_period' => 'year',
             'features' => [
