@@ -190,10 +190,18 @@ test('pricing config includes all plan details', function () {
             ->component('welcome')
             ->has('pricing.plans.monthly', fn ($plan) => $plan
                 ->has('name')
-                ->has('price')
-                ->has('original_price')
+                ->where('price', 3.99)
+                ->where('original_price', null)
                 ->has('stripe_lookup_key')
-                ->has('billing_period')
+                ->where('billing_period', 'month')
+                ->has('features')
+            )
+            ->has('pricing.plans.yearly', fn ($plan) => $plan
+                ->has('name')
+                ->where('price', 23.88)
+                ->where('original_price', 47.88)
+                ->has('stripe_lookup_key')
+                ->where('billing_period', 'year')
                 ->has('features')
             )
             ->has('pricing.promo', fn ($promo) => $promo
