@@ -270,7 +270,7 @@ it('resets revaluation auto-calc when purchase price changes after manual overri
 
     // Change purchase price — should reset override and recalculate
     $page->fill('#purchase_price', '220000')
-        ->keys('#purchase_date', ['Tab'])
+        ->keys('#purchase_price', ['Tab'])
         ->wait(1);
 
     $page->assertValueIsNot('#revaluation_percentage', '99.99')
