@@ -49,6 +49,10 @@ parameters:
           path: app/Listeners/*
         - identifier: public.property.unused
           path: app/Listeners/*
+        - identifier: public.method.unused
+          path: app/Notifications/*
+        - identifier: public.property.unused
+          path: app/Notifications/*
         # Model relationship methods are called dynamically by Eloquent
         - identifier: public.method.unused
           path: app/Models/*

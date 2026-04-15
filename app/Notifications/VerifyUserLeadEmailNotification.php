@@ -14,8 +14,6 @@ class VerifyUserLeadEmailNotification extends Notification implements ShouldQueu
     /**
      * Delete the job if the notifiable model no longer exists.
      *
-     * @phpstan-ignore property.neverUsed (read by the queue system via reflection)
-     *
      * @var bool
      */
     public $deleteWhenMissingModels = true;

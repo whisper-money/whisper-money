@@ -93,12 +93,14 @@ class RetryLeadFailedJobsCommand extends Command
      */
     private function extractLeadId(string $command): ?string
     {
-        if (preg_match(
-            '/App\\\\Models\\\\UserLead";s:2:"id";(?:s:\d+:"([0-9a-f-]{36})"|a:\d+:\{i:0;s:\d+:"([0-9a-f-]{36})")/',
-            $command,
-            $matches
-        )) {
-            return $matches[1] ?: ($matches[2] ?: null);
+        // Mail jobs store the lead as a single string ID
+        if (preg_match('/App\\\\Models\\\\UserLead";s:2:"id";s:\d+:"([0-9a-f-]{36})"/', $command, $matches)) {
+            return $matches[1];
+        }
+
+        // Notification jobs store notifiables as an array of IDs
+        if (preg_match('/App\\\\Models\\\\UserLead";s:2:"id";a:\d+:\{i:0;s:\d+:"([0-9a-f-]{36})"/', $command, $matches)) {
+            return $matches[1];
         }
 
         return null;
