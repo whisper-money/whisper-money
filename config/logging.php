@@ -118,6 +118,11 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'sentry_logs' => [
+            'driver' => 'sentry_logs',
+            'level' => env('LOG_LEVEL', 'info'),
+        ],
+
         'null' => [
             'driver' => 'monolog',
             'handler' => NullHandler::class,
