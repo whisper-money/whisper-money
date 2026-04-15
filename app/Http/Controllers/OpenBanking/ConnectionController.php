@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers\OpenBanking;
 
-use App\Contracts\BankingProviderInterface;
+use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OpenBanking\DestroyConnectionRequest;
 use App\Http\Requests\OpenBanking\UpdateConnectionCredentialsRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
+use App\Models\User;
 use App\Services\Banking\BinanceClient;
 use App\Services\Banking\BitpandaClient;
 use App\Services\Banking\IndexaCapitalClient;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,8 +29,10 @@ class ConnectionController extends Controller
      */
     public function index(): Response
     {
-        $connections = auth()->user()
-            ->bankingConnections()
+        /** @var User $user */
+        $user = Auth::user();
+
+        $connections = $user->bankingConnections()
             ->withCount('accounts')
             ->orderByDesc('created_at')
             ->get()
@@ -46,7 +50,7 @@ class ConnectionController extends Controller
      */
     public function sync(BankingConnection $connection): RedirectResponse
     {
-        if ($connection->user_id !== auth()->id()) {
+        if ($connection->user_id !== Auth::id()) {
             abort(403);
         }
 
@@ -127,34 +131,9 @@ class ConnectionController extends Controller
     /**
      * Revoke and delete a banking connection.
      */
-    public function destroy(DestroyConnectionRequest $request, BankingConnection $connection, BankingProviderInterface $provider): RedirectResponse
+    public function destroy(DestroyConnectionRequest $request, BankingConnection $connection, DisconnectBankingConnection $disconnectBankingConnection): RedirectResponse
     {
-        if ($connection->isEnableBanking() && $connection->session_id && $connection->isActive()) {
-            try {
-                $provider->revokeSession($connection->session_id);
-            } catch (\Throwable $e) {
-                Log::warning('Failed to revoke EnableBanking session', [
-                    'session_id' => $connection->session_id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        if ($request->boolean('delete_accounts')) {
-            $connection->accounts->each(function ($account) {
-                $account->transactions()->delete();
-                $account->balances()->delete();
-                $account->delete();
-            });
-        } else {
-            $connection->accounts()->update([
-                'banking_connection_id' => null,
-                'external_account_id' => null,
-            ]);
-        }
-
-        $connection->update(['status' => BankingConnectionStatus::Revoked]);
-        $connection->delete();
+        $disconnectBankingConnection->handle($connection, $request->boolean('delete_accounts'));
 
         return redirect()->route('settings.connections.index')
             ->with('success', 'Banking connection disconnected.');
