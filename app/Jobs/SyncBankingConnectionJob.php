@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
 use App\Mail\BankingConnectionAuthFailedEmail;
-use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\BankingConnection;
 use App\Models\BankingSyncLog;
 use App\Services\Banking\BalanceSyncService;
@@ -82,6 +81,13 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 $this->syncBitpanda($connection);
             } else {
                 $metadata = $this->syncEnableBanking($connection, $transactionSync, $balanceSync, $isFirstSync);
+
+                if (! $isFirstSync) {
+                    SendDailyBankTransactionsSyncedEmailJob::dispatch(
+                        $connection->user,
+                        now()->toDateString(),
+                    );
+                }
             }
 
             $connection->update([
@@ -274,17 +280,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             }
         }
 
-        $totalTransactions = array_sum($transactionsPerBank);
-
-        if (! $isFirstSync && $totalTransactions > 0) {
-            Mail::to($connection->user)->send(new BankTransactionsSyncedEmail(
-                $connection->user,
-                $totalTransactions,
-                $transactionsPerBank,
-            ));
-        }
-
-        return ['transactions_synced' => $totalTransactions, 'transactions_per_bank' => $transactionsPerBank];
+        return ['transactions_synced' => array_sum($transactionsPerBank), 'transactions_per_bank' => $transactionsPerBank];
     }
 
     private function friendlyErrorMessage(\Throwable $e): string
