@@ -4,8 +4,10 @@ namespace App\Console\Commands;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\BankingConnectionStatus;
+use App\Mail\EnableBankingConnectionsCancelledEmail;
 use App\Models\BankingConnection;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Mail;
 
 class CancelFreeEnableBankingConnectionsCommand extends Command
 {
@@ -17,13 +19,14 @@ class CancelFreeEnableBankingConnectionsCommand extends Command
     {
         $cutoff = now()->subHours(6);
 
-        $query = BankingConnection::query()
+        $connections = BankingConnection::query()
             ->with(['user', 'accounts'])
             ->where('provider', 'enablebanking')
             ->where('status', '!=', BankingConnectionStatus::Revoked)
-            ->where('created_at', '<=', $cutoff);
+            ->where('created_at', '<=', $cutoff)
+            ->get();
 
-        $count = (clone $query)->count();
+        $count = $connections->count();
 
         if ($count === 0) {
             $this->info('No eligible Enable Banking connections found for free users.');
@@ -34,18 +37,31 @@ class CancelFreeEnableBankingConnectionsCommand extends Command
         $revoked = 0;
         $skipped = 0;
 
-        $query->chunkById(100, function ($connections) use ($disconnectBankingConnection, &$revoked, &$skipped): void {
-            foreach ($connections as $connection) {
-                if ($connection->user?->hasProPlan()) {
-                    $skipped++;
+        $connections
+            ->groupBy('user_id')
+            ->each(function ($userConnections) use ($disconnectBankingConnection, &$revoked, &$skipped): void {
+                $user = $userConnections->first()?->user;
 
-                    continue;
+                if (! $user) {
+                    return;
                 }
 
-                $disconnectBankingConnection->handle($connection);
-                $revoked++;
-            }
-        }, column: 'id');
+                if ($user->hasProPlan()) {
+                    $skipped += $userConnections->count();
+
+                    return;
+                }
+
+                foreach ($userConnections as $connection) {
+                    $disconnectBankingConnection->handle($connection);
+                    $revoked++;
+                }
+
+                Mail::to($user)->send(new EnableBankingConnectionsCancelledEmail(
+                    $user,
+                    $userConnections->count(),
+                ));
+            });
 
         $this->info("Revoked {$revoked} Enable Banking connection(s). Skipped paid users: {$skipped}.");
 

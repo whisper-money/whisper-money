@@ -2,14 +2,17 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
+use App\Mail\EnableBankingConnectionsCancelledEmail;
 use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 
 use function Pest\Laravel\artisan;
 
 test('revokes old enable banking connections for free users and keeps accounts manual', function () {
     config(['subscriptions.enabled' => true]);
+    Mail::fake();
 
     $user = User::factory()->create();
     $connection = BankingConnection::factory()->for($user)->create([
@@ -36,10 +39,15 @@ test('revokes old enable banking connections for free users and keeps accounts m
     expect($account->banking_connection_id)->toBeNull();
     expect($account->external_account_id)->toBeNull();
     expect($account->trashed())->toBeFalse();
+
+    Mail::assertQueued(EnableBankingConnectionsCancelledEmail::class, function ($mail) use ($user) {
+        return $mail->hasTo($user->email) && $mail->removedConnectionsCount === 1;
+    });
 });
 
 test('skips enable banking connections created less than six hours ago', function () {
     config(['subscriptions.enabled' => true]);
+    Mail::fake();
 
     $user = User::factory()->create();
     $connection = BankingConnection::factory()->for($user)->create([
@@ -56,10 +64,12 @@ test('skips enable banking connections created less than six hours ago', functio
 
     expect($connection->fresh()->trashed())->toBeFalse();
     expect($connection->fresh()->status)->not->toBe(BankingConnectionStatus::Revoked);
+    Mail::assertNothingOutgoing();
 });
 
 test('skips subscribed users', function () {
     config(['subscriptions.enabled' => true]);
+    Mail::fake();
 
     $user = User::factory()->create();
     $user->subscriptions()->create([
@@ -82,10 +92,12 @@ test('skips subscribed users', function () {
         ->assertSuccessful();
 
     expect($connection->fresh()->trashed())->toBeFalse();
+    Mail::assertNothingOutgoing();
 });
 
 test('skips non enable banking providers', function () {
     config(['subscriptions.enabled' => true]);
+    Mail::fake();
 
     $user = User::factory()->create();
     $connection = BankingConnection::factory()->for($user)->indexaCapital()->create([
@@ -101,10 +113,12 @@ test('skips non enable banking providers', function () {
         ->assertSuccessful();
 
     expect($connection->fresh()->trashed())->toBeFalse();
+    Mail::assertNothingOutgoing();
 });
 
 test('continues disconnect when enable banking revoke fails', function () {
     config(['subscriptions.enabled' => true]);
+    Mail::fake();
 
     $user = User::factory()->create();
     $connection = BankingConnection::factory()->for($user)->create([
@@ -126,4 +140,35 @@ test('continues disconnect when enable banking revoke fails', function () {
     $account->refresh();
     expect($account->banking_connection_id)->toBeNull();
     expect($account->external_account_id)->toBeNull();
+
+    Mail::assertQueued(EnableBankingConnectionsCancelledEmail::class, function ($mail) use ($user) {
+        return $mail->hasTo($user->email) && $mail->removedConnectionsCount === 1;
+    });
+});
+
+test('sends one email per user when multiple connections are removed', function () {
+    config(['subscriptions.enabled' => true]);
+    Mail::fake();
+
+    $user = User::factory()->create();
+    $firstConnection = BankingConnection::factory()->for($user)->create([
+        'created_at' => now()->subHours(7),
+    ]);
+    $secondConnection = BankingConnection::factory()->for($user)->create([
+        'created_at' => now()->subHours(8),
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('revokeSession')->once()->with($firstConnection->session_id);
+    $mockProvider->shouldReceive('revokeSession')->once()->with($secondConnection->session_id);
+    app()->instance(BankingProviderInterface::class, $mockProvider);
+
+    artisan('banking:cancel-free-enablebanking')
+        ->expectsOutputToContain('Revoked 2 Enable Banking connection(s). Skipped paid users: 0.')
+        ->assertSuccessful();
+
+    Mail::assertQueued(EnableBankingConnectionsCancelledEmail::class, 1);
+    Mail::assertQueued(EnableBankingConnectionsCancelledEmail::class, function ($mail) use ($user) {
+        return $mail->hasTo($user->email) && $mail->removedConnectionsCount === 2;
+    });
 });
