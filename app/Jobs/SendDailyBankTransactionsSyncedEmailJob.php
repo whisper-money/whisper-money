@@ -61,6 +61,7 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
         $transactionsPerBank = $pendingTransactions
             ->groupBy(fn (Transaction $transaction) => $transaction->account->bank->name ?? __('Unknown Bank'))
             ->map(fn ($transactions) => $transactions->count())
+            ->sortKeys()
             ->all();
 
         Mail::to($this->user)->send(new BankTransactionsSyncedEmail(
