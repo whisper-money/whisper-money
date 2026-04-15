@@ -11,6 +11,13 @@ class VerifyUserLeadEmailNotification extends Notification implements ShouldQueu
 {
     use Queueable;
 
+    /**
+     * Delete the job if the notifiable model no longer exists.
+     *
+     * @var bool
+     */
+    public $deleteWhenMissingModels = true;
+
     public function __construct(private readonly string $verificationUrl)
     {
         $this->onQueue('emails');
