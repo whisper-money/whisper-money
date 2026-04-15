@@ -1,6 +1,9 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\DripEmailType;
+use App\Enums\TransactionSource;
+use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Jobs\SyncBinanceHistoricalBalancesJob;
 use App\Mail\BankingConnectionAuthFailedEmail;
@@ -10,8 +13,10 @@ use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\UserMailLog;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
+use Carbon\Carbon;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Http\Client\RequestException;
@@ -132,7 +137,7 @@ test('mixed linked and new accounts in same connection', function () {
 });
 
 test('sends email when new transactions are synced on subsequent sync', function () {
-    Mail::fake();
+    Queue::fake();
 
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
@@ -156,15 +161,14 @@ test('sends email when new transactions are synced on subsequent sync', function
     $job = new SyncBankingConnectionJob($connection);
     $job->handle($transactionSync, $balanceSync);
 
-    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) use ($user) {
-        return $mail->totalTransactions === 5
-            && $mail->transactionsPerBank === ['Test Bank' => 5]
-            && $mail->hasTo($user->email);
+    Queue::assertPushed(SendDailyBankTransactionsSyncedEmailJob::class, function ($job) use ($user) {
+        return $job->user->is($user)
+            && $job->reportDate === now()->toDateString();
     });
 });
 
 test('does not send email on first sync', function () {
-    Mail::fake();
+    Queue::fake();
 
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Test Bank']);
@@ -189,11 +193,11 @@ test('does not send email on first sync', function () {
     $job = new SyncBankingConnectionJob($connection);
     $job->handle($transactionSync, $balanceSync);
 
-    Mail::assertNotQueued(BankTransactionsSyncedEmail::class);
+    Queue::assertNotPushed(SendDailyBankTransactionsSyncedEmailJob::class);
 });
 
-test('does not send email when zero new transactions', function () {
-    Mail::fake();
+test('schedules daily bank sync email check when subsequent sync imports zero new transactions', function () {
+    Queue::fake();
 
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
@@ -215,11 +219,11 @@ test('does not send email when zero new transactions', function () {
     $job = new SyncBankingConnectionJob($connection);
     $job->handle($transactionSync, $balanceSync);
 
-    Mail::assertNotQueued(BankTransactionsSyncedEmail::class);
+    Queue::assertPushed(SendDailyBankTransactionsSyncedEmailJob::class);
 });
 
 test('aggregates multiple accounts under same bank', function () {
-    Mail::fake();
+    Queue::fake();
 
     $user = User::factory()->onboarded()->create();
     $bank = Bank::factory()->create(['name' => 'Shared Bank']);
@@ -250,14 +254,11 @@ test('aggregates multiple accounts under same bank', function () {
     $job = new SyncBankingConnectionJob($connection);
     $job->handle($transactionSync, $balanceSync);
 
-    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) {
-        return $mail->totalTransactions === 6
-            && $mail->transactionsPerBank === ['Shared Bank' => 6];
-    });
+    Queue::assertPushed(SendDailyBankTransactionsSyncedEmailJob::class);
 });
 
 test('lists different banks separately in email', function () {
-    Mail::fake();
+    Queue::fake();
 
     $user = User::factory()->onboarded()->create();
     $bankA = Bank::factory()->create(['name' => 'Bank A']);
@@ -289,10 +290,119 @@ test('lists different banks separately in email', function () {
     $job = new SyncBankingConnectionJob($connection);
     $job->handle($transactionSync, $balanceSync);
 
-    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) {
-        return $mail->totalTransactions === 8
-            && $mail->transactionsPerBank === ['Bank A' => 4, 'Bank B' => 4];
+    Queue::assertPushed(SendDailyBankTransactionsSyncedEmailJob::class);
+});
+
+test('daily bank sync email job sends pending transactions once per day', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 09:00:00'));
+
+    $user = User::factory()->onboarded()->create();
+    $bankA = Bank::factory()->create(['name' => 'Bank A']);
+    $bankB = Bank::factory()->create(['name' => 'Bank B']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $accountA = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bankA->id,
+    ]);
+    $accountB = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bankB->id,
+    ]);
+
+    Transaction::factory()->count(2)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $accountA->id,
+        'created_at' => now()->subMinutes(10),
+        'updated_at' => now()->subMinutes(10),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $accountB->id,
+        'source' => TransactionSource::EnableBanking,
+        'description_iv' => null,
+        'notes_iv' => null,
+        'created_at' => now()->subMinutes(5),
+        'updated_at' => now()->subMinutes(5),
+    ]);
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) use ($user) {
+        return $mail->totalTransactions === 3
+            && $mail->transactionsPerBank === ['Bank A' => 2, 'Bank B' => 1]
+            && $mail->hasTo($user->email);
     });
+
+    expect(UserMailLog::query()
+        ->where('user_id', $user->id)
+        ->where('email_type', DripEmailType::BankTransactionsSynced)
+        ->where('email_identifier', '2026-04-15')
+        ->exists())->toBeTrue();
+
+    $job->handle();
+
+    Mail::assertQueued(BankTransactionsSyncedEmail::class, 1);
+});
+
+test('daily bank sync email job sends unreported transactions next day even when current sync imported none', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'Test Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDays(2),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    test()->travelTo(Carbon::parse('2026-04-15 18:00:00'));
+
+    Transaction::factory()->count(4)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subHour(),
+        'updated_at' => now()->subHour(),
+    ]);
+
+    test()->travelTo(Carbon::parse('2026-04-16 08:00:00'));
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) {
+        return $mail->totalTransactions === 4
+            && $mail->transactionsPerBank === ['Test Bank' => 4];
+    });
+});
+
+test('daily bank sync email job skips when no pending transactions', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+
+    UserMailLog::create([
+        'user_id' => $user->id,
+        'email_type' => DripEmailType::BankTransactionsSynced,
+        'email_identifier' => now()->subDay()->toDateString(),
+        'sent_at' => now()->subDay(),
+    ]);
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertNothingQueued();
 });
 
 test('indexa capital sync only syncs balances, not transactions', function () {

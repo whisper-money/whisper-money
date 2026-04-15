@@ -1,8 +1,8 @@
-name: Automerge
+name: automerge
 
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ['CI']
     types: [completed]
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Merge PR with Automerge label
+      - name: Merge PR with automerge label
         env:
           GH_TOKEN: ${{ secrets.MERGE_TOKEN }}
           REPO: ${{ github.repository }}
@@ -29,10 +29,10 @@ jobs:
             exit 0
           fi
 
-          HAS_LABEL=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '[.labels[].name] | map(select(. == "Automerge")) | length')
+          HAS_LABEL=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '[.labels[].name] | map(select(. == "automerge")) | length')
 
           if [ "$HAS_LABEL" -eq 0 ]; then
-            echo "PR #$PR_NUMBER does not have Automerge label, skipping"
+            echo "PR #$PR_NUMBER does not have automerge label, skipping"
             exit 0
           fi
 
@@ -53,5 +53,5 @@ jobs:
             exit 0
           fi
 
-          echo "PR #$PR_NUMBER has Automerge label and all checks passed. Merging..."
+          echo "PR #$PR_NUMBER has automerge label and all checks passed. Merging..."
           gh pr merge "$PR_NUMBER" --squash --repo "$REPO" --delete-branch
