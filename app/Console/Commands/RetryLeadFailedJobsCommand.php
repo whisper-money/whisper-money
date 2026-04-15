@@ -98,7 +98,7 @@ class RetryLeadFailedJobsCommand extends Command
             $command,
             $matches
         )) {
-            return $matches[1] !== '' ? $matches[1] : ($matches[2] !== '' ? $matches[2] : null);
+            return $matches[1] ?: ($matches[2] ?: null);
         }
 
         return null;
