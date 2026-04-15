@@ -91,7 +91,7 @@ it('manual revaluation percentage is preserved when balance changes', function (
         ->keys('#purchase_date', ['Tab'])
         ->wait(0.5)
         ->fill('#balance', '240000')
-        ->keys('#purchase_date', ['Tab'])
+        ->keys('#balance', ['Tab'])
         ->wait(1);
 
     // Override revaluation % manually
@@ -101,7 +101,7 @@ it('manual revaluation percentage is preserved when balance changes', function (
 
     // Change balance — manual override should survive
     $page->fill('#balance', '250000')
-        ->keys('#purchase_date', ['Tab'])
+        ->keys('#balance', ['Tab'])
         ->wait(1);
 
     $page->assertValue('#revaluation_percentage', '5.00')
@@ -260,7 +260,7 @@ it('resets revaluation auto-calc when purchase price changes after manual overri
         ->keys('#purchase_date', ['Tab'])
         ->wait(0.5)
         ->fill('#balance', '240000')
-        ->keys('#purchase_date', ['Tab'])
+        ->keys('#balance', ['Tab'])
         ->wait(1);
 
     // Override manually
