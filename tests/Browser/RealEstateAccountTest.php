@@ -50,17 +50,17 @@ it('auto-calculates revaluation percentage from purchase data and current value'
 
     // Fill current value (balance) — source input for CAGR calculation
     $page->fill('#balance', '240000')
-        ->click('Purchase Price')
+        ->keys('#balance', ['Tab'])
         ->wait(0.5);
 
     // Fill purchase price
     $page->fill('#purchase_price', '200000')
-        ->click('Purchase Date')
+        ->keys('#purchase_price', ['Tab'])
         ->wait(0.5);
 
     // Fill purchase date (2 years ago)
     $page->fill('#purchase_date', date('Y-m-d', strtotime('-2 years')))
-        ->click('Annual Revaluation')
+        ->keys('#purchase_date', ['Tab'])
         ->wait(1);
 
     // Revaluation % should be auto-filled by the CAGR effect
@@ -85,13 +85,13 @@ it('manual revaluation percentage is preserved when balance changes', function (
 
     // Set purchase data so auto-calc fires initially
     $page->fill('#purchase_price', '200000')
-        ->click('Purchase Date')
+        ->keys('#purchase_price', ['Tab'])
         ->wait(0.5)
         ->fill('#purchase_date', date('Y-m-d', strtotime('-2 years')))
-        ->click('Annual Revaluation')
+        ->keys('#purchase_date', ['Tab'])
         ->wait(0.5)
         ->fill('#balance', '240000')
-        ->click('Annual Revaluation')
+        ->keys('#purchase_date', ['Tab'])
         ->wait(1);
 
     // Override revaluation % manually
@@ -101,7 +101,7 @@ it('manual revaluation percentage is preserved when balance changes', function (
 
     // Change balance — manual override should survive
     $page->fill('#balance', '250000')
-        ->click('Annual Revaluation')
+        ->keys('#purchase_date', ['Tab'])
         ->wait(1);
 
     $page->assertValue('#revaluation_percentage', '5.00')
@@ -131,13 +131,13 @@ it('creates real estate account and generates historical balances', function () 
         ->wait(1);
 
     $page->fill('#balance', '240000')
-        ->click('Purchase Price')
+        ->keys('#balance', ['Tab'])
         ->wait(0.5)
         ->fill('#purchase_price', '200000')
-        ->click('Purchase Date')
+        ->keys('#purchase_price', ['Tab'])
         ->wait(0.5)
         ->fill('#purchase_date', $purchaseDate)
-        ->click('Annual Revaluation')
+        ->keys('#purchase_date', ['Tab'])
         ->wait(1);
 
     $page->click('Create')
@@ -254,13 +254,13 @@ it('resets revaluation auto-calc when purchase price changes after manual overri
 
     // Set all inputs so auto-calc fires
     $page->fill('#purchase_price', '200000')
-        ->click('Purchase Date')
+        ->keys('#purchase_price', ['Tab'])
         ->wait(0.5)
         ->fill('#purchase_date', date('Y-m-d', strtotime('-2 years')))
-        ->click('Annual Revaluation')
+        ->keys('#purchase_date', ['Tab'])
         ->wait(0.5)
         ->fill('#balance', '240000')
-        ->click('Annual Revaluation')
+        ->keys('#purchase_date', ['Tab'])
         ->wait(1);
 
     // Override manually
@@ -270,7 +270,7 @@ it('resets revaluation auto-calc when purchase price changes after manual overri
 
     // Change purchase price — should reset override and recalculate
     $page->fill('#purchase_price', '220000')
-        ->click('Annual Revaluation')
+        ->keys('#purchase_date', ['Tab'])
         ->wait(1);
 
     $page->assertValueIsNot('#revaluation_percentage', '99.99')
