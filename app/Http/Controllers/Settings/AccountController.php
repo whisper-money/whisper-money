@@ -44,7 +44,7 @@ class AccountController extends Controller
     /**
      * Store a newly created account.
      */
-    public function store(StoreAccountRequest $request): RedirectResponse|JsonResponse
+    public function store(StoreAccountRequest $request, RealEstateBalanceGeneratorService $balanceGenerator): RedirectResponse|JsonResponse
     {
         /** @var User $user */
         $user = Auth::user();
@@ -86,7 +86,7 @@ class AccountController extends Controller
                 $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
 
                 // Generate the last 12 months synchronously
-                app(RealEstateBalanceGeneratorService::class)->generateHistoricalBalances(
+                $balanceGenerator->generateHistoricalBalances(
                     $account,
                     $validated['purchase_price'],
                     $purchaseDate,

@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\AccountBalance;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class RealEstateBalanceGeneratorService
 {
@@ -50,17 +52,30 @@ class RealEstateBalanceGeneratorService
 
         $dates = $this->buildDateList($purchaseDate, $today, $rangeStart, $rangeEnd);
 
+        if (empty($dates)) {
+            return;
+        }
+
+        $now = now();
+        $rows = [];
+
         foreach ($dates as $date) {
-            $elapsedDays = (int) $purchaseDate->diffInDays($date);
+            $elapsedDays = $purchaseDate->diffInDays($date);
             $balance = (int) round(
                 $purchasePrice + ($currentValue - $purchasePrice) * ($elapsedDays / $totalDays)
             );
 
-            $account->balances()->updateOrCreate(
-                ['balance_date' => $date->toDateString()],
-                ['balance' => $balance],
-            );
+            $rows[] = [
+                'id' => (string) Str::uuid(),
+                'account_id' => $account->id,
+                'balance_date' => $date->toDateString(),
+                'balance' => $balance,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
         }
+
+        AccountBalance::upsert($rows, ['account_id', 'balance_date'], ['balance', 'updated_at']);
     }
 
     /**

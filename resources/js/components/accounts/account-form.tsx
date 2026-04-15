@@ -401,10 +401,7 @@ export function AccountForm({
                         <AmountInput
                             id="balance"
                             value={balance ?? 0}
-                            onChange={(value) => {
-                                isRevaluationManuallySet.current = false;
-                                setBalance(value);
-                            }}
+                            onChange={setBalance}
                             currencyCode={selectedCurrency}
                         />
                     </div>
