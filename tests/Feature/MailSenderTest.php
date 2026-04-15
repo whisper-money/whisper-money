@@ -9,6 +9,7 @@ use App\Mail\Drip\OnboardingReminderEmail;
 use App\Mail\Drip\PromoCodeEmail;
 use App\Mail\Drip\SubscriptionCancelledEmail;
 use App\Mail\Drip\WelcomeEmail;
+use App\Mail\EnableBankingConnectionsCancelledEmail;
 use App\Mail\UpdateEmail;
 use App\Mail\WaitlistOvertaken;
 use App\Mail\WaitlistReferralNotification;
@@ -108,6 +109,7 @@ test('default sender is used for active non-drip mailables', function (string $m
         UpdateEmail::class => new UpdateEmail($user, 'test-update'),
         BankTransactionsSyncedEmail::class => new BankTransactionsSyncedEmail($user, 3, ['Test Bank' => 3]),
         BankingConnectionAuthFailedEmail::class => new BankingConnectionAuthFailedEmail($user, BankingConnection::factory()->for($user)->create(['aspsp_name' => 'Test Bank'])),
+        EnableBankingConnectionsCancelledEmail::class => new EnableBankingConnectionsCancelledEmail($user, 2),
         BrokenBankLogosReportEmail::class => new BrokenBankLogosReportEmail([['id' => 'bank-1', 'name' => 'Test Bank', 'previous_logo' => 'https://example.com/logo.png']]),
         WaitlistWelcome::class => new WaitlistWelcome(UserLead::factory()->create()),
         WaitlistReferralNotification::class => new WaitlistReferralNotification(UserLead::factory()->create()),
@@ -124,6 +126,7 @@ test('default sender is used for active non-drip mailables', function (string $m
     UpdateEmail::class,
     BankTransactionsSyncedEmail::class,
     BankingConnectionAuthFailedEmail::class,
+    EnableBankingConnectionsCancelledEmail::class,
     BrokenBankLogosReportEmail::class,
     WaitlistWelcome::class,
     WaitlistReferralNotification::class,
@@ -176,6 +179,7 @@ test('mail blade signatures use alvaro before victor', function () {
         'mail/bank-transactions-synced.blade.php',
         'mail/drip/feedback.blade.php',
         'mail/banking-connection-auth-failed.blade.php',
+        'mail/enable-banking-connections-cancelled.blade.php',
     ];
 
     foreach ($mailViews as $mailView) {
@@ -185,4 +189,16 @@ test('mail blade signatures use alvaro before victor', function () {
             ->toContain("{{ __('Álvaro & Víctor') }}<br>")
             ->not->toContain("{{ __('Víctor & Álvaro') }}<br>");
     }
+});
+
+test('enable banking cancellation email includes dashboard access messaging', function () {
+    $user = User::factory()->create(['name' => 'Test User']);
+
+    $mailable = new EnableBankingConnectionsCancelledEmail($user, 2);
+
+    $mailable->assertHasSubject('Your bank connections were disconnected');
+    $mailable->assertSeeInHtml('Go to Dashboard');
+    $mailable->assertSeeInHtml('free access');
+    $mailable->assertSeeInHtml('accounts, transactions, and balances remain in Whisper Money');
+    $mailable->assertSeeInHtml(route('dashboard'));
 });
