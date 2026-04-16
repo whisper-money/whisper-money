@@ -50,7 +50,12 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
             ->where('user_id', $this->user->id)
             ->where('source', TransactionSource::EnableBanking)
             ->when($lastSentMailLog?->sent_at, fn ($query, $lastSentAt) => $query->where('created_at', '>', $lastSentAt))
-            ->whereHas('account.bankingConnection')
+            ->whereHas('account.bankingConnection', function ($query) {
+                $query->where(function ($query) {
+                    $query->whereNull('bank_transactions_email_cutoff_at')
+                        ->orWhereColumn('bank_transactions_email_cutoff_at', '<', 'transactions.created_at');
+                });
+            })
             ->with('account.bank')
             ->get();
 

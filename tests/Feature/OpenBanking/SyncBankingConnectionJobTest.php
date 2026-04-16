@@ -194,6 +194,10 @@ test('does not send email on first sync', function () {
     $job->handle($transactionSync, $balanceSync);
 
     Queue::assertNotPushed(SendDailyBankTransactionsSyncedEmailJob::class);
+
+    $connection->refresh();
+
+    expect($connection->bank_transactions_email_cutoff_at)->not->toBeNull();
 });
 
 test('schedules daily bank sync email check when subsequent sync imports zero new transactions', function () {
@@ -384,6 +388,83 @@ test('daily bank sync email job sends unreported transactions next day even when
     Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) {
         return $mail->totalTransactions === 4
             && $mail->transactionsPerBank === ['Test Bank' => 4];
+    });
+});
+
+test('daily bank sync email job skips transactions imported during silent first sync', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 09:00:00'));
+
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'Silent Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDays(2),
+        'bank_transactions_email_cutoff_at' => now()->subHour(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    Transaction::factory()->count(3)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subHours(2),
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    test()->travelTo(Carbon::parse('2026-04-16 08:00:00'));
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertNothingQueued();
+});
+
+test('daily bank sync email job only reports transactions created after silent first sync cutoff', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 09:00:00'));
+
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'Mixed Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDays(2),
+        'bank_transactions_email_cutoff_at' => now()->subHour(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    Transaction::factory()->count(2)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subHours(2),
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    Transaction::factory()->count(4)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subMinutes(15),
+        'updated_at' => now()->subMinutes(15),
+    ]);
+
+    test()->travelTo(Carbon::parse('2026-04-16 08:00:00'));
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) use ($user) {
+        return $mail->totalTransactions === 4
+            && $mail->transactionsPerBank === ['Mixed Bank' => 4]
+            && $mail->hasTo($user->email);
     });
 });
 
@@ -606,6 +687,10 @@ test('fullSync flag forces first-sync behavior on already-synced connection', fu
 
     $job = new SyncBankingConnectionJob($connection, fullSync: true);
     $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+
+    expect($connection->bank_transactions_email_cutoff_at)->not->toBeNull();
 });
 
 test('bitpanda sync calls balance sync service and updates last_synced_at', function () {
