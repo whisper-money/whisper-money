@@ -18,6 +18,11 @@ interface RegisterProps {
 }
 
 export default function Register({ hideAuthButtons = false }: RegisterProps) {
+    const detectedTimezone =
+        typeof window !== 'undefined'
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+            : '';
+
     useEffect(() => {
         if (hideAuthButtons) {
             router.visit(login());
@@ -48,6 +53,12 @@ export default function Register({ hideAuthButtons = false }: RegisterProps) {
             >
                 {({ processing, errors }) => (
                     <>
+                        <input
+                            type="hidden"
+                            name="timezone"
+                            value={detectedTimezone}
+                        />
+
                         <div className="grid gap-6">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">{__('Name')}</Label>

@@ -11,6 +11,7 @@ use App\Http\Controllers\Settings\NetWorthChartLoanPreferenceController;
 use App\Http\Controllers\Settings\NetWorthChartRealEstatePreferenceController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Controllers\SubscriptionController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/account', [ProfileController::class, 'account'])->name('account.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('settings/timezone', [TimezoneController::class, 'update'])->name('timezone.update');
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])
         ->middleware('block-demo')
         ->name('profile.destroy');

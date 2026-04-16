@@ -6,7 +6,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use function Pest\Laravel\actingAs;
 
 test('guests receive null auth user in shared props', function () {
-    $response = $this->get(route('home'));
+    $response = $this->withoutVite()->get(route('home'));
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('auth.user', null)
@@ -14,18 +14,19 @@ test('guests receive null auth user in shared props', function () {
 });
 
 test('authenticated users receive auth user in shared props', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create(['timezone' => 'Europe/Madrid']);
 
-    $response = actingAs($user)->get(route('home'));
+    $response = actingAs($user)->withoutVite()->get(route('home'));
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('auth.user.id', $user->id)
         ->where('auth.user.email', $user->email)
+        ->where('auth.user.timezone', 'Europe/Madrid')
     );
 });
 
 test('all pages receive app url in shared props', function () {
-    $response = $this->get(route('home'));
+    $response = $this->withoutVite()->get(route('home'));
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('appUrl', config('app.url'))
@@ -33,7 +34,7 @@ test('all pages receive app url in shared props', function () {
 });
 
 test('shared currency options split profile and account currencies', function () {
-    $response = $this->get(route('home'));
+    $response = $this->withoutVite()->get(route('home'));
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('currencies.profile.0.code', 'USD')

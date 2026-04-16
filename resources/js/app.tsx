@@ -2,6 +2,7 @@ import '../css/app.css';
 
 import { createInertiaApp, router } from '@inertiajs/react';
 import * as Sentry from '@sentry/react';
+import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import {
     CircleCheckIcon,
@@ -37,6 +38,7 @@ initializeTheme();
 initializeChartColorScheme();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+let hasAttemptedTimezoneBackfill = false;
 
 // Determine progress bar color based on current theme
 const getProgressBarColor = () => {
@@ -65,6 +67,31 @@ createInertiaApp({
         const hasEncryptedTransactions =
             (initialPageProps?.hasEncryptedTransactions as boolean) ?? false;
 
+        const syncUserTimezone = async (pageProps?: Partial<SharedData>) => {
+            const user = pageProps?.auth?.user ?? null;
+            const detectedTimezone =
+                Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+            if (
+                hasAttemptedTimezoneBackfill ||
+                !user ||
+                user.timezone ||
+                !detectedTimezone
+            ) {
+                return;
+            }
+
+            hasAttemptedTimezoneBackfill = true;
+
+            try {
+                await axios.patch('/settings/timezone', {
+                    timezone: detectedTimezone,
+                });
+            } catch {
+                hasAttemptedTimezoneBackfill = false;
+            }
+        };
+
         // Initialize translations from server-rendered page data
         setTranslations(
             (initialPageProps?.translations as Record<string, string>) ?? {},
@@ -72,11 +99,15 @@ createInertiaApp({
 
         // Keep translations in sync on every Inertia navigation
         router.on('navigate', (event) => {
-            const pageProps = event.detail.page.props as SharedData;
+            const pageProps = event.detail.page.props as unknown as SharedData;
             setTranslations(
                 (pageProps?.translations as Record<string, string>) ?? {},
             );
+
+            void syncUserTimezone(pageProps);
         });
+
+        void syncUserTimezone(initialPageProps);
 
         root.render(
             <StrictMode>
