@@ -1709,7 +1709,6 @@ function LandingPlanCard({
     currency: string;
     locale: string;
 }) {
-    const { features } = usePage<SharedData>().props;
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
 
@@ -1908,7 +1907,7 @@ export default function Welcome({
     hideAuthButtons?: boolean;
     popularBanks: PopularBank[];
 }) {
-    const { appUrl, subscriptionsEnabled, pricing, locale, features } =
+    const { appUrl, subscriptionsEnabled, pricing, locale } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();

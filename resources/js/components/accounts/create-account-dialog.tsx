@@ -37,10 +37,13 @@ export function CreateAccountDialog({
     } = usePage<SharedData>().props;
     const realEstateEnabled = features['real-estate'];
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
-    const sharedAccountsList = (sharedAccounts as Account[]) || [];
+    const sharedAccountsList = useMemo(
+        () => (sharedAccounts as Account[]) || [],
+        [sharedAccounts],
+    );
     const availableLoanAccounts = useMemo(
         () => sharedAccountsList.filter((a) => a.type === 'loan'),
-        [sharedAccounts],
+        [sharedAccountsList],
     );
     const isFirstAccount = sharedAccountsList.length === 0;
 
