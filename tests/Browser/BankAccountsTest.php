@@ -13,6 +13,8 @@ function createManualAccountTypeViaUi($page, string $displayName, string $bankNa
 {
     $page->assertSee('Bank accounts')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', $displayName)
         ->click('[data-testid="bank-select"]')
@@ -82,8 +84,10 @@ it('can open create account dialog', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
-        ->wait(0.5)
-        ->assertSee('Create a bank account, loan, or property to track it manually')
+        ->waitForText('Manual', 5)
+        ->assertSee('Add a bank account, loan, or property to your workspace.')
+        ->assertSee('Manual')
+        ->assertSee('Connected')
         ->assertNoJavascriptErrors();
 });
 
@@ -97,6 +101,8 @@ it('can create a new bank account', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', 'My Savings Account')
         ->click('[data-testid="bank-select"]')
@@ -134,6 +140,8 @@ it('can create a loan account with balance and loan details', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', 'Home Mortgage')
         ->click('[data-testid="bank-select"]')
@@ -231,6 +239,8 @@ it('can create a real estate account linked to an existing loan', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', 'City Apartment')
         ->click('button[name="type"]')

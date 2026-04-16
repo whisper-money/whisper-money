@@ -235,7 +235,9 @@ export function CreateAccountDialog({
             <Dialog open={open} onOpenChange={handleOpenChange}>
                 <DialogTrigger asChild>
                     {trigger ?? (
-                        <CreateButton>{__('Create Account')}</CreateButton>
+                        <CreateButton data-testid="open-create-account">
+                            {__('Create Account')}
+                        </CreateButton>
                     )}
                 </DialogTrigger>
                 <DialogContent hasKeyboard className="sm:max-w-[425px]">

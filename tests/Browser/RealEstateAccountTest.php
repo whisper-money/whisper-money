@@ -21,6 +21,8 @@ it('shows real estate fields when real estate type is selected', function () {
 
     $page->waitForText('Create Account')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(1)
         ->click('Select account type')
         ->wait(1)
@@ -38,6 +40,8 @@ it('auto-calculates revaluation percentage from purchase data and current value'
 
     $page->waitForText('Create Account')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(1)
         ->click('Select account type')
         ->wait(1)
@@ -73,6 +77,8 @@ it('manual revaluation percentage is preserved when balance changes', function (
 
     $page->waitForText('Create Account')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(1)
         ->click('Select account type')
         ->wait(1)
@@ -115,6 +121,8 @@ it('creates real estate account and generates historical balances', function () 
 
     $page->waitForText('Create Account')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(1)
         ->fill('#display_name', 'My Investment Property')
         ->click('Select account type')
@@ -207,7 +215,7 @@ it('edit dialog pre-fills purchase date in correct format', function () {
         ->click('[aria-label="Open menu"]')
         ->wait(1)
         ->click('Edit')
-        ->wait(1)
+        ->waitForText('Edit Account', 5)
         ->assertValue('#purchase_date', $purchaseDate)
         ->assertNoJavascriptErrors();
 });
@@ -217,6 +225,8 @@ it('redirects back to settings after creating an account', function () {
 
     $page->waitForText('Create Account')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(1)
         ->fill('#display_name', 'Test Redirect Account')
         ->click('Select account type')
