@@ -1,6 +1,8 @@
 # Use the official PHP 8.4 FPM image
 FROM php:8.4-fpm
 
+ARG SENTRY_RELEASE
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
@@ -39,6 +41,8 @@ RUN apt-get update && apt-get install -y memcached redis-server && rm -rf /var/l
 
 # Set working directory
 WORKDIR /app
+
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 
 # Copy application files
 COPY . /app/.

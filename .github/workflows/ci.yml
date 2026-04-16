@@ -227,12 +227,32 @@ jobs:
     runs-on: ubuntu-latest
     needs: [tests, linter, static-analysis, performance-tests]
     if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
+    env:
+      SENTRY_RELEASE: whisper-money@${{ github.sha }}
     permissions:
       contents: read
       packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Sentry CLI
+        run: curl -sL https://sentry.io/get-cli/ | bash
+
+      - name: Create Sentry release
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          if ! sentry-cli releases info "$SENTRY_RELEASE" >/dev/null 2>&1; then
+            sentry-cli releases new "$SENTRY_RELEASE"
+          fi
+
+          sentry-cli releases set-commits "$SENTRY_RELEASE" --auto
+          sentry-cli releases finalize "$SENTRY_RELEASE"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -264,6 +284,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SENTRY_RELEASE=${{ env.SENTRY_RELEASE }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -271,6 +293,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [tests, linter, static-analysis, performance-tests]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      SENTRY_RELEASE: whisper-money@${{ github.sha }}
     concurrency:
       group: production-deploy-main
       cancel-in-progress: true
@@ -339,6 +363,18 @@ jobs:
 
           echo "All $max_attempts attempts failed. Giving up."
           exit 1
+
+      - name: Install Sentry CLI
+        if: steps.deploy_guard.outputs.should_deploy == 'true'
+        run: curl -sL https://sentry.io/get-cli/ | bash
+
+      - name: Mark Sentry release deployed
+        if: steps.deploy_guard.outputs.should_deploy == 'true'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: sentry-cli releases deploys "$SENTRY_RELEASE" new -e production
 
       - name: Deployment skipped
         if: steps.deploy_guard.outputs.should_deploy == 'false'
