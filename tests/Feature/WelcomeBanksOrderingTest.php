@@ -5,7 +5,6 @@ use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     Cache::forget('popular-banks');
@@ -13,7 +12,6 @@ beforeEach(function () {
 
 test('home popular banks are ordered by popularity and then Spain first', function () {
     $user = User::factory()->create();
-    Feature::for($user)->activate('open-banking');
 
     $mostPopularNonSpanish = Bank::factory()->create([
         'name' => 'Apex Banque',
@@ -68,23 +66,22 @@ test('home popular banks are ordered by popularity and then Spain first', functi
         );
 });
 
-test('home returns empty popular banks when open-banking feature is inactive', function () {
-    $user = User::factory()->create();
-    // open-banking is inactive by default
+test('home returns popular banks for unauthenticated visitors', function () {
+    $bank = Bank::factory()->create([
+        'name' => 'Public Bank',
+        'logo' => 'https://example.com/public.png',
+        'user_id' => null,
+    ]);
+    $connection = BankingConnection::factory()->create([
+        'aspsp_name' => $bank->name,
+        'aspsp_country' => 'ES',
+    ]);
+    Account::factory()->for($bank)->for($connection, 'bankingConnection')->create();
 
-    $this->actingAs($user)->get(route('home'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('welcome')
-            ->where('popularBanks', [])
-        );
-});
-
-test('home returns empty popular banks for unauthenticated visitors', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('welcome')
-            ->where('popularBanks', [])
+            ->where('popularBanks.0.name', $bank->name)
         );
 });

@@ -515,7 +515,6 @@ test('scheduled sync excludes error connections with expired valid_until', funct
 
 test('manual sync resets consecutive sync failures', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
 
     $connection = BankingConnection::factory()->error()->create([
         'user_id' => $user->id,

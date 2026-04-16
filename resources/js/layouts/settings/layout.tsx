@@ -34,38 +34,33 @@ import { type PropsWithChildren } from 'react';
 const getNavItems = (
     subscriptionsEnabled: boolean,
     isDemoAccount: boolean,
-    openBankingEnabled: boolean,
 ): (NavItem | NavSectionHeader | NavDivider)[] => [
     {
-        type: 'nav-item',
+        type: 'nav-item' as const,
         title: 'Bank accounts',
         href: accountsIndex(),
         icon: null,
     },
-    ...(openBankingEnabled
-        ? [
-              {
-                  type: 'nav-item' as const,
-                  title: 'Connections',
-                  href: '/settings/connections',
-                  icon: null,
-              },
-          ]
-        : []),
     {
-        type: 'nav-item',
+        type: 'nav-item' as const,
+        title: 'Connections',
+        href: '/settings/connections',
+        icon: null,
+    },
+    {
+        type: 'nav-item' as const,
         title: 'Automation rules',
         href: automationRulesIndex(),
         icon: null,
     },
     {
-        type: 'nav-item',
+        type: 'nav-item' as const,
         title: 'Categories',
         href: categoriesIndex(),
         icon: null,
     },
     {
-        type: 'nav-item',
+        type: 'nav-item' as const,
         title: 'Labels',
         href: labelsIndex(),
         icon: null,
@@ -78,7 +73,7 @@ const getNavItems = (
     ...(!isDemoAccount
         ? [
               {
-                  type: 'nav-item',
+                  type: 'nav-item' as const,
                   title: 'User account',
                   href: editAccount(),
                   icon: null,
@@ -96,7 +91,7 @@ const getNavItems = (
           ]
         : []),
     {
-        type: 'nav-item',
+        type: 'nav-item' as const,
         title: 'Appearance',
         href: editAppearance(),
         icon: null,
@@ -177,10 +172,8 @@ function renderMobileNavGroups(
 }
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
-    const { subscriptionsEnabled, auth, features } =
-        usePage<SharedData>().props;
+    const { subscriptionsEnabled, auth } = usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
-    const openBankingEnabled = features['open-banking'] ?? false;
 
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
@@ -188,11 +181,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     }
 
     const currentPath = window.location.pathname;
-    const sidebarNavItems = getNavItems(
-        subscriptionsEnabled,
-        isDemoAccount,
-        openBankingEnabled,
-    );
+    const sidebarNavItems = getNavItems(subscriptionsEnabled, isDemoAccount);
 
     const activeNavItem = sidebarNavItems.find(
         (item): item is NavItem =>
@@ -277,8 +266,10 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                     })}
                                 >
                                     <Link href={item.href}>
-                                        {item.icon && (
+                                        {typeof item.icon === 'function' ? (
                                             <item.icon className="h-4 w-4" />
+                                        ) : (
+                                            item.icon
                                         )}
                                         {__(item.title)}
                                     </Link>

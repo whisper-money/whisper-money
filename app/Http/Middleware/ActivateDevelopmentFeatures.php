@@ -17,10 +17,7 @@ class ActivateDevelopmentFeatures
     public function handle(Request $request, Closure $next): Response
     {
         if (app()->isLocal() && $request->user()) {
-            Feature::for($request->user())->activate([
-                'open-banking',
-                'real-estate',
-            ]);
+            Feature::for($request->user())->activate(['real-estate']);
         }
 
         return $next($request);

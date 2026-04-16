@@ -35,7 +35,6 @@ export function CreateAccountDialog({
         subscriptionsEnabled,
         accounts: sharedAccounts,
     } = usePage<SharedData>().props;
-    const openBankingEnabled = features['open-banking'];
     const realEstateEnabled = features['real-estate'];
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const sharedAccountsList = (sharedAccounts as Account[]) || [];
@@ -46,9 +45,7 @@ export function CreateAccountDialog({
     const isFirstAccount = sharedAccountsList.length === 0;
 
     const [open, setOpen] = useState(false);
-    const [mode, setMode] = useState<Mode>(
-        openBankingEnabled ? 'choice' : 'manual',
-    );
+    const [mode, setMode] = useState<Mode>('choice');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
@@ -70,7 +67,7 @@ export function CreateAccountDialog({
     function handleOpenChange(newOpen: boolean) {
         setOpen(newOpen);
         if (!newOpen) {
-            setMode(openBankingEnabled ? 'choice' : 'manual');
+            setMode('choice');
         }
     }
 
@@ -314,17 +311,11 @@ export function CreateAccountDialog({
                                     type="button"
                                     variant="outline"
                                     onClick={() => {
-                                        if (openBankingEnabled) {
-                                            setMode('choice');
-                                        } else {
-                                            handleOpenChange(false);
-                                        }
+                                        setMode('choice');
                                     }}
                                     disabled={isSubmitting}
                                 >
-                                    {openBankingEnabled
-                                        ? __('Back')
-                                        : __('Cancel')}
+                                    {__('Back')}
                                 </Button>
                                 <Button
                                     type="submit"

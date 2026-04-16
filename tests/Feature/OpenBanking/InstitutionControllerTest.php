@@ -2,11 +2,9 @@
 
 use App\Contracts\BankingProviderInterface;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
-test('authenticated users with feature flag can list institutions', function () {
+test('authenticated users can list institutions', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
 
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('getInstitutions')
@@ -28,7 +26,6 @@ test('authenticated users with feature flag can list institutions', function () 
 
 test('institutions endpoint requires country parameter', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
 
     $response = $this->actingAs($user)->getJson('/open-banking/institutions');
 
@@ -37,7 +34,6 @@ test('institutions endpoint requires country parameter', function () {
 
 test('institutions endpoint requires valid country code length', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
 
     $response = $this->actingAs($user)->getJson('/open-banking/institutions?country=SPAIN');
 

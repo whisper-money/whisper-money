@@ -6,14 +6,11 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
 
 test('users can connect a bitpanda account with valid credentials', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.bitpanda.com/v1/wallets' => Http::response([
             'data' => [
@@ -58,8 +55,6 @@ test('users can connect a bitpanda account with valid credentials', function () 
 
 test('invalid bitpanda credentials return 422', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.bitpanda.com/v1/wallets' => Http::response(['error' => 'Unauthorized'], 401),
     ]);
@@ -78,21 +73,17 @@ test('invalid bitpanda credentials return 422', function () {
     ]);
 });
 
-test('bitpanda requires open-banking feature flag', function () {
-    $user = User::factory()->onboarded()->create();
-
-    $response = $this->actingAs($user)->postJson('/open-banking/bitpanda/connect', [
+test('bitpanda requires authentication', function () {
+    $response = $this->postJson('/open-banking/bitpanda/connect', [
         'api_key' => 'valid-test-api-key-12345',
         'country' => 'ES',
     ]);
 
-    $response->assertNotFound();
+    $response->assertUnauthorized();
 });
 
 test('bitpanda api_key is required and must be at least 10 characters', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $this->actingAs($user)->postJson('/open-banking/bitpanda/connect', [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['api_key', 'country']);
@@ -109,8 +100,6 @@ test('bitpanda stores pending accounts with user currency', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.bitpanda.com/v1/wallets' => Http::response([
             'data' => [
@@ -148,8 +137,6 @@ test('bitpanda auto-creates accounts during onboarding', function () {
     Queue::fake();
 
     $user = User::factory()->notOnboarded()->create(['currency_code' => 'EUR']);
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.bitpanda.com/v1/wallets' => Http::response([
             'data' => [

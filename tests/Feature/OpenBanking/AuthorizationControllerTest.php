@@ -7,7 +7,6 @@ use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     config([
@@ -19,8 +18,6 @@ beforeEach(function () {
 
 test('users can start bank authorization', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('startAuthorization')
         ->once()
@@ -52,8 +49,6 @@ test('free tier users cannot start bank authorization when subscriptions are ena
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $response = $this->actingAs($user)->postJson('/open-banking/authorize', [
         'aspsp_name' => 'Test Bank',
         'country' => 'ES',
@@ -77,8 +72,6 @@ test('subscribed users can start bank authorization when subscriptions are enabl
         'stripe_status' => 'active',
         'stripe_price' => 'price_test123',
     ]);
-    Feature::for($user)->activate('open-banking');
-
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('startAuthorization')
         ->once()
@@ -100,8 +93,6 @@ test('subscribed users can start bank authorization when subscriptions are enabl
 
 test('authorization requires aspsp_name and country', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $response = $this->actingAs($user)->postJson('/open-banking/authorize', []);
 
     $response->assertUnprocessable();
@@ -110,8 +101,6 @@ test('authorization requires aspsp_name and country', function () {
 
 test('callback with error redirects with error message and deletes pending connection', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
     ]);
@@ -128,8 +117,6 @@ test('callback with error redirects with error message and deletes pending conne
 
 test('callback without code redirects with error', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $response = $this->actingAs($user)->get('/open-banking/callback');
 
     $response->assertRedirect(route('settings.connections.index'));
@@ -140,8 +127,6 @@ test('callback with valid code stores pending accounts and redirects to mapping'
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'Test Bank',
@@ -192,8 +177,6 @@ test('callback with valid code stores pending accounts and redirects to mapping'
 test('reauthorize returns 403 when user does not own the connection', function () {
     $owner = User::factory()->onboarded()->create();
     $other = User::factory()->onboarded()->create();
-    Feature::for($other)->activate('open-banking');
-
     $connection = BankingConnection::factory()->error()->create([
         'user_id' => $owner->id,
     ]);
@@ -205,8 +188,6 @@ test('reauthorize returns 403 when user does not own the connection', function (
 
 test('reauthorize returns 422 for non-EnableBanking connections', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->indexaCapital()->error()->create([
         'user_id' => $user->id,
     ]);
@@ -219,8 +200,6 @@ test('reauthorize returns 422 for non-EnableBanking connections', function () {
 
 test('reauthorize returns 422 for active connections', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'status' => BankingConnectionStatus::Active,
@@ -234,8 +213,6 @@ test('reauthorize returns 422 for active connections', function () {
 
 test('reauthorize starts new authorization and sets connection to pending for error connections', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->error()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'CaixaBank',
@@ -274,8 +251,6 @@ test('reauthorize starts new authorization and sets connection to pending for er
 
 test('reauthorize starts new authorization for expired connections', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->expired()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'Santander',
@@ -307,8 +282,6 @@ test('callback with existing accounts updates session without creating new accou
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'CaixaBank',
@@ -361,8 +334,6 @@ test('callback with existing accounts skips mapping on reconnect', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'CaixaBank',
@@ -403,8 +374,6 @@ test('reconnect callback updates external_account_id when enable banking issues 
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'CaixaBank',
@@ -448,8 +417,6 @@ test('reconnect callback matches accounts by iban before falling back to positio
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'CaixaBank',
@@ -509,8 +476,6 @@ test('reconnect callback uses positional fallback for accounts without stored ib
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'CaixaBank',
@@ -570,8 +535,6 @@ test('callback stores iban in pending accounts data', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->pending()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'Test Bank',

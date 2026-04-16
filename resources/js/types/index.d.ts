@@ -41,7 +41,6 @@ export interface NavDivider {
 
 export interface Features {
     cashflow: boolean;
-    'open-banking': boolean;
     'real-estate': boolean;
 }
 
