@@ -28,6 +28,7 @@ class CreateNewUser implements CreatesNewUsers
                 Rule::unique(User::class),
             ],
             'password' => $this->passwordRules(),
+            'timezone' => ['nullable', 'string', 'timezone'],
         ])->validate();
 
         $user = User::create([
@@ -35,6 +36,7 @@ class CreateNewUser implements CreatesNewUsers
             'email' => $input['email'],
             'password' => $input['password'],
             'locale' => $this->detectLocaleFromRequest(),
+            'timezone' => $input['timezone'] ?? null,
         ]);
 
         if (! config('mail.email_verification_enabled')) {

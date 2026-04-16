@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 
 test('registration screen can be rendered', function () {
-    $response = $this->get(route('register'));
+    $response = $this->withoutVite()->get(route('register'));
 
     $response->assertSuccessful();
 });
@@ -23,6 +23,37 @@ test('new users can register', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('onboarding', absolute: false));
+});
+
+test('new users store their detected timezone on registration', function () {
+    Queue::fake();
+
+    $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => 'America/New_York',
+    ]);
+
+    $user = User::where('email', 'test@example.com')->first();
+
+    expect($user->timezone)->toBe('America/New_York');
+});
+
+test('new users can register without a timezone', function () {
+    Queue::fake();
+
+    $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $user = User::where('email', 'test@example.com')->first();
+
+    expect($user->timezone)->toBeNull();
 });
 
 test('new users receive a verification email on registration', function () {

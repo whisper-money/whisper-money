@@ -37,6 +37,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'paywall_seen_at',
         'currency_code',
         'locale',
+        'timezone',
     ];
 
     /**

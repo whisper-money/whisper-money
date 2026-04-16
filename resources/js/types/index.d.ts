@@ -84,6 +84,7 @@ export interface User {
     email: string;
     currency_code: CurrencyCode;
     locale: string | null;
+    timezone: string | null;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
