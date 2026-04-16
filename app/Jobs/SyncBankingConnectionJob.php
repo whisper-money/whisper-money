@@ -53,6 +53,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     {
         $connection = $this->bankingConnection;
         $startTime = microtime(true);
+        $syncedAt = now();
 
         if ($connection->isEnableBanking() && $connection->isExpired()) {
             $connection->update(['status' => BankingConnectionStatus::Expired]);
@@ -85,17 +86,23 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 if (! $isFirstSync) {
                     SendDailyBankTransactionsSyncedEmailJob::dispatch(
                         $connection->user,
-                        now()->toDateString(),
+                        $syncedAt->toDateString(),
                     );
                 }
             }
 
-            $connection->update([
+            $connectionUpdates = [
                 'status' => BankingConnectionStatus::Active,
-                'last_synced_at' => now(),
+                'last_synced_at' => $syncedAt,
                 'error_message' => null,
                 'consecutive_sync_failures' => 0,
-            ]);
+            ];
+
+            if ($connection->isEnableBanking() && $isFirstSync) {
+                $connectionUpdates['bank_transactions_email_cutoff_at'] = $syncedAt;
+            }
+
+            $connection->update($connectionUpdates);
 
             $this->logSyncAttempt($connection, BankingSyncLogStatus::Success, $startTime, metadata: $metadata ?: null);
         } catch (\Throwable $e) {
