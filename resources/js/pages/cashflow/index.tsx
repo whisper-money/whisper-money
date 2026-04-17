@@ -22,18 +22,17 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function CashflowPage() {
-    const { auth } = usePage<{ auth: { user: { currency_code: string } } }>()
-        .props;
+    const { auth, period: initialPeriod } = usePage<{
+        auth: { user: { currency_code: string } };
+        period: string | null;
+    }>().props;
 
-    // Initialize currentDate from URL query param or default to current month
+    // Initialize currentDate from server-provided period prop or default to current month
     const [currentDate, setCurrentDate] = useState<Date>(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const periodParam = urlParams.get('period');
-
-        if (periodParam) {
+        if (initialPeriod) {
             try {
                 // Parse YYYY-MM format
-                const parsedDate = parse(periodParam, 'yyyy-MM', new Date());
+                const parsedDate = parse(initialPeriod, 'yyyy-MM', new Date());
                 // Validate it's a valid date
                 if (!isNaN(parsedDate.getTime())) {
                     return parsedDate;
@@ -63,19 +62,16 @@ export default function CashflowPage() {
     // Update URL when currentDate changes
     useEffect(() => {
         const periodParam = format(currentDate, 'yyyy-MM');
-        const currentPeriodParam = new URLSearchParams(
-            window.location.search,
-        ).get('period');
 
         // Only update if the period has changed
-        if (currentPeriodParam !== periodParam) {
+        if (initialPeriod !== periodParam) {
             router.visit(cashflow({ query: { period: periodParam } }).url, {
                 preserveScroll: true,
                 preserveState: true,
                 replace: true,
             });
         }
-    }, [currentDate]);
+    }, [currentDate, initialPeriod]);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>

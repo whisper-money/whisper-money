@@ -34,10 +34,16 @@ class CashflowController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'logo']);
 
+        $period = $request->query('period');
+        $validPeriod = is_string($period) && preg_match('/^\d{4}-\d{2}$/', $period) === 1
+            ? $period
+            : null;
+
         return Inertia::render('cashflow/index', [
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
+            'period' => $validPeriod,
         ]);
     }
 }
