@@ -158,6 +158,8 @@ function createAccountViaUI($page, string $displayName, string $bankName, string
 {
     $page->assertSee('Bank accounts');
     $page->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', $displayName)
         ->click('[data-testid="bank-select"]')

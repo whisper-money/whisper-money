@@ -11,20 +11,19 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Checkout;
-use Laravel\Pennant\Feature;
 
 class SubscriptionController extends Controller
 {
-    public function index(): Response|RedirectResponse
+    public function index(Request $request): Response|RedirectResponse
     {
-        $user = auth()->user();
+        /** @var User $user */
+        $user = $request->user();
 
         if ($user->hasProPlan()) {
             return redirect()->route('dashboard');
         }
 
-        $canUseFreePlan = Feature::for($user)->active('open-banking')
-            && ! $user->bankingConnections()->exists();
+        $canUseFreePlan = ! $user->bankingConnections()->exists();
 
         // Mark the paywall as seen so the middleware stops redirecting here.
         if ($canUseFreePlan && ! $user->hasSeenPaywall()) {

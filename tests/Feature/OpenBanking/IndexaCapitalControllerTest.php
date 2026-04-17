@@ -7,7 +7,6 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     Bank::factory()->create([
@@ -21,8 +20,6 @@ test('users can connect an indexa capital account with valid token', function ()
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.indexacapital.com/users/me' => Http::response([
             'accounts' => [
@@ -54,8 +51,6 @@ test('users can connect an indexa capital account with valid token', function ()
 
 test('invalid token returns 422', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.indexacapital.com/users/me' => Http::response(['message' => 'Unauthorized'], 401),
     ]);
@@ -73,20 +68,34 @@ test('invalid token returns 422', function () {
     ]);
 });
 
-test('requires open-banking feature flag', function () {
+test('free tier users cannot connect an indexa capital account after onboarding when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
     $user = User::factory()->onboarded()->create();
 
     $response = $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [
         'api_token' => 'valid-test-token-12345',
     ]);
 
-    $response->assertNotFound();
+    $response->assertStatus(402);
+    $response->assertJson(['redirect' => route('subscribe')]);
+
+    $this->assertDatabaseMissing('banking_connections', [
+        'user_id' => $user->id,
+        'provider' => 'indexacapital',
+    ]);
+});
+
+test('indexa capital requires authentication', function () {
+    $response = $this->postJson('/open-banking/indexa-capital/connect', [
+        'api_token' => 'valid-test-token-12345',
+    ]);
+
+    $response->assertUnauthorized();
 });
 
 test('api_token is required and must be at least 10 characters', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['api_token']);
@@ -102,8 +111,6 @@ test('stores multiple pending accounts for multiple indexa portfolios', function
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.indexacapital.com/users/me' => Http::response([
             'accounts' => [
@@ -130,11 +137,11 @@ test('stores multiple pending accounts for multiple indexa portfolios', function
 });
 
 test('indexa capital auto-creates accounts during onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
     Queue::fake();
 
     $user = User::factory()->notOnboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.indexacapital.com/users/me' => Http::response([
             'accounts' => [

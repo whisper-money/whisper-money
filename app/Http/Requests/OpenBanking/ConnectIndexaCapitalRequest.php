@@ -3,13 +3,12 @@
 namespace App\Http\Requests\OpenBanking;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Laravel\Pennant\Feature;
 
 class ConnectIndexaCapitalRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Feature::for($this->user())->active('open-banking');
+        return true;
     }
 
     /**

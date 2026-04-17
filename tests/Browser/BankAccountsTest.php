@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\BankingConnectionStatus;
 use App\Models\Account;
 use App\Models\Bank;
+use App\Models\BankingConnection;
 use App\Models\RealEstateDetail;
 use App\Models\User;
 use Laravel\Pennant\Feature;
@@ -13,6 +15,8 @@ function createManualAccountTypeViaUi($page, string $displayName, string $bankNa
 {
     $page->assertSee('Bank accounts')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', $displayName)
         ->click('[data-testid="bank-select"]')
@@ -39,7 +43,9 @@ function createManualAccountTypeViaUi($page, string $displayName, string $bankNa
 }
 
 it('can view bank accounts page', function () {
-    $user = User::factory()->onboarded()->create();
+    $user = User::factory()->onboarded()->create([
+        'email_verified_at' => now(),
+    ]);
 
     actingAs($user);
 
@@ -82,8 +88,35 @@ it('can open create account dialog', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
-        ->wait(0.5)
-        ->assertSee('Create a bank account, loan, or property to track it manually')
+        ->waitForText('Manual', 5)
+        ->assertSee('Add a bank account, loan, or property to your workspace.')
+        ->assertSee('Manual')
+        ->assertSee('Connected')
+        ->assertNoJavascriptErrors();
+});
+
+it('redirects free users to subscribe when reconnecting a bank connection', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'provider' => 'enablebanking',
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'status' => BankingConnectionStatus::Error,
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    actingAs($user);
+
+    $page = visit('/settings/connections');
+
+    $page->assertSee('Connections')
+        ->assertSee('Reconnect')
+        ->click('Reconnect')
+        ->wait(3)
+        ->assertPathIs('/subscribe')
         ->assertNoJavascriptErrors();
 });
 
@@ -97,6 +130,8 @@ it('can create a new bank account', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', 'My Savings Account')
         ->click('[data-testid="bank-select"]')
@@ -134,6 +169,8 @@ it('can create a loan account with balance and loan details', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', 'Home Mortgage')
         ->click('[data-testid="bank-select"]')
@@ -231,6 +268,8 @@ it('can create a real estate account linked to an existing loan', function () {
 
     $page->assertSee('Bank accounts')
         ->click('Create Account')
+        ->waitForText('Manual', 5)
+        ->click('Manual')
         ->wait(0.5)
         ->fill('#display_name', 'City Apartment')
         ->click('button[name="type"]')

@@ -8,7 +8,6 @@ use App\Models\BankingConnection;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     config([
@@ -20,8 +19,6 @@ beforeEach(function () {
 
 test('users can view their connections page', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     BankingConnection::factory()->create(['user_id' => $user->id]);
 
     $response = $this->actingAs($user)->get('/settings/connections');
@@ -36,8 +33,6 @@ test('users can view their connections page', function () {
 test('connections page only shows own connections', function () {
     $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     BankingConnection::factory()->create(['user_id' => $user->id]);
     BankingConnection::factory()->create(['user_id' => $otherUser->id]);
 
@@ -51,8 +46,6 @@ test('connections page only shows own connections', function () {
 
 test('users can disconnect a banking connection and keep accounts as manual', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create([
         'user_id' => $user->id,
@@ -93,8 +86,6 @@ test('users can disconnect a banking connection and keep accounts as manual', fu
 
 test('users can disconnect a banking connection and delete accounts', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create([
         'user_id' => $user->id,
@@ -131,8 +122,6 @@ test('users can disconnect a banking connection and delete accounts', function (
 
 test('deleting accounts requires confirmation text', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
 
     $response = $this->actingAs($user)->delete("/settings/connections/{$connection->id}", [
@@ -147,8 +136,6 @@ test('deleting accounts requires confirmation text', function () {
 test('users cannot disconnect another users connection', function () {
     $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->create(['user_id' => $otherUser->id]);
 
     $response = $this->actingAs($user)->delete("/settings/connections/{$connection->id}", [
@@ -162,8 +149,6 @@ test('users can trigger manual sync on active connection', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'status' => BankingConnectionStatus::Active,
@@ -175,10 +160,26 @@ test('users can trigger manual sync on active connection', function () {
     $response->assertSessionHas('success');
 });
 
+test('free tier users are redirected to subscribe when syncing a connection after onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+    ]);
+
+    $response = $this->actingAs($user)->post("/settings/connections/{$connection->id}/sync");
+
+    $response->assertRedirect(route('subscribe'));
+
+    Queue::assertNothingPushed();
+});
+
 test('disconnecting indexa capital connection does not revoke session', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->indexaCapital()->create(['user_id' => $user->id]);
     $account = Account::factory()->create([
         'user_id' => $user->id,
@@ -210,8 +211,6 @@ test('users cannot sync expired connection', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->expired()->create([
         'user_id' => $user->id,
     ]);
@@ -226,8 +225,6 @@ test('users can update indexa capital credentials with valid token', function ()
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->indexaCapital()->error()->create([
         'user_id' => $user->id,
         'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
@@ -252,12 +249,30 @@ test('users can update indexa capital credentials with valid token', function ()
     expect($connection->api_token)->toBe('new-valid-indexa-token-12345');
 });
 
+test('free tier users are redirected to subscribe when updating credentials after onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->error()->create([
+        'user_id' => $user->id,
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_token' => 'new-valid-indexa-token-12345',
+    ]);
+
+    $response->assertRedirect(route('subscribe'));
+
+    Queue::assertNothingPushed();
+});
+
 test('users can update binance credentials with valid api key and secret', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->binance()->error()->create([
         'user_id' => $user->id,
         'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
@@ -288,8 +303,6 @@ test('users can update bitpanda credentials with valid api key', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->bitpanda()->error()->create([
         'user_id' => $user->id,
         'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
@@ -316,8 +329,6 @@ test('users can update bitpanda credentials with valid api key', function () {
 
 test('updating credentials with invalid token returns validation error', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->indexaCapital()->error()->create([
         'user_id' => $user->id,
     ]);
@@ -338,8 +349,6 @@ test('updating credentials with invalid token returns validation error', functio
 
 test('cannot update credentials for enablebanking connection', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'provider' => 'enablebanking',
@@ -355,8 +364,6 @@ test('cannot update credentials for enablebanking connection', function () {
 test('cannot update credentials for another users connection', function () {
     $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->indexaCapital()->create([
         'user_id' => $otherUser->id,
     ]);
@@ -368,24 +375,28 @@ test('cannot update credentials for another users connection', function () {
     $response->assertForbidden();
 });
 
-test('credential update requires feature flag', function () {
+test('users can update credentials for their own connection', function () {
     $user = User::factory()->onboarded()->create();
 
     $connection = BankingConnection::factory()->indexaCapital()->create([
         'user_id' => $user->id,
     ]);
 
+    Http::fake([
+        'api.indexacapital.com/users/me' => Http::response([
+            'accounts' => [],
+        ]),
+    ]);
+
     $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
         'api_token' => 'some-token-value-12345',
     ]);
 
-    $response->assertNotFound();
+    $response->assertRedirect();
 });
 
 test('credential update validates required fields for binance', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->binance()->error()->create([
         'user_id' => $user->id,
     ]);
@@ -400,8 +411,6 @@ test('credential update validates required fields for binance', function () {
 
 test('connections page includes provider and aspsp_name fields needed for frontend duplicate filtering', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     BankingConnection::factory()->create([
         'user_id' => $user->id,
         'provider' => 'enablebanking',
@@ -420,8 +429,6 @@ test('connections page includes provider and aspsp_name fields needed for fronte
 
 test('connections page includes connections from all provider types for frontend filtering', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     BankingConnection::factory()->create(['user_id' => $user->id, 'provider' => 'enablebanking', 'aspsp_name' => 'CaixaBank']);
     BankingConnection::factory()->binance()->create(['user_id' => $user->id]);
     BankingConnection::factory()->bitpanda()->create(['user_id' => $user->id]);

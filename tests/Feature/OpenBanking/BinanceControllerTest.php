@@ -6,14 +6,11 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
 
 test('users can connect a binance account with valid credentials', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -48,8 +45,6 @@ test('users can connect a binance account with valid credentials', function () {
 
 test('invalid binance credentials return 422', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.binance.com/api/v3/account*' => Http::response(['msg' => 'Invalid API-key'], 401),
     ]);
@@ -69,7 +64,9 @@ test('invalid binance credentials return 422', function () {
     ]);
 });
 
-test('binance requires open-banking feature flag', function () {
+test('free tier users cannot connect a binance account after onboarding when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
     $user = User::factory()->onboarded()->create();
 
     $response = $this->actingAs($user)->postJson('/open-banking/binance/connect', [
@@ -78,13 +75,27 @@ test('binance requires open-banking feature flag', function () {
         'country' => 'ES',
     ]);
 
-    $response->assertNotFound();
+    $response->assertStatus(402);
+    $response->assertJson(['redirect' => route('subscribe')]);
+
+    $this->assertDatabaseMissing('banking_connections', [
+        'user_id' => $user->id,
+        'provider' => 'binance',
+    ]);
+});
+
+test('binance requires authentication', function () {
+    $response = $this->postJson('/open-banking/binance/connect', [
+        'api_key' => 'valid-test-api-key-12345',
+        'api_secret' => 'valid-test-api-secret-12345',
+        'country' => 'ES',
+    ]);
+
+    $response->assertUnauthorized();
 });
 
 test('binance api_key and api_secret are required and must be at least 10 characters', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $this->actingAs($user)->postJson('/open-banking/binance/connect', [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['api_key', 'api_secret', 'country']);
@@ -102,8 +113,6 @@ test('binance stores pending accounts with user currency', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [
@@ -128,11 +137,11 @@ test('binance stores pending accounts with user currency', function () {
 });
 
 test('binance auto-creates accounts during onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
     Queue::fake();
 
     $user = User::factory()->notOnboarded()->create(['currency_code' => 'EUR']);
-    Feature::for($user)->activate('open-banking');
-
     Http::fake([
         'api.binance.com/api/v3/account*' => Http::response([
             'balances' => [

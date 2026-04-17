@@ -4,7 +4,6 @@ namespace App\Http\Requests\OpenBanking;
 
 use App\Models\BankingConnection;
 use Illuminate\Foundation\Http\FormRequest;
-use Laravel\Pennant\Feature;
 
 class UpdateConnectionCredentialsRequest extends FormRequest
 {
@@ -12,8 +11,7 @@ class UpdateConnectionCredentialsRequest extends FormRequest
     {
         $connection = $this->route('connection');
 
-        return Feature::for($this->user())->active('open-banking')
-            && $connection instanceof BankingConnection
+        return $connection instanceof BankingConnection
             && $connection->user_id === $this->user()->id;
     }
 

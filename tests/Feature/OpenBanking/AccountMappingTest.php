@@ -7,7 +7,6 @@ use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     config([
@@ -19,8 +18,6 @@ beforeEach(function () {
 
 test('show returns mapping page with correct props', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->awaitingMapping()->create([
         'user_id' => $user->id,
     ]);
@@ -39,8 +36,6 @@ test('show returns mapping page with correct props', function () {
 
 test('show redirects if no pending accounts', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'pending_accounts_data' => null,
@@ -55,8 +50,6 @@ test('show redirects if no pending accounts', function () {
 test('show returns 403 for other user\'s connection', function () {
     $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->awaitingMapping()->create([
         'user_id' => $otherUser->id,
     ]);
@@ -71,8 +64,6 @@ test('store with action create creates new accounts', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->awaitingMapping()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'Test Bank',
@@ -119,8 +110,6 @@ test('store creates investment accounts for bitpanda connections', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->awaitingMapping()->create([
         'user_id' => $user->id,
         'provider' => 'bitpanda',
@@ -162,8 +151,6 @@ test('store with action link links existing account', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $bank = Bank::factory()->create();
     $existingAccount = Account::factory()->create([
         'user_id' => $user->id,
@@ -211,8 +198,6 @@ test('store with action skip does nothing', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->awaitingMapping()->create([
         'user_id' => $user->id,
         'pending_accounts_data' => [
@@ -250,8 +235,6 @@ test('store with mixed actions works correctly', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $bank = Bank::factory()->create();
     $existingAccount = Account::factory()->create([
         'user_id' => $user->id,
@@ -328,8 +311,6 @@ test('store with mixed actions works correctly', function () {
 
 test('validation fails when linking without existing_account_id', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate('open-banking');
-
     $connection = BankingConnection::factory()->awaitingMapping()->create([
         'user_id' => $user->id,
         'pending_accounts_data' => [

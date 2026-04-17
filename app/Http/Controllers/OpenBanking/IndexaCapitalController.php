@@ -5,6 +5,7 @@ namespace App\Http\Controllers\OpenBanking;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
+use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\ConnectIndexaCapitalRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 class IndexaCapitalController extends Controller
 {
     use CreatesAccountsFromPending;
+    use HandlesSubscriptionGate;
 
     /**
      * Validate the Indexa Capital API token and create a connection.
@@ -23,6 +25,10 @@ class IndexaCapitalController extends Controller
     {
         $validated = $request->validated();
         $user = auth()->user();
+
+        if ($this->shouldBlockOpenBankingAccess($user)) {
+            return $this->subscribeJsonResponse();
+        }
 
         $client = new IndexaCapitalClient($validated['api_token']);
 

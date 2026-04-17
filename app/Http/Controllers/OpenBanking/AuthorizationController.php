@@ -6,6 +6,7 @@ use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
+use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\StartAuthorizationRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 class AuthorizationController extends Controller
 {
     use CreatesAccountsFromPending;
+    use HandlesSubscriptionGate;
 
     /**
      * Start the bank authorization flow.
@@ -25,8 +27,8 @@ class AuthorizationController extends Controller
     {
         $user = auth()->user();
 
-        if (config('subscriptions.enabled') && ! $user->hasProPlan()) {
-            return response()->json(['redirect' => route('subscribe')], 402);
+        if ($this->shouldBlockOpenBankingAccess($user)) {
+            return $this->subscribeJsonResponse();
         }
 
         $validated = $request->validated();
@@ -61,6 +63,10 @@ class AuthorizationController extends Controller
     {
         if ($connection->user_id !== auth()->id()) {
             abort(403);
+        }
+
+        if ($this->shouldBlockOpenBankingAccess($request->user())) {
+            return $this->subscribeJsonResponse();
         }
 
         if (! $connection->isEnableBanking()) {

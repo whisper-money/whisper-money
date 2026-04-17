@@ -49,6 +49,6 @@ trait ResolvesFeatures
 
     private function getStringBasedFeatures(): array
     {
-        return ['open-banking', 'real-estate'];
+        return ['real-estate'];
     }
 }

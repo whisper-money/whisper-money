@@ -1709,7 +1709,6 @@ function LandingPlanCard({
     currency: string;
     locale: string;
 }) {
-    const { features } = usePage<SharedData>().props;
     const monthlyEquivalent =
         plan.billing_period === 'year' ? plan.price / 12 : plan.price;
 
@@ -1782,15 +1781,17 @@ function LandingPlanCard({
                 <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
 
                 <ul className="flex-1 space-y-2.5">
-                    {(features['open-banking']
-                        ? [__('Connect bank accounts'), ...plan.features]
-                        : plan.features
-                    ).map((feature) => (
-                        <li key={feature} className="flex items-center gap-2.5">
-                            <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
-                            <span className="text-sm">{__(feature)}</span>
-                        </li>
-                    ))}
+                    {[__('Connect bank accounts'), ...plan.features].map(
+                        (feature) => (
+                            <li
+                                key={feature}
+                                className="flex items-center gap-2.5"
+                            >
+                                <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                                <span className="text-sm">{__(feature)}</span>
+                            </li>
+                        ),
+                    )}
                 </ul>
 
                 <Link href="/register" className="mt-8">
@@ -1906,7 +1907,7 @@ export default function Welcome({
     hideAuthButtons?: boolean;
     popularBanks: PopularBank[];
 }) {
-    const { appUrl, subscriptionsEnabled, pricing, locale, features } =
+    const { appUrl, subscriptionsEnabled, pricing, locale } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
@@ -1939,10 +1940,9 @@ export default function Welcome({
         return discount > 0 ? discount : null;
     }, [planEntries]);
 
-    const displayedPlanEntries =
-        features['open-banking'] && hasMonthlyAndYearly
-            ? planEntries.filter(([, p]) => p.billing_period === billingPeriod)
-            : planEntries;
+    const displayedPlanEntries = hasMonthlyAndYearly
+        ? planEntries.filter(([, p]) => p.billing_period === billingPeriod)
+        : planEntries;
 
     // Handle localStorage for language preference
     useEffect(() => {
@@ -2206,236 +2206,121 @@ export default function Welcome({
 
                     <section className="grid gap-6 px-4 py-12 sm:py-16 md:py-20">
                         <div className="mx-auto grid max-w-7xl gap-3 sm:grid-cols-3">
-                            {features['open-banking'] ? (
-                                <>
-                                    {/* Row 1: Connect Your Banks (2 cols) + Import in Seconds (1 col) */}
-                                    <FeatureCard className="sm:col-span-2">
-                                        <div className="grid h-full grid-rows-1 gap-0 sm:grid-cols-2">
-                                            <div className="flex flex-col justify-center p-8 sm:p-12">
-                                                <h2 className="text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight">
-                                                    {__('Connect Your Banks')}
-                                                </h2>
-                                                <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                                    {__(
-                                                        'Link your bank accounts directly. Transactions sync automatically, giving you a real-time view of your finances.',
-                                                    )}
-                                                </p>
-                                                <ul className="mt-6 space-y-3">
-                                                    <li className="flex items-center gap-2.5">
-                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                        <span className="text-sm">
-                                                            {__(
-                                                                'Connect in seconds',
-                                                            )}
-                                                        </span>
-                                                    </li>
-                                                    <li className="flex items-center gap-2.5">
-                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                        <span className="text-sm">
-                                                            {__(
-                                                                'Automatic sync',
-                                                            )}
-                                                        </span>
-                                                    </li>
-                                                    <li className="flex items-center gap-2.5">
-                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                        <span className="text-sm">
-                                                            {__(
-                                                                'Secure & encrypted',
-                                                            )}
-                                                        </span>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                            <div className="relative min-h-[320px]">
-                                                <BankConnectionsPreview
-                                                    banks={popularBanks}
-                                                    className="absolute inset-2"
-                                                />
-                                            </div>
-                                        </div>
-                                    </FeatureCard>
+                            {/* Row 1: Connect Your Banks (2 cols) + Import in Seconds (1 col) */}
+                            <FeatureCard className="sm:col-span-2">
+                                <div className="grid h-full grid-rows-1 gap-0 sm:grid-cols-2">
+                                    <div className="flex flex-col justify-center p-8 sm:p-12">
+                                        <h2 className="text-3xl leading-tight font-semibold text-balance sm:text-4xl sm:leading-tight">
+                                            {__('Connect Your Banks')}
+                                        </h2>
+                                        <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
+                                            {__(
+                                                'Link your bank accounts directly. Transactions sync automatically, giving you a real-time view of your finances.',
+                                            )}
+                                        </p>
+                                        <ul className="mt-6 space-y-3">
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__('Connect in seconds')}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__('Automatic sync')}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-center gap-2.5">
+                                                <CheckIcon className="size-4 shrink-0 text-emerald-500" />
+                                                <span className="text-sm">
+                                                    {__('Secure & encrypted')}
+                                                </span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div className="relative min-h-[320px]">
+                                        <BankConnectionsPreview
+                                            banks={popularBanks}
+                                            className="absolute inset-2"
+                                        />
+                                    </div>
+                                </div>
+                            </FeatureCard>
 
-                                    <FeatureCard>
-                                        <div className="p-2">
-                                            <ImportPreview
-                                                currency={pricing.currency}
-                                                locale={locale}
-                                            />
-                                        </div>
-                                        <div className="p-6 pt-4">
-                                            <h3 className="text-xl font-semibold">
-                                                {__('Import in Seconds')}
-                                            </h3>
-                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                {__(
-                                                    "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
-                                                )}
-                                            </p>
-                                        </div>
-                                    </FeatureCard>
+                            <FeatureCard>
+                                <div className="p-2">
+                                    <ImportPreview
+                                        currency={pricing.currency}
+                                        locale={locale}
+                                    />
+                                </div>
+                                <div className="p-6 pt-4">
+                                    <h3 className="text-xl font-semibold">
+                                        {__('Import in Seconds')}
+                                    </h3>
+                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__(
+                                            "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
+                                        )}
+                                    </p>
+                                </div>
+                            </FeatureCard>
 
-                                    {/* Row 2: All Your Accounts, Every Transaction, Your Data Your Rules */}
-                                    <FeatureCard>
-                                        <div className="p-2">
-                                            <AccountsBalancePreview
-                                                currency={pricing.currency}
-                                                locale={locale}
-                                            />
-                                        </div>
-                                        <div className="p-6 pt-4">
-                                            <h3 className="text-xl font-semibold">
-                                                {__('All Your Accounts')}
-                                            </h3>
-                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                {__(
-                                                    'See every account in one place. Track balances, monitor changes, and always know where you stand.',
-                                                )}
-                                            </p>
-                                        </div>
-                                    </FeatureCard>
+                            {/* Row 2: All Your Accounts, Every Transaction, Your Data Your Rules */}
+                            <FeatureCard>
+                                <div className="p-2">
+                                    <AccountsBalancePreview
+                                        currency={pricing.currency}
+                                        locale={locale}
+                                    />
+                                </div>
+                                <div className="p-6 pt-4">
+                                    <h3 className="text-xl font-semibold">
+                                        {__('All Your Accounts')}
+                                    </h3>
+                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__(
+                                            'See every account in one place. Track balances, monitor changes, and always know where you stand.',
+                                        )}
+                                    </p>
+                                </div>
+                            </FeatureCard>
 
-                                    <FeatureCard>
-                                        <div className="p-2">
-                                            <TransactionRowsPreview
-                                                currency={pricing.currency}
-                                                locale={locale}
-                                            />
-                                        </div>
-                                        <div className="p-6 pt-4">
-                                            <h3 className="text-xl font-semibold">
-                                                {__('Every Transaction')}
-                                            </h3>
-                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                {__(
-                                                    'Search, filter, and categorize with ease. Understand exactly where your money goes.',
-                                                )}
-                                            </p>
-                                        </div>
-                                    </FeatureCard>
+                            <FeatureCard>
+                                <div className="p-2">
+                                    <TransactionRowsPreview
+                                        currency={pricing.currency}
+                                        locale={locale}
+                                    />
+                                </div>
+                                <div className="p-6 pt-4">
+                                    <h3 className="text-xl font-semibold">
+                                        {__('Every Transaction')}
+                                    </h3>
+                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__(
+                                            'Search, filter, and categorize with ease. Understand exactly where your money goes.',
+                                        )}
+                                    </p>
+                                </div>
+                            </FeatureCard>
 
-                                    <FeatureCard>
-                                        <div className="p-2">
-                                            <PrivacyRedactedPreview />
-                                        </div>
-                                        <div className="p-6 pt-4">
-                                            <h3 className="text-xl font-semibold">
-                                                {__('Your Data, Your Rules')}
-                                            </h3>
-                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                {__(
-                                                    'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
-                                                )}
-                                            </p>
-                                        </div>
-                                    </FeatureCard>
-                                </>
-                            ) : (
-                                <>
-                                    {/* Row 1: All Your Accounts, Every Transaction, Your Data Your Rules */}
-                                    <FeatureCard>
-                                        <div className="p-2">
-                                            <AccountsBalancePreview
-                                                currency={pricing.currency}
-                                                locale={locale}
-                                            />
-                                        </div>
-                                        <div className="p-6 pt-4">
-                                            <h3 className="text-xl font-semibold">
-                                                {__('All Your Accounts')}
-                                            </h3>
-                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                {__(
-                                                    'See every account in one place. Track balances, monitor changes, and always know where you stand.',
-                                                )}
-                                            </p>
-                                        </div>
-                                    </FeatureCard>
-
-                                    <FeatureCard>
-                                        <div className="p-2">
-                                            <TransactionRowsPreview
-                                                currency={pricing.currency}
-                                                locale={locale}
-                                            />
-                                        </div>
-                                        <div className="p-6 pt-4">
-                                            <h3 className="text-xl font-semibold">
-                                                {__('Every Transaction')}
-                                            </h3>
-                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                {__(
-                                                    'Search, filter, and categorize with ease. Understand exactly where your money goes.',
-                                                )}
-                                            </p>
-                                        </div>
-                                    </FeatureCard>
-
-                                    <FeatureCard>
-                                        <div className="p-2">
-                                            <PrivacyRedactedPreview />
-                                        </div>
-                                        <div className="p-6 pt-4">
-                                            <h3 className="text-xl font-semibold">
-                                                {__('Your Data, Your Rules')}
-                                            </h3>
-                                            <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
-                                                {__(
-                                                    'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
-                                                )}
-                                            </p>
-                                        </div>
-                                    </FeatureCard>
-
-                                    {/* Row 2: Import in Seconds (full width) */}
-                                    <FeatureCard className="sm:col-span-3">
-                                        <div className="grid items-center gap-0 sm:grid-cols-2">
-                                            <div className="p-8 sm:p-12">
-                                                <h2 className="text-3xl leading-tight font-semibold sm:text-4xl sm:leading-tight">
-                                                    {__('Import in Seconds')}
-                                                </h2>
-                                                <p className="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
-                                                    {__(
-                                                        "Export a CSV or XLS from your bank and drag it in. A year's worth of transactions imported in under 10 seconds.",
-                                                    )}
-                                                </p>
-                                                <ul className="mt-6 space-y-3">
-                                                    <li className="flex items-center gap-2.5">
-                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                        <span className="text-sm">
-                                                            {__(
-                                                                'Export from any bank',
-                                                            )}
-                                                        </span>
-                                                    </li>
-                                                    <li className="flex items-center gap-2.5">
-                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                        <span className="text-sm">
-                                                            {__(
-                                                                'Secure upload',
-                                                            )}
-                                                        </span>
-                                                    </li>
-                                                    <li className="flex items-center gap-2.5">
-                                                        <CheckIcon className="size-4 shrink-0 text-emerald-500" />
-                                                        <span className="text-sm">
-                                                            {__(
-                                                                'Automatic categorization',
-                                                            )}
-                                                        </span>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                            <div className="p-2">
-                                                <ImportPreview
-                                                    currency={pricing.currency}
-                                                    locale={locale}
-                                                />
-                                            </div>
-                                        </div>
-                                    </FeatureCard>
-                                </>
-                            )}
+                            <FeatureCard>
+                                <div className="p-2">
+                                    <PrivacyRedactedPreview />
+                                </div>
+                                <div className="p-6 pt-4">
+                                    <h3 className="text-xl font-semibold">
+                                        {__('Your Data, Your Rules')}
+                                    </h3>
+                                    <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
+                                        {__(
+                                            'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
+                                        )}
+                                    </p>
+                                </div>
+                            </FeatureCard>
 
                             {/* Row 3: Cashflow at a Glance (always full width) */}
                             <FeatureCard className="sm:col-span-3">
@@ -2651,99 +2536,82 @@ export default function Welcome({
                                             )}
                                         </p>
 
-                                        {features['open-banking'] &&
-                                            hasMonthlyAndYearly && (
-                                                <div className="mt-2 flex items-center rounded-full border border-[#e3e3e0] p-1 dark:border-[#3E3E3A]">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setBillingPeriod(
-                                                                'month',
-                                                            )
-                                                        }
-                                                        className={cn(
-                                                            'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-                                                            billingPeriod ===
-                                                                'month'
-                                                                ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                                : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
-                                                        )}
-                                                    >
-                                                        {__('Monthly')}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setBillingPeriod(
-                                                                'year',
-                                                            )
-                                                        }
-                                                        className={cn(
-                                                            'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-                                                            billingPeriod ===
-                                                                'year'
-                                                                ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
-                                                                : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
-                                                        )}
-                                                    >
-                                                        {__('Yearly')}
-                                                        {yearlyDiscount !==
-                                                            null && (
-                                                            <span
-                                                                className={cn(
-                                                                    'rounded-full px-2 py-0.5 text-xs font-semibold',
-                                                                    billingPeriod ===
-                                                                        'year'
-                                                                        ? 'bg-emerald-500/20 text-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
-                                                                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-                                                                )}
-                                                            >
-                                                                {__(
-                                                                    'Save :percent%',
-                                                                ).replace(
-                                                                    ':percent',
-                                                                    String(
-                                                                        yearlyDiscount,
-                                                                    ),
-                                                                )}
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            )}
+                                        {hasMonthlyAndYearly && (
+                                            <div className="mt-2 flex items-center rounded-full border border-[#e3e3e0] p-1 dark:border-[#3E3E3A]">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setBillingPeriod(
+                                                            'month',
+                                                        )
+                                                    }
+                                                    className={cn(
+                                                        'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                                                        billingPeriod ===
+                                                            'month'
+                                                            ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                                                            : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
+                                                    )}
+                                                >
+                                                    {__('Monthly')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setBillingPeriod('year')
+                                                    }
+                                                    className={cn(
+                                                        'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+                                                        billingPeriod === 'year'
+                                                            ? 'bg-[#1b1b18] text-white dark:bg-[#EDEDEC] dark:text-[#1b1b18]'
+                                                            : 'text-[#706f6c] hover:text-[#1b1b18] dark:text-[#A1A09A] dark:hover:text-[#EDEDEC]',
+                                                    )}
+                                                >
+                                                    {__('Yearly')}
+                                                    {yearlyDiscount !==
+                                                        null && (
+                                                        <span
+                                                            className={cn(
+                                                                'rounded-full px-2 py-0.5 text-xs font-semibold',
+                                                                billingPeriod ===
+                                                                    'year'
+                                                                    ? 'bg-emerald-500/20 text-emerald-200 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
+                                                            )}
+                                                        >
+                                                            {__(
+                                                                'Save :percent%',
+                                                            ).replace(
+                                                                ':percent',
+                                                                String(
+                                                                    yearlyDiscount,
+                                                                ),
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div
                                         className={cn(
                                             'grid w-full gap-6',
-                                            displayedPlanEntries.length +
-                                                (features['open-banking']
-                                                    ? 1
-                                                    : 0) ===
+                                            displayedPlanEntries.length + 1 ===
                                                 1 && 'mx-auto max-w-md',
-                                            displayedPlanEntries.length +
-                                                (features['open-banking']
-                                                    ? 1
-                                                    : 0) ===
+                                            displayedPlanEntries.length + 1 ===
                                                 2 &&
                                                 'mx-auto max-w-3xl grid-cols-1 sm:grid-cols-2',
-                                            displayedPlanEntries.length +
-                                                (features['open-banking']
-                                                    ? 1
-                                                    : 0) >=
+                                            displayedPlanEntries.length + 1 >=
                                                 3 &&
                                                 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
                                         )}
                                     >
-                                        {features['open-banking'] && (
-                                            <FreePlanCard
-                                                planFeatures={planEntries[0][1].features.filter(
-                                                    (f) =>
-                                                        f !==
-                                                        'Priority support',
-                                                )}
-                                            />
-                                        )}
+                                        <FreePlanCard
+                                            planFeatures={planEntries[0][1].features.filter(
+                                                (f) => f !== 'Priority support',
+                                            )}
+                                        />
                                         {displayedPlanEntries.map(
                                             ([key, plan]) => (
                                                 <LandingPlanCard

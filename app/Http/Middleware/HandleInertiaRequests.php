@@ -147,26 +147,22 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Eagerly load all feature flags in a single query instead of N+1.
-     *
      * @return array<string, bool>
      */
     protected function resolveFeatureFlags(?object $user): array
     {
-        $flags = ['open-banking', 'real-estate'];
-
         if (! $user) {
-            return ['cashflow' => true, ...array_fill_keys($flags, false)];
+            return [
+                'cashflow' => true,
+                'real-estate' => false,
+            ];
         }
 
-        // Single batched SELECT + single bulk INSERT for unresolved flags
-        Feature::for($user)->load($flags);
+        Feature::for($user)->load(['real-estate']);
 
         return [
             'cashflow' => true,
-            ...collect($flags)->mapWithKeys(
-                fn (string $flag) => [$flag => Feature::for($user)->active($flag)]
-            )->all(),
+            'real-estate' => Feature::for($user)->active('real-estate'),
         ];
     }
 

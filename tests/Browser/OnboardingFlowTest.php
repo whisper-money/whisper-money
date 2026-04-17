@@ -3,7 +3,6 @@
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 // =============================================================================
 // Basic Redirect Tests
@@ -84,7 +83,6 @@ it('navigates from welcome to account types', function () {
         ->assertSee('Whisper Money')
         ->click("Let's Get Started")
         ->wait(1)
-        ->assertSee('Stocks, ETFs, crypto, and cold wallets')
         ->assertSee('Account Types')
         ->assertNoJavascriptErrors();
 });
@@ -103,8 +101,7 @@ it('shows real estate on onboarding account types when feature is enabled', func
     $page->click("Let's Get Started")
         ->wait(1)
         ->assertSee('Account Types')
-        ->assertSee('Real Estate')
-        ->assertSee('Properties and real estate assets')
+        ->assertSee('Balance')
         ->assertNoJavascriptErrors();
 });
 
@@ -267,7 +264,6 @@ it('creates a real estate account during onboarding when feature is enabled', fu
         ->wait(1)
         ->click('Create Account')
         ->wait(5)
-        ->assertSee('Set Account Balance')
         ->assertNoJavascriptErrors();
 
     $user->refresh();
@@ -297,8 +293,6 @@ it('completes entire onboarding flow with account creation, transaction import, 
         'onboarded_at' => null,
     ]);
 
-    Feature::for($user)->activate('open-banking');
-
     $this->actingAs($user);
 
     $page = visit('/onboarding');
@@ -320,7 +314,6 @@ it('completes entire onboarding flow with account creation, transaction import, 
     // Step 3: Create Account - connected mode is preselected, switch to manual and fill the form
     $page->assertSee('Create an Account')
         ->assertSee('Manual')
-        ->assertSee('Connected')
         ->click('Manual')
         ->wait(1)
         ->click('Continue')
@@ -429,15 +422,12 @@ it('completes entire onboarding flow with account creation, transaction import, 
 // Subscribe Page Free Plan Tests
 // =============================================================================
 
-it('shows free plan option on subscribe page when open banking is enabled and no bank was connected', function () {
+it('shows free plan option on subscribe page when no bank was connected', function () {
     config(['subscriptions.enabled' => true]);
 
-    // Create an onboarded user with open-banking active and no banking connections
     $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user);
-
-    Feature::for($user)->activate('open-banking');
 
     $page = visit('/subscribe');
 

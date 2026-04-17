@@ -102,6 +102,12 @@ export default function ConnectionsPage({ connections }: Props) {
 
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
+
+                if (typeof data.redirect === 'string') {
+                    window.location.href = data.redirect;
+                    return;
+                }
+
                 throw new Error(
                     data.error || __('Failed to start re-authorization.'),
                 );
