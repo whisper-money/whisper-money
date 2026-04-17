@@ -54,6 +54,10 @@ class ConnectionController extends Controller
             abort(403);
         }
 
+        if (config('subscriptions.enabled') && ! Auth::user()->hasProPlan()) {
+            return redirect()->route('subscribe');
+        }
+
         if (! $connection->isActive() && $connection->status !== BankingConnectionStatus::Error) {
             return back()->with('error', 'Connection is not active.');
         }
@@ -74,6 +78,10 @@ class ConnectionController extends Controller
      */
     public function updateCredentials(UpdateConnectionCredentialsRequest $request, BankingConnection $connection): RedirectResponse
     {
+        if (config('subscriptions.enabled') && ! $request->user()->hasProPlan()) {
+            return redirect()->route('subscribe');
+        }
+
         $validated = $request->validated();
 
         $validationError = $this->validateProviderCredentials($connection, $validated);

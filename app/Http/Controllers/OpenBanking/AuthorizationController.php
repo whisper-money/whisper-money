@@ -63,6 +63,10 @@ class AuthorizationController extends Controller
             abort(403);
         }
 
+        if (config('subscriptions.enabled') && $request->user()->isOnboarded() && ! $request->user()->hasProPlan()) {
+            return response()->json(['redirect' => route('subscribe')], 402);
+        }
+
         if (! $connection->isEnableBanking()) {
             return response()->json(['error' => 'Only EnableBanking connections can be re-authorized.'], 422);
         }

@@ -307,6 +307,23 @@ test('reauthorize starts new authorization for expired connections', function ()
     expect($connection->authorization_id)->toBe('new-auth-id-789');
 });
 
+test('free tier users cannot reauthorize after onboarding when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    $response = $this->actingAs($user)->postJson("/open-banking/connections/{$connection->id}/reauthorize");
+
+    $response->assertStatus(402);
+    $response->assertJson(['redirect' => route('subscribe')]);
+});
+
 // Reconnect callback tests
 
 test('callback with existing accounts updates session without creating new accounts', function () {

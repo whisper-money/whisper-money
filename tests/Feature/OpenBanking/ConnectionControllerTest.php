@@ -160,6 +160,24 @@ test('users can trigger manual sync on active connection', function () {
     $response->assertSessionHas('success');
 });
 
+test('free tier users are redirected to subscribe when syncing a connection after onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+    ]);
+
+    $response = $this->actingAs($user)->post("/settings/connections/{$connection->id}/sync");
+
+    $response->assertRedirect(route('subscribe'));
+
+    Queue::assertNothingPushed();
+});
+
 test('disconnecting indexa capital connection does not revoke session', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create(['user_id' => $user->id]);
@@ -229,6 +247,26 @@ test('users can update indexa capital credentials with valid token', function ()
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
     expect($connection->error_message)->toBeNull();
     expect($connection->api_token)->toBe('new-valid-indexa-token-12345');
+});
+
+test('free tier users are redirected to subscribe when updating credentials after onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->error()->create([
+        'user_id' => $user->id,
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_token' => 'new-valid-indexa-token-12345',
+    ]);
+
+    $response->assertRedirect(route('subscribe'));
+
+    Queue::assertNothingPushed();
 });
 
 test('users can update binance credentials with valid api key and secret', function () {
