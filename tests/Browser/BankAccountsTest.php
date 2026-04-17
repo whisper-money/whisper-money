@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\AccountType;
+use App\Enums\BankingConnectionStatus;
 use App\Models\Account;
 use App\Models\Bank;
+use App\Models\BankingConnection;
 use App\Models\RealEstateDetail;
 use App\Models\User;
 use Laravel\Pennant\Feature;
@@ -41,7 +43,9 @@ function createManualAccountTypeViaUi($page, string $displayName, string $bankNa
 }
 
 it('can view bank accounts page', function () {
-    $user = User::factory()->onboarded()->create();
+    $user = User::factory()->onboarded()->create([
+        'email_verified_at' => now(),
+    ]);
 
     actingAs($user);
 
@@ -88,6 +92,31 @@ it('can open create account dialog', function () {
         ->assertSee('Add a bank account, loan, or property to your workspace.')
         ->assertSee('Manual')
         ->assertSee('Connected')
+        ->assertNoJavascriptErrors();
+});
+
+it('redirects free users to subscribe when reconnecting a bank connection', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    BankingConnection::factory()->error()->create([
+        'user_id' => $user->id,
+        'provider' => 'enablebanking',
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'status' => BankingConnectionStatus::Error,
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    actingAs($user);
+
+    $page = visit('/settings/connections');
+
+    $page->assertSee('Connections')
+        ->assertSee('Reconnect')
+        ->click('Reconnect')
+        ->wait(3)
+        ->assertPathIs('/subscribe')
         ->assertNoJavascriptErrors();
 });
 
