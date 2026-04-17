@@ -5,6 +5,7 @@ namespace App\Http\Controllers\OpenBanking;
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\DestroyConnectionRequest;
 use App\Http\Requests\OpenBanking\UpdateConnectionCredentialsRequest;
 use App\Jobs\SyncBankingConnectionJob;
@@ -23,6 +24,7 @@ use Inertia\Response;
 class ConnectionController extends Controller
 {
     use AuthorizesRequests;
+    use HandlesSubscriptionGate;
 
     /**
      * Show the user's banking connections.
@@ -54,8 +56,8 @@ class ConnectionController extends Controller
             abort(403);
         }
 
-        if (config('subscriptions.enabled') && ! Auth::user()->hasProPlan()) {
-            return redirect()->route('subscribe');
+        if ($this->shouldBlockOpenBankingAccess(Auth::user(), false)) {
+            return $this->subscribeRedirectResponse();
         }
 
         if (! $connection->isActive() && $connection->status !== BankingConnectionStatus::Error) {
@@ -78,8 +80,8 @@ class ConnectionController extends Controller
      */
     public function updateCredentials(UpdateConnectionCredentialsRequest $request, BankingConnection $connection): RedirectResponse
     {
-        if (config('subscriptions.enabled') && ! $request->user()->hasProPlan()) {
-            return redirect()->route('subscribe');
+        if ($this->shouldBlockOpenBankingAccess($request->user(), false)) {
+            return $this->subscribeRedirectResponse();
         }
 
         $validated = $request->validated();
