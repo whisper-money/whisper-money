@@ -64,6 +64,26 @@ test('invalid binance credentials return 422', function () {
     ]);
 });
 
+test('free tier users cannot connect a binance account after onboarding when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+
+    $response = $this->actingAs($user)->postJson('/open-banking/binance/connect', [
+        'api_key' => 'valid-test-api-key-12345',
+        'api_secret' => 'valid-test-api-secret-12345',
+        'country' => 'ES',
+    ]);
+
+    $response->assertStatus(402);
+    $response->assertJson(['redirect' => route('subscribe')]);
+
+    $this->assertDatabaseMissing('banking_connections', [
+        'user_id' => $user->id,
+        'provider' => 'binance',
+    ]);
+});
+
 test('binance requires authentication', function () {
     $response = $this->postJson('/open-banking/binance/connect', [
         'api_key' => 'valid-test-api-key-12345',
@@ -117,6 +137,8 @@ test('binance stores pending accounts with user currency', function () {
 });
 
 test('binance auto-creates accounts during onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
     Queue::fake();
 
     $user = User::factory()->notOnboarded()->create(['currency_code' => 'EUR']);

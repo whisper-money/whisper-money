@@ -73,6 +73,25 @@ test('invalid bitpanda credentials return 422', function () {
     ]);
 });
 
+test('free tier users cannot connect a bitpanda account after onboarding when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+
+    $response = $this->actingAs($user)->postJson('/open-banking/bitpanda/connect', [
+        'api_key' => 'valid-test-api-key-12345',
+        'country' => 'ES',
+    ]);
+
+    $response->assertStatus(402);
+    $response->assertJson(['redirect' => route('subscribe')]);
+
+    $this->assertDatabaseMissing('banking_connections', [
+        'user_id' => $user->id,
+        'provider' => 'bitpanda',
+    ]);
+});
+
 test('bitpanda requires authentication', function () {
     $response = $this->postJson('/open-banking/bitpanda/connect', [
         'api_key' => 'valid-test-api-key-12345',
@@ -134,6 +153,8 @@ test('bitpanda stores pending accounts with user currency', function () {
 });
 
 test('bitpanda auto-creates accounts during onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
     Queue::fake();
 
     $user = User::factory()->notOnboarded()->create(['currency_code' => 'EUR']);

@@ -68,6 +68,24 @@ test('invalid token returns 422', function () {
     ]);
 });
 
+test('free tier users cannot connect an indexa capital account after onboarding when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+
+    $response = $this->actingAs($user)->postJson('/open-banking/indexa-capital/connect', [
+        'api_token' => 'valid-test-token-12345',
+    ]);
+
+    $response->assertStatus(402);
+    $response->assertJson(['redirect' => route('subscribe')]);
+
+    $this->assertDatabaseMissing('banking_connections', [
+        'user_id' => $user->id,
+        'provider' => 'indexacapital',
+    ]);
+});
+
 test('indexa capital requires authentication', function () {
     $response = $this->postJson('/open-banking/indexa-capital/connect', [
         'api_token' => 'valid-test-token-12345',
@@ -119,6 +137,8 @@ test('stores multiple pending accounts for multiple indexa portfolios', function
 });
 
 test('indexa capital auto-creates accounts during onboarding', function () {
+    config(['subscriptions.enabled' => true]);
+
     Queue::fake();
 
     $user = User::factory()->notOnboarded()->create();

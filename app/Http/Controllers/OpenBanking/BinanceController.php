@@ -24,6 +24,10 @@ class BinanceController extends Controller
         $validated = $request->validated();
         $user = auth()->user();
 
+        if (config('subscriptions.enabled') && $user->isOnboarded() && ! $user->hasProPlan()) {
+            return response()->json(['redirect' => route('subscribe')], 402);
+        }
+
         $client = new BinanceClient($validated['api_key'], $validated['api_secret']);
 
         try {
