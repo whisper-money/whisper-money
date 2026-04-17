@@ -25,7 +25,7 @@ class AuthorizationController extends Controller
     {
         $user = auth()->user();
 
-        if (config('subscriptions.enabled') && ! $user->hasProPlan()) {
+        if (config('subscriptions.enabled') && $user->isOnboarded() && ! $user->hasProPlan()) {
             return response()->json(['redirect' => route('subscribe')], 402);
         }
 

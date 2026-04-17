@@ -62,6 +62,37 @@ test('free tier users cannot start bank authorization when subscriptions are ena
     ]);
 });
 
+test('users can start bank authorization during onboarding when subscriptions are enabled', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->notOnboarded()->create();
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->once()
+        ->andReturn([
+            'url' => 'https://bank.example.com/authorize',
+            'authorization_id' => 'auth-onboarding-123',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->postJson('/open-banking/authorize', [
+        'aspsp_name' => 'Test Bank',
+        'country' => 'ES',
+    ]);
+
+    $response->assertOk();
+    $response->assertJsonStructure(['redirect_url', 'connection_id']);
+
+    $this->assertDatabaseHas('banking_connections', [
+        'user_id' => $user->id,
+        'provider' => 'enablebanking',
+        'aspsp_name' => 'Test Bank',
+        'aspsp_country' => 'ES',
+        'status' => BankingConnectionStatus::Pending->value,
+    ]);
+});
+
 test('subscribed users can start bank authorization when subscriptions are enabled', function () {
     config(['subscriptions.enabled' => true]);
 
