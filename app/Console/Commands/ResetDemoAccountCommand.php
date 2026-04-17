@@ -148,7 +148,7 @@ class ResetDemoAccountCommand extends Command
     {
         $bbvaBank = Bank::query()->whereNull('user_id')->where('name', 'BBVA')->first()
             ?? Bank::factory()->create(['user_id' => null]);
-        $ingBank = Bank::query()->whereNull('user_id')->where('name', 'ING')->first()
+        $ingBank = Bank::query()->whereNull('user_id')->where('name', 'ING Direct')->first()
             ?? Bank::factory()->create(['user_id' => null]);
         $indexaCapitalBank = Bank::query()->whereNull('user_id')->where('name', 'Indexa Capital')->first()
             ?? Bank::factory()->create(['user_id' => null]);
