@@ -5,34 +5,29 @@ namespace App\Services;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class BudgetTransactionService
 {
     public function assignTransaction(Transaction $transaction): void
     {
-        // Remove any existing assignments first
-        if ($transaction->budgetTransactions()->exists()) {
-            $this->unassignTransaction($transaction);
-        }
-
-        // Get the user who owns this transaction
         $userId = $transaction->user_id;
 
         if (! $userId) {
             return;
         }
 
-        // Find matching budget periods for this user only
+        // Ensure labels are available for matching (safe if already loaded).
+        $transaction->loadMissing('labels');
+
+        // Find budget periods that potentially match this transaction.
         $budgetPeriods = BudgetPeriod::query()
             ->whereHas('budget', function ($query) use ($transaction, $userId) {
-                // Scope to user's budgets only
                 $query->where('user_id', $userId)
                     ->where(function ($q) use ($transaction) {
-                        // Match by category
                         $q->where('category_id', $transaction->category_id)
                             ->orWhere(function ($labelQuery) use ($transaction) {
-                                // Match by label
                                 $labelQuery->whereHas('label', function ($lq) use ($transaction) {
                                     $lq->whereIn('id', $transaction->labels->pluck('id'));
                                 });
@@ -44,28 +39,43 @@ class BudgetTransactionService
             ->with('budget')
             ->get();
 
+        // Narrow down to periods whose budget actually matches the transaction.
+        $matchingPeriodIds = [];
+
         foreach ($budgetPeriods as $period) {
             $budget = $period->budget;
 
-            // Double-check transaction matches budget criteria
-            $matches = false;
+            $matchesCategory = $budget->category_id && $budget->category_id === $transaction->category_id;
+            $matchesLabel = $budget->label_id && $transaction->labels->contains('id', $budget->label_id);
 
-            if ($budget->category_id && $budget->category_id === $transaction->category_id) {
-                $matches = true;
-            }
-
-            if ($budget->label_id && $transaction->labels->contains('id', $budget->label_id)) {
-                $matches = true;
-            }
-
-            if ($matches) {
-                BudgetTransaction::create([
-                    'transaction_id' => $transaction->id,
-                    'budget_period_id' => $period->id,
-                    'amount' => -$transaction->amount,
-                ]);
+            if ($matchesCategory || $matchesLabel) {
+                $matchingPeriodIds[] = $period->id;
             }
         }
+
+        // Apply changes atomically so concurrent workers cannot leave the
+        // transaction half-assigned and the unique index guards duplicates.
+        DB::transaction(function () use ($transaction, $matchingPeriodIds) {
+            BudgetTransaction::query()
+                ->where('transaction_id', $transaction->id)
+                ->when(
+                    $matchingPeriodIds !== [],
+                    fn ($q) => $q->whereNotIn('budget_period_id', $matchingPeriodIds),
+                )
+                ->delete();
+
+            foreach ($matchingPeriodIds as $periodId) {
+                BudgetTransaction::updateOrCreate(
+                    [
+                        'transaction_id' => $transaction->id,
+                        'budget_period_id' => $periodId,
+                    ],
+                    [
+                        'amount' => -$transaction->amount,
+                    ],
+                );
+            }
+        });
     }
 
     public function unassignTransaction(Transaction $transaction): void
@@ -117,18 +127,17 @@ class BudgetTransactionService
         // Process in chunks to prevent memory issues
         $query->chunk(500, function ($transactions) use ($period, &$assignedCount) {
             foreach ($transactions as $transaction) {
-                // Check if assignment already exists (prevent duplicates)
-                $exists = BudgetTransaction::where('transaction_id', $transaction->id)
-                    ->where('budget_period_id', $period->id)
-                    ->exists();
-
-                if (! $exists) {
-                    BudgetTransaction::create([
+                $budgetTransaction = BudgetTransaction::updateOrCreate(
+                    [
                         'transaction_id' => $transaction->id,
                         'budget_period_id' => $period->id,
+                    ],
+                    [
                         'amount' => -$transaction->amount,
-                    ]);
+                    ],
+                );
 
+                if ($budgetTransaction->wasRecentlyCreated) {
                     $assignedCount++;
                 }
             }

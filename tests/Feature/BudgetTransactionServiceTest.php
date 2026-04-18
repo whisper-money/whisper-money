@@ -2,6 +2,7 @@
 
 use App\Models\Budget;
 use App\Models\BudgetPeriod;
+use App\Models\BudgetTransaction;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
@@ -399,4 +400,196 @@ test('assignHistoricalTransactionsToPeriod only assigns to correct user', functi
 
     // Should only assign user1's transaction
     expect($count)->toBe(1);
+});
+
+test('assignTransaction is idempotent when called twice (regression for PHP-LARAVEL-A)', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => -1500,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+    $this->service->assignTransaction($transaction);
+
+    expect($period->budgetTransactions()->count())->toBe(1)
+        ->and((int) $period->budgetTransactions()->first()->amount)->toBe(1500);
+});
+
+test('assignTransaction removes stale rows when category changes', function () {
+    $oldCategory = Category::factory()->create(['user_id' => $this->user->id]);
+    $newCategory = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $oldBudget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $oldCategory->id,
+    ]);
+    $oldPeriod = BudgetPeriod::factory()->create([
+        'budget_id' => $oldBudget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $newBudget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $newCategory->id,
+    ]);
+    $newPeriod = BudgetPeriod::factory()->create([
+        'budget_id' => $newBudget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $oldCategory->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -2000,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+    expect($oldPeriod->budgetTransactions()->count())->toBe(1)
+        ->and($newPeriod->budgetTransactions()->count())->toBe(0);
+
+    $transaction->update(['category_id' => $newCategory->id]);
+    $this->service->assignTransaction($transaction);
+
+    expect($oldPeriod->budgetTransactions()->count())->toBe(0)
+        ->and($newPeriod->budgetTransactions()->count())->toBe(1);
+});
+
+test('assignTransaction updates amount on existing row when transaction amount changes', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+    ]);
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => -1000,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+    $originalId = $period->budgetTransactions()->first()->id;
+
+    $transaction->update(['amount' => -2500]);
+    $this->service->assignTransaction($transaction);
+
+    $budgetTransaction = $period->budgetTransactions()->first();
+    expect($period->budgetTransactions()->count())->toBe(1)
+        ->and($budgetTransaction->id)->toBe($originalId)
+        ->and((int) $budgetTransaction->amount)->toBe(2500);
+});
+
+test('assignTransaction leaves table untouched when no budgets match', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => -1000,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+
+    expect(BudgetTransaction::query()->count())->toBe(0);
+});
+
+test('assignTransaction survives pre-existing duplicate row (regression for PHP-LARAVEL-A/B race)', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -4000,
+    ]);
+
+    // Simulate the race: another worker already inserted a row with a stale
+    // amount against the (transaction_id, budget_period_id) unique key after
+    // the service's internal unassign step would have run.
+    BudgetTransaction::where('transaction_id', $transaction->id)->delete();
+    BudgetTransaction::create([
+        'transaction_id' => $transaction->id,
+        'budget_period_id' => $period->id,
+        'amount' => 999, // stale amount from the other worker
+    ]);
+
+    // Re-run must not throw UniqueConstraintViolationException and must
+    // converge the stored amount to the freshly computed value.
+    $this->service->assignTransaction($transaction->fresh());
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->count())->toBe(1)
+        ->and((int) BudgetTransaction::where('transaction_id', $transaction->id)->value('amount'))->toBe(4000);
+});
+
+test('assignHistoricalTransactionsToPeriod reruns converge existing rows without throwing', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -2500,
+    ]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    // First run creates the row.
+    $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    // Tamper with the stored amount to prove the second run converges it
+    // via updateOrCreate instead of hitting the unique constraint.
+    BudgetTransaction::where('transaction_id', $transaction->id)->update(['amount' => 0]);
+
+    // Second run must not throw on the existing (transaction_id, budget_period_id)
+    // unique row and must refresh the amount back to the canonical value.
+    $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)->count())->toBe(1)
+        ->and((int) BudgetTransaction::where('transaction_id', $transaction->id)->value('amount'))->toBe(2500);
 });
