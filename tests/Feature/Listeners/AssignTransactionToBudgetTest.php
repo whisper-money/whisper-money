@@ -6,6 +6,7 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Events\CallQueuedListener;
@@ -92,4 +93,39 @@ test('queued listener runs when TransactionUpdated changes category', function (
     runQueuedAssignTransactionListener();
 
     expect(BudgetTransaction::query()->count())->toBe(1);
+});
+
+test('queued listener runs when TransactionUpdated changes labels', function () {
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'label_id' => $label->id,
+    ]);
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => -1000,
+    ]);
+
+    $transaction->timestamps = false;
+    $transaction->forceFill(['updated_at' => now()->subMinute()])->saveQuietly();
+    $transaction->timestamps = true;
+
+    BudgetTransaction::query()->delete();
+
+    Queue::fake();
+    $response = $this->actingAs($this->user)->patchJson(route('transactions.update', $transaction), [
+        'label_ids' => [$label->id],
+    ]);
+    $response->assertSuccessful();
+
+    runQueuedAssignTransactionListener();
+
+    expect($period->fresh()->budgetTransactions()->count())->toBe(1);
 });
