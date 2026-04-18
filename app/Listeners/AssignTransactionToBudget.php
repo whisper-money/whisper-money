@@ -46,7 +46,7 @@ class AssignTransactionToBudget implements ShouldBeUnique, ShouldQueue
         }
 
         if ($event instanceof TransactionUpdated
-            && ! $transaction->wasChanged(self::BUDGET_RELEVANT_ATTRIBUTES)) {
+            && ! $event->changedAny(self::BUDGET_RELEVANT_ATTRIBUTES)) {
             return;
         }
 

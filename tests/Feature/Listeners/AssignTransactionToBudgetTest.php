@@ -7,9 +7,9 @@ use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\BudgetTransactionService;
 use Illuminate\Events\CallQueuedListener;
 use Illuminate\Support\Facades\Queue;
 
@@ -17,7 +17,23 @@ beforeEach(function () {
     $this->user = User::factory()->create();
 });
 
-test('handle re-runs assignment when TransactionCreated fires', function () {
+function runQueuedAssignTransactionListener(): CallQueuedListener
+{
+    $queuedListener = collect(Queue::pushed(CallQueuedListener::class))
+        ->first(fn (CallQueuedListener $job) => $job->class === AssignTransactionToBudget::class);
+
+    expect($queuedListener)->toBeInstanceOf(CallQueuedListener::class)
+        ->and($queuedListener->class)->toBe(AssignTransactionToBudget::class);
+
+    $queuedListener = unserialize(serialize($queuedListener));
+
+    $queuedListener->withFakeQueueInteractions();
+    $queuedListener->handle(app());
+
+    return $queuedListener;
+}
+
+test('queued listener re-runs assignment when TransactionCreated fires', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
     $budget = Budget::factory()->create([
         'user_id' => $this->user->id,
@@ -38,13 +54,16 @@ test('handle re-runs assignment when TransactionCreated fires', function () {
 
     // Reset any rows created by the model-dispatched event during factory create.
     BudgetTransaction::query()->delete();
+    Queue::fake();
 
-    app(AssignTransactionToBudget::class)->handle(new TransactionCreated($transaction));
+    TransactionCreated::dispatch($transaction);
+
+    runQueuedAssignTransactionListener();
 
     expect(BudgetTransaction::query()->count())->toBe(1);
 });
 
-test('handle skips when TransactionUpdated has no budget-relevant changes', function () {
+test('queued listener skips when TransactionUpdated has no budget-relevant changes', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
     $budget = Budget::factory()->create([
         'user_id' => $this->user->id,
@@ -64,17 +83,20 @@ test('handle skips when TransactionUpdated has no budget-relevant changes', func
     ]);
 
     // Only change a non-relevant attribute.
-    $transaction->update(['description' => 'updated description']);
+    Queue::fake();
+    $response = $this->actingAs($this->user)->patchJson(route('transactions.update', $transaction), [
+        'description' => 'updated description',
+    ]);
+    $response->assertSuccessful();
 
-    $spy = Mockery::spy(BudgetTransactionService::class);
-    $listener = new AssignTransactionToBudget($spy);
+    BudgetTransaction::query()->delete();
+    $queuedListener = runQueuedAssignTransactionListener();
 
-    $listener->handle(new TransactionUpdated($transaction));
-
-    $spy->shouldNotHaveReceived('assignTransaction');
+    expect(BudgetTransaction::query()->count())->toBe(0);
+    $queuedListener->assertNotFailed()->assertNotReleased();
 });
 
-test('handle runs when TransactionUpdated changes category', function () {
+test('queued listener runs when TransactionUpdated changes category', function () {
     $oldCategory = Category::factory()->create(['user_id' => $this->user->id]);
     $newCategory = Category::factory()->create(['user_id' => $this->user->id]);
     $budget = Budget::factory()->create([
@@ -96,11 +118,49 @@ test('handle runs when TransactionUpdated changes category', function () {
 
     BudgetTransaction::query()->delete();
 
-    $transaction->update(['category_id' => $newCategory->id]);
+    Queue::fake();
+    $response = $this->actingAs($this->user)->patchJson(route('transactions.update', $transaction), [
+        'category_id' => $newCategory->id,
+    ]);
+    $response->assertSuccessful();
 
-    app(AssignTransactionToBudget::class)->handle(new TransactionUpdated($transaction));
+    runQueuedAssignTransactionListener();
 
     expect(BudgetTransaction::query()->count())->toBe(1);
+});
+
+test('queued listener runs when TransactionUpdated changes labels', function () {
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'label_id' => $label->id,
+    ]);
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => -1000,
+    ]);
+
+    $transaction->timestamps = false;
+    $transaction->forceFill(['updated_at' => now()->subMinute()])->saveQuietly();
+    $transaction->timestamps = true;
+
+    BudgetTransaction::query()->delete();
+    Queue::fake();
+    $response = $this->actingAs($this->user)->patchJson(route('transactions.update', $transaction), [
+        'label_ids' => [$label->id],
+    ]);
+    $response->assertSuccessful();
+
+    runQueuedAssignTransactionListener();
+
+    expect($period->budgetTransactions()->count())->toBe(1);
 });
 
 test('listener uniqueId returns the transaction id', function () {

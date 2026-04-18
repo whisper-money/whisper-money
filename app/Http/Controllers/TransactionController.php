@@ -198,6 +198,7 @@ class TransactionController extends Controller
             $transaction->labels()->sync($labelIds ?? []);
             // Reload labels so the event listener has fresh data
             $transaction->load('labels');
+            $transaction->setRelation('budgetRelevantLabelsChanged', true);
         }
 
         // Save to fire the updated event if there are any changes
