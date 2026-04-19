@@ -356,6 +356,150 @@ test('daily bank sync email job sends pending transactions once per day', functi
     Mail::assertQueued(BankTransactionsSyncedEmail::class, 1);
 });
 
+test('daily bank sync email job releases during quiet hours in user timezone', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 04:00:00', 'UTC'));
+
+    $user = User::factory()->onboarded()->create(['timezone' => 'Europe/Madrid']);
+    $bank = Bank::factory()->create(['name' => 'Quiet Hours Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    Transaction::factory()->count(2)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subHour(),
+        'updated_at' => now()->subHour(),
+    ]);
+
+    $job = (new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString()))->withFakeQueueInteractions();
+    $job->handle();
+
+    $job->assertReleased(delay: 7200);
+
+    Mail::assertNothingQueued();
+    expect(UserMailLog::query()->count())->toBe(0);
+});
+
+test('daily bank sync email job sends at first allowed local hour for user timezone', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 02:15:00', 'UTC'));
+
+    $user = User::factory()->onboarded()->create(['timezone' => 'Asia/Kathmandu']);
+    $bank = Bank::factory()->create(['name' => 'Allowed Hours Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    Transaction::factory()->count(3)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subHour(),
+        'updated_at' => now()->subHour(),
+    ]);
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) use ($user) {
+        return $mail->totalTransactions === 3
+            && $mail->transactionsPerBank === ['Allowed Hours Bank' => 3]
+            && $mail->hasTo($user->email);
+    });
+
+    expect(UserMailLog::query()
+        ->where('user_id', $user->id)
+        ->where('email_type', DripEmailType::BankTransactionsSynced)
+        ->where('email_identifier', '2026-04-15')
+        ->exists())->toBeTrue();
+});
+
+test('daily bank sync email job ignores quiet hours when user timezone is missing', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 02:00:00', 'UTC'));
+
+    $user = User::factory()->onboarded()->create(['timezone' => null]);
+    $bank = Bank::factory()->create(['name' => 'Timezone Fallback Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    Transaction::factory()->count(2)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subHour(),
+        'updated_at' => now()->subHour(),
+    ]);
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) use ($user) {
+        return $mail->totalTransactions === 2
+            && $mail->transactionsPerBank === ['Timezone Fallback Bank' => 2]
+            && $mail->hasTo($user->email);
+    });
+});
+
+test('daily bank sync email job deduplicates per user local day', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 00:30:00', 'UTC'));
+
+    $user = User::factory()->onboarded()->create(['timezone' => 'America/Los_Angeles']);
+    $bank = Bank::factory()->create(['name' => 'Local Day Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    Transaction::factory()->count(2)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subMinutes(15),
+        'updated_at' => now()->subMinutes(15),
+    ]);
+
+    UserMailLog::create([
+        'user_id' => $user->id,
+        'email_type' => DripEmailType::BankTransactionsSynced,
+        'email_identifier' => '2026-04-14',
+        'sent_at' => Carbon::parse('2026-04-14 18:00:00', 'UTC'),
+    ]);
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertNothingQueued();
+});
+
 test('daily bank sync email job sends unreported transactions next day even when current sync imported none', function () {
     Mail::fake();
 

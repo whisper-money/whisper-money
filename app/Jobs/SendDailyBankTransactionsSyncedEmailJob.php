@@ -8,6 +8,7 @@ use App\Mail\BankTransactionsSyncedEmail;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\UserMailLog;
+use DateTimeZone;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -36,13 +37,22 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
 
     public function handle(): void
     {
+        $localReportDate = $this->localReportDate();
         $lastSentMailLog = UserMailLog::query()
             ->where('user_id', $this->user->id)
             ->where('email_type', DripEmailType::BankTransactionsSynced)
             ->latest('sent_at')
             ->first();
 
-        if ($lastSentMailLog?->email_identifier === $this->reportDate) {
+        if ($lastSentMailLog?->email_identifier === $localReportDate) {
+            return;
+        }
+
+        $quietHoursDelay = $this->quietHoursDelayInSeconds();
+
+        if ($quietHoursDelay !== null) {
+            $this->release($quietHoursDelay);
+
             return;
         }
 
@@ -78,7 +88,7 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
         UserMailLog::create([
             'user_id' => $this->user->id,
             'email_type' => DripEmailType::BankTransactionsSynced,
-            'email_identifier' => $this->reportDate,
+            'email_identifier' => $localReportDate,
             'sent_at' => now(),
         ]);
     }
@@ -86,5 +96,54 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
     public function uniqueId(): string
     {
         return $this->user->id.':'.$this->reportDate;
+    }
+
+    private function localReportDate(): string
+    {
+        return now($this->reportingTimezone())->toDateString();
+    }
+
+    private function quietHoursDelayInSeconds(): ?int
+    {
+        $timezone = $this->userTimezone();
+
+        if ($timezone === null) {
+            return null;
+        }
+
+        $localNow = now($timezone);
+        $localHour = (int) $localNow->format('G');
+
+        if ($localHour >= 8 && $localHour < 23) {
+            return null;
+        }
+
+        $nextAllowedAt = $localHour >= 23
+            ? $localNow->copy()->addDay()->startOfDay()->addHours(8)
+            : $localNow->copy()->startOfDay()->addHours(8);
+
+        return $nextAllowedAt->getTimestamp() - $localNow->getTimestamp();
+    }
+
+    private function reportingTimezone(): string
+    {
+        return $this->userTimezone() ?? config('app.timezone', 'UTC');
+    }
+
+    private function userTimezone(): ?string
+    {
+        $timezone = $this->user->timezone;
+
+        if ($timezone === null) {
+            return null;
+        }
+
+        try {
+            new DateTimeZone($timezone);
+
+            return $timezone;
+        } catch (\Exception) {
+            return null;
+        }
     }
 }
