@@ -116,7 +116,7 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
             ? $localNow->copy()->addDay()->startOfDay()->addHours(8)
             : $localNow->copy()->startOfDay()->addHours(8);
 
-        return $localNow->diffInSeconds($nextAllowedAt);
+        return $nextAllowedAt->getTimestamp() - $localNow->getTimestamp();
     }
 
     private function userTimezone(): string
