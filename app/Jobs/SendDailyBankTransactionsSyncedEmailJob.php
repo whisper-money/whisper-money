@@ -100,12 +100,18 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
 
     private function localReportDate(): string
     {
-        return now($this->userTimezone())->toDateString();
+        return now($this->reportingTimezone())->toDateString();
     }
 
     private function quietHoursDelayInSeconds(): ?int
     {
-        $localNow = now($this->userTimezone());
+        $timezone = $this->userTimezone();
+
+        if ($timezone === null) {
+            return null;
+        }
+
+        $localNow = now($timezone);
         $localHour = (int) $localNow->format('G');
 
         if ($localHour >= 8 && $localHour < 23) {
@@ -119,16 +125,25 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
         return $nextAllowedAt->getTimestamp() - $localNow->getTimestamp();
     }
 
-    private function userTimezone(): string
+    private function reportingTimezone(): string
     {
-        $timezone = $this->user->timezone ?: config('app.timezone', 'UTC');
+        return $this->userTimezone() ?? config('app.timezone', 'UTC');
+    }
+
+    private function userTimezone(): ?string
+    {
+        $timezone = $this->user->timezone;
+
+        if ($timezone === null) {
+            return null;
+        }
 
         try {
             new DateTimeZone($timezone);
 
             return $timezone;
         } catch (\Exception) {
-            return 'UTC';
+            return null;
         }
     }
 }

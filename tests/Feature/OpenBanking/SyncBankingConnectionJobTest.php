@@ -429,6 +429,40 @@ test('daily bank sync email job sends at first allowed local hour for user timez
         ->exists())->toBeTrue();
 });
 
+test('daily bank sync email job ignores quiet hours when user timezone is missing', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 02:00:00', 'UTC'));
+
+    $user = User::factory()->onboarded()->create(['timezone' => null]);
+    $bank = Bank::factory()->create(['name' => 'Timezone Fallback Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    Transaction::factory()->count(2)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subHour(),
+        'updated_at' => now()->subHour(),
+    ]);
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertQueued(BankTransactionsSyncedEmail::class, function ($mail) use ($user) {
+        return $mail->totalTransactions === 2
+            && $mail->transactionsPerBank === ['Timezone Fallback Bank' => 2]
+            && $mail->hasTo($user->email);
+    });
+});
+
 test('daily bank sync email job deduplicates per user local day', function () {
     Mail::fake();
 
