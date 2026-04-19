@@ -56,6 +56,11 @@ class BudgetTransactionService
         // Apply changes atomically so concurrent workers cannot leave the
         // transaction half-assigned and the unique index guards duplicates.
         DB::transaction(function () use ($transaction, $matchingPeriodIds) {
+            Transaction::query()
+                ->whereKey($transaction->id)
+                ->lockForUpdate()
+                ->first();
+
             BudgetTransaction::query()
                 ->where('transaction_id', $transaction->id)
                 ->when(
@@ -75,7 +80,7 @@ class BudgetTransactionService
                     ],
                 );
             }
-        });
+        }, attempts: 5);
     }
 
     public function unassignTransaction(Transaction $transaction): void

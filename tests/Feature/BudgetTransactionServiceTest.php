@@ -8,6 +8,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BudgetTransactionService;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
     $this->service = app(BudgetTransactionService::class);
@@ -424,6 +425,40 @@ test('assignTransaction is idempotent when called twice (regression for PHP-LARA
     ]);
 
     $this->service->assignTransaction($transaction);
+    $this->service->assignTransaction($transaction);
+
+    expect($period->budgetTransactions()->count())->toBe(1)
+        ->and((int) $period->budgetTransactions()->first()->amount)->toBe(1500);
+});
+
+test('assignTransaction retries deadlocks during reconciliation (regression for PHP-LARAVEL-D)', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $budget = Budget::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(2),
+        'amount' => -1500,
+    ]);
+
+    $databaseManager = DB::getFacadeRoot();
+
+    DB::shouldReceive('transaction')
+        ->once()
+        ->withArgs(fn ($callback, $attempts) => $callback instanceof Closure && $attempts === 5)
+        ->andReturnUsing(fn ($callback, $attempts) => $databaseManager->transaction($callback, $attempts));
+
     $this->service->assignTransaction($transaction);
 
     expect($period->budgetTransactions()->count())->toBe(1)
