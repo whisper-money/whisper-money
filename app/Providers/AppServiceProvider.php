@@ -10,14 +10,12 @@ use App\Http\Responses\RegisterResponse;
 use App\Listeners\ApplyAutomationRules;
 use App\Listeners\AssignTransactionToBudget;
 use App\Listeners\UnassignTransactionFromBudget;
-use App\Models\User;
 use App\Services\Banking\EnableBankingProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
-use Laravel\Pennant\Feature;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,7 +47,5 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('emails', function (object $job): Limit {
             return Limit::perSecond(30);
         });
-
-        Feature::define('real-estate', fn (User $user) => false);
     }
 }

@@ -7,7 +7,6 @@ use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -92,7 +91,7 @@ class HandleInertiaRequests extends Middleware
             'includeLoansInNetWorthChart' => $user?->setting->include_loans_in_net_worth_chart ?? true,
             'includeRealEstateInNetWorthChart' => $user?->setting->include_real_estate_in_net_worth_chart ?? true,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'features' => $this->resolveFeatureFlags($user),
+            'features' => $this->resolveFeatureFlags(),
             'accounts' => fn () => $user ? $user->accounts()
                 ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
                 ->orderBy('name')
@@ -149,20 +148,10 @@ class HandleInertiaRequests extends Middleware
     /**
      * @return array<string, bool>
      */
-    protected function resolveFeatureFlags(?object $user): array
+    protected function resolveFeatureFlags(): array
     {
-        if (! $user) {
-            return [
-                'cashflow' => true,
-                'real-estate' => false,
-            ];
-        }
-
-        Feature::for($user)->load(['real-estate']);
-
         return [
             'cashflow' => true,
-            'real-estate' => Feature::for($user)->active('real-estate'),
         ];
     }
 

@@ -30,12 +30,10 @@ export function CreateAccountDialog({
     trigger?: React.ReactNode;
 }) {
     const {
-        features,
         auth,
         subscriptionsEnabled,
         accounts: sharedAccounts,
     } = usePage<SharedData>().props;
-    const realEstateEnabled = features['real-estate'];
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const sharedAccountsList = useMemo(
         () => (sharedAccounts as Account[]) || [],
@@ -305,9 +303,6 @@ export function CreateAccountDialog({
                             <AccountForm
                                 onChange={handleFormChange}
                                 availableLoanAccounts={availableLoanAccounts}
-                                hiddenAccountTypes={
-                                    realEstateEnabled ? [] : ['real_estate']
-                                }
                                 usePrimaryCurrenciesOnly={isFirstAccount}
                             />
 

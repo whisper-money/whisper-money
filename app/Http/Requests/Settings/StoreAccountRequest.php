@@ -9,7 +9,6 @@ use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Laravel\Pennant\Feature;
 
 class StoreAccountRequest extends FormRequest
 {
@@ -18,10 +17,6 @@ class StoreAccountRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        if ($this->input('type') === AccountType::RealEstate->value) {
-            return Feature::for($this->user())->active('real-estate');
-        }
-
         return true;
     }
 

@@ -7,7 +7,6 @@ use App\Models\Account;
 use App\Models\Bank;
 use App\Models\RealEstateDetail;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertDatabaseHas;
@@ -15,7 +14,6 @@ use function Pest\Laravel\assertDatabaseHas;
 beforeEach(function () {
     $this->user = User::factory()->onboarded()->create();
     $this->bank = Bank::factory()->create();
-    Feature::for($this->user)->activate('real-estate');
 });
 
 // -------------------------------------------------------------------

@@ -71,9 +71,7 @@ export function StepCreateAccount({
     onAccountCreated,
     onContinue,
 }: StepCreateAccountProps) {
-    const { pricing, subscriptionsEnabled, features, locale } =
-        usePage<SharedData>().props;
-    const realEstateEnabled = features['real-estate'];
+    const { pricing, subscriptionsEnabled, locale } = usePage<SharedData>().props;
     const [mode, setMode] = useState<AccountMode>('select');
     const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
         'connected',
@@ -543,9 +541,6 @@ export function StepCreateAccount({
                 >
                     <AccountForm
                         onChange={handleFormChange}
-                        hiddenAccountTypes={
-                            realEstateEnabled ? [] : ['real_estate']
-                        }
                         usePrimaryCurrenciesOnly={
                             isFirstAccount &&
                             existingAccounts.length === 0 &&

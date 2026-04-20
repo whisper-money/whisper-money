@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\ActivateDevelopmentFeatures;
 use App\Http\Middleware\BlockDemoAccountActions;
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureUserIsSubscribed;
@@ -38,7 +37,6 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             BlockDemoAccountActions::class.':auto',
-            ActivateDevelopmentFeatures::class,
         ]);
 
         $middleware->alias([
