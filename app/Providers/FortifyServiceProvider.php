@@ -76,8 +76,9 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn () => Inertia::render('auth/register', [
-            'hideAuthButtons' => config('landing.hide_auth_buttons', false),
+        Fortify::registerView(fn (Request $request) => Inertia::render('auth/register', [
+            'hideAuthButtons' => config('landing.hide_auth_buttons', false) && ! $request->boolean('force'),
+            'forcedRegistration' => $request->boolean('force'),
         ]));
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
