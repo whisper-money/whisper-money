@@ -99,7 +99,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             ];
 
             if ($connection->isEnableBanking() && $isFirstSync) {
-                $connectionUpdates['bank_transactions_email_cutoff_at'] = $syncedAt;
+                $connectionUpdates['bank_transactions_email_cutoff_at'] = now();
             }
 
             $connection->update($connectionUpdates);

@@ -200,6 +200,61 @@ test('does not send email on first sync', function () {
     expect($connection->bank_transactions_email_cutoff_at)->not->toBeNull();
 });
 
+test('first sync cutoff excludes transactions imported during onboarding from later email reports', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 09:00:00'));
+
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'Silent Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+        'bank_id' => $bank->id,
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->once()->andReturnUsing(function () use ($user, $account) {
+        test()->travelTo(Carbon::parse('2026-04-15 09:05:00'));
+
+        Transaction::factory()->count(3)->enableBanking()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return 3;
+    });
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+
+    expect($connection->bank_transactions_email_cutoff_at)
+        ->not->toBeNull()
+        ->and($connection->bank_transactions_email_cutoff_at->greaterThanOrEqualTo(
+            $account->transactions()->latest('created_at')->first()->created_at,
+        ))->toBeTrue();
+
+    test()->travelTo(Carbon::parse('2026-04-16 08:00:00'));
+
+    $emailJob = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $emailJob->handle();
+
+    Mail::assertNothingQueued();
+});
+
 test('schedules daily bank sync email check when subsequent sync imports zero new transactions', function () {
     Queue::fake();
 
