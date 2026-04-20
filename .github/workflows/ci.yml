@@ -291,7 +291,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [tests, linter, static-analysis, performance-tests]
+    needs: [build-image]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     env:
       SENTRY_RELEASE: whisper-money@${{ github.sha }}
