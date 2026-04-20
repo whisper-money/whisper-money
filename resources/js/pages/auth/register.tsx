@@ -14,14 +14,22 @@ import AuthLayout from '@/layouts/auth-layout';
 import { transactionSyncService } from '@/services/transaction-sync';
 
 interface RegisterProps {
+    forcedRegistration?: boolean;
     hideAuthButtons?: boolean;
 }
 
-export default function Register({ hideAuthButtons = false }: RegisterProps) {
+export default function Register({
+    forcedRegistration = false,
+    hideAuthButtons = false,
+}: RegisterProps) {
     const detectedTimezone =
         typeof window !== 'undefined'
             ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
             : '';
+
+    const registrationForm = forcedRegistration
+        ? store.form({ query: { force: 1 } })
+        : store.form();
 
     useEffect(() => {
         if (hideAuthButtons) {
@@ -45,7 +53,7 @@ export default function Register({ hideAuthButtons = false }: RegisterProps) {
         >
             <Head title={__('Register')} />
             <Form
-                {...store.form()}
+                {...registrationForm}
                 resetOnSuccess={['password', 'password_confirmation']}
                 disableWhileProcessing
                 onBefore={handleBeforeSubmit}
