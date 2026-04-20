@@ -7,7 +7,6 @@ use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\RealEstateDetail;
 use App\Models\User;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
@@ -249,8 +248,6 @@ it('can create the remaining manual account types', function (string $typeLabel,
 
 it('can create a real estate account linked to an existing loan', function () {
     $user = User::factory()->onboarded()->create();
-
-    Feature::for($user)->activate('real-estate');
 
     $loanBank = Bank::factory()->create(['name' => 'Linked Mortgage Bank', 'logo' => null]);
 

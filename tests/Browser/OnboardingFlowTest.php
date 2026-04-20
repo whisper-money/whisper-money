@@ -87,12 +87,10 @@ it('navigates from welcome to account types', function () {
         ->assertNoJavascriptErrors();
 });
 
-it('shows real estate on onboarding account types when feature is enabled', function () {
+it('shows real estate on onboarding account types by default', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
     ]);
-
-    Feature::for($user)->activate('real-estate');
 
     $this->actingAs($user);
 
@@ -229,12 +227,10 @@ it('shows add another account form without first account restriction', function 
         ->assertNoJavascriptErrors();
 });
 
-it('creates a real estate account during onboarding when feature is enabled', function () {
+it('creates a real estate account during onboarding by default', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,
     ]);
-
-    Feature::for($user)->activate('real-estate');
 
     $this->actingAs($user);
 

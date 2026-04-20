@@ -6,13 +6,11 @@ use App\Models\AccountBalance;
 use App\Models\RealEstateDetail;
 use App\Models\User;
 use Carbon\Carbon;
-use Laravel\Pennant\Feature;
 
 use function Pest\Laravel\actingAs;
 
 beforeEach(function () {
     $this->user = User::factory()->onboarded()->create();
-    Feature::for($this->user)->activate('real-estate');
     actingAs($this->user);
 });
 
