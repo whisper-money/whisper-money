@@ -10,6 +10,23 @@ test('login screen can be rendered', function () {
     $response->assertStatus(200);
 });
 
+test('login screen can be rendered with an intended destination in session', function () {
+    $response = $this
+        ->withSession(['url.intended' => route('dashboard')])
+        ->get(route('login'));
+
+    $response->assertSuccessful();
+});
+
+test('login screen stays available for returning users with an intended destination', function () {
+    $response = $this
+        ->withCookie('whisper_money_returning_user', '1')
+        ->withSession(['url.intended' => route('dashboard')])
+        ->get(route('login'));
+
+    $response->assertSuccessful();
+});
+
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->withoutTwoFactor()->create();
 
@@ -19,7 +36,9 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response
+        ->assertRedirect(route('dashboard', absolute: false))
+        ->assertCookie('whisper_money_returning_user');
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

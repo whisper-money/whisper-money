@@ -12,10 +12,14 @@ use App\Services\BudgetTransactionService;
 
 use function Pest\Laravel\actingAs;
 
+beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+});
+
 test('guests cannot access transactions page', function () {
     $response = $this->get(route('transactions.index'));
 
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('register'));
 });
 
 test('authenticated users can access transactions page', function () {
@@ -76,7 +80,7 @@ test('authenticated users can access categorize transactions page', function () 
 test('guests cannot access categorize transactions page', function () {
     $response = $this->get(route('transactions.categorize'));
 
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('register'));
 });
 
 test('users can update their own transaction category', function () {
@@ -765,5 +769,5 @@ test('categorize page does not return transactions from other users', function (
 test('guests are redirected from categorize page', function () {
     $response = $this->get(route('transactions.categorize'));
 
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('register'));
 });

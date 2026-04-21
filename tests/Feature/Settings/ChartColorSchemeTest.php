@@ -4,6 +4,10 @@ use App\Enums\ChartColorScheme;
 use App\Models\User;
 use App\Models\UserSetting;
 
+beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+});
+
 test('chart color scheme can be updated', function () {
     $user = User::factory()->create();
 
@@ -35,7 +39,7 @@ test('chart color scheme requires authentication', function () {
         'chart_color_scheme' => 'blue',
     ]);
 
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('register'));
 });
 
 test('chart color scheme creates setting when none exists', function () {

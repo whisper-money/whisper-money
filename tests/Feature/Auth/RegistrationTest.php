@@ -56,7 +56,9 @@ test('new users can register with force query when auth buttons are hidden', fun
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('onboarding', absolute: false));
+    $response
+        ->assertRedirect(route('onboarding', absolute: false))
+        ->assertCookie('whisper_money_returning_user');
 });
 
 test('new users can register', function () {
@@ -70,7 +72,9 @@ test('new users can register', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('onboarding', absolute: false));
+    $response
+        ->assertRedirect(route('onboarding', absolute: false))
+        ->assertCookie('whisper_money_returning_user');
 });
 
 test('new users store their detected timezone on registration', function () {

@@ -1,5 +1,9 @@
 <?php
 
+beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+});
+
 test('guests cannot access institutions route', function () {
     $this->getJson('/open-banking/institutions?country=ES')
         ->assertUnauthorized();
@@ -14,10 +18,10 @@ test('guests cannot access authorize route', function () {
 
 test('guests are redirected away from callback route', function () {
     $this->get('/open-banking/callback?code=test')
-        ->assertRedirect(route('login'));
+        ->assertRedirect(route('register'));
 });
 
 test('guests are redirected away from connections index', function () {
     $this->get('/settings/connections')
-        ->assertRedirect(route('login'));
+        ->assertRedirect(route('register'));
 });
