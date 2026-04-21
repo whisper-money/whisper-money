@@ -2713,11 +2713,17 @@ export default function Welcome({
                                     )}
                                 </p>
                                 <div className="flex flex-col gap-3 sm:flex-row">
-                                    <Link href="/register">
-                                        <Button className="h-12 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-8 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50">
-                                            {__('Get Started for Free')}
-                                        </Button>
-                                    </Link>
+                                    {hideAuthButtons ? (
+                                        <WaitlistForm />
+                                    ) : isMobile ? (
+                                        <InstallAppButton />
+                                    ) : (
+                                        <Link href="/register">
+                                            <Button className="h-12 cursor-pointer bg-gradient-to-t from-zinc-700 to-zinc-900 px-8 text-base text-white shadow-sm transition-all hover:from-zinc-800 hover:to-black hover:shadow-md dark:from-zinc-200 dark:to-zinc-300 dark:text-[#1C1C1A] hover:dark:from-zinc-50">
+                                                {__('Get Started for Free')}
+                                            </Button>
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         </div>

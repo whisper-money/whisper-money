@@ -6,6 +6,10 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
+beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+});
+
 test('registration screen can be rendered', function () {
     $response = $this->withoutVite()->get(route('register'));
 
