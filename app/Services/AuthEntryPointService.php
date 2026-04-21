@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
+use Laravel\Fortify\Features;
 use Symfony\Component\HttpFoundation\Cookie as HttpFoundationCookie;
 
 class AuthEntryPointService
@@ -12,9 +13,15 @@ class AuthEntryPointService
 
     private const COOKIE_MINUTES = 60 * 24 * 365 * 5;
 
+    public function __construct(public LandingAuthOverrideService $landingAuthOverrideService) {}
+
     public function guestRedirectRoute(Request $request): string
     {
-        if ($this->hasAuthenticatedBefore($request)) {
+        if (
+            $this->hasAuthenticatedBefore($request)
+            || ! Features::enabled(Features::registration())
+            || $this->landingAuthOverrideService->authButtonsHidden($request)
+        ) {
             return route('login');
         }
 
