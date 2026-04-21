@@ -5,6 +5,8 @@ Pattern: [thing] [action] [reason]. [next step].
 ACTIVE EVERY RESPONSE. No revert after many turns. No filler drift.
 Code/commits/PRs: normal. Off: "stop caveman" / "normal mode".
 
+- After creating a PR use `gh pr checks 123 --watch --fail-fast` to check CI every 10 sec, if something fails, fix it, and update the pr.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 
