@@ -2,6 +2,10 @@
 
 use App\Models\User;
 
+beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+});
+
 test('timezone can be backfilled for authenticated users without one', function () {
     $user = User::factory()->create(['timezone' => null]);
 
@@ -42,5 +46,5 @@ test('timezone backfill requires authentication', function () {
         'timezone' => 'Europe/Madrid',
     ]);
 
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('register'));
 });

@@ -3,8 +3,12 @@
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
 
-test('guests are redirected to login', function () {
-    $this->get(route('cashflow'))->assertRedirect(route('login'));
+beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+});
+
+test('guests are redirected to registration', function () {
+    $this->get(route('cashflow'))->assertRedirect(route('register'));
 });
 
 test('period prop is null when no query param given', function () {

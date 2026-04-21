@@ -7,6 +7,10 @@ use App\Models\Category;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 
+beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+});
+
 test('authenticated users can view their categories', function () {
     $user = User::factory()->create();
     $categories = Category::factory()->count(3)->create(['user_id' => $user->id]);
@@ -256,10 +260,10 @@ test('users cannot delete categories they do not own', function () {
 
 test('guests cannot access category management', function () {
     $response = $this->get(route('categories.index'));
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('register'));
 
     $response = $this->post(route('categories.store'), []);
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('register'));
 });
 
 test('default categories are created when user registers', function () {

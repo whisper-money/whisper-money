@@ -3,6 +3,10 @@
 use App\Models\User;
 use App\Models\UserSetting;
 
+beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+});
+
 test('net worth chart real estate preference can be updated', function () {
     $user = User::factory()->create();
 
@@ -34,7 +38,7 @@ test('net worth chart real estate preference requires authentication', function 
         'include_real_estate_in_net_worth_chart' => false,
     ]);
 
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect(route('register'));
 });
 
 test('net worth chart real estate preference creates setting when none exists', function () {

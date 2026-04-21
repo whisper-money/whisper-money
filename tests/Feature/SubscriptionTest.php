@@ -10,13 +10,16 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 
 beforeEach(function () {
-    config(['subscriptions.enabled' => true]);
+    config([
+        'landing.hide_auth_buttons' => false,
+        'subscriptions.enabled' => true,
+    ]);
 });
 
 test('guests cannot access subscription pages', function () {
-    $this->get(route('subscribe'))->assertRedirect(route('login'));
-    $this->get(route('subscribe.checkout'))->assertRedirect(route('login'));
-    $this->get(route('subscribe.success'))->assertRedirect(route('login'));
+    $this->get(route('subscribe'))->assertRedirect(route('register'));
+    $this->get(route('subscribe.checkout'))->assertRedirect(route('register'));
+    $this->get(route('subscribe.success'))->assertRedirect(route('register'));
 });
 
 test('users without subscription are redirected to paywall when accessing protected routes', function () {

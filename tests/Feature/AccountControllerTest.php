@@ -11,22 +11,24 @@ use App\Models\RealEstateDetail;
 use App\Models\User;
 
 beforeEach(function () {
+    config(['landing.hide_auth_buttons' => false]);
+
     $this->user = User::factory()->onboarded()->create();
     $this->actingAs($this->user);
 });
 
-test('guests are redirected to the login page for accounts index', function () {
+test('guests are redirected to the registration page for accounts index', function () {
     auth()->logout();
 
-    $this->get(route('accounts.list'))->assertRedirect(route('login'));
+    $this->get(route('accounts.list'))->assertRedirect(route('register'));
 });
 
-test('guests are redirected to the login page for account show', function () {
+test('guests are redirected to the registration page for account show', function () {
     auth()->logout();
 
     $account = Account::factory()->create(['user_id' => $this->user->id]);
 
-    $this->get(route('accounts.show', $account))->assertRedirect(route('login'));
+    $this->get(route('accounts.show', $account))->assertRedirect(route('register'));
 });
 
 test('authenticated users can visit the accounts index', function () {
