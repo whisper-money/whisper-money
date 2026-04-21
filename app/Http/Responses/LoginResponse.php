@@ -10,7 +10,7 @@ use Laravel\Fortify\Fortify;
 
 class LoginResponse implements LoginResponseContract
 {
-    public function __construct(public AuthEntryPointService $authEntryPointService) {}
+    public function __construct(private readonly AuthEntryPointService $authEntryPointService) {}
 
     /**
      * Create an HTTP response that represents the object.

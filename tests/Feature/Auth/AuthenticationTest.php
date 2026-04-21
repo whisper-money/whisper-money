@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use App\Services\AuthEntryPointService;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 
@@ -21,7 +20,7 @@ test('login screen can be rendered with an intended destination in session', fun
 
 test('login screen stays available for returning users with an intended destination', function () {
     $response = $this
-        ->withCookie(AuthEntryPointService::COOKIE_NAME, '1')
+        ->withCookie('whisper_money_returning_user', '1')
         ->withSession(['url.intended' => route('dashboard')])
         ->get(route('login'));
 
@@ -39,7 +38,7 @@ test('users can authenticate using the login screen', function () {
     $this->assertAuthenticated();
     $response
         ->assertRedirect(route('dashboard', absolute: false))
-        ->assertCookie(AuthEntryPointService::COOKIE_NAME);
+        ->assertCookie('whisper_money_returning_user');
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

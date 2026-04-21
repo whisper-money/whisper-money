@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RegisterResponse implements RegisterResponseContract
 {
-    public function __construct(public AuthEntryPointService $authEntryPointService) {}
+    public function __construct(private readonly AuthEntryPointService $authEntryPointService) {}
 
     public function toResponse($request): Response
     {

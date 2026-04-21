@@ -9,12 +9,15 @@ use Symfony\Component\HttpFoundation\Cookie as HttpFoundationCookie;
 
 class AuthEntryPointService
 {
-    public const COOKIE_NAME = 'whisper_money_returning_user';
+    private const COOKIE_NAME = 'whisper_money_returning_user';
 
     private const COOKIE_MINUTES = 60 * 24 * 365 * 5;
 
-    public function __construct(public LandingAuthOverrideService $landingAuthOverrideService) {}
+    public function __construct(private readonly LandingAuthOverrideService $landingAuthOverrideService) {}
 
+    /**
+     * @api
+     */
     public function guestRedirectRoute(Request $request): string
     {
         if (
@@ -33,7 +36,7 @@ class AuthEntryPointService
         Cookie::queue($this->makeReturningUserCookie());
     }
 
-    public function hasAuthenticatedBefore(Request $request): bool
+    private function hasAuthenticatedBefore(Request $request): bool
     {
         return filter_var($request->cookie(self::COOKIE_NAME), FILTER_VALIDATE_BOOL);
     }
