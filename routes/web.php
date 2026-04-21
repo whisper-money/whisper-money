@@ -20,13 +20,16 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\UserLeadController;
 use App\Models\Bank;
+use App\Services\LandingAuthOverrideService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
-Route::get('/', function () {
-    $user = request()->user();
+Route::get('/', function (Request $request, LandingAuthOverrideService $landingAuthOverrideService) {
+    $user = $request->user();
 
     $popularBanks = Cache::remember('popular-banks', now()->addDay(), function () {
         return Bank::query()
@@ -53,9 +56,15 @@ Route::get('/', function () {
             ->toArray();
     });
 
+    $hideAuthButtons = $landingAuthOverrideService->authButtonsHidden($request);
+
+    if ($landingAuthOverrideService->shouldQueueOverrideCookie($request)) {
+        Cookie::queue($landingAuthOverrideService->makeOverrideCookie());
+    }
+
     return Inertia::render('welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
-        'hideAuthButtons' => config('landing.hide_auth_buttons', false),
+        'canRegister' => Features::enabled(Features::registration()) && ! $hideAuthButtons,
+        'hideAuthButtons' => $hideAuthButtons,
         'popularBanks' => $popularBanks,
     ]);
 })->name('home');

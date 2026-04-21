@@ -8,6 +8,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
 use App\Http\Responses\TwoFactorLoginResponse;
 use App\Models\User;
+use App\Services\LandingAuthOverrideService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -57,9 +58,12 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
+        $landingAuthOverrideService = app(LandingAuthOverrideService::class);
+
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
             'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'canRegister' => Features::enabled(Features::registration()) && ! config('landing.hide_auth_buttons', false),
+            'canRegister' => Features::enabled(Features::registration())
+                && ! $landingAuthOverrideService->authButtonsHidden($request),
             'status' => $request->session()->get('status'),
         ]));
 
@@ -77,7 +81,7 @@ class FortifyServiceProvider extends ServiceProvider
         ]));
 
         Fortify::registerView(fn (Request $request) => Inertia::render('auth/register', [
-            'hideAuthButtons' => config('landing.hide_auth_buttons', false) && ! $request->boolean('force'),
+            'hideAuthButtons' => $landingAuthOverrideService->authButtonsHidden($request),
             'forcedRegistration' => $request->boolean('force'),
         ]));
 
