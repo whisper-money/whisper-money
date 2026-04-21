@@ -1,7 +1,7 @@
 <?php
 
+use App\Services\LandingAuthOverrideService;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -9,7 +9,9 @@ beforeEach(function () {
 });
 
 test('signed landing link unlocks auth buttons and queues override cookie', function () {
-    $signedUrl = URL::temporarySignedRoute('home', now()->addHour(), ['signup' => 1]).'&lang=es';
+    $signedUrl = 'https://dev.whisper.money.localhost:1355'
+        .app(LandingAuthOverrideService::class)->signedPath(now()->addHour())
+        .'&lang=es';
 
     $this->withoutVite()->get($signedUrl)
         ->assertOk()

@@ -2,11 +2,16 @@
 
 namespace App\Console\Commands;
 
+use App\Services\LandingAuthOverrideService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\URL;
 
 class GenerateLandingAuthLinkCommand extends Command
 {
+    public function __construct(private LandingAuthOverrideService $landingAuthOverrideService)
+    {
+        parent::__construct();
+    }
+
     protected $signature = 'landing:auth-link
         {--days=7 : Number of days before the link expires}';
 
@@ -22,9 +27,7 @@ class GenerateLandingAuthLinkCommand extends Command
             return self::FAILURE;
         }
 
-        $url = URL::temporarySignedRoute('home', now()->addDays($days), [
-            config('landing.auth_override.query_parameter', 'signup') => 1,
-        ]);
+        $url = $this->landingAuthOverrideService->generateSignedUrl($days);
 
         $this->line($url);
 
