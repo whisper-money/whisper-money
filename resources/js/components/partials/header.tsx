@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
+import { dashboard, login } from '@/routes';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
@@ -119,7 +119,7 @@ export default function Header({
                                 </Link>
                             ) : (
                                 <>
-                                    <Link href="/login">
+                                    <Link href={login({ query: { force: 1 } })}>
                                         <Button
                                             variant={'ghost'}
                                             size="sm"
@@ -227,7 +227,9 @@ export default function Header({
                                     </Link>
                                 ) : (
                                     <>
-                                        <Link href="/login">
+                                        <Link
+                                            href={login({ query: { force: 1 } })}
+                                        >
                                             <Button
                                                 variant={'ghost'}
                                                 className="cursor-pointer"

@@ -33,7 +33,7 @@ export default function Register({
 
     useEffect(() => {
         if (hideAuthButtons) {
-            router.visit(login());
+            router.visit(login({ query: { force: 1 } }));
         }
     }, [hideAuthButtons]);
 
@@ -153,7 +153,10 @@ export default function Register({
 
                         <div className="text-center text-sm text-muted-foreground">
                             {__('Already have an account?')}{' '}
-                            <TextLink href={login()} tabIndex={6}>
+                            <TextLink
+                                href={login({ query: { force: 1 } })}
+                                tabIndex={6}
+                            >
                                 {__('Log in')}
                             </TextLink>
                         </div>
