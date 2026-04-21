@@ -23,7 +23,6 @@ use App\Models\Bank;
 use App\Services\LandingAuthOverrideService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -57,10 +56,6 @@ Route::get('/', function (Request $request, LandingAuthOverrideService $landingA
     });
 
     $hideAuthButtons = $landingAuthOverrideService->authButtonsHidden($request);
-
-    if ($landingAuthOverrideService->shouldQueueOverrideCookie($request)) {
-        Cookie::queue($landingAuthOverrideService->makeOverrideCookie());
-    }
 
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()) && ! $hideAuthButtons,

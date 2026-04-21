@@ -33,29 +33,13 @@ class LandingAuthOverrideService
             return true;
         }
 
-        return $this->hasValidSignedOverride($request);
-    }
+        if (! $this->hasValidSignedOverride($request)) {
+            return false;
+        }
 
-    public function shouldQueueOverrideCookie(Request $request): bool
-    {
-        return config('landing.hide_auth_buttons', false)
-            && $this->hasValidSignedOverride($request)
-            && ! $this->hasOverrideCookie($request);
-    }
+        $this->queueOverrideCookie();
 
-    public function makeOverrideCookie(): HttpFoundationCookie
-    {
-        return Cookie::make(
-            $this->cookieName(),
-            '1',
-            (int) config('landing.auth_override.cookie_minutes', 60 * 24 * 7),
-            '/',
-            config('session.domain'),
-            config('session.secure'),
-            true,
-            false,
-            config('session.same_site', 'lax'),
-        );
+        return true;
     }
 
     public function generateSignedUrl(int $days): string
@@ -77,6 +61,26 @@ class LandingAuthOverrideService
         $signature = hash_hmac('sha256', $this->originalString('/', $parameters), $this->signingKey());
 
         return '/?'.Arr::query($parameters + ['signature' => $signature]);
+    }
+
+    private function queueOverrideCookie(): void
+    {
+        Cookie::queue($this->makeOverrideCookie());
+    }
+
+    private function makeOverrideCookie(): HttpFoundationCookie
+    {
+        return Cookie::make(
+            $this->cookieName(),
+            '1',
+            (int) config('landing.auth_override.cookie_minutes', 60 * 24 * 7),
+            '/',
+            config('session.domain'),
+            config('session.secure'),
+            true,
+            false,
+            config('session.same_site', 'lax'),
+        );
     }
 
     private function hasValidSignedOverride(Request $request): bool
