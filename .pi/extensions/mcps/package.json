@@ -1,0 +1,11 @@
+{
+    "name": "pi-mcp-bridge",
+    "private": true,
+    "description": "Project-local Pi extension that loads MCP servers from .mcp.json or opencode.json",
+    "type": "module",
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.29.0",
+        "@sinclair/typebox": "^0.34.49",
+        "zod": "^4.3.6"
+    }
+}
