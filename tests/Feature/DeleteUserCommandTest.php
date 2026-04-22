@@ -12,7 +12,9 @@ use App\Models\User;
 use App\Models\UserMailLog;
 use Laravel\Cashier\Subscription;
 
-test('deletes user and all associated data when confirmed', function () {
+test('marks user as deleted, preserves data, and prefixes email with timestamp when confirmed', function () {
+    $this->travelTo(now()->setDate(2026, 4, 22)->setTime(10, 51, 24));
+
     $user = User::factory()->onboarded()->create([
         'email' => 'test@example.com',
         'name' => 'Test User',
@@ -36,23 +38,25 @@ test('deletes user and all associated data when confirmed', function () {
 
     // Confirm deletion
     $this->artisan('user:delete', ['email' => 'test@example.com'])
-        ->expectsConfirmation("Are you sure you want to delete user 'Test User' (test@example.com) and all their data?", 'yes')
-        ->expectsOutput("User 'test@example.com' and all associated data have been deleted successfully.")
+        ->expectsConfirmation("Are you sure you want to mark user 'Test User' (test@example.com) as deleted? Their data will be preserved.", 'yes')
+        ->expectsOutput("User 'test@example.com' has been marked as deleted. Their data remains in the database.")
         ->assertSuccessful();
 
-    // Verify user is deleted
-    expect(User::query()->where('email', 'test@example.com')->exists())->toBeFalse();
+    $deletedUser = User::withTrashed()->find($user->id);
 
-    // Verify all associated data is deleted
-    expect(EncryptedMessage::query()->where('user_id', $user->id)->exists())->toBeFalse();
-    expect(Transaction::query()->where('user_id', $user->id)->exists())->toBeFalse();
-    expect(Account::query()->where('user_id', $user->id)->exists())->toBeFalse();
-    expect(AccountBalance::query()->where('account_id', $account->id)->exists())->toBeFalse();
-    expect(Category::query()->where('user_id', $user->id)->exists())->toBeFalse();
-    expect(AutomationRule::query()->where('user_id', $user->id)->exists())->toBeFalse();
-    expect(Label::query()->where('user_id', $user->id)->exists())->toBeFalse();
-    expect(UserMailLog::query()->where('user_id', $user->id)->exists())->toBeFalse();
-    expect(Bank::query()->where('user_id', $user->id)->exists())->toBeFalse();
+    expect(User::query()->where('email', 'test@example.com')->exists())->toBeFalse();
+    expect($deletedUser?->deleted_at)->not->toBeNull();
+    expect($deletedUser?->email)->toBe('20260422105124_test@example.com');
+
+    expect(EncryptedMessage::query()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(Transaction::query()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(Account::query()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(AccountBalance::query()->where('account_id', $account->id)->exists())->toBeTrue();
+    expect(Category::query()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(AutomationRule::query()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(Label::query()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(UserMailLog::query()->where('user_id', $user->id)->exists())->toBeTrue();
+    expect(Bank::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });
 
 test('shows error when user not found', function () {
@@ -68,7 +72,7 @@ test('cancels deletion when not confirmed', function () {
     ]);
 
     $this->artisan('user:delete', ['email' => 'test@example.com'])
-        ->expectsConfirmation("Are you sure you want to delete user 'Test User' (test@example.com) and all their data?", 'no')
+        ->expectsConfirmation("Are you sure you want to mark user 'Test User' (test@example.com) as deleted? Their data will be preserved.", 'no')
         ->expectsOutput('Deletion cancelled.')
         ->assertSuccessful();
 
@@ -76,21 +80,29 @@ test('cancels deletion when not confirmed', function () {
     expect(User::query()->where('email', 'test@example.com')->exists())->toBeTrue();
 });
 
-test('deletes user without associated data', function () {
+test('marks user as deleted without associated data', function () {
+    $this->travelTo(now()->setDate(2026, 4, 22)->setTime(10, 51, 24));
+
     $user = User::factory()->onboarded()->create([
         'email' => 'test@example.com',
         'name' => 'Test User',
     ]);
 
     $this->artisan('user:delete', ['email' => 'test@example.com'])
-        ->expectsConfirmation("Are you sure you want to delete user 'Test User' (test@example.com) and all their data?", 'yes')
-        ->expectsOutput("User 'test@example.com' and all associated data have been deleted successfully.")
+        ->expectsConfirmation("Are you sure you want to mark user 'Test User' (test@example.com) as deleted? Their data will be preserved.", 'yes')
+        ->expectsOutput("User 'test@example.com' has been marked as deleted. Their data remains in the database.")
         ->assertSuccessful();
 
+    $deletedUser = User::withTrashed()->find($user->id);
+
     expect(User::query()->where('email', 'test@example.com')->exists())->toBeFalse();
+    expect($deletedUser?->deleted_at)->not->toBeNull();
+    expect($deletedUser?->email)->toBe('20260422105124_test@example.com');
 });
 
 test('does not delete other users data', function () {
+    $this->travelTo(now()->setDate(2026, 4, 22)->setTime(10, 51, 24));
+
     $userToDelete = User::factory()->onboarded()->create([
         'email' => 'delete@example.com',
     ]);
@@ -103,11 +115,14 @@ test('does not delete other users data', function () {
     Account::factory()->create(['user_id' => $otherUser->id]);
 
     $this->artisan('user:delete', ['email' => 'delete@example.com'])
-        ->expectsConfirmation("Are you sure you want to delete user '{$userToDelete->name}' (delete@example.com) and all their data?", 'yes')
+        ->expectsConfirmation("Are you sure you want to mark user '{$userToDelete->name}' (delete@example.com) as deleted? Their data will be preserved.", 'yes')
         ->assertSuccessful();
 
-    // Verify only the target user is deleted
+    $deletedUser = User::withTrashed()->find($userToDelete->id);
+
     expect(User::query()->where('email', 'delete@example.com')->exists())->toBeFalse();
+    expect($deletedUser?->deleted_at)->not->toBeNull();
+    expect($deletedUser?->email)->toBe('20260422105124_delete@example.com');
     expect(User::query()->where('email', 'keep@example.com')->exists())->toBeTrue();
 
     // Verify other user's data is intact

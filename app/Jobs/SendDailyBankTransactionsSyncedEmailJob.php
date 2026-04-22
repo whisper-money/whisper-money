@@ -37,6 +37,10 @@ class SendDailyBankTransactionsSyncedEmailJob implements ShouldBeUnique, ShouldQ
 
     public function handle(): void
     {
+        if (! $this->user->canReceiveEmails()) {
+            return;
+        }
+
         $localReportDate = $this->localReportDate();
         $lastSentMailLog = UserMailLog::query()
             ->where('user_id', $this->user->id)

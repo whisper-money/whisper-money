@@ -42,6 +42,10 @@ class SendUpdateEmailJob implements ShouldQueue
 
     public function handle(): void
     {
+        if (! $this->user->canReceiveEmails()) {
+            return;
+        }
+
         if ($this->hasReceivedUpdate()) {
             return;
         }

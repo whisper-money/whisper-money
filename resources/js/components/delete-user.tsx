@@ -31,7 +31,7 @@ export default function DeleteUser() {
                 <HeadingSmall
                     title={__('Delete account')}
                     description={__(
-                        'Delete your account and all of its resources',
+                        'Mark your account as deleted and disable access',
                     )}
                 />
 
@@ -49,7 +49,7 @@ export default function DeleteUser() {
         <div className="space-y-6">
             <HeadingSmall
                 title={__('Delete account')}
-                description={__('Delete your account and all of its resources')}
+                description={__('Mark your account as deleted and disable access')}
             />
 
             <div className="space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">
@@ -79,7 +79,7 @@ export default function DeleteUser() {
                         </DialogTitle>
                         <DialogDescription>
                             {__(
-                                'Once your account is deleted, all of its resources\n                            and data will also be permanently deleted. Please\n                            enter your password to confirm you would like to\n                            permanently delete your account.',
+                                'Once your account is deleted, you will be signed out\n                            and your access will be disabled. Your data will\n                            remain in the database. Please enter your password\n                            to confirm you would like to mark your account as\n                            deleted.',
                             )}
                         </DialogDescription>
 

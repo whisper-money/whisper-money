@@ -55,6 +55,16 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         $startTime = microtime(true);
         $syncedAt = now();
 
+        $connection->loadMissing('user');
+
+        if (! $connection->user) {
+            Log::info('Banking connection belongs to deleted user, skipping sync', ['connection_id' => $connection->id]);
+
+            $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: ['reason' => 'deleted_user']);
+
+            return;
+        }
+
         if ($connection->isEnableBanking() && $connection->isExpired()) {
             $connection->update(['status' => BankingConnectionStatus::Expired]);
             Log::info('Banking connection expired, skipping sync', ['connection_id' => $connection->id]);
@@ -83,7 +93,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             } else {
                 $metadata = $this->syncEnableBanking($connection, $transactionSync, $balanceSync, $isFirstSync);
 
-                if (! $isFirstSync) {
+                if (! $isFirstSync && $connection->user->canReceiveEmails()) {
                     SendDailyBankTransactionsSyncedEmailJob::dispatch(
                         $connection->user,
                         $syncedAt->toDateString(),
@@ -141,7 +151,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'consecutive_sync_failures' => self::MAX_SCHEDULED_RETRIES + 1,
         ]);
 
-        if ($this->isApiKeyProvider($connection)) {
+        if ($this->isApiKeyProvider($connection) && $connection->user?->canReceiveEmails()) {
             Mail::to($connection->user)->send(new BankingConnectionAuthFailedEmail(
                 $connection->user,
                 $connection,

@@ -24,6 +24,10 @@ class SendWelcomeEmailJob implements ShouldQueue
 
     public function handle(): void
     {
+        if (! $this->user->canReceiveEmails()) {
+            return;
+        }
+
         if ($this->user->hasReceivedEmail(DripEmailType::Welcome)) {
             return;
         }

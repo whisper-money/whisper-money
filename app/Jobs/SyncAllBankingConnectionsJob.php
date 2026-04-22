@@ -21,6 +21,7 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
     public function handle(): void
     {
         BankingConnection::query()
+            ->whereHas('user')
             ->where(function ($query) {
                 $query->where('status', BankingConnectionStatus::Active)
                     ->orWhere(function ($query) {

@@ -21,6 +21,7 @@ class CancelFreeEnableBankingConnectionsCommand extends Command
 
         $connections = BankingConnection::query()
             ->with(['user', 'accounts'])
+            ->whereHas('user')
             ->where('provider', 'enablebanking')
             ->where('status', '!=', BankingConnectionStatus::Revoked)
             ->where('created_at', '<=', $cutoff)
@@ -57,10 +58,12 @@ class CancelFreeEnableBankingConnectionsCommand extends Command
                     $revoked++;
                 }
 
-                Mail::to($user)->send(new EnableBankingConnectionsCancelledEmail(
-                    $user,
-                    $userConnections->count(),
-                ));
+                if ($user->canReceiveEmails()) {
+                    Mail::to($user)->send(new EnableBankingConnectionsCancelledEmail(
+                        $user,
+                        $userConnections->count(),
+                    ));
+                }
             });
 
         $this->info("Revoked {$revoked} Enable Banking connection(s). Skipped paid users: {$skipped}.");

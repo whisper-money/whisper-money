@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class DeleteUserCommand extends Command
 {
@@ -20,7 +19,7 @@ class DeleteUserCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Delete a user and all their associated data';
+    protected $description = 'Mark a user as deleted while preserving their data';
 
     /**
      * Execute the console command.
@@ -29,7 +28,7 @@ class DeleteUserCommand extends Command
     {
         $email = $this->argument('email');
 
-        $user = User::query()->where('email', $email)->first();
+        $user = User::withTrashed()->where('email', $email)->first();
 
         if (! $user) {
             $this->error("User with email '{$email}' not found.");
@@ -37,47 +36,27 @@ class DeleteUserCommand extends Command
             return self::FAILURE;
         }
 
-        // Check for active subscriptions
+        if ($user->trashed()) {
+            $this->info("User '{$email}' is already marked as deleted.");
+
+            return self::SUCCESS;
+        }
+
         if ($user->subscribed('default')) {
             $this->error('Cannot delete user with an active subscription. Please cancel the subscription first.');
 
             return self::FAILURE;
         }
 
-        if (! $this->confirm("Are you sure you want to delete user '{$user->name}' ({$user->email}) and all their data?")) {
+        if (! $this->confirm("Are you sure you want to mark user '{$user->name}' ({$user->email}) as deleted? Their data will be preserved.")) {
             $this->info('Deletion cancelled.');
 
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($user) {
-            // Delete account balances through accounts
-            foreach ($user->accounts as $account) {
-                $account->balances()->delete();
-            }
+        $user->markAsDeleted();
 
-            // Delete all related data
-            $user->encryptedMessage()->delete();
-            $user->transactions()->delete();
-            $user->accounts()->delete();
-            $user->categories()->delete();
-            $user->automationRules()->delete();
-            $user->labels()->delete();
-            $user->mailLogs()->delete();
-
-            // Delete user's banks
-            DB::table('banks')->where('user_id', $user->id)->delete();
-
-            // Delete Cashier subscription data if exists
-            if ($user->subscriptions()->exists()) {
-                $user->subscriptions()->delete();
-            }
-
-            // Delete the user
-            $user->delete();
-        });
-
-        $this->info("User '{$email}' and all associated data have been deleted successfully.");
+        $this->info("User '{$email}' has been marked as deleted. Their data remains in the database.");
 
         return self::SUCCESS;
     }
