@@ -9,7 +9,7 @@ use App\Models\User;
 // =============================================================================
 
 it('redirects new registration to email verification', function () {
-    $page = visit('/register');
+    $page = visit('/register?force=1');
 
     $page->assertSee('Create an account')
         ->fill('name', 'Test Onboarding User')

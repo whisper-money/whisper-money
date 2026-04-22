@@ -30,6 +30,10 @@ export default function Login({
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
+    const forceRegistration =
+        typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('force') === '1';
+
     useEffect(() => {
         clearKey();
 
@@ -135,7 +139,14 @@ export default function Login({
                         {canRegister && (
                             <div className="text-center text-sm text-muted-foreground">
                                 {__("Don't have an account?")}{' '}
-                                <TextLink href={register()} tabIndex={5}>
+                                <TextLink
+                                    href={
+                                        forceRegistration
+                                            ? register({ query: { force: 1 } })
+                                            : register()
+                                    }
+                                    tabIndex={5}
+                                >
                                     {__('Sign up')}
                                 </TextLink>
                             </div>

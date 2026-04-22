@@ -2,9 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Laravel\Cashier\Subscription;
 
 class DeleteUserCommand extends Command
 {
@@ -20,16 +21,16 @@ class DeleteUserCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Delete a user and all their associated data';
+    protected $description = 'Mark a user as deleted while preserving their data';
 
     /**
      * Execute the console command.
      */
-    public function handle(): int
+    public function handle(DisconnectBankingConnection $disconnectBankingConnection): int
     {
         $email = $this->argument('email');
 
-        $user = User::query()->where('email', $email)->first();
+        $user = User::withTrashed()->where('email', $email)->first();
 
         if (! $user) {
             $this->error("User with email '{$email}' not found.");
@@ -37,48 +38,75 @@ class DeleteUserCommand extends Command
             return self::FAILURE;
         }
 
-        // Check for active subscriptions
-        if ($user->subscribed('default')) {
-            $this->error('Cannot delete user with an active subscription. Please cancel the subscription first.');
+        if ($user->trashed()) {
+            $this->info("User '{$email}' is already marked as deleted.");
 
-            return self::FAILURE;
+            return self::SUCCESS;
         }
 
-        if (! $this->confirm("Are you sure you want to delete user '{$user->name}' ({$user->email}) and all their data?")) {
+        if (! $this->confirm("Are you sure you want to mark user '{$user->name}' ({$user->email}) as deleted? Their data will be preserved.")) {
             $this->info('Deletion cancelled.');
 
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($user) {
-            // Delete account balances through accounts
-            foreach ($user->accounts as $account) {
-                $account->balances()->delete();
-            }
+        $subscription = $this->activeSubscription($user);
+        $enableBankingConnections = $user->bankingConnections()
+            ->with('accounts')
+            ->where('provider', 'enablebanking')
+            ->get();
 
-            // Delete all related data
-            $user->encryptedMessage()->delete();
-            $user->transactions()->delete();
-            $user->accounts()->delete();
-            $user->categories()->delete();
-            $user->automationRules()->delete();
-            $user->labels()->delete();
-            $user->mailLogs()->delete();
+        if ($subscription && ! $this->confirm("User '{$user->email}' has an active Stripe subscription. Cancel it before deleting the user?")) {
+            $this->info('Deletion cancelled.');
 
-            // Delete user's banks
-            DB::table('banks')->where('user_id', $user->id)->delete();
+            return self::SUCCESS;
+        }
 
-            // Delete Cashier subscription data if exists
-            if ($user->subscriptions()->exists()) {
-                $user->subscriptions()->delete();
-            }
+        if ($enableBankingConnections->isNotEmpty() && ! $this->confirm("User '{$user->email}' has {$enableBankingConnections->count()} Enable Banking connection(s). Revoke them and keep linked accounts as manual accounts?")) {
+            $this->info('Deletion cancelled.');
 
-            // Delete the user
-            $user->delete();
-        });
+            return self::SUCCESS;
+        }
 
-        $this->info("User '{$email}' and all associated data have been deleted successfully.");
+        if ($subscription) {
+            $this->cancelSubscription($user, $subscription);
+            $this->info("Cancelled active Stripe subscription for '{$user->email}'.");
+        }
+
+        foreach ($enableBankingConnections as $connection) {
+            $disconnectBankingConnection->handle($connection, deleteAccounts: false);
+        }
+
+        if ($enableBankingConnections->isNotEmpty()) {
+            $this->info("Revoked {$enableBankingConnections->count()} Enable Banking connection(s) for '{$user->email}'.");
+        }
+
+        $user->markAsDeleted();
+
+        $this->info("User '{$email}' has been marked as deleted. Their data remains in the database.");
 
         return self::SUCCESS;
+    }
+
+    private function activeSubscription(User $user): ?Subscription
+    {
+        $subscription = $user->subscription('default');
+
+        if (! $subscription || ! $subscription->valid()) {
+            return null;
+        }
+
+        return $subscription;
+    }
+
+    private function cancelSubscription(User $user, Subscription $subscription): void
+    {
+        if ($user->hasStripeId()) {
+            $subscription->cancelNow();
+
+            return;
+        }
+
+        $subscription->markAsCanceled();
     }
 }

@@ -3,7 +3,7 @@
 use App\Models\User;
 
 it('can register a new user', function () {
-    $page = visit('/register');
+    $page = visit('/register?force=1');
 
     $page->assertSee('Create an account')
         ->fill('name', 'Test User')
@@ -22,7 +22,7 @@ it('can register a new user', function () {
 });
 
 it('shows validation errors for invalid registration', function () {
-    $page = visit('/register');
+    $page = visit('/register?force=1');
 
     $page->assertSee('Create an account')
         ->fill('name', 'Test User')
@@ -73,19 +73,16 @@ it('shows validation error for invalid login credentials', function () {
         ->assertNoJavascriptErrors();
 });
 
-it('can navigate from login to register', function () {
-    $page = visit('/login');
+it('can open the register page with the force query', function () {
+    $page = visit('/register?force=1');
 
-    $page->assertSee('Log in to your account')
-        ->click('Sign up')
-        ->wait(1)
-        ->assertSee('Create an account')
+    $page->assertSee('Create an account')
         ->assertPathIs('/register')
         ->assertNoJavascriptErrors();
 });
 
 it('can navigate from register to login', function () {
-    $page = visit('/register');
+    $page = visit('/register?force=1');
 
     $page->assertSee('Create an account')
         ->click('Log in')

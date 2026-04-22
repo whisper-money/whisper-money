@@ -64,6 +64,28 @@ test('command dispatches jobs for all users', function () {
     }
 });
 
+test('command skips deleted users', function () {
+    $activeUser = User::factory()->create();
+    $deletedUser = User::factory()->create();
+    $deletedUser->delete();
+
+    artisan('email:update', [
+        'view' => 'test-update',
+        'identifier' => 'test-2026',
+        '--force' => true,
+    ])->assertSuccessful();
+
+    Queue::assertPushed(SendUpdateEmailJob::class, function ($job) use ($activeUser) {
+        return $job->user->id === $activeUser->id;
+    });
+
+    Queue::assertNotPushed(SendUpdateEmailJob::class, function ($job) use ($deletedUser) {
+        return $job->user->id === $deletedUser->id;
+    });
+
+    Queue::assertCount(1);
+});
+
 test('command excludes demo account when flag is set', function () {
     $regularUser = User::factory()->create();
     $demoUser = User::factory()->create(['email' => config('app.demo.email')]);

@@ -80,6 +80,19 @@ test('users can not authenticate with invalid password', function () {
     $this->assertGuest();
 });
 
+test('deleted users can not authenticate', function () {
+    $user = User::factory()->withoutTwoFactor()->create();
+    $user->delete();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response->assertSessionHasErrors('email');
+    $this->assertGuest();
+});
+
 test('users can logout', function () {
     $user = User::factory()->create();
 

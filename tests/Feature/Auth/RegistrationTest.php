@@ -154,3 +154,25 @@ test('new users are auto-verified when email verification is disabled', function
 
     expect($user->hasVerifiedEmail())->toBeTrue();
 });
+
+test('new users can register with the email of a deleted user', function () {
+    Queue::fake();
+    $this->travelTo(now()->setDate(2026, 4, 22)->setTime(10, 9, 56));
+
+    $deletedUser = User::factory()->create(['email' => 'test@example.com']);
+    $deletedUser->markAsDeleted();
+
+    $response = $this->post(route('register.store'), [
+        'name' => 'New User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('onboarding', absolute: false));
+
+    expect(User::query()->where('email', 'test@example.com')->count())->toBe(1)
+        ->and(User::withTrashed()->find($deletedUser->id)?->email)
+        ->toBe('20260422100956_test@example.com');
+});

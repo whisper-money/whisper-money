@@ -12,8 +12,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Pennant\Concerns\HasFeatures;
@@ -21,7 +24,7 @@ use Laravel\Pennant\Concerns\HasFeatures;
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use Billable, HasFactory, HasFeatures, HasUuids, Notifiable, TwoFactorAuthenticatable;
+    use Billable, HasFactory, HasFeatures, HasUuids, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -172,8 +175,59 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->locale ?? 'en';
     }
 
+    public function isDeleted(): bool
+    {
+        return $this->trashed();
+    }
+
+    public function markAsDeleted(): void
+    {
+        if ($this->trashed()) {
+            return;
+        }
+
+        DB::transaction(function () {
+            $this->forceFill([
+                'email' => $this->deletedEmail(),
+            ])->saveQuietly();
+
+            $this->delete();
+        });
+    }
+
+    public function canReceiveEmails(): bool
+    {
+        return ! $this->isDeleted();
+    }
+
+    public function routeNotificationForMail(?Notification $notification = null): ?string
+    {
+        if (! $this->canReceiveEmails()) {
+            return null;
+        }
+
+        return $this->email;
+    }
+
     public function sendEmailVerificationNotification(): void
     {
+        if (! $this->canReceiveEmails()) {
+            return;
+        }
+
         $this->notify(new VerifyEmailNotification);
+    }
+
+    private function deletedEmail(): string
+    {
+        $timestamp = $this->freshTimestamp()->format('YmdHis');
+        $originalEmail = $this->getOriginal('email');
+        $candidate = "{$timestamp}_{$originalEmail}";
+
+        if (! static::withTrashed()->where('email', $candidate)->exists()) {
+            return $candidate;
+        }
+
+        return "{$timestamp}_{$this->getKey()}_{$originalEmail}";
     }
 }

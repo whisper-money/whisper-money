@@ -86,7 +86,11 @@ test('email verification status is unchanged when the email address is unchanged
 });
 
 test('user can delete their account', function () {
+    $this->travelTo(now()->setDate(2026, 4, 22)->setTime(10, 51, 24));
+
     $user = User::factory()->create();
+
+    $originalEmail = $user->email;
 
     $response = $this
         ->actingAs($user)
@@ -98,8 +102,12 @@ test('user can delete their account', function () {
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('home'));
 
+    $deletedUser = User::withTrashed()->find($user->id);
+
     $this->assertGuest();
-    expect($user->fresh())->toBeNull();
+    expect(User::query()->find($user->id))->toBeNull();
+    expect($deletedUser?->deleted_at)->not->toBeNull();
+    expect($deletedUser?->email)->toBe('20260422105124_'.$originalEmail);
 });
 
 test('correct password must be provided to delete account', function () {

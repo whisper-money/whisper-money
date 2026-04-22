@@ -36,3 +36,13 @@ test('welcome email is not sent if already received', function () {
 
     Mail::assertNotQueued(WelcomeEmail::class);
 });
+
+test('welcome email is not sent to deleted users', function () {
+    $user = User::factory()->create();
+    $user->delete();
+
+    SendWelcomeEmailJob::dispatchSync($user);
+
+    Mail::assertNotQueued(WelcomeEmail::class);
+    expect(UserMailLog::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
