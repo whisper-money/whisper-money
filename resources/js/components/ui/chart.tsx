@@ -357,12 +357,12 @@ const ChartTooltipContent = React.forwardRef<
             <div
                 ref={ref}
                 className={cn(
-                    'border-border/50 bg-background grid min-w-[8rem] max-w-[min(20rem,calc(100vw-2rem))] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl',
+                    'border-border/50 bg-background grid grid-cols-[minmax(0,1fr)] min-w-[8rem] max-w-[min(20rem,calc(100vw-2rem))] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl',
                     className,
                 )}
             >
                 {!nestLabel ? tooltipLabel : null}
-                <div className="grid gap-1.5">
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
                     {payload.map(
                         (item: TooltipPayloadItem, index: number) => {
                             const key = `${nameKey || item.name || item.dataKey || 'value'}`;
@@ -471,7 +471,7 @@ const ChartTooltipContent = React.forwardRef<
                         const totalLabel = hasLiabilities ? 'Net Worth' : 'Total';
 
                         return (
-                            <div className="border-border/50 flex flex-col gap-1 border-t pt-1.5">
+                            <div className="border-border/50 flex flex-col gap-1 border-t pt-1.5 min-w-0">
                                 {hasLiabilities && displayCurrency && liabilities.map((liability, index) => (
                                     <div key={index} className="flex min-w-0 justify-between gap-2">
                                         <div className="flex min-w-0 items-center gap-2">
