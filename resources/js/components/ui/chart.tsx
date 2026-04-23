@@ -357,7 +357,7 @@ const ChartTooltipContent = React.forwardRef<
             <div
                 ref={ref}
                 className={cn(
-                    'border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl',
+                    'border-border/50 bg-background grid min-w-[8rem] max-w-[min(20rem,calc(100vw-2rem))] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl',
                     className,
                 )}
             >
@@ -406,23 +406,23 @@ const ChartTooltipContent = React.forwardRef<
                                             ) : null}
                                             <div
                                                 className={cn(
-                                                    'flex flex-1 gap-4 justify-between leading-none',
+                                                    'flex flex-1 min-w-0 gap-4 justify-between leading-none',
                                                     nestLabel ? 'items-end' : '',
                                                 )}
                                             >
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex min-w-0 items-center gap-2">
                                                     {nestLabel
                                                         ? tooltipLabel
                                                         : <div style={{ backgroundColor: item.color }} className={cn([
-                                                            'size-2.5 rounded-xs'
+                                                            'size-2.5 shrink-0 rounded-xs'
                                                         ])}></div>}
-                                                    <span className="text-muted-foreground ml-0">
+                                                    <span className="text-muted-foreground ml-0 truncate">
                                                         {itemConfig?.label ||
                                                             item.name}
                                                     </span>
                                                 </div>
                                                 {item.value !== undefined && (
-                                                    <span className="text-foreground font-mono font-medium tabular-nums">
+                                                    <span className="text-foreground font-mono font-medium tabular-nums shrink-0 whitespace-nowrap">
                                                         {(() => {
                                                             const originalKey = `${accountId}_original`;
                                                             const original = item.payload?.[originalKey] as { amount: number; currency_code: string } | undefined;
@@ -473,17 +473,17 @@ const ChartTooltipContent = React.forwardRef<
                         return (
                             <div className="border-border/50 flex flex-col gap-1 border-t pt-1.5">
                                 {hasLiabilities && displayCurrency && liabilities.map((liability, index) => (
-                                    <div key={index} className="flex justify-between gap-2">
-                                        <div className="flex items-center gap-2">
+                                    <div key={index} className="flex min-w-0 justify-between gap-2">
+                                        <div className="flex min-w-0 items-center gap-2">
                                             <div
                                                 className="size-2.5 shrink-0 rounded-xs"
                                                 style={{ backgroundColor: netWorthMode?.liabilityDotColor ?? 'var(--color-destructive)' }}
                                             />
-                                            <span className="text-muted-foreground font-medium">
+                                            <span className="text-muted-foreground truncate font-medium">
                                                 {netWorthMode?.liabilityTypeLabel}: {liability.name}
                                             </span>
                                         </div>
-                                        <span className="text-foreground font-mono font-medium tabular-nums">
+                                        <span className="text-foreground font-mono font-medium tabular-nums shrink-0 whitespace-nowrap">
                                             {isPrivacyModeEnabled
                                                 ? formatCurrencyWithCode(-liability.amount, displayCurrency, locale).replace(/\d/g, '*')
                                                 : formatCurrencyWithCode(-liability.amount, displayCurrency, locale)}
