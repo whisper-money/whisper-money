@@ -9,7 +9,7 @@ import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { AccountTypeIcon } from './account-type-icon';
 import { AmountTrendIndicator } from './amount-trend-indicator';
@@ -47,6 +47,40 @@ export function AccountBalanceCard({
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
         useChartColors();
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
+    const [tooltipHidden, setTooltipHidden] = useState(false);
+    const chartWrapperRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        // Only apply tap-to-dismiss behavior on touch devices. On devices
+        // with hover support (desktop), the default hover behavior is fine.
+        if (
+            typeof window === 'undefined' ||
+            typeof window.matchMedia !== 'function'
+        ) {
+            return;
+        }
+
+        const hoverQuery = window.matchMedia('(hover: hover)');
+        if (hoverQuery.matches) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            const wrapper = chartWrapperRef.current;
+            if (!wrapper) return;
+            const insideChart = wrapper.contains(event.target as Node);
+
+            if (insideChart) {
+                setTooltipHidden(false);
+                return;
+            }
+
+            setTooltipHidden(true);
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
+        };
+    }, []);
 
     const hasMortgage = !!linkedLoanMetrics;
 
@@ -203,38 +237,159 @@ export function AccountBalanceCard({
                             currencyCode={currencyCode}
                         />
                     </div>
-                    <div className="h-[70px] w-full max-w-[250px] flex-1">
+                    <div
+                        ref={chartWrapperRef}
+                        className="h-[70px] w-full max-w-[250px] flex-1"
+                    >
                         <ResponsiveContainer
                             width="100%"
                             height="100%"
                             initialDimension={{ width: 1, height: 1 }}
                         >
                             <LineChart data={sparklineData}>
-                                <Tooltip
-                                    content={({ active, payload }) => {
-                                        if (!active || !payload?.length)
-                                            return null;
-                                        const data = payload[0].payload as {
-                                            date: string;
-                                            value: number;
-                                            investedAmount?: number | null;
-                                            mortgageOwed?: number;
-                                        };
+                                {!tooltipHidden && (
+                                    <Tooltip
+                                        content={({ active, payload }) => {
+                                            if (!active || !payload?.length)
+                                                return null;
+                                            const data = payload[0].payload as {
+                                                date: string;
+                                                value: number;
+                                                investedAmount?: number | null;
+                                                mortgageOwed?: number;
+                                            };
 
-                                        if (equityData) {
-                                            const equity =
-                                                data.value -
-                                                (data.mortgageOwed ?? 0);
+                                            if (equityData) {
+                                                const equity =
+                                                    data.value -
+                                                    (data.mortgageOwed ?? 0);
+                                                return (
+                                                    <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+                                                        <p className="mb-1 text-muted-foreground">
+                                                            {data.date}
+                                                        </p>
+                                                        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                                                            <span className="text-muted-foreground">
+                                                                {__(
+                                                                    'Market Value',
+                                                                )}
+                                                            </span>
+                                                            <span className="text-right font-mono font-medium text-foreground tabular-nums">
+                                                                <AmountDisplay
+                                                                    amountInCents={
+                                                                        data.value
+                                                                    }
+                                                                    currencyCode={
+                                                                        currencyCode
+                                                                    }
+                                                                />
+                                                            </span>
+                                                            <span className="text-muted-foreground">
+                                                                {__(
+                                                                    'Mortgage Owed',
+                                                                )}
+                                                            </span>
+                                                            <span className="text-right font-mono text-muted-foreground tabular-nums">
+                                                                <AmountDisplay
+                                                                    amountInCents={
+                                                                        data.mortgageOwed ??
+                                                                        0
+                                                                    }
+                                                                    currencyCode={
+                                                                        currencyCode
+                                                                    }
+                                                                />
+                                                            </span>
+                                                            <span className="text-muted-foreground">
+                                                                {__('Equity')}
+                                                            </span>
+                                                            <span
+                                                                className={`text-right font-mono whitespace-nowrap tabular-nums ${equity >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                            >
+                                                                <AmountDisplay
+                                                                    amountInCents={
+                                                                        equity
+                                                                    }
+                                                                    currencyCode={
+                                                                        currencyCode
+                                                                    }
+                                                                />
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            const invested =
+                                                supportsInvestedAmount(account)
+                                                    ? (data.investedAmount ??
+                                                      null)
+                                                    : null;
+                                            const gain =
+                                                invested !== null
+                                                    ? data.value - invested
+                                                    : null;
                                             return (
                                                 <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
                                                     <p className="mb-1 text-muted-foreground">
                                                         {data.date}
                                                     </p>
-                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                                                        <span className="text-muted-foreground">
-                                                            {__('Market Value')}
-                                                        </span>
-                                                        <span className="text-right font-mono font-medium text-foreground tabular-nums">
+                                                    {invested !== null ? (
+                                                        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                                                            <span className="text-muted-foreground">
+                                                                {__('Balance')}
+                                                            </span>
+                                                            <span className="text-right font-mono font-medium text-foreground tabular-nums">
+                                                                <AmountDisplay
+                                                                    amountInCents={
+                                                                        data.value
+                                                                    }
+                                                                    currencyCode={
+                                                                        currencyCode
+                                                                    }
+                                                                />
+                                                            </span>
+                                                            <span className="text-muted-foreground">
+                                                                {__('Invested')}
+                                                            </span>
+                                                            <span className="text-right font-mono text-muted-foreground tabular-nums">
+                                                                <AmountDisplay
+                                                                    amountInCents={
+                                                                        invested
+                                                                    }
+                                                                    currencyCode={
+                                                                        currencyCode
+                                                                    }
+                                                                />
+                                                            </span>
+                                                            {gain !== null && (
+                                                                <>
+                                                                    <span className="text-muted-foreground">
+                                                                        {__(
+                                                                            'Gain/loss',
+                                                                        )}
+                                                                    </span>
+                                                                    <span
+                                                                        className={`text-right font-mono whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                                                                    >
+                                                                        {gain >=
+                                                                        0
+                                                                            ? '+'
+                                                                            : ''}
+                                                                        <AmountDisplay
+                                                                            amountInCents={
+                                                                                gain
+                                                                            }
+                                                                            currencyCode={
+                                                                                currencyCode
+                                                                            }
+                                                                        />
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="font-mono font-medium text-foreground tabular-nums">
                                                             <AmountDisplay
                                                                 amountInCents={
                                                                     data.value
@@ -243,126 +398,13 @@ export function AccountBalanceCard({
                                                                     currencyCode
                                                                 }
                                                             />
-                                                        </span>
-                                                        <span className="text-muted-foreground">
-                                                            {__(
-                                                                'Mortgage Owed',
-                                                            )}
-                                                        </span>
-                                                        <span className="text-right font-mono text-muted-foreground tabular-nums">
-                                                            <AmountDisplay
-                                                                amountInCents={
-                                                                    data.mortgageOwed ??
-                                                                    0
-                                                                }
-                                                                currencyCode={
-                                                                    currencyCode
-                                                                }
-                                                            />
-                                                        </span>
-                                                        <span className="text-muted-foreground">
-                                                            {__('Equity')}
-                                                        </span>
-                                                        <span
-                                                            className={`text-right font-mono whitespace-nowrap tabular-nums ${equity >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                                                        >
-                                                            <AmountDisplay
-                                                                amountInCents={
-                                                                    equity
-                                                                }
-                                                                currencyCode={
-                                                                    currencyCode
-                                                                }
-                                                            />
-                                                        </span>
-                                                    </div>
+                                                        </p>
+                                                    )}
                                                 </div>
                                             );
-                                        }
-
-                                        const invested = supportsInvestedAmount(
-                                            account,
-                                        )
-                                            ? (data.investedAmount ?? null)
-                                            : null;
-                                        const gain =
-                                            invested !== null
-                                                ? data.value - invested
-                                                : null;
-                                        return (
-                                            <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
-                                                <p className="mb-1 text-muted-foreground">
-                                                    {data.date}
-                                                </p>
-                                                {invested !== null ? (
-                                                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                                                        <span className="text-muted-foreground">
-                                                            {__('Balance')}
-                                                        </span>
-                                                        <span className="text-right font-mono font-medium text-foreground tabular-nums">
-                                                            <AmountDisplay
-                                                                amountInCents={
-                                                                    data.value
-                                                                }
-                                                                currencyCode={
-                                                                    currencyCode
-                                                                }
-                                                            />
-                                                        </span>
-                                                        <span className="text-muted-foreground">
-                                                            {__('Invested')}
-                                                        </span>
-                                                        <span className="text-right font-mono text-muted-foreground tabular-nums">
-                                                            <AmountDisplay
-                                                                amountInCents={
-                                                                    invested
-                                                                }
-                                                                currencyCode={
-                                                                    currencyCode
-                                                                }
-                                                            />
-                                                        </span>
-                                                        {gain !== null && (
-                                                            <>
-                                                                <span className="text-muted-foreground">
-                                                                    {__(
-                                                                        'Gain/loss',
-                                                                    )}
-                                                                </span>
-                                                                <span
-                                                                    className={`text-right font-mono whitespace-nowrap tabular-nums ${gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
-                                                                >
-                                                                    {gain >= 0
-                                                                        ? '+'
-                                                                        : ''}
-                                                                    <AmountDisplay
-                                                                        amountInCents={
-                                                                            gain
-                                                                        }
-                                                                        currencyCode={
-                                                                            currencyCode
-                                                                        }
-                                                                    />
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <p className="font-mono font-medium text-foreground tabular-nums">
-                                                        <AmountDisplay
-                                                            amountInCents={
-                                                                data.value
-                                                            }
-                                                            currencyCode={
-                                                                currencyCode
-                                                            }
-                                                        />
-                                                    </p>
-                                                )}
-                                            </div>
-                                        );
-                                    }}
-                                />
+                                        }}
+                                    />
+                                )}
 
                                 <Line
                                     type="monotone"
