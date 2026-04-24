@@ -272,6 +272,18 @@ test('paywall shows canUseFreePlan false when user has a bank connection', funct
         );
 });
 
+test('taxRates returns configured stripe tax rate ids', function () {
+    config(['subscriptions.tax_rates' => ['txr_test_1', 'txr_test_2']]);
+
+    $user = User::factory()->create();
+
+    expect($user->taxRates())->toBe(['txr_test_1', 'txr_test_2']);
+});
+
+test('taxRates config defaults to the production tax rate id', function () {
+    expect(config('subscriptions.tax_rates'))->toContain('txr_1TPfzrLRCmKA3oWMNWmkQeq2');
+});
+
 test('billing portal creates stripe customer when user has no stripe id', function () {
     $user = Mockery::mock(User::class)->shouldIgnoreMissing();
     $user->shouldReceive('isDemoAccount')->andReturn(false);

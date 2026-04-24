@@ -131,6 +131,18 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tax Rates
+    |--------------------------------------------------------------------------
+    |
+    | Stripe tax rate IDs applied to every subscription created via Cashier.
+    | Configure tax rates in your Stripe dashboard and reference them here.
+    |
+    */
+
+    'tax_rates' => array_values(array_filter(explode(',', (string) env('STRIPE_TAX_RATES', 'txr_1TPfzrLRCmKA3oWMNWmkQeq2')))),
+
     'promo' => [
         'enabled' => env('PROMO_ENABLED', true),
         'code' => 'FOUNDER',
