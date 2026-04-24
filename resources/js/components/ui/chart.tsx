@@ -122,6 +122,25 @@ function ChartTooltipPortal({
     const [pos, setPos] = React.useState<{ x: number; y: number } | null>(
         null,
     );
+    const [hidden, setHidden] = React.useState(false);
+
+    // Reset hidden flag whenever Recharts reports a new cursor coordinate
+    // (pointer moved back onto a bar after a scroll).
+    React.useEffect(() => {
+        setHidden(false);
+    }, [coordinate?.x, coordinate?.y]);
+
+    // Hide tooltip on scroll/resize: portaled fixed position would otherwise
+    // remain anchored to stale viewport coords while the chart scrolls away.
+    React.useEffect(() => {
+        const hide = () => setHidden(true);
+        window.addEventListener('scroll', hide, true);
+        window.addEventListener('resize', hide);
+        return () => {
+            window.removeEventListener('scroll', hide, true);
+            window.removeEventListener('resize', hide);
+        };
+    }, []);
 
     React.useLayoutEffect(() => {
         if (!anchorRef.current || !coordinate) {
@@ -178,7 +197,8 @@ function ChartTooltipPortal({
                               position: 'fixed',
                               left: pos?.x ?? -9999,
                               top: pos?.y ?? -9999,
-                              visibility: pos ? 'visible' : 'hidden',
+                              opacity: pos && !hidden ? 1 : 0,
+                              transition: 'opacity 120ms ease-out',
                               pointerEvents: 'none',
                               zIndex: 50,
                           }}
