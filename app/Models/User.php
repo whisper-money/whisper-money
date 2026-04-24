@@ -165,6 +165,16 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->subscribed('default');
     }
 
+    /**
+     * The tax rates that should apply to the customer's subscriptions.
+     *
+     * @return array<int, string>
+     */
+    public function taxRates(): array
+    {
+        return config('subscriptions.tax_rates', []);
+    }
+
     public function isDemoAccount(): bool
     {
         return $this->email === config('app.demo.email');
