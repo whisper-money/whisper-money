@@ -201,8 +201,10 @@ it('can create a loan account with balance and loan details', function () {
 
     expect($loan)->not->toBeNull();
     expect($loan->currency_code)->toBe('EUR');
-    expect($loan->balances)->toHaveCount(1);
-    expect($loan->balances->first()->balance)->toBe(18000000);
+    $balances = $loan->balances()->orderBy('balance_date')->get();
+    expect($balances->count())->toBeGreaterThan(1);
+    expect($balances->first()->balance)->toBe(25000000);
+    expect($balances->last()->balance)->toBe(18000000);
     expect($loan->loanDetail)->not->toBeNull();
     expect($loan->loanDetail->loan_term_months)->toBe(360);
     expect((string) $loan->loanDetail->annual_interest_rate)->toBe('3.500');
