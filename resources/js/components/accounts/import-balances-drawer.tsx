@@ -487,7 +487,7 @@ export function ImportBalancesDrawer({
                     const errorMessage =
                         result.reason instanceof Error
                             ? result.reason.message
-                            : 'Unknown error';
+                            : __('Unknown error');
 
                     errors.push({
                         rowNumber,

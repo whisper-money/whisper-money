@@ -430,7 +430,7 @@ export function ImportTransactionsDrawer({
                     const errorMessage =
                         result.reason instanceof Error
                             ? result.reason.message
-                            : 'Unknown error';
+                            : __('Unknown error');
 
                     console.error(`Transaction ${rowNumber} failed:`, {
                         transaction,
@@ -557,7 +557,7 @@ export function ImportTransactionsDrawer({
             });
             onOpenChange(false);
         } else {
-            toast.error('All transactions failed to import');
+            toast.error(__('All transactions failed to import'));
         }
 
         transactionSyncService

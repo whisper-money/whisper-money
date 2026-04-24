@@ -932,7 +932,7 @@ export function TransactionList({
         } catch (error) {
             consoleDebug('❌ Error during bulk re-evaluation:', error);
             console.error('Failed to re-evaluate rules:', error);
-            toast.error('Failed to re-evaluate rules. Please try again.', {
+            toast.error(__('Failed to re-evaluate rules. Please try again.'), {
                 id: toastId,
             });
         } finally {

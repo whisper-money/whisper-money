@@ -719,7 +719,7 @@ export default function Transactions({
             refreshTransactions();
         } catch (error) {
             console.error('Failed to re-evaluate rules:', error);
-            toast.error('Failed to re-evaluate rules. Please try again.', {
+            toast.error(__('Failed to re-evaluate rules. Please try again.'), {
                 id: toastId,
             });
         } finally {
@@ -851,7 +851,7 @@ export default function Transactions({
             }
         } catch (error) {
             console.error('Failed to update transactions:', error);
-            toast.error('Failed to update transactions');
+            toast.error(__('Failed to update transactions'));
         } finally {
             setIsBulkUpdating(false);
         }
@@ -977,7 +977,7 @@ export default function Transactions({
             }
         } catch (error) {
             console.error('Failed to update transactions with labels:', error);
-            toast.error('Failed to update transactions with labels');
+            toast.error(__('Failed to update transactions with labels'));
         } finally {
             setIsBulkUpdating(false);
         }
