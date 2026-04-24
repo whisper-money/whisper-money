@@ -84,6 +84,11 @@ php artisan event:cache
 echo "Creating storage link..."
 php artisan storage:link 2>/dev/null || true
 
+# Re-apply storage ownership after artisan commands (may have created root-owned files)
+echo "Re-applying storage ownership..."
+chown -R www-data:www-data /app/storage /app/bootstrap/cache
+chmod -R 775 /app/storage /app/bootstrap/cache
+
 echo "=== Startup complete, launching services ==="
 
 # Start supervisor
