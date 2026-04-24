@@ -247,7 +247,7 @@ class CashflowAnalyticsController extends Controller
                 'category_id' => null,
                 'category' => (new Category)->forceFill([
                     'id' => null,
-                    'name' => $isIncome ? 'Unknown Income' : 'Unknown Expense',
+                    'name' => $isIncome ? __('Unknown Income') : __('Unknown Expense'),
                     'type' => $isIncome ? CategoryType::Income : CategoryType::Expense,
                     'color' => 'gray',
                     'icon' => 'HelpCircle',
@@ -320,7 +320,7 @@ class CashflowAnalyticsController extends Controller
                 'category_id' => null,
                 'category' => (new Category)->forceFill([
                     'id' => null,
-                    'name' => $type === CategoryType::Income ? 'Unknown Income' : 'Unknown Expense',
+                    'name' => $type === CategoryType::Income ? __('Unknown Income') : __('Unknown Expense'),
                     'type' => $type,
                     'color' => 'gray',
                     'icon' => 'HelpCircle',

@@ -1,3 +1,4 @@
+import { __ } from '@/utils/i18n';
 import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
 import axios from 'axios';
@@ -64,7 +65,7 @@ export class TransactionSyncManager {
         } catch (error) {
             result.success = false;
             result.errors.push(
-                error instanceof Error ? error.message : 'Unknown error',
+                error instanceof Error ? error.message : __('Unknown error'),
             );
         } finally {
             this.syncInProgress = false;

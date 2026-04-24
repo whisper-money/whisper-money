@@ -47,7 +47,7 @@ export function ImportTransactionsButton() {
             setImportData(data);
             setDrawerOpen(true);
         } catch (error) {
-            toast.error('Failed to load import data');
+            toast.error(__('Failed to load import data'));
             console.error(error);
         } finally {
             setLoading(false);
