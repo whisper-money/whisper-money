@@ -77,13 +77,19 @@ class SubscriptionController extends Controller
 
         $priceId = $this->resolvePriceIdByLookupKey($plan['stripe_lookup_key']);
 
-        return $request->user()
+        $subscriptionBuilder = $request->user()
             ->newSubscription('default', $priceId)
-            ->allowPromotionCodes()
-            ->checkout([
-                'success_url' => route('subscribe.success'),
-                'cancel_url' => route('subscribe.cancel'),
-            ]);
+            ->allowPromotionCodes();
+
+        $trialDays = (int) ($plan['trial_days'] ?? 0);
+        if ($trialDays > 0) {
+            $subscriptionBuilder->trialDays($trialDays);
+        }
+
+        return $subscriptionBuilder->checkout([
+            'success_url' => route('subscribe.success'),
+            'cancel_url' => route('subscribe.cancel'),
+        ]);
     }
 
     /**

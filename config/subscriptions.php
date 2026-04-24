@@ -52,6 +52,7 @@ return [
             'original_price' => null,
             'stripe_lookup_key' => env('STRIPE_PRO_MONTHLY_LOOKUP_KEY', 'whisper_pro_monthly'),
             'billing_period' => 'month',
+            'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 15),
             'features' => [
                 'Unlimited accounts',
                 'Unlimited transactions',
@@ -68,6 +69,7 @@ return [
             'original_price' => 47.88,
             'stripe_lookup_key' => env('STRIPE_PRO_YEARLY_LOOKUP_KEY', 'whisper_pro_yearly'),
             'billing_period' => 'year',
+            'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 15),
             'features' => [
                 'Unlimited accounts',
                 'Unlimited transactions',

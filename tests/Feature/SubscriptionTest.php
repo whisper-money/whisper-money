@@ -8,6 +8,9 @@ use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
+use Laravel\Cashier\Checkout;
+use Laravel\Cashier\SubscriptionBuilder;
 
 beforeEach(function () {
     config([
@@ -196,6 +199,7 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', null)
                 ->has('stripe_lookup_key')
                 ->where('billing_period', 'month')
+                ->where('trial_days', 15)
                 ->has('features')
             )
             ->has('pricing.plans.yearly', fn ($plan) => $plan
@@ -204,6 +208,7 @@ test('pricing config includes all plan details', function () {
                 ->where('original_price', 47.88)
                 ->has('stripe_lookup_key')
                 ->where('billing_period', 'year')
+                ->where('trial_days', 15)
                 ->has('features')
             )
             ->has('pricing.promo', fn ($promo) => $promo
@@ -297,4 +302,62 @@ test('billing portal skips stripe customer creation when user already has a stri
     $this->actingAs($user);
 
     $this->get(route('settings.billing.portal'))->assertRedirect();
+});
+
+test('checkout applies configured trial days to the subscription builder', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 15,
+        'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
+    ]);
+    Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
+    $builder->shouldReceive('trialDays')->once()->with(15)->andReturnSelf();
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
+    $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('newSubscription')
+        ->once()
+        ->with('default', 'price_test_monthly')
+        ->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('subscribe.checkout', ['plan' => 'monthly']))->assertRedirect();
+});
+
+test('checkout skips trial days when configured to zero', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 0,
+        'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
+    ]);
+    Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('allowPromotionCodes')->once()->andReturnSelf();
+    $builder->shouldNotReceive('trialDays');
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
+    $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('newSubscription')
+        ->once()
+        ->with('default', 'price_test_monthly')
+        ->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('subscribe.checkout', ['plan' => 'monthly']))->assertRedirect();
 });
