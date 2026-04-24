@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateLoanDetailRequest;
+use App\Jobs\GenerateHistoricalLoanBalancesJob;
 use App\Models\Account;
+use App\Services\LoanBalanceGeneratorService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 
@@ -14,7 +17,7 @@ class LoanDetailController extends Controller
     /**
      * Update the loan detail for an account.
      */
-    public function update(UpdateLoanDetailRequest $request, Account $account): RedirectResponse
+    public function update(UpdateLoanDetailRequest $request, Account $account, LoanBalanceGeneratorService $loanBalanceGenerator): RedirectResponse
     {
         $this->authorize('update', $account);
 
@@ -34,7 +37,34 @@ class LoanDetailController extends Controller
                 return to_route('accounts.show', $account)->withErrors($errors);
             }
 
-            $account->loanDetail()->create($data);
+            $loanDetail = $account->loanDetail()->create($data);
+
+            $latestBalance = $account->balances()->orderByDesc('balance_date')->first();
+
+            if ($latestBalance !== null) {
+                $startDate = Carbon::parse($loanDetail->start_date);
+                $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
+                $currentBalance = (int) $latestBalance->balance;
+
+                $loanBalanceGenerator->generateHistoricalBalances(
+                    $account,
+                    (int) $loanDetail->original_amount,
+                    $startDate,
+                    $currentBalance,
+                    from: $twelveMonthsAgo,
+                );
+
+                if ($startDate->isBefore($twelveMonthsAgo)) {
+                    GenerateHistoricalLoanBalancesJob::dispatch(
+                        $account,
+                        (int) $loanDetail->original_amount,
+                        $startDate,
+                        $currentBalance,
+                        $startDate,
+                        $twelveMonthsAgo->copy()->subDay(),
+                    );
+                }
+            }
 
             return to_route('accounts.show', $account);
         }

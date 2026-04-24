@@ -6,9 +6,11 @@ use App\Enums\AccountType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreAccountRequest;
 use App\Http\Requests\Settings\UpdateAccountRequest;
+use App\Jobs\GenerateHistoricalLoanBalancesJob;
 use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Models\Account;
 use App\Models\User;
+use App\Services\LoanBalanceGeneratorService;
 use App\Services\RealEstateBalanceGeneratorService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -44,7 +46,7 @@ class AccountController extends Controller
     /**
      * Store a newly created account.
      */
-    public function store(StoreAccountRequest $request, RealEstateBalanceGeneratorService $balanceGenerator): RedirectResponse|JsonResponse
+    public function store(StoreAccountRequest $request, RealEstateBalanceGeneratorService $balanceGenerator, LoanBalanceGeneratorService $loanBalanceGenerator): RedirectResponse|JsonResponse
     {
         /** @var User $user */
         $user = Auth::user();
@@ -124,7 +126,31 @@ class AccountController extends Controller
                     $loanData['start_date'] = now()->toDateString();
                 }
 
-                $account->loanDetail()->create($loanData);
+                $loanDetail = $account->loanDetail()->create($loanData);
+
+                if ($balance !== null) {
+                    $startDate = Carbon::parse($loanDetail->start_date);
+                    $twelveMonthsAgo = Carbon::today()->subMonths(12)->startOfMonth();
+
+                    $loanBalanceGenerator->generateHistoricalBalances(
+                        $account,
+                        (int) $loanDetail->original_amount,
+                        $startDate,
+                        $balance,
+                        from: $twelveMonthsAgo,
+                    );
+
+                    if ($startDate->isBefore($twelveMonthsAgo)) {
+                        GenerateHistoricalLoanBalancesJob::dispatch(
+                            $account,
+                            (int) $loanDetail->original_amount,
+                            $startDate,
+                            $balance,
+                            $startDate,
+                            $twelveMonthsAgo->copy()->subDay(),
+                        );
+                    }
+                }
             }
 
             $linkedRealEstateAccountId = $validated['linked_real_estate_account_id'] ?? null;
