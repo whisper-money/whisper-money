@@ -48,6 +48,7 @@ import {
     BarChart,
     ComposedChart,
     Line,
+    ReferenceLine,
     XAxis,
 } from 'recharts';
 
@@ -680,6 +681,13 @@ export function AccountBalanceChart({
         [locale, granularity],
     );
 
+    const todayMarker = useMemo(() => {
+        const now = new Date();
+        return granularity === 'daily'
+            ? format(now, 'yyyy-MM-dd')
+            : format(now, 'yyyy-MM');
+    }, [granularity]);
+
     const valueFormatter = (value: number): string => {
         return formatChartCurrency(value, activeCurrencyCode, locale);
     };
@@ -1086,6 +1094,18 @@ export function AccountBalanceChart({
                                         dot={false}
                                         activeDot={{ r: 4 }}
                                         connectNulls
+                                    />
+                                    <ReferenceLine
+                                        x={todayMarker}
+                                        stroke="var(--color-foreground)"
+                                        strokeWidth={1}
+                                        strokeDasharray="4 4"
+                                        label={{
+                                            value: __('Today'),
+                                            position: 'top',
+                                            fontSize: 12,
+                                            fill: 'var(--color-muted-foreground)',
+                                        }}
                                     />
                                 </ComposedChart>
                             ) : (
