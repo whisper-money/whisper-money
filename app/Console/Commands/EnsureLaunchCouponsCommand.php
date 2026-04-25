@@ -40,14 +40,14 @@ class EnsureLaunchCouponsCommand extends Command
         $coupons = [
             [
                 'id' => self::COUPON_FOUNDER_FOREVER,
-                'name' => 'Whisper Money Founder (100% off forever)',
+                'name' => 'WM Founder – 100% off forever',
                 'percent_off' => 100,
                 'duration' => 'forever',
                 'applies_to' => null,
             ],
             [
                 'id' => self::COUPON_EARLYBIRD_MONTHLY,
-                'name' => 'Whisper Money Early Bird – 2 months free (monthly)',
+                'name' => 'WM Early Bird – 2 months free',
                 'percent_off' => 100,
                 'duration' => 'repeating',
                 'duration_in_months' => 2,
@@ -55,7 +55,7 @@ class EnsureLaunchCouponsCommand extends Command
             ],
             [
                 'id' => self::COUPON_EARLYBIRD_YEARLY,
-                'name' => 'Whisper Money Early Bird – 25% off first year (yearly)',
+                'name' => 'WM Early Bird – 25% off year 1',
                 'percent_off' => 25,
                 'duration' => 'once',
                 'applies_to' => ['products' => [$yearlyProductId]],
