@@ -49,9 +49,22 @@ class LandingAuthOverrideService
         return rtrim(config('app.url'), '/').$path;
     }
 
-    public function signedPath(\DateTimeInterface|\DateInterval|int $expiration): string
+    /**
+     * Generate a signed landing URL for a specific user lead.
+     */
+    public function generateInvitationUrl(string $leadId, int $days = 30): string
     {
-        $parameters = [
+        $path = $this->signedPath(now()->addDays($days), ['lead' => $leadId]);
+
+        return rtrim(config('app.url'), '/').$path;
+    }
+
+    /**
+     * @param  array<string, scalar>  $extraParameters
+     */
+    public function signedPath(\DateTimeInterface|\DateInterval|int $expiration, array $extraParameters = []): string
+    {
+        $parameters = $extraParameters + [
             $this->queryParameter() => 1,
             'expires' => $this->availableAt($expiration),
         ];

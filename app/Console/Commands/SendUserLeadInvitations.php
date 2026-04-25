@@ -2,67 +2,156 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\LeadCohort;
 use App\Mail\UserLeadInvitation;
 use App\Models\UserLead;
+use App\Services\LeadCohortResolver;
+use App\Services\LeadPromoCodeAllocator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class SendUserLeadInvitations extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'leads:send-invitations {--force : Skip confirmation prompt}';
+    protected $signature = 'leads:send-invitations
+        {--limit=50 : Maximum number of leads to invite in this batch}
+        {--cohort= : Restrict to a single cohort (founder, founder_referrer, early_bird, waitlist)}
+        {--dry-run : Show what would happen without sending or creating Stripe codes}
+        {--force : Skip confirmation prompt}';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Send invitation emails to all UserLeads with FOUNDER promo code';
+    protected $description = 'Send launch invitation emails to the next batch of waitlist leads';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle(): int
+    public function handle(LeadCohortResolver $resolver, LeadPromoCodeAllocator $allocator): int
     {
-        $leads = UserLead::query()->get();
+        $limit = (int) $this->option('limit');
+        if ($limit < 1) {
+            $this->error('Limit must be a positive integer.');
 
-        if ($leads->isEmpty()) {
-            $this->info('No user leads found in the database.');
+            return self::FAILURE;
+        }
+
+        $dryRun = (bool) $this->option('dry-run');
+        $cohortFilter = $this->resolveCohortFilter();
+
+        if ($cohortFilter === false) {
+            return self::FAILURE;
+        }
+
+        $candidates = UserLead::query()
+            ->whereNotNull('position')
+            ->where('position', '>', 0)
+            ->whereNull('invitation_sent_at')
+            ->orderBy('position')
+            ->limit($limit * 5) // over-fetch when filtering by cohort
+            ->get();
+
+        if ($candidates->isEmpty()) {
+            $this->info('No pending leads found.');
 
             return self::SUCCESS;
         }
 
-        $this->info("Found {$leads->count()} user lead(s).");
+        $plan = [];
+        foreach ($candidates as $lead) {
+            $cohort = $resolver->resolve($lead);
+            if ($cohort === null) {
+                continue;
+            }
+
+            if ($cohortFilter !== null && $cohort !== $cohortFilter) {
+                continue;
+            }
+
+            $plan[] = [$lead, $cohort];
+
+            if (count($plan) >= $limit) {
+                break;
+            }
+        }
+
+        if ($plan === []) {
+            $this->info('No leads matched the requested filters.');
+
+            return self::SUCCESS;
+        }
+
+        $this->table(
+            ['#', 'Position', 'Email', 'Cohort'],
+            array_map(
+                fn (array $row, int $i): array => [
+                    $i + 1,
+                    $row[0]->position,
+                    $row[0]->email,
+                    $row[1]->value,
+                ],
+                $plan,
+                array_keys($plan),
+            ),
+        );
+
+        if ($dryRun) {
+            $this->info('[dry-run] No emails sent.');
+
+            return self::SUCCESS;
+        }
 
         if (! $this->option('force')) {
-            if (! $this->confirm("Do you want to send invitation emails to {$leads->count()} lead(s)?", true)) {
+            if (! $this->confirm('Send these invitation emails?', true)) {
                 $this->info('Cancelled.');
 
                 return self::SUCCESS;
             }
         }
 
-        $this->info('Sending invitation emails...');
-
-        $progressBar = $this->output->createProgressBar($leads->count());
+        $sent = 0;
+        $failed = 0;
+        $progressBar = $this->output->createProgressBar(count($plan));
         $progressBar->start();
 
-        $sent = 0;
-        foreach ($leads as $lead) {
-            Mail::to($lead->email)->send(new UserLeadInvitation($lead));
-            $sent++;
+        foreach ($plan as [$lead, $cohort]) {
+            try {
+                /** @var UserLead $lead */
+                /** @var LeadCohort $cohort */
+                $lead->cohort = $cohort;
+                $allocator->ensureCodes($lead, $cohort);
+
+                Mail::to($lead->email)->send(new UserLeadInvitation($lead->fresh(), $cohort));
+
+                $lead->forceFill(['invitation_sent_at' => now()])->save();
+                $sent++;
+            } catch (Throwable $exception) {
+                $failed++;
+                $this->error("Failed for {$lead->email}: {$exception->getMessage()}");
+                report($exception);
+            }
+
             $progressBar->advance();
         }
 
         $progressBar->finish();
         $this->newLine();
 
-        $this->info("Successfully queued {$sent} invitation email(s)!");
+        $this->info("Queued {$sent} invitation email(s)".($failed > 0 ? " ({$failed} failed)" : '').'.');
 
-        return self::SUCCESS;
+        return $failed === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    private function resolveCohortFilter(): LeadCohort|false|null
+    {
+        $cohort = $this->option('cohort');
+
+        if ($cohort === null || $cohort === '') {
+            return null;
+        }
+
+        $resolved = LeadCohort::tryFrom((string) $cohort);
+
+        if ($resolved === null) {
+            $this->error("Unknown cohort `{$cohort}`. Valid values: founder, founder_referrer, early_bird, waitlist.");
+
+            return false;
+        }
+
+        return $resolved;
     }
 }

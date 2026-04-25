@@ -16,11 +16,13 @@ import { transactionSyncService } from '@/services/transaction-sync';
 interface RegisterProps {
     forcedRegistration?: boolean;
     hideAuthButtons?: boolean;
+    defaultEmail?: string | null;
 }
 
 export default function Register({
     forcedRegistration = false,
     hideAuthButtons = false,
+    defaultEmail = null,
 }: RegisterProps) {
     const detectedTimezone =
         typeof window !== 'undefined'
@@ -98,6 +100,7 @@ export default function Register({
                                     tabIndex={2}
                                     autoComplete="email"
                                     name="email"
+                                    defaultValue={defaultEmail ?? undefined}
                                     placeholder={__('email@example.com')}
                                 />
 
