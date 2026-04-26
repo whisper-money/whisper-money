@@ -15,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
+/**
+ * @property ?LeadCohort $cohort
+ */
 class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserLeadFactory> */

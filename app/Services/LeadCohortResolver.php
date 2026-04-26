@@ -7,9 +7,9 @@ use App\Models\UserLead;
 
 class LeadCohortResolver
 {
-    public const FOUNDER_LIMIT = 10;
+    private const FOUNDER_LIMIT = 10;
 
-    public const EARLY_BIRD_LIMIT = 100;
+    private const EARLY_BIRD_LIMIT = 100;
 
     /**
      * Resolve the cohort for a lead based on current queue state.
