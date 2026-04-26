@@ -241,7 +241,6 @@ jobs:
               - 'public/**'
               - 'resources/**'
               - 'routes/**'
-              - 'tests/**'
               - 'storage/**'
               - 'artisan'
               - 'composer.json'
