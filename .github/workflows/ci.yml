@@ -223,10 +223,49 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: password
 
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'app/**'
+              - 'bootstrap/**'
+              - 'config/**'
+              - 'database/**'
+              - 'public/**'
+              - 'resources/**'
+              - 'routes/**'
+              - 'tests/**'
+              - 'storage/**'
+              - 'artisan'
+              - 'composer.json'
+              - 'composer.lock'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'bun.lock'
+              - 'bun.lockb'
+              - 'vite.config.*'
+              - 'tsconfig*.json'
+              - 'eslint.config.*'
+              - '.prettierrc*'
+              - 'phpstan.neon*'
+              - 'phpunit.xml*'
+              - 'pint.json'
+              - 'Dockerfile'
+              - 'docker/**'
+              - '.dockerignore'
+              - '.env.example'
+
   build-image:
     runs-on: ubuntu-latest
-    needs: [tests, linter, static-analysis, performance-tests]
-    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
+    needs: [tests, linter, static-analysis, performance-tests, changes]
+    if: ((github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch') && needs.changes.outputs.code == 'true'
     env:
       SENTRY_RELEASE: whisper-money@${{ github.sha }}
     permissions:
@@ -291,8 +330,8 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-image]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [build-image, changes]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.code == 'true'
     env:
       SENTRY_RELEASE: whisper-money@${{ github.sha }}
     concurrency:
