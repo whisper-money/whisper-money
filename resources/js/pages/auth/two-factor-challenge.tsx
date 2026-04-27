@@ -113,7 +113,7 @@ export default function TwoFactorChallenge() {
                             </Button>
 
                             <div className="text-center text-sm text-muted-foreground">
-                                <span>{__('or you can')}</span>
+                                <span>{__('or you can')}</span>{' '}
                                 <button
                                     type="button"
                                     className="cursor-pointer text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
