@@ -232,7 +232,7 @@ class DashboardAnalyticsController extends Controller
                 $monthsAhead = 12;
                 $now = Carbon::now();
                 $lastPoint = end($points);
-                $baseValue = is_array($lastPoint) ? ($lastPoint['value'] ?? 0) : 0;
+                $baseValue = is_array($lastPoint) ? $lastPoint['value'] : 0;
                 $monthlyRate = $hasRevaluation ? ((float) $revaluationPercentage / 12 / 100) : 0.0;
 
                 $loanProjection = $linkedLoanDetail
