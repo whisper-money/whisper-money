@@ -214,6 +214,77 @@ class DashboardAnalyticsController extends Controller
             }
         }
 
+        // Append projected future months for real estate accounts with revaluation
+        // and/or a linked loan, so the chart shows both market value and mortgage
+        // forward together.
+        if ($account->type === AccountType::RealEstate) {
+            $realEstateDetail = $account->realEstateDetail;
+            $revaluationPercentage = $realEstateDetail?->revaluation_percentage;
+            $hasRevaluation = $revaluationPercentage !== null && (float) $revaluationPercentage !== 0.0;
+
+            $linkedLoanDetail = null;
+            if ($linkedLoanAccount) {
+                $linkedLoanAccount->loadMissing('loanDetail');
+                $linkedLoanDetail = $linkedLoanAccount->loanDetail;
+            }
+
+            if ($hasRevaluation || $linkedLoanDetail) {
+                $monthsAhead = 12;
+                $now = Carbon::now();
+                $lastPoint = end($points);
+                $baseValue = is_array($lastPoint) ? $lastPoint['value'] : 0;
+                $monthlyRate = $hasRevaluation ? ((float) $revaluationPercentage / 12 / 100) : 0.0;
+
+                $loanProjection = $linkedLoanDetail
+                    ? $this->loanAmortizationService->generateProjection($linkedLoanDetail, $monthsAhead)
+                    : [];
+
+                for ($i = 1; $i <= $monthsAhead; $i++) {
+                    $projectedDate = $now->copy()->addMonths($i)->endOfMonth();
+                    $yearMonth = $projectedDate->format('Y-m');
+
+                    $projectedValue = (int) round($baseValue * pow(1 + $monthlyRate, $i));
+
+                    $projectedPoint = [
+                        'month' => $yearMonth,
+                        'timestamp' => $projectedDate->timestamp,
+                        'value' => $projectedValue,
+                        'projected' => true,
+                    ];
+
+                    if ($displayCurrencyCode !== null) {
+                        $projectedPoint['display_value'] = $this->convertBalanceForDate(
+                            $account->currency_code,
+                            $displayCurrencyCode,
+                            $projectedValue,
+                            Carbon::today(),
+                        );
+                    }
+
+                    if ($linkedLoanDetail && array_key_exists($yearMonth, $loanProjection)) {
+                        $mortgageProj = $loanProjection[$yearMonth];
+                        $projectedPoint['mortgage_balance'] = $this->convertBalanceForDate(
+                            $linkedLoanAccount->currency_code,
+                            $account->currency_code,
+                            $mortgageProj,
+                            $projectedDate,
+                        );
+
+                        if ($displayCurrencyCode !== null) {
+                            $projectedPoint['display_mortgage_balance'] = $this->convertBalanceForDate(
+                                $linkedLoanAccount->currency_code,
+                                $displayCurrencyCode,
+                                $mortgageProj,
+                                $projectedDate,
+                            );
+                        }
+                    }
+
+                    $points[] = $projectedPoint;
+                }
+            }
+        }
+
         $response = [
             'data' => $points,
             'account' => [

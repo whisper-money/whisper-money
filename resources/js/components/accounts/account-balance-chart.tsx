@@ -230,6 +230,8 @@ export interface BalanceDataPoint {
     invested_amount?: number | null;
     mortgage_balance?: number | null;
     projected?: boolean;
+    projected_value?: number;
+    projected_mortgage_balance?: number;
     display_value?: number;
     display_invested_amount?: number | null;
     display_mortgage_balance?: number;
@@ -474,10 +476,11 @@ export function AccountBalanceChart({
 
         const hasProjection = data.some((d) => d.projected);
 
-        // Add projected_value field for chart rendering:
-        // - Historical points: value only, no projected_value
-        // - Last historical point: also gets projected_value to connect the lines
-        // - Projected points: both value and projected_value
+        // Add projected_value / projected_mortgage_balance fields for chart
+        // rendering:
+        // - Historical points: value/mortgage_balance only
+        // - Last historical point: also gets projected_* to connect the lines
+        // - Projected points: both value/mortgage_balance and projected_*
         let augmentedData = data;
         if (hasProjection) {
             const lastHistoricalIndex = data.findIndex((d) => d.projected) - 1;
@@ -486,6 +489,12 @@ export function AccountBalanceChart({
                 projected_value:
                     d.projected || i === lastHistoricalIndex
                         ? d.value
+                        : undefined,
+                projected_mortgage_balance:
+                    (d.projected || i === lastHistoricalIndex) &&
+                    d.mortgage_balance !== null &&
+                    d.mortgage_balance !== undefined
+                        ? d.mortgage_balance
                         : undefined,
             }));
         }
@@ -530,8 +539,12 @@ export function AccountBalanceChart({
                     'projected_value' in point &&
                     point.display_value !== undefined
                         ? point.display_value
-                        : ((point as unknown as Record<string, unknown>)
-                              .projected_value as number | undefined),
+                        : point.projected_value,
+                projected_mortgage_balance:
+                    'projected_mortgage_balance' in point &&
+                    point.display_mortgage_balance !== undefined
+                        ? point.display_mortgage_balance
+                        : point.projected_mortgage_balance,
             }));
         }
 
@@ -670,8 +683,18 @@ export function AccountBalanceChart({
             ? {
                   projected_value: {
                       label: __('Projected'),
-                      color: 'var(--color-chart-2)',
+                      color: hasMortgageData
+                          ? accountMainLineColor
+                          : 'var(--color-chart-2)',
                   },
+                  ...(hasMortgageData
+                      ? {
+                            projected_mortgage_balance: {
+                                label: __('Projected mortgage'),
+                                color: mortgageLineColor,
+                            },
+                        }
+                      : {}),
               }
             : {}),
     };
@@ -923,6 +946,42 @@ export function AccountBalanceChart({
                                         activeDot={{ r: 4 }}
                                         connectNulls
                                     />
+                                    {hasProjectedData && (
+                                        <>
+                                            <Line
+                                                dataKey="projected_value"
+                                                type="monotone"
+                                                stroke={accountMainLineColor}
+                                                strokeWidth={2}
+                                                strokeDasharray="6 4"
+                                                dot={false}
+                                                activeDot={{ r: 4 }}
+                                                connectNulls
+                                            />
+                                            <Line
+                                                dataKey="projected_mortgage_balance"
+                                                type="monotone"
+                                                stroke={mortgageLineColor}
+                                                strokeWidth={1.5}
+                                                strokeDasharray="6 4"
+                                                dot={false}
+                                                activeDot={{ r: 4 }}
+                                                connectNulls
+                                            />
+                                            <ReferenceLine
+                                                x={todayMarker}
+                                                stroke="var(--color-foreground)"
+                                                strokeWidth={1}
+                                                strokeDasharray="4 4"
+                                                label={{
+                                                    value: __('Today'),
+                                                    position: 'top',
+                                                    fontSize: 12,
+                                                    fill: 'var(--color-muted-foreground)',
+                                                }}
+                                            />
+                                        </>
+                                    )}
                                 </ComposedChart>
                             ) : granularity === 'daily' ? (
                                 <AreaChart

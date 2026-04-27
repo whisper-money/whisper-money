@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Category;
 use App\Models\ExchangeRate;
+use App\Models\LoanDetail;
 use App\Models\RealEstateDetail;
 use App\Models\Transaction;
 use App\Models\User;
@@ -1281,4 +1282,103 @@ test('account balance evolution exposes alternate user-currency mortgage values 
     expect($data['data'][0]['mortgage_balance'])->toBe((int) round(18000000 / 0.80));
     expect($data['data'][0]['display_mortgage_balance'])->toBe((int) round(18000000 / 0.72));
     expect($data['display_currency_code'])->toBe('USD');
+});
+
+test('real estate balance evolution appends projected market value when revaluation percentage is set', function () {
+    $property = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::RealEstate,
+        'currency_code' => 'USD',
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $property->id,
+        'revaluation_percentage' => '6.00',
+    ]);
+
+    $endOfLastMonth = now()->subMonthNoOverflow()->endOfMonth();
+
+    AccountBalance::factory()->create([
+        'account_id' => $property->id,
+        'balance_date' => $endOfLastMonth,
+        'balance' => 50000000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$property->id.'/balance-evolution?'.http_build_query([
+        'from' => $endOfLastMonth->copy()->startOfMonth()->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    $projected = collect($data['data'])->where('projected', true)->values();
+    expect($projected)->toHaveCount(12);
+
+    // Each future point should be greater than the prior (6% APR compounded monthly)
+    $values = $projected->pluck('value')->all();
+    for ($i = 1; $i < count($values); $i++) {
+        expect($values[$i])->toBeGreaterThan($values[$i - 1]);
+    }
+});
+
+test('real estate balance evolution appends projected mortgage balance from linked loan', function () {
+    $property = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::RealEstate,
+        'currency_code' => 'USD',
+    ]);
+    $loan = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Loan,
+        'currency_code' => 'USD',
+    ]);
+
+    RealEstateDetail::factory()->create([
+        'account_id' => $property->id,
+        'linked_loan_account_id' => $loan->id,
+        'revaluation_percentage' => null,
+    ]);
+
+    LoanDetail::factory()->create([
+        'account_id' => $loan->id,
+        'original_amount' => 20000000,
+        'annual_interest_rate' => '3.50',
+        'loan_term_months' => 240,
+        'start_date' => now()->subYear()->startOfMonth(),
+    ]);
+
+    $endOfLastMonth = now()->subMonthNoOverflow()->endOfMonth();
+
+    AccountBalance::factory()->create([
+        'account_id' => $property->id,
+        'balance_date' => $endOfLastMonth,
+        'balance' => 50000000,
+    ]);
+    AccountBalance::factory()->create([
+        'account_id' => $loan->id,
+        'balance_date' => $endOfLastMonth,
+        'balance' => 18000000,
+    ]);
+
+    $response = $this->getJson('/api/dashboard/account/'.$property->id.'/balance-evolution?'.http_build_query([
+        'from' => $endOfLastMonth->copy()->startOfMonth()->toDateString(),
+        'to' => now()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    $projected = collect($data['data'])->where('projected', true)->values();
+    expect($projected)->toHaveCount(12);
+
+    // No revaluation -> projected market value should equal last historical value
+    expect($projected->first()['value'])->toBe(50000000);
+
+    // Mortgage balance should decrease over time
+    $mortgages = $projected->pluck('mortgage_balance')->filter()->values()->all();
+    expect($mortgages)->not->toBeEmpty();
+    for ($i = 1; $i < count($mortgages); $i++) {
+        expect($mortgages[$i])->toBeLessThan($mortgages[$i - 1]);
+    }
 });

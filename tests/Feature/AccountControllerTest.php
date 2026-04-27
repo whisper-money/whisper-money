@@ -465,6 +465,7 @@ test('real estate balance evolution includes mortgage balance data', function ()
     RealEstateDetail::factory()->create([
         'account_id' => $realEstateAccount->id,
         'linked_loan_account_id' => $loanAccount->id,
+        'revaluation_percentage' => null,
     ]);
 
     $response = $this->getJson('/api/dashboard/account/'.$realEstateAccount->id.'/balance-evolution?'.http_build_query([
