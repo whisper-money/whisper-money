@@ -54,8 +54,9 @@ class ApplyRealEstateRevaluationCommand extends Command
                 continue;
             }
 
-            $monthlyRate = (float) $detail->revaluation_percentage / 12 / 100;
-            $newBalance = (int) round($latestBalance->balance * (1 + $monthlyRate));
+            $annualRate = (float) $detail->revaluation_percentage / 100;
+            $monthlyMultiplier = (1 + $annualRate) ** (1 / 12);
+            $newBalance = (int) round($latestBalance->balance * $monthlyMultiplier);
 
             $account->balances()->updateOrCreate(
                 ['balance_date' => now()->toDateString()],

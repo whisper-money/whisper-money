@@ -22,7 +22,7 @@ it('applies positive annual revaluation monthly', function () {
 
     RealEstateDetail::factory()->create([
         'account_id' => $account->id,
-        'revaluation_percentage' => 6.00, // 6% annual = 0.5% monthly
+        'revaluation_percentage' => 6.00, // 6% annual compounded monthly
     ]);
 
     AccountBalance::factory()->create([
@@ -39,8 +39,8 @@ it('applies positive annual revaluation monthly', function () {
         ->first();
 
     expect($newBalance)->not->toBeNull();
-    // 10,000,000 * (1 + 6/12/100) = 10,000,000 * 1.005 = 10,050,000
-    expect($newBalance->balance)->toBe(10050000);
+    // 10,000,000 * (1 + 0.06)^(1/12) ≈ 10,048,676
+    expect($newBalance->balance)->toBe(10048676);
 });
 
 // -------------------------------------------------------------------
@@ -54,7 +54,7 @@ it('applies negative annual revaluation monthly', function () {
 
     RealEstateDetail::factory()->create([
         'account_id' => $account->id,
-        'revaluation_percentage' => -12.00, // -12% annual = -1% monthly
+        'revaluation_percentage' => -12.00, // -12% annual compounded monthly
     ]);
 
     AccountBalance::factory()->create([
@@ -71,8 +71,8 @@ it('applies negative annual revaluation monthly', function () {
         ->first();
 
     expect($newBalance)->not->toBeNull();
-    // 20,000,000 * (1 + (-12)/12/100) = 20,000,000 * 0.99 = 19,800,000
-    expect($newBalance->balance)->toBe(19800000);
+    // 20,000,000 * (1 - 0.12)^(1/12) ≈ 19,788,075
+    expect($newBalance->balance)->toBe(19788075);
 });
 
 // -------------------------------------------------------------------
@@ -168,7 +168,7 @@ it('uses the latest balance for revaluation calculation', function () {
 
     RealEstateDetail::factory()->create([
         'account_id' => $account->id,
-        'revaluation_percentage' => 12.00, // 1% monthly
+        'revaluation_percentage' => 12.00, // 12% annual compounded monthly
     ]);
 
     // Older balance
@@ -193,8 +193,8 @@ it('uses the latest balance for revaluation calculation', function () {
         ->first();
 
     // Should use 10,000,000 not 5,000,000
-    // 10,000,000 * 1.01 = 10,100,000
-    expect($newBalance->balance)->toBe(10100000);
+    // 10,000,000 * (1 + 0.12)^(1/12) ≈ 10,094,888
+    expect($newBalance->balance)->toBe(10094888);
 });
 
 // -------------------------------------------------------------------
@@ -241,8 +241,8 @@ it('processes multiple real estate accounts', function () {
         ->where('balance_date', now()->toDateString())
         ->first();
 
-    expect($balance1->balance)->toBe(10100000); // 10M * 1.01
-    expect($balance2->balance)->toBe(20100000); // 20M * 1.005
+    expect($balance1->balance)->toBe(10094888); // 10M * (1.12)^(1/12)
+    expect($balance2->balance)->toBe(20097351); // 20M * (1.06)^(1/12)
 });
 
 // -------------------------------------------------------------------
@@ -280,6 +280,6 @@ it('updates existing balance for today instead of creating duplicate', function 
         ->where('balance_date', now()->toDateString())
         ->first();
 
-    // 10,000,000 * 1.01 = 10,100,000
-    expect($balance->balance)->toBe(10100000);
+    // 10,000,000 * (1 + 0.12)^(1/12) ≈ 10,094,888
+    expect($balance->balance)->toBe(10094888);
 });
