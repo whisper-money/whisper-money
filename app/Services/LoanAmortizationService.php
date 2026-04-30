@@ -127,7 +127,7 @@ class LoanAmortizationService
         $monthsToProject = min($monthsAhead, $remainingMonths);
 
         for ($i = 1; $i <= $monthsToProject; $i++) {
-            $date = $fromDate->copy()->addMonths($i);
+            $date = $fromDate->copy()->addMonthsNoOverflow($i);
             $balance = $this->calculateRemainingBalance(
                 $currentBalanceCents,
                 $annualRate,
@@ -163,7 +163,7 @@ class LoanAmortizationService
                 break;
             }
 
-            $date = $now->copy()->addMonths($i);
+            $date = $now->copy()->addMonthsNoOverflow($i);
             $balance = $this->calculateRemainingBalance(
                 $loanDetail->original_amount,
                 $loanDetail->annual_interest_rate,
