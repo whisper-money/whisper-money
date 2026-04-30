@@ -128,6 +128,19 @@ jobs:
           DB_PASSWORD: password
 
   browser-tests:
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    needs: browser-tests-matrix
+    steps:
+      - name: Aggregate shard results
+        run: |
+          if [ "${{ needs.browser-tests-matrix.result }}" != "success" ]; then
+            echo "One or more browser-tests shards failed: ${{ needs.browser-tests-matrix.result }}"
+            exit 1
+          fi
+          echo "All browser-tests shards passed."
+
+  browser-tests-matrix:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: build-assets
