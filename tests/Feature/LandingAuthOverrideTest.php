@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\UserLead;
 use App\Services\LandingAuthOverrideService;
 use Illuminate\Support\Facades\Queue;
+use Inertia\Testing\AssertableInertia;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -60,4 +62,19 @@ test('new users can register with the override cookie', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('onboarding', absolute: false));
+});
+
+test('invitation url unlocks auth buttons and stores invited lead in session', function () {
+    $lead = UserLead::factory()->ranked(1)->create();
+
+    $url = app(LandingAuthOverrideService::class)->generateInvitationUrl($lead->id, days: 7);
+
+    $this->withoutVite()->get($url)
+        ->assertOk()
+        ->assertCookie(config('landing.auth_override.cookie_name'))
+        ->assertSessionHas('invited_lead_id', $lead->id)
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('welcome')
+            ->where('hideAuthButtons', false)
+        );
 });

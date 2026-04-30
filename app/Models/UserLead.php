@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LeadCohort;
 use App\Notifications\VerifyUserLeadEmailNotification;
 use Database\Factories\UserLeadFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -14,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
+/**
+ * @property ?LeadCohort $cohort
+ */
 class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserLeadFactory> */
@@ -26,6 +30,10 @@ class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
         'referral_code',
         'referred_by_id',
         'locale',
+        'cohort',
+        'promo_code_monthly',
+        'promo_code_yearly',
+        'invitation_sent_at',
     ];
 
     /**
@@ -37,6 +45,8 @@ class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'invitation_sent_at' => 'datetime',
+            'cohort' => LeadCohort::class,
         ];
     }
 

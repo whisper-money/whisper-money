@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountBalance;
 use App\Models\User;
+use App\Models\UserLead;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -81,6 +82,10 @@ class SubscriptionController extends Controller
             ->newSubscription('default', $priceId)
             ->allowPromotionCodes();
 
+        if ($promotionCodeId = $this->resolveLeadPromotionCodeId($request->user(), $planKey)) {
+            $subscriptionBuilder->withPromotionCode($promotionCodeId);
+        }
+
         $trialDays = (int) ($plan['trial_days'] ?? 0);
         if ($trialDays > 0) {
             $subscriptionBuilder->trialDays($trialDays);
@@ -113,6 +118,41 @@ class SubscriptionController extends Controller
                 return $prices->data[0]->id;
             }
         );
+    }
+
+    /**
+     * Resolve the Stripe promotion code ID assigned to the authenticated user's
+     * matching UserLead for the chosen plan, if any.
+     */
+    private function resolveLeadPromotionCodeId(User $user, string $planKey): ?string
+    {
+        $lead = UserLead::query()->where('email', $user->email)->first();
+
+        if ($lead === null) {
+            return null;
+        }
+
+        $code = match ($planKey) {
+            'monthly' => $lead->promo_code_monthly,
+            'yearly' => $lead->promo_code_yearly,
+            default => null,
+        };
+
+        if (empty($code)) {
+            return null;
+        }
+
+        try {
+            $promotionCodes = Cashier::stripe()->promotionCodes->all([
+                'code' => $code,
+                'active' => true,
+                'limit' => 1,
+            ]);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return $promotionCodes->data[0]->id ?? null;
     }
 
     public function success(): Response

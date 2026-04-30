@@ -38,4 +38,12 @@ class UserLeadFactory extends Factory
             'referral_code' => null,
         ]);
     }
+
+    public function ranked(int $position): static
+    {
+        return $this->state(fn (): array => [
+            'position' => $position,
+            'email_verified_at' => now(),
+        ]);
+    }
 }

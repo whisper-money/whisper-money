@@ -30,6 +30,10 @@ use Laravel\Fortify\Features;
 Route::get('/', function (Request $request, LandingAuthOverrideService $landingAuthOverrideService) {
     $user = $request->user();
 
+    if ($leadId = $request->query('lead')) {
+        $request->session()->put('invited_lead_id', (string) $leadId);
+    }
+
     $popularBanks = Cache::remember('popular-banks', now()->addDay(), function () {
         return Bank::query()
             ->whereNull('user_id')

@@ -2,11 +2,12 @@
 
 namespace App\Mail;
 
+use App\Enums\LeadCohort;
 use App\Models\UserLead;
+use App\Services\LandingAuthOverrideService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\Middleware\RateLimited;
@@ -16,65 +17,69 @@ class UserLeadInvitation extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    /**
-     * The number of times the job may be attempted.
-     *
-     * @var int
-     */
+    /** @var int */
     public $tries = 5;
 
-    /**
-     * The number of seconds to wait before retrying the job.
-     *
-     * @var array<int, int>
-     */
+    /** @var array<int, int> */
     public $backoff = [2, 5, 10, 30];
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct(public UserLead $lead)
+    public function __construct(public UserLead $lead, public LeadCohort $cohort)
     {
         $this->onQueue('emails');
+        $this->locale($lead->preferredLocale());
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your early access to Whisper Money is ready',
+            subject: $this->subjectFor($this->cohort),
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
+        $signupUrl = app(LandingAuthOverrideService::class)
+            ->generateInvitationUrl($this->lead->id, days: 30);
+
         return new Content(
-            markdown: 'mail.user-lead-invitation',
+            markdown: $this->viewFor($this->cohort),
+            with: [
+                'lead' => $this->lead,
+                'cohort' => $this->cohort,
+                'signupUrl' => $signupUrl,
+                'promoCodeMonthly' => $this->lead->promo_code_monthly,
+                'promoCodeYearly' => $this->lead->promo_code_yearly,
+                'monthlyPrice' => (float) config('subscriptions.plans.monthly.price'),
+                'yearlyPrice' => (float) config('subscriptions.plans.yearly.price'),
+            ],
         );
     }
 
     /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
-    }
-
-    /**
-     * Get the middleware the job should pass through.
-     *
      * @return array<int, object>
      */
     public function middleware(): array
     {
         return [(new RateLimited('emails'))->releaseAfter(1)];
+    }
+
+    private function viewFor(LeadCohort $cohort): string
+    {
+        return match ($cohort) {
+            LeadCohort::Founder => 'mail.invitations.founder',
+            LeadCohort::FounderReferrer => 'mail.invitations.founder-referrer',
+            LeadCohort::EarlyBird => 'mail.invitations.early-bird',
+            LeadCohort::Waitlist => 'mail.invitations.waitlist',
+        };
+    }
+
+    private function subjectFor(LeadCohort $cohort): string
+    {
+        return match ($cohort) {
+            LeadCohort::Founder => __("You're a Whisper Money founder — free forever 🎁"),
+            LeadCohort::FounderReferrer => __('Your referral made you a Whisper Money founder — free forever 🎁'),
+            LeadCohort::EarlyBird => __("You're in early — months on us at Whisper Money"),
+            LeadCohort::Waitlist => __('Your Whisper Money invitation is here'),
+        };
     }
 }
