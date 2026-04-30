@@ -3,12 +3,12 @@
 
 {{ __('Hey there!') }}
 
-{{ __("We're Víctor and Álvaro, the founders of Whisper Money. You signed up early on the waitlist, and now Whisper Money is open. As a thank you, your first months are on us.") }}
+{{ __("We're Víctor and Álvaro, the founders of Whisper Money. Now Whisper Money is open. As a thank you, your first months are on us.") }}
 
 ## {{ __('Your early-access gift') }}
 
-- {{ __('**Monthly plan**: 2 months free') }}
-- {{ __('**Yearly plan**: 3 months free on your first year (25% off)') }}
+- {{ __('**Monthly plan**: 60 days free') }}
+- {{ __('**Yearly plan**: 90 days free on your first year') }}
 
 {{ __('Pick whichever plan fits you, paste the matching code at checkout, and you are set.') }}
 

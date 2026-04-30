@@ -7,8 +7,8 @@ use App\Models\UserLead;
 dataset('cohorts', [
     [LeadCohort::Founder, 'free, forever'],
     [LeadCohort::FounderReferrer, 'free, forever'],
-    [LeadCohort::EarlyBird, '2 months free'],
-    [LeadCohort::Waitlist, '2 months free'],
+    [LeadCohort::EarlyBird, '60 days free'],
+    [LeadCohort::Waitlist, '60 days free'],
 ]);
 
 it('renders the right template per cohort', function (LeadCohort $cohort, string $expected): void {

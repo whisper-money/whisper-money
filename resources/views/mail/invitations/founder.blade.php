@@ -3,7 +3,7 @@
 
 {{ __('Hey there!') }}
 
-{{ __("We're Víctor and Álvaro, the founders of Whisper Money. You joined the waitlist early — and you're one of our first 10. That makes you a Whisper Money founder.") }}
+{{ __("We're Víctor and Álvaro, the founders of Whisper Money. You're one of our first 10. That makes you a Whisper Money founder user.") }}
 
 ## {{ __("Your gift: Whisper Money Pro, free forever") }}
 
