@@ -31,6 +31,21 @@ pest()->browser()->timeout(15000);
 
 /*
 |--------------------------------------------------------------------------
+| Disable Vite globally for non-browser suites
+|--------------------------------------------------------------------------
+|
+| Feature/Performance suites render Inertia pages but never assert on
+| the JS bundle. Calling withoutVite() here removes the dependency on a
+| compiled Vite manifest, so these jobs no longer need the build-assets
+| artifact in CI. Browser tests still get a real manifest because the
+| dev server / built assets are required to drive Playwright.
+*/
+pest()->beforeEach(function () {
+    $this->withoutVite();
+})->in('Feature', 'Performance');
+
+/*
+|--------------------------------------------------------------------------
 | Expectations
 |--------------------------------------------------------------------------
 |

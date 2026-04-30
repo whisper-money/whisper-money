@@ -69,7 +69,6 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
-    needs: build-assets
     services:
       mysql:
         image: mysql:8.0
@@ -103,12 +102,6 @@ jobs:
 
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-assets
-          path: public/build
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -147,7 +140,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     services:
       mysql:
         image: mysql:8.0
@@ -166,11 +159,6 @@ jobs:
         with:
           php-version: 8.4
           tools: composer:v2
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -194,11 +182,11 @@ jobs:
           restore-keys: playwright-${{ runner.os }}-
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
 
       - name: Install Playwright system deps
-        run: npx playwright install-deps
+        run: npx playwright install-deps chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
 
       - name: Get composer cache directory
@@ -228,7 +216,7 @@ jobs:
         run: php artisan key:generate
 
       - name: Browser Tests
-        run: ./vendor/bin/pest --testsuite=Browser --ci --shard=${{ matrix.shard }}/4
+        run: ./vendor/bin/pest --testsuite=Browser --ci --shard=${{ matrix.shard }}/6
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql
@@ -324,7 +312,6 @@ jobs:
 
   performance-tests:
     runs-on: ubuntu-latest
-    needs: build-assets
     services:
       mysql:
         image: mysql:8.0
@@ -357,12 +344,6 @@ jobs:
 
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-assets
-          path: public/build
 
       - name: Copy Environment File
         run: cp .env.example .env
