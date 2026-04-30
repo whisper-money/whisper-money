@@ -252,8 +252,17 @@ jobs:
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
           bun install --frozen-lockfile
 
+      - name: Cache Pint results
+        uses: actions/cache@v4
+        with:
+          path: .pint.cache
+          key: pint-${{ runner.os }}-${{ hashFiles('composer.lock', 'pint.json') }}-${{ github.sha }}
+          restore-keys: |
+            pint-${{ runner.os }}-${{ hashFiles('composer.lock', 'pint.json') }}-
+            pint-${{ runner.os }}-
+
       - name: Run Pint
-        run: vendor/bin/pint --test
+        run: vendor/bin/pint --test --parallel --cache-file=.pint.cache
 
       - name: Format Frontend
         run: bun run format
