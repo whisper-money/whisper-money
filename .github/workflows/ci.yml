@@ -94,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4]
     services:
       mysql:
         image: mysql:8.0
@@ -143,7 +143,7 @@ jobs:
         run: php artisan key:generate
 
       - name: Browser Tests
-        run: ./vendor/bin/pest --testsuite=Browser --ci --shard=${{ matrix.shard }}/6
+        run: ./vendor/bin/pest --testsuite=Browser --ci --shard=${{ matrix.shard }}/4
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql
