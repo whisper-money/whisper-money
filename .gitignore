@@ -31,3 +31,4 @@ yarn-error.log
 .php-cs-fixer.cache
 .claude/settings.local.json
 .php-version
+.pint.cache
