@@ -240,7 +240,7 @@ class DashboardAnalyticsController extends Controller
                     : [];
 
                 for ($i = 1; $i <= $monthsAhead; $i++) {
-                    $projectedDate = $now->copy()->addMonths($i)->endOfMonth();
+                    $projectedDate = $now->copy()->addMonthsNoOverflow($i)->endOfMonth();
                     $yearMonth = $projectedDate->format('Y-m');
 
                     $projectedValue = (int) round($baseValue * pow(1 + $monthlyRate, $i));
