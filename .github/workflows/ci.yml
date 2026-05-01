@@ -23,39 +23,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.4
-          tools: composer:v2
-          coverage: none
+      - name: Setup PHP & Composer Deps
+        uses: ./.github/actions/setup-php-deps
 
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php8.4-
-
-      - name: Install PHP Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Cache bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-
-      - name: Install Node Dependencies
-        run: bun install --frozen-lockfile
+      - name: Setup Bun & Node Deps
+        uses: ./.github/actions/setup-bun-deps
 
       - name: Build Assets
         run: bun run build
@@ -69,7 +41,6 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
-    needs: build-assets
     services:
       mysql:
         image: mysql:8.0
@@ -83,32 +54,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.4
-          tools: composer:v2
-          coverage: none
-
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php8.4-
-
-      - name: Install Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-assets
-          path: public/build
+      - name: Setup PHP & Composer Deps
+        uses: ./.github/actions/setup-php-deps
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -117,7 +64,12 @@ jobs:
         run: php artisan key:generate
 
       - name: Tests
-        run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance
+        # --parallel splits the suite across workers via paratest. Each
+        # worker creates its own "testing_test_<N>" database; the mysql
+        # service runs as root which has CREATE on *.* so this Just Works
+        # without extra grants. Performance suite is excluded because
+        # concurrent load skews its timing-based assertions.
+        run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql
@@ -161,29 +113,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.4
-          tools: composer:v2
+      - name: Setup PHP & Composer Deps
+        uses: ./.github/actions/setup-php-deps
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Cache bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-
-      - name: Install Node Dependencies
-        run: bun install --frozen-lockfile
+      - name: Setup Bun & Node Deps
+        uses: ./.github/actions/setup-bun-deps
 
       - name: Cache Playwright browsers
         id: playwright-cache
@@ -194,26 +128,12 @@ jobs:
           restore-keys: playwright-${{ runner.os }}-
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
 
       - name: Install Playwright system deps
-        run: npx playwright install-deps
+        run: npx playwright install-deps chromium
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php8.4-
-
-      - name: Install PHP Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Download Build Artifact
         uses: actions/download-artifact@v4
@@ -243,24 +163,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Setup PHP & Composer Deps
+        uses: ./.github/actions/setup-php-deps
         with:
-          php-version: '8.4'
-
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php8.4-
-
-      - name: Install PHP Dependencies
-        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+          composer-args: '-q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist'
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress
@@ -270,45 +176,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Setup PHP & Composer Deps
+        uses: ./.github/actions/setup-php-deps
         with:
-          php-version: '8.4'
+          composer-args: '-q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist'
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php8.4-
-
-      - name: Cache bun dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-
-      - name: Install Dependencies
-        run: |
-          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          bun install --frozen-lockfile
+      - name: Setup Bun & Node Deps
+        uses: ./.github/actions/setup-bun-deps
 
       - name: Cache Pint results
         uses: actions/cache@v4
         with:
           path: .pint.cache
-          key: pint-${{ runner.os }}-${{ hashFiles('composer.lock', 'pint.json') }}-${{ github.sha }}
-          restore-keys: |
-            pint-${{ runner.os }}-${{ hashFiles('composer.lock', 'pint.json') }}-
-            pint-${{ runner.os }}-
+          key: pint-${{ runner.os }}-${{ hashFiles('composer.lock', 'pint.json') }}
+          restore-keys: pint-${{ runner.os }}-
 
       - name: Run Pint
         run: vendor/bin/pint --test --parallel --cache-file=.pint.cache
@@ -324,7 +205,6 @@ jobs:
 
   performance-tests:
     runs-on: ubuntu-latest
-    needs: build-assets
     services:
       mysql:
         image: mysql:8.0
@@ -338,31 +218,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: 8.4
-          tools: composer:v2
-
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-php8.4-
-
-      - name: Install Dependencies
-        run: composer install --no-interaction --prefer-dist --optimize-autoloader
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-assets
-          path: public/build
+      - name: Setup PHP & Composer Deps
+        uses: ./.github/actions/setup-php-deps
 
       - name: Copy Environment File
         run: cp .env.example .env

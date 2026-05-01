@@ -1,0 +1,30 @@
+name: Setup Bun & Node Deps
+description: |
+  Sets up Bun and installs Node dependencies, caching both the global
+  Bun install cache and `node_modules/`. On a `node_modules/` cache hit
+  `bun install` is skipped entirely.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+
+    - name: Cache bun global cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: bun-${{ runner.os }}-
+
+    - name: Cache node_modules
+      id: node-modules-cache
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+    - name: Install Node Dependencies
+      if: steps.node-modules-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bun install --frozen-lockfile
