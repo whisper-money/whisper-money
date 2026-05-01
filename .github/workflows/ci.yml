@@ -64,7 +64,12 @@ jobs:
         run: php artisan key:generate
 
       - name: Tests
-        run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance
+        # --parallel splits the suite across workers via paratest. Each
+        # worker creates its own "testing_test_<N>" database; the mysql
+        # service runs as root which has CREATE on *.* so this Just Works
+        # without extra grants. Performance suite is excluded because
+        # concurrent load skews its timing-based assertions.
+        run: ./vendor/bin/pest --exclude-testsuite=Browser,Performance --parallel --processes=4
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql
