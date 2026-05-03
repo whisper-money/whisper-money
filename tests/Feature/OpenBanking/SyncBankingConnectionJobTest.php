@@ -104,6 +104,42 @@ test('linked accounts sync from last transaction date and skip historical balanc
     $job->handle($transactionSync, $balanceSync);
 });
 
+test('linked accounts clamp linkedDateFrom to today when last transaction is in future', function () {
+    Carbon::setTestNow('2026-05-02 12:00:00');
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->linked()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'transaction_date' => '2026-05-04',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')
+        ->once()
+        ->withArgs(function ($acct, $dateFrom, $dateTo, $strategy) {
+            return $dateFrom === '2026-05-02' && $dateTo === '2026-05-02';
+        })
+        ->andReturn(0);
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+    $balanceSync->shouldNotReceive('calculateHistoricalBalances');
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+});
+
 test('mixed linked and new accounts in same connection', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([

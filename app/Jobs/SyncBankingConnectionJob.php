@@ -280,6 +280,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                     ? $lastTransaction->transaction_date->toDateString()
                     : $dateFrom;
 
+                if ($linkedDateFrom > $dateTo) {
+                    $linkedDateFrom = $dateTo;
+                }
+
                 $created = $transactionSync->sync($account, $linkedDateFrom, $dateTo, $strategy, saveDailyBalances: false);
                 $balanceSync->sync($account);
             } else {
