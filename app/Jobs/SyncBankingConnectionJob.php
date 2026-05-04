@@ -24,6 +24,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Sentry\State\Scope;
+
+use function Sentry\configureScope;
 
 class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 {
@@ -58,6 +61,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         $syncedAt = now();
 
         $connection->loadMissing('user');
+        $this->setSentryContext($connection);
 
         if (! $connection->user) {
             Log::info('Banking connection belongs to deleted user, skipping sync', ['connection_id' => $connection->id]);
@@ -212,6 +216,27 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             BankingConnectionStatus::Active,
             BankingConnectionStatus::Error,
         ]);
+    }
+
+    private function setSentryContext(BankingConnection $connection): void
+    {
+        configureScope(function (Scope $scope) use ($connection): void {
+            $scope->setTag('banking_connection_id', (string) $connection->id);
+            $scope->setContext('banking_connection', [
+                'id' => $connection->id,
+                'provider' => $connection->provider,
+                'status' => $connection->status->value,
+            ]);
+
+            if ($connection->user === null) {
+                return;
+            }
+
+            $scope->setUser([
+                'id' => (string) $connection->user->getAuthIdentifier(),
+                'email' => $connection->user->email,
+            ]);
+        });
     }
 
     private function logSyncAttempt(

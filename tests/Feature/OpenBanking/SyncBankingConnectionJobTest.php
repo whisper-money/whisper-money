@@ -23,6 +23,42 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Sentry\SentrySdk;
+use Sentry\State\Hub;
+use Sentry\State\Scope;
+
+it('sets sentry user and banking connection context for sync jobs', function () {
+    SentrySdk::setCurrentHub(new Hub);
+
+    $user = User::factory()->create([
+        'name' => 'Private Name',
+        'email' => 'sync-user@example.com',
+    ]);
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'provider' => 'binance',
+    ]);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle(Mockery::mock(TransactionSyncService::class), Mockery::mock(BalanceSyncService::class));
+
+    SentrySdk::getCurrentHub()->configureScope(function (Scope $scope) use ($user, $connection): void {
+        $sentryUser = $scope->getUser();
+        $tags = (fn (): array => $this->tags)->call($scope);
+        $contexts = (fn (): array => $this->contexts)->call($scope);
+
+        expect($sentryUser)->not->toBeNull()
+            ->and($sentryUser->getId())->toBe((string) $user->id)
+            ->and($sentryUser->getEmail())->toBe('sync-user@example.com')
+            ->and($sentryUser->getUsername())->toBeNull()
+            ->and($tags['banking_connection_id'])->toBe((string) $connection->id)
+            ->and($contexts['banking_connection'])->toMatchArray([
+                'id' => $connection->id,
+                'provider' => 'binance',
+                'status' => BankingConnectionStatus::AwaitingMapping->value,
+            ]);
+    });
+});
 
 test('first sync calculates historical balances', function () {
     $user = User::factory()->onboarded()->create();
