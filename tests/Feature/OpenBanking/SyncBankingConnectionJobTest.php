@@ -1260,6 +1260,23 @@ test('sends auth failed email immediately for binance 403 error', function () {
     });
 });
 
+test('failed sync job marks active connection as error so onboarding can continue', function () {
+    $connection = BankingConnection::factory()->create([
+        'status' => BankingConnectionStatus::Active,
+        'last_synced_at' => null,
+        'consecutive_sync_failures' => 0,
+    ]);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->failed(new RuntimeException('Provider request timed out.'));
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+    expect($connection->last_synced_at)->toBeNull();
+    expect($connection->error_message)->toBe('An unexpected error occurred during sync. Please try again later.');
+    expect($connection->consecutive_sync_failures)->toBe(1);
+});
+
 test('rate limit error does not set connection status to error', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([

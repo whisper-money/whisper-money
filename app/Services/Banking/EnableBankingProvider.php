@@ -138,6 +138,8 @@ class EnableBankingProvider implements BankingProviderInterface
     private function client(): PendingRequest
     {
         return Http::baseUrl(self::BASE_URL)
+            ->timeout(20)
+            ->connectTimeout(5)
             ->withToken($this->generateJwt())
             ->acceptJson()
             ->throw(function ($response, $exception) {
