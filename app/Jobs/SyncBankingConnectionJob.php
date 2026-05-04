@@ -33,6 +33,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     public int $backoff = 30;
 
+    public int $timeout = 120;
+
     /**
      * Maximum number of scheduled sync cycles that will auto-retry
      * a connection in Error state before requiring manual intervention.
@@ -143,6 +145,25 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle permanent errors (auth failures) that should not be retried.
      */
+    public function failed(?\Throwable $e): void
+    {
+        $connection = $this->bankingConnection->fresh();
+
+        if (! $connection || $connection->status === BankingConnectionStatus::Error) {
+            return;
+        }
+
+        if (! $this->isSyncableStatus($connection)) {
+            return;
+        }
+
+        $connection->update([
+            'status' => BankingConnectionStatus::Error,
+            'error_message' => $e ? $this->friendlyErrorMessage($e) : __('An unexpected error occurred during sync. Please try again later.'),
+            'consecutive_sync_failures' => $connection->consecutive_sync_failures + 1,
+        ]);
+    }
+
     private function handlePermanentError(BankingConnection $connection, \Throwable $e): void
     {
         $connection->update([
