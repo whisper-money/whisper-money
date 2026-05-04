@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -11,6 +12,8 @@ class CurrencyConversionService
     private const PRIMARY_URL = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@';
 
     private const FALLBACK_URL = 'https://currency-api.pages.dev/v1/';
+
+    private const HISTORICAL_LOOKBACK_DAYS = 7;
 
     /** @var array<string, array<string, float>> Keyed by "{currency}:{date}" */
     private array $rateCache = [];
@@ -77,25 +80,48 @@ class CurrencyConversionService
      */
     private function fetchRates(string $currency, string $date): array
     {
-        $primaryUrl = self::PRIMARY_URL."{$date}/v1/currencies/{$currency}.min.json";
-        $fallbackUrl = self::FALLBACK_URL."{$date}/currencies/{$currency}.min.json";
+        $lastException = null;
 
-        try {
-            $response = Http::timeout(10)->get($primaryUrl);
-            $response->throw();
+        foreach ($this->candidateDates($date) as $candidateDate) {
+            foreach ($this->rateUrls($currency, $candidateDate) as $url) {
+                try {
+                    $response = Http::timeout(10)->get($url);
+                    $response->throw();
 
-            return $response->json($currency) ?? [];
-        } catch (\Throwable) {
-            // Primary failed, try fallback
+                    return $response->json($currency) ?? [];
+                } catch (\Throwable $e) {
+                    $lastException = $e;
+                }
+            }
         }
 
-        try {
-            $response = Http::timeout(10)->get($fallbackUrl);
-            $response->throw();
+        throw new RuntimeException("Failed to fetch currency rates for {$currency} on {$date}: {$lastException?->getMessage()}", 0, $lastException);
+    }
 
-            return $response->json($currency) ?? [];
-        } catch (\Throwable $e) {
-            throw new RuntimeException("Failed to fetch currency rates for {$currency} on {$date}: {$e->getMessage()}", 0, $e);
+    /**
+     * @return array<int, string>
+     */
+    private function candidateDates(string $date): array
+    {
+        if ($date === 'latest') {
+            return [$date];
         }
+
+        $parsedDate = Carbon::createFromFormat('Y-m-d', $date);
+
+        return collect(range(0, self::HISTORICAL_LOOKBACK_DAYS))
+            ->map(fn (int $days): string => $parsedDate->copy()->subDays($days)->toDateString())
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function rateUrls(string $currency, string $date): array
+    {
+        return [
+            self::PRIMARY_URL."{$date}/v1/currencies/{$currency}.min.json",
+            self::FALLBACK_URL."{$date}/currencies/{$currency}.min.json",
+        ];
     }
 }
