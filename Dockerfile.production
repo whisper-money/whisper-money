@@ -32,9 +32,12 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
-# Install Bun
-RUN curl -fsSL https://bun.com/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
+# Install Bun in a non-root path so supervisor workers running as www-data can execute it
+ENV BUN_INSTALL="/usr/local/bun"
+RUN curl -fsSL https://bun.com/install | bash \
+    && ln -sf /usr/local/bun/bin/bun /usr/local/bin/bun \
+    && chmod -R a+rx /usr/local/bun
+ENV PATH="/usr/local/bun/bin:${PATH}"
 
 # Install memcached and redis servers
 RUN apt-get update && apt-get install -y memcached redis-server && rm -rf /var/lib/apt/lists/*
