@@ -6,6 +6,7 @@ use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
     config(['landing.hide_auth_buttons' => false]);
@@ -304,6 +305,23 @@ test('default categories are not created twice for the same user', function () {
     $service->handle($user);
 
     expect($user->categories()->count())->toBe(64);
+});
+
+test('default categories are created without repeated category lookups', function () {
+    $user = User::factory()->create();
+    $service = new CreateDefaultCategories;
+    $categorySelects = 0;
+
+    DB::listen(function ($query) use (&$categorySelects) {
+        if (str_starts_with($query->sql, 'select `name` from `categories`')) {
+            $categorySelects++;
+        }
+    });
+
+    $service->handle($user);
+
+    expect($user->categories()->count())->toBe(64)
+        ->and($categorySelects)->toBe(1);
 });
 
 test('category names are unique per user', function () {
