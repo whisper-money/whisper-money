@@ -272,6 +272,7 @@ jobs:
               - 'phpunit.xml*'
               - 'pint.json'
               - 'Dockerfile'
+              - 'Dockerfile.*'
               - 'docker/**'
               - '.dockerignore'
               - '.env.example'
