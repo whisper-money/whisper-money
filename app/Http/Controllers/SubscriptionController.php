@@ -79,11 +79,12 @@ class SubscriptionController extends Controller
         $priceId = $this->resolvePriceIdByLookupKey($plan['stripe_lookup_key']);
 
         $subscriptionBuilder = $request->user()
-            ->newSubscription('default', $priceId)
-            ->allowPromotionCodes();
+            ->newSubscription('default', $priceId);
 
         if ($promotionCodeId = $this->resolveLeadPromotionCodeId($request->user(), $planKey)) {
             $subscriptionBuilder->withPromotionCode($promotionCodeId);
+        } else {
+            $subscriptionBuilder->allowPromotionCodes();
         }
 
         $trialDays = (int) ($plan['trial_days'] ?? 0);
