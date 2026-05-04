@@ -7,10 +7,13 @@ use App\Models\BankingConnection;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\UserLead;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Cashier\Checkout;
 use Laravel\Cashier\SubscriptionBuilder;
+use Stripe\Service\PromotionCodeService;
+use Stripe\StripeClient;
 
 beforeEach(function () {
     config([
@@ -338,6 +341,57 @@ test('checkout applies configured trial days to the subscription builder', funct
         ->once()
         ->with('default', 'price_test_monthly')
         ->andReturn($builder);
+
+    $this->withoutMiddleware(HandleInertiaRequests::class);
+    $this->actingAs($user);
+
+    $this->get(route('subscribe.checkout', ['plan' => 'monthly']))->assertRedirect();
+});
+
+test('checkout applies lead promotion code without allowing manual promotion codes', function () {
+    config([
+        'subscriptions.plans.monthly.trial_days' => 0,
+        'subscriptions.plans.monthly.stripe_lookup_key' => 'test_monthly_lookup',
+    ]);
+    Cache::put('stripe_price_id:test_monthly_lookup', 'price_test_monthly', now()->addHour());
+
+    $promotionCodeService = Mockery::mock(PromotionCodeService::class);
+    $promotionCodeService->shouldReceive('all')
+        ->once()
+        ->with([
+            'code' => 'WM-LEAD',
+            'active' => true,
+            'limit' => 1,
+        ])
+        ->andReturn((object) ['data' => [(object) ['id' => 'promo_lead']]]);
+
+    $stripeClient = Mockery::mock(StripeClient::class);
+    $stripeClient->promotionCodes = $promotionCodeService;
+
+    app()->bind(StripeClient::class, fn (): StripeClient => $stripeClient);
+
+    $checkout = Mockery::mock(Checkout::class);
+    $checkout->shouldReceive('toResponse')->andReturn(new RedirectResponse('https://stripe.test/session'));
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('withPromotionCode')->once()->with('promo_lead')->andReturnSelf();
+    $builder->shouldNotReceive('allowPromotionCodes');
+    $builder->shouldNotReceive('trialDays');
+    $builder->shouldReceive('checkout')->once()->andReturn($checkout);
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('getAttribute')->with('email')->andReturn('lead@example.com');
+    $user->shouldReceive('hasVerifiedEmail')->andReturn(true);
+    $user->shouldReceive('hasProPlan')->andReturn(false);
+    $user->shouldReceive('newSubscription')
+        ->once()
+        ->with('default', 'price_test_monthly')
+        ->andReturn($builder);
+
+    UserLead::factory()->create([
+        'email' => 'lead@example.com',
+        'promo_code_monthly' => 'WM-LEAD',
+    ]);
 
     $this->withoutMiddleware(HandleInertiaRequests::class);
     $this->actingAs($user);
