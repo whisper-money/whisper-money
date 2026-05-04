@@ -73,6 +73,24 @@ test('throws when both primary and fallback fail', function () {
     $service->convert('BTC', 'EUR', 1.0, '2026-01-15');
 })->throws(RuntimeException::class);
 
+test('falls back to previous historical date when requested release is missing', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@2025-12-10/*' => Http::response('Not Found', 404),
+        'currency-api.pages.dev/v1/2025-12-10/*' => Http::response('Not Found', 404),
+        'cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@2025-12-09/*' => Http::response([
+            'usd' => [
+                'eur' => 0.9,
+            ],
+        ]),
+    ]);
+
+    $service = new CurrencyConversionService;
+    $result = $service->convert('EUR', 'USD', 90.0, '2025-12-10');
+
+    expect($result)->toBe(100.0);
+    Http::assertSentCount(3);
+});
+
 test('caches rates so same currency and date makes only one HTTP request', function () {
     Http::fake([
         'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
