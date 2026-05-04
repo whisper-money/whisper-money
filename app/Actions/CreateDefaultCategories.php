@@ -3,7 +3,9 @@
 namespace App\Actions;
 
 use App\Enums\CategoryCashflowDirection;
+use App\Models\Category;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 class CreateDefaultCategories
 {
@@ -15,12 +17,29 @@ class CreateDefaultCategories
         $locale = $user->locale ?? app()->getLocale();
         $defaultCategories = self::getDefaultCategories($locale);
 
-        foreach ($defaultCategories as $category) {
-            $user->categories()->firstOrCreate(
-                ['name' => $category['name']],
-                $category
-            );
+        $existingCategoryNames = $user->categories()
+            ->whereIn('name', array_column($defaultCategories, 'name'))
+            ->pluck('name')
+            ->all();
+
+        $now = now();
+        $categories = collect($defaultCategories)
+            ->reject(fn (array $category): bool => in_array($category['name'], $existingCategoryNames, true))
+            ->map(fn (array $category): array => [
+                ...$category,
+                'cashflow_direction' => $category['cashflow_direction'] ?? CategoryCashflowDirection::Hidden->value,
+                'id' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])
+            ->all();
+
+        if ($categories === []) {
+            return;
         }
+
+        Category::query()->insert($categories);
     }
 
     /**
