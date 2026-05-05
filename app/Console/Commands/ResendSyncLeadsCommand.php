@@ -8,12 +8,14 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('resend:sync-leads')]
-#[Description('Sync all user leads to the Resend leads segment')]
+#[Signature('resend:sync-leads {--since=24 : Sync leads created within the last N hours. Use 0 to sync all.}')]
+#[Description('Sync user leads to the Resend leads segment (last 24h by default)')]
 class ResendSyncLeadsCommand extends Command
 {
     public function handle(ResendService $resendService): int
     {
+        $since = (int) $this->option('since');
+
         if (! config('services.resend.key')) {
             $this->error('Resend API key not configured.');
 
@@ -28,6 +30,7 @@ class ResendSyncLeadsCommand extends Command
 
         $leads = UserLead::query()
             ->whereNotNull('email_verified_at')
+            ->when($since > 0, fn ($query) => $query->where('created_at', '>=', now()->subHours($since)))
             ->get();
 
         if ($leads->isEmpty()) {
