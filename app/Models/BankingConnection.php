@@ -40,6 +40,7 @@ class BankingConnection extends Model
         'last_synced_at',
         'bank_transactions_email_cutoff_at',
         'error_message',
+        'rate_limited_until',
         'consecutive_sync_failures',
         'pending_accounts_data',
         'api_token',
@@ -61,6 +62,7 @@ class BankingConnection extends Model
             'valid_until' => 'datetime',
             'last_synced_at' => 'datetime',
             'bank_transactions_email_cutoff_at' => 'datetime',
+            'rate_limited_until' => 'datetime',
             'pending_accounts_data' => 'array',
             'api_token' => 'encrypted',
             'api_secret' => 'encrypted',
@@ -125,5 +127,11 @@ class BankingConnection extends Model
     {
         return $this->status === BankingConnectionStatus::Expired
             || ($this->valid_until && $this->valid_until->isPast());
+    }
+
+    public function isRateLimited(): bool
+    {
+        return $this->rate_limited_until !== null
+            && $this->rate_limited_until->isFuture();
     }
 }

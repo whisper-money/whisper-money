@@ -1313,7 +1313,7 @@ test('failed sync job marks active connection as error so onboarding can continu
     expect($connection->consecutive_sync_failures)->toBe(1);
 });
 
-test('rate limit error does not set connection status to error', function () {
+test('rate limit error sets backoff window without erroring connection', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
@@ -1341,5 +1341,116 @@ test('rate limit error does not set connection status to error', function () {
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
-    expect($connection->error_message)->toBeNull();
+    expect($connection->rate_limited_until)->not->toBeNull();
+    expect($connection->rate_limited_until->isFuture())->toBeTrue();
+});
+
+test('daily rate limit backoff lasts until next UTC midnight', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $body = json_encode(['code' => 429, 'message' => 'Daily PSU not present consultation limit has been exceeded']);
+    $response = new Response(429, ['Content-Type' => 'application/json'], $body);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(
+        new RequestException(new Illuminate\Http\Client\Response($response))
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    $expected = now()->utc()->addDay()->startOfDay();
+    expect($connection->rate_limited_until)->not->toBeNull();
+    expect($connection->rate_limited_until->equalTo($expected))->toBeTrue();
+});
+
+test('rate limit backoff honours Retry-After header', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $response = new Response(429, ['Retry-After' => '1800'], '{}');
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(
+        new RequestException(new Illuminate\Http\Client\Response($response))
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->rate_limited_until)->not->toBeNull();
+    expect($connection->rate_limited_until->diffInMinutes(now(), true))->toBeGreaterThanOrEqual(29)
+        ->toBeLessThanOrEqual(31);
+});
+
+test('rate limited connection is skipped without calling provider', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+        'rate_limited_until' => now()->addHour(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldNotReceive('sync');
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+});
+
+test('successful sync clears rate_limited_until', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+        'rate_limited_until' => now()->subMinute(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturn(0);
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->andReturnNull();
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->handle($transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->rate_limited_until)->toBeNull();
 });

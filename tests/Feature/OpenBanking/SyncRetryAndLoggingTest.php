@@ -511,6 +511,28 @@ test('scheduled sync excludes error connections with expired valid_until', funct
     Queue::assertNotPushed(SyncBankingConnectionJob::class);
 });
 
+test('scheduled sync skips connections still within rate limit backoff window', function () {
+    Queue::fake(SyncBankingConnectionJob::class);
+
+    $user = User::factory()->onboarded()->create();
+
+    BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'rate_limited_until' => now()->addHour(),
+    ]);
+
+    $eligible = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'rate_limited_until' => now()->subMinute(),
+    ]);
+
+    $job = new SyncAllBankingConnectionsJob;
+    $job->handle();
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, 1);
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn ($job) => $job->bankingConnection->id === $eligible->id);
+});
+
 // --- Manual Retry Reset Tests ---
 
 test('manual sync resets consecutive sync failures', function () {
