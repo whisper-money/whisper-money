@@ -4,8 +4,10 @@ namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
 use App\Models\Account;
+use App\Models\AccountBalance;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class BalanceSyncService
 {
@@ -87,16 +89,26 @@ class BalanceSyncService
 
         $runningBalance = $referenceBalance->balance;
         $referenceDate = $referenceBalance->balance_date->toDateString();
+        $now = now();
+        $rows = [];
 
         foreach ($dailyTotals as $date => $sum) {
             if ($date < $referenceDate && ! isset($existingDates[$date])) {
-                $account->balances()->create([
+                $rows[] = [
+                    'id' => (string) Str::uuid(),
+                    'account_id' => $account->id,
                     'balance_date' => $date,
                     'balance' => $runningBalance,
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
 
             $runningBalance -= (int) $sum;
+        }
+
+        if ($rows !== []) {
+            AccountBalance::upsert($rows, ['account_id', 'balance_date'], ['balance', 'updated_at']);
         }
 
         Log::info('Calculated historical balances', [

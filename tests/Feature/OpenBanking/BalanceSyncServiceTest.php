@@ -59,6 +59,39 @@ test('calculateHistoricalBalances derives balances from transactions', function 
     expect($feb5->balance)->toBe(85000);
 });
 
+test('calculateHistoricalBalances writes missing balances in one query', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    AccountBalance::factory()->create([
+        'account_id' => $account->id,
+        'balance_date' => '2026-02-10',
+        'balance' => 100000,
+    ]);
+
+    foreach (range(0, 5) as $daysBack) {
+        Transaction::factory()->enableBanking()->create([
+            'user_id' => $user->id,
+            'account_id' => $account->id,
+            'transaction_date' => sprintf('2026-02-%02d', 10 - $daysBack),
+            'amount' => -1000,
+        ]);
+    }
+
+    $service = new BalanceSyncService(Mockery::mock(BankingProviderInterface::class));
+
+    $result = countQueries(fn () => $service->calculateHistoricalBalances($account));
+    $balanceWrites = collect($result['queries'])->filter(fn (string $query): bool => str_contains($query, 'account_balances') && str_contains(strtolower($query), 'insert'));
+
+    expect($balanceWrites)->toHaveCount(1)
+        ->and($account->balances()->count())->toBe(6);
+});
+
 test('calculateHistoricalBalances handles multiple transactions per day', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
