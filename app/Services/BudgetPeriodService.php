@@ -107,7 +107,6 @@ class BudgetPeriodService
             BudgetPeriodType::Weekly => $lastStart->addWeek(),
             BudgetPeriodType::Biweekly => $lastStart->addWeeks(2),
             BudgetPeriodType::Custom => $lastStart->addDays($budget->period_duration ?? 30),
-            default => $lastStart->addMonth(),
         };
     }
 }
