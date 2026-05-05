@@ -4,12 +4,7 @@ import { Label } from './label';
 import { Transaction } from './transaction';
 import { UUID } from './uuid';
 
-export const BUDGET_PERIOD_TYPES = [
-    'monthly',
-    'weekly',
-    'biweekly',
-    'custom',
-] as const;
+export const BUDGET_PERIOD_TYPES = ['monthly', 'weekly', 'biweekly'] as const;
 
 export type BudgetPeriodType = (typeof BUDGET_PERIOD_TYPES)[number];
 
@@ -22,7 +17,6 @@ export interface Budget {
     user_id: UUID;
     name: string;
     period_type: BudgetPeriodType;
-    period_duration: number | null;
     period_start_day: number | null;
     category_id: UUID | null;
     label_id: UUID | null;
@@ -70,7 +64,6 @@ export function getBudgetPeriodTypeLabel(type: BudgetPeriodType): string {
         monthly: __('Monthly'),
         weekly: __('Weekly'),
         biweekly: __('Bi-weekly'),
-        custom: __('Custom'),
     };
     return labels[type];
 }

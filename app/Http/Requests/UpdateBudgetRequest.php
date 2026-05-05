@@ -21,7 +21,6 @@ class UpdateBudgetRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'max:255'],
             'period_type' => ['sometimes', Rule::enum(BudgetPeriodType::class)],
-            'period_duration' => ['nullable', 'integer', 'min:1', 'max:365'],
             'period_start_day' => ['nullable', 'integer', 'min:0', 'max:31'],
             'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', $userId)],
             'label_id' => ['nullable', Rule::exists('labels', 'id')->where('user_id', $userId)],

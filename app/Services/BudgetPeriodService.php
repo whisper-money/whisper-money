@@ -80,13 +80,6 @@ class BudgetPeriodService
                 $endDate = $startDate->copy()->addWeeks(2)->subDay();
                 break;
 
-            case BudgetPeriodType::Custom:
-                $duration = $budget->period_duration ?? 30;
-                $endDate = $startDate->copy()->addDays($duration)->subDay();
-                break;
-
-            default:
-                $endDate = $startDate->copy()->addMonth()->subDay();
         }
 
         return [$startDate, $endDate];
@@ -94,19 +87,12 @@ class BudgetPeriodService
 
     protected function calculateNextPeriodStartDate(Budget $budget): Carbon
     {
-        $lastPeriod = $budget->periods()->orderBy('start_date', 'desc')->first();
+        $lastPeriod = $budget->periods()->orderBy('end_date', 'desc')->first();
 
-        if ($lastPeriod === null) {
-            return now();
+        if ($lastPeriod) {
+            return $lastPeriod->end_date->copy()->addDay();
         }
 
-        $lastStart = $lastPeriod->start_date->copy();
-
-        return match ($budget->period_type) {
-            BudgetPeriodType::Monthly => $lastStart->addMonth(),
-            BudgetPeriodType::Weekly => $lastStart->addWeek(),
-            BudgetPeriodType::Biweekly => $lastStart->addWeeks(2),
-            BudgetPeriodType::Custom => $lastStart->addDays($budget->period_duration ?? 30),
-        };
+        return now();
     }
 }

@@ -468,8 +468,6 @@ class ResetDemoAccountCommand extends Command
                         $currentDate->addDay();
                     }
                     break;
-                case BudgetPeriodType::Custom:
-                    break;
             }
 
             $iteration++;
