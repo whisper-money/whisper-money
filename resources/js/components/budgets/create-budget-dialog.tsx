@@ -52,7 +52,6 @@ export function CreateBudgetDialog({
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
-    const [periodDuration, setPeriodDuration] = useState<number | null>(null);
     const [periodStartDay, setPeriodStartDay] = useState<number>(1);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
     const [selectedLabelId, setSelectedLabelId] = useState<string>('');
@@ -89,7 +88,6 @@ export function CreateBudgetDialog({
             {
                 name,
                 period_type: periodType,
-                period_duration: periodDuration,
                 period_start_day: periodStartDay,
                 category_id: selectedCategoryId || null,
                 label_id: selectedLabelId || null,
@@ -101,7 +99,6 @@ export function CreateBudgetDialog({
                     setOpen(false);
                     setName('');
                     setPeriodType('monthly');
-                    setPeriodDuration(null);
                     setPeriodStartDay(1);
                     setSelectedCategoryId('');
                     setSelectedLabelId('');
@@ -183,29 +180,6 @@ export function CreateBudgetDialog({
                                 </SelectContent>
                             </Select>
                         </div>
-
-                        {periodType === 'custom' && (
-                            <div className="space-y-2">
-                                <UILabel htmlFor="period-duration">
-                                    {__('Period Duration (days)')}
-                                </UILabel>
-                                <Input
-                                    id="period-duration"
-                                    type="number"
-                                    min="1"
-                                    max="365"
-                                    value={periodDuration ?? ''}
-                                    onChange={(e) =>
-                                        setPeriodDuration(
-                                            e.target.value
-                                                ? parseInt(e.target.value)
-                                                : null,
-                                        )
-                                    }
-                                    required={periodType === 'custom'}
-                                />
-                            </div>
-                        )}
 
                         <div className="space-y-2">
                             <UILabel htmlFor="period-start-day">

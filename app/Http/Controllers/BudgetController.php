@@ -119,7 +119,6 @@ class BudgetController extends Controller
             $budget = $request->user()->budgets()->create([
                 'name' => $request->name,
                 'period_type' => $request->period_type,
-                'period_duration' => $request->period_duration,
                 'period_start_day' => $request->period_start_day,
                 'category_id' => $request->category_id,
                 'label_id' => $request->label_id,
@@ -145,7 +144,6 @@ class BudgetController extends Controller
             $budget->update($request->only([
                 'name',
                 'period_type',
-                'period_duration',
                 'period_start_day',
                 'category_id',
                 'label_id',

@@ -23,7 +23,6 @@ class BudgetFactory extends Factory
             'user_id' => User::factory(),
             'name' => fake()->words(2, true).' Budget',
             'period_type' => fake()->randomElement(BudgetPeriodType::cases()),
-            'period_duration' => null,
             'period_start_day' => 1,
         ];
     }
@@ -41,15 +40,6 @@ class BudgetFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'period_type' => BudgetPeriodType::Weekly,
             'period_start_day' => fake()->numberBetween(0, 6),
-        ]);
-    }
-
-    public function custom(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'period_type' => BudgetPeriodType::Custom,
-            'period_duration' => fake()->numberBetween(7, 90),
-            'period_start_day' => fake()->numberBetween(1, 28),
         ]);
     }
 }

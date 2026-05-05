@@ -50,9 +50,6 @@ export function EditBudgetDialog({
     const [periodType, setPeriodType] = useState<BudgetPeriodType>(
         budget.period_type as BudgetPeriodType,
     );
-    const [periodDuration, setPeriodDuration] = useState<number | null>(
-        budget.period_duration,
-    );
     const [periodStartDay, setPeriodStartDay] = useState<number>(
         budget.period_start_day || 1,
     );
@@ -68,7 +65,6 @@ export function EditBudgetDialog({
         if (open && budget) {
             setName(budget.name);
             setPeriodType(budget.period_type as BudgetPeriodType);
-            setPeriodDuration(budget.period_duration);
             setPeriodStartDay(budget.period_start_day || 1);
             setAllocatedAmount(currentPeriod.allocated_amount);
             setRolloverType(budget.rollover_type as RolloverType);
@@ -84,7 +80,6 @@ export function EditBudgetDialog({
             {
                 name,
                 period_type: periodType,
-                period_duration: periodDuration,
                 period_start_day: periodStartDay,
                 allocated_amount: allocatedAmount,
                 rollover_type: rolloverType,
@@ -149,31 +144,6 @@ export function EditBudgetDialog({
                                 </Select>
                             </div>
                         </div>
-
-                        {periodType === 'custom' && (
-                            <div className="space-y-2">
-                                <Label htmlFor="period-duration">
-                                    {__('Period Duration (days)')}
-                                </Label>
-                                <Input
-                                    disabled
-                                    id="period-duration"
-                                    type="number"
-                                    min="1"
-                                    max="365"
-                                    className="mt-1"
-                                    value={periodDuration ?? ''}
-                                    onChange={(e) =>
-                                        setPeriodDuration(
-                                            e.target.value
-                                                ? parseInt(e.target.value)
-                                                : null,
-                                        )
-                                    }
-                                    required={periodType === 'custom'}
-                                />
-                            </div>
-                        )}
 
                         <div className="space-y-2">
                             <Label htmlFor="period-start-day">

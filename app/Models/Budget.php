@@ -23,7 +23,6 @@ class Budget extends Model
         'user_id',
         'name',
         'period_type',
-        'period_duration',
         'period_start_day',
         'category_id',
         'label_id',
@@ -35,7 +34,6 @@ class Budget extends Model
         return [
             'period_type' => BudgetPeriodType::class,
             'rollover_type' => RolloverType::class,
-            'period_duration' => 'integer',
             'period_start_day' => 'integer',
         ];
     }

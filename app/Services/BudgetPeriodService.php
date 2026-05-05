@@ -80,17 +80,6 @@ class BudgetPeriodService
                 $endDate = $startDate->copy()->addWeeks(2)->subDay();
                 break;
 
-            case BudgetPeriodType::Custom:
-                $duration = $budget->period_duration ?? 30;
-                $startDate->day($budget->period_start_day ?? 1);
-                if ($startDate > $referenceDate) {
-                    $startDate->subDays($duration);
-                }
-                $endDate = $startDate->copy()->addDays($duration)->subDay();
-                break;
-
-            default:
-                $endDate = $startDate->copy()->addMonth()->subDay();
         }
 
         return [$startDate, $endDate];
