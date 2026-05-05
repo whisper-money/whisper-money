@@ -99,7 +99,6 @@ export function CreateBudgetDialog({
                     setOpen(false);
                     setName('');
                     setPeriodType('monthly');
-                    setPeriodDuration(null);
                     setPeriodStartDay(1);
                     setSelectedCategoryId('');
                     setSelectedLabelId('');
