@@ -9,20 +9,39 @@ use function Pest\Laravel\mock;
 
 const TEST_RESEND_LEADS_SEGMENT_ID = 'test-segment-id';
 
-test('resend:sync-leads syncs all user leads to resend', function () {
+test('resend:sync-leads syncs leads created in the last 24h by default', function () {
     config([
         'services.resend.key' => 'test-api-key',
         'services.resend.leads_segment_id' => TEST_RESEND_LEADS_SEGMENT_ID,
     ]);
 
-    UserLead::factory()->count(3)->create();
+    UserLead::factory()->count(2)->create();
+    UserLead::factory()->count(3)->create(['created_at' => now()->subDays(2)]);
 
     $resendService = mock(ResendService::class);
-    $resendService->shouldReceive('syncLead')->times(3);
+    $resendService->shouldReceive('syncLead')->times(2);
 
     artisan('resend:sync-leads')
-        ->expectsOutputToContain('Syncing 3 user leads to Resend...')
-        ->expectsOutputToContain('Synced 3 user leads to Resend.')
+        ->expectsOutputToContain('Syncing 2 user leads to Resend...')
+        ->expectsOutputToContain('Synced 2 user leads to Resend.')
+        ->assertSuccessful();
+});
+
+test('resend:sync-leads syncs all leads when --since=0', function () {
+    config([
+        'services.resend.key' => 'test-api-key',
+        'services.resend.leads_segment_id' => TEST_RESEND_LEADS_SEGMENT_ID,
+    ]);
+
+    UserLead::factory()->count(2)->create();
+    UserLead::factory()->count(3)->create(['created_at' => now()->subDays(2)]);
+
+    $resendService = mock(ResendService::class);
+    $resendService->shouldReceive('syncLead')->times(5);
+
+    artisan('resend:sync-leads', ['--since' => 0])
+        ->expectsOutputToContain('Syncing 5 user leads to Resend...')
+        ->expectsOutputToContain('Synced 5 user leads to Resend.')
         ->assertSuccessful();
 });
 
