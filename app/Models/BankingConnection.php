@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $valid_until
  * @property Carbon|null $last_synced_at
  * @property Carbon|null $bank_transactions_email_cutoff_at
+ * @property Carbon|null $rate_limited_until
  * @property int $consecutive_sync_failures
  * @property array<int, mixed>|null $pending_accounts_data
  */
