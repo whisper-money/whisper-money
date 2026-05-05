@@ -33,6 +33,10 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
                 $query->whereNull('valid_until')
                     ->orWhere('valid_until', '>', now());
             })
+            ->where(function ($query) {
+                $query->whereNull('rate_limited_until')
+                    ->orWhere('rate_limited_until', '<=', now());
+            })
             ->each(function (BankingConnection $connection) {
                 SyncBankingConnectionJob::dispatch($connection, $this->fullSync);
             });

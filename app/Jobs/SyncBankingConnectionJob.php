@@ -22,6 +22,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Sentry\State\Scope;
@@ -86,6 +87,20 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        if ($connection->isRateLimited()) {
+            Log::info('Banking connection rate limited, skipping sync', [
+                'connection_id' => $connection->id,
+                'rate_limited_until' => $connection->rate_limited_until?->toIso8601String(),
+            ]);
+
+            $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: [
+                'reason' => 'rate_limited',
+                'rate_limited_until' => $connection->rate_limited_until?->toIso8601String(),
+            ]);
+
+            return;
+        }
+
         try {
             $isFirstSync = ! $connection->last_synced_at || $this->fullSync;
             $metadata = [];
@@ -111,6 +126,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 'status' => BankingConnectionStatus::Active,
                 'last_synced_at' => $syncedAt,
                 'error_message' => null,
+                'rate_limited_until' => null,
                 'consecutive_sync_failures' => 0,
             ];
 
@@ -129,6 +145,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             ]);
 
             if ($this->isRateLimitError($e)) {
+                $this->applyRateLimitBackoff($connection, $e);
                 $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
 
                 return;
@@ -369,6 +386,49 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     private function isRateLimitError(\Throwable $e): bool
     {
         return $e instanceof RequestException && $e->response->status() === 429;
+    }
+
+    /**
+     * Persist a backoff window so the scheduler stops re-dispatching
+     * the same connection until the provider quota resets.
+     */
+    private function applyRateLimitBackoff(BankingConnection $connection, \Throwable $e): void
+    {
+        $until = $this->resolveRateLimitBackoffUntil($e);
+
+        $connection->update([
+            'rate_limited_until' => $until,
+            'error_message' => $this->friendlyErrorMessage($e),
+        ]);
+
+        Log::warning('Banking connection rate limited, backing off', [
+            'connection_id' => $connection->id,
+            'rate_limited_until' => $until->toIso8601String(),
+        ]);
+    }
+
+    private function resolveRateLimitBackoffUntil(\Throwable $e): Carbon
+    {
+        $now = now();
+
+        if ($e instanceof RequestException) {
+            $retryAfter = $e->response->header('Retry-After');
+
+            if (is_numeric($retryAfter) && (int) $retryAfter > 0) {
+                return $now->copy()->addSeconds((int) $retryAfter);
+            }
+
+            $body = $e->response->json();
+            $message = is_array($body) ? (string) ($body['message'] ?? '') : '';
+
+            // Daily PSU consultation limit resets at midnight UTC.
+            if (str_contains(strtolower($message), 'daily')) {
+                return $now->copy()->utc()->addDay()->startOfDay();
+            }
+        }
+
+        // Default: back off one hour for consent / generic 429 responses.
+        return $now->copy()->addHour();
     }
 
     private function isAuthError(\Throwable $e): bool

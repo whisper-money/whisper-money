@@ -52,6 +52,10 @@ class SyncBankingConnections extends Command
             ->where(function ($query) {
                 $query->whereNull('valid_until')
                     ->orWhere('valid_until', '>', now());
+            })
+            ->where(function ($query) {
+                $query->whereNull('rate_limited_until')
+                    ->orWhere('rate_limited_until', '<=', now());
             });
 
         if ($connectionId) {
