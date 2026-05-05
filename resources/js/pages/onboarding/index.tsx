@@ -71,6 +71,9 @@ export default function Onboarding({
 
     // Read ?step= from URL to allow deep-linking into a specific step
     const initialStep = useMemo((): OnboardingStep | undefined => {
+        if (typeof window === 'undefined') {
+            return undefined;
+        }
         const params = new URLSearchParams(window.location.search);
         const step = params.get('step') as OnboardingStep | null;
         return step && VALID_STEPS.includes(step) ? step : undefined;
