@@ -3,8 +3,11 @@
 namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
+use App\Exceptions\Banking\TransientBankingProviderException;
 use Firebase\JWT\JWT;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -89,9 +92,32 @@ class EnableBankingProvider implements BankingProviderInterface
             $query['strategy'] = $strategy;
         }
 
-        $response = $this->client()->get("/accounts/{$accountId}/transactions", $query);
+        try {
+            $response = $this->client()->get("/accounts/{$accountId}/transactions", $query);
 
-        $response->throw();
+            $response->throw();
+        } catch (ConnectionException $e) {
+            throw new TransientBankingProviderException(
+                'EnableBanking did not respond while fetching account transactions.',
+                provider: 'enablebanking',
+                previous: $e,
+            );
+        } catch (RequestException $e) {
+            if (! $this->isAspspError($e)) {
+                throw $e;
+            }
+
+            $body = $this->errorBody($e);
+            $providerCode = $body['error'] ?? null;
+
+            throw new TransientBankingProviderException(
+                'EnableBanking bank connector failed while fetching account transactions.',
+                provider: 'enablebanking',
+                statusCode: $e->response->status(),
+                providerCode: is_string($providerCode) ? $providerCode : null,
+                previous: $e,
+            );
+        }
 
         $data = $response->json();
 
@@ -135,6 +161,24 @@ class EnableBankingProvider implements BankingProviderInterface
         $response->throw();
     }
 
+    private function isAspspError(RequestException $e): bool
+    {
+        $body = $this->errorBody($e);
+
+        return $e->response->status() === 400
+            && ($body['error'] ?? null) === 'ASPSP_ERROR';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function errorBody(RequestException $e): array
+    {
+        $body = $e->response->json();
+
+        return is_array($body) ? $body : [];
+    }
+
     private function client(): PendingRequest
     {
         return Http::baseUrl(self::BASE_URL)
@@ -143,9 +187,15 @@ class EnableBankingProvider implements BankingProviderInterface
             ->withToken($this->generateJwt())
             ->acceptJson()
             ->throw(function ($response, $exception) {
-                Log::error('EnableBanking API error', [
+                $body = $response->json();
+                $isAspspError = $response->status() === 400
+                    && is_array($body)
+                    && ($body['error'] ?? null) === 'ASPSP_ERROR';
+
+                Log::log($isAspspError ? 'warning' : 'error', 'EnableBanking API error', [
                     'status' => $response->status(),
-                    'body' => $response->json(),
+                    'body' => $body,
+                    'exception' => get_class($exception),
                 ]);
             });
     }

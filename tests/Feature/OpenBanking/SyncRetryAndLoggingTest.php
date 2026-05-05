@@ -2,6 +2,7 @@
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
+use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
@@ -101,6 +102,53 @@ test('temporary error on final attempt sets error status and increments consecut
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Error);
     expect($connection->error_message)->toContain('provider is experiencing issues');
+    expect($connection->consecutive_sync_failures)->toBe(1);
+});
+
+test('transient banking provider error on final attempt uses retry later message', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(
+        new TransientBankingProviderException(
+            'EnableBanking bank connector failed while fetching account transactions.',
+            provider: 'enablebanking',
+            statusCode: 400,
+            providerCode: 'ASPSP_ERROR',
+        )
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    $threw = false;
+
+    try {
+        $job->handle($transactionSync, $balanceSync);
+    } catch (TransientBankingProviderException) {
+        $threw = true;
+    }
+
+    expect($threw)->toBeTrue();
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+    expect($connection->error_message)->toContain('bank provider is temporarily unavailable');
     expect($connection->consecutive_sync_failures)->toBe(1);
 });
 
