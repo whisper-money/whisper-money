@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
+use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Models\BankingConnection;
 use App\Models\BankingSyncLog;
@@ -138,11 +139,19 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
             $this->logSyncAttempt($connection, BankingSyncLogStatus::Success, $startTime, metadata: $metadata ?: null);
         } catch (\Throwable $e) {
-            Log::error('Banking sync failed', [
+            $context = [
                 'connection_id' => $connection->id,
                 'error' => $e->getMessage(),
                 'attempt' => $this->attempts(),
-            ]);
+            ];
+
+            if ($e instanceof TransientBankingProviderException) {
+                $context['provider'] = $e->provider;
+                $context['status_code'] = $e->statusCode;
+                $context['provider_code'] = $e->providerCode;
+            }
+
+            Log::log($e instanceof TransientBankingProviderException ? 'warning' : 'error', 'Banking sync failed', $context);
 
             if ($this->isRateLimitError($e)) {
                 $this->applyRateLimitBackoff($connection, $e);
@@ -369,6 +378,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
     private function friendlyErrorMessage(\Throwable $e): string
     {
+        if ($e instanceof TransientBankingProviderException) {
+            return __('The bank provider is temporarily unavailable. We will try syncing again later.');
+        }
+
         if ($e instanceof RequestException) {
             $status = $e->response->status();
 
