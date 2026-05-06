@@ -146,6 +146,23 @@ test('callback with error redirects with error message and deletes pending conne
     expect($connection->trashed())->toBeTrue();
 });
 
+test('callback with error during onboarding redirects to the accounts step', function () {
+    $user = User::factory()->notOnboarded()->create();
+    Account::factory()->create(['user_id' => $user->id]);
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access');
+
+    $response->assertRedirect(route('onboarding', ['step' => 'create-account']));
+    $response->assertSessionHas('error', 'User denied access');
+
+    $connection->refresh();
+    expect($connection->trashed())->toBeTrue();
+});
+
 test('callback without code redirects with error', function () {
     $user = User::factory()->onboarded()->create();
     $response = $this->actingAs($user)->get('/open-banking/callback');

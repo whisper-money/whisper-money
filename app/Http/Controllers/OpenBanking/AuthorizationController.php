@@ -103,7 +103,8 @@ class AuthorizationController extends Controller
     public function callback(Request $request, BankingProviderInterface $provider): RedirectResponse
     {
         $user = auth()->user();
-        $errorRedirect = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+        $errorRedirectRoute = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
+        $errorRedirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
 
         if ($request->has('error')) {
             Log::warning('EnableBanking authorization error', [
@@ -117,14 +118,14 @@ class AuthorizationController extends Controller
                 ->first()
                 ?->delete();
 
-            return redirect()->route($errorRedirect)
+            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
                 ->with('error', $request->query('error_description', 'Authorization was denied or cancelled.'));
         }
 
         $code = $request->query('code');
 
         if (! $code) {
-            return redirect()->route($errorRedirect)
+            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
                 ->with('error', 'No authorization code received.');
         }
 
@@ -133,7 +134,7 @@ class AuthorizationController extends Controller
         } catch (\Throwable $e) {
             Log::error('EnableBanking session creation failed', ['error' => $e->getMessage()]);
 
-            return redirect()->route($errorRedirect)
+            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
                 ->with('error', 'Failed to connect to your bank. Please try again.');
         }
 
@@ -143,7 +144,7 @@ class AuthorizationController extends Controller
             ->first();
 
         if (! $connection) {
-            return redirect()->route($errorRedirect)
+            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
                 ->with('error', 'No pending connection found.');
         }
 

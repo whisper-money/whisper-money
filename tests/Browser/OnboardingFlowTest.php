@@ -2,6 +2,7 @@
 
 use App\Models\Account;
 use App\Models\Bank;
+use App\Models\BankingConnection;
 use App\Models\User;
 
 // =============================================================================
@@ -166,6 +167,40 @@ it('allows continuing with existing accounts', function () {
         // Should go to category types (existing accounts no longer trigger import)
         ->assertSee('Understanding Categories')
         ->assertNoJavascriptErrors();
+});
+
+it('returns to the accounts step when bank authorization fails during onboarding', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    $bank = Bank::factory()->create(['name' => 'Connected Bank']);
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Failing Bank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit('/open-banking/callback?error=access_denied&error_description=Authentication+failed');
+
+    $page->wait(1)
+        ->assertPathIs('/onboarding')
+        ->assertQueryStringHas('step', 'create-account')
+        ->assertSee('Your Accounts')
+        ->assertSee('Connected Bank')
+        ->assertDontSee('Welcome to')
+        ->assertNoJavascriptErrors();
+
+    $connection->refresh();
+    expect($connection->trashed())->toBeTrue();
 });
 
 // =============================================================================
