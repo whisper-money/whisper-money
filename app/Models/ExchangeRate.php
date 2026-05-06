@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Database\Factories\ExchangeRateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
+ * @property string $base_currency
+ * @property Carbon $date
  * @property array<string, float> $rates
  */
 class ExchangeRate extends Model

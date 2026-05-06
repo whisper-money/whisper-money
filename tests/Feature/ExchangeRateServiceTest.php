@@ -2,6 +2,7 @@
 
 use App\Models\ExchangeRate;
 use App\Services\ExchangeRateService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 test('convert returns same amount when source equals target', function () {
@@ -84,6 +85,60 @@ test('convert uses database cache on second call for same currency and date', fu
 
     // Still only 1 HTTP request total (second used DB cache)
     Http::assertSentCount(1);
+});
+
+test('convert memoizes exchange rates during service lifetime', function () {
+    Http::fake();
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => '2026-01-15',
+        'rates' => [
+            'eur' => 0.85,
+            'gbp' => 0.72,
+        ],
+    ]);
+
+    $exchangeRateSelects = [];
+    DB::listen(function ($query) use (&$exchangeRateSelects): void {
+        if (str_starts_with(strtolower($query->sql), 'select') && str_contains($query->sql, 'exchange_rates')) {
+            $exchangeRateSelects[] = $query->sql;
+        }
+    });
+
+    $service = app(ExchangeRateService::class);
+    $service->convert('EUR', 'USD', 100000, '2026-01-15');
+    $service->convert('GBP', 'USD', 200000, '2026-01-15');
+    $service->getRates('USD', '2026-01-15');
+
+    expect($exchangeRateSelects)->toHaveCount(1);
+    Http::assertNothingSent();
+});
+
+test('preloaded missing rates do not trigger per-date database lookups', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*currencies/usd*' => Http::response([
+            'usd' => [
+                'eur' => 0.90,
+                'gbp' => 0.75,
+            ],
+        ]),
+    ]);
+
+    $exchangeRateSelects = [];
+    DB::listen(function ($query) use (&$exchangeRateSelects): void {
+        if (str_starts_with(strtolower($query->sql), 'select') && str_contains($query->sql, 'exchange_rates')) {
+            $exchangeRateSelects[] = $query->sql;
+        }
+    });
+
+    $service = app(ExchangeRateService::class);
+    $service->preloadRates('USD', ['2026-02-10', '2026-02-11']);
+    $service->convert('EUR', 'USD', 100000, '2026-02-10');
+    $service->convert('GBP', 'USD', 200000, '2026-02-11');
+
+    expect($exchangeRateSelects)->toHaveCount(1);
+    Http::assertSentCount(2);
 });
 
 test('convert returns unconverted amount when rate is missing', function () {

@@ -10,6 +10,7 @@ use App\Models\LoanDetail;
 use App\Models\RealEstateDetail;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -361,6 +362,54 @@ test('net worth evolution converts foreign currency accounts using cached exchan
     $usdOriginalKey = $usdAccount->id.'_original';
     expect($data['data'][0])->not->toHaveKey($usdOriginalKey);
 
+    Http::assertNothingSent();
+});
+
+test('net worth evolution preloads exchange rates for the requested date range', function () {
+    $eurAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => AccountType::Savings,
+        'currency_code' => 'EUR',
+    ]);
+
+    $end = now()->subMonthNoOverflow()->endOfMonth();
+    $start = $end->copy()->subMonthsNoOverflow(11)->startOfMonth();
+    $current = $start->copy();
+
+    while ($current->lte($end)) {
+        $date = $current->copy()->endOfMonth();
+
+        AccountBalance::factory()->create([
+            'account_id' => $eurAccount->id,
+            'balance_date' => $date,
+            'balance' => 100000,
+        ]);
+
+        ExchangeRate::factory()->create([
+            'base_currency' => 'usd',
+            'date' => $date->toDateString(),
+            'rates' => ['eur' => 0.90],
+        ]);
+
+        $current->addMonth();
+    }
+
+    $exchangeRateSelects = [];
+    DB::listen(function ($query) use (&$exchangeRateSelects): void {
+        if (str_starts_with(strtolower($query->sql), 'select') && str_contains($query->sql, 'exchange_rates')) {
+            $exchangeRateSelects[] = $query->sql;
+        }
+    });
+
+    $response = $this->getJson('/api/dashboard/net-worth-evolution?'.http_build_query([
+        'from' => $start->toDateString(),
+        'to' => $end->toDateString(),
+    ]));
+
+    $response->assertOk();
+
+    expect($response->json('data'))->toHaveCount(12);
+    expect($exchangeRateSelects)->toHaveCount(1);
     Http::assertNothingSent();
 });
 
