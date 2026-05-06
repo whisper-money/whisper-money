@@ -27,6 +27,7 @@ class AccountMetricsService
 
         $accountIds = $accounts->pluck('id');
         $lookup = BalanceLookup::forAccounts($accountIds, $rangeStart, $now->copy());
+        $this->preloadExchangeRates($userCurrency, $accounts, $this->monthlyEndDateStrings($rangeStart, $now));
 
         $metrics = [];
 
@@ -90,6 +91,7 @@ class AccountMetricsService
 
         $lookupEnd = Carbon::now()->gt($end) ? Carbon::now() : $end->copy();
         $lookup = BalanceLookup::forAccounts($accountIds, $start->copy()->startOfMonth(), $lookupEnd);
+        $this->preloadExchangeRates($userCurrency, $accounts, $this->monthlyEndDateStrings($start, $end));
 
         $points = [];
         $current = $start->copy()->startOfMonth();
@@ -173,6 +175,7 @@ class AccountMetricsService
     {
         $accountIds = $accounts->pluck('id');
         $lookup = BalanceLookup::forAccounts($accountIds, $start, $end);
+        $this->preloadExchangeRates($userCurrency, $accounts, $this->dailyDateStrings($start, $end));
 
         $points = [];
         $current = $start->copy();
@@ -238,6 +241,56 @@ class AccountMetricsService
         }
 
         return $this->exchangeRateService->convert($sourceCurrency, $targetCurrency, $balance, $date);
+    }
+
+    /**
+     * @param  Collection<int, Account>  $accounts
+     * @param  list<string>  $dates
+     */
+    private function preloadExchangeRates(string $userCurrency, Collection $accounts, array $dates): void
+    {
+        $hasForeignCurrencyAccount = $accounts->contains(
+            fn (Account $account): bool => strcasecmp($account->currency_code, $userCurrency) !== 0,
+        );
+
+        if (! $hasForeignCurrencyAccount) {
+            return;
+        }
+
+        $this->exchangeRateService->preloadRates($userCurrency, $dates);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function monthlyEndDateStrings(Carbon $start, Carbon $end): array
+    {
+        $dates = [];
+        $current = $start->copy()->startOfMonth();
+        $endMonth = $end->copy()->startOfMonth();
+
+        while ($current->lte($endMonth)) {
+            $dates[] = $current->copy()->endOfMonth()->toDateString();
+            $current->addMonth();
+        }
+
+        return $dates;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function dailyDateStrings(Carbon $start, Carbon $end): array
+    {
+        $dates = [];
+        $current = $start->copy();
+
+        while ($current->lte($end)) {
+            $dates[] = $current->toDateString();
+            $current->addDay();
+        }
+
+        return $dates;
     }
 
     /**
