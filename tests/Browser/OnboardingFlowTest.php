@@ -262,6 +262,36 @@ it('shows add another account form without first account restriction', function 
         ->assertNoJavascriptErrors();
 });
 
+it('hides the connected plan warning after connected setup is selected once', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    $warning = "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.";
+
+    $page = visit('/onboarding');
+
+    $page->click("Let's Get Started")
+        ->wait(1)
+        ->click('Create Your First Account')
+        ->wait(1)
+        ->assertSee($warning)
+        ->assertSee('/month')
+        ->click('Continue')
+        ->wait(1)
+        ->assertSee('Connect Your Bank')
+        ->click('Back')
+        ->wait(1)
+        ->assertSee('How would you like to set up this account?')
+        ->assertDontSee($warning)
+        ->assertDontSee('/month')
+        ->assertNoJavascriptErrors();
+});
+
 it('creates a real estate account during onboarding by default', function () {
     $user = User::factory()->create([
         'onboarded_at' => null,

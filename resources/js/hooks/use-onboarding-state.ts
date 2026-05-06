@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export type OnboardingStep =
     | 'welcome'
@@ -35,6 +35,7 @@ export interface OnboardingState {
     totalSteps: number;
     createdAccounts: CreatedAccount[];
     isFirstAccount: boolean;
+    hasSelectedConnectedAccount: boolean;
 }
 
 export interface CreatedAccount {
@@ -50,10 +51,15 @@ export interface CreatedAccount {
 interface UseOnboardingStateOptions {
     existingAccountsCount?: number;
     initialStep?: OnboardingStep;
+    hasConnectedAccount?: boolean;
 }
 
 export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
-    const { existingAccountsCount = 0, initialStep } = options;
+    const {
+        existingAccountsCount = 0,
+        initialStep,
+        hasConnectedAccount = false,
+    } = options;
 
     const primarySteps = PRIMARY_STEPS;
 
@@ -67,6 +73,14 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
     const [createdAccounts, setCreatedAccounts] = useState<CreatedAccount[]>(
         [],
     );
+    const [hasSelectedConnectedAccount, setHasSelectedConnectedAccount] =
+        useState(hasConnectedAccount);
+
+    useEffect(() => {
+        if (hasConnectedAccount) {
+            setHasSelectedConnectedAccount(true);
+        }
+    }, [hasConnectedAccount]);
 
     // Calculate step index for progress indicator
     // Sub-steps (import-transactions, import-balances) use the same index as 'create-account'
@@ -108,6 +122,10 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         setCreatedAccounts((prev) => [...prev, account]);
     }, []);
 
+    const markConnectedAccountSelected = useCallback(() => {
+        setHasSelectedConnectedAccount(true);
+    }, []);
+
     const isFirstAccount =
         createdAccounts.length === 0 && existingAccountsCount === 0;
 
@@ -117,9 +135,11 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         totalSteps,
         createdAccounts,
         isFirstAccount,
+        hasSelectedConnectedAccount,
         goToStep,
         goNext,
         goBack,
         addCreatedAccount,
+        markConnectedAccountSelected,
     };
 }
