@@ -2665,10 +2665,10 @@ export default function Welcome({
                                 />
                                 <FaqItem
                                     question={__(
-                                        'Do you connect directly to my bank?',
+                                        'Can I connect my bank accounts directly?',
                                     )}
                                     answer={__(
-                                        'No. We never ask for your bank credentials. You import transactions by exporting a CSV or XLS file from your bank and uploading it to Whisper Money. This keeps your bank account secure.',
+                                        'Yes. Bank connections use secure Open Banking and never require your bank credentials, so transactions can sync automatically. This is a Pro feature; free users can import everything, but only through the CSV/Excel importer.',
                                     )}
                                 />
                                 <FaqItem
