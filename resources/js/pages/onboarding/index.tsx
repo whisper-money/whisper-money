@@ -87,18 +87,27 @@ export default function Onboarding({
         }
     }, [sync]);
 
+    const hasConnectedAccount = useMemo(
+        () =>
+            accounts.some((account) => account.banking_connection_id !== null),
+        [accounts],
+    );
+
     const {
         currentStep,
         stepIndex,
         totalSteps,
         createdAccounts,
         isFirstAccount,
+        hasSelectedConnectedAccount,
         goToStep,
         goNext,
         addCreatedAccount,
+        markConnectedAccountSelected,
     } = useOnboardingState({
         existingAccountsCount: accounts.length,
         initialStep,
+        hasConnectedAccount,
     });
 
     const handleAccountCreated = async (account: CreatedAccount) => {
@@ -157,7 +166,13 @@ export default function Onboarding({
                         isFirstAccount={isFirstAccount}
                         existingAccounts={accounts}
                         createdAccounts={createdAccounts}
+                        hasSelectedConnectedAccount={
+                            hasSelectedConnectedAccount
+                        }
                         onAccountCreated={handleAccountCreated}
+                        onConnectedAccountSelected={
+                            markConnectedAccountSelected
+                        }
                         onContinue={goNext}
                     />
                 );

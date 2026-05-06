@@ -59,7 +59,9 @@ interface StepCreateAccountProps {
     isFirstAccount: boolean;
     existingAccounts?: ExistingAccount[];
     createdAccounts?: CreatedAccountDisplay[];
+    hasSelectedConnectedAccount?: boolean;
     onAccountCreated: (account: CreatedAccount) => void;
+    onConnectedAccountSelected?: () => void;
     onContinue?: () => void;
 }
 
@@ -68,10 +70,13 @@ export function StepCreateAccount({
     isFirstAccount,
     existingAccounts = [],
     createdAccounts = [],
+    hasSelectedConnectedAccount = false,
     onAccountCreated,
+    onConnectedAccountSelected,
     onContinue,
 }: StepCreateAccountProps) {
-    const { pricing, subscriptionsEnabled, locale } = usePage<SharedData>().props;
+    const { pricing, subscriptionsEnabled, locale } =
+        usePage<SharedData>().props;
     const [mode, setMode] = useState<AccountMode>('select');
     const [selectedMode, setSelectedMode] = useState<'manual' | 'connected'>(
         'connected',
@@ -140,6 +145,14 @@ export function StepCreateAccount({
 
         const data = await response.json();
         return data.id;
+    }
+
+    function handleModeContinue() {
+        if (selectedMode === 'connected') {
+            onConnectedAccountSelected?.();
+        }
+
+        setMode(selectedMode);
     }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -640,6 +653,7 @@ export function StepCreateAccount({
                             )}
                         </p>
                         {subscriptionsEnabled &&
+                            !hasSelectedConnectedAccount &&
                             cheapestMonthlyPrice !== null && (
                                 <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                                     {__('From')}{' '}
@@ -654,21 +668,23 @@ export function StepCreateAccount({
                     </button>
                 </div>
 
-                {selectedMode === 'connected' && subscriptionsEnabled && (
-                    <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-900/20">
-                        <p className="text-center text-sm text-emerald-700 dark:text-emerald-300">
-                            {__(
-                                "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.",
-                            )}
-                        </p>
-                    </div>
-                )}
+                {selectedMode === 'connected' &&
+                    subscriptionsEnabled &&
+                    !hasSelectedConnectedAccount && (
+                        <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-sm dark:border-emerald-900/50 dark:bg-emerald-900/20">
+                            <p className="text-center text-sm text-emerald-700 dark:text-emerald-300">
+                                {__(
+                                    "Connected accounts are a Standard Plan feature. You'll choose a plan at the end of the onboarding.",
+                                )}
+                            </p>
+                        </div>
+                    )}
 
                 <div className="w-full max-w-md space-y-2">
                     <StepButton
                         className="w-full sm:w-full"
                         text={__('Continue')}
-                        onClick={() => setMode(selectedMode)}
+                        onClick={handleModeContinue}
                     />
 
                     {(hasCreatedAccounts || hasExistingAccounts) && (
