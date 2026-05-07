@@ -40,7 +40,11 @@ shard_count = len(shards)
 
 browser_job = re.search(r'(?ms)^  browser-tests-matrix:.*?(?=^  [a-zA-Z0-9_-]+:|\Z)', text)
 browser_job_text = browser_job.group(0) if browser_job else ''
+build_assets_job = re.search(r'(?ms)^  build-assets:.*?(?=^  [a-zA-Z0-9_-]+:|\Z)', text)
+build_assets_job_text = build_assets_job.group(0) if build_assets_job else ''
+build_assets_runs_on_pr = "github.event_name != 'pull_request'" not in build_assets_job_text and 'github.event_name == \'push\'' not in build_assets_job_text
 browser_depends_on_build = bool(browser_job and re.search(r'^    needs:\s*build-assets\s*$', browser_job_text, re.M))
+browser_builds_assets = 'bun run build' in browser_job_text
 downloads_build_artifact = 'actions/download-artifact@v4' in browser_job_text
 if downloads_build_artifact and not browser_depends_on_build:
     print('browser-tests-matrix downloads build artifact but does not depend on build-assets', file=sys.stderr)
@@ -109,7 +113,7 @@ if missing_samples or not browser_matrix_maxes:
 
 median = statistics.median
 hist_shards = 4
-build_assets = median(samples['build-assets'])
+build_assets = median(samples['build-assets']) if build_assets_runs_on_pr else 0.0
 tests = median(samples['tests'])
 linter = median(samples['linter'])
 static_analysis = median(samples['static-analysis'])
@@ -117,6 +121,12 @@ performance_tests = median(samples['performance-tests'])
 changes = median(samples['changes']) if samples['changes'] else 5.0
 browser_aggregate = median(samples['browser-aggregate']) if samples['browser-aggregate'] else 2.0
 browser_current_max = median(browser_matrix_maxes)
+
+asset_build_step = 0.0
+if browser_builds_assets:
+    build_log = subprocess.check_output(['gh', 'run', 'view', run_ids[0], '--log'], text=True, stderr=subprocess.DEVNULL, errors='ignore')
+    build_durations = [float(match) for match in re.findall(r'built in ([0-9]+(?:\.[0-9]+)?)s', build_log)]
+    asset_build_step = median(build_durations) if build_durations else max(1.0, median(samples['build-assets']) * 0.55)
 
 if manual_browser_filters:
     log = subprocess.check_output(['gh', 'run', 'view', run_ids[0], '--log'], text=True, stderr=subprocess.DEVNULL, errors='ignore')
@@ -157,14 +167,14 @@ if manual_browser_filters:
         print(f'manual browser filters omit classes: {sorted(missing_classes)}', file=sys.stderr)
         sys.exit(1)
 
-    estimated_browser_matrix = observed_overhead + max(estimated_filter_seconds)
+    estimated_browser_matrix = observed_overhead + asset_build_step + max(estimated_filter_seconds)
 else:
     # Browser tests dominate PR time. Estimate shard-count changes conservatively:
     # keep fixed Playwright/setup overhead, scale only test work, preserve observed skew.
     setup_floor = min(120.0, max(60.0, median(browser_shard_durations) * 0.35))
     work_current = max(1.0, browser_current_max - setup_floor)
-    estimated_browser_matrix = setup_floor + work_current * hist_shards / shard_count
-    estimated_browser_matrix = max(setup_floor, estimated_browser_matrix)
+    estimated_browser_matrix = setup_floor + asset_build_step + work_current * hist_shards / shard_count
+    estimated_browser_matrix = max(setup_floor + asset_build_step, estimated_browser_matrix)
 
 independent = max(tests, linter, static_analysis, performance_tests, changes)
 if browser_depends_on_build:
