@@ -368,7 +368,23 @@ export default function Transactions({
     automationRules,
 }: Props) {
     const locale = useLocale();
-    const labels = initialLabels;
+    const [labels, setLabels] = useState<Label[]>(() => initialLabels);
+
+    useEffect(() => {
+        setLabels(initialLabels);
+    }, [initialLabels]);
+
+    const handleLabelCreated = useCallback((label: Label) => {
+        setLabels((previousLabels) => {
+            const nextLabels = previousLabels.filter(
+                (existingLabel) => existingLabel.id !== label.id,
+            );
+
+            return [...nextLabels, label].sort((a, b) =>
+                a.name.localeCompare(b.name),
+            );
+        });
+    }, []);
 
     // Convert server transactions to DecryptedTransaction for column compatibility
     const [allTransactions, setAllTransactions] = useState<
@@ -1143,6 +1159,7 @@ export default function Transactions({
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
+                onLabelCreated={handleLabelCreated}
                 mode="edit"
             />
 
@@ -1156,6 +1173,7 @@ export default function Transactions({
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={() => refreshTransactions()}
+                onLabelCreated={handleLabelCreated}
                 mode="create"
             />
 
@@ -1258,6 +1276,7 @@ export default function Transactions({
                 labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
                 onLabelsChange={handleBulkLabelsChange}
+                onLabelCreated={handleLabelCreated}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
                 onSelectAll={handleSelectAll}

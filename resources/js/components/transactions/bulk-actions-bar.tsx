@@ -32,6 +32,7 @@ interface BulkActionsBarProps {
     labels?: Label[];
     onCategoryChange: (categoryId: number | null) => void;
     onLabelsChange: (labelIds: string[]) => void;
+    onLabelCreated?: (label: Label) => void;
     onDelete: () => void;
     onReEvaluateRules: () => void;
     onSelectAll?: () => void;
@@ -46,6 +47,7 @@ export function BulkActionsBar({
     labels = [],
     onCategoryChange,
     onLabelsChange,
+    onLabelCreated,
     onDelete,
     onReEvaluateRules,
     onSelectAll,
@@ -111,6 +113,7 @@ export function BulkActionsBar({
                         <BulkLabelSelect
                             labels={labels}
                             onLabelsChange={onLabelsChange}
+                            onLabelCreated={onLabelCreated}
                             disabled={isUpdating}
                         />
 
