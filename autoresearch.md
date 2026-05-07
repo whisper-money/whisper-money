@@ -30,4 +30,9 @@ Reduce GitHub Actions CI wall-clock completion time for pull requests without we
 - Prefer workflow graph/cache improvements before test-suite rewrites.
 
 ## What's Been Tried
-- Baseline pending.
+- Baseline: modeled PR CI critical path 406.50s. Browser path dominated: build-assets 65.5s + browser matrix 339s + aggregate.
+- Kept: manual Browser class filters over 5 shards. Modeled 355.76s. Same Browser classes covered exactly once.
+- Kept: skip separate build-assets job on PR and build assets inside Browser shards. Modeled 326.84s. Removes build-assets gate from PR critical path.
+- Kept: rebalance Browser filters over 6 shards. Modeled 293.24s.
+- Kept: run Browser filter shards with Pest `--parallel --processes=3`. Modeled 234.27s.
+- Discarded: 4 Browser processes. No modeled improvement over 3; individual slow tests dominate.
