@@ -101,15 +101,17 @@ jobs:
       matrix:
         include:
           - shard: 1
-            filter: 'Tests\\Browser\\AutomationRuleBuilderTest|Tests\\Browser\\ImportTransactionsTest'
+            filter: 'Tests\\Browser\\AutomationRuleBuilderTest'
           - shard: 2
-            filter: 'Tests\\Browser\\OnboardingFlowTest|Tests\\Browser\\BudgetsFeatureNavigationTest|Tests\\Browser\\CashflowCategoryNavigationTest'
+            filter: 'Tests\\Browser\\OnboardingFlowTest'
           - shard: 3
-            filter: 'Tests\\Browser\\BankAccountsTest|Tests\\Browser\\CategoriesTest|Tests\\Browser\\AuthenticationTest'
+            filter: 'Tests\\Browser\\BankAccountsTest|Tests\\Browser\\CashflowCategoryNavigationTest'
           - shard: 4
-            filter: 'Tests\\Browser\\BudgetCrudTest|Tests\\Browser\\AmountInputTest'
+            filter: 'Tests\\Browser\\BudgetCrudTest|Tests\\Browser\\CategoriesTest|Tests\\Browser\\AuthenticationTest'
           - shard: 5
-            filter: 'Tests\\Browser\\AccountsPageTest|Tests\\Browser\\TransactionsTest|Tests\\Browser\\RealEstateAccountTest'
+            filter: 'Tests\\Browser\\AccountsPageTest|Tests\\Browser\\RealEstateAccountTest|Tests\\Browser\\BudgetsFeatureNavigationTest'
+          - shard: 6
+            filter: 'Tests\\Browser\\TransactionsTest|Tests\\Browser\\AmountInputTest|Tests\\Browser\\ImportTransactionsTest'
     services:
       mysql:
         image: mysql:8.0
