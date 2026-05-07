@@ -42,7 +42,14 @@ class UpdateCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('categories', 'name')
+                    ->where('user_id', auth()->id())
+                    ->ignore($this->route('category')),
+            ],
             'icon' => ['required', 'string'],
             'color' => [
                 'required',
