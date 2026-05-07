@@ -5,6 +5,26 @@ RUN_ID="${RUN_ID:-}"
 BRANCH="${BRANCH:-$(git branch --show-current)}"
 WORKFLOW="${WORKFLOW:-CI}"
 
+if [[ "${PUSH_EXPERIMENT:-0}" == "1" ]] || { [[ -z "$RUN_ID" ]] && ! git diff --quiet -- .github/workflows/ci.yml autoresearch.sh; }; then
+  message="${EXPERIMENT_MESSAGE:-Experiment CI change}"
+  git add .github/workflows/ci.yml autoresearch.md autoresearch.sh autoresearch.jsonl
+  git commit -m "$message"
+  git push
+  head_sha="$(git rev-parse HEAD)"
+  for _ in {1..60}; do
+    RUN_ID="$(gh run list --workflow="$WORKFLOW" --branch="$BRANCH" --event=pull_request --limit=10 --json databaseId,headSha --jq ".[] | select(.headSha == \"$head_sha\") | .databaseId" | head -1)"
+    if [[ -n "$RUN_ID" ]]; then
+      break
+    fi
+    sleep 5
+  done
+  if [[ -z "$RUN_ID" ]]; then
+    echo "No pull_request CI run appeared for $head_sha" >&2
+    exit 1
+  fi
+  gh run watch "$RUN_ID" --exit-status --interval 10 >/dev/null
+fi
+
 python3 - <<'PY' "$RUN_ID" "$BRANCH" "$WORKFLOW"
 from __future__ import annotations
 
