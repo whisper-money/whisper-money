@@ -99,7 +99,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        include:
+          - shard: 1
+            filter: 'Tests\\Browser\\AutomationRuleBuilderTest|Tests\\Browser\\ImportTransactionsTest'
+          - shard: 2
+            filter: 'Tests\\Browser\\OnboardingFlowTest|Tests\\Browser\\BudgetsFeatureNavigationTest|Tests\\Browser\\CashflowCategoryNavigationTest'
+          - shard: 3
+            filter: 'Tests\\Browser\\BankAccountsTest|Tests\\Browser\\CategoriesTest|Tests\\Browser\\AuthenticationTest'
+          - shard: 4
+            filter: 'Tests\\Browser\\BudgetCrudTest|Tests\\Browser\\AmountInputTest'
+          - shard: 5
+            filter: 'Tests\\Browser\\AccountsPageTest|Tests\\Browser\\TransactionsTest|Tests\\Browser\\RealEstateAccountTest'
     services:
       mysql:
         image: mysql:8.0
@@ -148,7 +158,7 @@ jobs:
         run: php artisan key:generate
 
       - name: Browser Tests
-        run: ./vendor/bin/pest --testsuite=Browser --ci --shard=${{ matrix.shard }}/4
+        run: ./vendor/bin/pest --testsuite=Browser --ci --filter='${{ matrix.filter }}'
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql

@@ -29,22 +29,24 @@ if missing:
     sys.exit(1)
 
 matrix_match = re.search(r'shard:\s*\[([^\]]+)\]', text)
-if not matrix_match:
+if matrix_match:
+    shards = [part.strip() for part in matrix_match.group(1).split(',') if part.strip()]
+else:
+    shards = re.findall(r'^\s*-\s+shard:\s*([0-9]+)\s*$', text, re.M)
+if not shards:
     print('browser shard matrix missing', file=sys.stderr)
     sys.exit(1)
-shards = [part.strip() for part in matrix_match.group(1).split(',') if part.strip()]
 shard_count = len(shards)
-if shard_count < 1:
-    print('browser shard matrix empty', file=sys.stderr)
-    sys.exit(1)
 
 browser_job = re.search(r'(?ms)^  browser-tests-matrix:.*?(?=^  [a-zA-Z0-9_-]+:|\Z)', text)
-browser_depends_on_build = bool(browser_job and re.search(r'^    needs:\s*build-assets\s*$', browser_job.group(0), re.M))
-downloads_build_artifact = 'actions/download-artifact@v4' in (browser_job.group(0) if browser_job else '')
+browser_job_text = browser_job.group(0) if browser_job else ''
+browser_depends_on_build = bool(browser_job and re.search(r'^    needs:\s*build-assets\s*$', browser_job_text, re.M))
+downloads_build_artifact = 'actions/download-artifact@v4' in browser_job_text
 if downloads_build_artifact and not browser_depends_on_build:
     print('browser-tests-matrix downloads build artifact but does not depend on build-assets', file=sys.stderr)
     sys.exit(1)
 
+manual_browser_filters = re.findall(r"filter:\s*'([^']+)'", browser_job_text)
 uses_browser_aggregate = 'needs: browser-tests-matrix' in text
 job_count = len(re.findall(r'^  [a-zA-Z0-9_-]+:\s*$', text, re.M))
 
@@ -116,12 +118,53 @@ changes = median(samples['changes']) if samples['changes'] else 5.0
 browser_aggregate = median(samples['browser-aggregate']) if samples['browser-aggregate'] else 2.0
 browser_current_max = median(browser_matrix_maxes)
 
-# Browser tests dominate PR time. Estimate shard-count changes conservatively:
-# keep fixed Playwright/setup overhead, scale only test work, preserve observed skew.
-setup_floor = min(120.0, max(60.0, median(browser_shard_durations) * 0.35))
-work_current = max(1.0, browser_current_max - setup_floor)
-estimated_browser_matrix = setup_floor + work_current * hist_shards / shard_count
-estimated_browser_matrix = max(setup_floor, estimated_browser_matrix)
+if manual_browser_filters:
+    log = subprocess.check_output(['gh', 'run', 'view', run_ids[0], '--log'], text=True, stderr=subprocess.DEVNULL, errors='ignore')
+    current_class = None
+    class_seconds: dict[str, float] = {}
+    shard_pest_seconds: list[float] = []
+    for line in log.splitlines():
+        class_match = re.search(r'PASS\s+(Tests\\\\Browser\\\\\S+)', line)
+        if not class_match:
+            class_match = re.search(r'PASS\s+(Tests\\Browser\\\S+)', line)
+        if class_match:
+            current_class = class_match.group(1)
+            class_seconds.setdefault(current_class, 0.0)
+        test_match = re.search(r'✓ .*?\s+([0-9]+(?:\.[0-9]+)?)s\s*$', line)
+        if test_match and current_class:
+            class_seconds[current_class] = class_seconds.get(current_class, 0.0) + float(test_match.group(1))
+        duration_match = re.search(r'Duration:\s+([0-9]+(?:\.[0-9]+)?)s', line)
+        if duration_match:
+            shard_pest_seconds.append(float(duration_match.group(1)))
+
+    if not class_seconds or not shard_pest_seconds:
+        print('unable to derive browser class timings from recent CI logs', file=sys.stderr)
+        sys.exit(1)
+
+    observed_overhead = max(60.0, browser_current_max - median(shard_pest_seconds))
+    estimated_filter_seconds = []
+    covered_classes: set[str] = set()
+    for filter_expression in manual_browser_filters:
+        classes = [class_name.replace('\\\\', '\\') for class_name in re.findall(r'Tests\\\\Browser\\\\[A-Za-z0-9_]+', filter_expression)]
+        if not classes:
+            print(f'empty browser filter: {filter_expression}', file=sys.stderr)
+            sys.exit(1)
+        covered_classes.update(classes)
+        estimated_filter_seconds.append(sum(class_seconds.get(class_name, 0.0) for class_name in classes))
+
+    missing_classes = set(class_seconds) - covered_classes
+    if missing_classes:
+        print(f'manual browser filters omit classes: {sorted(missing_classes)}', file=sys.stderr)
+        sys.exit(1)
+
+    estimated_browser_matrix = observed_overhead + max(estimated_filter_seconds)
+else:
+    # Browser tests dominate PR time. Estimate shard-count changes conservatively:
+    # keep fixed Playwright/setup overhead, scale only test work, preserve observed skew.
+    setup_floor = min(120.0, max(60.0, median(browser_shard_durations) * 0.35))
+    work_current = max(1.0, browser_current_max - setup_floor)
+    estimated_browser_matrix = setup_floor + work_current * hist_shards / shard_count
+    estimated_browser_matrix = max(setup_floor, estimated_browser_matrix)
 
 independent = max(tests, linter, static_analysis, performance_tests, changes)
 if browser_depends_on_build:
