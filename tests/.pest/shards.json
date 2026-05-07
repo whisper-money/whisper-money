@@ -1,0 +1,19 @@
+{
+    "timings": {
+        "Tests\\Browser\\AccountsPageTest": 51.0428,
+        "Tests\\Browser\\AmountInputTest": 50.0611,
+        "Tests\\Browser\\AuthenticationTest": 13.8601,
+        "Tests\\Browser\\AutomationRuleBuilderTest": 129.1864,
+        "Tests\\Browser\\BankAccountsTest": 108.119,
+        "Tests\\Browser\\BudgetCrudTest": 77.7671,
+        "Tests\\Browser\\BudgetsFeatureNavigationTest": 16.7266,
+        "Tests\\Browser\\CashflowCategoryNavigationTest": 6.6828,
+        "Tests\\Browser\\CategoriesTest": 25.2693,
+        "Tests\\Browser\\ImportTransactionsTest": 16.7132,
+        "Tests\\Browser\\OnboardingFlowTest": 120.1495,
+        "Tests\\Browser\\RealEstateAccountTest": 53.3292,
+        "Tests\\Browser\\TransactionsTest": 50.5797
+    },
+    "checksum": "a1e4ee59f56f5fac14fc14f555ae4975",
+    "updated_at": "2026-05-07T19:14:20+00:00"
+}
