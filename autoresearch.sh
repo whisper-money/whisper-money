@@ -5,23 +5,77 @@ RUN_ID="${RUN_ID:-}"
 BRANCH="${BRANCH:-$(git branch --show-current)}"
 WORKFLOW="${WORKFLOW:-CI}"
 
-if [[ "${PUSH_EXPERIMENT:-0}" == "1" ]] || { [[ -z "$RUN_ID" ]] && ! git diff --quiet -- .github/workflows/ci.yml autoresearch.sh; }; then
-  message="${EXPERIMENT_MESSAGE:-Experiment CI change}"
-  git add .github/workflows/ci.yml autoresearch.md autoresearch.sh autoresearch.jsonl
-  git commit -m "$message"
-  git push
-  head_sha="$(git rev-parse HEAD)"
-  for _ in {1..60}; do
-    RUN_ID="$(gh run list --workflow="$WORKFLOW" --branch="$BRANCH" --event=pull_request --limit=10 --json databaseId,headSha --jq ".[] | select(.headSha == \"$head_sha\") | .databaseId" | head -1)"
-    if [[ -n "$RUN_ID" ]]; then
-      break
+current_head() {
+  git rev-parse HEAD
+}
+
+latest_run_for_head() {
+  local event="$1"
+  local head_sha="$2"
+  gh run list --workflow="$WORKFLOW" --branch="$BRANCH" --event="$event" --limit=20 --json databaseId,headSha,status,conclusion \
+    --jq ".[] | select(.headSha == \"$head_sha\") | .databaseId" | head -1
+}
+
+wait_for_run_for_head() {
+  local event="$1"
+  local head_sha="$2"
+  local run_id=""
+
+  for _ in {1..90}; do
+    run_id="$(latest_run_for_head "$event" "$head_sha")"
+    if [[ -n "$run_id" ]]; then
+      echo "$run_id"
+      return 0
     fi
     sleep 5
   done
-  if [[ -z "$RUN_ID" ]]; then
-    echo "No pull_request CI run appeared for $head_sha" >&2
-    exit 1
+
+  echo "No $event CI run appeared for $head_sha" >&2
+  return 1
+}
+
+commit_and_push_if_dirty() {
+  local message="$1"
+
+  if ! git diff --quiet -- .github/workflows composer.json composer.lock tests/.pest autoresearch.md autoresearch.sh autoresearch.jsonl || \
+     [[ -n "$(git ls-files --others --exclude-standard .github/workflows tests/.pest 2>/dev/null)" ]]; then
+    git add .github/workflows composer.json composer.lock tests/.pest autoresearch.md autoresearch.sh autoresearch.jsonl
+    git commit -m "$message"
+    git push
   fi
+}
+
+# Time-balanced sharding experiment bootstrap:
+# 1. Push Pest/update-shards workflow changes.
+# 2. Run CI workflow_dispatch with build_only=false to produce tests/.pest/shards.json.
+# 3. Download and commit shards.json.
+# 4. Wait for PR CI for the committed shard timings and measure it.
+if [[ -z "$RUN_ID" && ! -f tests/.pest/shards.json && "${GENERATE_BROWSER_SHARDS:-1}" == "1" ]]; then
+  commit_and_push_if_dirty "Experiment: update Pest and enable browser shard timings"
+
+  head_sha="$(current_head)"
+  dispatch_run="$(latest_run_for_head workflow_dispatch "$head_sha")"
+  if [[ -z "$dispatch_run" ]]; then
+    gh workflow run "$WORKFLOW" --ref "$BRANCH" -f build_only=false
+    dispatch_run="$(wait_for_run_for_head workflow_dispatch "$head_sha")"
+  fi
+
+  gh run watch "$dispatch_run" --exit-status --interval 10 >/dev/null
+
+  tmp_dir="$(mktemp -d)"
+  gh run download "$dispatch_run" --name browser-shards --dir "$tmp_dir" >/dev/null
+  mkdir -p tests/.pest
+  cp "$tmp_dir/shards.json" tests/.pest/shards.json
+  rm -rf "$tmp_dir"
+
+  commit_and_push_if_dirty "Experiment: add Pest browser shard timings"
+  head_sha="$(current_head)"
+  RUN_ID="$(wait_for_run_for_head pull_request "$head_sha")"
+  gh run watch "$RUN_ID" --exit-status --interval 10 >/dev/null
+elif [[ -z "$RUN_ID" ]]; then
+  commit_and_push_if_dirty "Experiment CI change"
+  head_sha="$(current_head)"
+  RUN_ID="$(wait_for_run_for_head pull_request "$head_sha")"
   gh run watch "$RUN_ID" --exit-status --interval 10 >/dev/null
 fi
 
@@ -42,21 +96,22 @@ def gh_json(args: list[str]) -> object:
     return json.loads(raw)
 
 if not run_id:
+    head_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     runs = gh_json([
         'run', 'list',
         '--workflow', workflow,
         '--branch', branch,
         '--event', 'pull_request',
-        '--limit', '10',
-        '--json', 'databaseId,status,conclusion',
+        '--limit', '20',
+        '--json', 'databaseId,status,conclusion,headSha',
     ])
     for run in runs:
-        if run.get('status') == 'completed' and run.get('conclusion') == 'success':
+        if run.get('headSha') == head_sha and run.get('status') == 'completed' and run.get('conclusion') == 'success':
             run_id = str(run['databaseId'])
             break
 
 if not run_id:
-    print('No successful completed pull_request CI run found', file=sys.stderr)
+    print('No successful completed pull_request CI run found for HEAD', file=sys.stderr)
     sys.exit(1)
 
 payload = gh_json(['run', 'view', run_id, '--json', 'jobs,status,conclusion,headSha,headBranch,event'])
@@ -77,7 +132,6 @@ if not jobs:
     print(f'Run {run_id} has no timed jobs', file=sys.stderr)
     sys.exit(1)
 
-# Exclude deploy/build-image skip noise from PR total, but include aggregate browser-tests gate.
 measured_jobs = [
     job for job in jobs
     if job.get('conclusion') != 'skipped' or job['name'] in {'build-assets'}
@@ -109,6 +163,8 @@ for job in jobs:
         buckets['browser_aggregate_s'].append(duration)
     elif name.startswith('browser-tests-matrix'):
         buckets['browser_matrix_shard_s'].append(duration)
+    elif name == 'update-browser-shards':
+        buckets['update_browser_shards_s'].append(duration)
 
 browser_shards = buckets['browser_matrix_shard_s']
 metrics = {
