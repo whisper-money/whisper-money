@@ -1,5 +1,30 @@
 # Changelog
 
+# [0.2.0](https://github.com/whisper-money/whisper-money/compare/v0.1.20...v0.2.0) (2026-05-07)
+
+
+### Bug Fixes
+
+* **banking:** clamp linkedDateFrom to today on EnableBanking sync ([#343](https://github.com/whisper-money/whisper-money/issues/343)) ([f6c2057](https://github.com/whisper-money/whisper-money/commit/f6c20576b5dd6a98cb69c860825459fe010e2164))
+* **budgets:** remove Custom period type to fix duplicate-key crash ([#355](https://github.com/whisper-money/whisper-money/issues/355)) ([22043ce](https://github.com/whisper-money/whisper-money/commit/22043ced29e80486bcc3bb025952fda0f0b1f537))
+* **dashboard:** avoid month overflow in real estate projection ([#340](https://github.com/whisper-money/whisper-money/issues/340)) ([8f42496](https://github.com/whisper-money/whisper-money/commit/8f42496a5f6cd655828df7c49f358ad61d7e8002))
+* include production Dockerfile in deploy filter ([#350](https://github.com/whisper-money/whisper-money/issues/350)) ([21b5692](https://github.com/whisper-money/whisper-money/commit/21b5692174f2cf23d44a93e26f7b39d21edfe383))
+* **onboarding:** guard window access in SSR ([#351](https://github.com/whisper-money/whisper-money/issues/351)) ([b1709b7](https://github.com/whisper-money/whisper-money/commit/b1709b714e5e5d591351db51f7d2b31fb201fe74))
+* **real-estate:** compound annual revaluation monthly ([#337](https://github.com/whisper-money/whisper-money/issues/337)) ([13f741a](https://github.com/whisper-money/whisper-money/commit/13f741aaed38681571c5950da844f44309306858))
+* unblock onboarding after sync failure ([#346](https://github.com/whisper-money/whisper-money/issues/346)) ([70f3897](https://github.com/whisper-money/whisper-money/commit/70f3897b5534940c4be1dfdce3b4ce8978a882b9))
+
+
+### Features
+
+* **accounts:** show projection on real estate chart ([#338](https://github.com/whisper-money/whisper-money/issues/338)) ([0f2300b](https://github.com/whisper-money/whisper-money/commit/0f2300bf3e420576893758117ed5583b39f656d7))
+* **banking:** back off scheduler when EnableBanking returns 429 ([#352](https://github.com/whisper-money/whisper-money/issues/352)) ([f800847](https://github.com/whisper-money/whisper-money/commit/f80084759133a5e00fc997602266575d3806dfaa))
+* **leads:** cohort-based launch invitations with per-user Stripe coupons ([#333](https://github.com/whisper-money/whisper-money/issues/333)) ([ab3d6e9](https://github.com/whisper-money/whisper-money/commit/ab3d6e9fcaeccf3b57027c26904460e788c8df3e))
+
+
+### Performance Improvements
+
+* **resend:** default sync-leads to last 24h window ([#354](https://github.com/whisper-money/whisper-money/issues/354)) ([e387c03](https://github.com/whisper-money/whisper-money/commit/e387c038ca6e5e0ea3f757e28c52125ea20ba198))
+
 ## [0.1.20](https://github.com/whisper-money/whisper-money/compare/v0.1.19...v0.1.20) (2026-04-24)
 
 
