@@ -45,6 +45,9 @@ build_assets_job_text = build_assets_job.group(0) if build_assets_job else ''
 build_assets_runs_on_pr = "github.event_name != 'pull_request'" not in build_assets_job_text and 'github.event_name == \'push\'' not in build_assets_job_text
 browser_depends_on_build = bool(browser_job and re.search(r'^    needs:\s*build-assets\s*$', browser_job_text, re.M))
 browser_builds_assets = 'bun run build' in browser_job_text
+browser_runs_parallel = '--parallel' in browser_job_text
+process_match = re.search(r'--processes[= ]([0-9]+)', browser_job_text)
+browser_processes = int(process_match.group(1)) if process_match else (2 if browser_runs_parallel else 1)
 downloads_build_artifact = 'actions/download-artifact@v4' in browser_job_text
 if downloads_build_artifact and not browser_depends_on_build:
     print('browser-tests-matrix downloads build artifact but does not depend on build-assets', file=sys.stderr)
@@ -132,6 +135,7 @@ if manual_browser_filters:
     log = subprocess.check_output(['gh', 'run', 'view', run_ids[0], '--log'], text=True, stderr=subprocess.DEVNULL, errors='ignore')
     current_class = None
     class_seconds: dict[str, float] = {}
+    class_test_seconds: dict[str, list[float]] = {}
     shard_pest_seconds: list[float] = []
     for line in log.splitlines():
         class_match = re.search(r'PASS\s+(Tests\\\\Browser\\\\\S+)', line)
@@ -140,9 +144,12 @@ if manual_browser_filters:
         if class_match:
             current_class = class_match.group(1)
             class_seconds.setdefault(current_class, 0.0)
+            class_test_seconds.setdefault(current_class, [])
         test_match = re.search(r'✓ .*?\s+([0-9]+(?:\.[0-9]+)?)s\s*$', line)
         if test_match and current_class:
-            class_seconds[current_class] = class_seconds.get(current_class, 0.0) + float(test_match.group(1))
+            test_seconds = float(test_match.group(1))
+            class_seconds[current_class] = class_seconds.get(current_class, 0.0) + test_seconds
+            class_test_seconds.setdefault(current_class, []).append(test_seconds)
         duration_match = re.search(r'Duration:\s+([0-9]+(?:\.[0-9]+)?)s', line)
         if duration_match:
             shard_pest_seconds.append(float(duration_match.group(1)))
@@ -152,6 +159,13 @@ if manual_browser_filters:
         sys.exit(1)
 
     observed_overhead = max(60.0, browser_current_max - median(shard_pest_seconds))
+    def parallel_duration(durations: list[float], processes: int) -> float:
+        loads = [0.0 for _ in range(max(1, processes))]
+        for duration in sorted(durations, reverse=True):
+            index = min(range(len(loads)), key=loads.__getitem__)
+            loads[index] += duration
+        return max(loads) if loads else 0.0
+
     estimated_filter_seconds = []
     covered_classes: set[str] = set()
     for filter_expression in manual_browser_filters:
@@ -160,7 +174,11 @@ if manual_browser_filters:
             print(f'empty browser filter: {filter_expression}', file=sys.stderr)
             sys.exit(1)
         covered_classes.update(classes)
-        estimated_filter_seconds.append(sum(class_seconds.get(class_name, 0.0) for class_name in classes))
+        if browser_runs_parallel:
+            durations = [duration for class_name in classes for duration in class_test_seconds.get(class_name, [])]
+            estimated_filter_seconds.append(parallel_duration(durations, browser_processes) + 8.0)
+        else:
+            estimated_filter_seconds.append(sum(class_seconds.get(class_name, 0.0) for class_name in classes))
 
     missing_classes = set(class_seconds) - covered_classes
     if missing_classes:
