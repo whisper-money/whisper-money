@@ -3,10 +3,13 @@
 use App\Actions\CreateDefaultCategories;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
+use App\Http\Controllers\Settings\CategoryController;
+use App\Http\Requests\Settings\StoreCategoryRequest;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     config(['landing.hide_auth_buttons' => false]);
@@ -73,6 +76,72 @@ test('category name is required', function () {
     $response = $this->actingAs($user)->post(route('categories.store'), [
         'icon' => 'ShoppingBag',
         'color' => 'blue',
+        'type' => 'expense',
+        'cashflow_direction' => 'hidden',
+    ]);
+
+    $response->assertSessionHasErrors(['name']);
+});
+
+test('category names must be unique for each user when creating', function () {
+    $user = User::factory()->create();
+
+    Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Healthcare',
+    ]);
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => 'Healthcare',
+        'icon' => 'Heart',
+        'color' => 'pink',
+        'type' => 'expense',
+        'cashflow_direction' => 'hidden',
+    ]);
+
+    $response->assertSessionHasErrors(['name']);
+
+    expect($user->categories()->where('name', 'Healthcare')->count())->toBe(1);
+});
+
+test('different users can create categories with the same name', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    Category::factory()->create([
+        'user_id' => $otherUser->id,
+        'name' => 'Healthcare',
+    ]);
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => 'Healthcare',
+        'icon' => 'Heart',
+        'color' => 'pink',
+        'type' => 'expense',
+        'cashflow_direction' => 'hidden',
+    ]);
+
+    $response->assertRedirect(route('categories.index'));
+
+    $this->assertDatabaseHas('categories', [
+        'user_id' => $user->id,
+        'name' => 'Healthcare',
+    ]);
+});
+
+test('category names from deleted categories remain reserved', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Healthcare',
+    ]);
+
+    $category->delete();
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => 'Healthcare',
+        'icon' => 'Heart',
+        'color' => 'pink',
         'type' => 'expense',
         'cashflow_direction' => 'hidden',
     ]);
@@ -168,6 +237,64 @@ test('authenticated users can update their own category', function () {
         'color' => 'green',
         'type' => 'transfer',
         'cashflow_direction' => 'outflow',
+    ]);
+});
+
+test('users can keep their category name when updating', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Healthcare',
+        'type' => 'expense',
+    ]);
+
+    $response = $this->actingAs($user)->patch(
+        route('categories.update', $category),
+        [
+            'name' => 'Healthcare',
+            'icon' => 'Heart',
+            'color' => 'pink',
+            'type' => 'expense',
+            'cashflow_direction' => 'hidden',
+        ]
+    );
+
+    $response->assertRedirect(route('categories.index'));
+
+    $this->assertDatabaseHas('categories', [
+        'id' => $category->id,
+        'name' => 'Healthcare',
+        'color' => 'pink',
+    ]);
+});
+
+test('category names must be unique for each user when updating', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Old Name',
+    ]);
+    Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Healthcare',
+    ]);
+
+    $response = $this->actingAs($user)->patch(
+        route('categories.update', $category),
+        [
+            'name' => 'Healthcare',
+            'icon' => 'Heart',
+            'color' => 'pink',
+            'type' => 'expense',
+            'cashflow_direction' => 'hidden',
+        ]
+    );
+
+    $response->assertSessionHasErrors(['name']);
+
+    $this->assertDatabaseHas('categories', [
+        'id' => $category->id,
+        'name' => 'Old Name',
     ]);
 });
 
@@ -322,6 +449,40 @@ test('default categories are created without repeated category lookups', functio
 
     expect($user->categories()->count())->toBe(64)
         ->and($categorySelects)->toBe(1);
+});
+
+test('duplicate category name database errors become validation errors', function () {
+    $user = User::factory()->create();
+    $controller = new CategoryController;
+
+    $user->categories()->create([
+        'name' => 'Healthcare',
+        'icon' => 'Heart',
+        'color' => 'pink',
+        'type' => 'expense',
+    ]);
+
+    $request = Mockery::mock(StoreCategoryRequest::class);
+    $request->shouldReceive('validated')->once()->andReturn([
+        'name' => 'Healthcare',
+        'icon' => 'Heart',
+        'color' => 'pink',
+        'type' => 'expense',
+        'cashflow_direction' => 'hidden',
+    ]);
+
+    $this->actingAs($user);
+
+    $thrown = null;
+
+    try {
+        $controller->store($request);
+    } catch (ValidationException $exception) {
+        $thrown = $exception;
+    }
+
+    expect($thrown)->toBeInstanceOf(ValidationException::class);
+    expect($thrown->errors())->toHaveKey('name');
 });
 
 test('category names are unique per user', function () {

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreCategoryRequest;
 use App\Http\Requests\Settings\UpdateCategoryRequest;
 use App\Models\Category;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -35,7 +37,11 @@ class CategoryController extends Controller
      */
     public function store(StoreCategoryRequest $request): RedirectResponse
     {
-        auth()->user()->categories()->create($request->validated());
+        try {
+            auth()->user()->categories()->create($request->validated());
+        } catch (UniqueConstraintViolationException $exception) {
+            $this->throwDuplicateCategoryNameValidationException($exception);
+        }
 
         return to_route('categories.index');
     }
@@ -47,7 +53,11 @@ class CategoryController extends Controller
     {
         $this->authorize('update', $category);
 
-        $category->update($request->validated());
+        try {
+            $category->update($request->validated());
+        } catch (UniqueConstraintViolationException $exception) {
+            $this->throwDuplicateCategoryNameValidationException($exception);
+        }
 
         return to_route('categories.index');
     }
@@ -62,5 +72,16 @@ class CategoryController extends Controller
         $category->delete();
 
         return to_route('categories.index');
+    }
+
+    private function throwDuplicateCategoryNameValidationException(UniqueConstraintViolationException $exception): never
+    {
+        if (! str_contains($exception->getMessage(), 'categories_user_id_name_unique')) {
+            throw $exception;
+        }
+
+        throw ValidationException::withMessages([
+            'name' => __('validation.unique', ['attribute' => 'name']),
+        ]);
     }
 }
