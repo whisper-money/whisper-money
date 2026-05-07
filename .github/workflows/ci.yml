@@ -157,7 +157,7 @@ jobs:
         run: php artisan key:generate
 
       - name: Browser Tests
-        run: ./vendor/bin/pest --testsuite=Browser --ci --parallel --processes=2 --filter='${{ matrix.filter }}'
+        run: ./vendor/bin/pest --testsuite=Browser --ci --parallel --processes=3 --filter='${{ matrix.filter }}'
         env:
           TESTCONTAINERS: false
           DB_CONNECTION: mysql
