@@ -57,6 +57,7 @@ interface EditTransactionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
+    onLabelCreated?: (label: Label) => void;
     mode: 'create' | 'edit';
 }
 
@@ -70,6 +71,7 @@ export function EditTransactionDialog({
     open,
     onOpenChange,
     onSuccess,
+    onLabelCreated,
     mode,
 }: EditTransactionDialogProps) {
     const locale = useLocale();
@@ -793,6 +795,7 @@ export function EditTransactionDialog({
                                 disabled={isSubmitting}
                                 placeholder={__('Add labels...')}
                                 allowCreate={true}
+                                onLabelCreated={onLabelCreated}
                             />
                         </div>
 

@@ -3,6 +3,7 @@
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 
@@ -36,6 +37,42 @@ it('can open add transaction dialog', function () {
         ->wait(0.5)
         ->assertSee('Create Transaction')
         ->assertNoJavascriptErrors();
+});
+
+it('shows newly created labels in the transaction label dropdown without refreshing', function () {
+    $user = User::factory()->onboarded()->create();
+    $bank = Bank::factory()->create(['name' => 'Label Bank']);
+    Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Sports',
+    ]);
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'name' => 'Label Account',
+        'currency_code' => 'USD',
+        'type' => 'checking',
+    ]);
+
+    actingAs($user);
+
+    $page = visit('/transactions');
+
+    $page->assertSee('Transactions')
+        ->click('Transaction')
+        ->waitForText('Create Transaction', 5)
+        ->click('[data-testid="label-combobox-trigger"]')
+        ->fill('input[placeholder="Search or create labels..."]', 'Padel')
+        ->waitForText('Create "Padel"', 5)
+        ->click('[data-testid="label-create-option"]')
+        ->waitForText('Padel', 5)
+        ->assertPresent('[data-testid="label-option"][data-label-name="Padel"]')
+        ->assertNoJavascriptErrors();
+
+    expect(Label::query()
+        ->where('user_id', $user->id)
+        ->where('name', 'Padel')
+        ->exists())->toBeTrue();
 });
 
 it('can create a transaction', function () {

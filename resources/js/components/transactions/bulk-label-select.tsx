@@ -6,12 +6,14 @@ import { useState } from 'react';
 interface BulkLabelSelectProps {
     labels: Label[];
     onLabelsChange: (labelIds: string[]) => void;
+    onLabelCreated?: (label: Label) => void;
     disabled?: boolean;
 }
 
 export function BulkLabelSelect({
     labels,
     onLabelsChange,
+    onLabelCreated,
     disabled = false,
 }: BulkLabelSelectProps) {
     const [value, setValue] = useState<string[]>([]);
@@ -31,6 +33,7 @@ export function BulkLabelSelect({
             triggerClassName="h-9 w-[180px] min-h-9"
             allowCreate={true}
             allowRemoveAll={true}
+            onLabelCreated={onLabelCreated}
         />
     );
 }

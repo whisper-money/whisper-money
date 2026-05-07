@@ -233,7 +233,7 @@ export function TransactionList({
     categories,
     accounts,
     banks,
-    labels: initialLabels = [],
+    labels: initialLabels,
     automationRules = [],
     accountId,
     transactions: providedTransactions,
@@ -246,7 +246,23 @@ export function TransactionList({
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
     const locale = useLocale();
-    const labels = initialLabels;
+    const [labels, setLabels] = useState<Label[]>(() => initialLabels ?? []);
+
+    useEffect(() => {
+        setLabels(initialLabels ?? []);
+    }, [initialLabels]);
+
+    const handleLabelCreated = useCallback((label: Label) => {
+        setLabels((previousLabels) => {
+            const nextLabels = previousLabels.filter(
+                (existingLabel) => existingLabel.id !== label.id,
+            );
+
+            return [...nextLabels, label].sort((a, b) =>
+                a.name.localeCompare(b.name),
+            );
+        });
+    }, []);
 
     const [transactions, setTransactions] = useState<DecryptedTransaction[]>(
         [],
@@ -1312,6 +1328,7 @@ export function TransactionList({
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
+                onLabelCreated={handleLabelCreated}
                 mode="edit"
             />
 
@@ -1325,6 +1342,7 @@ export function TransactionList({
                 open={createDialogOpen}
                 onOpenChange={setCreateDialogOpen}
                 onSuccess={() => {}}
+                onLabelCreated={handleLabelCreated}
                 mode="create"
             />
 
@@ -1379,6 +1397,7 @@ export function TransactionList({
                 labels={labels}
                 onCategoryChange={handleBulkCategoryChange}
                 onLabelsChange={handleBulkLabelsChange}
+                onLabelCreated={handleLabelCreated}
                 onDelete={handleBulkDeleteClick}
                 onReEvaluateRules={handleBulkReEvaluateRules}
                 onClear={handleClearSelection}

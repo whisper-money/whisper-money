@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Check, ChevronsUpDown, Plus, Tag, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface LabelComboboxProps {
     value?: string[] | null;
@@ -46,9 +46,20 @@ export function LabelCombobox({
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+    const [createdLabels, setCreatedLabels] = useState<Label[]>([]);
+
+    const mergedLabels = useMemo(() => {
+        const labelsById = new Map<string, Label>();
+
+        for (const label of [...(labels ?? []), ...createdLabels]) {
+            labelsById.set(label.id, label);
+        }
+
+        return Array.from(labelsById.values());
+    }, [labels, createdLabels]);
 
     const { value: safeValue, labels: safeLabels } =
-        normalizeLabelComboboxState(value, labels);
+        normalizeLabelComboboxState(value, mergedLabels);
 
     const selectedLabels = safeLabels.filter((l) => safeValue.includes(l.id));
 
@@ -112,6 +123,19 @@ export function LabelCombobox({
             const newLabel = data.data || data;
 
             if (newLabel) {
+                setCreatedLabels((previousLabels) => {
+                    const existingLabelIndex = previousLabels.findIndex(
+                        (label) => label.id === newLabel.id,
+                    );
+
+                    if (existingLabelIndex === -1) {
+                        return [...previousLabels, newLabel];
+                    }
+
+                    return previousLabels.map((label) =>
+                        label.id === newLabel.id ? newLabel : label,
+                    );
+                });
                 onValueChange([...safeValue, newLabel.id]);
                 setInputValue('');
                 onLabelCreated?.(newLabel);
@@ -142,6 +166,7 @@ export function LabelCombobox({
                         triggerClassName,
                     )}
                     disabled={disabled}
+                    data-testid="label-combobox-trigger"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {selectedLabels.length > 0 ? (
@@ -225,6 +250,7 @@ export function LabelCombobox({
                                 onSelect={handleCreate}
                                 disabled={isCreating}
                                 className="gap-2"
+                                data-testid="label-create-option"
                             >
                                 <Plus className="h-4 w-4" />
                                 {isCreating
@@ -250,6 +276,8 @@ export function LabelCombobox({
                                         key={label.id}
                                         value={label.name}
                                         onSelect={() => handleSelect(label.id)}
+                                        data-testid="label-option"
+                                        data-label-name={label.name}
                                     >
                                         <div className="flex items-center gap-2">
                                             <div
