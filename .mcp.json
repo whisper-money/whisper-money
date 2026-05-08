@@ -10,15 +10,6 @@
         "sentry": {
             "type": "http",
             "url": "https://mcp.sentry.dev/mcp"
-        },
-        "posthog": {
-            "enabled": false,
-            "command": "npx",
-            "args": [
-                "-y",
-                "mcp-remote@latest",
-                "https://mcp.posthog.com/mcp"
-            ]
         }
     }
 }

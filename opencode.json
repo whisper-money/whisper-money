@@ -14,11 +14,6 @@
             "type": "remote",
             "url": "https://mcp.sentry.dev/mcp",
             "enabled": true
-        },
-        "posthog": {
-            "type": "remote",
-            "url": "https://mcp.posthog.com/mcp",
-            "enabled": false
         }
     }
 }
