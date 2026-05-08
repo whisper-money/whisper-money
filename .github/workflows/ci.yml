@@ -137,6 +137,8 @@ jobs:
 
       - name: Build Assets
         run: bun run build
+        env:
+          VITE_SENTRY_ENABLED: false
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -195,6 +197,8 @@ jobs:
 
       - name: Build Assets
         run: bun run build
+        env:
+          VITE_SENTRY_ENABLED: false
 
       - name: Copy Environment File
         run: cp .env.example .env
