@@ -12,6 +12,16 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
+test('cashflow analytics responses are not cached between users', function () {
+    $response = $this->getJson('/api/cashflow/summary?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk()
+        ->assertHeader('Cache-Control', 'no-store, private');
+});
+
 test('cashflow summary returns income, expense, net, and savings rate', function () {
     $incomeCategory = Category::factory()->create([
         'user_id' => $this->user->id,
