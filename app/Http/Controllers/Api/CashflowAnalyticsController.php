@@ -28,7 +28,7 @@ class CashflowAnalyticsController extends Controller
         $current = $this->calculateCashflowSummary($request->user()->id, $period->from, $period->to);
         $previous = $this->calculateCashflowSummary($request->user()->id, $previousPeriod->from, $previousPeriod->to);
 
-        return response()->json([
+        return $this->cashflowJson([
             'current' => $current,
             'previous' => $previous,
         ]);
@@ -53,7 +53,7 @@ class CashflowAnalyticsController extends Controller
         $totalIncome = $incomeCategories->sum('amount');
         $totalExpense = $expenseCategories->sum('amount');
 
-        return response()->json([
+        return $this->cashflowJson([
             'income_categories' => $incomeCategories->values(),
             'expense_categories' => $expenseCategories->values(),
             'total_income' => $totalIncome,
@@ -96,7 +96,7 @@ class CashflowAnalyticsController extends Controller
             $current->addMonth();
         }
 
-        return response()->json([
+        return $this->cashflowJson([
             'data' => $data,
         ]);
     }
@@ -134,11 +134,18 @@ class CashflowAnalyticsController extends Controller
             ];
         })->sortByDesc('amount')->values();
 
-        return response()->json([
+        return $this->cashflowJson([
             'data' => $currentWithPercentage,
             'total' => $currentTotal,
             'previous_total' => $previousTotal,
         ]);
+    }
+
+    private function cashflowJson(array $data): JsonResponse
+    {
+        return response()
+            ->json($data)
+            ->header('Cache-Control', 'no-store, private');
     }
 
     private function calculateCashflowSummary(string $userId, Carbon $from, Carbon $to): array
