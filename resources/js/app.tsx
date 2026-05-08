@@ -1,7 +1,6 @@
 import '../css/app.css';
 
 import { createInertiaApp, router } from '@inertiajs/react';
-import * as Sentry from '@sentry/react';
 import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import {
@@ -20,17 +19,11 @@ import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
 import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { initializePostHog } from './lib/posthog';
+import { initializeSentry, setSentryUser } from './lib/sentry';
 import type { SharedData } from './types';
 import { setTranslations } from './utils/i18n';
 
-Sentry.init({
-    dsn: 'https://47f7a823afae4c2f93ab3159ca7c0a3a@bugsink.whisper.money:8000/2',
-    environment: import.meta.env.MODE,
-    integrations: [],
-    tracesSampleRate: 0,
-    enabled: import.meta.env.PROD,
-});
-
+initializeSentry();
 initializePostHog();
 
 // Initialize theme before creating the app so progress bar color is correct
@@ -60,6 +53,7 @@ createInertiaApp({
             | undefined;
         const initialUser = initialPageProps?.auth?.user ?? null;
         const initialIsAuthenticated = Boolean(initialUser);
+        setSentryUser(initialUser);
         const hasEncryptionSetup =
             (initialPageProps?.hasEncryptionSetup as boolean) ?? false;
         const hasEncryptedAccounts =
@@ -103,6 +97,7 @@ createInertiaApp({
             setTranslations(
                 (pageProps?.translations as Record<string, string>) ?? {},
             );
+            setSentryUser(pageProps?.auth?.user);
 
             void syncUserTimezone(pageProps);
         });
