@@ -157,13 +157,6 @@ jobs:
           DB_USERNAME: root
           DB_PASSWORD: password
 
-      - name: Upload Browser Screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-screenshots-${{ matrix.shard }}
-          path: tests/Browser/Screenshots
-          if-no-files-found: ignore
 
   update-browser-shards:
     if: github.event_name == 'workflow_dispatch' && inputs.build_only == false
