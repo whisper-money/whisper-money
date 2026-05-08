@@ -32,7 +32,6 @@ export default defineConfig(({ mode }) => {
             }),
             ...(shouldUploadSourcemaps
                 ? sentryVitePlugin({
-                      url: env.SENTRY_URL,
                       authToken: env.SENTRY_AUTH_TOKEN,
                       org: env.SENTRY_ORG,
                       project: env.SENTRY_PROJECT,
