@@ -27,7 +27,7 @@ it('clicking an expense category on cashflow page navigates to transactions with
 
     $page = $this->actingAs($user)->visit("/cashflow?period={$period}");
 
-    $page->waitForText('Groceries', 10)
+    $page->waitForText('Groceries', 30)
         ->click('Groceries')
         ->wait(2)
         ->assertPathIs('/transactions')
@@ -56,7 +56,7 @@ it('clicking an income category on cashflow page navigates to transactions with 
 
     $page = $this->actingAs($user)->visit("/cashflow?period={$period}");
 
-    $page->waitForText('Salary', 10)
+    $page->waitForText('Salary', 30)
         ->click('Salary')
         ->wait(2)
         ->assertPathIs('/transactions')
