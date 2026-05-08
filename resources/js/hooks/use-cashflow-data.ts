@@ -103,23 +103,25 @@ export function useCashflowData({
             });
             const periodQuery = `?${periodParams.toString()}`;
 
+            const fetchCashflowJson = async (url: string) => {
+                const response = await fetch(url, { cache: 'no-store' });
+
+                return response.json();
+            };
+
             const [summary, sankey, trend, incomeBreakdown, expenseBreakdown] =
                 await Promise.all([
-                    fetch(`/api/cashflow/summary${periodQuery}`).then((r) =>
-                        r.json(),
+                    fetchCashflowJson(`/api/cashflow/summary${periodQuery}`),
+                    fetchCashflowJson(`/api/cashflow/sankey${periodQuery}`),
+                    fetchCashflowJson(
+                        `/api/cashflow/trend?months=12&to=${toStr}`,
                     ),
-                    fetch(`/api/cashflow/sankey${periodQuery}`).then((r) =>
-                        r.json(),
-                    ),
-                    fetch(`/api/cashflow/trend?months=12&to=${toStr}`).then(
-                        (r) => r.json(),
-                    ),
-                    fetch(
+                    fetchCashflowJson(
                         `/api/cashflow/breakdown${periodQuery}&type=income`,
-                    ).then((r) => r.json()),
-                    fetch(
+                    ),
+                    fetchCashflowJson(
                         `/api/cashflow/breakdown${periodQuery}&type=expense`,
-                    ).then((r) => r.json()),
+                    ),
                 ]);
 
             setData({
