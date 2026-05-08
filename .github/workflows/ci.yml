@@ -137,8 +137,6 @@ jobs:
 
       - name: Build Assets
         run: bun run build
-        env:
-          VITE_SENTRY_ENABLED: false
 
       - name: Copy Environment File
         run: cp .env.example .env
@@ -156,7 +154,6 @@ jobs:
           DB_DATABASE: testing
           DB_USERNAME: root
           DB_PASSWORD: password
-
 
   update-browser-shards:
     if: github.event_name == 'workflow_dispatch' && inputs.build_only == false
@@ -198,8 +195,6 @@ jobs:
 
       - name: Build Assets
         run: bun run build
-        env:
-          VITE_SENTRY_ENABLED: false
 
       - name: Copy Environment File
         run: cp .env.example .env

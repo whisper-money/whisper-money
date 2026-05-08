@@ -8,7 +8,6 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -26,13 +25,9 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->in('Feature', 'Performance');
+    ->in('Feature', 'Browser', 'Performance');
 
-pest()->extend(TestCase::class)
-    ->use(DatabaseTruncation::class)
-    ->in('Browser');
-
-pest()->browser()->timeout(30000);
+pest()->browser()->timeout(15000);
 
 /*
 |--------------------------------------------------------------------------
