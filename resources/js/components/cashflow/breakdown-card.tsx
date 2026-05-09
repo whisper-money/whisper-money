@@ -179,6 +179,7 @@ export function BreakdownCard({
                             <Link
                                 key={item.category_id}
                                 href={categoryUrl}
+                                data-testid={`cashflow-breakdown-category-${item.category_id}`}
                                 className="group -mx-1.5 my-1.5 block space-y-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                             >
                                 {rowContent}

@@ -6,6 +6,8 @@ use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 
+use function Pest\Laravel\actingAs;
+
 it('clicking an expense category on cashflow page navigates to transactions with filters', function () {
     $user = User::factory()->onboarded()->create();
     $account = Account::factory()->create(['user_id' => $user->id]);
@@ -25,11 +27,14 @@ it('clicking an expense category on cashflow page navigates to transactions with
 
     $period = now()->format('Y-m');
 
-    $page = $this->actingAs($user)->visit("/cashflow?period={$period}");
+    $categorySelector = "[data-testid=\"cashflow-breakdown-category-{$category->id}\"]";
 
-    $page->waitForText('Groceries', 10)
-        ->click('Groceries')
-        ->wait(2)
+    actingAs($user);
+
+    $page = visit("/cashflow?period={$period}");
+
+    $page->assertPresent($categorySelector)
+        ->click($categorySelector)
         ->assertPathIs('/transactions')
         ->assertQueryStringHas('category_ids', $category->id)
         ->assertNoJavascriptErrors();
@@ -54,11 +59,14 @@ it('clicking an income category on cashflow page navigates to transactions with 
 
     $period = now()->format('Y-m');
 
-    $page = $this->actingAs($user)->visit("/cashflow?period={$period}");
+    $categorySelector = "[data-testid=\"cashflow-breakdown-category-{$category->id}\"]";
 
-    $page->waitForText('Salary', 10)
-        ->click('Salary')
-        ->wait(2)
+    actingAs($user);
+
+    $page = visit("/cashflow?period={$period}");
+
+    $page->assertPresent($categorySelector)
+        ->click($categorySelector)
         ->assertPathIs('/transactions')
         ->assertQueryStringHas('category_ids', $category->id)
         ->assertNoJavascriptErrors();
