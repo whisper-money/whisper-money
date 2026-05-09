@@ -6,6 +6,7 @@ import laravel from 'laravel-vite-plugin';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+    envPrefix: ['VITE_', 'SENTRY_LARAVEL_DSN'],
     build: {
         sourcemap: true,
     },
