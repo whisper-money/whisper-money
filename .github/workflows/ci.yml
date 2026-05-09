@@ -367,7 +367,7 @@ jobs:
             sentry-cli releases new "$SENTRY_RELEASE"
           fi
 
-          sentry-cli releases set-commits "$SENTRY_RELEASE" --auto
+          sentry-cli releases set-commits "$SENTRY_RELEASE" --auto --ignore-missing
           sentry-cli releases finalize "$SENTRY_RELEASE"
 
       - name: Set up QEMU
