@@ -1,7 +1,18 @@
 import type { Event } from '@sentry/react';
+import { isChunkLoadError } from './chunk-load-recovery';
 
 const CLONE_ERROR_MESSAGE_PATTERN =
     /object (can not|could not|couldn't|can't) be cloned/i;
+
+export function isChunkLoadErrorEvent(event: Event): boolean {
+    return (
+        event.exception?.values?.some((exception) =>
+            isChunkLoadError(
+                `${exception.type ?? ''}: ${exception.value ?? ''}`,
+            ),
+        ) ?? false
+    );
+}
 
 export function isPostMessageDataCloneNoise(event: Event): boolean {
     return (

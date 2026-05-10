@@ -1,6 +1,38 @@
 import type { Event } from '@sentry/react';
 import { describe, expect, it } from 'vitest';
-import { isPostMessageDataCloneNoise } from './sentry';
+import { isChunkLoadErrorEvent, isPostMessageDataCloneNoise } from './sentry';
+
+describe('isChunkLoadErrorEvent', () => {
+    it('drops recoverable Vite dynamic import failures', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'TypeError',
+                        value: 'Failed to fetch dynamically imported module: https://whisper.money/build/assets/accounts-BO3xxENF.js',
+                    },
+                ],
+            },
+        };
+
+        expect(isChunkLoadErrorEvent(event)).toBe(true);
+    });
+
+    it('keeps unrelated TypeError events', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'TypeError',
+                        value: 'Cannot read properties of undefined',
+                    },
+                ],
+            },
+        };
+
+        expect(isChunkLoadErrorEvent(event)).toBe(false);
+    });
+});
 
 describe('isPostMessageDataCloneNoise', () => {
     it('drops browser postMessage DataCloneError noise', () => {
