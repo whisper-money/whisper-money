@@ -11,7 +11,11 @@ import { Progress } from '@/components/ui/progress';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
-import { Category, getCategoryColorClasses } from '@/types/category';
+import {
+    Category,
+    type CategoryColor,
+    getCategoryColorClasses,
+} from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import { format, subDays } from 'date-fns';
@@ -20,7 +24,8 @@ import { LucideIcon } from 'lucide-react';
 import { PercentageTrendIndicator } from './percentage-trend-indicator';
 
 interface CategoryData {
-    category: Category;
+    category: Category | null;
+    category_id?: string | null;
     amount: number;
     previous_amount: number;
     total_amount: number;
@@ -75,8 +80,16 @@ export function TopCategoriesCard({
             <CardContent>
                 <div className="space-y-4">
                     {categories.map((item, index) => {
+                        const category = item.category;
+                        const categoryId =
+                            category?.id ?? item.category_id ?? 'uncategorized';
+                        const categoryName =
+                            category?.name ?? __('Uncategorized');
+                        const categoryIcon = category?.icon ?? 'HelpCircle';
+                        const categoryColorName =
+                            category?.color ?? ('gray' as CategoryColor);
                         const Icon = (Icons[
-                            item.category.icon as keyof typeof Icons
+                            categoryIcon as keyof typeof Icons
                         ] || Icons.HelpCircle) as LucideIcon;
 
                         const percentageChange =
@@ -89,17 +102,16 @@ export function TopCategoriesCard({
                             item.total_amount > 0
                                 ? (item.amount / item.total_amount) * 100
                                 : 0;
-                        const categoryColor = getCategoryColorClasses(
-                            item.category.color,
-                        );
+                        const categoryColor =
+                            getCategoryColorClasses(categoryColorName);
                         const chartColor = categoryBarColor(
-                            item.category.color,
+                            categoryColorName,
                             index,
                         );
 
                         const categoryUrl = transactionsIndex({
                             query: {
-                                category_ids: item.category.id,
+                                category_ids: categoryId,
                                 date_from: dateFrom,
                                 date_to: dateTo,
                             },
@@ -107,9 +119,9 @@ export function TopCategoriesCard({
 
                         return (
                             <Link
-                                key={item.category.id}
+                                key={categoryId}
                                 href={categoryUrl}
-                                className="-mx-1.5 my-1.5 block space-y-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted group"
+                                className="group -mx-1.5 my-1.5 block space-y-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                             >
                                 <div className="flex min-w-0 items-center gap-2">
                                     <div
@@ -121,7 +133,7 @@ export function TopCategoriesCard({
                                         <Icon className="size-4" />
                                     </div>
                                     <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                                        {item.category.name}
+                                        {categoryName}
                                     </span>
                                     {percentageChange !== null && (
                                         <PercentageTrendIndicator
