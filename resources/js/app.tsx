@@ -20,6 +20,7 @@ import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
 import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { initializePostHog } from './lib/posthog';
+import { isPostMessageDataCloneNoise } from './lib/sentry';
 import type { SharedData } from './types';
 import { setTranslations } from './utils/i18n';
 
@@ -29,6 +30,13 @@ Sentry.init({
     integrations: [],
     tracesSampleRate: 0,
     sendDefaultPii: true,
+    beforeSend(event) {
+        if (isPostMessageDataCloneNoise(event)) {
+            return null;
+        }
+
+        return event;
+    },
     enabled:
         import.meta.env.PROD && Boolean(import.meta.env.SENTRY_LARAVEL_DSN),
 });
