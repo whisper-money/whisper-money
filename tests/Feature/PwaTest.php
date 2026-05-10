@@ -20,5 +20,6 @@ test('app template includes pwa meta tags and service worker registration', func
         ->assertSee('content="default"', false)
         ->assertDontSee('black-translucent', false)
         ->assertSee('serviceWorker', false)
+        ->assertSee("navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch", false)
         ->assertSee('viewport-fit=cover', false);
 });
