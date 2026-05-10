@@ -463,7 +463,8 @@ class DashboardAnalyticsController extends Controller
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense);
+                    ->where('categories.type', '=', CategoryType::Expense)
+                    ->whereNull('categories.deleted_at');
             })
             ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
             ->groupBy('transactions.category_id')
@@ -513,7 +514,8 @@ class DashboardAnalyticsController extends Controller
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense);
+                    ->where('categories.type', '=', CategoryType::Expense)
+                    ->whereNull('categories.deleted_at');
             })
             ->sum('transactions.amount');
 
@@ -527,7 +529,8 @@ class DashboardAnalyticsController extends Controller
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Income);
+                    ->where('categories.type', '=', CategoryType::Income)
+                    ->whereNull('categories.deleted_at');
             })
             ->sum('transactions.amount');
 
@@ -536,7 +539,8 @@ class DashboardAnalyticsController extends Controller
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
                 $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', CategoryType::Expense);
+                    ->where('categories.type', '=', CategoryType::Expense)
+                    ->whereNull('categories.deleted_at');
             })
             ->sum('transactions.amount');
 

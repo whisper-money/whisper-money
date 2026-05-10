@@ -62,6 +62,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
+import {
+    type CursorPaginatedResponse,
+    isCursorPaginatedResponse,
+} from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -95,17 +99,8 @@ interface AppliedFilters {
     sort: string;
 }
 
-interface CursorPaginatedResponse {
-    data: ServerTransaction[];
-    next_cursor: string | null;
-    next_page_url: string | null;
-    prev_cursor: string | null;
-    prev_page_url: string | null;
-    per_page: number;
-}
-
 interface Props {
-    transactions: CursorPaginatedResponse;
+    transactions: CursorPaginatedResponse<ServerTransaction>;
     appliedFilters: AppliedFilters;
     categories: Category[];
     accounts: Account[];
@@ -457,8 +452,15 @@ export default function Transactions({
                     preserveScroll: true,
                     preserveState: true,
                     onSuccess: (page) => {
-                        const txns = (page.props as unknown as Props)
+                        const txns = (page.props as { transactions?: unknown })
                             .transactions;
+
+                        if (
+                            !isCursorPaginatedResponse<ServerTransaction>(txns)
+                        ) {
+                            return;
+                        }
+
                         setAllTransactions(
                             txns.data.map(toDecryptedTransaction),
                         );
@@ -527,7 +529,13 @@ export default function Transactions({
         router.reload({
             only: ['transactions'],
             onSuccess: (page) => {
-                const txns = (page.props as unknown as Props).transactions;
+                const txns = (page.props as { transactions?: unknown })
+                    .transactions;
+
+                if (!isCursorPaginatedResponse<ServerTransaction>(txns)) {
+                    return;
+                }
+
                 setAllTransactions(txns.data.map(toDecryptedTransaction));
                 setNextCursor(txns.next_cursor);
             },
@@ -550,7 +558,7 @@ export default function Transactions({
             const response = await fetch(url, {
                 headers: {
                     'X-Inertia': 'true',
-                    'X-Inertia-Version': version,
+                    'X-Inertia-Version': version ?? '',
                     'X-Inertia-Partial-Data': 'transactions',
                     'X-Inertia-Partial-Component': component,
                     Accept: 'text/html, application/xhtml+xml',
@@ -558,7 +566,11 @@ export default function Transactions({
             });
 
             const json = await response.json();
-            const next = json.props.transactions as CursorPaginatedResponse;
+            const next = json.props.transactions;
+
+            if (!isCursorPaginatedResponse<ServerTransaction>(next)) {
+                return;
+            }
 
             setAllTransactions((prev) => [
                 ...prev,

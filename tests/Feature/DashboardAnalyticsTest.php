@@ -247,6 +247,44 @@ test('top categories returns highest spending categories', function () {
     expect($data[1]['amount'])->toBe(3000);
 });
 
+test('top categories excludes soft deleted categories', function () {
+    $activeCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Food',
+    ]);
+    $deletedCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Old category',
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $activeCategory->id,
+        'amount' => -1000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $deletedCategory->id,
+        'amount' => -5000,
+        'transaction_date' => now(),
+    ]);
+
+    $deletedCategory->delete();
+
+    $response = $this->getJson('/api/dashboard/top-categories?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+
+    expect($response->json())->toHaveCount(1)
+        ->and($response->json('0.category.id'))->toBe($activeCategory->id);
+});
+
 test('net worth evolution returns monthly data points with per-account balances', function () {
     $account1 = Account::factory()->create([
         'user_id' => $this->user->id,
