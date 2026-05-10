@@ -19,10 +19,16 @@ import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
 import { initializeTheme } from './hooks/use-appearance';
 import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
+import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
 import { initializePostHog } from './lib/posthog';
-import { isPostMessageDataCloneNoise } from './lib/sentry';
+import {
+    isChunkLoadErrorEvent,
+    isPostMessageDataCloneNoise,
+} from './lib/sentry';
 import type { SharedData } from './types';
 import { setTranslations } from './utils/i18n';
+
+installChunkLoadRecovery();
 
 Sentry.init({
     dsn: import.meta.env.SENTRY_LARAVEL_DSN,
@@ -31,7 +37,10 @@ Sentry.init({
     tracesSampleRate: 0,
     sendDefaultPii: true,
     beforeSend(event) {
-        if (isPostMessageDataCloneNoise(event)) {
+        if (
+            isChunkLoadErrorEvent(event) ||
+            isPostMessageDataCloneNoise(event)
+        ) {
             return null;
         }
 
