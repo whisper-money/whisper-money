@@ -15,6 +15,7 @@ class SendUserLeadInvitations extends Command
 {
     protected $signature = 'leads:send-invitations
         {--limit=50 : Maximum number of leads to invite in this batch}
+        {--email= : Invite a specific pending lead by email address}
         {--cohort= : Restrict to a single cohort (founder, founder_referrer, early_bird, waitlist)}
         {--dry-run : Show what would happen without sending or creating Stripe codes}
         {--force : Skip confirmation prompt}';
@@ -31,9 +32,10 @@ class SendUserLeadInvitations extends Command
         }
 
         $dryRun = (bool) $this->option('dry-run');
+        $emailFilter = $this->resolveEmailFilter();
         $cohortFilter = $this->resolveCohortFilter();
 
-        if ($cohortFilter === false) {
+        if ($emailFilter === false || $cohortFilter === false) {
             return self::FAILURE;
         }
 
@@ -41,11 +43,20 @@ class SendUserLeadInvitations extends Command
             ->whereNotNull('position')
             ->where('position', '>', 0)
             ->whereNull('invitation_sent_at')
-            ->orderBy('position')
-            ->limit($limit * 5) // over-fetch when filtering by cohort
+            ->when(
+                $emailFilter !== null,
+                fn ($query) => $query->where('email', $emailFilter),
+                fn ($query) => $query->orderBy('position')->limit($limit * 5), // over-fetch when filtering by cohort
+            )
             ->get();
 
         if ($candidates->isEmpty()) {
+            if ($emailFilter !== null) {
+                $this->error("No pending lead found for {$emailFilter}.");
+
+                return self::FAILURE;
+            }
+
             $this->info('No pending leads found.');
 
             return self::SUCCESS;
@@ -134,6 +145,25 @@ class SendUserLeadInvitations extends Command
         $this->info("Queued {$sent} invitation email(s)".($failed > 0 ? " ({$failed} failed)" : '').'.');
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    private function resolveEmailFilter(): string|false|null
+    {
+        $email = $this->option('email');
+
+        if ($email === null || $email === '') {
+            return null;
+        }
+
+        $email = strtolower(trim((string) $email));
+
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->error("Invalid email `{$email}`.");
+
+            return false;
+        }
+
+        return $email;
     }
 
     private function resolveCohortFilter(): LeadCohort|false|null

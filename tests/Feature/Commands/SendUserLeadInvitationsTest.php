@@ -80,3 +80,30 @@ it('records the cohort on each invited lead', function (): void {
     expect($cohorts[9])->toBe(LeadCohort::Founder);
     expect($cohorts[10])->toBe(LeadCohort::EarlyBird);
 });
+
+it('sends an invitation to a specific pending lead by email', function (): void {
+    UserLead::factory()->count(12)->state(new Sequence(
+        ...array_map(fn (int $i) => ['position' => $i, 'email_verified_at' => now()], range(1, 12)),
+    ))->create();
+
+    $target = UserLead::factory()->ranked(42)->create(['email' => 'target@example.com']);
+
+    $this->artisan('leads:send-invitations', ['--email' => 'target@example.com', '--force' => true])
+        ->assertSuccessful();
+
+    Mail::assertQueued(UserLeadInvitation::class, 1);
+    Mail::assertQueued(UserLeadInvitation::class, fn (UserLeadInvitation $mail): bool => $mail->hasTo('target@example.com'));
+
+    expect($target->refresh()->invitation_sent_at)->not->toBeNull()
+        ->and(UserLead::query()->whereNotNull('invitation_sent_at')->pluck('email')->all())->toBe(['target@example.com']);
+});
+
+it('fails when the requested email is not a pending lead', function (): void {
+    UserLead::factory()->ranked(1)->create(['email' => 'already@example.com', 'invitation_sent_at' => now()]);
+
+    $this->artisan('leads:send-invitations', ['--email' => 'already@example.com', '--force' => true])
+        ->expectsOutput('No pending lead found for already@example.com.')
+        ->assertFailed();
+
+    Mail::assertNothingQueued();
+});
