@@ -12,14 +12,13 @@ import {
     useReactTable,
     VisibilityState,
 } from '@tanstack/react-table';
-import * as Icons from 'lucide-react';
 import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { AutomationRuleActionBadges } from '@/components/automation-rules/automation-rule-action-badges';
 import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
 import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete-automation-rule-dialog';
 import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     ContextMenu,
@@ -51,8 +50,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { type AutomationRule, getRuleActions } from '@/types/automation-rule';
-import { type Category, getCategoryColorClasses } from '@/types/category';
+import { type AutomationRule } from '@/types/automation-rule';
+import { type Category } from '@/types/category';
+import { type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 
 interface AutomationRulesDialogProps {
@@ -63,9 +63,11 @@ interface AutomationRulesDialogProps {
 function AutomationRuleActions({
     rule,
     categories,
+    labels,
 }: {
     rule: AutomationRule;
     categories: Category[];
+    labels: Label[];
 }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -100,6 +102,7 @@ function AutomationRuleActions({
             <EditAutomationRuleDialog
                 rule={rule}
                 categories={categories}
+                labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
             />
@@ -115,9 +118,11 @@ function AutomationRuleActions({
 function AutomationRuleRow({
     row,
     categories,
+    labels,
 }: {
     row: Row<AutomationRule>;
     categories: Category[];
+    labels: Label[];
 }) {
     const rule = row.original;
     const [editOpen, setEditOpen] = useState(false);
@@ -163,6 +168,7 @@ function AutomationRuleRow({
             <EditAutomationRuleDialog
                 rule={rule}
                 categories={categories}
+                labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
             />
@@ -183,8 +189,8 @@ export function AutomationRulesDialog({
         automationRules: AutomationRule[];
     }>().props;
 
-    // Get categories from globally shared Inertia data
     const categories = usePage().props.categories as Category[];
+    const labels = usePage().props.labels as Label[];
     const rules = useMemo(
         () =>
             rawRules.map((rule) => ({
@@ -216,54 +222,7 @@ export function AutomationRulesDialog({
             id: 'actions_display',
             header: __('Actions'),
             cell: ({ row }) => {
-                const rule = row.original;
-                const actions = getRuleActions(rule);
-
-                if (actions.type === 'multiple') {
-                    return (
-                        <div className="flex flex-wrap items-center gap-2">
-                            {actions.category && (
-                                <Badge
-                                    className={`${getCategoryColorClasses(actions.category.color).bg} ${getCategoryColorClasses(actions.category.color).text} flex items-center gap-2`}
-                                >
-                                    {(() => {
-                                        const IconComponent = Icons[
-                                            actions.category
-                                                .icon as keyof typeof Icons
-                                        ] as Icons.LucideIcon;
-                                        return IconComponent ? (
-                                            <IconComponent className="h-3 w-3 opacity-80" />
-                                        ) : null;
-                                    })()}
-                                    {actions.category.name}
-                                </Badge>
-                            )}
-                        </div>
-                    );
-                }
-
-                if (actions.type === 'category' && actions.category) {
-                    const colorClasses = getCategoryColorClasses(
-                        actions.category.color,
-                    );
-                    const IconComponent = Icons[
-                        actions.category.icon as keyof typeof Icons
-                    ] as Icons.LucideIcon;
-                    return (
-                        <Badge
-                            className={`${colorClasses.bg} ${colorClasses.text} flex items-center gap-2`}
-                        >
-                            <IconComponent className="h-3 w-3 opacity-80" />
-                            {actions.category.name}
-                        </Badge>
-                    );
-                }
-
-                return (
-                    <span className="text-sm text-muted-foreground">
-                        {__('No action set')}
-                    </span>
-                );
+                return <AutomationRuleActionBadges rule={row.original} />;
             },
         },
         {
@@ -273,6 +232,7 @@ export function AutomationRulesDialog({
                 <AutomationRuleActions
                     rule={row.original}
                     categories={categories}
+                    labels={labels}
                 />
             ),
         },
@@ -301,7 +261,7 @@ export function AutomationRulesDialog({
                     <DialogTitle>{__('Automation Rules')}</DialogTitle>
                     <DialogDescription>
                         {__(
-                            'Manage your transaction automation rules. Rules will be applied to categorize transactions automatically.',
+                            'Manage your transaction automation rules. Rules will categorize transactions and add labels automatically.',
                         )}
                     </DialogDescription>
                 </DialogHeader>
@@ -322,7 +282,10 @@ export function AutomationRulesDialog({
                             }
                             className="max-w-sm"
                         />
-                        <CreateAutomationRuleDialog categories={categories} />
+                        <CreateAutomationRuleDialog
+                            categories={categories}
+                            labels={labels}
+                        />
                     </div>
 
                     <div className="max-h-[75vh] overflow-y-auto rounded-md border">
@@ -356,6 +319,7 @@ export function AutomationRulesDialog({
                                                 key={row.id}
                                                 row={row}
                                                 categories={categories}
+                                                labels={labels}
                                             />
                                         ))
                                 ) : (
