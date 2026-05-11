@@ -29,13 +29,9 @@ class CashflowAnalyticsController extends Controller
         $previousPeriod = $period->previous();
         $user = $request->user();
 
-        $current = $this->calculateCashflowSummary($user->id, $user->currency_code, $period->from, $period->to);
-        $previous = $this->calculateCashflowSummary($user->id, $user->currency_code, $previousPeriod->from, $previousPeriod->to);
-
-        return $this->cashflowJson([
-            'current' => $current,
-            'previous' => $previous,
-        ]);
+        return $this->cashflowJson(
+            $this->calculateCashflowSummaries($user->id, $user->currency_code, $period, $previousPeriod)
+        );
     }
 
     public function sankey(Request $request): JsonResponse
@@ -152,10 +148,32 @@ class CashflowAnalyticsController extends Controller
             ->header('Cache-Control', 'no-store, private');
     }
 
-    private function calculateCashflowSummary(string $userId, string $userCurrency, Carbon $from, Carbon $to): array
+    private function calculateCashflowSummaries(string $userId, string $userCurrency, PeriodComparator $period, PeriodComparator $previousPeriod): array
     {
-        $income = $this->getTransactionSum($userId, $userCurrency, $from, $to, CategoryType::Income);
-        $expense = abs($this->getTransactionSum($userId, $userCurrency, $from, $to, CategoryType::Expense));
+        $transactions = Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$previousPeriod->from, $period->to])
+            ->with(['account', 'category'])
+            ->get();
+
+        $this->preloadExchangeRates($transactions, $userCurrency);
+
+        return [
+            'current' => $this->cashflowSummaryFromTransactions(
+                $this->transactionsForPeriod($transactions, $period->from, $period->to),
+                $userCurrency,
+            ),
+            'previous' => $this->cashflowSummaryFromTransactions(
+                $this->transactionsForPeriod($transactions, $previousPeriod->from, $previousPeriod->to),
+                $userCurrency,
+            ),
+        ];
+    }
+
+    private function cashflowSummaryFromTransactions(Collection $transactions, string $userCurrency): array
+    {
+        $income = $this->sumTransactions($transactions, $userCurrency, CategoryType::Income);
+        $expense = abs($this->sumTransactions($transactions, $userCurrency, CategoryType::Expense));
 
         $net = $income - $expense;
         $savingsRate = $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0;
@@ -168,13 +186,9 @@ class CashflowAnalyticsController extends Controller
         ];
     }
 
-    private function getTransactionSum(string $userId, string $userCurrency, Carbon $from, Carbon $to, CategoryType $type): int
+    private function sumTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
     {
-        $transactions = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->with(['account', 'category'])
-            ->get()
+        return $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {
                 if ($this->categoryType($transaction) === $type) {
                     return true;
@@ -182,11 +196,8 @@ class CashflowAnalyticsController extends Controller
 
                 return $transaction->category_id === null
                     && $this->matchesSign($transaction->amount, $type === CategoryType::Income ? '>' : '<');
-            });
-
-        $this->preloadExchangeRates($transactions, $userCurrency);
-
-        return $transactions->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
+            })
+            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
     }
 
     private function getSankeyBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, string $operator): Collection
@@ -361,6 +372,13 @@ class CashflowAnalyticsController extends Controller
         }
 
         return $categorized;
+    }
+
+    private function transactionsForPeriod(Collection $transactions, Carbon $from, Carbon $to): Collection
+    {
+        return $transactions->filter(function (Transaction $transaction) use ($from, $to): bool {
+            return $transaction->transaction_date->betweenIncluded($from, $to);
+        });
     }
 
     private function convertTransactionAmount(Transaction $transaction, string $userCurrency): int
