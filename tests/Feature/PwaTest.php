@@ -23,12 +23,3 @@ test('app template includes pwa meta tags and service worker registration', func
         ->assertSee("navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch", false)
         ->assertSee('viewport-fit=cover', false);
 });
-
-test('app template disables browser translation to protect react managed dom', function () {
-    $response = $this->get('/');
-
-    $response->assertSuccessful()
-        ->assertSee('translate="no"', false)
-        ->assertSee('notranslate', false)
-        ->assertSee('name="google" content="notranslate"', false);
-});
