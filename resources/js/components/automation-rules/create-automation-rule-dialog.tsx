@@ -1,6 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { RuleBuilder } from '@/components/automation-rules/rule-builder';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
+import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Button } from '@/components/ui/button';
 import { CreateButton } from '@/components/ui/create-button';
 import {
@@ -20,18 +21,21 @@ import {
     type RuleStructure,
 } from '@/lib/rule-builder-utils';
 import type { Category } from '@/types/category';
+import type { Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface CreateAutomationRuleDialogProps {
     categories: Category[];
+    labels: Label[];
     disabled?: boolean;
     onSuccess?: () => void;
 }
 
 export function CreateAutomationRuleDialog({
     categories,
+    labels,
     disabled = false,
     onSuccess,
 }: CreateAutomationRuleDialogProps) {
@@ -42,6 +46,7 @@ export function CreateAutomationRuleDialog({
         groupOperator: 'or',
     });
     const [categoryId, setCategoryId] = useState<string>('');
+    const [labelIds, setLabelIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -62,10 +67,11 @@ export function CreateAutomationRuleDialog({
             return;
         }
 
-        if (!categoryId) {
+        if (!categoryId && labelIds.length === 0) {
             setErrors((prev) => ({
                 ...prev,
-                action_category_id: 'A category is required',
+                action_category_id:
+                    'At least one category or label is required',
             }));
             return;
         }
@@ -81,10 +87,10 @@ export function CreateAutomationRuleDialog({
                     title: title.trim(),
                     priority: 0,
                     rules_json: JSON.stringify(jsonLogic),
-                    action_category_id: categoryId,
+                    action_category_id: categoryId || null,
                     action_note: null,
                     action_note_iv: null,
-                    action_label_ids: null,
+                    action_label_ids: labelIds,
                 },
                 {
                     preserveState: true,
@@ -97,6 +103,7 @@ export function CreateAutomationRuleDialog({
                             groupOperator: 'and',
                         });
                         setCategoryId('');
+                        setLabelIds([]);
                         setErrors({});
                         onSuccess?.();
                     },
@@ -158,9 +165,21 @@ export function CreateAutomationRuleDialog({
                         <h4 className="font-medium">{__('Actions')}</h4>
 
                         <div className="space-y-2">
-                            <FormLabel htmlFor="category">
-                                {__('Set Category')}
-                            </FormLabel>
+                            <div className="flex items-center justify-between gap-2">
+                                <FormLabel htmlFor="category">
+                                    {__('Set Category')}
+                                </FormLabel>
+                                {categoryId && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setCategoryId('')}
+                                    >
+                                        {__('Clear')}
+                                    </Button>
+                                )}
+                            </div>
                             <div className="mt-1">
                                 <CategoryCombobox
                                     value={categoryId}
@@ -173,9 +192,23 @@ export function CreateAutomationRuleDialog({
                             </div>
                         </div>
 
-                        {errors.action_category_id && (
+                        <div className="space-y-2">
+                            <FormLabel>{__('Add Labels')}</FormLabel>
+                            <LabelCombobox
+                                value={labelIds}
+                                onValueChange={setLabelIds}
+                                labels={labels}
+                                placeholder={__('Select labels')}
+                            />
+                        </div>
+
+                        {(errors.action_category_id ||
+                            errors.action_label_ids ||
+                            errors['action_label_ids.0']) && (
                             <p className="text-sm text-red-500">
-                                {errors.action_category_id}
+                                {errors.action_category_id ||
+                                    errors.action_label_ids ||
+                                    errors['action_label_ids.0']}
                             </p>
                         )}
                     </div>

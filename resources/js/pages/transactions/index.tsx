@@ -67,6 +67,7 @@ import {
     isCursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
+import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem } from '@/types';
@@ -662,14 +663,9 @@ export default function Transactions({
 
                 const updated = response.data.data;
 
-                updateTransaction({
-                    ...transaction,
-                    category_id: updated.category_id,
-                    category: updated.category,
-                    labels: updated.labels,
-                    notes: updated.notes,
-                    notes_iv: updated.notes_iv,
-                });
+                updateTransaction(
+                    mergeReEvaluatedTransaction(transaction, updated),
+                );
             } catch (error) {
                 console.error('Failed to re-evaluate rules:', error);
             } finally {

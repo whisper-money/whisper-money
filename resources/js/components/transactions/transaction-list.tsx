@@ -59,6 +59,7 @@ import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
+import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
@@ -861,14 +862,9 @@ export function TransactionList({
 
                 const updated = response.data.data;
 
-                updateTransaction({
-                    ...transaction,
-                    category_id: updated.category_id,
-                    category: updated.category,
-                    labels: updated.labels,
-                    notes: updated.notes,
-                    notes_iv: updated.notes_iv,
-                });
+                updateTransaction(
+                    mergeReEvaluatedTransaction(transaction, updated),
+                );
                 consoleDebug('✓ UI state updated successfully');
             } catch (error) {
                 consoleDebug('❌ Error during re-evaluation:', error);

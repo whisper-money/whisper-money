@@ -1,6 +1,7 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { RuleBuilder } from '@/components/automation-rules/rule-builder';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
+import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/rule-builder-utils';
 import type { AutomationRule } from '@/types/automation-rule';
 import type { Category } from '@/types/category';
+import type { Label as LabelType } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -27,6 +29,7 @@ import { useEffect, useState } from 'react';
 interface EditAutomationRuleDialogProps {
     rule: AutomationRule;
     categories: Category[];
+    labels: LabelType[];
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
@@ -35,6 +38,7 @@ interface EditAutomationRuleDialogProps {
 export function EditAutomationRuleDialog({
     rule,
     categories,
+    labels,
     open,
     onOpenChange,
     onSuccess,
@@ -45,6 +49,7 @@ export function EditAutomationRuleDialog({
         groupOperator: 'and',
     });
     const [categoryId, setCategoryId] = useState<string>('');
+    const [labelIds, setLabelIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -55,6 +60,7 @@ export function EditAutomationRuleDialog({
             setCategoryId(
                 rule.action_category_id ? String(rule.action_category_id) : '',
             );
+            setLabelIds(rule.labels?.map((label) => label.id) ?? []);
         }
     }, [rule, open]);
 
@@ -75,10 +81,11 @@ export function EditAutomationRuleDialog({
             return;
         }
 
-        if (!categoryId) {
+        if (!categoryId && labelIds.length === 0) {
             setErrors((prev) => ({
                 ...prev,
-                action_category_id: 'A category is required',
+                action_category_id:
+                    'At least one category or label is required',
             }));
             return;
         }
@@ -94,10 +101,10 @@ export function EditAutomationRuleDialog({
                     title: title.trim(),
                     priority: rule.priority,
                     rules_json: JSON.stringify(jsonLogic),
-                    action_category_id: categoryId,
+                    action_category_id: categoryId || null,
                     action_note: null,
                     action_note_iv: null,
-                    action_label_ids: null,
+                    action_label_ids: labelIds,
                 },
                 {
                     preserveState: true,
@@ -128,7 +135,7 @@ export function EditAutomationRuleDialog({
                     <DialogTitle>{__('Edit Automation Rule')}</DialogTitle>
                     <DialogDescription>
                         {__(
-                            'Update the rule to automatically categorize transactions.',
+                            'Update the rule to automatically categorize transactions and add labels.',
                         )}
                     </DialogDescription>
                 </DialogHeader>
@@ -160,9 +167,21 @@ export function EditAutomationRuleDialog({
                         <h4 className="font-medium">{__('Actions')}</h4>
 
                         <div className="space-y-2">
-                            <Label htmlFor="category">
-                                {__('Set Category')}
-                            </Label>
+                            <div className="flex items-center justify-between gap-2">
+                                <Label htmlFor="category">
+                                    {__('Set Category')}
+                                </Label>
+                                {categoryId && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setCategoryId('')}
+                                    >
+                                        {__('Clear')}
+                                    </Button>
+                                )}
+                            </div>
                             <CategoryCombobox
                                 value={categoryId}
                                 onValueChange={setCategoryId}
@@ -173,9 +192,23 @@ export function EditAutomationRuleDialog({
                             />
                         </div>
 
-                        {errors.action_category_id && (
+                        <div className="space-y-2">
+                            <Label>{__('Add Labels')}</Label>
+                            <LabelCombobox
+                                value={labelIds}
+                                onValueChange={setLabelIds}
+                                labels={labels}
+                                placeholder={__('Select labels')}
+                            />
+                        </div>
+
+                        {(errors.action_category_id ||
+                            errors.action_label_ids ||
+                            errors['action_label_ids.0']) && (
                             <p className="text-sm text-red-500">
-                                {errors.action_category_id}
+                                {errors.action_category_id ||
+                                    errors.action_label_ids ||
+                                    errors['action_label_ids.0']}
                             </p>
                         )}
                     </div>
@@ -194,7 +227,9 @@ export function EditAutomationRuleDialog({
                             disabled={isSubmitting}
                             data-testid="submit-automation-rule"
                         >
-                            {isSubmitting ? 'Saving...' : 'Save Changes'}
+                            {isSubmitting
+                                ? __('Saving...')
+                                : __('Save Changes')}
                         </Button>
                     </div>
                 </form>
