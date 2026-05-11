@@ -176,7 +176,7 @@ class CashflowAnalyticsController extends Controller
             ->with(['account', 'category'])
             ->get()
             ->filter(function (Transaction $transaction) use ($type): bool {
-                if ($transaction->category?->type === $type) {
+                if ($this->categoryType($transaction) === $type) {
                     return true;
                 }
 
@@ -205,7 +205,7 @@ class CashflowAnalyticsController extends Controller
         $regularCategories = $transactions
             ->filter(function (Transaction $transaction) use ($operator): bool {
                 return $transaction->category_id !== null
-                    && $transaction->category?->type !== CategoryType::Transfer
+                    && $this->categoryType($transaction) !== CategoryType::Transfer
                     && $this->matchesSign($transaction->amount, $operator);
             })
             ->groupBy('category_id')
@@ -222,8 +222,8 @@ class CashflowAnalyticsController extends Controller
         $transferCategories = $transactions
             ->filter(function (Transaction $transaction) use ($isIncome): bool {
                 return $transaction->category_id !== null
-                    && $transaction->category?->type === CategoryType::Transfer
-                    && $transaction->category->cashflow_direction === ($isIncome
+                    && $this->categoryType($transaction) === CategoryType::Transfer
+                    && $this->categoryCashflowDirection($transaction) === ($isIncome
                         ? CategoryCashflowDirection::Inflow
                         : CategoryCashflowDirection::Outflow);
             })
@@ -290,12 +290,12 @@ class CashflowAnalyticsController extends Controller
                 foreach ($transactions as $transaction) {
                     $amount = $this->convertTransactionAmount($transaction, $userCurrency);
 
-                    if (($transaction->category?->type === CategoryType::Income && $transaction->amount > 0)
+                    if (($this->categoryType($transaction) === CategoryType::Income && $transaction->amount > 0)
                         || ($transaction->category_id === null && $transaction->amount > 0)) {
                         $income += $amount;
                     }
 
-                    if (($transaction->category?->type === CategoryType::Expense && $transaction->amount < 0)
+                    if (($this->categoryType($transaction) === CategoryType::Expense && $transaction->amount < 0)
                         || ($transaction->category_id === null && $transaction->amount < 0)) {
                         $expense += abs($amount);
                     }
@@ -324,7 +324,7 @@ class CashflowAnalyticsController extends Controller
         // the net which could be misleading when categories contain mixed-sign entries.
         $categorized = $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {
-                return $transaction->category?->type === $type
+                return $this->categoryType($transaction) === $type
                     && $this->matchesSign($transaction->amount, $type === CategoryType::Income ? '>' : '<');
             })
             ->groupBy('category_id')
@@ -386,6 +386,28 @@ class CashflowAnalyticsController extends Controller
         }
 
         $this->exchangeRateService->preloadRates($userCurrency, $dates);
+    }
+
+    private function categoryType(Transaction $transaction): ?CategoryType
+    {
+        $type = $transaction->category?->getAttribute('type');
+
+        if ($type instanceof CategoryType) {
+            return $type;
+        }
+
+        return is_string($type) ? CategoryType::tryFrom($type) : null;
+    }
+
+    private function categoryCashflowDirection(Transaction $transaction): ?CategoryCashflowDirection
+    {
+        $direction = $transaction->category?->getAttribute('cashflow_direction');
+
+        if ($direction instanceof CategoryCashflowDirection) {
+            return $direction;
+        }
+
+        return is_string($direction) ? CategoryCashflowDirection::tryFrom($direction) : null;
     }
 
     private function matchesSign(int $amount, string $operator): bool
