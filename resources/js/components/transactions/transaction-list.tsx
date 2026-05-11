@@ -16,15 +16,20 @@ import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, isWithinInterval, parseISO } from 'date-fns';
 import {
-    type ReactNode,
+    createElement,
     useCallback,
     useEffect,
     useMemo,
     useState,
+    type ReactNode,
 } from 'react';
 import { toast } from 'sonner';
 
 import { single as reEvaluateSingle } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
+import {
+    AutomateCategorizationDialog,
+    type AutomateCategorizationCandidate,
+} from '@/components/automation-rules/automate-categorization-dialog';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
@@ -298,6 +303,9 @@ export function TransactionList({
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
+    const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
+    const [automateCandidate, setAutomateCandidate] =
+        useState<AutomateCategorizationCandidate | null>(null);
     const [displayedCount, setDisplayedCount] = useState(pageSize);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -952,6 +960,34 @@ export function TransactionList({
         }
     }
 
+    const showAutomatizeToast = useCallback(
+        (transaction: DecryptedTransaction, category: Category) => {
+            const nextAutomateCandidate = { transaction, category };
+
+            setAutomateCandidate(nextAutomateCandidate);
+            toast.success(__('Transaction categorized'), {
+                closeButton: true,
+                duration: 12000,
+                action: {
+                    label: createElement(
+                        'span',
+                        {
+                            title: __(
+                                'Automatize the categorization of future transactions like this one',
+                            ),
+                        },
+                        __('Automatize'),
+                    ),
+                    onClick: () => {
+                        setAutomateCandidate(nextAutomateCandidate);
+                        setAutomateDialogOpen(true);
+                    },
+                },
+            });
+        },
+        [],
+    );
+
     const columns = useMemo(() => {
         const allColumns = createTransactionColumns({
             categories,
@@ -962,6 +998,7 @@ export function TransactionList({
             onEdit: setEditTransaction,
             onDelete: setDeleteTransaction,
             onUpdate: updateTransaction,
+            onCategorized: showAutomatizeToast,
             onReEvaluateRules: handleReEvaluateRules,
         });
 
@@ -981,6 +1018,7 @@ export function TransactionList({
         labels,
         locale,
         updateTransaction,
+        showAutomatizeToast,
         handleReEvaluateRules,
         hideColumns,
     ]);
@@ -1324,6 +1362,7 @@ export function TransactionList({
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
+                onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
                 mode="edit"
             />
@@ -1340,6 +1379,13 @@ export function TransactionList({
                 onSuccess={() => {}}
                 onLabelCreated={handleLabelCreated}
                 mode="create"
+            />
+
+            <AutomateCategorizationDialog
+                open={automateDialogOpen}
+                candidate={automateCandidate}
+                categories={categories}
+                onOpenChange={setAutomateDialogOpen}
             />
 
             <AlertDialog

@@ -57,6 +57,10 @@ interface EditTransactionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: (transaction: DecryptedTransaction) => void;
+    onCategorized?: (
+        transaction: DecryptedTransaction,
+        category: Category,
+    ) => void;
     onLabelCreated?: (label: Label) => void;
     mode: 'create' | 'edit';
 }
@@ -71,6 +75,7 @@ export function EditTransactionDialog({
     open,
     onOpenChange,
     onSuccess,
+    onCategorized,
     onLabelCreated,
     mode,
 }: EditTransactionDialogProps) {
@@ -533,6 +538,14 @@ export function EditTransactionDialog({
 
                 toast.success(__('Transaction updated successfully'));
                 onSuccess(updatedTransaction);
+
+                if (
+                    selectedCategoryId &&
+                    selectedCategoryId !== transaction.category_id &&
+                    updatedCategory
+                ) {
+                    onCategorized?.(updatedTransaction, updatedCategory);
+                }
                 onOpenChange(false);
 
                 // Sync to update IndexedDB

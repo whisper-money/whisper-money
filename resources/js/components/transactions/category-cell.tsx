@@ -13,6 +13,10 @@ interface CategoryCellProps {
     accounts: Account[];
     banks: Bank[];
     onUpdate: (transaction: DecryptedTransaction) => void;
+    onCategorized?: (
+        transaction: DecryptedTransaction,
+        category: Category,
+    ) => void;
     className?: string;
     withoutChevronIcon?: boolean;
 }
@@ -23,6 +27,7 @@ export function CategoryCell({
     accounts,
     banks,
     onUpdate,
+    onCategorized,
     className,
     withoutChevronIcon,
 }: CategoryCellProps) {
@@ -61,6 +66,10 @@ export function CategoryCell({
             };
 
             onUpdate(updatedTransaction);
+
+            if (updatedCategory) {
+                onCategorized?.(updatedTransaction, updatedCategory);
+            }
         } catch (error) {
             console.error('Failed to update category:', error);
         } finally {

@@ -1,3 +1,4 @@
+import type { AutomateCategorizationCandidate } from '@/components/automation-rules/automate-categorization-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
@@ -10,9 +11,18 @@ import {
     type DecryptedTransaction,
     type Transaction,
 } from '@/types/transaction';
+import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
 import { parseISO } from 'date-fns';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    createElement,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import { toast } from 'sonner';
 
 export type AnimationState = 'idle' | 'exiting' | 'entering' | 'success';
 
@@ -89,6 +99,9 @@ export function useCategorizeTransactions({
         useState<Category | null>(null);
     const [searchValue, setSearchValue] = useState('');
     const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
+    const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
+    const [automateCandidate, setAutomateCandidate] =
+        useState<AutomateCategorizationCandidate | null>(null);
     const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
     const [categorizedCount, setCategorizedCount] = useState(0);
     const commandInputRef = useRef<HTMLInputElement>(null);
@@ -322,6 +335,11 @@ export function useCategorizeTransactions({
                 return;
             }
 
+            const nextAutomateCandidate = {
+                transaction: currentTransaction,
+                category,
+            };
+
             setLastSelectedCategory(category);
             setAnimationState('exiting');
 
@@ -333,6 +351,26 @@ export function useCategorizeTransactions({
                 updateCategoryUsageOrder(category.id);
                 setCategoryUsageOrder(getCategoryUsageOrder());
                 setCategorizedCount((prev) => prev + 1);
+                setAutomateCandidate(nextAutomateCandidate);
+                toast.success(__('Transaction categorized'), {
+                    closeButton: true,
+                    duration: 12000,
+                    action: {
+                        label: createElement(
+                            'span',
+                            {
+                                title: __(
+                                    'Automatize the categorization of future transactions like this one',
+                                ),
+                            },
+                            __('Automatize'),
+                        ),
+                        onClick: () => {
+                            setAutomateCandidate(nextAutomateCandidate);
+                            setAutomateDialogOpen(true);
+                        },
+                    },
+                });
             } catch (error) {
                 console.error('Failed to update transaction:', error);
                 setAnimationState('idle');
@@ -375,6 +413,20 @@ export function useCategorizeTransactions({
         }, 300);
     }, [animationState]);
 
+    const handleAutomateDialogOpenChange = useCallback((open: boolean) => {
+        setAutomateDialogOpen(open);
+
+        if (!open) {
+            commandInputRef.current?.focus();
+        }
+    }, []);
+
+    const handleAutomateSaved = useCallback(async () => {
+        setAutomateDialogOpen(false);
+        await applyAutomationRulesToQueue();
+        commandInputRef.current?.focus();
+    }, [applyAutomationRulesToQueue]);
+
     const handlePrevious = useCallback(() => {
         if (animationState !== 'idle' || currentIndex === 0) {
             return;
@@ -406,11 +458,15 @@ export function useCategorizeTransactions({
         setSearchValue,
         rulesDialogOpen,
         setRulesDialogOpen,
+        automateDialogOpen,
+        automateCandidate,
         categorizedCount,
         handleCategorySelect,
         handleSkip,
         handlePrevious,
         handleRulesDialogClose,
+        handleAutomateDialogOpenChange,
+        handleAutomateSaved,
         commandInputRef,
     };
 }
