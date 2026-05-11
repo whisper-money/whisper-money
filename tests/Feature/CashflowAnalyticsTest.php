@@ -4,10 +4,14 @@ use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
+    Http::fake();
+
     $this->user = User::factory()->create();
     $this->actingAs($this->user);
 });
@@ -66,6 +70,121 @@ test('cashflow summary returns income, expense, net, and savings rate', function
                 'savings_rate' => 60.0, // (1000 - 400) / 1000 * 100 = 60%
             ],
         ]);
+});
+
+test('cashflow analytics convert foreign currency transactions to user currency', function () {
+    $date = now()->startOfMonth()->addDays(4);
+    $from = $date->copy()->startOfMonth()->toDateString();
+    $to = $date->copy()->endOfMonth()->toDateString();
+
+    $incomeCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Income,
+    ]);
+    $expenseCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+    ]);
+
+    $usdAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'currency_code' => 'USD',
+    ]);
+    $eurAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'currency_code' => 'EUR',
+    ]);
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => $date->toDateString(),
+        'rates' => ['eur' => 0.80],
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $usdAccount->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 10000,
+        'currency_code' => 'USD',
+        'transaction_date' => $date,
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $eurAccount->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 8000,
+        'currency_code' => 'EUR',
+        'transaction_date' => $date,
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $usdAccount->id,
+        'category_id' => $expenseCategory->id,
+        'amount' => -5000,
+        'currency_code' => 'USD',
+        'transaction_date' => $date,
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $eurAccount->id,
+        'category_id' => $expenseCategory->id,
+        'amount' => -4000,
+        'currency_code' => 'EUR',
+        'transaction_date' => $date,
+    ]);
+
+    $summary = $this->getJson('/api/cashflow/summary?'.http_build_query([
+        'from' => $from,
+        'to' => $to,
+    ]));
+    $trend = $this->getJson('/api/cashflow/trend?'.http_build_query([
+        'months' => 1,
+        'to' => $to,
+    ]));
+    $sankey = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => $from,
+        'to' => $to,
+    ]));
+    $incomeBreakdown = $this->getJson('/api/cashflow/breakdown?'.http_build_query([
+        'from' => $from,
+        'to' => $to,
+        'type' => 'income',
+    ]));
+    $expenseBreakdown = $this->getJson('/api/cashflow/breakdown?'.http_build_query([
+        'from' => $from,
+        'to' => $to,
+        'type' => 'expense',
+    ]));
+
+    $summary->assertOk()
+        ->assertJsonPath('current.income', 20000)
+        ->assertJsonPath('current.expense', 10000)
+        ->assertJsonPath('current.net', 10000)
+        ->assertJsonPath('current.savings_rate', 50);
+
+    $trend->assertOk()
+        ->assertJsonPath('data.0.income', 20000)
+        ->assertJsonPath('data.0.expense', 10000)
+        ->assertJsonPath('data.0.net', 10000);
+
+    $sankey->assertOk()
+        ->assertJsonPath('total_income', 20000)
+        ->assertJsonPath('total_expense', 10000)
+        ->assertJsonPath('income_categories.0.amount', 20000)
+        ->assertJsonPath('expense_categories.0.amount', 10000);
+
+    $incomeBreakdown->assertOk()
+        ->assertJsonPath('total', 20000)
+        ->assertJsonPath('data.0.amount', 20000)
+        ->assertJsonPath('data.0.percentage', 100);
+
+    $expenseBreakdown->assertOk()
+        ->assertJsonPath('total', 10000)
+        ->assertJsonPath('data.0.amount', 10000)
+        ->assertJsonPath('data.0.percentage', 100);
+
+    Http::assertNothingSent();
 });
 
 test('cashflow summary handles zero income for savings rate', function () {
