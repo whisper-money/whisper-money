@@ -7,14 +7,17 @@ use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class CashflowAnalyticsController extends Controller
 {
+    public function __construct(private ExchangeRateService $exchangeRateService) {}
+
     public function summary(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -24,14 +27,11 @@ class CashflowAnalyticsController extends Controller
 
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
+        $user = $request->user();
 
-        $current = $this->calculateCashflowSummary($request->user()->id, $period->from, $period->to);
-        $previous = $this->calculateCashflowSummary($request->user()->id, $previousPeriod->from, $previousPeriod->to);
-
-        return $this->cashflowJson([
-            'current' => $current,
-            'previous' => $previous,
-        ]);
+        return $this->cashflowJson(
+            $this->calculateCashflowSummaries($user->id, $user->currency_code, $period, $previousPeriod)
+        );
     }
 
     public function sankey(Request $request): JsonResponse
@@ -43,12 +43,12 @@ class CashflowAnalyticsController extends Controller
 
         $from = Carbon::parse($validated['from']);
         $to = Carbon::parse($validated['to']);
-        $userId = $request->user()->id;
+        $user = $request->user();
 
         // Split by sign, not by category type: a single category can appear on
         // both sides when it has both incoming and outgoing transactions.
-        $incomeCategories = $this->getSankeyBreakdown($userId, $from, $to, '>');
-        $expenseCategories = $this->getSankeyBreakdown($userId, $from, $to, '<');
+        $incomeCategories = $this->getSankeyBreakdown($user->id, $user->currency_code, $from, $to, '>');
+        $expenseCategories = $this->getSankeyBreakdown($user->id, $user->currency_code, $from, $to, '<');
 
         $totalIncome = $incomeCategories->sum('amount');
         $totalExpense = $expenseCategories->sum('amount');
@@ -69,13 +69,13 @@ class CashflowAnalyticsController extends Controller
         ]);
 
         $months = $validated['months'] ?? 12;
-        $userId = $request->user()->id;
+        $user = $request->user();
 
         $end = isset($validated['to'])
             ? Carbon::parse($validated['to'])->endOfMonth()
             : Carbon::now()->endOfMonth();
         $start = $end->copy()->subMonthsNoOverflow($months - 1)->startOfMonth();
-        $monthlyTotals = $this->getMonthlyTrendTotals($userId, $start, $end);
+        $monthlyTotals = $this->getMonthlyTrendTotals($user->id, $user->currency_code, $start, $end);
 
         $data = [];
         $current = $start->copy();
@@ -83,8 +83,8 @@ class CashflowAnalyticsController extends Controller
         while ($current->lte($end)) {
             $monthKey = $current->format('Y-m');
             $totals = $monthlyTotals->get($monthKey);
-            $income = (int) ($totals->income ?? 0);
-            $expense = (int) ($totals->expense ?? 0);
+            $income = (int) ($totals['income'] ?? 0);
+            $expense = (int) ($totals['expense'] ?? 0);
 
             $data[] = [
                 'month' => $monthKey,
@@ -111,12 +111,12 @@ class CashflowAnalyticsController extends Controller
 
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
-        $userId = $request->user()->id;
+        $user = $request->user();
 
         $categoryType = $validated['type'] === 'income' ? CategoryType::Income : CategoryType::Expense;
 
-        $current = $this->getCategoryBreakdown($userId, $period->from, $period->to, $categoryType);
-        $previous = $this->getCategoryBreakdown($userId, $previousPeriod->from, $previousPeriod->to, $categoryType);
+        $current = $this->getCategoryBreakdown($user->id, $user->currency_code, $period->from, $period->to, $categoryType);
+        $previous = $this->getCategoryBreakdown($user->id, $user->currency_code, $previousPeriod->from, $previousPeriod->to, $categoryType);
 
         $currentTotal = $current->sum('amount');
         $previousTotal = $previous->sum('amount');
@@ -148,10 +148,32 @@ class CashflowAnalyticsController extends Controller
             ->header('Cache-Control', 'no-store, private');
     }
 
-    private function calculateCashflowSummary(string $userId, Carbon $from, Carbon $to): array
+    private function calculateCashflowSummaries(string $userId, string $userCurrency, PeriodComparator $period, PeriodComparator $previousPeriod): array
     {
-        $income = $this->getTransactionSum($userId, $from, $to, CategoryType::Income);
-        $expense = abs($this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
+        $transactions = Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$previousPeriod->from, $period->to])
+            ->with(['account', 'category'])
+            ->get();
+
+        $this->preloadExchangeRates($transactions, $userCurrency);
+
+        return [
+            'current' => $this->cashflowSummaryFromTransactions(
+                $this->transactionsForPeriod($transactions, $period->from, $period->to),
+                $userCurrency,
+            ),
+            'previous' => $this->cashflowSummaryFromTransactions(
+                $this->transactionsForPeriod($transactions, $previousPeriod->from, $previousPeriod->to),
+                $userCurrency,
+            ),
+        ];
+    }
+
+    private function cashflowSummaryFromTransactions(Collection $transactions, string $userCurrency): array
+    {
+        $income = $this->sumTransactions($transactions, $userCurrency, CategoryType::Income);
+        $expense = abs($this->sumTransactions($transactions, $userCurrency, CategoryType::Expense));
 
         $net = $income - $expense;
         $savingsRate = $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0;
@@ -164,90 +186,84 @@ class CashflowAnalyticsController extends Controller
         ];
     }
 
-    private function getTransactionSum(string $userId, Carbon $from, Carbon $to, CategoryType $type): int
+    private function sumTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
     {
-        return Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->where(function ($q) use ($type) {
-                $q->whereExists(function ($sub) use ($type) {
-                    $sub->select(DB::raw(1))
-                        ->from('categories')
-                        ->whereColumn('categories.id', 'transactions.category_id')
-                        ->where('categories.type', $type);
-                })
-                    ->orWhere(function ($q) use ($type) {
-                        $q->whereNull('transactions.category_id')
-                            ->where('transactions.amount', $type === CategoryType::Income ? '>' : '<', 0);
-                    });
+        return $transactions
+            ->filter(function (Transaction $transaction) use ($type): bool {
+                if ($this->categoryType($transaction) === $type) {
+                    return true;
+                }
+
+                return $transaction->category_id === null
+                    && $this->matchesSign($transaction->amount, $type === CategoryType::Income ? '>' : '<');
             })
-            ->sum('transactions.amount');
+            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
     }
 
-    private function getSankeyBreakdown(string $userId, Carbon $from, Carbon $to, string $operator)
+    private function getSankeyBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, string $operator): Collection
     {
         $isIncome = $operator === '>';
+        $transactions = Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->with(['account', 'category'])
+            ->get();
+
+        $this->preloadExchangeRates($transactions, $userCurrency);
 
         // Non-transfer categories keep the existing sign-based behavior so a
         // category with mixed signs can appear on both sides of the Sankey.
-        $regularCategories = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->where('transactions.amount', $operator, 0)
-            ->whereNotNull('transactions.category_id')
-            ->join('categories', function ($join) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '!=', CategoryType::Transfer);
+        $regularCategories = $transactions
+            ->filter(function (Transaction $transaction) use ($operator): bool {
+                return $transaction->category_id !== null
+                    && $this->categoryType($transaction) !== CategoryType::Transfer
+                    && $this->matchesSign($transaction->amount, $operator);
             })
-            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
-            ->groupBy('transactions.category_id')
-            ->with('category')
-            ->get()
-            ->map(function ($item) {
+            ->groupBy('category_id')
+            ->map(function (Collection $transactions) use ($userCurrency): array {
+                $totalAmount = $transactions->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
+
                 return [
-                    'category_id' => $item->category_id,
-                    'category' => $item->category,
-                    'amount' => abs($item->total_amount),
+                    'category_id' => $transactions->first()->category_id,
+                    'category' => $transactions->first()->category,
+                    'amount' => abs($totalAmount),
                 ];
             });
 
-        $transferCategories = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->whereNotNull('transactions.category_id')
-            ->join('categories', function ($join) use ($isIncome) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', CategoryType::Transfer)
-                    ->where(
-                        'categories.cashflow_direction',
-                        $isIncome
-                            ? CategoryCashflowDirection::Inflow
-                            : CategoryCashflowDirection::Outflow,
-                    );
+        $transferCategories = $transactions
+            ->filter(function (Transaction $transaction) use ($isIncome): bool {
+                return $transaction->category_id !== null
+                    && $this->categoryType($transaction) === CategoryType::Transfer
+                    && $this->categoryCashflowDirection($transaction) === ($isIncome
+                        ? CategoryCashflowDirection::Inflow
+                        : CategoryCashflowDirection::Outflow);
             })
-            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
-            ->groupBy('transactions.category_id')
-            ->with('category')
-            ->get()
-            ->filter(function ($item) use ($isIncome) {
-                return $isIncome ? $item->total_amount > 0 : $item->total_amount < 0;
-            })
-            ->map(function ($item) {
+            ->groupBy('category_id')
+            ->map(function (Collection $transactions) use ($userCurrency): array {
+                $totalAmount = $transactions->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
+
                 return [
-                    'category_id' => $item->category_id,
-                    'category' => $item->category,
-                    'amount' => abs($item->total_amount),
+                    'category_id' => $transactions->first()->category_id,
+                    'category' => $transactions->first()->category,
+                    'amount' => abs($totalAmount),
+                    'total_amount' => $totalAmount,
                 ];
-            });
+            })
+            ->filter(fn (array $item): bool => $isIncome ? $item['total_amount'] > 0 : $item['total_amount'] < 0)
+            ->map(fn (array $item): array => [
+                'category_id' => $item['category_id'],
+                'category' => $item['category'],
+                'amount' => $item['amount'],
+            ]);
 
         $categorized = $regularCategories->concat($transferCategories)->values();
 
-        $uncategorized = Transaction::query()
-            ->where('user_id', $userId)
-            ->whereBetween('transaction_date', [$from, $to])
-            ->whereNull('category_id')
-            ->where('amount', $operator, 0)
-            ->sum('amount');
+        $uncategorized = $transactions
+            ->filter(function (Transaction $transaction) use ($operator): bool {
+                return $transaction->category_id === null
+                    && $this->matchesSign($transaction->amount, $operator);
+            })
+            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
 
         if ($uncategorized != 0) {
             $categorized->push([
@@ -266,60 +282,79 @@ class CashflowAnalyticsController extends Controller
         return $categorized;
     }
 
-    private function getMonthlyTrendTotals(string $userId, Carbon $from, Carbon $to)
+    private function getMonthlyTrendTotals(string $userId, string $userCurrency, Carbon $from, Carbon $to): Collection
     {
-        return Transaction::query()
+        $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->leftJoin('categories', 'transactions.category_id', '=', 'categories.id')
-            ->selectRaw("DATE_FORMAT(transactions.transaction_date, '%Y-%m') as month")
-            ->selectRaw(
-                'SUM(CASE WHEN ((categories.type = ? AND transactions.amount > 0) OR (transactions.category_id IS NULL AND transactions.amount > 0)) THEN transactions.amount ELSE 0 END) as income',
-                [CategoryType::Income->value]
-            )
-            ->selectRaw(
-                'SUM(CASE WHEN ((categories.type = ? AND transactions.amount < 0) OR (transactions.category_id IS NULL AND transactions.amount < 0)) THEN -transactions.amount ELSE 0 END) as expense',
-                [CategoryType::Expense->value]
-            )
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get()
-            ->keyBy('month');
+            ->with(['account', 'category'])
+            ->get();
+
+        $this->preloadExchangeRates($transactions, $userCurrency);
+
+        return $transactions
+            ->groupBy(fn (Transaction $transaction): string => $transaction->transaction_date->format('Y-m'))
+            ->map(function (Collection $transactions) use ($userCurrency): array {
+                $income = 0;
+                $expense = 0;
+
+                foreach ($transactions as $transaction) {
+                    $amount = $this->convertTransactionAmount($transaction, $userCurrency);
+
+                    if (($this->categoryType($transaction) === CategoryType::Income && $transaction->amount > 0)
+                        || ($transaction->category_id === null && $transaction->amount > 0)) {
+                        $income += $amount;
+                    }
+
+                    if (($this->categoryType($transaction) === CategoryType::Expense && $transaction->amount < 0)
+                        || ($transaction->category_id === null && $transaction->amount < 0)) {
+                        $expense += abs($amount);
+                    }
+                }
+
+                return [
+                    'income' => $income,
+                    'expense' => $expense,
+                ];
+            });
     }
 
-    private function getCategoryBreakdown(string $userId, Carbon $from, Carbon $to, CategoryType $type)
+    private function getCategoryBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, CategoryType $type): Collection
     {
+        $transactions = Transaction::query()
+            ->where('transactions.user_id', $userId)
+            ->whereBetween('transactions.transaction_date', [$from, $to])
+            ->with(['account', 'category'])
+            ->get();
+
+        $this->preloadExchangeRates($transactions, $userCurrency);
+
         // Get categorized transactions — filter by sign so that outgoing payments
         // in an income category (or refunds in an expense category) are excluded.
         // This ensures the Sankey shows the actual gross flow for each side, not
         // the net which could be misleading when categories contain mixed-sign entries.
-        $categorized = Transaction::query()
-            ->where('transactions.user_id', $userId)
-            ->whereBetween('transactions.transaction_date', [$from, $to])
-            ->where('transactions.amount', $type === CategoryType::Income ? '>' : '<', 0)
-            ->join('categories', function ($join) use ($type) {
-                $join->on('transactions.category_id', '=', 'categories.id')
-                    ->where('categories.type', '=', $type);
+        $categorized = $transactions
+            ->filter(function (Transaction $transaction) use ($type): bool {
+                return $this->categoryType($transaction) === $type
+                    && $this->matchesSign($transaction->amount, $type === CategoryType::Income ? '>' : '<');
             })
-            ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
-            ->groupBy('transactions.category_id')
-            ->with('category')
-            ->get()
-            ->map(function ($item) {
+            ->groupBy('category_id')
+            ->map(function (Collection $transactions) use ($userCurrency): array {
+                $totalAmount = $transactions->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
+
                 return [
-                    'category_id' => $item->category_id,
-                    'category' => $item->category,
-                    'amount' => abs($item->total_amount),
+                    'category_id' => $transactions->first()->category_id,
+                    'category' => $transactions->first()->category,
+                    'amount' => abs($totalAmount),
                 ];
             });
 
-        // Get uncategorized transactions
-        $uncategorized = Transaction::query()
-            ->where('user_id', $userId)
-            ->whereBetween('transaction_date', [$from, $to])
-            ->whereNull('category_id')
-            ->where('amount', $type === CategoryType::Income ? '>' : '<', 0)
-            ->sum('amount');
+        $uncategorized = $transactions
+            ->filter(function (Transaction $transaction) use ($type): bool {
+                return $transaction->category_id === null
+                    && $this->matchesSign($transaction->amount, $type === CategoryType::Income ? '>' : '<');
+            })
+            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
 
         // Add uncategorized as a special category if there are any
         if ($uncategorized != 0) {
@@ -337,5 +372,64 @@ class CashflowAnalyticsController extends Controller
         }
 
         return $categorized;
+    }
+
+    private function transactionsForPeriod(Collection $transactions, Carbon $from, Carbon $to): Collection
+    {
+        return $transactions->filter(function (Transaction $transaction) use ($from, $to): bool {
+            return $transaction->transaction_date->betweenIncluded($from, $to);
+        });
+    }
+
+    private function convertTransactionAmount(Transaction $transaction, string $userCurrency): int
+    {
+        return $this->exchangeRateService->convert(
+            $transaction->currency_code ?: $transaction->account?->currency_code ?: $userCurrency,
+            $userCurrency,
+            $transaction->amount,
+            $transaction->transaction_date->toDateString(),
+        );
+    }
+
+    private function preloadExchangeRates(Collection $transactions, string $userCurrency): void
+    {
+        $dates = $transactions
+            ->filter(fn (Transaction $transaction): bool => strcasecmp($transaction->currency_code ?: $transaction->account?->currency_code ?: $userCurrency, $userCurrency) !== 0)
+            ->map(fn (Transaction $transaction): string => $transaction->transaction_date->toDateString())
+            ->unique()
+            ->values();
+
+        if ($dates->isEmpty()) {
+            return;
+        }
+
+        $this->exchangeRateService->preloadRates($userCurrency, $dates);
+    }
+
+    private function categoryType(Transaction $transaction): ?CategoryType
+    {
+        $type = $transaction->category?->getAttribute('type');
+
+        if ($type instanceof CategoryType) {
+            return $type;
+        }
+
+        return is_string($type) ? CategoryType::tryFrom($type) : null;
+    }
+
+    private function categoryCashflowDirection(Transaction $transaction): ?CategoryCashflowDirection
+    {
+        $direction = $transaction->category?->getAttribute('cashflow_direction');
+
+        if ($direction instanceof CategoryCashflowDirection) {
+            return $direction;
+        }
+
+        return is_string($direction) ? CategoryCashflowDirection::tryFrom($direction) : null;
+    }
+
+    private function matchesSign(int $amount, string $operator): bool
+    {
+        return $operator === '>' ? $amount > 0 : $amount < 0;
     }
 }
