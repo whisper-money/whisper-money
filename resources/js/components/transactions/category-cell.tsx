@@ -16,6 +16,7 @@ interface CategoryCellProps {
     onCategorized?: (
         transaction: DecryptedTransaction,
         category: Category,
+        source: 'transaction_table',
     ) => void;
     className?: string;
     withoutChevronIcon?: boolean;
@@ -68,7 +69,11 @@ export function CategoryCell({
             onUpdate(updatedTransaction);
 
             if (updatedCategory) {
-                onCategorized?.(updatedTransaction, updatedCategory);
+                onCategorized?.(
+                    updatedTransaction,
+                    updatedCategory,
+                    'transaction_table',
+                );
             }
         } catch (error) {
             console.error('Failed to update category:', error);

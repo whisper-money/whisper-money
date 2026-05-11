@@ -64,6 +64,7 @@ import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
 import { db } from '@/lib/dexie-db';
 import { getStoredKey } from '@/lib/key-storage';
+import { captureEvent } from '@/lib/posthog';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
@@ -961,7 +962,11 @@ export function TransactionList({
     }
 
     const showAutomatizeToast = useCallback(
-        (transaction: DecryptedTransaction, category: Category) => {
+        (
+            transaction: DecryptedTransaction,
+            category: Category,
+            source: 'transaction_table' | 'edit_transaction_modal',
+        ) => {
             const nextAutomateCandidate = { transaction, category };
 
             setAutomateCandidate(nextAutomateCandidate);
@@ -979,6 +984,10 @@ export function TransactionList({
                         __('Automatize'),
                     ),
                     onClick: () => {
+                        captureEvent(
+                            'automation_rule_toast_automatize_clicked',
+                            { source },
+                        );
                         setAutomateCandidate(nextAutomateCandidate);
                         setAutomateDialogOpen(true);
                     },

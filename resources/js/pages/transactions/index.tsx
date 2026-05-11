@@ -78,6 +78,7 @@ import {
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
+import { captureEvent } from '@/lib/posthog';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -766,7 +767,11 @@ export default function Transactions({
     }
 
     const showAutomatizeToast = useCallback(
-        (transaction: DecryptedTransaction, category: Category) => {
+        (
+            transaction: DecryptedTransaction,
+            category: Category,
+            source: 'transaction_table' | 'edit_transaction_modal',
+        ) => {
             const nextAutomateCandidate = { transaction, category };
 
             setAutomateCandidate(nextAutomateCandidate);
@@ -784,6 +789,10 @@ export default function Transactions({
                         __('Automatize'),
                     ),
                     onClick: () => {
+                        captureEvent(
+                            'automation_rule_toast_automatize_clicked',
+                            { source },
+                        );
                         setAutomateCandidate(nextAutomateCandidate);
                         setAutomateDialogOpen(true);
                     },

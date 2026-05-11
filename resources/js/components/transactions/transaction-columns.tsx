@@ -37,6 +37,7 @@ interface CreateColumnsOptions {
     onCategorized?: (
         transaction: DecryptedTransaction,
         category: Category,
+        source: 'transaction_table',
     ) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
 }

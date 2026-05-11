@@ -60,6 +60,7 @@ interface EditTransactionDialogProps {
     onCategorized?: (
         transaction: DecryptedTransaction,
         category: Category,
+        source: 'edit_transaction_modal',
     ) => void;
     onLabelCreated?: (label: Label) => void;
     mode: 'create' | 'edit';
@@ -544,7 +545,11 @@ export function EditTransactionDialog({
                     selectedCategoryId !== transaction.category_id &&
                     updatedCategory
                 ) {
-                    onCategorized?.(updatedTransaction, updatedCategory);
+                    onCategorized?.(
+                        updatedTransaction,
+                        updatedCategory,
+                        'edit_transaction_modal',
+                    );
                 }
                 onOpenChange(false);
 

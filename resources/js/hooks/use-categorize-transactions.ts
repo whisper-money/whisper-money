@@ -2,6 +2,7 @@ import type { AutomateCategorizationCandidate } from '@/components/automation-ru
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
+import { captureEvent } from '@/lib/posthog';
 import { evaluateRules } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
@@ -366,6 +367,10 @@ export function useCategorizeTransactions({
                             __('Automatize'),
                         ),
                         onClick: () => {
+                            captureEvent(
+                                'automation_rule_toast_automatize_clicked',
+                                { source: 'categorize_flow' },
+                            );
                             setAutomateCandidate(nextAutomateCandidate);
                             setAutomateDialogOpen(true);
                         },
