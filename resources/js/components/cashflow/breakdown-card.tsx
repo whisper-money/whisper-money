@@ -12,7 +12,11 @@ import { Progress } from '@/components/ui/progress';
 import { BreakdownData } from '@/hooks/use-cashflow-data';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { cn } from '@/lib/utils';
-import { getCategoryColorClasses } from '@/types/category';
+import {
+    type CategoryColor,
+    type CategoryIcon,
+    getCategoryColorClasses,
+} from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
 import { format } from 'date-fns';
@@ -26,6 +30,12 @@ interface BreakdownCardProps {
     currency?: string;
     period?: { from: Date; to: Date };
 }
+
+const fallbackCategory = {
+    name: __('Uncategorized'),
+    icon: 'HelpCircle' as CategoryIcon,
+    color: 'gray' as CategoryColor,
+};
 
 export function BreakdownCard({
     type,
@@ -89,8 +99,9 @@ export function BreakdownCard({
             <CardContent>
                 <div className="space-y-4">
                     {data.data.map((item, index) => {
+                        const category = item.category ?? fallbackCategory;
                         const Icon = (Icons[
-                            item.category.icon as keyof typeof Icons
+                            category.icon as keyof typeof Icons
                         ] || Icons.HelpCircle) as LucideIcon;
 
                         const percentageChange =
@@ -101,10 +112,10 @@ export function BreakdownCard({
                                 : null;
 
                         const categoryColor = getCategoryColorClasses(
-                            item.category.color,
+                            category.color,
                         );
                         const chartColor = categoryBarColor(
-                            item.category.color,
+                            category.color,
                             index,
                         );
 
@@ -134,7 +145,7 @@ export function BreakdownCard({
                                             <Icon className="size-3.5" />
                                         </div>
                                         <span className="min-w-0 truncate text-sm font-medium">
-                                            {item.category.name}
+                                            {category.name}
                                         </span>
                                     </div>
                                     <div className="flex gap-2">

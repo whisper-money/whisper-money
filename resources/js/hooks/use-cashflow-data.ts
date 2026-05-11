@@ -30,8 +30,8 @@ export interface TrendDataPoint {
 }
 
 export interface BreakdownItem {
-    category: Category;
-    category_id: string;
+    category: Category | null;
+    category_id: string | null;
     amount: number;
     percentage: number;
     previous_amount: number;
