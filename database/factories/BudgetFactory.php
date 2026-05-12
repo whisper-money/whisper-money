@@ -42,4 +42,12 @@ class BudgetFactory extends Factory
             'period_start_day' => fake()->numberBetween(0, 6),
         ]);
     }
+
+    public function yearly(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'period_type' => BudgetPeriodType::Yearly,
+            'period_start_day' => 1,
+        ]);
+    }
 }

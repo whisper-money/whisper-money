@@ -4,7 +4,12 @@ import { Label } from './label';
 import { Transaction } from './transaction';
 import { UUID } from './uuid';
 
-export const BUDGET_PERIOD_TYPES = ['monthly', 'weekly', 'biweekly'] as const;
+export const BUDGET_PERIOD_TYPES = [
+    'monthly',
+    'weekly',
+    'biweekly',
+    'yearly',
+] as const;
 
 export type BudgetPeriodType = (typeof BUDGET_PERIOD_TYPES)[number];
 
@@ -64,6 +69,7 @@ export function getBudgetPeriodTypeLabel(type: BudgetPeriodType): string {
         monthly: __('Monthly'),
         weekly: __('Weekly'),
         biweekly: __('Bi-weekly'),
+        yearly: __('Yearly'),
     };
     return labels[type];
 }

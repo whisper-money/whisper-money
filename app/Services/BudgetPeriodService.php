@@ -80,6 +80,10 @@ class BudgetPeriodService
                 $endDate = $startDate->copy()->addWeeks(2)->subDay();
                 break;
 
+            case BudgetPeriodType::Yearly:
+                $startDate->startOfYear();
+                $endDate = $startDate->copy()->addYear()->subDay();
+                break;
         }
 
         return [$startDate, $endDate];
