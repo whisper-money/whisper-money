@@ -82,11 +82,13 @@ class ExchangeRateService
         $rates = $this->currencyApi->getRatesForCurrency($baseCurrency, $date);
 
         if (! empty($rates)) {
-            ExchangeRate::query()->create([
-                'base_currency' => $baseCurrency,
-                'date' => $date,
-                'rates' => $rates,
-            ]);
+            ExchangeRate::query()->upsert([
+                [
+                    'base_currency' => $baseCurrency,
+                    'date' => $date,
+                    'rates' => json_encode($rates, JSON_THROW_ON_ERROR),
+                ],
+            ], uniqueBy: ['base_currency', 'date'], update: ['rates']);
         }
 
         return $this->ratesCache[$cacheKey] = $rates;
