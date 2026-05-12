@@ -218,6 +218,32 @@ test('getRates fetches and stores when not cached', function () {
     expect($stored->rates['usd'])->toBe(1.08);
 });
 
+test('getRates tolerates another request storing rates after preload miss', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => [
+                'usd' => 1.08,
+            ],
+        ]),
+    ]);
+
+    $service = app(ExchangeRateService::class);
+    $service->preloadRates('eur', ['2026-03-27']);
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'eur',
+        'date' => '2026-03-27',
+        'rates' => [
+            'usd' => 1.07,
+        ],
+    ]);
+
+    $rates = $service->getRates('eur', '2026-03-27');
+
+    expect($rates['usd'])->toBe(1.08);
+    expect(ExchangeRate::where('base_currency', 'eur')->where('date', '2026-03-27')->count())->toBe(1);
+});
+
 test('getRates caps future dates to today', function () {
     $today = now()->toDateString();
 

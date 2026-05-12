@@ -83,13 +83,17 @@ function performanceSeedUser(): User
     $categories = Category::factory(5)->create(['user_id' => $user->id]);
     Label::factory(3)->create(['user_id' => $user->id]);
 
-    $accounts = Account::factory(3)->create(['user_id' => $user->id]);
+    $accounts = Account::factory(3)->create([
+        'user_id' => $user->id,
+        'currency_code' => $user->currency_code,
+    ]);
 
     foreach ($accounts as $index => $account) {
         Transaction::factory(10)->plaintext()->create([
             'user_id' => $user->id,
             'account_id' => $account->id,
             'category_id' => $categories->random()->id,
+            'currency_code' => $user->currency_code,
         ]);
 
         for ($i = 0; $i < 5; $i++) {
