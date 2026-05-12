@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.2.1](https://github.com/whisper-money/whisper-money/compare/v0.2.0...v0.2.1) (2026-05-12)
+
+
+### Features
+
+* Add yearly budget period ([#384](https://github.com/whisper-money/whisper-money/issues/384)) ([f8f3b06](https://github.com/whisper-money/whisper-money/commit/f8f3b06))
+* Add labels to automation rules ([#379](https://github.com/whisper-money/whisper-money/issues/379)) ([5b8e7e8](https://github.com/whisper-money/whisper-money/commit/5b8e7e8))
+
+
+### Bug Fixes
+
+* Fix exchange rate cache race (PHP-LARAVEL-1V) ([#383](https://github.com/whisper-money/whisper-money/issues/383)) ([c3dcbb4](https://github.com/whisper-money/whisper-money/commit/c3dcbb4))
+* Fix cashflow null category rows ([#382](https://github.com/whisper-money/whisper-money/issues/382)) ([30cc4da](https://github.com/whisper-money/whisper-money/commit/30cc4da))
+* Fix browser translation crash (PHP-LARAVEL-1S) ([#381](https://github.com/whisper-money/whisper-money/issues/381)) ([e635fda](https://github.com/whisper-money/whisper-money/commit/e635fda))
+* Fix cashflow multi-currency totals ([#380](https://github.com/whisper-money/whisper-money/issues/380)) ([4e03996](https://github.com/whisper-money/whisper-money/commit/4e03996))
+* Fix service worker registration rejection ([#376](https://github.com/whisper-money/whisper-money/issues/376)) ([3526e5f](https://github.com/whisper-money/whisper-money/commit/3526e5f))
+* Recover from stale Vite chunks ([#374](https://github.com/whisper-money/whisper-money/issues/374)) ([69610c5](https://github.com/whisper-money/whisper-money/commit/69610c5))
+* **sentry:** ignore postMessage clone noise ([#373](https://github.com/whisper-money/whisper-money/issues/373)) ([6335287](https://github.com/whisper-money/whisper-money/commit/6335287))
+* Fix Sentry transaction and dashboard crashes ([#372](https://github.com/whisper-money/whisper-money/issues/372)) ([718cfa9](https://github.com/whisper-money/whisper-money/commit/718cfa9))
+* Fix Sentry release commit detection in image build ([#371](https://github.com/whisper-money/whisper-money/issues/371)) ([f4ab4a1](https://github.com/whisper-money/whisper-money/commit/f4ab4a1))
+* Prevent cached cashflow analytics responses ([#368](https://github.com/whisper-money/whisper-money/issues/368)) ([97df059](https://github.com/whisper-money/whisper-money/commit/97df059))
+* Fix duplicate category name validation ([#364](https://github.com/whisper-money/whisper-money/issues/364)) ([e3c2d2f](https://github.com/whisper-money/whisper-money/commit/e3c2d2f))
+
+
+### Chores
+
+* Add sentry issue slash command ([#375](https://github.com/whisper-money/whisper-money/issues/375)) ([c929c1f](https://github.com/whisper-money/whisper-money/commit/c929c1f))
+* Update worktree script ([#366](https://github.com/whisper-money/whisper-money/issues/366)) ([360a38a](https://github.com/whisper-money/whisper-money/commit/360a38a))
+* Speed up PR CI browser path ([#365](https://github.com/whisper-money/whisper-money/issues/365)) ([e36d6f3](https://github.com/whisper-money/whisper-money/commit/e36d6f3))
+
 # [0.2.0](https://github.com/whisper-money/whisper-money/compare/v0.1.20...v0.2.0) (2026-05-07)
 
 
