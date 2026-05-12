@@ -57,6 +57,29 @@ test('generatePeriod advances weekly periods to next week', function () {
     expect($next->end_date->toDateString())->toBe('2026-05-17');
 });
 
+test('generatePeriod advances yearly periods to next year', function () {
+    Carbon::setTestNow(Carbon::parse('2026-06-02 09:00:00'));
+
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => BudgetPeriodType::Yearly,
+        'period_start_day' => 1,
+    ]);
+
+    BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => '2025-01-01',
+        'end_date' => '2025-12-31',
+        'allocated_amount' => 10000,
+    ]);
+
+    $next = app(BudgetPeriodService::class)->generatePeriod($budget);
+
+    expect($next->start_date->toDateString())->toBe('2026-01-01');
+    expect($next->end_date->toDateString())->toBe('2026-12-31');
+});
+
 test('generatePeriod uses period_start_day snap when no prior periods exist', function () {
     Carbon::setTestNow(Carbon::parse('2026-05-15 09:00:00'));
 
@@ -71,4 +94,20 @@ test('generatePeriod uses period_start_day snap when no prior periods exist', fu
 
     expect($period->start_date->toDateString())->toBe('2026-05-01');
     expect($period->end_date->toDateString())->toBe('2026-05-31');
+});
+
+test('generatePeriod creates current calendar year when yearly budget has no prior periods', function () {
+    Carbon::setTestNow(Carbon::parse('2026-05-15 09:00:00'));
+
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create([
+        'user_id' => $user->id,
+        'period_type' => BudgetPeriodType::Yearly,
+        'period_start_day' => 1,
+    ]);
+
+    $period = app(BudgetPeriodService::class)->generatePeriod($budget);
+
+    expect($period->start_date->toDateString())->toBe('2026-01-01');
+    expect($period->end_date->toDateString())->toBe('2026-12-31');
 });

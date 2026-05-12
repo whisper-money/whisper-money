@@ -32,6 +32,30 @@ test('user can create a budget', function () {
     $this->assertCount(1, $budget->periods);
 });
 
+test('user can create a yearly budget', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $category = Category::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->post('/budgets', [
+        'name' => 'Yearly Budget',
+        'period_type' => 'yearly',
+        'period_start_day' => 1,
+        'category_id' => $category->id,
+        'rollover_type' => 'reset',
+        'allocated_amount' => 1200000,
+    ]);
+
+    $response->assertRedirect();
+
+    $budget = Budget::where('user_id', $user->id)->where('period_type', 'yearly')->first();
+
+    expect($budget)->not->toBeNull()
+        ->and($budget->periods()->count())->toBe(1)
+        ->and($budget->periods()->first()->start_date->toDateString())->toBe(now()->startOfYear()->toDateString())
+        ->and($budget->periods()->first()->end_date->toDateString())->toBe(now()->endOfYear()->toDateString());
+});
+
 test('user can view their budgets', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 

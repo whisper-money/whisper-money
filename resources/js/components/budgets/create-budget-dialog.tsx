@@ -88,7 +88,7 @@ export function CreateBudgetDialog({
             {
                 name,
                 period_type: periodType,
-                period_start_day: periodStartDay,
+                period_start_day: periodType === 'yearly' ? 1 : periodStartDay,
                 category_id: selectedCategoryId || null,
                 label_id: selectedLabelId || null,
                 rollover_type: rolloverType,
@@ -164,9 +164,10 @@ export function CreateBudgetDialog({
                             </UILabel>
                             <Select
                                 value={periodType}
-                                onValueChange={(value) =>
-                                    setPeriodType(value as BudgetPeriodType)
-                                }
+                                onValueChange={(value) => {
+                                    setPeriodType(value as BudgetPeriodType);
+                                    setPeriodStartDay(1);
+                                }}
                             >
                                 <SelectTrigger id="period-type">
                                     <SelectValue />
@@ -181,34 +182,37 @@ export function CreateBudgetDialog({
                             </Select>
                         </div>
 
-                        <div className="space-y-2">
-                            <UILabel htmlFor="period-start-day">
-                                {periodType === 'monthly'
-                                    ? __('Start Day of Month')
-                                    : __('Start Day')}
-                            </UILabel>
-                            <Input
-                                id="period-start-day"
-                                type="number"
-                                min="0"
-                                max={periodType === 'monthly' ? '31' : '6'}
-                                value={periodStartDay}
-                                onChange={(e) =>
-                                    setPeriodStartDay(parseInt(e.target.value))
-                                }
-                            />
+                        {periodType !== 'yearly' && (
+                            <div className="space-y-2">
+                                <UILabel htmlFor="period-start-day">
+                                    {periodType === 'monthly'
+                                        ? __('Start Day of Month')
+                                        : __('Start Day')}
+                                </UILabel>
+                                <Input
+                                    id="period-start-day"
+                                    type="number"
+                                    min="0"
+                                    max={periodType === 'monthly' ? '31' : '6'}
+                                    value={periodStartDay}
+                                    onChange={(e) =>
+                                        setPeriodStartDay(
+                                            parseInt(e.target.value),
+                                        )
+                                    }
+                                />
 
-                            <p className="text-sm text-muted-foreground">
-                                {periodType === 'monthly'
-                                    ? __(
-                                          'Day of the month when the period starts (1-31)',
-                                      )
-                                    : periodType === 'weekly' ||
-                                        periodType === 'biweekly'
-                                      ? __('Day of week (0=Sunday, 6=Saturday)')
-                                      : __('Starting day')}
-                            </p>
-                        </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {periodType === 'monthly'
+                                        ? __(
+                                              'Day of the month when the period starts (1-31)',
+                                          )
+                                        : __(
+                                              'Day of week (0=Sunday, 6=Saturday)',
+                                          )}
+                                </p>
+                            </div>
+                        )}
 
                         <div className="space-y-4">
                             {errors.selection && (
@@ -308,7 +312,9 @@ export function CreateBudgetDialog({
                                     )}
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                    {__('Select at least a category or a label to track.')}
+                                    {__(
+                                        'Select at least a category or a label to track.',
+                                    )}
                                 </p>
                             </div>
 

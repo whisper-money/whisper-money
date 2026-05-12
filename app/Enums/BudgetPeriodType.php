@@ -7,6 +7,7 @@ enum BudgetPeriodType: string
     case Monthly = 'monthly';
     case Weekly = 'weekly';
     case Biweekly = 'biweekly';
+    case Yearly = 'yearly';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum BudgetPeriodType: string
             self::Monthly => 'Monthly',
             self::Weekly => 'Weekly',
             self::Biweekly => 'Bi-weekly',
+            self::Yearly => 'Yearly',
         };
     }
 }

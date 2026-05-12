@@ -80,7 +80,7 @@ export function EditBudgetDialog({
             {
                 name,
                 period_type: periodType,
-                period_start_day: periodStartDay,
+                period_start_day: periodType === 'yearly' ? 1 : periodStartDay,
                 allocated_amount: allocatedAmount,
                 rollover_type: rolloverType,
             },
@@ -127,9 +127,12 @@ export function EditBudgetDialog({
                                 <Select
                                     value={periodType}
                                     disabled
-                                    onValueChange={(value) =>
-                                        setPeriodType(value as BudgetPeriodType)
-                                    }
+                                    onValueChange={(value) => {
+                                        setPeriodType(
+                                            value as BudgetPeriodType,
+                                        );
+                                        setPeriodStartDay(1);
+                                    }}
                                 >
                                     <SelectTrigger id="period-type">
                                         <SelectValue />
@@ -145,36 +148,39 @@ export function EditBudgetDialog({
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="period-start-day">
-                                {periodType === 'monthly'
-                                    ? __('Start Day of Month')
-                                    : __('Start Day')}
-                            </Label>
-                            <Input
-                                id="period-start-day"
-                                disabled
-                                type="number"
-                                className="mt-1"
-                                min="0"
-                                max={periodType === 'monthly' ? '31' : '6'}
-                                value={periodStartDay}
-                                onChange={(e) =>
-                                    setPeriodStartDay(parseInt(e.target.value))
-                                }
-                            />
+                        {periodType !== 'yearly' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="period-start-day">
+                                    {periodType === 'monthly'
+                                        ? __('Start Day of Month')
+                                        : __('Start Day')}
+                                </Label>
+                                <Input
+                                    id="period-start-day"
+                                    disabled
+                                    type="number"
+                                    className="mt-1"
+                                    min="0"
+                                    max={periodType === 'monthly' ? '31' : '6'}
+                                    value={periodStartDay}
+                                    onChange={(e) =>
+                                        setPeriodStartDay(
+                                            parseInt(e.target.value),
+                                        )
+                                    }
+                                />
 
-                            <p className="text-sm text-muted-foreground">
-                                {periodType === 'monthly'
-                                    ? __(
-                                          'Day of the month when the period starts (1-31)',
-                                      )
-                                    : periodType === 'weekly' ||
-                                        periodType === 'biweekly'
-                                      ? __('Day of week (0=Sunday, 6=Saturday)')
-                                      : __('Starting day')}
-                            </p>
-                        </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {periodType === 'monthly'
+                                        ? __(
+                                              'Day of the month when the period starts (1-31)',
+                                          )
+                                        : __(
+                                              'Day of week (0=Sunday, 6=Saturday)',
+                                          )}
+                                </p>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <Label htmlFor="allocated-amount">
