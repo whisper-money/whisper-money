@@ -217,9 +217,9 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             return null;
         }
 
-        $email = is_string($this->email) ? trim($this->email) : null;
+        $email = trim((string) $this->email);
 
-        if ($email === null || $email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             Log::warning('Skipping mail notification: invalid recipient email', [
                 'user_id' => $this->getKey(),
                 'notification' => $notification ? $notification::class : null,

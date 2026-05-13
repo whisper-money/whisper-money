@@ -128,9 +128,9 @@ class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
 
     public function routeNotificationForMail(?Notification $notification = null): ?string
     {
-        $email = is_string($this->email) ? trim($this->email) : null;
+        $email = trim((string) $this->email);
 
-        if ($email === null || $email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             Log::warning('Skipping mail notification: invalid recipient email', [
                 'user_lead_id' => $this->getKey(),
                 'notification' => $notification ? $notification::class : null,
