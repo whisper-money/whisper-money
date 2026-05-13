@@ -5,6 +5,7 @@ namespace App\Services\Banking;
 use App\Contracts\BankingProviderInterface;
 use App\Enums\TransactionSource;
 use App\Models\Account;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 
 class TransactionSyncService
@@ -68,20 +69,38 @@ class TransactionSyncService
 
     /**
      * Import a single transaction, skipping duplicates.
+     *
+     * Dedup strategy: every transaction is keyed by a deterministic
+     * fingerprint stored in `dedup_fingerprint` and protected by a
+     * `(account_id, dedup_fingerprint)` unique index. The upstream
+     * `transaction_id` / `entry_reference` is still preserved in
+     * `external_transaction_id` when present, for traceability.
+     *
+     * This protects against:
+     *  - Banks (e.g. BNP Paribas Fortis) that omit any stable id for
+     *    certain card transactions, which previously bypassed dedup.
+     *  - Race conditions between overlapping sync runs.
      */
     private function importTransaction(Account $account, array $data, ?string $bankName): bool
     {
         $externalId = $data['transaction_id'] ?? $data['entry_reference'] ?? null;
+        $fingerprint = TransactionFingerprint::for($data);
 
-        if ($externalId) {
-            $exists = $account->transactions()
-                ->withTrashed()
-                ->where('external_transaction_id', $externalId)
-                ->exists();
+        $exists = $account->transactions()
+            ->withTrashed()
+            ->where(function ($query) use ($fingerprint, $externalId) {
+                $query->where('dedup_fingerprint', $fingerprint);
 
-            if ($exists) {
-                return false;
-            }
+                if ($externalId !== null) {
+                    // Also match legacy rows imported before the fingerprint
+                    // column existed, which are keyed solely on the upstream id.
+                    $query->orWhere('external_transaction_id', $externalId);
+                }
+            })
+            ->exists();
+
+        if ($exists) {
+            return false;
         }
 
         $amount = $this->parseAmount($data);
@@ -90,20 +109,27 @@ class TransactionSyncService
         $transactionDate = $this->parseDate($data);
         $currency = $data['transaction_amount']['currency'] ?? $account->currency_code;
 
-        $account->transactions()->create([
-            'user_id' => $account->user_id,
-            'description' => $formatted['description'],
-            'description_iv' => null,
-            'original_description' => $formatted['original_description'],
-            'transaction_date' => $transactionDate,
-            'amount' => $amount,
-            'currency_code' => $currency,
-            'notes' => null,
-            'notes_iv' => null,
-            'source' => TransactionSource::EnableBanking,
-            'external_transaction_id' => $externalId,
-            'raw_data' => $data,
-        ]);
+        try {
+            $account->transactions()->create([
+                'user_id' => $account->user_id,
+                'description' => $formatted['description'],
+                'description_iv' => null,
+                'original_description' => $formatted['original_description'],
+                'transaction_date' => $transactionDate,
+                'amount' => $amount,
+                'currency_code' => $currency,
+                'notes' => null,
+                'notes_iv' => null,
+                'source' => TransactionSource::EnableBanking,
+                'external_transaction_id' => $externalId,
+                'dedup_fingerprint' => $fingerprint,
+                'raw_data' => $data,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Concurrent sync inserted the same fingerprint between our
+            // exists() check and the insert. Treat as duplicate.
+            return false;
+        }
 
         return true;
     }
