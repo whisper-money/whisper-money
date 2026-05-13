@@ -236,7 +236,7 @@ export function UpdateCredentialsDialog({
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="update-coinbase-key-name">
-                                    {__('API Key Name')}
+                                    {__('App Key ID')}
                                 </Label>
                                 <Input
                                     id="update-coinbase-key-name"
@@ -246,12 +246,12 @@ export function UpdateCredentialsDialog({
                                         setCoinbaseKeyName(e.target.value)
                                     }
                                     className="font-mono text-xs"
-                                    placeholder="organizations/{org_id}/apiKeys/{key_id}"
+                                    placeholder="00000000-0000-0000-0000-000000000000"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="update-coinbase-private-key">
-                                    {__('Private Key')}
+                                    {__('Secret')}
                                 </Label>
                                 <Textarea
                                     id="update-coinbase-private-key"
@@ -262,13 +262,13 @@ export function UpdateCredentialsDialog({
                                     rows={6}
                                     className="font-mono text-xs"
                                     placeholder={
-                                        '-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----'
+                                        'Paste your CDP API key secret'
                                     }
                                 />
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 {__(
-                                    'Create a CDP API key in the Coinbase Developer Platform under',
+                                    'Create a CDP API key (Ed25519 recommended) in the Coinbase Developer Platform under',
                                 )}{' '}
                                 <a
                                     href="https://portal.cdp.coinbase.com/access/api"

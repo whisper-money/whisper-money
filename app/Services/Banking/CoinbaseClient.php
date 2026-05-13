@@ -21,13 +21,21 @@ class CoinbaseClient
     private const JWT_TTL_SECONDS = 120;
 
     /**
-     * @param  string  $keyName  CDP API key name, e.g. organizations/{org}/apiKeys/{id}
-     * @param  string  $privateKey  PEM-encoded EC private key
+     * @param  string  $keyName  CDP API key name (organizations/{org}/apiKeys/{id}) or Ed25519 key ID (UUID).
+     * @param  string  $privateKey  PEM EC private key (ES256) or base64 Ed25519 secret.
      */
     public function __construct(
         private string $keyName,
         private string $privateKey,
     ) {}
+
+    /**
+     * ES256 (ECDSA PEM) when keyName is the org/apiKeys path; EdDSA (Ed25519) when keyName is a UUID.
+     */
+    private function algorithm(): string
+    {
+        return str_starts_with($this->keyName, 'organizations/') ? 'ES256' : 'EdDSA';
+    }
 
     /**
      * List all brokerage accounts (one per currency) with paginated cursor.
@@ -113,8 +121,17 @@ class CoinbaseClient
 
                 $request = $this->client($jwt);
 
+                $url = $path;
+
+                if (! empty($params)) {
+                    $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+                    // Coinbase expects repeated keys without numeric indices: product_ids=A&product_ids=B.
+                    $query = preg_replace('/%5B\d+%5D=/', '=', $query);
+                    $url .= '?'.$query;
+                }
+
                 $response = match (strtoupper($method)) {
-                    'GET' => $request->get($path, $params),
+                    'GET' => $request->get($url),
                     default => throw new \InvalidArgumentException("Unsupported HTTP method: {$method}"),
                 };
 
@@ -146,7 +163,7 @@ class CoinbaseClient
 
         $headers = ['nonce' => bin2hex(random_bytes(16))];
 
-        return JWT::encode($payload, $this->privateKey, 'ES256', $this->keyName, $headers);
+        return JWT::encode($payload, $this->privateKey, $this->algorithm(), $this->keyName, $headers);
     }
 
     private function client(string $jwt): PendingRequest
