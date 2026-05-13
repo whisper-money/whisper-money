@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -122,6 +124,22 @@ class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
     public function preferredLocale(): string
     {
         return $this->locale ?? 'en';
+    }
+
+    public function routeNotificationForMail(?Notification $notification = null): ?string
+    {
+        $email = trim((string) $this->email);
+
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            Log::warning('Skipping mail notification: invalid recipient email', [
+                'user_lead_id' => $this->getKey(),
+                'notification' => $notification ? $notification::class : null,
+            ]);
+
+            return null;
+        }
+
+        return $email;
     }
 
     public function getEmailForVerification(): string

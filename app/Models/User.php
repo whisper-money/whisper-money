@@ -17,6 +17,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Pennant\Concerns\HasFeatures;
@@ -216,7 +217,18 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             return null;
         }
 
-        return $this->email;
+        $email = trim((string) $this->email);
+
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            Log::warning('Skipping mail notification: invalid recipient email', [
+                'user_id' => $this->getKey(),
+                'notification' => $notification ? $notification::class : null,
+            ]);
+
+            return null;
+        }
+
+        return $email;
     }
 
     public function sendEmailVerificationNotification(): void
