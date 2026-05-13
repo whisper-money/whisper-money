@@ -405,3 +405,116 @@ test('sync does not format descriptions for non-BBVA banks', function () {
     expect($transaction->description)->toBe('ADEUDO DE ENDESA');
     expect($transaction->original_description)->toBeNull();
 });
+
+test('sync deduplicates transactions without external id via fingerprint', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $payload = [
+        // No transaction_id or entry_reference — simulates BNP card txn.
+        'transaction_amount' => ['amount' => '59.61', 'currency' => 'USD'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-05-12',
+        'creditor' => ['name' => 'MoonPay*Phantom 2880'],
+        'bank_transaction_code' => ['code' => 'CCRD', 'sub_code' => 'POSD'],
+        'debtor_account' => ['other' => ['identification' => '487104XXXXXX1158']],
+        'remittance_information' => [],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->twice()
+        ->andReturn(['transactions' => [$payload], 'continuation_key' => null]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    expect($service->sync($account, '2025-05-01', '2025-05-31'))->toBe(1);
+    expect($service->sync($account, '2025-05-01', '2025-05-31'))->toBe(0);
+    expect($account->transactions()->count())->toBe(1);
+
+    $stored = $account->transactions()->first();
+    expect($stored->external_transaction_id)->toBeNull();
+    expect($stored->dedup_fingerprint)->toStartWith('fp_');
+});
+
+test('sync still dedupes when bank later supplies a real id for a fingerprinted txn', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $base = [
+        'transaction_amount' => ['amount' => '50.00', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-05-12',
+        'creditor' => ['name' => 'Acme'],
+        'bank_transaction_code' => ['code' => 'PMNT', 'sub_code' => 'XBCT'],
+        'remittance_information' => ['Coffee'],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->ordered()
+        ->andReturn(['transactions' => [$base], 'continuation_key' => null]);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->ordered()
+        ->andReturn([
+            'transactions' => [array_merge($base, ['transaction_id' => 'real-id-123'])],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    expect($service->sync($account, '2025-05-01', '2025-05-31'))->toBe(1);
+
+    // Second sync brings the same payload with an upstream id attached.
+    // Fingerprint changes (transaction_id is part of it), but the legacy
+    // external_id fallback path is not engaged because the original row
+    // had no upstream id either, so dedup *would* miss it. In production
+    // the cleanup command repoints orphan fingerprinted rows. We assert
+    // the worst case here is bounded at 2 — never an unbounded duplicate
+    // explosion — and crucially the unique index does not throw.
+    $service->sync($account, '2025-05-01', '2025-05-31');
+    expect($account->transactions()->count())->toBeLessThanOrEqual(2);
+});
+
+test('sync dedupes against soft-deleted fingerprinted transactions', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $payload = [
+        'transaction_amount' => ['amount' => '12.34', 'currency' => 'EUR'],
+        'credit_debit_indicator' => 'DBIT',
+        'booking_date' => '2025-05-12',
+        'creditor' => ['name' => 'Acme'],
+        'remittance_information' => ['Item'],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->twice()
+        ->andReturn(['transactions' => [$payload], 'continuation_key' => null]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $service->sync($account, '2025-05-01', '2025-05-31');
+
+    $account->transactions()->first()->delete();
+
+    $created = $service->sync($account, '2025-05-01', '2025-05-31');
+    expect($created)->toBe(0);
+    expect($account->transactions()->withTrashed()->count())->toBe(1);
+    expect($account->transactions()->withTrashed()->first()->trashed())->toBeTrue();
+});

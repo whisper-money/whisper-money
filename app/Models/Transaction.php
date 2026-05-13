@@ -47,6 +47,7 @@ class Transaction extends Model
         'notes_iv',
         'source',
         'external_transaction_id',
+        'dedup_fingerprint',
         'raw_data',
     ];
 
