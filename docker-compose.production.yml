@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${WHISPER_IMAGE:-ghcr.io/whisper-money/whisper-money:latest}
+    image: ${WHISPER_IMAGE:-ghcr.io/whisper-money/whisper-money:production}
     ports:
       - "${APP_PORT:-8080}:80"
     env_file:
