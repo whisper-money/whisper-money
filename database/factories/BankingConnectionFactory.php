@@ -117,6 +117,21 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function coinbase(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => 'coinbase',
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'organizations/org-'.fake()->uuid().'/apiKeys/key-'.fake()->uuid(),
+            'api_secret' => "-----BEGIN EC PRIVATE KEY-----\nFAKEKEY\n-----END EC PRIVATE KEY-----",
+            'aspsp_name' => 'Coinbase',
+            'aspsp_country' => 'ES',
+            'aspsp_logo' => 'https://whisper.money/storage/banks/logos/coinbase.png',
+            'valid_until' => null,
+        ]);
+    }
+
     public function error(): static
     {
         return $this->state(fn (array $attributes) => [

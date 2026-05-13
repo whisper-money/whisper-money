@@ -37,6 +37,10 @@ class UpdateConnectionCredentialsRequest extends FormRequest
             'bitpanda' => [
                 'api_key' => ['required', 'string', 'min:10'],
             ],
+            'coinbase' => [
+                'api_key_name' => ['required', 'string', 'regex:/^(organizations\/[a-z0-9-]+\/apiKeys\/[a-z0-9-]+|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i'],
+                'private_key' => ['required', 'string', 'min:40'],
+            ],
             default => [],
         };
     }

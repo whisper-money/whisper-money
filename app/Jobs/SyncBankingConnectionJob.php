@@ -13,6 +13,8 @@ use App\Services\Banking\BinanceBalanceSyncService;
 use App\Services\Banking\BinanceClient;
 use App\Services\Banking\BitpandaBalanceSyncService;
 use App\Services\Banking\BitpandaClient;
+use App\Services\Banking\CoinbaseBalanceSyncService;
+use App\Services\Banking\CoinbaseClient;
 use App\Services\Banking\IndexaCapitalBalanceSyncService;
 use App\Services\Banking\IndexaCapitalClient;
 use App\Services\Banking\TransactionSyncService;
@@ -112,6 +114,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 $this->syncBinance($connection, $isFirstSync);
             } elseif ($connection->isBitpanda()) {
                 $this->syncBitpanda($connection);
+            } elseif ($connection->isCoinbase()) {
+                $this->syncCoinbase($connection);
             } else {
                 $metadata = $this->syncEnableBanking($connection, $transactionSync, $balanceSync, $isFirstSync);
 
@@ -327,6 +331,18 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
     }
 
+    private function syncCoinbase(BankingConnection $connection): void
+    {
+        $client = new CoinbaseClient($connection->api_token, $connection->api_secret);
+        $syncService = app(CoinbaseBalanceSyncService::class);
+
+        $connection->load('accounts');
+
+        foreach ($connection->accounts as $account) {
+            $syncService->sync($account, $client);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -454,6 +470,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     {
         return $connection->isIndexaCapital()
             || $connection->isBinance()
-            || $connection->isBitpanda();
+            || $connection->isBitpanda()
+            || $connection->isCoinbase();
     }
 }

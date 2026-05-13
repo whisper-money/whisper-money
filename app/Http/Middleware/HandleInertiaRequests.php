@@ -3,10 +3,12 @@
 namespace App\Http\Middleware;
 
 use App\Enums\AccountType;
+use App\Features\CoinbaseIntegration;
 use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -150,8 +152,11 @@ class HandleInertiaRequests extends Middleware
      */
     protected function resolveFeatureFlags(): array
     {
+        $user = request()->user();
+
         return [
             'cashflow' => true,
+            'coinbase' => $user ? Feature::for($user)->active(CoinbaseIntegration::class) : false,
         ];
     }
 

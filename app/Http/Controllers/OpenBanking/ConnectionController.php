@@ -13,6 +13,7 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use App\Services\Banking\BinanceClient;
 use App\Services\Banking\BitpandaClient;
+use App\Services\Banking\CoinbaseClient;
 use App\Services\Banking\IndexaCapitalClient;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -96,6 +97,7 @@ class ConnectionController extends Controller
             'indexacapital' => ['api_token' => $validated['api_token']],
             'binance' => ['api_token' => $validated['api_key'], 'api_secret' => $validated['api_secret']],
             'bitpanda' => ['api_token' => $validated['api_key']],
+            'coinbase' => ['api_token' => $validated['api_key_name'], 'api_secret' => $validated['private_key']],
             default => [],
         };
 
@@ -121,6 +123,7 @@ class ConnectionController extends Controller
                 'indexacapital' => (new IndexaCapitalClient($validated['api_token']))->getUser(),
                 'binance' => (new BinanceClient($validated['api_key'], $validated['api_secret']))->getAccount(),
                 'bitpanda' => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
+                'coinbase' => (new CoinbaseClient($validated['api_key_name'], $validated['private_key']))->getAccounts(limit: 1),
                 default => throw new \InvalidArgumentException('Unsupported provider for credential update.'),
             };
         } catch (\InvalidArgumentException $e) {
