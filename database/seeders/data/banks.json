@@ -9458,5 +9458,9 @@
     {
         "name": "Bitpanda",
         "logo": "https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png"
+    },
+    {
+        "name": "Coinbase",
+        "logo": "https://whisper.money/storage/banks/logos/coinbase.png"
     }
 ]

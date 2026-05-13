@@ -2,6 +2,7 @@ import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -60,6 +61,13 @@ const BITPANDA_INSTITUTION: EnableBankingInstitution = {
     maximum_consent_validity: null,
 };
 
+const COINBASE_INSTITUTION: EnableBankingInstitution = {
+    name: 'Coinbase',
+    country: 'ALL',
+    logo: 'https://whisper.money/storage/banks/logos/coinbase.png',
+    maximum_consent_validity: null,
+};
+
 type Step = 'country' | 'bank' | 'confirm';
 
 function getCsrfToken(): string {
@@ -99,6 +107,8 @@ export function ConnectAccountInline({
     const [apiKey, setApiKey] = useState('');
     const [apiSecret, setApiSecret] = useState('');
     const [bitpandaApiKey, setBitpandaApiKey] = useState('');
+    const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
+    const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
 
     const isIndexaCapital = useMemo(
         () => selectedBank?.name === 'Indexa Capital',
@@ -110,6 +120,10 @@ export function ConnectAccountInline({
     );
     const isBitpanda = useMemo(
         () => selectedBank?.name === 'Bitpanda',
+        [selectedBank],
+    );
+    const isCoinbase = useMemo(
+        () => selectedBank?.name === 'Coinbase',
         [selectedBank],
     );
 
@@ -171,6 +185,7 @@ export function ConnectAccountInline({
             const extraInstitutions = [
                 BINANCE_INSTITUTION,
                 BITPANDA_INSTITUTION,
+                COINBASE_INSTITUTION,
             ];
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
@@ -183,6 +198,9 @@ export function ConnectAccountInline({
                     }
                     if (institution.name === 'Bitpanda') {
                         return !hasProvider('bitpanda');
+                    }
+                    if (institution.name === 'Coinbase') {
+                        return !hasProvider('coinbase');
                     }
                     if (institution.name === 'Indexa Capital') {
                         return !hasProvider('indexacapital');
@@ -216,7 +234,9 @@ export function ConnectAccountInline({
                   ? '/open-banking/binance/connect'
                   : isIndexaCapital
                     ? '/open-banking/indexa-capital/connect'
-                    : '/open-banking/authorize';
+                    : isCoinbase
+                      ? '/open-banking/coinbase/connect'
+                      : '/open-banking/authorize';
 
             const body = isBitpanda
                 ? { api_key: bitpandaApiKey, country }
@@ -224,11 +244,17 @@ export function ConnectAccountInline({
                   ? { api_key: apiKey, api_secret: apiSecret, country }
                   : isIndexaCapital
                     ? { api_token: apiToken }
-                    : {
-                          aspsp_name: selectedBank.name,
-                          country,
-                          logo: selectedBank.logo,
-                      };
+                    : isCoinbase
+                      ? {
+                            api_key_name: coinbaseKeyName,
+                            private_key: coinbasePrivateKey,
+                            country,
+                        }
+                      : {
+                            aspsp_name: selectedBank.name,
+                            country,
+                            logo: selectedBank.logo,
+                        };
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -398,9 +424,13 @@ export function ConnectAccountInline({
                                             ? __(
                                                   'Connect your Indexa Capital account using your API token.',
                                               )
-                                            : __(
-                                                  'You will be redirected to authorize access to your account data.',
-                                              )}
+                                            : isCoinbase
+                                              ? __(
+                                                    'Connect your Coinbase account using a CDP API key.',
+                                                )
+                                              : __(
+                                                    'You will be redirected to authorize access to your account data.',
+                                                )}
                                 </p>
                             </div>
                         </div>
@@ -513,6 +543,57 @@ export function ConnectAccountInline({
                         </div>
                     )}
 
+                    {isCoinbase && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="coinbase-key-name">
+                                    {__('API Key Name')}
+                                </Label>
+                                <Input
+                                    id="coinbase-key-name"
+                                    type="text"
+                                    value={coinbaseKeyName}
+                                    onChange={(e) =>
+                                        setCoinbaseKeyName(e.target.value)
+                                    }
+                                    className="font-mono text-xs"
+                                    placeholder="organizations/{org_id}/apiKeys/{key_id}"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="coinbase-private-key">
+                                    {__('Private Key')}
+                                </Label>
+                                <Textarea
+                                    id="coinbase-private-key"
+                                    value={coinbasePrivateKey}
+                                    onChange={(e) =>
+                                        setCoinbasePrivateKey(e.target.value)
+                                    }
+                                    rows={6}
+                                    className="font-mono text-xs"
+                                    placeholder={
+                                        '-----BEGIN EC PRIVATE KEY-----\n...\n-----END EC PRIVATE KEY-----'
+                                    }
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {__(
+                                    'Create a CDP API key in the Coinbase Developer Platform under',
+                                )}{' '}
+                                <a
+                                    href="https://portal.cdp.coinbase.com/access/api"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline"
+                                >
+                                    {__('API Keys')}
+                                </a>
+                                . {__('Use a view-only key.')}
+                            </p>
+                        </div>
+                    )}
+
                     <Button
                         className="w-full"
                         size="lg"
@@ -521,7 +602,9 @@ export function ConnectAccountInline({
                             isSubmitting ||
                             (isIndexaCapital && !apiToken) ||
                             (isBinance && (!apiKey || !apiSecret)) ||
-                            (isBitpanda && !bitpandaApiKey)
+                            (isBitpanda && !bitpandaApiKey) ||
+                            (isCoinbase &&
+                                (!coinbaseKeyName || !coinbasePrivateKey))
                         }
                     >
                         {isSubmitting ? __('Connecting...') : __('Connect')}
