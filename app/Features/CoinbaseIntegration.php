@@ -4,6 +4,9 @@ namespace App\Features;
 
 use App\Models\User;
 
+/**
+ * @api
+ */
 class CoinbaseIntegration
 {
     /**
