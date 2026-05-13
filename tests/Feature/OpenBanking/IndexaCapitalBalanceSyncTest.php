@@ -116,6 +116,29 @@ test('skips account without external_account_id', function () {
     expect($account->balances()->count())->toBe(0);
 });
 
+test('returns empty performance when indexa capital responds 404', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->indexaCapital()->create([
+        'user_id' => $user->id,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'IC-404',
+    ]);
+
+    Http::fake([
+        'api.indexacapital.com/accounts/IC-404/performance' => Http::response('<html>not found</html>', 404),
+    ]);
+
+    $client = new IndexaCapitalClient('test-token');
+    $service = app(IndexaCapitalBalanceSyncService::class);
+
+    $service->sync($account, $client);
+
+    expect($account->balances()->count())->toBe(0);
+});
+
 test('handles missing portfolios gracefully', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->create([

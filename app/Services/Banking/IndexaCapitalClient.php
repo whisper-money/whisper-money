@@ -64,27 +64,46 @@ class IndexaCapitalClient
     /**
      * Get performance data for an account, including current portfolio value.
      *
+     * Returns an empty array when Indexa Capital responds with 404 (no
+     * performance data available yet for the account, e.g. brand-new or
+     * inactive accounts) instead of throwing, so the sync can no-op cleanly.
+     *
      * @return array{total_amount?: float, return?: float, return_percentage?: float, portfolios?: array<int, array{date?: string, total_amount?: float, return?: float}>, net_amounts?: array<string, float>}
      */
     public function getPerformance(string $accountNumber): array
     {
-        $response = $this->client()->get("/accounts/{$accountNumber}/performance");
+        $response = $this->client(throwOnError: false)->get("/accounts/{$accountNumber}/performance");
+
+        if ($response->status() === 404) {
+            Log::info('No Indexa Capital performance data available', [
+                'account_number' => $accountNumber,
+            ]);
+
+            return [];
+        }
 
         $response->throw();
 
-        return $response->json();
+        $json = $response->json();
+
+        return is_array($json) ? $json : [];
     }
 
-    private function client(): PendingRequest
+    private function client(bool $throwOnError = true): PendingRequest
     {
-        return Http::baseUrl(self::BASE_URL)
+        $client = Http::baseUrl(self::BASE_URL)
             ->withHeaders(['X-AUTH-TOKEN' => $this->apiToken])
-            ->acceptJson()
-            ->throw(function ($response, $exception) {
-                Log::error('Indexa Capital API error', [
-                    'status' => $response->status(),
-                    'body' => $response->json(),
-                ]);
-            });
+            ->acceptJson();
+
+        if (! $throwOnError) {
+            return $client;
+        }
+
+        return $client->throw(function ($response, $exception) {
+            Log::error('Indexa Capital API error', [
+                'status' => $response->status(),
+                'body' => $response->json(),
+            ]);
+        });
     }
 }
