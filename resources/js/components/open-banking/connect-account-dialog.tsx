@@ -22,6 +22,8 @@ import type {
     EnableBankingInstitution,
 } from '@/types/banking';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
+import type { SharedData } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const COUNTRIES = [
@@ -95,6 +97,7 @@ export function ConnectAccountDialog({
     onOpenChange,
     connections = [],
 }: ConnectAccountDialogProps) {
+    const { features } = usePage<SharedData>().props;
     const [step, setStep] = useState<Step>('country');
     const [country, setCountry] = useState<string>('');
     const [institutions, setInstitutions] = useState<
@@ -201,11 +204,10 @@ export function ConnectAccountDialog({
             const hasProvider = (provider: string) =>
                 connections.some((c) => c.provider === provider);
 
-            const extraInstitutions = [
-                BINANCE_INSTITUTION,
-                BITPANDA_INSTITUTION,
-                COINBASE_INSTITUTION,
-            ];
+            const extraInstitutions = [BINANCE_INSTITUTION, BITPANDA_INSTITUTION];
+            if (features.coinbase) {
+                extraInstitutions.push(COINBASE_INSTITUTION);
+            }
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
             }

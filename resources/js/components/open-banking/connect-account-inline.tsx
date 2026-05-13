@@ -16,6 +16,8 @@ import type {
     EnableBankingInstitution,
 } from '@/types/banking';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
+import type { SharedData } from '@/types';
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -88,6 +90,7 @@ export function ConnectAccountInline({
     onBack,
     connections = [],
 }: ConnectAccountInlineProps) {
+    const { features } = usePage<SharedData>().props;
     const [step, setStep] = useState<Step>('country');
     const { trigger } = useWebHaptics();
     const [country, setCountry] = useState<string>('');
@@ -182,11 +185,10 @@ export function ConnectAccountInline({
             const hasProvider = (provider: string) =>
                 connections.some((c) => c.provider === provider);
 
-            const extraInstitutions = [
-                BINANCE_INSTITUTION,
-                BITPANDA_INSTITUTION,
-                COINBASE_INSTITUTION,
-            ];
+            const extraInstitutions = [BINANCE_INSTITUTION, BITPANDA_INSTITUTION];
+            if (features.coinbase) {
+                extraInstitutions.push(COINBASE_INSTITUTION);
+            }
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
             }
