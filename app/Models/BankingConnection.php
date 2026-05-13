@@ -114,6 +114,11 @@ class BankingConnection extends Model
         return $this->provider === 'bitpanda';
     }
 
+    public function isCoinbase(): bool
+    {
+        return $this->provider === 'coinbase';
+    }
+
     public function isEnableBanking(): bool
     {
         return $this->provider === 'enablebanking';

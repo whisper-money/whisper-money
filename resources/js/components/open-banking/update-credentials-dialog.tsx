@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
@@ -29,11 +30,14 @@ export function UpdateCredentialsDialog({
     const [apiToken, setApiToken] = useState('');
     const [apiKey, setApiKey] = useState('');
     const [apiSecret, setApiSecret] = useState('');
+    const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
+    const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     const isIndexaCapital = connection.provider === 'indexacapital';
     const isBinance = connection.provider === 'binance';
     const isBitpanda = connection.provider === 'bitpanda';
+    const isCoinbase = connection.provider === 'coinbase';
 
     const isValid = isIndexaCapital
         ? apiToken.length > 0
@@ -41,7 +45,9 @@ export function UpdateCredentialsDialog({
           ? apiKey.length > 0 && apiSecret.length > 0
           : isBitpanda
             ? apiKey.length > 0
-            : false;
+            : isCoinbase
+              ? coinbaseKeyName.length > 0 && coinbasePrivateKey.length > 0
+              : false;
 
     function handleSubmit() {
         setIsSubmitting(true);
@@ -51,7 +57,12 @@ export function UpdateCredentialsDialog({
             ? { api_token: apiToken }
             : isBinance
               ? { api_key: apiKey, api_secret: apiSecret }
-              : { api_key: apiKey };
+              : isCoinbase
+                ? {
+                      api_key_name: coinbaseKeyName,
+                      private_key: coinbasePrivateKey,
+                  }
+                : { api_key: apiKey };
 
         router.patch(
             `/settings/connections/${connection.id}/credentials`,
@@ -67,6 +78,8 @@ export function UpdateCredentialsDialog({
                             errors.api_token ??
                             errors.api_key ??
                             errors.api_secret ??
+                            errors.api_key_name ??
+                            errors.private_key ??
                             __(
                                 'Failed to update credentials. Please try again.',
                             ),
@@ -83,6 +96,8 @@ export function UpdateCredentialsDialog({
         setApiToken('');
         setApiKey('');
         setApiSecret('');
+        setCoinbaseKeyName('');
+        setCoinbasePrivateKey('');
         setError(null);
     }
 
@@ -211,6 +226,57 @@ export function UpdateCredentialsDialog({
                                     className="underline"
                                 >
                                     {__('API Key Management')}
+                                </a>
+                                .
+                            </p>
+                        </div>
+                    )}
+
+                    {isCoinbase && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="update-coinbase-key-name">
+                                    {__('App Key ID')}
+                                </Label>
+                                <Input
+                                    id="update-coinbase-key-name"
+                                    type="text"
+                                    value={coinbaseKeyName}
+                                    onChange={(e) =>
+                                        setCoinbaseKeyName(e.target.value)
+                                    }
+                                    className="font-mono text-xs"
+                                    placeholder="00000000-0000-0000-0000-000000000000"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="update-coinbase-private-key">
+                                    {__('Secret')}
+                                </Label>
+                                <Textarea
+                                    id="update-coinbase-private-key"
+                                    value={coinbasePrivateKey}
+                                    onChange={(e) =>
+                                        setCoinbasePrivateKey(e.target.value)
+                                    }
+                                    rows={6}
+                                    className="font-mono text-xs"
+                                    placeholder={
+                                        'Paste your CDP API key secret'
+                                    }
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {__(
+                                    'Create a CDP API key (Ed25519 recommended) in the Coinbase Developer Platform under',
+                                )}{' '}
+                                <a
+                                    href="https://portal.cdp.coinbase.com/access/api"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline"
+                                >
+                                    {__('API Keys')}
                                 </a>
                                 .
                             </p>
