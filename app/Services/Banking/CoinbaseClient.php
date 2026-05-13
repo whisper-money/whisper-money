@@ -32,7 +32,7 @@ class CoinbaseClient
     /**
      * List all brokerage accounts (one per currency) with paginated cursor.
      *
-     * @return array{accounts: array<int, array{uuid: string, name: string, currency: string, available_balance: array{value: string, currency: string}, hold: array{value: string, currency: string}, active: bool, type: string}>, has_next: bool, cursor: string, size: int}
+     * @return array<string, mixed>
      */
     public function getAccounts(?string $cursor = null, int $limit = 250): array
     {
@@ -48,7 +48,7 @@ class CoinbaseClient
     /**
      * Fetch every account by paginating through the cursor.
      *
-     * @return array<int, array{uuid: string, name: string, currency: string, available_balance: array{value: string, currency: string}, hold: array{value: string, currency: string}, active: bool, type: string}>
+     * @return array<int, array<string, mixed>>
      */
     public function getAllAccounts(): array
     {
@@ -73,6 +73,8 @@ class CoinbaseClient
      * Get the latest spot price for a single product (e.g. BTC-EUR).
      *
      * @return array<string, mixed>
+     *
+     * @api
      */
     public function getProduct(string $productId): array
     {
@@ -83,7 +85,7 @@ class CoinbaseClient
      * Get best bid/ask for multiple product IDs in one request.
      *
      * @param  array<int, string>  $productIds  e.g. ['BTC-EUR', 'ETH-EUR']
-     * @return array{pricebooks: array<int, array{product_id: string, bids: array<int, array{price: string, size: string}>, asks: array<int, array{price: string, size: string}>}>}
+     * @return array<string, mixed>
      */
     public function getBestBidAsk(array $productIds): array
     {
@@ -98,6 +100,9 @@ class CoinbaseClient
 
     /**
      * Execute a signed JWT request with retry on rate limiting.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
      */
     private function signedRequest(string $method, string $path, array $params = []): array
     {

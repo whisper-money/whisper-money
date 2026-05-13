@@ -18,6 +18,8 @@ class CoinbaseBalanceSyncService
     /**
      * Sync the total portfolio value for a Coinbase account.
      * Aggregates every wallet balance (crypto + fiat) into the user's fiat currency.
+     *
+     * @api
      */
     public function sync(Account $account, CoinbaseClient $client): void
     {
@@ -57,7 +59,7 @@ class CoinbaseBalanceSyncService
     /**
      * Split Coinbase accounts into fiat (converted directly) and crypto holdings.
      *
-     * @param  array<int, array{currency: string, available_balance: array{value: string}, hold: array{value: string}}>  $coinbaseAccounts
+     * @param  array<int, array<string, mixed>>  $coinbaseAccounts
      * @return array{0: float, 1: array<string, float>}
      */
     private function partitionBalances(array $coinbaseAccounts, string $targetCurrency): array
@@ -128,11 +130,11 @@ class CoinbaseBalanceSyncService
         $map = [];
 
         foreach ($response['pricebooks'] ?? [] as $pricebook) {
-            $productId = $pricebook['product_id'] ?? null;
+            $productId = $pricebook['product_id'] ?? '';
             $bid = (float) ($pricebook['bids'][0]['price'] ?? 0);
             $ask = (float) ($pricebook['asks'][0]['price'] ?? 0);
 
-            if ($productId === null) {
+            if ($productId === '') {
                 continue;
             }
 
