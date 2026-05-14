@@ -23,6 +23,7 @@ import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
 import { initializePostHog } from './lib/posthog';
 import {
     isChunkLoadErrorEvent,
+    isFacebookInAppBrowserJavaBridgeNoise,
     isPostMessageDataCloneNoise,
 } from './lib/sentry';
 import type { SharedData } from './types';
@@ -39,7 +40,8 @@ Sentry.init({
     beforeSend(event) {
         if (
             isChunkLoadErrorEvent(event) ||
-            isPostMessageDataCloneNoise(event)
+            isPostMessageDataCloneNoise(event) ||
+            isFacebookInAppBrowserJavaBridgeNoise(event)
         ) {
             return null;
         }

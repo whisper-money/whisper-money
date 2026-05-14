@@ -1,6 +1,10 @@
 import type { Event } from '@sentry/react';
 import { describe, expect, it } from 'vitest';
-import { isChunkLoadErrorEvent, isPostMessageDataCloneNoise } from './sentry';
+import {
+    isChunkLoadErrorEvent,
+    isFacebookInAppBrowserJavaBridgeNoise,
+    isPostMessageDataCloneNoise,
+} from './sentry';
 
 describe('isChunkLoadErrorEvent', () => {
     it('drops recoverable Vite dynamic import failures', () => {
@@ -31,6 +35,55 @@ describe('isChunkLoadErrorEvent', () => {
         };
 
         expect(isChunkLoadErrorEvent(event)).toBe(false);
+    });
+});
+
+describe('isFacebookInAppBrowserJavaBridgeNoise', () => {
+    it('drops Facebook Android webview Java bridge shutdown errors', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'Error',
+                        value: 'Error invoking postMessage: Java object is gone',
+                        stacktrace: {
+                            frames: [
+                                {
+                                    filename:
+                                        'iabjs://navigation_performance_logger_android',
+                                    function: 'U',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        };
+
+        expect(isFacebookInAppBrowserJavaBridgeNoise(event)).toBe(true);
+    });
+
+    it('keeps matching messages without the Facebook webview frame', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'Error',
+                        value: 'Error invoking postMessage: Java object is gone',
+                        stacktrace: {
+                            frames: [
+                                {
+                                    filename: '/build/assets/app.js',
+                                    function: 'postMessage',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        };
+
+        expect(isFacebookInAppBrowserJavaBridgeNoise(event)).toBe(false);
     });
 });
 
