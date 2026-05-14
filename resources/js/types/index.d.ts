@@ -41,7 +41,6 @@ export interface NavDivider {
 
 export interface Features {
     cashflow: boolean;
-    coinbase: boolean;
 }
 
 export interface Flash {
