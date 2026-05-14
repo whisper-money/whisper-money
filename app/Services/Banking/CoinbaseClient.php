@@ -107,6 +107,20 @@ class CoinbaseClient
     }
 
     /**
+     * Get historical candles for a product.
+     *
+     * @return array<string, mixed>
+     */
+    public function getProductCandles(string $productId, int $start, int $end, string $granularity = 'ONE_DAY'): array
+    {
+        return $this->signedRequest('GET', "/api/v3/brokerage/products/{$productId}/candles", [
+            'start' => $start,
+            'end' => $end,
+            'granularity' => $granularity,
+        ]);
+    }
+
+    /**
      * Execute a signed JWT request with retry on rate limiting.
      *
      * @param  array<string, mixed>  $params
