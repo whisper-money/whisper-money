@@ -33,6 +33,16 @@ test('all pages receive app url in shared props', function () {
     );
 });
 
+test('shared feature flags do not include coinbase flag', function () {
+    $response = $this->withoutVite()->get(route('home'));
+
+    $props = $response->viewData('page')['props'];
+
+    expect($props['features'])->toBe([
+        'cashflow' => true,
+    ]);
+});
+
 test('shared currency options split profile and account currencies', function () {
     $response = $this->withoutVite()->get(route('home'));
 

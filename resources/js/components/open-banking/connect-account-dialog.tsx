@@ -8,7 +8,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -17,13 +16,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import type {
     BankingConnection,
     EnableBankingInstitution,
 } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
-import type { SharedData } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const COUNTRIES = [
@@ -97,7 +95,6 @@ export function ConnectAccountDialog({
     onOpenChange,
     connections = [],
 }: ConnectAccountDialogProps) {
-    const { features } = usePage<SharedData>().props;
     const [step, setStep] = useState<Step>('country');
     const [country, setCountry] = useState<string>('');
     const [institutions, setInstitutions] = useState<
@@ -204,10 +201,11 @@ export function ConnectAccountDialog({
             const hasProvider = (provider: string) =>
                 connections.some((c) => c.provider === provider);
 
-            const extraInstitutions = [BINANCE_INSTITUTION, BITPANDA_INSTITUTION];
-            if (features.coinbase) {
-                extraInstitutions.push(COINBASE_INSTITUTION);
-            }
+            const extraInstitutions = [
+                BINANCE_INSTITUTION,
+                BITPANDA_INSTITUTION,
+                COINBASE_INSTITUTION,
+            ];
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
             }

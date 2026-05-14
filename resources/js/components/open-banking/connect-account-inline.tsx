@@ -2,7 +2,6 @@ import { BankLogo } from '@/components/bank-logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -10,14 +9,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
 import type {
     BankingConnection,
     EnableBankingInstitution,
 } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
-import type { SharedData } from '@/types';
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -90,7 +88,6 @@ export function ConnectAccountInline({
     onBack,
     connections = [],
 }: ConnectAccountInlineProps) {
-    const { features } = usePage<SharedData>().props;
     const [step, setStep] = useState<Step>('country');
     const { trigger } = useWebHaptics();
     const [country, setCountry] = useState<string>('');
@@ -185,10 +182,11 @@ export function ConnectAccountInline({
             const hasProvider = (provider: string) =>
                 connections.some((c) => c.provider === provider);
 
-            const extraInstitutions = [BINANCE_INSTITUTION, BITPANDA_INSTITUTION];
-            if (features.coinbase) {
-                extraInstitutions.push(COINBASE_INSTITUTION);
-            }
+            const extraInstitutions = [
+                BINANCE_INSTITUTION,
+                BITPANDA_INSTITUTION,
+                COINBASE_INSTITUTION,
+            ];
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
             }
