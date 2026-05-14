@@ -447,6 +447,14 @@ export function parseDate(
     return date;
 }
 
+function formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
 export function parseAmount(amountStr: string | number): number | null {
     if (typeof amountStr === 'number') {
         return amountStr;
@@ -572,7 +580,7 @@ export function convertRowsToTransactions(
             continue;
         }
 
-        const formattedDate = date.toISOString().split('T')[0];
+        const formattedDate = formatLocalDate(date);
 
         let balance: number | null = null;
         if (mapping.balance && row[mapping.balance]) {
