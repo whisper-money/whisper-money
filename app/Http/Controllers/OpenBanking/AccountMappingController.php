@@ -76,7 +76,7 @@ class AccountMappingController extends Controller
         $pendingAccounts = collect($connection->pending_accounts_data)
             ->keyBy('uid');
 
-        $accountType = ($connection->isIndexaCapital() || $connection->isBinance() || $connection->isBitpanda())
+        $accountType = ($connection->isIndexaCapital() || $connection->isBinance() || $connection->isBitpanda() || $connection->isCoinbase())
             ? AccountType::Investment
             : AccountType::Checking;
 
