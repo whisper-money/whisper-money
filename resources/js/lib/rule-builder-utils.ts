@@ -122,54 +122,67 @@ export function buildJsonLogic(structure: RuleStructure): JsonLogicRule {
     return { [structure.groupOperator]: groupLogics };
 }
 
+function jsonLogicArgs(value: unknown): unknown[] | null {
+    return Array.isArray(value) ? value : null;
+}
+
+function jsonLogicVariable(value: unknown): string | null {
+    if (value && typeof value === 'object' && 'var' in value) {
+        return String(value.var);
+    }
+
+    return null;
+}
+
 function parseConditionFromJsonLogic(
     jsonLogic: JsonLogicRule,
 ): Condition | null {
     const id = crypto.randomUUID();
 
     if ('in' in jsonLogic) {
-        const [value, varObj] = jsonLogic.in;
-        if (varObj && typeof varObj === 'object' && 'var' in varObj) {
+        const args = jsonLogicArgs(jsonLogic.in);
+        const field = args ? jsonLogicVariable(args[1]) : null;
+
+        if (args && field) {
             return {
                 id,
-                field: varObj.var,
+                field,
                 operator: 'contains',
-                value: String(value),
+                value: String(args[0]),
             };
         }
     }
 
     if ('==' in jsonLogic) {
-        const [varObj, value] = jsonLogic['=='];
-        if (varObj && typeof varObj === 'object' && 'var' in varObj) {
-            if (value === null) {
+        const args = jsonLogicArgs(jsonLogic['==']);
+        const field = args ? jsonLogicVariable(args[0]) : null;
+
+        if (args && field) {
+            if (args[1] === null) {
                 return {
                     id,
-                    field: varObj.var,
+                    field,
                     operator: 'is_empty',
                     value: '',
                 };
             }
             return {
                 id,
-                field: varObj.var,
+                field,
                 operator: 'equals',
-                value: String(value),
+                value: String(args[1]),
             };
         }
     }
 
     if ('!=' in jsonLogic) {
-        const [varObj, value] = jsonLogic['!='];
-        if (
-            varObj &&
-            typeof varObj === 'object' &&
-            'var' in varObj &&
-            value === null
-        ) {
+        const args = jsonLogicArgs(jsonLogic['!=']);
+        const field = args ? jsonLogicVariable(args[0]) : null;
+
+        if (args && field && args[1] === null) {
             return {
                 id,
-                field: varObj.var,
+                field,
                 operator: 'is_not_empty',
                 value: '',
             };
@@ -177,25 +190,29 @@ function parseConditionFromJsonLogic(
     }
 
     if ('>' in jsonLogic) {
-        const [varObj, value] = jsonLogic['>'];
-        if (varObj && typeof varObj === 'object' && 'var' in varObj) {
+        const args = jsonLogicArgs(jsonLogic['>']);
+        const field = args ? jsonLogicVariable(args[0]) : null;
+
+        if (args && field) {
             return {
                 id,
-                field: varObj.var,
+                field,
                 operator: 'greater_than',
-                value: String(value),
+                value: String(args[1]),
             };
         }
     }
 
     if ('<' in jsonLogic) {
-        const [varObj, value] = jsonLogic['<'];
-        if (varObj && typeof varObj === 'object' && 'var' in varObj) {
+        const args = jsonLogicArgs(jsonLogic['<']);
+        const field = args ? jsonLogicVariable(args[0]) : null;
+
+        if (args && field) {
             return {
                 id,
-                field: varObj.var,
+                field,
                 operator: 'less_than',
-                value: String(value),
+                value: String(args[1]),
             };
         }
     }
@@ -322,13 +339,17 @@ export function parseJsonLogic(jsonLogic: JsonLogicRule): RuleStructure {
     return defaultStructure;
 }
 
-export function createEmptyCondition(): Condition {
+export function createDescriptionCondition(description: string): Condition {
     return {
         id: crypto.randomUUID(),
         field: 'description',
         operator: 'contains',
-        value: '',
+        value: description.trim(),
     };
+}
+
+export function createEmptyCondition(): Condition {
+    return createDescriptionCondition('');
 }
 
 export function createEmptyGroup(): ConditionGroup {
@@ -336,6 +357,64 @@ export function createEmptyGroup(): ConditionGroup {
         id: crypto.randomUUID(),
         operator: 'or',
         conditions: [createEmptyCondition()],
+    };
+}
+
+function cloneCondition(condition: Condition): Condition {
+    return {
+        ...condition,
+        id: crypto.randomUUID(),
+    };
+}
+
+export function addDescriptionMatchToRuleStructure(
+    structure: RuleStructure,
+    description: string,
+): RuleStructure {
+    const descriptionCondition = createDescriptionCondition(description);
+    const descriptionGroup: ConditionGroup = {
+        id: crypto.randomUUID(),
+        operator: 'or',
+        conditions: [descriptionCondition],
+    };
+
+    if (structure.groups.length === 0) {
+        return {
+            groups: [descriptionGroup],
+            groupOperator: 'or',
+        };
+    }
+
+    if (structure.groupOperator === 'or' || structure.groups.length === 1) {
+        return {
+            groups: [...structure.groups, descriptionGroup],
+            groupOperator: 'or',
+        };
+    }
+
+    return {
+        groups: structure.groups.flatMap((group) => {
+            const descriptionClone = cloneCondition(descriptionCondition);
+
+            if (group.operator === 'or') {
+                return [
+                    {
+                        ...group,
+                        conditions: [...group.conditions, descriptionClone],
+                    },
+                ];
+            }
+
+            return group.conditions.map((condition) => ({
+                id: crypto.randomUUID(),
+                operator: 'or' as const,
+                conditions: [
+                    cloneCondition(condition),
+                    cloneCondition(descriptionCondition),
+                ],
+            }));
+        }),
+        groupOperator: 'and',
     };
 }
 

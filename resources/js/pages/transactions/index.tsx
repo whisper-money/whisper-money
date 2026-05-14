@@ -13,7 +13,14 @@ import {
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, parseISO } from 'date-fns';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    createElement,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -22,6 +29,10 @@ import {
     status as reEvaluateStatus,
 } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
+import {
+    AutomateCategorizationDialog,
+    type AutomateCategorizationCandidate,
+} from '@/components/automation-rules/automate-categorization-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
@@ -63,10 +74,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import {
-    type CursorPaginatedResponse,
     isCursorPaginatedResponse,
+    type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
+import { captureEvent } from '@/lib/posthog';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -430,6 +442,9 @@ export default function Transactions({
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
+    const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
+    const [automateCandidate, setAutomateCandidate] =
+        useState<AutomateCategorizationCandidate | null>(null);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [isSelectingAll, setIsSelectingAll] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
@@ -751,6 +766,42 @@ export default function Transactions({
         }
     }
 
+    const showAutomatizeToast = useCallback(
+        (
+            transaction: DecryptedTransaction,
+            category: Category,
+            source: 'transaction_table' | 'edit_transaction_modal',
+        ) => {
+            const nextAutomateCandidate = { transaction, category };
+
+            setAutomateCandidate(nextAutomateCandidate);
+            toast.success(__('Transaction categorized'), {
+                closeButton: true,
+                duration: 12000,
+                action: {
+                    label: createElement(
+                        'span',
+                        {
+                            title: __(
+                                'Automatize the categorization of future transactions like this one',
+                            ),
+                        },
+                        __('Automatize'),
+                    ),
+                    onClick: () => {
+                        captureEvent(
+                            'automation_rule_toast_automatize_clicked',
+                            { source },
+                        );
+                        setAutomateCandidate(nextAutomateCandidate);
+                        setAutomateDialogOpen(true);
+                    },
+                },
+            });
+        },
+        [],
+    );
+
     const columns = useMemo(
         () =>
             createTransactionColumns({
@@ -762,6 +813,7 @@ export default function Transactions({
                 onEdit: setEditTransaction,
                 onDelete: setDeleteTransaction,
                 onUpdate: updateTransaction,
+                onCategorized: showAutomatizeToast,
                 onReEvaluateRules: handleReEvaluateRules,
             }),
         [
@@ -771,6 +823,7 @@ export default function Transactions({
             labels,
             locale,
             updateTransaction,
+            showAutomatizeToast,
             handleReEvaluateRules,
         ],
     );
@@ -1167,6 +1220,7 @@ export default function Transactions({
                 open={!!editTransaction}
                 onOpenChange={(open) => !open && setEditTransaction(null)}
                 onSuccess={updateTransaction}
+                onCategorized={showAutomatizeToast}
                 onLabelCreated={handleLabelCreated}
                 mode="edit"
             />
@@ -1183,6 +1237,13 @@ export default function Transactions({
                 onSuccess={() => refreshTransactions()}
                 onLabelCreated={handleLabelCreated}
                 mode="create"
+            />
+
+            <AutomateCategorizationDialog
+                open={automateDialogOpen}
+                candidate={automateCandidate}
+                categories={categories}
+                onOpenChange={setAutomateDialogOpen}
             />
 
             <AlertDialog

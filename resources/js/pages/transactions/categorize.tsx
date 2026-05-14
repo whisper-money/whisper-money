@@ -1,4 +1,5 @@
 import { categorize as categorizeRoute } from '@/actions/App/Http/Controllers/TransactionController';
+import { AutomateCategorizationDialog } from '@/components/automation-rules/automate-categorization-dialog';
 import { AutomationRulesDialog } from '@/components/automation-rules/automation-rules-dialog';
 import { CategorizerCard } from '@/components/transactions/categorizer-card';
 import { CategorizerCommand } from '@/components/transactions/categorizer-command';
@@ -51,10 +52,14 @@ export default function CategorizeTransactions({
         setSearchValue,
         rulesDialogOpen,
         setRulesDialogOpen,
+        automateDialogOpen,
+        automateCandidate,
         handleCategorySelect,
         handleSkip,
         handlePrevious,
         handleRulesDialogClose,
+        handleAutomateDialogOpenChange,
+        handleAutomateSaved,
         commandInputRef,
     } = useCategorizeTransactions({
         categories,
@@ -64,6 +69,15 @@ export default function CategorizeTransactions({
     });
 
     const backHref = categorizeRoute.url()?.replace('/categorize', '') ?? '';
+    const automateDialog = (
+        <AutomateCategorizationDialog
+            open={automateDialogOpen}
+            candidate={automateCandidate}
+            categories={categories}
+            onOpenChange={handleAutomateDialogOpenChange}
+            onSaved={handleAutomateSaved}
+        />
+    );
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,7 +97,7 @@ export default function CategorizeTransactions({
                     handlePrevious();
                 }
             }
-            if (e.key === 'Escape' && !rulesDialogOpen) {
+            if (e.key === 'Escape' && !rulesDialogOpen && !automateDialogOpen) {
                 e.preventDefault();
                 if (backHref) {
                     router.visit(backHref);
@@ -100,6 +114,7 @@ export default function CategorizeTransactions({
         handlePrevious,
         currentIndex,
         rulesDialogOpen,
+        automateDialogOpen,
         setRulesDialogOpen,
         backHref,
     ]);
@@ -154,6 +169,8 @@ export default function CategorizeTransactions({
                     </div>
                 </div>
 
+                {automateDialog}
+
                 <style>{`
                     @keyframes bounce-in {
                         0% { opacity: 0; transform: scale(0.3); }
@@ -196,6 +213,7 @@ export default function CategorizeTransactions({
                         </Link>
                     </div>
                 </div>
+                {automateDialog}
             </>
         );
     }
@@ -292,6 +310,7 @@ export default function CategorizeTransactions({
                 open={rulesDialogOpen}
                 onOpenChange={handleRulesDialogClose}
             />
+            {automateDialog}
         </>
     );
 }
