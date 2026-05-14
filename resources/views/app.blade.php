@@ -20,7 +20,12 @@
                     }
                 }
 
-                var chartScheme = localStorage.getItem('chart-color-scheme') || '{{ $chartColorScheme ?? "colorful" }}';
+                var chartScheme = '{{ $chartColorScheme ?? "colorful" }}';
+
+                try {
+                    chartScheme = localStorage.getItem('chart-color-scheme') || chartScheme;
+                } catch (error) {}
+
                 if (chartScheme && chartScheme !== 'neutral') {
                     document.documentElement.setAttribute('data-chart-color', chartScheme);
                 }

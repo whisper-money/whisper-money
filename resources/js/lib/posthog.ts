@@ -16,6 +16,11 @@ const getPostHogHost = (): string => {
     return import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com';
 };
 
+export const isPostHogSessionRecordingEnabled = (): boolean => {
+    const enabled = import.meta.env.VITE_POSTHOG_SESSION_RECORDING_ENABLED;
+    return enabled === 'true' || enabled === '1';
+};
+
 export function initializePostHog(): void {
     if (typeof window === 'undefined') {
         return;
@@ -38,6 +43,7 @@ export function initializePostHog(): void {
     posthog.init(apiKey, {
         api_host: host,
         person_profiles: 'always',
+        disable_session_recording: !isPostHogSessionRecordingEnabled(),
         loaded: () => {
             if (import.meta.env.DEV) {
                 console.log('[PostHog] Initialized successfully');
