@@ -17,6 +17,8 @@ interface ImportStepAccountProps {
     selectedAccountId: UUID | null;
     onAccountSelect: (accountId: UUID) => void;
     onNext: () => void;
+    autoSelectSingleAccount?: boolean;
+    onAutoSelect?: (accountId: UUID) => void;
 }
 
 export function ImportStepAccount({
@@ -24,16 +26,35 @@ export function ImportStepAccount({
     selectedAccountId,
     onAccountSelect,
     onNext,
+    autoSelectSingleAccount = false,
+    onAutoSelect,
 }: ImportStepAccountProps) {
     const accounts = filterTransactionalAccounts(rawAccounts);
 
-    // If there is only one account, auto-select it, and proceed to next step
     useEffect(() => {
-        if (accounts.length === 1) {
-            onAccountSelect(accounts[0].id);
+        if (
+            autoSelectSingleAccount &&
+            accounts.length === 1 &&
+            !selectedAccountId
+        ) {
+            const accountId = accounts[0].id;
+
+            if (onAutoSelect) {
+                onAutoSelect(accountId);
+            } else {
+                onAccountSelect(accountId);
+            }
+
             onNext();
         }
-    }, [accounts, onAccountSelect, onNext]);
+    }, [
+        accounts,
+        autoSelectSingleAccount,
+        onAccountSelect,
+        onAutoSelect,
+        onNext,
+        selectedAccountId,
+    ]);
 
     if (accounts.length === 0) {
         return (

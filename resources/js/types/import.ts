@@ -1,3 +1,5 @@
+import { UUID } from './uuid';
+
 export enum ImportStep {
     SelectAccount = 'select-account',
     UploadFile = 'upload-file',
@@ -40,7 +42,7 @@ export interface ColumnOption {
 
 export interface ImportState {
     step: ImportStep;
-    selectedAccountId: number | null;
+    selectedAccountId: UUID | null;
     file: File | null;
     parsedData: ParsedRow[];
     columnHeaders: string[];
