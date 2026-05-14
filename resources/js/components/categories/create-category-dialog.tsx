@@ -26,6 +26,7 @@ import {
     CATEGORY_ICONS,
     CATEGORY_TYPES,
     getCategoryColorClasses,
+    getCategoryTypeLabel,
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
@@ -166,8 +167,7 @@ export function CreateCategoryDialog({
                                     <SelectContent>
                                         {CATEGORY_TYPES.map((type) => (
                                             <SelectItem key={type} value={type}>
-                                                {type.charAt(0).toUpperCase() +
-                                                    type.slice(1)}
+                                                {getCategoryTypeLabel(type)}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -209,7 +209,9 @@ export function CreateCategoryDialog({
                                     {__('Cancel')}
                                 </Button>
                                 <Button type="submit" disabled={processing}>
-                                    {processing ? 'Creating...' : 'Create'}
+                                    {processing
+                                        ? __('Creating...')
+                                        : __('Create')}
                                 </Button>
                             </div>
                         </>

@@ -446,6 +446,7 @@
   "Delete Label": "Eliminar Etiqueta",
   "Delete Transaction": "Eliminar Transacción",
   "Delete Transactions": "Eliminar Transacciones",
+  "Delete :count Transactions": "Borrar :count transacciones",
   "Delete account": "Eliminar cuenta",
   "Delete accounts": "Eliminar cuentas",
   "Delete balance": "Eliminar balance",

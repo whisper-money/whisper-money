@@ -79,6 +79,7 @@ import {
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
 import { captureEvent } from '@/lib/posthog';
+import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -941,6 +942,11 @@ export default function Transactions({
 
     const selectedCount = useMemo(() => selectedIds.length, [selectedIds]);
 
+    const bulkDeleteConfirmationText = useMemo(
+        () => getBulkDeleteConfirmationText(selectedCount),
+        [selectedCount],
+    );
+
     function handleBulkDeleteClick() {
         if (selectedIds.length === 0) {
             return;
@@ -1298,7 +1304,7 @@ export default function Transactions({
                                 'This action cannot be undone. To confirm, type',
                             )}{' '}
                             <span className="font-semibold text-foreground">
-                                delete {selectedCount} transactions
+                                {bulkDeleteConfirmationText}
                             </span>
                         </DialogDescription>
                     </DialogHeader>
@@ -1307,7 +1313,7 @@ export default function Transactions({
                         onChange={(e) =>
                             setBulkDeleteConfirmation(e.target.value)
                         }
-                        placeholder={`delete ${selectedCount} transactions`}
+                        placeholder={bulkDeleteConfirmationText}
                         disabled={isBulkDeleting}
                         autoFocus
                     />
@@ -1329,7 +1335,7 @@ export default function Transactions({
                             disabled={
                                 isBulkDeleting ||
                                 bulkDeleteConfirmation !==
-                                    `delete ${selectedCount} transactions`
+                                    bulkDeleteConfirmationText
                             }
                         >
                             {isBulkDeleting ? __('Deleting...') : __('Delete')}

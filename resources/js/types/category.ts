@@ -1,3 +1,5 @@
+import { __ } from '@/utils/i18n';
+
 import { UUID } from './uuid';
 
 export const CATEGORY_ICONS = [
@@ -106,6 +108,16 @@ export type CategoryColor = (typeof CATEGORY_COLORS)[number];
 export const CATEGORY_TYPES = ['income', 'expense', 'transfer'] as const;
 
 export type CategoryType = (typeof CATEGORY_TYPES)[number];
+
+const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = {
+    income: 'Income',
+    expense: 'Expense',
+    transfer: 'Transfer',
+};
+
+export function getCategoryTypeLabel(type: CategoryType): string {
+    return __(CATEGORY_TYPE_LABELS[type]);
+}
 
 export const CATEGORY_CASHFLOW_DIRECTIONS = [
     'hidden',
