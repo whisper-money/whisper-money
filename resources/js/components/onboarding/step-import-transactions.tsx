@@ -150,6 +150,7 @@ export function StepImportTransactions({
                 categories={categories}
                 banks={banks}
                 automationRules={automationRules}
+                autoSelectSingleAccount
             />
         </div>
     );

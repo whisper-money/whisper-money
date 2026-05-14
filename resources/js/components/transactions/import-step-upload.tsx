@@ -9,6 +9,7 @@ interface ImportStepUploadProps {
     onFileSelect: (file: File) => void;
     onNext: () => void;
     onBack: () => void;
+    showBackButton?: boolean;
 }
 
 export function ImportStepUpload({
@@ -16,6 +17,7 @@ export function ImportStepUpload({
     onFileSelect,
     onNext,
     onBack,
+    showBackButton = true,
 }: ImportStepUploadProps) {
     const [isDragging, setIsDragging] = useState(false);
 
@@ -135,10 +137,17 @@ export function ImportStepUpload({
                 )}
             </div>
 
-            <div className="flex justify-between">
-                <Button variant="outline" onClick={onBack}>
-                    {__('Back')}
-                </Button>
+            <div
+                className={cn(
+                    'flex',
+                    showBackButton ? 'justify-between' : 'justify-end',
+                )}
+            >
+                {showBackButton && (
+                    <Button variant="outline" onClick={onBack}>
+                        {__('Back')}
+                    </Button>
+                )}
                 <Button onClick={onNext} disabled={!file}>
                     {__('Next')}
                 </Button>
