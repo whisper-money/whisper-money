@@ -31,6 +31,7 @@ import {
     type ColumnMapping,
     type ImportState,
 } from '@/types/import';
+import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -48,6 +49,7 @@ interface ImportTransactionsDrawerProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onImportComplete?: () => void;
+    autoSelectSingleAccount?: boolean;
 }
 
 interface ImportError {
@@ -68,6 +70,7 @@ export function ImportTransactionsDrawer({
     open,
     onOpenChange,
     onImportComplete,
+    autoSelectSingleAccount = false,
 }: ImportTransactionsDrawerProps) {
     const { locale } = usePage<SharedData>().props;
     const [isImporting, setIsImporting] = useState(false);
@@ -75,6 +78,8 @@ export function ImportTransactionsDrawer({
     const [importTotal, setImportTotal] = useState(0);
     const [importErrors, setImportErrors] = useState<ImportError[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [wasSingleAccountAutoSelected, setWasSingleAccountAutoSelected] =
+        useState(false);
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(
         null,
     );
@@ -89,6 +94,7 @@ export function ImportTransactionsDrawer({
             transaction_date: null,
             description: null,
             amount: null,
+            balance: null,
         },
         dateFormat: DateFormat.YearMonthDay,
         dateFormatDetected: false,
@@ -119,6 +125,7 @@ export function ImportTransactionsDrawer({
                     transaction_date: null,
                     description: null,
                     amount: null,
+                    balance: null,
                 },
                 dateFormat: DateFormat.YearMonthDay,
                 dateFormatDetected: false,
@@ -126,12 +133,18 @@ export function ImportTransactionsDrawer({
             });
             setIsImporting(false);
             setError(null);
+            setWasSingleAccountAutoSelected(false);
             setSelectedAccount(null);
         }
     }, [open]);
 
-    const handleAccountSelect = (accountId: number) => {
+    const handleAccountSelect = (accountId: UUID) => {
         setState((prev) => ({ ...prev, selectedAccountId: accountId }));
+    };
+
+    const handleSingleAccountAutoSelect = (accountId: UUID) => {
+        setWasSingleAccountAutoSelected(true);
+        handleAccountSelect(accountId);
     };
 
     const handleFileSelect = async (file: File) => {
@@ -653,6 +666,8 @@ export function ImportTransactionsDrawer({
                         onNext={() => {
                             moveToStep(ImportStep.UploadFile);
                         }}
+                        autoSelectSingleAccount={autoSelectSingleAccount}
+                        onAutoSelect={handleSingleAccountAutoSelect}
                     />
                 );
 
@@ -665,6 +680,7 @@ export function ImportTransactionsDrawer({
                             moveToStep(ImportStep.MapColumns);
                         }}
                         onBack={() => moveToStep(ImportStep.SelectAccount)}
+                        showBackButton={!wasSingleAccountAutoSelected}
                     />
                 );
 

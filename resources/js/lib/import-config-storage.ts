@@ -1,4 +1,5 @@
 import { type ColumnMapping, DateFormat } from '@/types/import';
+import { type UUID } from '@/types/uuid';
 
 interface ImportConfig {
     columnMapping: ColumnMapping;
@@ -7,10 +8,7 @@ interface ImportConfig {
 
 const STORAGE_KEY_PREFIX = 'import_config_account_';
 
-export function saveImportConfig(
-    accountId: number,
-    config: ImportConfig,
-): void {
+export function saveImportConfig(accountId: UUID, config: ImportConfig): void {
     if (typeof window === 'undefined') return;
 
     try {
@@ -21,7 +19,7 @@ export function saveImportConfig(
     }
 }
 
-export function loadImportConfig(accountId: number): ImportConfig | null {
+export function loadImportConfig(accountId: UUID): ImportConfig | null {
     if (typeof window === 'undefined') return null;
 
     try {
@@ -45,7 +43,7 @@ export function loadImportConfig(accountId: number): ImportConfig | null {
     }
 }
 
-export function clearImportConfig(accountId: number): void {
+export function clearImportConfig(accountId: UUID): void {
     if (typeof window === 'undefined') return;
 
     try {

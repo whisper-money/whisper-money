@@ -34,6 +34,11 @@ interface CreateColumnsOptions {
     onEdit: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
     onUpdate: (transaction: DecryptedTransaction) => void;
+    onCategorized?: (
+        transaction: DecryptedTransaction,
+        category: Category,
+        source: 'transaction_table',
+    ) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
 }
 
@@ -46,6 +51,7 @@ export function createTransactionColumns({
     onEdit,
     onDelete,
     onUpdate,
+    onCategorized,
     onReEvaluateRules,
 }: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
     return [
@@ -141,6 +147,7 @@ export function createTransactionColumns({
                         accounts={accounts}
                         banks={banks}
                         onUpdate={onUpdate}
+                        onCategorized={onCategorized}
                         className="relative -top-0.5 max-w-[150px] md:max-w-[180px]"
                         withoutChevronIcon
                     />

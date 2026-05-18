@@ -115,7 +115,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             } elseif ($connection->isBitpanda()) {
                 $this->syncBitpanda($connection);
             } elseif ($connection->isCoinbase()) {
-                $this->syncCoinbase($connection);
+                $this->syncCoinbase($connection, $isFirstSync);
             } else {
                 $metadata = $this->syncEnableBanking($connection, $transactionSync, $balanceSync, $isFirstSync);
 
@@ -331,7 +331,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    private function syncCoinbase(BankingConnection $connection): void
+    private function syncCoinbase(BankingConnection $connection, bool $isFirstSync): void
     {
         $client = new CoinbaseClient($connection->api_token, $connection->api_secret);
         $syncService = app(CoinbaseBalanceSyncService::class);
@@ -339,7 +339,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         $connection->load('accounts');
 
         foreach ($connection->accounts as $account) {
-            $syncService->sync($account, $client);
+            $syncService->sync($account, $client, $isFirstSync, backfillMissingHistory: true);
         }
     }
 

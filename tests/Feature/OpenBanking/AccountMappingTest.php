@@ -106,17 +106,17 @@ test('store with action create creates new accounts', function () {
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
 
-test('store creates investment accounts for bitpanda connections', function () {
+test('store creates investment accounts for crypto provider connections', function (string $provider, string $providerName, string $uid) {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->awaitingMapping()->create([
         'user_id' => $user->id,
-        'provider' => 'bitpanda',
-        'aspsp_name' => 'Bitpanda',
+        'provider' => $provider,
+        'aspsp_name' => $providerName,
         'pending_accounts_data' => [
             [
-                'uid' => 'bitpanda-portfolio',
+                'uid' => $uid,
                 'currency' => 'EUR',
                 'name' => 'Crypto Portfolio',
                 'account_id' => [],
@@ -128,7 +128,7 @@ test('store creates investment accounts for bitpanda connections', function () {
         ->post(route('open-banking.map-accounts.store', $connection), [
             'mappings' => [
                 [
-                    'bank_account_uid' => 'bitpanda-portfolio',
+                    'bank_account_uid' => $uid,
                     'action' => 'create',
                     'existing_account_id' => null,
                 ],
@@ -140,12 +140,15 @@ test('store creates investment accounts for bitpanda connections', function () {
     $this->assertDatabaseHas('accounts', [
         'user_id' => $user->id,
         'banking_connection_id' => $connection->id,
-        'external_account_id' => 'bitpanda-portfolio',
+        'external_account_id' => $uid,
         'type' => 'investment',
     ]);
 
     Queue::assertPushed(SyncBankingConnectionJob::class);
-});
+})->with([
+    'bitpanda' => ['bitpanda', 'Bitpanda', 'bitpanda-portfolio'],
+    'coinbase' => ['coinbase', 'Coinbase', 'coinbase-portfolio'],
+]);
 
 test('store with action link links existing account', function () {
     Queue::fake();

@@ -24,6 +24,7 @@ import {
     CATEGORY_ICONS,
     CATEGORY_TYPES,
     getCategoryColorClasses,
+    getCategoryTypeLabel,
     type Category,
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
@@ -177,8 +178,7 @@ export function EditCategoryDialog({
                                     <SelectContent>
                                         {CATEGORY_TYPES.map((type) => (
                                             <SelectItem key={type} value={type}>
-                                                {type.charAt(0).toUpperCase() +
-                                                    type.slice(1)}
+                                                {getCategoryTypeLabel(type)}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

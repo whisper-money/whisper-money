@@ -6,6 +6,7 @@ const CHUNK_LOAD_ERROR_PATTERNS = [
     /error loading dynamically imported module/i,
     /Importing a module script failed/i,
     /Load failed for module script/i,
+    /Unable to preload CSS/i,
     /ChunkLoadError/i,
     /Loading chunk \d+ failed/i,
 ];

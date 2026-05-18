@@ -1,6 +1,10 @@
 import { DateFormat } from '@/types/import';
 import { describe, expect, it } from 'vitest';
-import { autoDetectDateFormat, getLocaleDateFormat } from './file-parser';
+import {
+    autoDetectDateFormat,
+    convertRowsToTransactions,
+    getLocaleDateFormat,
+} from './file-parser';
 
 describe('getLocaleDateFormat', () => {
     it('returns null for undefined locale', () => {
@@ -29,6 +33,37 @@ describe('getLocaleDateFormat', () => {
 
     it('handles underscored locales like en_US', () => {
         expect(getLocaleDateFormat('en_US')).toBe(DateFormat.MonthDayYear);
+    });
+});
+
+describe('convertRowsToTransactions', () => {
+    it('keeps imported dates stable in timezones ahead of UTC', () => {
+        const originalTimezone = process.env.TZ;
+        process.env.TZ = 'Europe/Madrid';
+
+        try {
+            const transactions = convertRowsToTransactions(
+                [
+                    {
+                        date: '04/05/2026',
+                        description: 'Tarjeta Abril',
+                        amount: '10.00',
+                    },
+                ],
+                {
+                    transaction_date: 'date',
+                    description: 'description',
+                    amount: 'amount',
+                    balance: null,
+                },
+                DateFormat.DayMonthYear,
+            );
+
+            expect(transactions).toHaveLength(1);
+            expect(transactions[0].transaction_date).toBe('2026-05-04');
+        } finally {
+            process.env.TZ = originalTimezone;
+        }
     });
 });
 

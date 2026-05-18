@@ -15,6 +15,16 @@ describe('isChunkLoadError', () => {
         ).toBe(true);
     });
 
+    it('detects Vite CSS preload failures', () => {
+        expect(
+            isChunkLoadError(
+                new Error(
+                    'Unable to preload CSS for /build/assets/app-BpqbLMXP.css',
+                ),
+            ),
+        ).toBe(true);
+    });
+
     it('ignores unrelated errors', () => {
         expect(isChunkLoadError(new Error('Validation failed'))).toBe(false);
     });
