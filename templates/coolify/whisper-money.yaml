@@ -6,7 +6,7 @@
 
 services:
     whisper-money:
-        image: ghcr.io/whisper-money/whisper-money:production
+        image: ghcr.io/whisper-money/whisper-money:latest
         environment:
             - SERVICE_FQDN_WHISPERMONEY_80
             - APP_NAME=Whisper Money

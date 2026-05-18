@@ -18,14 +18,14 @@ it('publishes and uses the production docker image for self hosting', function (
         ->toContain("'.env.production.example'");
 
     expect($compose)
-        ->toContain('ghcr.io/whisper-money/whisper-money:production');
+        ->toContain('ghcr.io/whisper-money/whisper-money:latest');
 
     expect($localCompose)
         ->toContain('image: whisper-money:production-local')
         ->toContain('dockerfile: Dockerfile.production');
 
     expect($coolifyTemplate)
-        ->toContain('ghcr.io/whisper-money/whisper-money:production');
+        ->toContain('ghcr.io/whisper-money/whisper-money:latest');
 
     expect($dockerignore)
         ->toContain('.env')
