@@ -8,6 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -21,6 +22,8 @@ import type {
     EnableBankingInstitution,
 } from '@/types/banking';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
+import type { SharedData } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const COUNTRIES = [
@@ -65,6 +68,13 @@ const BITPANDA_INSTITUTION: EnableBankingInstitution = {
     maximum_consent_validity: null,
 };
 
+const COINBASE_INSTITUTION: EnableBankingInstitution = {
+    name: 'Coinbase',
+    country: 'ALL',
+    logo: 'https://whisper.money/storage/banks/logos/coinbase.png',
+    maximum_consent_validity: null,
+};
+
 interface ConnectAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -87,6 +97,7 @@ export function ConnectAccountDialog({
     onOpenChange,
     connections = [],
 }: ConnectAccountDialogProps) {
+    const { features } = usePage<SharedData>().props;
     const [step, setStep] = useState<Step>('country');
     const [country, setCountry] = useState<string>('');
     const [institutions, setInstitutions] = useState<
@@ -105,6 +116,8 @@ export function ConnectAccountDialog({
     const [apiKey, setApiKey] = useState('');
     const [apiSecret, setApiSecret] = useState('');
     const [bitpandaApiKey, setBitpandaApiKey] = useState('');
+    const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
+    const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
 
     const isIndexaCapital = useMemo(
         () => selectedBank?.name === 'Indexa Capital',
@@ -118,6 +131,11 @@ export function ConnectAccountDialog({
 
     const isBitpanda = useMemo(
         () => selectedBank?.name === 'Bitpanda',
+        [selectedBank],
+    );
+
+    const isCoinbase = useMemo(
+        () => selectedBank?.name === 'Coinbase',
         [selectedBank],
     );
 
@@ -135,6 +153,8 @@ export function ConnectAccountDialog({
         setApiKey('');
         setApiSecret('');
         setBitpandaApiKey('');
+        setCoinbaseKeyName('');
+        setCoinbasePrivateKey('');
     }, []);
 
     useEffect(() => {
@@ -184,10 +204,10 @@ export function ConnectAccountDialog({
             const hasProvider = (provider: string) =>
                 connections.some((c) => c.provider === provider);
 
-            const extraInstitutions = [
-                BINANCE_INSTITUTION,
-                BITPANDA_INSTITUTION,
-            ];
+            const extraInstitutions = [BINANCE_INSTITUTION, BITPANDA_INSTITUTION];
+            if (features.coinbase) {
+                extraInstitutions.push(COINBASE_INSTITUTION);
+            }
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
             }
@@ -199,6 +219,9 @@ export function ConnectAccountDialog({
                     }
                     if (institution.name === 'Bitpanda') {
                         return !hasProvider('bitpanda');
+                    }
+                    if (institution.name === 'Coinbase') {
+                        return !hasProvider('coinbase');
                     }
                     if (institution.name === 'Indexa Capital') {
                         return !hasProvider('indexacapital');
@@ -230,7 +253,9 @@ export function ConnectAccountDialog({
                   ? '/open-banking/binance/connect'
                   : isIndexaCapital
                     ? '/open-banking/indexa-capital/connect'
-                    : '/open-banking/authorize';
+                    : isCoinbase
+                      ? '/open-banking/coinbase/connect'
+                      : '/open-banking/authorize';
 
             const body = isBitpanda
                 ? { api_key: bitpandaApiKey, country: country }
@@ -238,11 +263,17 @@ export function ConnectAccountDialog({
                   ? { api_key: apiKey, api_secret: apiSecret, country: country }
                   : isIndexaCapital
                     ? { api_token: apiToken }
-                    : {
-                          aspsp_name: selectedBank.name,
-                          country: country,
-                          logo: selectedBank.logo,
-                      };
+                    : isCoinbase
+                      ? {
+                            api_key_name: coinbaseKeyName,
+                            private_key: coinbasePrivateKey,
+                            country: country,
+                        }
+                      : {
+                            aspsp_name: selectedBank.name,
+                            country: country,
+                            logo: selectedBank.logo,
+                        };
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -288,6 +319,7 @@ export function ConnectAccountDialog({
                             !isIndexaCapital &&
                             !isBinance &&
                             !isBitpanda &&
+                            !isCoinbase &&
                             __(
                                 'You will be redirected to your bank to authorize access.',
                             )}
@@ -305,6 +337,11 @@ export function ConnectAccountDialog({
                             isBitpanda &&
                             __(
                                 'Enter your API Key to connect your Bitpanda account.',
+                            )}
+                        {step === 'confirm' &&
+                            isCoinbase &&
+                            __(
+                                'Enter your CDP App Key ID and Secret to connect your Coinbase account.',
                             )}
                     </DialogDescription>
                 </DialogHeader>
@@ -424,9 +461,13 @@ export function ConnectAccountDialog({
                                                 ? __(
                                                       'Connect your Indexa Capital account using your API token.',
                                                   )
-                                                : __(
-                                                      'You will be redirected to authorize access to your account data.',
-                                                  )}
+                                                : isCoinbase
+                                                  ? __(
+                                                        'Connect your Coinbase account using a CDP API key.',
+                                                    )
+                                                  : __(
+                                                        'You will be redirected to authorize access to your account data.',
+                                                    )}
                                     </p>
                                 </div>
                             </div>
@@ -553,6 +594,59 @@ export function ConnectAccountDialog({
                             </div>
                         )}
 
+                        {isCoinbase && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="coinbase-key-name">
+                                        {__('App Key ID')}
+                                    </Label>
+                                    <Input
+                                        id="coinbase-key-name"
+                                        type="text"
+                                        value={coinbaseKeyName}
+                                        onChange={(e) =>
+                                            setCoinbaseKeyName(e.target.value)
+                                        }
+                                        className="mt-1 font-mono text-xs"
+                                        placeholder="00000000-0000-0000-0000-000000000000"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="coinbase-private-key">
+                                        {__('Secret')}
+                                    </Label>
+                                    <Textarea
+                                        id="coinbase-private-key"
+                                        value={coinbasePrivateKey}
+                                        onChange={(e) =>
+                                            setCoinbasePrivateKey(
+                                                e.target.value,
+                                            )
+                                        }
+                                        rows={6}
+                                        className="mt-1 font-mono text-xs"
+                                        placeholder={
+                                            'Paste your CDP API key secret'
+                                        }
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {__(
+                                        'Create a CDP API key (Ed25519 recommended) in the Coinbase Developer Platform under',
+                                    )}{' '}
+                                    <a
+                                        href="https://portal.cdp.coinbase.com/access/api"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        {__('API Keys')}
+                                    </a>
+                                    . {__('Use a view-only key.')}
+                                </p>
+                            </div>
+                        )}
+
                         <div className="flex justify-end gap-2">
                             <Button
                                 variant="outline"
@@ -567,7 +661,10 @@ export function ConnectAccountDialog({
                                     isSubmitting ||
                                     (isIndexaCapital && !apiToken) ||
                                     (isBinance && (!apiKey || !apiSecret)) ||
-                                    (isBitpanda && !bitpandaApiKey)
+                                    (isBitpanda && !bitpandaApiKey) ||
+                                    (isCoinbase &&
+                                        (!coinbaseKeyName ||
+                                            !coinbasePrivateKey))
                                 }
                             >
                                 {isSubmitting
