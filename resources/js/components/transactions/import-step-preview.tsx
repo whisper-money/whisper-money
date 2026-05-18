@@ -94,6 +94,14 @@ export function ImportStepPreview({
         onSelectAll(checked);
     };
 
+    const hasBalances = useMemo(
+        () =>
+            transactions.some(
+                (t) => t.balance !== null && t.balance !== undefined,
+            ),
+        [transactions],
+    );
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex gap-4 rounded-lg border bg-muted/50 p-4">
@@ -155,13 +163,18 @@ export function ImportStepPreview({
                             <TableHead className="text-right">
                                 {__('Amount')}
                             </TableHead>
+                            {hasBalances && (
+                                <TableHead className="text-right">
+                                    {__('Balance')}
+                                </TableHead>
+                            )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {transactions.length === 0 ? (
                             <TableRow>
                                 <TableCell
-                                    colSpan={5}
+                                    colSpan={hasBalances ? 6 : 5}
                                     className="text-center text-muted-foreground"
                                 >
                                     No valid transactions found
@@ -221,6 +234,24 @@ export function ImportStepPreview({
                                             currencyCode={currencyCode}
                                         />
                                     </TableCell>
+                                    {hasBalances && (
+                                        <TableCell className="text-right font-mono">
+                                            {transaction.balance !== null &&
+                                            transaction.balance !==
+                                                undefined ? (
+                                                <AmountDisplay
+                                                    amountInCents={
+                                                        transaction.balance
+                                                    }
+                                                    currencyCode={currencyCode}
+                                                />
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))
                         )}

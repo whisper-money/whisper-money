@@ -51,4 +51,8 @@ export interface ImportState {
     dateFormat: DateFormat;
     dateFormatDetected: boolean;
     transactions: ParsedTransaction[];
+    calculateBalances: boolean;
+    referenceBalance: number | null;
+    referenceBalanceDate: string | null;
+    referenceBalancePrefilled: boolean;
 }
