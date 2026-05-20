@@ -890,7 +890,7 @@ export function ImportTransactionsDrawer({
                 <div className="space-y-4">
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <span>
-                            {importProgress} of {importTotal}
+                            {importProgress} of {importTotal}{' '}
                             {__('transactions imported')}
                         </span>
                         <span>{Math.round(percentage)}%</span>
