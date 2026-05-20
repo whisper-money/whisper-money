@@ -1,6 +1,6 @@
 import '../css/app.css';
 
-import { createInertiaApp, router } from '@inertiajs/react';
+import { createInertiaApp, router, usePage } from '@inertiajs/react';
 import * as Sentry from '@sentry/react';
 import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -11,9 +11,9 @@ import {
     OctagonXIcon,
     TriangleAlertIcon,
 } from 'lucide-react';
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Toaster } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { EncryptionKeyProvider } from './contexts/encryption-key-context';
 import { PrivacyModeProvider } from './contexts/privacy-mode-context';
 import { SyncProvider } from './contexts/sync-context';
@@ -26,8 +26,8 @@ import {
     isFacebookInAppBrowserJavaBridgeNoise,
     isPostMessageDataCloneNoise,
 } from './lib/sentry';
-import type { SharedData } from './types';
-import { setTranslations } from './utils/i18n';
+import type { ExpiredBankingConnectionNotification, SharedData } from './types';
+import { __, setTranslations } from './utils/i18n';
 
 installChunkLoadRecovery();
 
@@ -60,6 +60,58 @@ initializeChartColorScheme();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 let hasAttemptedTimezoneBackfill = false;
+const notifiedExpiredConnectionIds = new Set<string>();
+
+function ExpiredConnectionsToast() {
+    const { props } = usePage<SharedData>();
+    const expiredConnections =
+        (props.expiredBankingConnections as
+            | ExpiredBankingConnectionNotification[]
+            | undefined) ?? [];
+
+    useEffect(() => {
+        if (expiredConnections.length === 0) {
+            return;
+        }
+
+        const newExpiredConnections = expiredConnections.filter(
+            (connection) => !notifiedExpiredConnectionIds.has(connection.id),
+        );
+
+        if (newExpiredConnections.length === 0) {
+            return;
+        }
+
+        expiredConnections.forEach((connection) => {
+            notifiedExpiredConnectionIds.add(connection.id);
+        });
+
+        const firstConnection = expiredConnections[0];
+        const count = expiredConnections.length;
+
+        toast.error(
+            count === 1
+                ? __('Your :provider connection has expired.', {
+                      provider: firstConnection.aspsp_name,
+                  })
+                : __('You have :count expired bank connections.', {
+                      count,
+                  }),
+            {
+                description: __('Reconnect to resume automatic syncing.'),
+                duration: Infinity,
+                action: {
+                    label: __('Reconnect'),
+                    onClick: () => {
+                        window.location.href = firstConnection.reconnect_url;
+                    },
+                },
+            },
+        );
+    }, [expiredConnections]);
+
+    return null;
+}
 
 // Determine progress bar color based on current theme
 const getProgressBarColor = () => {
@@ -144,6 +196,7 @@ createInertiaApp({
                             initialUser={initialUser}
                         >
                             <App {...props} />
+                            <ExpiredConnectionsToast />
                             <Toaster
                                 richColors
                                 mobileOffset={{ bottom: '110px' }}

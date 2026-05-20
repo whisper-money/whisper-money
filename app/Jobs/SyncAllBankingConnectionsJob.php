@@ -23,15 +23,23 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
         BankingConnection::query()
             ->whereHas('user')
             ->where(function ($query) {
-                $query->where('status', BankingConnectionStatus::Active)
-                    ->orWhere(function ($query) {
-                        $query->where('status', BankingConnectionStatus::Error)
-                            ->where('consecutive_sync_failures', '<', SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES);
+                $query->where(function ($query) {
+                    $query->where(function ($query) {
+                        $query->where('status', BankingConnectionStatus::Active)
+                            ->orWhere(function ($query) {
+                                $query->where('status', BankingConnectionStatus::Error)
+                                    ->where('consecutive_sync_failures', '<', SyncBankingConnectionJob::MAX_SCHEDULED_RETRIES);
+                            });
+                    })->where(function ($query) {
+                        $query->whereNull('valid_until')
+                            ->orWhere('valid_until', '>', now());
                     });
-            })
-            ->where(function ($query) {
-                $query->whereNull('valid_until')
-                    ->orWhere('valid_until', '>', now());
+                })->orWhere(function ($query) {
+                    $query->where('provider', 'enablebanking')
+                        ->where('status', BankingConnectionStatus::Active)
+                        ->whereNotNull('valid_until')
+                        ->where('valid_until', '<=', now());
+                });
             })
             ->where(function ($query) {
                 $query->whereNull('rate_limited_until')

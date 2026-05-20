@@ -128,6 +128,7 @@ Route::middleware(['auth', 'verified'])->prefix('open-banking')->group(function 
     Route::get('institutions', [InstitutionController::class, 'index'])->name('open-banking.institutions');
     Route::post('authorize', [AuthorizationController::class, 'store'])->name('open-banking.authorize');
     Route::post('connections/{connection}/reauthorize', [AuthorizationController::class, 'reauthorize'])->name('open-banking.reauthorize');
+    Route::get('connections/{connection}/reconnect', [AuthorizationController::class, 'reconnect'])->name('open-banking.reconnect');
     Route::get('callback', [AuthorizationController::class, 'callback'])->name('open-banking.callback');
     Route::get('connections/{connection}/map-accounts', [AccountMappingController::class, 'show'])->name('open-banking.map-accounts');
     Route::post('connections/{connection}/map-accounts', [AccountMappingController::class, 'store'])->name('open-banking.map-accounts.store');
