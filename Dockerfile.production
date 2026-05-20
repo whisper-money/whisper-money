@@ -47,17 +47,20 @@ WORKDIR /app
 
 ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 
+# Copy dependency manifests first so Docker can reuse install layers across code changes
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader
+
+COPY package.json bun.lock ./
+COPY scripts ./scripts
+RUN bun install --frozen-lockfile
+
 # Copy application files
 COPY . /app/.
+RUN composer dump-autoload --no-dev --optimize
 
 # Create necessary directories
 RUN mkdir -p /var/log/nginx && mkdir -p /var/cache/nginx
-
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Install Node.js dependencies
-RUN bun install --frozen-lockfile
 
 # Build assets with HIDE_AUTH_BUTTONS=false so Wayfinder generates all routes
 # (HIDE_AUTH_BUTTONS will be set to true at runtime via .env)

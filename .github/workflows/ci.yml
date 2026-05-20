@@ -346,6 +346,7 @@ jobs:
 
   build-image:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: [tests, linter, static-analysis, performance-tests, changes]
     if: ((github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch') && needs.changes.outputs.code == 'true'
     env:
@@ -374,9 +375,6 @@ jobs:
 
           sentry-cli releases set-commits "$SENTRY_RELEASE" --auto --ignore-missing
           sentry-cli releases finalize "$SENTRY_RELEASE"
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -413,9 +411,10 @@ jobs:
 
       - name: Build and push development image
         uses: docker/build-push-action@v6
+        timeout-minutes: 20
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -426,10 +425,11 @@ jobs:
 
       - name: Build and push production image
         uses: docker/build-push-action@v6
+        timeout-minutes: 25
         with:
           context: .
           file: Dockerfile.production
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.production-meta.outputs.tags }}
           labels: ${{ steps.production-meta.outputs.labels }}
