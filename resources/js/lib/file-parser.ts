@@ -603,3 +603,84 @@ export function convertRowsToTransactions(
 
     return results;
 }
+
+/**
+ * Find the latest transaction date (YYYY-MM-DD) from parsed rows using the
+ * provided column mapping and date format. Returns null if no valid dates.
+ */
+export function getLatestTransactionDate(
+    rows: ParsedRow[],
+    mapping: ColumnMapping,
+    dateFormat: DateFormat,
+): string | null {
+    if (!mapping.transaction_date) {
+        return null;
+    }
+
+    let latest: Date | null = null;
+
+    for (const row of rows) {
+        const raw = row[mapping.transaction_date];
+        if (raw === null || raw === undefined || raw === '') {
+            continue;
+        }
+        const parsed = parseDate(raw as string | number, dateFormat);
+        if (!parsed) {
+            continue;
+        }
+        if (!latest || parsed.getTime() > latest.getTime()) {
+            latest = parsed;
+        }
+    }
+
+    return latest ? formatLocalDate(latest) : null;
+}
+
+/**
+ * Given a chronologically sorted list of transactions (any order) and the
+ * balance as of the latest transaction date, compute the end-of-day balance
+ * for every distinct date by walking backwards: subtract each day's net
+ * movement from the next day's balance.
+ *
+ * All amounts/balances are in cents.
+ */
+export function calculateBalancesFromTransactions(
+    transactions: ParsedTransaction[],
+    latestDate: string,
+    referenceBalance: number,
+): Map<string, number> {
+    const dailyNet = new Map<string, number>();
+
+    for (const txn of transactions) {
+        dailyNet.set(
+            txn.transaction_date,
+            (dailyNet.get(txn.transaction_date) ?? 0) + txn.amount,
+        );
+    }
+
+    const dates = Array.from(dailyNet.keys()).sort();
+    const balances = new Map<string, number>();
+
+    if (dates.length === 0) {
+        balances.set(latestDate, referenceBalance);
+        return balances;
+    }
+
+    if (!dailyNet.has(latestDate)) {
+        dates.push(latestDate);
+        dates.sort();
+    }
+
+    balances.set(latestDate, referenceBalance);
+
+    const latestIndex = dates.indexOf(latestDate);
+
+    for (let i = latestIndex - 1; i >= 0; i--) {
+        const nextDate = dates[i + 1];
+        const nextNet = dailyNet.get(nextDate) ?? 0;
+        const nextBalance = balances.get(nextDate) ?? 0;
+        balances.set(dates[i], nextBalance - nextNet);
+    }
+
+    return balances;
+}

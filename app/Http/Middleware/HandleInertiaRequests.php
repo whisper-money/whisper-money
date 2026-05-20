@@ -4,11 +4,13 @@ namespace App\Http\Middleware;
 
 use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
+use App\Features\CalculateBalancesOnImport;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Laravel\Pennant\Feature;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -171,8 +173,13 @@ class HandleInertiaRequests extends Middleware
      */
     protected function resolveFeatureFlags(): array
     {
+        $user = request()->user();
+
         return [
             'cashflow' => true,
+            'calculateBalancesOnImport' => $user
+                ? Feature::for($user)->active(CalculateBalancesOnImport::class)
+                : false,
         ];
     }
 

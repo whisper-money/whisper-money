@@ -2,9 +2,12 @@ import { DateFormat } from '@/types/import';
 import { describe, expect, it } from 'vitest';
 import {
     autoDetectDateFormat,
+    calculateBalancesFromTransactions,
     convertRowsToTransactions,
+    getLatestTransactionDate,
     getLocaleDateFormat,
 } from './file-parser';
+import type { ColumnMapping, ParsedTransaction } from '@/types/import';
 
 describe('getLocaleDateFormat', () => {
     it('returns null for undefined locale', () => {
@@ -149,5 +152,99 @@ describe('autoDetectDateFormat', () => {
         expect(autoDetectDateFormat(data, 'date', 'en-US')).toBe(
             DateFormat.DayMonthYear,
         );
+    });
+});
+
+describe('getLatestTransactionDate', () => {
+    const mapping: ColumnMapping = {
+        transaction_date: 'date',
+        description: 'desc',
+        amount: 'amount',
+        balance: null,
+    };
+
+    it('returns null when no date column set', () => {
+        expect(
+            getLatestTransactionDate(
+                [{ date: '2024-01-01' }],
+                { ...mapping, transaction_date: null },
+                DateFormat.YearMonthDay,
+            ),
+        ).toBeNull();
+    });
+
+    it('returns latest date across rows in YYYY-MM-DD', () => {
+        const rows = [
+            { date: '2024-01-15' },
+            { date: '2024-03-02' },
+            { date: '2024-02-10' },
+        ];
+        expect(
+            getLatestTransactionDate(rows, mapping, DateFormat.YearMonthDay),
+        ).toBe('2024-03-02');
+    });
+
+    it('returns null when rows have no parseable date', () => {
+        const rows = [{ date: '' }, { date: null }];
+        expect(
+            getLatestTransactionDate(rows, mapping, DateFormat.YearMonthDay),
+        ).toBeNull();
+    });
+});
+
+describe('calculateBalancesFromTransactions', () => {
+    function txn(
+        date: string,
+        amount: number,
+    ): ParsedTransaction {
+        return {
+            transaction_date: date,
+            description: 'x',
+            amount,
+        };
+    }
+
+    it('walks balances back across distinct dates', () => {
+        const txns = [
+            txn('2024-01-01', 1000),
+            txn('2024-01-02', -500),
+            txn('2024-01-02', -200),
+            txn('2024-01-03', 300),
+        ];
+        const balances = calculateBalancesFromTransactions(
+            txns,
+            '2024-01-03',
+            10000,
+        );
+        expect(balances.get('2024-01-03')).toBe(10000);
+        // before 03 net (+300): end of 02 = 9700
+        expect(balances.get('2024-01-02')).toBe(9700);
+        // before 02 net (-700): end of 01 = 10400
+        expect(balances.get('2024-01-01')).toBe(10400);
+    });
+
+    it('handles reference date with no transactions on it', () => {
+        const txns = [
+            txn('2024-01-01', 1000),
+            txn('2024-01-02', -200),
+        ];
+        const balances = calculateBalancesFromTransactions(
+            txns,
+            '2024-01-05',
+            5000,
+        );
+        expect(balances.get('2024-01-05')).toBe(5000);
+        expect(balances.get('2024-01-02')).toBe(5000);
+        expect(balances.get('2024-01-01')).toBe(5200);
+    });
+
+    it('returns only reference when no transactions provided', () => {
+        const balances = calculateBalancesFromTransactions(
+            [],
+            '2024-01-05',
+            5000,
+        );
+        expect(balances.size).toBe(1);
+        expect(balances.get('2024-01-05')).toBe(5000);
     });
 });
