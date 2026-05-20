@@ -145,19 +145,34 @@ class AuthorizationController extends Controller
         $errorRedirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
 
         if ($request->has('error')) {
+            $errorDescription = $request->query('error_description');
+            $errorMessage = is_string($errorDescription) && $errorDescription !== ''
+                ? $errorDescription
+                : 'Authorization was denied or cancelled.';
+
             Log::warning('EnableBanking authorization error', [
                 'error' => $request->query('error'),
-                'description' => $request->query('error_description'),
+                'description' => $errorDescription,
             ]);
 
-            $user->bankingConnections()
+            $pendingConnection = $user->bankingConnections()
                 ->where('status', BankingConnectionStatus::Pending)
                 ->latest()
-                ->first()
-                ?->delete();
+                ->first();
+
+            if ($pendingConnection) {
+                if ($pendingConnection->accounts()->exists()) {
+                    $pendingConnection->update([
+                        'status' => BankingConnectionStatus::Error,
+                        'error_message' => $errorMessage,
+                    ]);
+                } else {
+                    $pendingConnection->delete();
+                }
+            }
 
             return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', $request->query('error_description', 'Authorization was denied or cancelled.'));
+                ->with('error', $errorMessage);
         }
 
         $code = $request->query('code');
