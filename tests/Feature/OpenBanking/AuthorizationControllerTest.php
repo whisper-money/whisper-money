@@ -163,6 +163,31 @@ test('callback with error during onboarding redirects to the accounts step', fun
     expect($connection->trashed())->toBeTrue();
 });
 
+test('callback with error during reconnect preserves existing connection', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'ING',
+        'aspsp_country' => 'ES',
+    ]);
+
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/open-banking/callback?error=access_denied&error_description=User+denied+access');
+
+    $response->assertRedirect(route('settings.connections.index'));
+    $response->assertSessionHas('error', 'User denied access');
+
+    $connection->refresh();
+    expect($connection->trashed())->toBeFalse();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+    expect($connection->error_message)->toBe('User denied access');
+});
+
 test('callback without code redirects with error', function () {
     $user = User::factory()->onboarded()->create();
     $response = $this->actingAs($user)->get('/open-banking/callback');
