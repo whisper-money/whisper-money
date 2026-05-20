@@ -22,6 +22,15 @@ beforeEach(function (): void {
     });
 });
 
+it('keeps the previous invite command aliases available', function (string $command): void {
+    $this->artisan($command, ['--dry-run' => true])
+        ->expectsOutput('No pending leads found.')
+        ->assertSuccessful();
+})->with([
+    'singular alias' => 'leads:send-invite',
+    'plural alias' => 'leads:send-invites',
+]);
+
 it('sends invitations to the next batch ordered by position', function (): void {
     UserLead::factory()->count(15)->state(new Sequence(
         ...array_map(fn (int $i) => ['position' => $i, 'email_verified_at' => now()], range(1, 15)),

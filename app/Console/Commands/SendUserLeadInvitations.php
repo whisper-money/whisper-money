@@ -22,6 +22,11 @@ class SendUserLeadInvitations extends Command
 
     protected $description = 'Send launch invitation emails to the next batch of waitlist leads';
 
+    protected $aliases = [
+        'leads:send-invite',
+        'leads:send-invites',
+    ];
+
     public function handle(LeadCohortResolver $resolver, LeadPromoCodeAllocator $allocator): int
     {
         $limit = (int) $this->option('limit');
