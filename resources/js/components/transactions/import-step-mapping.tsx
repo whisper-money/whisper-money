@@ -94,10 +94,13 @@ export function ImportStepMapping({
         onLatestDateChange(latestDate);
     }, [latestDate, onLatestDateChange]);
 
+    const baseMappingValid =
+        !!columnMapping.transaction_date &&
+        !!columnMapping.description &&
+        !!columnMapping.amount;
+
     const isValid =
-        columnMapping.transaction_date &&
-        columnMapping.description &&
-        columnMapping.amount &&
+        baseMappingValid &&
         (!effectiveCalculate ||
             (latestDate !== null &&
                 referenceBalance !== null &&
@@ -416,7 +419,7 @@ export function ImportStepMapping({
                             </div>
 
                             {effectiveCalculate && latestDate && (
-                                <div className="ml-6 space-y-2 rounded-md border bg-muted/30 p-3">
+                                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
                                     <Label htmlFor="reference-balance">
                                         {__('Balance on')}{' '}
                                         {formatRelativeDate(
@@ -447,7 +450,7 @@ export function ImportStepMapping({
                     )}
                 </div>
 
-                {isValid && previewTransactions.length > 0 && (
+                {baseMappingValid && previewTransactions.length > 0 && (
                     <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
                         <Label className="pl-2 text-xs font-light tracking-widest uppercase opacity-50">
                             {__('Preview (first 3 rows)')}
