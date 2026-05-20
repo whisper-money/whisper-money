@@ -16,6 +16,13 @@ import { BudgetPeriod } from '@/types/budget';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
+import {
+    addDays,
+    differenceInCalendarDays,
+    format,
+    parseISO,
+    startOfDay,
+} from 'date-fns';
 import { useMemo } from 'react';
 import { Area, AreaChart, Line, ReferenceLine, XAxis } from 'recharts';
 
@@ -122,15 +129,21 @@ function CustomTooltip({
     );
 }
 
+function toDateKey(date: Date): string {
+    return format(date, 'yyyy-MM-dd');
+}
+
+function parseDateKey(date: string): Date {
+    return startOfDay(parseISO(date));
+}
+
 function buildCumulativeSpending(period: BudgetPeriod): Map<string, number> {
     const transactions = period.budget_transactions || [];
     const transactionsByDate = new Map<string, number>();
 
     transactions.forEach((t) => {
         if (!t.transaction) return;
-        const date = new Date(t.transaction.transaction_date)
-            .toISOString()
-            .split('T')[0];
+        const date = toDateKey(parseISO(t.transaction.transaction_date));
         transactionsByDate.set(
             date,
             (transactionsByDate.get(date) || 0) + t.amount,
@@ -138,6 +151,26 @@ function buildCumulativeSpending(period: BudgetPeriod): Map<string, number> {
     });
 
     return transactionsByDate;
+}
+
+export function getBudgetTodayMarker(
+    currentPeriod: Pick<BudgetPeriod, 'start_date' | 'end_date'>,
+    hasPreviousPeriod: boolean,
+    today: Date = new Date(),
+): string | number | null {
+    const currentDay = startOfDay(today);
+    const start = parseDateKey(currentPeriod.start_date);
+    const end = parseDateKey(currentPeriod.end_date);
+
+    if (currentDay < start || currentDay > end) {
+        return null;
+    }
+
+    if (hasPreviousPeriod) {
+        return differenceInCalendarDays(currentDay, start) + 1;
+    }
+
+    return toDateKey(currentDay);
 }
 
 export function BudgetSpendingChart({
@@ -155,24 +188,24 @@ export function BudgetSpendingChart({
             ? buildCumulativeSpending(previousPeriod)
             : null;
 
-        const startDate = new Date(currentPeriod.start_date);
-        const endDate = new Date(currentPeriod.end_date);
+        const startDate = parseDateKey(currentPeriod.start_date);
+        const endDate = parseDateKey(currentPeriod.end_date);
 
         const prevStartDate = previousPeriod
-            ? new Date(previousPeriod.start_date)
+            ? parseDateKey(previousPeriod.start_date)
             : null;
         const prevEndDate = previousPeriod
-            ? new Date(previousPeriod.end_date)
+            ? parseDateKey(previousPeriod.end_date)
             : null;
 
         const data: ChartDataPoint[] = [];
         let cumulativeSpent = 0;
         let prevCumulativeSpent = 0;
-        const currentDate = new Date(startDate);
+        let currentDate = startDate;
         let dayIndex = 1;
 
         while (currentDate <= endDate) {
-            const dateStr = currentDate.toISOString().split('T')[0];
+            const dateStr = toDateKey(currentDate);
             const dailySpent = currentByDate.get(dateStr) || 0;
             cumulativeSpent += dailySpent;
 
@@ -186,11 +219,10 @@ export function BudgetSpendingChart({
 
             // Map to the same day index in the previous period
             if (prevByDate && prevStartDate && prevEndDate) {
-                const prevDate = new Date(prevStartDate);
-                prevDate.setDate(prevDate.getDate() + dayIndex - 1);
+                const prevDate = addDays(prevStartDate, dayIndex - 1);
 
                 if (prevDate <= prevEndDate) {
-                    const prevDateStr = prevDate.toISOString().split('T')[0];
+                    const prevDateStr = toDateKey(prevDate);
                     const prevDailySpent = prevByDate.get(prevDateStr) || 0;
                     prevCumulativeSpent += prevDailySpent;
                     point.prevSpent = prevCumulativeSpent;
@@ -199,7 +231,7 @@ export function BudgetSpendingChart({
             }
 
             data.push(point);
-            currentDate.setDate(currentDate.getDate() + 1);
+            currentDate = addDays(currentDate, 1);
             dayIndex++;
         }
 
@@ -223,25 +255,10 @@ export function BudgetSpendingChart({
         }),
     } satisfies ChartConfig;
 
-    const todayMarker = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const start = new Date(currentPeriod.start_date);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(currentPeriod.end_date);
-        end.setHours(0, 0, 0, 0);
-
-        if (today < start || today > end) {
-            return null;
-        }
-
-        if (hasPreviousPeriod) {
-            const diffMs = today.getTime() - start.getTime();
-            return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
-        }
-
-        return today.toISOString().split('T')[0];
-    }, [currentPeriod, hasPreviousPeriod]);
+    const todayMarker = useMemo(
+        () => getBudgetTodayMarker(currentPeriod, hasPreviousPeriod),
+        [currentPeriod, hasPreviousPeriod],
+    );
 
     const periodLabel = useMemo(() => {
         const start = formatDate(currentPeriod.start_date, 'MMM d', locale);
