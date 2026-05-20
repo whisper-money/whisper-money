@@ -1,6 +1,6 @@
 import '../css/app.css';
 
-import { createInertiaApp, router, usePage } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import * as Sentry from '@sentry/react';
 import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -62,53 +62,62 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 let hasAttemptedTimezoneBackfill = false;
 const notifiedExpiredConnectionIds = new Set<string>();
 
-function ExpiredConnectionsToast() {
-    const { props } = usePage<SharedData>();
-    const expiredConnections =
-        (props.expiredBankingConnections as
-            | ExpiredBankingConnectionNotification[]
-            | undefined) ?? [];
+function showExpiredConnectionsToast(
+    expiredConnections: ExpiredBankingConnectionNotification[] | undefined,
+): void {
+    if (!expiredConnections || expiredConnections.length === 0) {
+        return;
+    }
 
-    useEffect(() => {
-        if (expiredConnections.length === 0) {
-            return;
-        }
+    const newExpiredConnections = expiredConnections.filter(
+        (connection) => !notifiedExpiredConnectionIds.has(connection.id),
+    );
 
-        const newExpiredConnections = expiredConnections.filter(
-            (connection) => !notifiedExpiredConnectionIds.has(connection.id),
-        );
+    if (newExpiredConnections.length === 0) {
+        return;
+    }
 
-        if (newExpiredConnections.length === 0) {
-            return;
-        }
+    expiredConnections.forEach((connection) => {
+        notifiedExpiredConnectionIds.add(connection.id);
+    });
 
-        expiredConnections.forEach((connection) => {
-            notifiedExpiredConnectionIds.add(connection.id);
-        });
+    const firstConnection = expiredConnections[0];
+    const count = expiredConnections.length;
 
-        const firstConnection = expiredConnections[0];
-        const count = expiredConnections.length;
-
-        toast.error(
-            count === 1
-                ? __('Your :provider connection has expired.', {
-                      provider: firstConnection.aspsp_name,
-                  })
-                : __('You have :count expired bank connections.', {
-                      count,
-                  }),
-            {
-                description: __('Reconnect to resume automatic syncing.'),
-                duration: Infinity,
-                action: {
-                    label: __('Reconnect'),
-                    onClick: () => {
-                        window.location.href = firstConnection.reconnect_url;
-                    },
+    toast.error(
+        count === 1
+            ? __('Your :provider connection has expired.', {
+                  provider: firstConnection.aspsp_name,
+              })
+            : __('You have :count expired bank connections.', {
+                  count,
+              }),
+        {
+            description: __('Reconnect to resume automatic syncing.'),
+            duration: Infinity,
+            action: {
+                label: __('Reconnect'),
+                onClick: () => {
+                    window.location.href = firstConnection.reconnect_url;
                 },
             },
-        );
-    }, [expiredConnections]);
+        },
+    );
+}
+
+function ExpiredConnectionsToast({
+    initialExpiredConnections,
+}: {
+    initialExpiredConnections: ExpiredBankingConnectionNotification[];
+}) {
+    useEffect(() => {
+        showExpiredConnectionsToast(initialExpiredConnections);
+
+        return router.on('navigate', (event) => {
+            const pageProps = event.detail.page.props as unknown as SharedData;
+            showExpiredConnectionsToast(pageProps.expiredBankingConnections);
+        });
+    }, [initialExpiredConnections]);
 
     return null;
 }
@@ -139,6 +148,10 @@ createInertiaApp({
             (initialPageProps?.hasEncryptedAccounts as boolean) ?? false;
         const hasEncryptedTransactions =
             (initialPageProps?.hasEncryptedTransactions as boolean) ?? false;
+        const initialExpiredConnections =
+            (initialPageProps?.expiredBankingConnections as
+                | ExpiredBankingConnectionNotification[]
+                | undefined) ?? [];
 
         const syncUserTimezone = async (pageProps?: Partial<SharedData>) => {
             const user = pageProps?.auth?.user ?? null;
@@ -196,7 +209,11 @@ createInertiaApp({
                             initialUser={initialUser}
                         >
                             <App {...props} />
-                            <ExpiredConnectionsToast />
+                            <ExpiredConnectionsToast
+                                initialExpiredConnections={
+                                    initialExpiredConnections
+                                }
+                            />
                             <Toaster
                                 richColors
                                 mobileOffset={{ bottom: '110px' }}
