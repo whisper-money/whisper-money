@@ -149,6 +149,14 @@ export default function ConnectionsPage({ connections }: Props) {
         );
     }
 
+    function canReconnect(connection: BankingConnection): boolean {
+        return (
+            connection.provider === 'enablebanking' &&
+            (connection.status === 'expired' ||
+                isEnableBankingAuthError(connection))
+        );
+    }
+
     function formatDate(dateString: string | null): string {
         if (!dateString) return __('Never');
         return new Date(dateString).toLocaleDateString(undefined, {
@@ -224,6 +232,29 @@ export default function ConnectionsPage({ connections }: Props) {
                                                     connection.last_synced_at
                                                 }
                                             />
+                                            {connection.status === 'expired' &&
+                                                canReconnect(connection) && (
+                                                    <Button
+                                                        size="sm"
+                                                        disabled={
+                                                            reconnectingId ===
+                                                            connection.id
+                                                        }
+                                                        onClick={() =>
+                                                            handleReconnect(
+                                                                connection,
+                                                            )
+                                                        }
+                                                    >
+                                                        {reconnectingId ===
+                                                        connection.id ? (
+                                                            <Spinner className="mr-1.5 size-3" />
+                                                        ) : (
+                                                            <RotateCcw className="mr-1.5 h-3 w-3" />
+                                                        )}
+                                                        {__('Reconnect')}
+                                                    </Button>
+                                                )}
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button
@@ -263,7 +294,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             )}
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {isEnableBankingAuthError(
+                                                    {canReconnect(
                                                         connection,
                                                     ) && (
                                                         <DropdownMenuItem
