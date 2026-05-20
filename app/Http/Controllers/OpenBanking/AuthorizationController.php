@@ -10,6 +10,7 @@ use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\StartAuthorizationRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -175,10 +176,7 @@ class AuthorizationController extends Controller
                 ->with('error', 'Failed to connect to your bank. Please try again.');
         }
 
-        $connection = $user->bankingConnections()
-            ->where('status', BankingConnectionStatus::Pending)
-            ->latest()
-            ->first();
+        $connection = $this->findPendingConnectionForSession($user, $sessionData);
 
         if (! $connection) {
             return redirect()->route($errorRedirectRoute, $errorRedirectParams)
@@ -219,6 +217,68 @@ class AuthorizationController extends Controller
         }
 
         return redirect()->route('open-banking.map-accounts', $connection);
+    }
+
+    /**
+     * Find the pending connection that belongs to the callback session.
+     *
+     * Multiple reconnection flows may be pending at the same time. Never pick an
+     * arbitrary latest connection, because that can attach one bank's session and
+     * transactions to another bank's existing account.
+     *
+     * @param  array{aspsp?: array{name?: string, country?: string}, accounts?: array<int, array<string, mixed>>}  $sessionData
+     */
+    private function findPendingConnectionForSession(User $user, array $sessionData): ?BankingConnection
+    {
+        $pendingConnections = $user->bankingConnections()
+            ->where('status', BankingConnectionStatus::Pending)
+            ->get();
+
+        if ($pendingConnections->isEmpty()) {
+            return null;
+        }
+
+        $aspspName = $sessionData['aspsp']['name'] ?? null;
+        $aspspCountry = $sessionData['aspsp']['country'] ?? null;
+
+        if (is_string($aspspName) && is_string($aspspCountry)) {
+            $matchedByInstitution = $pendingConnections
+                ->first(fn (BankingConnection $connection): bool => $connection->aspsp_name === $aspspName
+                    && $connection->aspsp_country === $aspspCountry);
+
+            if ($matchedByInstitution) {
+                return $matchedByInstitution;
+            }
+        }
+
+        $ibans = collect($sessionData['accounts'] ?? [])
+            ->map(fn (array $account): ?string => $account['account_id']['iban'] ?? null)
+            ->filter()
+            ->values();
+
+        if ($ibans->isNotEmpty()) {
+            $matchedByIban = $pendingConnections
+                ->first(fn (BankingConnection $connection): bool => $connection->accounts()
+                    ->whereIn('iban', $ibans)
+                    ->exists());
+
+            if ($matchedByIban) {
+                return $matchedByIban;
+            }
+        }
+
+        if ($pendingConnections->count() === 1) {
+            return $pendingConnections->first();
+        }
+
+        Log::warning('Unable to disambiguate pending EnableBanking callback', [
+            'user_id' => $user->id,
+            'pending_connection_ids' => $pendingConnections->pluck('id')->all(),
+            'aspsp_name' => is_string($aspspName) ? $aspspName : null,
+            'aspsp_country' => is_string($aspspCountry) ? $aspspCountry : null,
+        ]);
+
+        return null;
     }
 
     /**
