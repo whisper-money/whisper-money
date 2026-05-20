@@ -461,6 +461,69 @@ test('callback with existing accounts skips mapping on reconnect', function () {
     Queue::assertPushed(SyncBankingConnectionJob::class);
 });
 
+test('callback matches the pending reconnect by institution when multiple reconnects are open', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $bbvaConnection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'BBVA',
+        'aspsp_country' => 'ES',
+        'created_at' => now()->subHours(2),
+    ]);
+    $ingConnection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'ING',
+        'aspsp_country' => 'ES',
+        'created_at' => now()->subHour(),
+    ]);
+
+    $bbvaAccount = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $bbvaConnection->id,
+        'external_account_id' => 'old-bbva-uid',
+        'iban' => 'ES0000000000000000008058',
+    ]);
+    $ingAccount = Account::factory()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $ingConnection->id,
+        'external_account_id' => 'old-ing-uid',
+        'iban' => 'ES0000000000000000001111',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->once()
+        ->andReturn([
+            'session_id' => 'new-bbva-session',
+            'accounts' => [
+                [
+                    'uid' => 'new-bbva-uid',
+                    'currency' => 'EUR',
+                    'name' => 'BBVA Account',
+                    'account_id' => ['iban' => 'ES0000000000000000008058'],
+                ],
+            ],
+            'aspsp' => ['name' => 'BBVA', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $response->assertRedirect(route('settings.connections.index'));
+
+    expect($bbvaConnection->refresh()->status)->toBe(BankingConnectionStatus::Active);
+    expect($bbvaConnection->session_id)->toBe('new-bbva-session');
+    expect($bbvaAccount->refresh()->external_account_id)->toBe('new-bbva-uid');
+    expect($ingConnection->refresh()->status)->toBe(BankingConnectionStatus::Pending);
+    expect($ingConnection->session_id)->toBeNull();
+    expect($ingAccount->refresh()->external_account_id)->toBe('old-ing-uid');
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn (SyncBankingConnectionJob $job): bool => $job->bankingConnection->id === $bbvaConnection->id);
+});
+
 // refreshAccountIds tests
 
 test('reconnect callback updates external_account_id when enable banking issues new account uids', function () {
