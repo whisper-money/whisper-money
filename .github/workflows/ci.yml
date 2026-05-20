@@ -338,6 +338,11 @@ jobs:
               - 'docker/**'
               - '.dockerignore'
               - '.env.example'
+              - '.env.production.example'
+              - 'docker-compose.production.yml'
+              - 'docker-compose.production.local.yml'
+              - 'templates/coolify/**'
+              - '.github/workflows/ci.yml'
 
   build-image:
     runs-on: ubuntu-latest
@@ -392,7 +397,21 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest
 
-      - name: Build and push
+      - name: Extract package version
+        id: package-version
+        run: node -e "console.log('version=' + require('./package.json').version)" >> "$GITHUB_OUTPUT"
+
+      - name: Extract production metadata
+        id: production-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=,suffix=-production
+            type=raw,value=production
+            type=raw,value=v${{ steps.package-version.outputs.version }}-production
+
+      - name: Build and push development image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -404,6 +423,20 @@ jobs:
             SENTRY_RELEASE=${{ env.SENTRY_RELEASE }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build and push production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.production
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.production-meta.outputs.tags }}
+          labels: ${{ steps.production-meta.outputs.labels }}
+          build-args: |
+            SENTRY_RELEASE=${{ env.SENTRY_RELEASE }}
+          cache-from: type=gha,scope=production
+          cache-to: type=gha,mode=max,scope=production
 
   deploy:
     runs-on: ubuntu-latest
