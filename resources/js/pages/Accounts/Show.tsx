@@ -7,7 +7,6 @@ import {
     type ChartComputedData,
 } from '@/components/accounts/account-balance-chart';
 import { BalancesModal } from '@/components/accounts/balances-modal';
-import { DeleteAccountDialog } from '@/components/accounts/delete-account-dialog';
 import { EditAccountDialog } from '@/components/accounts/edit-account-dialog';
 import { EditLoanDetailDialog } from '@/components/accounts/edit-loan-detail-dialog';
 import { ImportBalancesDrawer } from '@/components/accounts/import-balances-drawer';
@@ -92,7 +91,6 @@ export default function AccountShow({
     automationRules = [],
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
-    const [deleteOpen, setDeleteOpen] = useState(false);
     const [updateBalanceOpen, setUpdateBalanceOpen] = useState(false);
     const [updateLoanBalanceOpen, setUpdateLoanBalanceOpen] = useState(false);
     const [importBalancesOpen, setImportBalancesOpen] = useState(false);
@@ -253,13 +251,6 @@ export default function AccountShow({
                                         >
                                             {__('Edit loan details')}
                                         </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            onClick={() => setDeleteOpen(true)}
-                                            variant="destructive"
-                                        >
-                                            {__('Delete')}
-                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </ButtonGroup>
@@ -303,13 +294,6 @@ export default function AccountShow({
                                             onClick={() => setEditOpen(true)}
                                         >
                                             {__('Edit account')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            onClick={() => setDeleteOpen(true)}
-                                            variant="destructive"
-                                        >
-                                            {__('Delete')}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -396,13 +380,7 @@ export default function AccountShow({
                 open={editOpen}
                 onOpenChange={setEditOpen}
                 redirectTo={show.url(account.id)}
-            />
-
-            <DeleteAccountDialog
-                account={account}
-                open={deleteOpen}
-                onOpenChange={setDeleteOpen}
-                redirectTo={index().url}
+                deleteRedirectTo={isConnected ? undefined : index().url}
             />
 
             <UpdateBalanceDialog

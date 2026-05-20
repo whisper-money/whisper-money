@@ -20,6 +20,7 @@ import {
     LoanFormData,
     RealEstateFormData,
 } from './account-form';
+import { DeleteAccountDialog } from './delete-account-dialog';
 
 interface AccountWithDetails extends Account {
     loan_detail?: LoanDetail | null;
@@ -32,6 +33,7 @@ interface EditAccountDialogProps {
     onOpenChange: (open: boolean) => void;
     onSuccess?: () => void;
     redirectTo?: string;
+    deleteRedirectTo?: string;
 }
 
 export function EditAccountDialog({
@@ -40,8 +42,10 @@ export function EditAccountDialog({
     onOpenChange,
     onSuccess,
     redirectTo,
+    deleteRedirectTo,
 }: EditAccountDialogProps) {
     const [decryptedName, setDecryptedName] = useState('');
+    const [deleteOpen, setDeleteOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const formDataRef = useRef<AccountFormData>({
@@ -91,6 +95,7 @@ export function EditAccountDialog({
             loanTermMonths: detail.loan_term_months?.toString() ?? '',
             startDate: detail.start_date?.slice(0, 10) ?? '',
             originalAmount: detail.original_amount ?? 0,
+            linkedRealEstateAccountId: null,
         };
     }, [account.loan_detail]);
 
@@ -328,23 +333,48 @@ export function EditAccountDialog({
                         </div>
                     )}
 
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                            disabled={isSubmitting}
-                        >
-                            {__('Cancel')}
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={isSubmitting || !initialValues}
-                        >
-                            {isSubmitting ? 'Updating...' : 'Update'}
-                        </Button>
+                    <div className="flex items-center justify-between gap-2 pt-4">
+                        {deleteRedirectTo ? (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
+                                onClick={() => setDeleteOpen(true)}
+                                disabled={isSubmitting}
+                            >
+                                {__('Delete account')}
+                            </Button>
+                        ) : (
+                            <span />
+                        )}
+
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onOpenChange(false)}
+                                disabled={isSubmitting}
+                            >
+                                {__('Cancel')}
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isSubmitting || !initialValues}
+                            >
+                                {isSubmitting ? 'Updating...' : 'Update'}
+                            </Button>
+                        </div>
                     </div>
                 </form>
+
+                {deleteRedirectTo && (
+                    <DeleteAccountDialog
+                        account={account}
+                        open={deleteOpen}
+                        onOpenChange={setDeleteOpen}
+                        redirectTo={deleteRedirectTo}
+                    />
+                )}
             </DialogContent>
         </Dialog>
     );
