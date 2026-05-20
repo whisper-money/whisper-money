@@ -6,6 +6,7 @@ use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Mail\BankingConnectionAuthFailedEmail;
+use App\Mail\BankingConnectionExpiredEmail;
 use App\Models\BankingConnection;
 use App\Models\BankingSyncLog;
 use App\Services\Banking\BalanceSyncService;
@@ -76,8 +77,17 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         }
 
         if ($connection->isEnableBanking() && $connection->isExpired()) {
+            $shouldNotify = $connection->status !== BankingConnectionStatus::Expired;
+
             $connection->update(['status' => BankingConnectionStatus::Expired]);
             Log::info('Banking connection expired, skipping sync', ['connection_id' => $connection->id]);
+
+            if ($shouldNotify && $connection->user->canReceiveEmails()) {
+                Mail::to($connection->user)->send(new BankingConnectionExpiredEmail(
+                    $connection->user,
+                    $connection,
+                ));
+            }
 
             $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: ['reason' => 'expired']);
 

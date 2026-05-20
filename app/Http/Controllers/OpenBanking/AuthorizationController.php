@@ -69,12 +69,52 @@ class AuthorizationController extends Controller
             return $this->subscribeJsonResponse();
         }
 
+        $result = $this->startReauthorization($connection, $provider);
+
+        if (isset($result['error'])) {
+            return response()->json(['error' => $result['error']], 422);
+        }
+
+        return response()->json([
+            'redirect_url' => $result['url'],
+            'connection_id' => $connection->id,
+        ]);
+    }
+
+    /**
+     * Start reconnect flow from email or UI links.
+     */
+    public function reconnect(Request $request, BankingConnection $connection, BankingProviderInterface $provider): RedirectResponse
+    {
+        if ($connection->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($this->shouldBlockOpenBankingAccess($request->user())) {
+            return $this->subscribeRedirectResponse();
+        }
+
+        $result = $this->startReauthorization($connection, $provider);
+
+        if (isset($result['error'])) {
+            return redirect()->route('settings.connections.index')
+                ->with('error', $result['error']);
+        }
+
+        return redirect()->away($result['url']);
+    }
+
+    /**
+     * @return array{url?: string, authorization_id?: string, error?: string}
+     */
+    private function startReauthorization(BankingConnection $connection, BankingProviderInterface $provider): array
+    {
         if (! $connection->isEnableBanking()) {
-            return response()->json(['error' => 'Only EnableBanking connections can be re-authorized.'], 422);
+            return ['error' => 'Only EnableBanking connections can be re-authorized.'];
         }
 
         if ($connection->status !== BankingConnectionStatus::Error && ! $connection->isExpired()) {
-            return response()->json(['error' => 'Only connections with an error or expired status can be re-authorized.'], 422);
+            return ['error' => 'Only connections with an error or expired status can be re-authorized.'];
         }
 
         $redirectUrl = config('services.enablebanking.redirect_url');
@@ -91,10 +131,7 @@ class AuthorizationController extends Controller
             'error_message' => null,
         ]);
 
-        return response()->json([
-            'redirect_url' => $result['url'],
-            'connection_id' => $connection->id,
-        ]);
+        return $result;
     }
 
     /**

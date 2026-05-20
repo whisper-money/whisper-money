@@ -43,6 +43,14 @@ export interface Features {
     cashflow: boolean;
 }
 
+export interface ExpiredBankingConnectionNotification {
+    id: UUID;
+    aspsp_name: string;
+    provider: string;
+    valid_until: string | null;
+    reconnect_url: string;
+}
+
 export interface Flash {
     success: string | null;
     error: string | null;
@@ -64,6 +72,7 @@ export interface SharedData {
     pricing: PricingConfig;
     sidebarOpen: boolean;
     features: Features;
+    expiredBankingConnections: ExpiredBankingConnectionNotification[];
     hasEncryptedAccounts: boolean;
     hasEncryptedTransactions: boolean;
     hasEncryptionSetup: boolean;

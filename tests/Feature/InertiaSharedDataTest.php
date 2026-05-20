@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\BankingConnectionStatus;
+use App\Models\BankingConnection;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -41,6 +43,31 @@ test('shared feature flags do not include coinbase flag', function () {
     expect($props['features'])->toBe([
         'cashflow' => true,
     ]);
+});
+
+test('authenticated users receive expired banking connection reconnect links', function () {
+    $user = User::factory()->onboarded()->create();
+    $expiredConnection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Santander',
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->subDay(),
+    ]);
+    BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Fresh Bank',
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->addDay(),
+    ]);
+
+    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('expiredBankingConnections', 1)
+        ->where('expiredBankingConnections.0.id', $expiredConnection->id)
+        ->where('expiredBankingConnections.0.aspsp_name', 'Santander')
+        ->where('expiredBankingConnections.0.reconnect_url', route('open-banking.reconnect', $expiredConnection))
+    );
 });
 
 test('shared currency options split profile and account currencies', function () {

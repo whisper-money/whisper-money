@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Enums\AccountType;
+use App\Enums\BankingConnectionStatus;
+use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
@@ -92,6 +94,25 @@ class HandleInertiaRequests extends Middleware
             'includeRealEstateInNetWorthChart' => $user?->setting->include_real_estate_in_net_worth_chart ?? true,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => $this->resolveFeatureFlags(),
+            'expiredBankingConnections' => fn () => $user ? $user->bankingConnections()
+                ->where('provider', 'enablebanking')
+                ->where(function ($query) {
+                    $query->where('status', BankingConnectionStatus::Expired)
+                        ->orWhere(function ($query) {
+                            $query->whereNotNull('valid_until')
+                                ->where('valid_until', '<=', now());
+                        });
+                })
+                ->orderBy('valid_until')
+                ->limit(5)
+                ->get(['id', 'aspsp_name', 'provider', 'valid_until'])
+                ->map(fn (BankingConnection $connection): array => [
+                    'id' => $connection->id,
+                    'aspsp_name' => $connection->aspsp_name,
+                    'provider' => $connection->provider,
+                    'valid_until' => $connection->valid_until?->toIso8601String(),
+                    'reconnect_url' => route('open-banking.reconnect', $connection),
+                ]) : [],
             'accounts' => fn () => $user ? $user->accounts()
                 ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
                 ->orderBy('name')

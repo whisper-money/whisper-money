@@ -324,6 +324,34 @@ test('reauthorize starts new authorization for expired connections', function ()
     expect($connection->authorization_id)->toBe('new-auth-id-789');
 });
 
+test('reconnect link redirects expired connections to bank authorization', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->expired()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Santander',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->with('Santander', 'ES', config('services.enablebanking.redirect_url'))
+        ->once()
+        ->andReturn([
+            'url' => 'https://bank.example.com/reauthorize',
+            'authorization_id' => 'new-auth-id-987',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->get(route('open-banking.reconnect', $connection));
+
+    $response->assertRedirect('https://bank.example.com/reauthorize');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Pending);
+    expect($connection->authorization_id)->toBe('new-auth-id-987');
+});
+
 test('free tier users cannot reauthorize after onboarding when subscriptions are enabled', function () {
     config(['subscriptions.enabled' => true]);
 

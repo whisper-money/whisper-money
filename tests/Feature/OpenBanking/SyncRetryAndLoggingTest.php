@@ -5,6 +5,7 @@ use App\Enums\BankingSyncLogStatus;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
+use App\Mail\BankingConnectionExpiredEmail;
 use App\Models\Account;
 use App\Models\BankingConnection;
 use App\Models\BankingSyncLog;
@@ -15,6 +16,7 @@ use GuzzleHttp\Psr7\Response;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
 // --- Retry Behavior Tests ---
@@ -359,7 +361,9 @@ test('failed sync creates a failed log entry', function () {
     expect($log->error_class)->toBe(RequestException::class);
 });
 
-test('skipped sync creates a skipped log entry for expired connection', function () {
+test('skipped sync creates a skipped log entry and emails user for newly expired connection', function () {
+    Mail::fake();
+
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
@@ -372,10 +376,17 @@ test('skipped sync creates a skipped log entry for expired connection', function
     $job = new SyncBankingConnectionJob($connection);
     $job->handle($transactionSync, $balanceSync);
 
+    $connection->refresh();
     $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
+    expect($connection->status)->toBe(BankingConnectionStatus::Expired);
     expect($log)->not->toBeNull();
     expect($log->status)->toBe(BankingSyncLogStatus::Skipped);
     expect($log->metadata)->toBe(['reason' => 'expired']);
+
+    Mail::assertQueued(BankingConnectionExpiredEmail::class, function (BankingConnectionExpiredEmail $mail) use ($user, $connection) {
+        return $mail->user->is($user)
+            && $mail->bankingConnection->is($connection);
+    });
 });
 
 test('skipped sync creates a skipped log entry for non-syncable status', function () {
@@ -557,6 +568,23 @@ test('scheduled sync excludes error connections with expired valid_until', funct
     $job->handle();
 
     Queue::assertNotPushed(SyncBankingConnectionJob::class);
+});
+
+test('scheduled sync includes active enablebanking connections whose valid_until expired', function () {
+    Queue::fake(SyncBankingConnectionJob::class);
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'status' => BankingConnectionStatus::Active,
+        'valid_until' => now()->subDay(),
+    ]);
+
+    $job = new SyncAllBankingConnectionsJob;
+    $job->handle();
+
+    Queue::assertPushed(SyncBankingConnectionJob::class, 1);
+    Queue::assertPushed(SyncBankingConnectionJob::class, fn ($job) => $job->bankingConnection->id === $connection->id);
 });
 
 test('scheduled sync skips connections still within rate limit backoff window', function () {
