@@ -55,6 +55,7 @@ export interface ExpiredBankingConnectionNotification {
 export interface Flash {
     success: string | null;
     error: string | null;
+    saved_automation_rule_id?: string | null;
 }
 
 export type ChartColorScheme = 'neutral' | 'colorful' | 'blue' | 'pink';

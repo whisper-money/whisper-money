@@ -69,6 +69,8 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
+                'saved_automation_rule_id' => $request->session()->get('saved_automation_rule_id'),
+                'saved_automation_rule_token' => $request->session()->get('saved_automation_rule_token'),
             ],
             'name' => config('app.name'),
             'appUrl' => config('app.url'),

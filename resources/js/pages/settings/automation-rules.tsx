@@ -16,10 +16,12 @@ import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
+import { ApplyAutomationRuleDialog } from '@/components/automation-rules/apply-automation-rule-dialog';
 import { AutomationRuleActionBadges } from '@/components/automation-rules/automation-rule-action-badges';
 import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
 import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete-automation-rule-dialog';
 import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
+import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
 import {
@@ -71,6 +73,7 @@ function AutomationRuleActions({
 }) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [applyOpen, setApplyOpen] = useState(false);
 
     return (
         <>
@@ -90,6 +93,9 @@ function AutomationRuleActions({
                     <DropdownMenuItem onClick={() => setEditOpen(true)}>
                         {__('Edit')}
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setApplyOpen(true)}>
+                        {__('Apply to existing transactions')}
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
@@ -105,6 +111,11 @@ function AutomationRuleActions({
                 labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
+            />
+            <ApplyAutomationRuleDialog
+                rule={rule}
+                open={applyOpen}
+                onOpenChange={setApplyOpen}
             />
             <DeleteAutomationRuleDialog
                 rule={rule}
@@ -127,6 +138,7 @@ function AutomationRuleRow({
     const rule = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [applyOpen, setApplyOpen] = useState(false);
     const [contextMenuOpen, setContextMenuOpen] = useState(false);
 
     return (
@@ -156,6 +168,9 @@ function AutomationRuleRow({
                     <ContextMenuItem onClick={() => setEditOpen(true)}>
                         {__('Edit')}
                     </ContextMenuItem>
+                    <ContextMenuItem onClick={() => setApplyOpen(true)}>
+                        {__('Apply to existing transactions')}
+                    </ContextMenuItem>
                     <ContextMenuItem
                         onClick={() => setDeleteOpen(true)}
                         variant="destructive"
@@ -171,6 +186,11 @@ function AutomationRuleRow({
                 labels={labels}
                 open={editOpen}
                 onOpenChange={setEditOpen}
+            />
+            <ApplyAutomationRuleDialog
+                rule={rule}
+                open={applyOpen}
+                onOpenChange={setApplyOpen}
             />
             <DeleteAutomationRuleDialog
                 rule={rule}
@@ -352,6 +372,7 @@ export default function AutomationRules() {
                     </div>
                 </div>
             </SettingsLayout>
+            <PostSaveApplyRulePrompt />
         </AppLayout>
     );
 }

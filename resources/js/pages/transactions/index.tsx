@@ -33,6 +33,7 @@ import {
     AutomateCategorizationDialog,
     type AutomateCategorizationCandidate,
 } from '@/components/automation-rules/automate-categorization-dialog';
+import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import HeadingSmall from '@/components/heading-small';
 import { BulkActionsBar } from '@/components/transactions/bulk-actions-bar';
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
@@ -1251,6 +1252,8 @@ export default function Transactions({
                 categories={categories}
                 onOpenChange={setAutomateDialogOpen}
             />
+
+            <PostSaveApplyRulePrompt />
 
             <AlertDialog
                 open={!!deleteTransaction && !isBulkDeleteMode}

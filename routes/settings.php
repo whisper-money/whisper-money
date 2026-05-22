@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\OpenBanking\ConnectionController;
 use App\Http\Controllers\Settings\AccountController;
+use App\Http\Controllers\Settings\AutomationRuleApplicationController;
 use App\Http\Controllers\Settings\AutomationRuleController;
 use App\Http\Controllers\Settings\BankController;
 use App\Http\Controllers\Settings\CategoryController;
@@ -58,6 +59,13 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/automation-rules', [AutomationRuleController::class, 'store'])->name('automation-rules.store');
     Route::patch('settings/automation-rules/{automationRule}', [AutomationRuleController::class, 'update'])->name('automation-rules.update');
     Route::delete('settings/automation-rules/{automationRule}', [AutomationRuleController::class, 'destroy'])->name('automation-rules.destroy');
+
+    Route::get('settings/automation-rules/{automationRule}/matches', [AutomationRuleApplicationController::class, 'matches'])
+        ->name('automation-rules.matches');
+    Route::post('settings/automation-rules/{automationRule}/apply', [AutomationRuleApplicationController::class, 'apply'])
+        ->name('automation-rules.apply');
+    Route::get('settings/automation-rules/apply/status/{jobId}', [AutomationRuleApplicationController::class, 'status'])
+        ->name('automation-rules.apply.status');
 
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');

@@ -46,7 +46,7 @@ export function CreateAutomationRuleDialog({
                     </CreateButton>
                 )}
             </DialogTrigger>
-            <DialogContent className="overflow-x-hidden sm:max-w-[600px]">
+            <DialogContent className="overflow-x-hidden sm:max-w-[640px]">
                 <DialogHeader>
                     <DialogTitle>{__('Create Automation Rule')}</DialogTitle>
                     <DialogDescription>
