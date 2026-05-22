@@ -33,7 +33,7 @@ export function EditAutomationRuleDialog({
 }: EditAutomationRuleDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="overflow-x-hidden sm:max-w-[600px]">
+            <DialogContent className="overflow-x-hidden sm:max-w-[640px]">
                 <DialogHeader>
                     <DialogTitle>{__('Edit Automation Rule')}</DialogTitle>
                     <DialogDescription>

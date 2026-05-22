@@ -34,6 +34,64 @@ class AutomationRuleService
     }
 
     /**
+     * Determine whether a single rule's conditions match the transaction.
+     *
+     * Encrypted transactions are skipped because rule evaluation reads the
+     * plaintext description and notes which the server cannot access.
+     */
+    public function ruleMatches(AutomationRule $rule, Transaction $transaction): bool
+    {
+        if ($transaction->description_iv !== null) {
+            return false;
+        }
+
+        $transactionData = $this->prepareTransactionData($transaction);
+
+        try {
+            $normalizedRulesJson = $this->normalizeRuleJson($rule->rules_json);
+
+            return JsonLogic::apply($normalizedRulesJson, $transactionData) === true;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Apply a single rule's actions to the transaction, ignoring rule
+     * priority and other rules. The transaction must already match the rule.
+     *
+     * Returns true if any attribute of the transaction was changed.
+     */
+    public function applyRuleActions(Transaction $transaction, AutomationRule $rule): bool
+    {
+        return $this->applyActions($transaction, $rule);
+    }
+
+    /**
+     * Whether a transaction should be skipped when "only uncategorized" is on.
+     *
+     * For category-setting rules: skip if the transaction already has a category.
+     * For label-only rules: skip if the transaction already has every label
+     * the rule would add (otherwise a label-only rule could never apply).
+     */
+    public function shouldSkipForOnlyUncategorized(AutomationRule $rule, Transaction $transaction): bool
+    {
+        if ($rule->action_category_id !== null) {
+            return $transaction->category_id !== null;
+        }
+
+        $ruleLabelIds = $rule->labels->pluck('id')->all();
+
+        if (empty($ruleLabelIds)) {
+            return false;
+        }
+
+        $transactionLabelIds = $transaction->labels->pluck('id')->all();
+
+        return empty(array_diff($ruleLabelIds, $transactionLabelIds));
+    }
+
+    /**
      * @return array{description: string, amount: float, transaction_date: string, bank_name: string, account_name: string, category: string|null, notes: string|null}
      */
     private function prepareTransactionData(Transaction $transaction): array
@@ -83,13 +141,14 @@ class AutomationRuleService
         return null;
     }
 
-    private function applyActions(Transaction $transaction, AutomationRule $rule): void
+    private function applyActions(Transaction $transaction, AutomationRule $rule): bool
     {
-        $dirty = false;
+        $changed = false;
 
-        if ($rule->action_category_id) {
+        if ($rule->action_category_id !== null
+            && $transaction->category_id !== $rule->action_category_id) {
             $transaction->category_id = $rule->action_category_id;
-            $dirty = true;
+            $changed = true;
         }
 
         // Only apply plain (unencrypted) notes — encrypted notes require the user's key
@@ -101,18 +160,23 @@ class AutomationRuleService
                 $transaction->notes = $existingNotes
                     ? $existingNotes."\n".$ruleNote
                     : $ruleNote;
-                $dirty = true;
+                $changed = true;
             }
         }
 
-        if ($dirty) {
+        if ($transaction->isDirty()) {
             $transaction->saveQuietly();
         }
 
         $labelIds = $rule->labels->pluck('id')->all();
         if (! empty($labelIds)) {
-            $transaction->labels()->syncWithoutDetaching($labelIds);
+            $result = $transaction->labels()->syncWithoutDetaching($labelIds);
+            if (! empty($result['attached'])) {
+                $changed = true;
+            }
         }
+
+        return $changed;
     }
 
     private function noteAlreadyPresent(string $existingNotes, string $note): bool

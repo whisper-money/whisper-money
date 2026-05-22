@@ -8,6 +8,7 @@ use App\Http\Requests\Settings\UpdateAutomationRuleRequest;
 use App\Models\AutomationRule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,15 +21,7 @@ class AutomationRuleController extends Controller
      */
     public function index(): Response
     {
-        $rules = auth()->user()
-            ->automationRules()
-            ->with(['category:id,name,icon,color', 'labels:id,name,color'])
-            ->orderBy('priority')
-            ->get(['id', 'title', 'priority', 'rules_json', 'action_category_id', 'action_note', 'action_note_iv']);
-
-        return Inertia::render('settings/automation-rules', [
-            'automationRules' => $rules,
-        ]);
+        return Inertia::render('settings/automation-rules');
     }
 
     /**
@@ -47,7 +40,10 @@ class AutomationRuleController extends Controller
             $rule->touch();
         }
 
-        return back();
+        return back()->with([
+            'saved_automation_rule_id' => $rule->id,
+            'saved_automation_rule_token' => (string) Str::uuid(),
+        ]);
     }
 
     /**
@@ -65,7 +61,10 @@ class AutomationRuleController extends Controller
         $automationRule->labels()->sync($labelIds);
         $automationRule->touch();
 
-        return back();
+        return back()->with([
+            'saved_automation_rule_id' => $automationRule->id,
+            'saved_automation_rule_token' => (string) Str::uuid(),
+        ]);
     }
 
     /**
