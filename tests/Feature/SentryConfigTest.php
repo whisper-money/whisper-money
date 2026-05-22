@@ -9,5 +9,6 @@ it('does not wait for registry image publishing before marking a sentry deploy',
 
     expect($workflow)
         ->toContain("deploy:\n    runs-on: ubuntu-latest\n    needs: [tests, linter, static-analysis, performance-tests, changes]")
+        ->toContain('sentry-cli releases new "$SENTRY_RELEASE"')
         ->toContain('run: sentry-cli releases deploys "$SENTRY_RELEASE" new -e production');
 });
