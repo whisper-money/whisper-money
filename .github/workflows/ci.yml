@@ -445,7 +445,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=production
 
   build-arm64-images:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 75
     needs: build-image
     if: needs.build-image.result == 'success'
@@ -457,11 +457,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -633,6 +628,20 @@ jobs:
       - name: Install Sentry CLI
         if: steps.deploy_guard.outputs.should_deploy == 'true'
         run: curl -sL https://sentry.io/get-cli/ | bash
+
+      - name: Create Sentry release
+        if: steps.deploy_guard.outputs.should_deploy == 'true'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          if ! sentry-cli releases info "$SENTRY_RELEASE" >/dev/null 2>&1; then
+            sentry-cli releases new "$SENTRY_RELEASE"
+          fi
+
+          sentry-cli releases set-commits "$SENTRY_RELEASE" --auto --ignore-missing
+          sentry-cli releases finalize "$SENTRY_RELEASE"
 
       - name: Mark Sentry release deployed
         if: steps.deploy_guard.outputs.should_deploy == 'true'
