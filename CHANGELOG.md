@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.2](https://github.com/whisper-money/whisper-money/compare/v0.2.0...v0.2.2) (2026-05-22)
+
+
+### Bug Fixes
+
+* **banking:** dedup EnableBanking transactions by deterministic fingerprint ([#390](https://github.com/whisper-money/whisper-money/issues/390)) ([d9204bb](https://github.com/whisper-money/whisper-money/commit/d9204bb3d611c382493e45691d9ec963a73bf454))
+* **banking:** treat Indexa Capital performance 404 as empty data ([#386](https://github.com/whisper-money/whisper-money/issues/386)) ([06e7eed](https://github.com/whisper-money/whisper-money/commit/06e7eed4e20796accf0555659baeffb481e925bd))
+* **budget:** show today marker ([#411](https://github.com/whisper-money/whisper-money/issues/411)) ([933dfde](https://github.com/whisper-money/whisper-money/commit/933dfdeb1b32ffba04850b973d9c3d4681262053))
+* **connections:** show expired reconnect ([#407](https://github.com/whisper-money/whisper-money/issues/407)) ([d2e00f1](https://github.com/whisper-money/whisper-money/commit/d2e00f14e5302ccd40f620733479fc7a7b410699))
+* keep lead invite command aliases ([#406](https://github.com/whisper-money/whisper-money/issues/406)) ([11f989d](https://github.com/whisper-money/whisper-money/commit/11f989d03af290f9ee32bc6e46fad327dd2c1e03))
+* **notifications:** skip mail dispatch when recipient email is invalid ([#387](https://github.com/whisper-money/whisper-money/issues/387)) ([d140b4f](https://github.com/whisper-money/whisper-money/commit/d140b4fd4cd5402b464c203d619c231db9672ef7))
+* **sentry:** ignore postMessage clone noise ([#373](https://github.com/whisper-money/whisper-money/issues/373)) ([6335287](https://github.com/whisper-money/whisper-money/commit/63352877654bc880e09e36d0a3efada527961d82))
+
+
+### Features
+
+* Coinbase banking integration ([#388](https://github.com/whisper-money/whisper-money/issues/388)) ([e71a743](https://github.com/whisper-money/whisper-money/commit/e71a743a0a6e3a1a6bde5c1bc29df94555f74bd1))
+* **import:** calculate balances from transactions ([#403](https://github.com/whisper-money/whisper-money/issues/403)) ([66ff427](https://github.com/whisper-money/whisper-money/commit/66ff427481dfe0e00cf632e3f0f1caef33238636))
+
 ## [0.2.1](https://github.com/whisper-money/whisper-money/compare/v0.2.0...v0.2.1) (2026-05-12)
 
 
