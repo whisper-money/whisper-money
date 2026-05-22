@@ -52,6 +52,11 @@ export interface ExpiredBankingConnectionNotification {
     reconnect_url: string;
 }
 
+export interface SubscriptionPaymentIssueNotification {
+    status: 'past_due';
+    action_url: string;
+}
+
 export interface Flash {
     success: string | null;
     error: string | null;
@@ -71,6 +76,7 @@ export interface SharedData {
     includeLoansInNetWorthChart: boolean;
     includeRealEstateInNetWorthChart: boolean;
     subscriptionsEnabled: boolean;
+    subscriptionPaymentIssue: SubscriptionPaymentIssueNotification | null;
     pricing: PricingConfig;
     sidebarOpen: boolean;
     features: Features;

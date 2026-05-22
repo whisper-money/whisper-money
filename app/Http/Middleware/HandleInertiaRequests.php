@@ -81,6 +81,10 @@ class HandleInertiaRequests extends Middleware
                 'hasProPlan' => $user?->hasProPlan() ?? false,
                 'isDemoAccount' => $isDemoAccount,
             ],
+            'subscriptionPaymentIssue' => $user?->hasPastDueSubscription() ? [
+                'status' => 'past_due',
+                'action_url' => route('settings.billing.portal'),
+            ] : null,
             'demoCredentials' => ($isDemoQuery || $isDemoAccount) ? [
                 'email' => config('app.demo.email'),
                 'password' => config('app.demo.password'),
