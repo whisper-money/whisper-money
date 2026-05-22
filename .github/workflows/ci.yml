@@ -349,6 +349,10 @@ jobs:
     timeout-minutes: 45
     needs: [tests, linter, static-analysis, performance-tests, changes]
     if: ((github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch') && needs.changes.outputs.code == 'true'
+    outputs:
+      development-digest: ${{ steps.development-image.outputs.digest }}
+      production-digest: ${{ steps.production-image.outputs.digest }}
+      package-version: ${{ steps.package-version.outputs.version }}
     env:
       SENTRY_RELEASE: whisper-money@${{ github.sha }}
     permissions:
@@ -410,6 +414,7 @@ jobs:
             type=raw,value=v${{ steps.package-version.outputs.version }}-production
 
       - name: Build and push development image
+        id: development-image
         uses: docker/build-push-action@v6
         timeout-minutes: 20
         with:
@@ -424,6 +429,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push production image
+        id: production-image
         uses: docker/build-push-action@v6
         timeout-minutes: 25
         with:
@@ -438,9 +444,120 @@ jobs:
           cache-from: type=gha,scope=production
           cache-to: type=gha,mode=max,scope=production
 
+  build-arm64-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    needs: build-image
+    if: needs.build-image.result == 'success'
+    env:
+      SENTRY_RELEASE: whisper-money@${{ github.sha }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Extract production metadata
+        id: production-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=,suffix=-production
+            type=raw,value=production
+            type=raw,value=v${{ needs.build-image.outputs.package-version }}-production
+
+      - name: Build and push arm64 development image by digest
+        id: development-arm64
+        uses: docker/build-push-action@v6
+        timeout-minutes: 30
+        with:
+          context: .
+          platforms: linux/arm64
+          tags: ghcr.io/${{ github.repository }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            SENTRY_RELEASE=${{ env.SENTRY_RELEASE }}
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64
+
+      - name: Publish multi-platform development manifests
+        env:
+          AMD64_DIGEST: ${{ needs.build-image.outputs.development-digest }}
+          ARM64_DIGEST: ${{ steps.development-arm64.outputs.digest }}
+          IMAGE: ghcr.io/${{ github.repository }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+
+            docker buildx imagetools create \
+              --tag "$tag" \
+              "$IMAGE@$AMD64_DIGEST" \
+              "$IMAGE@$ARM64_DIGEST"
+          done <<< "$TAGS"
+
+      - name: Build and push arm64 production image by digest
+        id: production-arm64
+        uses: docker/build-push-action@v6
+        timeout-minutes: 40
+        with:
+          context: .
+          file: Dockerfile.production
+          platforms: linux/arm64
+          tags: ghcr.io/${{ github.repository }}
+          labels: ${{ steps.production-meta.outputs.labels }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            SENTRY_RELEASE=${{ env.SENTRY_RELEASE }}
+          cache-from: type=gha,scope=production-arm64
+          cache-to: type=gha,mode=max,scope=production-arm64
+
+      - name: Publish multi-platform production manifests
+        env:
+          AMD64_DIGEST: ${{ needs.build-image.outputs.production-digest }}
+          ARM64_DIGEST: ${{ steps.production-arm64.outputs.digest }}
+          IMAGE: ghcr.io/${{ github.repository }}
+          TAGS: ${{ steps.production-meta.outputs.tags }}
+        run: |
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+
+            docker buildx imagetools create \
+              --tag "$tag" \
+              "$IMAGE@$AMD64_DIGEST" \
+              "$IMAGE@$ARM64_DIGEST"
+          done <<< "$TAGS"
+
   deploy:
     runs-on: ubuntu-latest
-    needs: [build-image, changes]
+    needs: [tests, linter, static-analysis, performance-tests, changes]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.code == 'true'
     env:
       SENTRY_RELEASE: whisper-money@${{ github.sha }}
