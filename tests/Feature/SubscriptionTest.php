@@ -102,6 +102,54 @@ test('subscribed users can access protected routes', function () {
     $this->get(route('dashboard'))->assertOk();
 });
 
+test('past due subscribed users can access protected routes during stripe retries', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_past_due_test123',
+        'stripe_status' => 'past_due',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertOk();
+});
+
+test('canceled subscribed users can use free plan without bank connections', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_canceled_test123',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_test123',
+        'ends_at' => now()->subMinute(),
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertOk();
+});
+
+test('canceled subscribed users cannot use paid bank connection features', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+    BankingConnection::factory()->for($user)->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_canceled_with_bank_test123',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_test123',
+        'ends_at' => now()->subMinute(),
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertRedirect(route('subscribe'));
+});
+
 test('users can view the success page after subscribing', function () {
     $user = User::factory()->onboarded()->create();
 
@@ -157,6 +205,22 @@ test('hasProPlan returns true for subscribed users', function () {
     ]);
 
     expect($user->hasProPlan())->toBeTrue();
+});
+
+test('hasProPlan returns true for past due users during stripe retries', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_past_due_test123',
+        'stripe_status' => 'past_due',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    expect($user->hasProPlan())->toBeTrue();
+    expect($user->hasPastDueSubscription())->toBeTrue();
 });
 
 test('landing page passes subscriptions enabled prop when enabled', function () {

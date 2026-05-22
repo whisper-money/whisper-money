@@ -166,6 +166,19 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->subscribed('default');
     }
 
+    public function hasPastDueSubscription(): bool
+    {
+        if (! config('subscriptions.enabled')) {
+            return false;
+        }
+
+        $subscription = $this->subscription('default');
+
+        return $subscription !== null
+            && $subscription->stripe_status === 'past_due'
+            && ! $subscription->ended();
+    }
+
     /**
      * The tax rates that should apply to the customer's subscriptions.
      *

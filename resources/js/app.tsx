@@ -26,6 +26,7 @@ import {
     isFacebookInAppBrowserJavaBridgeNoise,
     isPostMessageDataCloneNoise,
 } from './lib/sentry';
+import { showSubscriptionPaymentIssueToast } from './lib/subscription-payment-issue-toast';
 import type { ExpiredBankingConnectionNotification, SharedData } from './types';
 import { __, setTranslations } from './utils/i18n';
 
@@ -152,6 +153,8 @@ createInertiaApp({
             (initialPageProps?.expiredBankingConnections as
                 | ExpiredBankingConnectionNotification[]
                 | undefined) ?? [];
+        const initialSubscriptionPaymentIssue =
+            initialPageProps?.subscriptionPaymentIssue;
 
         const syncUserTimezone = async (pageProps?: Partial<SharedData>) => {
             const user = pageProps?.auth?.user ?? null;
@@ -190,8 +193,14 @@ createInertiaApp({
                 (pageProps?.translations as Record<string, string>) ?? {},
             );
 
+            showSubscriptionPaymentIssueToast(
+                pageProps.subscriptionPaymentIssue,
+            );
+
             void syncUserTimezone(pageProps);
         });
+
+        showSubscriptionPaymentIssueToast(initialSubscriptionPaymentIssue);
 
         void syncUserTimezone(initialPageProps);
 

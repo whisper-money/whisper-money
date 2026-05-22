@@ -46,6 +46,43 @@ test('shared feature flags do not include coinbase flag', function () {
     ]);
 });
 
+test('authenticated users receive subscription payment issue when subscription is past due', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_past_due_test123',
+        'stripe_status' => 'past_due',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('subscriptionPaymentIssue.status', 'past_due')
+        ->where('subscriptionPaymentIssue.action_url', route('settings.billing.portal'))
+    );
+});
+
+test('authenticated users do not receive subscription payment issue when subscription is active', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->onboarded()->create();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_active_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('subscriptionPaymentIssue', null)
+    );
+});
+
 test('authenticated users receive expired banking connection reconnect links', function () {
     $user = User::factory()->onboarded()->create();
     $expiredConnection = BankingConnection::factory()->create([
