@@ -4,6 +4,7 @@ import { useCountUp } from '@/hooks/use-count-up';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import { index as connectionsIndex } from '@/routes/settings/connections';
 import { checkout } from '@/routes/subscribe';
 import { type SharedData } from '@/types';
 import { Plan } from '@/types/pricing';
@@ -34,6 +35,7 @@ interface PaywallStats {
 interface PaywallPageProps extends SharedData {
     stats: PaywallStats;
     canUseFreePlan: boolean;
+    canManageConnectionsForFreePlan: boolean;
 }
 
 function getEquivalentBillingLabel(
@@ -332,11 +334,13 @@ function PricingSection({
     defaultPlan,
     currency,
     canUseFreePlan,
+    canManageConnectionsForFreePlan,
 }: {
     planEntries: [string, Plan][];
     defaultPlan: string;
     currency: string;
     canUseFreePlan: boolean;
+    canManageConnectionsForFreePlan: boolean;
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
     const [freeButtonVisible, setFreeButtonVisible] = useState(false);
@@ -380,6 +384,23 @@ function PricingSection({
                 </Button>
             </a>
 
+            {canManageConnectionsForFreePlan && (
+                <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                    <p className="mb-3 text-sm text-muted-foreground">
+                        {__(
+                            'Want to continue for free? Disconnect all bank connections in Settings.',
+                        )}
+                    </p>
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => router.visit(connectionsIndex().url)}
+                    >
+                        {__('Go to Settings')}
+                    </Button>
+                </div>
+            )}
+
             {canUseFreePlan && (
                 <div
                     className={cn(
@@ -403,7 +424,7 @@ function PricingSection({
 }
 
 export default function Paywall() {
-    const { pricing, stats, canUseFreePlan } =
+    const { pricing, stats, canUseFreePlan, canManageConnectionsForFreePlan } =
         usePage<PaywallPageProps>().props;
     const planEntries = Object.entries(pricing.plans);
 
@@ -426,6 +447,9 @@ export default function Paywall() {
                         defaultPlan={pricing.defaultPlan}
                         currency={pricing.currency}
                         canUseFreePlan={canUseFreePlan}
+                        canManageConnectionsForFreePlan={
+                            canManageConnectionsForFreePlan
+                        }
                     />
                 </div>
             </div>

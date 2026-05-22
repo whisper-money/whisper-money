@@ -24,7 +24,8 @@ class SubscriptionController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $canUseFreePlan = ! $user->bankingConnections()->exists();
+        $hasBankConnections = $user->bankingConnections()->exists();
+        $canUseFreePlan = ! $hasBankConnections;
 
         // Mark the paywall as seen so the middleware stops redirecting here.
         if ($canUseFreePlan && ! $user->hasSeenPaywall()) {
@@ -34,6 +35,9 @@ class SubscriptionController extends Controller
         return Inertia::render('subscription/paywall', [
             'stats' => $this->getUserStats($user),
             'canUseFreePlan' => $canUseFreePlan,
+            'canManageConnectionsForFreePlan' => $user->isOnboarded()
+                && $hasBankConnections
+                && $user->hasCanceledSubscription(),
         ]);
     }
 

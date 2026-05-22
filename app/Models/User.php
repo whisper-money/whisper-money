@@ -179,6 +179,19 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             && ! $subscription->ended();
     }
 
+    public function hasCanceledSubscription(): bool
+    {
+        if (! config('subscriptions.enabled')) {
+            return false;
+        }
+
+        $subscription = $this->subscription('default');
+
+        return $subscription !== null
+            && $subscription->stripe_status === 'canceled'
+            && $subscription->ended();
+    }
+
     /**
      * The tax rates that should apply to the customer's subscriptions.
      *

@@ -150,6 +150,73 @@ test('canceled subscribed users cannot use paid bank connection features', funct
     $this->get(route('dashboard'))->assertRedirect(route('subscribe'));
 });
 
+test('canceled subscribed users with bank connections can access connections settings', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+    BankingConnection::factory()->for($user)->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_canceled_settings_test123',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_test123',
+        'ends_at' => now()->subMinute(),
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('settings.connections.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('settings/connections')
+            ->has('connections', 1)
+        );
+});
+
+test('paywall lets canceled subscribed users with bank connections manage connections for free plan', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+    BankingConnection::factory()->for($user)->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_canceled_manage_connections_test123',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_test123',
+        'ends_at' => now()->subMinute(),
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('canUseFreePlan', false)
+            ->where('canManageConnectionsForFreePlan', true)
+        );
+});
+
+test('paywall does not show manage connections option during onboarding', function () {
+    $user = User::factory()->notOnboarded()->create(['paywall_seen_at' => now()]);
+    BankingConnection::factory()->for($user)->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_canceled_onboarding_test123',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_test123',
+        'ends_at' => now()->subMinute(),
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('canManageConnectionsForFreePlan', false)
+        );
+});
+
 test('users can view the success page after subscribing', function () {
     $user = User::factory()->onboarded()->create();
 
@@ -336,6 +403,7 @@ test('paywall shows canUseFreePlan false when user has a bank connection', funct
         ->assertInertia(fn ($page) => $page
             ->component('subscription/paywall')
             ->where('canUseFreePlan', false)
+            ->where('canManageConnectionsForFreePlan', false)
         );
 });
 
