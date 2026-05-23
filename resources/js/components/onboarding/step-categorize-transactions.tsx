@@ -1,3 +1,4 @@
+import { ApplyCategorizerAutomationRulesDialog } from '@/components/automation-rules/apply-categorizer-automation-rules-dialog';
 import { AutomationRulesDialog } from '@/components/automation-rules/automation-rules-dialog';
 import { StepButton } from '@/components/onboarding/step-button';
 import { CategorizerCard } from '@/components/transactions/categorizer-card';
@@ -59,10 +60,15 @@ export function StepCategorizeTransactions({
         setSearchValue,
         rulesDialogOpen,
         setRulesDialogOpen,
+        automationPreviewOpen,
+        automationPreviewMatches,
+        isApplyingAutomationPreview,
         categorizedCount,
         handleCategorySelect,
         handleSkip,
         handleRulesDialogClose,
+        handleAutomationPreviewOpenChange,
+        handleApplyAutomationPreview,
         commandInputRef,
     } = useCategorizeTransactions({
         categories,
@@ -367,6 +373,14 @@ export function StepCategorizeTransactions({
             <AutomationRulesDialog
                 open={rulesDialogOpen}
                 onOpenChange={handleRulesDialogCloseWithHint}
+            />
+            <ApplyCategorizerAutomationRulesDialog
+                open={automationPreviewOpen}
+                matches={automationPreviewMatches}
+                categories={categories}
+                applying={isApplyingAutomationPreview}
+                onOpenChange={handleAutomationPreviewOpenChange}
+                onApply={handleApplyAutomationPreview}
             />
         </div>
     );
