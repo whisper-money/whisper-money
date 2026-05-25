@@ -3,17 +3,14 @@ import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { captureEvent } from '@/lib/posthog';
-import { evaluateRules } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
-import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import {
     type DecryptedTransaction,
     type Transaction,
 } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { parseISO } from 'date-fns';
 import {
     createElement,
@@ -84,9 +81,6 @@ export function useCategorizeTransactions({
     transactions: initialTransactions,
 }: UseCategorizeTransactionsOptions) {
     const { isKeySet } = useEncryptionKey();
-    const { automationRules: sharedAutomationRules } = usePage<{
-        automationRules: AutomationRule[];
-    }>().props;
 
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
         DecryptedTransaction[]
@@ -103,21 +97,9 @@ export function useCategorizeTransactions({
     const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
     const [automateCandidate, setAutomateCandidate] =
         useState<AutomateCategorizationCandidate | null>(null);
-    const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
+    const [, setEncryptionKey] = useState<CryptoKey | null>(null);
     const [categorizedCount, setCategorizedCount] = useState(0);
     const commandInputRef = useRef<HTMLInputElement>(null);
-
-    const automationRules = useMemo(
-        () =>
-            sharedAutomationRules.map((rule) => ({
-                ...rule,
-                rules_json:
-                    typeof rule.rules_json === 'string'
-                        ? JSON.parse(rule.rules_json)
-                        : rule.rules_json,
-            })) as AutomationRule[],
-        [sharedAutomationRules],
-    );
 
     useEffect(() => {
         setCategoryUsageOrder(getCategoryUsageOrder());
@@ -248,87 +230,13 @@ export function useCategorizeTransactions({
         return sortCategoriesByUsage(categories, categoryUsageOrder);
     }, [categories, categoryUsageOrder]);
 
-    const applyAutomationRulesToQueue = useCallback(async () => {
-        if (
-            !encryptionKey ||
-            !automationRules.length ||
-            uncategorizedTransactions.length === 0
-        ) {
-            return;
+    const handleRulesDialogClose = useCallback((open: boolean) => {
+        setRulesDialogOpen(open);
+
+        if (!open) {
+            commandInputRef.current?.focus();
         }
-
-        const remainingTransactions =
-            uncategorizedTransactions.slice(currentIndex);
-        let appliedCount = 0;
-        const newUncategorizedList: DecryptedTransaction[] = [
-            ...uncategorizedTransactions.slice(0, currentIndex),
-        ];
-
-        for (const transaction of remainingTransactions) {
-            const result = await evaluateRules(
-                transaction,
-                automationRules,
-                categories,
-                accounts,
-                banks,
-                encryptionKey,
-            );
-
-            if (result?.categoryId) {
-                try {
-                    await transactionSyncService.update(transaction.id, {
-                        category_id: result.categoryId,
-                    });
-                    appliedCount++;
-
-                    const matchedCategory = categories.find(
-                        (c) => c.id === result.categoryId,
-                    );
-                    if (matchedCategory) {
-                        updateCategoryUsageOrder(matchedCategory.id);
-                    }
-                } catch (error) {
-                    console.error(
-                        'Failed to apply automation rule to transaction:',
-                        error,
-                    );
-                    newUncategorizedList.push(transaction);
-                }
-            } else {
-                newUncategorizedList.push(transaction);
-            }
-        }
-
-        if (appliedCount > 0) {
-            setCategoryUsageOrder(getCategoryUsageOrder());
-            setUncategorizedTransactions(newUncategorizedList);
-            setCurrentIndex(
-                Math.min(currentIndex, newUncategorizedList.length),
-            );
-        }
-
-        return appliedCount;
-    }, [
-        encryptionKey,
-        automationRules,
-        uncategorizedTransactions,
-        currentIndex,
-        categories,
-        accounts,
-        banks,
-    ]);
-
-    const handleRulesDialogClose = useCallback(
-        async (open: boolean) => {
-            setRulesDialogOpen(open);
-
-            if (!open) {
-                await applyAutomationRulesToQueue();
-                commandInputRef.current?.focus();
-            }
-        },
-        [applyAutomationRulesToQueue],
-    );
+    }, []);
 
     const handleCategorySelect = useCallback(
         async (category: Category) => {
@@ -426,11 +334,10 @@ export function useCategorizeTransactions({
         }
     }, []);
 
-    const handleAutomateSaved = useCallback(async () => {
+    const handleAutomateSaved = useCallback(() => {
         setAutomateDialogOpen(false);
-        await applyAutomationRulesToQueue();
         commandInputRef.current?.focus();
-    }, [applyAutomationRulesToQueue]);
+    }, []);
 
     const handlePrevious = useCallback(() => {
         if (animationState !== 'idle' || currentIndex === 0) {
