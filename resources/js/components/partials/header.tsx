@@ -106,42 +106,40 @@ export default function Header({
                             ])}
                         />
                     )}
-                    {!hideAuthButtons && (
-                        <>
-                            {auth.user ? (
-                                <Link href={dashboard()}>
+                    {auth.user ? (
+                        <Link href={dashboard()}>
+                            <Button
+                                size="sm"
+                                className="cursor-pointer rounded-full"
+                            >
+                                {__('Dashboard')}
+                            </Button>
+                        </Link>
+                    ) : (
+                        !hideAuthButtons && (
+                            <>
+                                <Link href={login({ query: { force: 1 } })}>
                                     <Button
+                                        variant={'ghost'}
                                         size="sm"
                                         className="cursor-pointer rounded-full"
                                     >
-                                        {__('Dashboard')}
+                                        {__('Log in')}
                                     </Button>
                                 </Link>
-                            ) : (
-                                <>
-                                    <Link href={login({ query: { force: 1 } })}>
+                                {canRegister && (
+                                    <Link href="/register">
                                         <Button
-                                            variant={'ghost'}
+                                            variant="default"
                                             size="sm"
                                             className="cursor-pointer rounded-full"
                                         >
-                                            {__('Log in')}
+                                            {__('Register')}
                                         </Button>
                                     </Link>
-                                    {canRegister && (
-                                        <Link href="/register">
-                                            <Button
-                                                variant="default"
-                                                size="sm"
-                                                className="cursor-pointer rounded-full"
-                                            >
-                                                {__('Register')}
-                                            </Button>
-                                        </Link>
-                                    )}
-                                </>
-                            )}
-                        </>
+                                )}
+                            </>
+                        )
                     )}
                 </nav>
             </header>
@@ -217,39 +215,35 @@ export default function Header({
                                 ])}
                             />
                         )}
-                        {!hideAuthButtons && (
-                            <>
-                                {auth.user ? (
-                                    <Link href={dashboard()}>
-                                        <Button className="cursor-pointer">
-                                            {__('Dashboard')}
+                        {auth.user ? (
+                            <Link href={dashboard()}>
+                                <Button className="cursor-pointer">
+                                    {__('Dashboard')}
+                                </Button>
+                            </Link>
+                        ) : (
+                            !hideAuthButtons && (
+                                <>
+                                    <Link href={login({ query: { force: 1 } })}>
+                                        <Button
+                                            variant={'ghost'}
+                                            className="cursor-pointer"
+                                        >
+                                            {__('Log in')}
                                         </Button>
                                     </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href={login({ query: { force: 1 } })}
-                                        >
+                                    {canRegister && (
+                                        <Link href="/register">
                                             <Button
-                                                variant={'ghost'}
+                                                variant="default"
                                                 className="cursor-pointer"
                                             >
-                                                {__('Log in')}
+                                                {__('Register')}
                                             </Button>
                                         </Link>
-                                        {canRegister && (
-                                            <Link href="/register">
-                                                <Button
-                                                    variant="default"
-                                                    className="cursor-pointer"
-                                                >
-                                                    {__('Register')}
-                                                </Button>
-                                            </Link>
-                                        )}
-                                    </>
-                                )}
-                            </>
+                                    )}
+                                </>
+                            )
                         )}
                     </nav>
                 </div>
