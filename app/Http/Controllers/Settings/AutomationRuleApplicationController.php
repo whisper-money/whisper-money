@@ -177,10 +177,15 @@ class AutomationRuleApplicationController extends Controller
 
         $ids = [];
 
+        $eagerLoads = $service->eagerLoadsForRuleEvaluation($rule);
+        if ($onlyUncategorized && $rule->action_category_id === null) {
+            $eagerLoads[] = 'labels';
+        }
+
         Transaction::query()
             ->where('user_id', $rule->user_id)
             ->whereNull('description_iv')
-            ->with(['account.bank', 'category', 'labels'])
+            ->with(array_values(array_unique($eagerLoads)))
             ->orderByDesc('transaction_date')
             ->orderByDesc('created_at')
             ->chunkById(500, function ($transactions) use ($rule, $service, $onlyUncategorized, &$ids) {

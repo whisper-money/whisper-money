@@ -11,6 +11,7 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 
@@ -84,6 +85,36 @@ test('matches endpoint skips already categorized when only_uncategorized is true
         ->getJson(route('automation-rules.matches', $this->rule).'?only_uncategorized=0');
 
     $allResponse->assertOk()->assertJsonPath('total', 2);
+});
+
+test('matches endpoint avoids repeated relationship queries for description-only rules', function () {
+    Transaction::factory()->enableBanking()->count(501)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Grocery Store',
+        'amount' => -1000,
+    ]);
+
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $queries[] = $query->sql;
+    });
+
+    $this->actingAs($this->user)
+        ->getJson(route('automation-rules.matches', $this->rule))
+        ->assertOk()
+        ->assertJsonPath('total', 501);
+
+    $accountEagerLoadQueries = collect($queries)
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "accounts"') || str_contains($query, 'from `accounts`'))
+            && (str_contains($query, '"accounts"."id" in') || str_contains($query, '`accounts`.`id` in')));
+    $bankEagerLoadQueries = collect($queries)
+        ->filter(fn (string $query): bool => (str_contains($query, 'from "banks"') || str_contains($query, 'from `banks`'))
+            && (str_contains($query, '"banks"."id" in') || str_contains($query, '`banks`.`id` in')));
+
+    expect($accountEagerLoadQueries)->toHaveCount(1)
+        ->and($bankEagerLoadQueries)->toHaveCount(1);
 });
 
 test('matches endpoint deduplicates cached matching transaction ids', function () {
