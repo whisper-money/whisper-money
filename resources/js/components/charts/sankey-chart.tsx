@@ -55,9 +55,8 @@ const COLUMN_POSITIONS = [0.25, 0.5, 0.75];
 const NODE_WIDTH = 8;
 const NODE_PADDING = 6;
 const MIN_NODE_HEIGHT = 20;
-const VIEWBOX_WIDTH = 900;
-const MIN_RENDERED_WIDTH = 700;
-const MAX_RENDERED_WIDTH = 1200;
+const MIN_RENDERED_WIDTH = 400;
+const MAX_RENDERED_WIDTH = 800;
 
 interface OtherCategoriesBreakdownProps {
     categories: SankeyCategory[];
@@ -153,7 +152,7 @@ export function SankeyChart({
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
-    const [renderedWidth, setRenderedWidth] = useState(VIEWBOX_WIDTH);
+    const [renderedWidth, setRenderedWidth] = useState(MAX_RENDERED_WIDTH);
     const containerRef = useRef<HTMLDivElement>(null);
     const locale = useLocale();
     const { isPrivacyModeEnabled } = usePrivacyMode();
@@ -394,7 +393,7 @@ export function SankeyChart({
         );
     }
 
-    const width = VIEWBOX_WIDTH;
+    const width = renderedWidth;
 
     return (
         <div
