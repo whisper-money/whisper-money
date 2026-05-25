@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.3](https://github.com/whisper-money/whisper-money/compare/v0.2.2...v0.2.3) (2026-05-25)
+
+
+### Bug Fixes
+
+* allow managing canceled connections ([#417](https://github.com/whisper-money/whisper-money/issues/417)) ([eaba315](https://github.com/whisper-money/whisper-money/commit/eaba3151967a942044cffbd33c0dcee8d00cb457))
+* build arm64 images on native runners ([#419](https://github.com/whisper-money/whisper-money/issues/419)) ([364c72d](https://github.com/whisper-money/whisper-money/commit/364c72db72812e337a08813019bfd8d6c84ce1a3))
+* preview categorizer rule application ([#421](https://github.com/whisper-money/whisper-money/issues/421)) ([faf046b](https://github.com/whisper-money/whisper-money/commit/faf046b3c4213417190504cd0b7491012e7fcffd))
+* publish arm64 docker images asynchronously ([#418](https://github.com/whisper-money/whisper-money/issues/418)) ([4411601](https://github.com/whisper-money/whisper-money/commit/44116010dee35eb93b6826e4c955d0c662aa5927)), closes [#412](https://github.com/whisper-money/whisper-money/issues/412)
+
+
+### Features
+
+* keep past due subscriptions active ([#416](https://github.com/whisper-money/whisper-money/issues/416)) ([88faa5b](https://github.com/whisper-money/whisper-money/commit/88faa5beb60c8b9948ff11284609b21fbfebee30))
+* **mail:** use AWS SES for email delivery ([#422](https://github.com/whisper-money/whisper-money/issues/422)) ([d8bb78e](https://github.com/whisper-money/whisper-money/commit/d8bb78e5e096938292d0a971637d077d76cf61a8))
+
 ## [0.2.2](https://github.com/whisper-money/whisper-money/compare/v0.2.0...v0.2.2) (2026-05-22)
 
 
