@@ -61,8 +61,8 @@ export function PeriodNavigation({
     };
 
     return (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <ButtonGroup>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <ButtonGroup className="w-full sm:w-fit">
                 {periodTypeOptions.map((option) => (
                     <Button
                         key={option.value}
@@ -72,6 +72,7 @@ export function PeriodNavigation({
                         }
                         onClick={() => onPeriodTypeChange(option.value)}
                         className={cn(
+                            'flex-1 sm:flex-none',
                             periodType === option.value &&
                                 'border-primary bg-primary text-primary-foreground',
                         )}
@@ -81,7 +82,7 @@ export function PeriodNavigation({
                 ))}
             </ButtonGroup>
 
-            <ButtonGroup>
+            <ButtonGroup className="w-full sm:w-fit">
                 <Button
                     variant="outline"
                     size="icon"
@@ -91,7 +92,11 @@ export function PeriodNavigation({
                     <ChevronLeft className="size-4" />
                 </Button>
 
-                <Button onClick={handleCurrentPeriod} variant="outline">
+                <Button
+                    onClick={handleCurrentPeriod}
+                    variant="outline"
+                    className="flex-1 sm:flex-none"
+                >
                     {formatPeriodLabel(currentDate, periodType, locale)}
                 </Button>
 
