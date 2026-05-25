@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "aws/aws-sdk-php": "^3.382",
         "firebase/php-jwt": "^7.0",
         "inertiajs/inertia-laravel": "^2.0",
         "intervention/image": "^3.0",
