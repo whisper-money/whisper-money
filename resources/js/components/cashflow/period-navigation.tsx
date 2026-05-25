@@ -31,11 +31,11 @@ interface PeriodNavigationProps {
 
 const periodTypeOptions: Array<{
     value: CashflowPeriodType;
-    label: string;
+    labelKey: string;
 }> = [
-    { value: 'month', label: __('Month') },
-    { value: 'quarter', label: __('Quarter') },
-    { value: 'year', label: __('Year') },
+    { value: 'month', labelKey: 'Month' },
+    { value: 'quarter', labelKey: 'Quarter' },
+    { value: 'year', labelKey: 'Year' },
 ];
 
 export function PeriodNavigation({
@@ -77,7 +77,7 @@ export function PeriodNavigation({
                                 'border-primary bg-primary text-primary-foreground',
                         )}
                     >
-                        {option.label}
+                        {__(option.labelKey)}
                     </Button>
                 ))}
             </ButtonGroup>
