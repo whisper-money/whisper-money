@@ -257,6 +257,16 @@ export default function Categories() {
                         className:
                             'bg-zinc-50 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-100',
                     },
+                    savings: {
+                        label: __('Savings'),
+                        className:
+                            'bg-lime-50 text-lime-700 dark:bg-lime-700 dark:text-lime-100',
+                    },
+                    investment: {
+                        label: __('Investment'),
+                        className:
+                            'bg-emerald-50 text-emerald-700 dark:bg-emerald-700 dark:text-emerald-100',
+                    },
                 };
                 const cashflowDirectionConfig = {
                     hidden: __('Do not show'),

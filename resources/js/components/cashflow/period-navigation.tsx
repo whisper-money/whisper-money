@@ -1,60 +1,166 @@
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
+import { CashflowPeriodType } from '@/hooks/use-cashflow-data';
 import { useLocale } from '@/hooks/use-locale';
-import { formatMonthYear } from '@/utils/date';
+import { cn } from '@/lib/utils';
+import { formatDate, formatMonthYear } from '@/utils/date';
 import { __ } from '@/utils/i18n';
-import { addMonths, isSameMonth, subMonths } from 'date-fns';
+import {
+    addMonths,
+    addQuarters,
+    addYears,
+    getQuarter,
+    isSameMonth,
+    isSameQuarter,
+    isSameYear,
+    startOfMonth,
+    startOfQuarter,
+    startOfYear,
+    subMonths,
+    subQuarters,
+    subYears,
+} from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PeriodNavigationProps {
     currentDate: Date;
+    periodType: CashflowPeriodType;
     onDateChange: (date: Date) => void;
+    onPeriodTypeChange: (periodType: CashflowPeriodType) => void;
 }
+
+const periodTypeOptions: Array<{
+    value: CashflowPeriodType;
+    label: string;
+}> = [
+    { value: 'month', label: __('Month') },
+    { value: 'quarter', label: __('Quarter') },
+    { value: 'year', label: __('Year') },
+];
 
 export function PeriodNavigation({
     currentDate,
+    periodType,
     onDateChange,
+    onPeriodTypeChange,
 }: PeriodNavigationProps) {
     const locale = useLocale();
     const now = new Date();
-    const isCurrentMonth = isSameMonth(currentDate, now);
+    const isCurrentPeriod = samePeriod(currentDate, now, periodType);
 
-    const handlePrevMonth = () => {
-        onDateChange(subMonths(currentDate, 1));
+    const handlePreviousPeriod = () => {
+        onDateChange(shiftPeriod(currentDate, periodType, -1));
     };
 
-    const handleNextMonth = () => {
-        onDateChange(addMonths(currentDate, 1));
+    const handleNextPeriod = () => {
+        onDateChange(shiftPeriod(currentDate, periodType, 1));
     };
 
-    const handleCurrentMonth = () => {
+    const handleCurrentPeriod = () => {
         onDateChange(now);
     };
 
     return (
-        <ButtonGroup>
-            <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePrevMonth}
-                aria-label={__('Previous month')}
-            >
-                <ChevronLeft className="size-4" />
-            </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <ButtonGroup>
+                {periodTypeOptions.map((option) => (
+                    <Button
+                        key={option.value}
+                        type="button"
+                        variant={
+                            periodType === option.value ? 'default' : 'outline'
+                        }
+                        onClick={() => onPeriodTypeChange(option.value)}
+                        className={cn(
+                            periodType === option.value &&
+                                'border-primary bg-primary text-primary-foreground',
+                        )}
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </ButtonGroup>
 
-            <Button onClick={handleCurrentMonth} variant="outline">
-                {formatMonthYear(currentDate, locale)}
-            </Button>
+            <ButtonGroup>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handlePreviousPeriod}
+                    aria-label={__('Previous period')}
+                >
+                    <ChevronLeft className="size-4" />
+                </Button>
 
-            <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNextMonth}
-                disabled={isCurrentMonth}
-                aria-label={__('Next month')}
-            >
-                <ChevronRight className="size-4" />
-            </Button>
-        </ButtonGroup>
+                <Button onClick={handleCurrentPeriod} variant="outline">
+                    {formatPeriodLabel(currentDate, periodType, locale)}
+                </Button>
+
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleNextPeriod}
+                    disabled={isCurrentPeriod}
+                    aria-label={__('Next period')}
+                >
+                    <ChevronRight className="size-4" />
+                </Button>
+            </ButtonGroup>
+        </div>
     );
+}
+
+function shiftPeriod(
+    date: Date,
+    periodType: CashflowPeriodType,
+    amount: 1 | -1,
+): Date {
+    if (periodType === 'quarter') {
+        const quarterStart = startOfQuarter(date);
+
+        return amount > 0
+            ? addQuarters(quarterStart, 1)
+            : subQuarters(quarterStart, 1);
+    }
+
+    if (periodType === 'year') {
+        const yearStart = startOfYear(date);
+
+        return amount > 0 ? addYears(yearStart, 1) : subYears(yearStart, 1);
+    }
+
+    const monthStart = startOfMonth(date);
+
+    return amount > 0 ? addMonths(monthStart, 1) : subMonths(monthStart, 1);
+}
+
+function samePeriod(
+    left: Date,
+    right: Date,
+    periodType: CashflowPeriodType,
+): boolean {
+    if (periodType === 'quarter') {
+        return isSameQuarter(left, right);
+    }
+
+    if (periodType === 'year') {
+        return isSameYear(left, right);
+    }
+
+    return isSameMonth(left, right);
+}
+
+function formatPeriodLabel(
+    date: Date,
+    periodType: CashflowPeriodType,
+    locale: string,
+): string {
+    if (periodType === 'quarter') {
+        return `${__('Q')}${getQuarter(date)} ${formatDate(date, 'yyyy', locale)}`;
+    }
+
+    if (periodType === 'year') {
+        return formatDate(date, 'yyyy', locale);
+    }
+
+    return formatMonthYear(date, locale);
 }

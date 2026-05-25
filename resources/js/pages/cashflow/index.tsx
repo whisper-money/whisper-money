@@ -5,13 +5,23 @@ import { SavingsRateCard } from '@/components/cashflow/savings-rate-card';
 import { CashflowTrendChart, SankeyChart } from '@/components/charts';
 import HeadingSmall from '@/components/heading-small';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useCashflowData } from '@/hooks/use-cashflow-data';
+import { CashflowPeriodType, useCashflowData } from '@/hooks/use-cashflow-data';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { cashflow } from '@/routes';
 import { BreadcrumbItem } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
-import { endOfMonth, format, parse, startOfMonth } from 'date-fns';
+import {
+    endOfMonth,
+    endOfQuarter,
+    endOfYear,
+    format,
+    getQuarter,
+    parse,
+    startOfMonth,
+    startOfQuarter,
+    startOfYear,
+} from 'date-fns';
 import { useEffect, useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -21,34 +31,101 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function CashflowPage() {
-    const { auth, period: initialPeriod } = usePage<{
-        auth: { user: { currency_code: string } };
-        period: string | null;
-    }>().props;
+function parsePeriodParam(
+    period: string | null,
+    periodType: CashflowPeriodType,
+): Date {
+    if (!period) {
+        return new Date();
+    }
 
-    // Initialize currentDate from server-provided period prop or default to current month
-    const [currentDate, setCurrentDate] = useState<Date>(() => {
-        if (initialPeriod) {
-            try {
-                // Parse YYYY-MM format
-                const parsedDate = parse(initialPeriod, 'yyyy-MM', new Date());
-                // Validate it's a valid date
-                if (!isNaN(parsedDate.getTime())) {
-                    return parsedDate;
-                }
-            } catch {
-                // Fall through to default
+    try {
+        if (periodType === 'quarter') {
+            const match = /^(\d{4})-Q([1-4])$/.exec(period);
+
+            if (match) {
+                return new Date(Number(match[1]), (Number(match[2]) - 1) * 3);
             }
         }
 
-        return new Date();
-    });
+        if (periodType === 'year') {
+            const match = /^(\d{4})$/.exec(period);
 
-    const period = {
+            if (match) {
+                return new Date(Number(match[1]), 0);
+            }
+        }
+
+        const parsedDate = parse(period, 'yyyy-MM', new Date());
+
+        if (!isNaN(parsedDate.getTime())) {
+            return parsedDate;
+        }
+    } catch {
+        return new Date();
+    }
+
+    return new Date();
+}
+
+function getPeriodRange(
+    currentDate: Date,
+    periodType: CashflowPeriodType,
+): { from: Date; to: Date } {
+    if (periodType === 'quarter') {
+        return {
+            from: startOfQuarter(currentDate),
+            to: endOfQuarter(currentDate),
+        };
+    }
+
+    if (periodType === 'year') {
+        return {
+            from: startOfYear(currentDate),
+            to: endOfYear(currentDate),
+        };
+    }
+
+    return {
         from: startOfMonth(currentDate),
         to: endOfMonth(currentDate),
     };
+}
+
+function formatPeriodParam(
+    currentDate: Date,
+    periodType: CashflowPeriodType,
+): string {
+    if (periodType === 'quarter') {
+        return `${format(currentDate, 'yyyy')}-Q${getQuarter(currentDate)}`;
+    }
+
+    if (periodType === 'year') {
+        return format(currentDate, 'yyyy');
+    }
+
+    return format(currentDate, 'yyyy-MM');
+}
+
+export default function CashflowPage() {
+    const {
+        auth,
+        period: initialPeriod,
+        periodType: initialPeriodType,
+    } = usePage<{
+        auth: { user: { currency_code: string } };
+        period: string | null;
+        periodType: CashflowPeriodType;
+    }>().props;
+
+    const [periodType, setPeriodType] =
+        useState<CashflowPeriodType>(initialPeriodType);
+
+    const [currentDate, setCurrentDate] = useState<Date>(() =>
+        parsePeriodParam(initialPeriod, initialPeriodType),
+    );
+
+    const period = getPeriodRange(currentDate, periodType);
 
     const {
         summary,
@@ -57,21 +134,24 @@ export default function CashflowPage() {
         incomeBreakdown,
         expenseBreakdown,
         isLoading,
-    } = useCashflowData(period);
+    } = useCashflowData({ ...period, periodType });
 
-    // Update URL when currentDate changes
     useEffect(() => {
-        const periodParam = format(currentDate, 'yyyy-MM');
+        const periodParam = formatPeriodParam(currentDate, periodType);
 
-        // Only update if the period has changed
-        if (initialPeriod !== periodParam) {
-            router.visit(cashflow({ query: { period: periodParam } }).url, {
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-            });
+        if (initialPeriod !== periodParam || initialPeriodType !== periodType) {
+            router.visit(
+                cashflow({
+                    query: { period: periodParam, period_type: periodType },
+                }).url,
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
+            );
         }
-    }, [currentDate, initialPeriod]);
+    }, [currentDate, initialPeriod, initialPeriodType, periodType]);
 
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
@@ -88,7 +168,9 @@ export default function CashflowPage() {
 
                     <PeriodNavigation
                         currentDate={currentDate}
+                        periodType={periodType}
                         onDateChange={setCurrentDate}
+                        onPeriodTypeChange={setPeriodType}
                     />
                 </div>
 
@@ -105,6 +187,7 @@ export default function CashflowPage() {
                         current={summary.current}
                         previous={summary.previous}
                         loading={isLoading}
+                        currency={auth.user.currency_code}
                     />
                 </div>
 
@@ -113,6 +196,7 @@ export default function CashflowPage() {
                     data={trend}
                     loading={isLoading}
                     currency={auth.user.currency_code}
+                    periodType={periodType}
                 />
 
                 {/* Sankey Diagram */}

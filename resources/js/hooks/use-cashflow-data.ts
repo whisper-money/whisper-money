@@ -2,11 +2,15 @@ import { Category } from '@/types/category';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 
+export type CashflowPeriodType = 'month' | 'quarter' | 'year';
+
 export interface CashflowSummary {
     income: number;
     expense: number;
     net: number;
     savings_rate: number;
+    savings: number;
+    investments: number;
 }
 
 export interface SankeyCategory {
@@ -58,6 +62,7 @@ export interface CashflowData {
 interface UseCashflowDataOptions {
     from: Date;
     to: Date;
+    periodType: CashflowPeriodType;
 }
 
 const emptyBreakdown: BreakdownData = {
@@ -71,11 +76,14 @@ const emptySummary: CashflowSummary = {
     expense: 0,
     net: 0,
     savings_rate: 0,
+    savings: 0,
+    investments: 0,
 };
 
 export function useCashflowData({
     from,
     to,
+    periodType,
 }: UseCashflowDataOptions): CashflowData & { refetch: () => void } {
     const [data, setData] = useState<Omit<CashflowData, 'isLoading'>>({
         summary: { current: emptySummary, previous: emptySummary },
@@ -102,6 +110,8 @@ export function useCashflowData({
                 to: toStr,
             });
             const periodQuery = `?${periodParams.toString()}`;
+            const trendQuery =
+                periodType === 'month' ? `?months=12&to=${toStr}` : periodQuery;
 
             const [summary, sankey, trend, incomeBreakdown, expenseBreakdown] =
                 await Promise.all([
@@ -111,8 +121,8 @@ export function useCashflowData({
                     fetch(`/api/cashflow/sankey${periodQuery}`).then((r) =>
                         r.json(),
                     ),
-                    fetch(`/api/cashflow/trend?months=12&to=${toStr}`).then(
-                        (r) => r.json(),
+                    fetch(`/api/cashflow/trend${trendQuery}`).then((r) =>
+                        r.json(),
                     ),
                     fetch(
                         `/api/cashflow/breakdown${periodQuery}&type=income`,
@@ -134,7 +144,7 @@ export function useCashflowData({
         } finally {
             setIsLoading(false);
         }
-    }, [from, to]);
+    }, [from, periodType, to]);
 
     useEffect(() => {
         fetchData();

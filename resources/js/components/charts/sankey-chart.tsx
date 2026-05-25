@@ -19,7 +19,7 @@ import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface SankeyChartProps {
     data: SankeyData;
@@ -55,6 +55,8 @@ const COLUMN_POSITIONS = [0.25, 0.5, 0.75];
 const NODE_WIDTH = 8;
 const NODE_PADDING = 6;
 const MIN_NODE_HEIGHT = 20;
+const MIN_RENDERED_WIDTH = 400;
+const MAX_RENDERED_WIDTH = 800;
 
 interface OtherCategoriesBreakdownProps {
     categories: SankeyCategory[];
@@ -150,6 +152,8 @@ export function SankeyChart({
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+    const [renderedWidth, setRenderedWidth] = useState(MAX_RENDERED_WIDTH);
+    const containerRef = useRef<HTMLDivElement>(null);
     const locale = useLocale();
     const { isPrivacyModeEnabled } = usePrivacyMode();
 
@@ -157,6 +161,38 @@ export function SankeyChart({
         const formatted = formatCurrency(value, currency, locale, 0, 0);
         return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
     };
+
+    useEffect(() => {
+        const container = containerRef.current;
+
+        if (!container) {
+            return;
+        }
+
+        const updateWidth = () => {
+            setRenderedWidth(
+                Math.round(
+                    Math.min(
+                        MAX_RENDERED_WIDTH,
+                        Math.max(MIN_RENDERED_WIDTH, container.clientWidth),
+                    ),
+                ),
+            );
+        };
+
+        updateWidth();
+
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', updateWidth);
+
+            return () => window.removeEventListener('resize', updateWidth);
+        }
+
+        const observer = new ResizeObserver(updateWidth);
+        observer.observe(container);
+
+        return () => observer.disconnect();
+    }, []);
 
     const { nodes, links, isEmpty, otherGroups } = useMemo(() => {
         const {
@@ -357,14 +393,17 @@ export function SankeyChart({
         );
     }
 
-    const width = 600; // SVG viewBox width
+    const width = renderedWidth;
 
     return (
-        <div className={cn('w-full overflow-x-auto', className)}>
+        <div
+            ref={containerRef}
+            className={cn('w-full overflow-x-auto', className)}
+        >
             <svg
                 viewBox={`0 0 ${width} ${height}`}
-                className="w-full"
-                style={{ minWidth: 400, maxWidth: '100%' }}
+                className="mx-auto block"
+                style={{ width: renderedWidth, minWidth: MIN_RENDERED_WIDTH }}
                 preserveAspectRatio="xMidYMid meet"
             >
                 {/* Links */}
@@ -536,7 +575,7 @@ export function SankeyChart({
                                               : 'middle'
                                     }
                                     dominantBaseline="middle"
-                                    className="fill-foreground text-[9px] font-medium"
+                                    className="fill-foreground text-[11px] font-medium"
                                 >
                                     {node.label}
                                     {isOtherNode && (
@@ -564,7 +603,7 @@ export function SankeyChart({
                                               : 'middle'
                                     }
                                     dominantBaseline="middle"
-                                    className="fill-muted-foreground text-[9px]"
+                                    className="fill-muted-foreground text-[11px]"
                                 >
                                     {maskIfPrivate(node.value)}
                                 </text>

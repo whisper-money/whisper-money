@@ -27,6 +27,7 @@ import {
     CATEGORY_TYPES,
     getCategoryColorClasses,
     getCategoryTypeLabel,
+    type CategoryType,
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
@@ -40,7 +41,7 @@ export function CreateCategoryDialog({
     onSuccess?: () => void;
 }) {
     const [open, setOpen] = useState(false);
-    const [selectedType, setSelectedType] = useState<string>('');
+    const [selectedType, setSelectedType] = useState<CategoryType | ''>('');
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -157,7 +158,9 @@ export function CreateCategoryDialog({
                                 <Select
                                     name="type"
                                     required
-                                    onValueChange={setSelectedType}
+                                    onValueChange={(value) =>
+                                        setSelectedType(value as CategoryType)
+                                    }
                                 >
                                     <SelectTrigger>
                                         <SelectValue
@@ -190,13 +193,7 @@ export function CreateCategoryDialog({
                             </div>
 
                             <CategoryCashflowDirectionFields
-                                selectedType={
-                                    selectedType as
-                                        | 'income'
-                                        | 'expense'
-                                        | 'transfer'
-                                        | ''
-                                }
+                                selectedType={selectedType}
                             />
 
                             <div className="flex justify-end gap-2">

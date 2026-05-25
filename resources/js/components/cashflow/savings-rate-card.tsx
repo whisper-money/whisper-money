@@ -1,3 +1,4 @@
+import { AmountDisplay } from '@/components/ui/amount-display';
 import {
     Card,
     CardContent,
@@ -14,12 +15,14 @@ interface SavingsRateCardProps {
     current: CashflowSummary;
     previous: CashflowSummary;
     loading?: boolean;
+    currency?: string;
 }
 
 export function SavingsRateCard({
     current,
     previous,
     loading,
+    currency = 'USD',
 }: SavingsRateCardProps) {
     if (loading) {
         return (
@@ -84,15 +87,34 @@ export function SavingsRateCard({
                         </div>
                     )}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                    {current.savings_rate >= 20
-                        ? __("Great job! You're saving well.")
-                        : current.savings_rate >= 10
-                          ? __('Good progress on your savings.')
-                          : current.savings_rate >= 0
-                            ? __('Consider saving more if possible.')
-                            : __('Spending exceeds income this period.')}
-                </p>
+                <div className="mt-3 grid grid-cols-2 gap-4 border-t pt-3">
+                    <div>
+                        <p className="text-xs text-muted-foreground">
+                            {__('Saved')}
+                        </p>
+                        <AmountDisplay
+                            amountInCents={current.savings}
+                            currencyCode={currency}
+                            minimumFractionDigits={0}
+                            maximumFractionDigits={0}
+                            weight="medium"
+                            highlightPositive
+                        />
+                    </div>
+                    <div>
+                        <p className="text-xs text-muted-foreground">
+                            {__('Invested')}
+                        </p>
+                        <AmountDisplay
+                            amountInCents={current.investments}
+                            currencyCode={currency}
+                            minimumFractionDigits={0}
+                            maximumFractionDigits={0}
+                            weight="medium"
+                            highlightPositive
+                        />
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );

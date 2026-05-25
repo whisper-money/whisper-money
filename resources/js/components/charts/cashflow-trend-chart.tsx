@@ -7,7 +7,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
-import { TrendDataPoint } from '@/hooks/use-cashflow-data';
+import { CashflowPeriodType, TrendDataPoint } from '@/hooks/use-cashflow-data';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,7 @@ interface CashflowTrendChartProps {
     loading?: boolean;
     className?: string;
     currency?: string;
+    periodType?: CashflowPeriodType;
 }
 
 interface TooltipPayloadItem {
@@ -126,6 +127,7 @@ export function CashflowTrendChart({
     loading,
     className,
     currency = 'USD',
+    periodType = 'month',
 }: CashflowTrendChartProps) {
     const locale = useLocale();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -176,9 +178,13 @@ export function CashflowTrendChart({
                     {__('Cashflow Trend')}
                 </CardTitle>
                 <CardDescription>
-                    {__(
-                        'Monthly income, expenses, and net cashflow over the last 12 months',
-                    )}
+                    {periodType === 'month'
+                        ? __(
+                              'Monthly income, expenses, and net cashflow over the last 12 months',
+                          )
+                        : __(
+                              'Monthly income, expenses, and net cashflow for the selected period',
+                          )}
                 </CardDescription>
             </CardHeader>
             <CardContent>
