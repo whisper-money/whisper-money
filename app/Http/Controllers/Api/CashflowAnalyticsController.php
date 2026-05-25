@@ -174,6 +174,8 @@ class CashflowAnalyticsController extends Controller
     {
         $income = $this->sumTransactions($transactions, $userCurrency, CategoryType::Income);
         $expense = abs($this->sumTransactions($transactions, $userCurrency, CategoryType::Expense));
+        $savings = $this->sumOutflowTransactions($transactions, $userCurrency, CategoryType::Savings);
+        $investments = $this->sumOutflowTransactions($transactions, $userCurrency, CategoryType::Investment);
 
         $net = $income - $expense;
         $savingsRate = $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0;
@@ -183,6 +185,8 @@ class CashflowAnalyticsController extends Controller
             'expense' => $expense,
             'net' => $net,
             'savings_rate' => $savingsRate,
+            'savings' => $savings,
+            'investments' => $investments,
         ];
     }
 
@@ -198,6 +202,14 @@ class CashflowAnalyticsController extends Controller
                     && $this->matchesSign($transaction->amount, $type === CategoryType::Income ? '>' : '<');
             })
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
+    }
+
+    private function sumOutflowTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
+    {
+        return abs($transactions
+            ->filter(fn (Transaction $transaction): bool => $this->categoryType($transaction) === $type
+                && $transaction->amount < 0)
+            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency)));
     }
 
     private function getSankeyBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, string $operator): Collection

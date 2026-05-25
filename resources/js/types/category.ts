@@ -105,7 +105,13 @@ export const CATEGORY_COLORS = [
 
 export type CategoryColor = (typeof CATEGORY_COLORS)[number];
 
-export const CATEGORY_TYPES = ['income', 'expense', 'transfer'] as const;
+export const CATEGORY_TYPES = [
+    'income',
+    'expense',
+    'transfer',
+    'savings',
+    'investment',
+] as const;
 
 export type CategoryType = (typeof CATEGORY_TYPES)[number];
 
@@ -113,6 +119,8 @@ const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = {
     income: 'Income',
     expense: 'Expense',
     transfer: 'Transfer',
+    savings: 'Savings',
+    investment: 'Investment',
 };
 
 export function getCategoryTypeLabel(type: CategoryType): string {

@@ -26,6 +26,7 @@ import {
     getCategoryColorClasses,
     getCategoryTypeLabel,
     type Category,
+    type CategoryType,
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
@@ -46,7 +47,9 @@ export function EditCategoryDialog({
     onOpenChange,
     onSuccess,
 }: EditCategoryDialogProps) {
-    const [selectedType, setSelectedType] = useState<string>(category.type);
+    const [selectedType, setSelectedType] = useState<CategoryType>(
+        category.type,
+    );
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -168,7 +171,9 @@ export function EditCategoryDialog({
                                     name="type"
                                     defaultValue={category.type}
                                     required
-                                    onValueChange={setSelectedType}
+                                    onValueChange={(value) =>
+                                        setSelectedType(value as CategoryType)
+                                    }
                                 >
                                     <SelectTrigger>
                                         <SelectValue
@@ -201,12 +206,7 @@ export function EditCategoryDialog({
                             </div>
 
                             <CategoryCashflowDirectionFields
-                                selectedType={
-                                    selectedType as
-                                        | 'income'
-                                        | 'expense'
-                                        | 'transfer'
-                                }
+                                selectedType={selectedType}
                                 defaultValue={category.cashflow_direction}
                             />
 

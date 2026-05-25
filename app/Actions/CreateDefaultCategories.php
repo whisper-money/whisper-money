@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\CategoryCashflowDirection;
+use App\Enums\CategoryType;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -280,22 +281,19 @@ class CreateDefaultCategories
                 'name' => 'Investments',
                 'icon' => 'LineChart',
                 'color' => 'lime',
-                'type' => 'transfer',
-                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
+                'type' => CategoryType::Investment->value,
             ],
             [
                 'name' => 'Savings',
                 'icon' => 'PiggyBank',
                 'color' => 'lime',
-                'type' => 'transfer',
-                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
+                'type' => CategoryType::Savings->value,
             ],
             [
                 'name' => 'Other investments',
                 'icon' => 'TrendingUp',
                 'color' => 'lime',
-                'type' => 'transfer',
-                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
+                'type' => CategoryType::Investment->value,
             ],
             [
                 'name' => 'Financial services and commission',

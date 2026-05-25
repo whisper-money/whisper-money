@@ -7,6 +7,8 @@ export interface CashflowSummary {
     expense: number;
     net: number;
     savings_rate: number;
+    savings: number;
+    investments: number;
 }
 
 export interface SankeyCategory {
@@ -71,6 +73,8 @@ const emptySummary: CashflowSummary = {
     expense: 0,
     net: 0,
     savings_rate: 0,
+    savings: 0,
+    investments: 0,
 };
 
 export function useCashflowData({

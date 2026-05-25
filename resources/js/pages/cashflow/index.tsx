@@ -105,6 +105,7 @@ export default function CashflowPage() {
                         current={summary.current}
                         previous={summary.previous}
                         loading={isLoading}
+                        currency={auth.user.currency_code}
                     />
                 </div>
 
