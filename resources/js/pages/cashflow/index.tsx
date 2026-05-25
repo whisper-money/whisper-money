@@ -158,7 +158,7 @@ export default function CashflowPage() {
             <Head title={__('Cashflow')} />
 
             <div className="space-y-6 p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <HeadingSmall
                         title={__('Cashflow')}
                         description={__(
