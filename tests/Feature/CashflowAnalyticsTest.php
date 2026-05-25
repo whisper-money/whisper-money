@@ -252,7 +252,7 @@ test('cashflow summary includes actual saved and invested amounts', function () 
         ->assertJsonPath('current.income', 100000)
         ->assertJsonPath('current.expense', 40000)
         ->assertJsonPath('current.net', 60000)
-        ->assertJsonPath('current.savings_rate', 60.0)
+        ->assertJsonPath('current.savings_rate', 60)
         ->assertJsonPath('current.savings', 25000)
         ->assertJsonPath('current.investments', 15000);
 });
