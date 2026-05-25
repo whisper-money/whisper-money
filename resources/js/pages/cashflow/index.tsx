@@ -61,7 +61,9 @@ function parsePeriodParam(
         if (!isNaN(parsedDate.getTime())) {
             return parsedDate;
         }
-    } catch {}
+    } catch {
+        return new Date();
+    }
 
     return new Date();
 }
