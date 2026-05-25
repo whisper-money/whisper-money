@@ -1,7 +1,7 @@
 import { categorize as categorizeRoute } from '@/actions/App/Http/Controllers/TransactionController';
-import { ApplyCategorizerAutomationRulesDialog } from '@/components/automation-rules/apply-categorizer-automation-rules-dialog';
 import { AutomateCategorizationDialog } from '@/components/automation-rules/automate-categorization-dialog';
 import { AutomationRulesDialog } from '@/components/automation-rules/automation-rules-dialog';
+import { PostSaveApplyRulePrompt } from '@/components/automation-rules/post-save-apply-rule-prompt';
 import { CategorizerCard } from '@/components/transactions/categorizer-card';
 import { CategorizerCommand } from '@/components/transactions/categorizer-command';
 import { Button } from '@/components/ui/button';
@@ -55,17 +55,12 @@ export default function CategorizeTransactions({
         setRulesDialogOpen,
         automateDialogOpen,
         automateCandidate,
-        automationPreviewOpen,
-        automationPreviewMatches,
-        isApplyingAutomationPreview,
         handleCategorySelect,
         handleSkip,
         handlePrevious,
         handleRulesDialogClose,
         handleAutomateDialogOpenChange,
         handleAutomateSaved,
-        handleAutomationPreviewOpenChange,
-        handleApplyAutomationPreview,
         commandInputRef,
     } = useCategorizeTransactions({
         categories,
@@ -84,14 +79,7 @@ export default function CategorizeTransactions({
                 onOpenChange={handleAutomateDialogOpenChange}
                 onSaved={handleAutomateSaved}
             />
-            <ApplyCategorizerAutomationRulesDialog
-                open={automationPreviewOpen}
-                matches={automationPreviewMatches}
-                categories={categories}
-                applying={isApplyingAutomationPreview}
-                onOpenChange={handleAutomationPreviewOpenChange}
-                onApply={handleApplyAutomationPreview}
-            />
+            <PostSaveApplyRulePrompt />
         </>
     );
 

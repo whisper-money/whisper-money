@@ -1,20 +1,16 @@
-import type { CategorizerAutomationRuleMatch } from '@/components/automation-rules/apply-categorizer-automation-rules-dialog';
 import type { AutomateCategorizationCandidate } from '@/components/automation-rules/automate-categorization-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { decrypt, importKey } from '@/lib/crypto';
 import { getStoredKey } from '@/lib/key-storage';
 import { captureEvent } from '@/lib/posthog';
-import { evaluateRules } from '@/lib/rule-engine';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
-import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
 import {
     type DecryptedTransaction,
     type Transaction,
 } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { parseISO } from 'date-fns';
 import {
     createElement,
@@ -85,9 +81,6 @@ export function useCategorizeTransactions({
     transactions: initialTransactions,
 }: UseCategorizeTransactionsOptions) {
     const { isKeySet } = useEncryptionKey();
-    const { automationRules: sharedAutomationRules } = usePage<{
-        automationRules: AutomationRule[];
-    }>().props;
 
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
         DecryptedTransaction[]
@@ -104,29 +97,9 @@ export function useCategorizeTransactions({
     const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
     const [automateCandidate, setAutomateCandidate] =
         useState<AutomateCategorizationCandidate | null>(null);
-    const [automationPreviewOpen, setAutomationPreviewOpen] = useState(false);
-    const [automationPreviewMatches, setAutomationPreviewMatches] = useState<
-        CategorizerAutomationRuleMatch[]
-    >([]);
-    const [isPreparingAutomationPreview, setIsPreparingAutomationPreview] =
-        useState(false);
-    const [isApplyingAutomationPreview, setIsApplyingAutomationPreview] =
-        useState(false);
-    const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
+    const [, setEncryptionKey] = useState<CryptoKey | null>(null);
     const [categorizedCount, setCategorizedCount] = useState(0);
     const commandInputRef = useRef<HTMLInputElement>(null);
-
-    const automationRules = useMemo(
-        () =>
-            sharedAutomationRules.map((rule) => ({
-                ...rule,
-                rules_json:
-                    typeof rule.rules_json === 'string'
-                        ? JSON.parse(rule.rules_json)
-                        : rule.rules_json,
-            })) as AutomationRule[],
-        [sharedAutomationRules],
-    );
 
     useEffect(() => {
         setCategoryUsageOrder(getCategoryUsageOrder());
@@ -257,145 +230,13 @@ export function useCategorizeTransactions({
         return sortCategoriesByUsage(categories, categoryUsageOrder);
     }, [categories, categoryUsageOrder]);
 
-    const findAutomationRuleMatches = useCallback(async () => {
-        if (!automationRules.length || uncategorizedTransactions.length === 0) {
-            return [];
-        }
-
-        const matches: CategorizerAutomationRuleMatch[] = [];
-        const remainingTransactions =
-            uncategorizedTransactions.slice(currentIndex);
-
-        for (const transaction of remainingTransactions) {
-            const result = await evaluateRules(
-                transaction,
-                automationRules,
-                categories,
-                accounts,
-                banks,
-                encryptionKey,
-            );
-
-            if (
-                result?.categoryId &&
-                result.categoryId !== transaction.category_id
-            ) {
-                matches.push({ transaction, result });
-            }
-        }
-
-        return matches;
-    }, [
-        encryptionKey,
-        automationRules,
-        uncategorizedTransactions,
-        currentIndex,
-        categories,
-        accounts,
-        banks,
-    ]);
-
-    const prepareAutomationRulesPreview = useCallback(async () => {
-        setIsPreparingAutomationPreview(true);
-
-        try {
-            const matches = await findAutomationRuleMatches();
-            setAutomationPreviewMatches(matches);
-            setAutomationPreviewOpen(matches.length > 0);
-
-            if (matches.length === 0) {
-                commandInputRef.current?.focus();
-            }
-        } finally {
-            setIsPreparingAutomationPreview(false);
-        }
-    }, [findAutomationRuleMatches]);
-
-    const handleApplyAutomationPreview = useCallback(async () => {
-        if (automationPreviewMatches.length === 0) {
-            setAutomationPreviewOpen(false);
-            return;
-        }
-
-        setIsApplyingAutomationPreview(true);
-        const appliedTransactionIds = new Set<string>();
-        let appliedCount = 0;
-
-        for (const { transaction, result } of automationPreviewMatches) {
-            if (!result.categoryId) {
-                continue;
-            }
-
-            try {
-                await transactionSyncService.update(transaction.id, {
-                    category_id: result.categoryId,
-                });
-                appliedTransactionIds.add(transaction.id);
-                appliedCount++;
-
-                const matchedCategory = categories.find(
-                    (category) => category.id === result.categoryId,
-                );
-                if (matchedCategory) {
-                    updateCategoryUsageOrder(matchedCategory.id);
-                }
-            } catch (error) {
-                console.error(
-                    'Failed to apply automation rule to transaction:',
-                    error,
-                );
-            }
-        }
-
-        if (appliedCount > 0) {
-            setCategoryUsageOrder(getCategoryUsageOrder());
-            setUncategorizedTransactions((transactions) =>
-                transactions.filter(
-                    (transaction) => !appliedTransactionIds.has(transaction.id),
-                ),
-            );
-            setCurrentIndex((index) =>
-                Math.min(
-                    index,
-                    uncategorizedTransactions.length - appliedCount,
-                ),
-            );
-            toast.success(
-                __('Rule applied to :count transaction(s).', {
-                    count: String(appliedCount),
-                }),
-            );
-        }
-
-        setIsApplyingAutomationPreview(false);
-        setAutomationPreviewOpen(false);
-        setAutomationPreviewMatches([]);
-        commandInputRef.current?.focus();
-    }, [
-        automationPreviewMatches,
-        categories,
-        uncategorizedTransactions.length,
-    ]);
-
-    const handleAutomationPreviewOpenChange = useCallback((open: boolean) => {
-        setAutomationPreviewOpen(open);
+    const handleRulesDialogClose = useCallback((open: boolean) => {
+        setRulesDialogOpen(open);
 
         if (!open) {
-            setAutomationPreviewMatches([]);
             commandInputRef.current?.focus();
         }
     }, []);
-
-    const handleRulesDialogClose = useCallback(
-        async (open: boolean) => {
-            setRulesDialogOpen(open);
-
-            if (!open) {
-                await prepareAutomationRulesPreview();
-            }
-        },
-        [prepareAutomationRulesPreview],
-    );
 
     const handleCategorySelect = useCallback(
         async (category: Category) => {
@@ -493,10 +334,10 @@ export function useCategorizeTransactions({
         }
     }, []);
 
-    const handleAutomateSaved = useCallback(async () => {
+    const handleAutomateSaved = useCallback(() => {
         setAutomateDialogOpen(false);
-        await prepareAutomationRulesPreview();
-    }, [prepareAutomationRulesPreview]);
+        commandInputRef.current?.focus();
+    }, []);
 
     const handlePrevious = useCallback(() => {
         if (animationState !== 'idle' || currentIndex === 0) {
@@ -531,10 +372,6 @@ export function useCategorizeTransactions({
         setRulesDialogOpen,
         automateDialogOpen,
         automateCandidate,
-        automationPreviewOpen,
-        automationPreviewMatches,
-        isPreparingAutomationPreview,
-        isApplyingAutomationPreview,
         categorizedCount,
         handleCategorySelect,
         handleSkip,
@@ -542,8 +379,6 @@ export function useCategorizeTransactions({
         handleRulesDialogClose,
         handleAutomateDialogOpenChange,
         handleAutomateSaved,
-        handleAutomationPreviewOpenChange,
-        handleApplyAutomationPreview,
         commandInputRef,
     };
 }
