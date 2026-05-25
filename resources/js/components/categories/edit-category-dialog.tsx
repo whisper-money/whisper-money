@@ -19,6 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { type SharedData } from '@/types';
 import {
     CATEGORY_COLORS,
     CATEGORY_ICONS,
@@ -29,7 +30,7 @@ import {
     type CategoryType,
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
-import { Form } from '@inertiajs/react';
+import { Form, usePage } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
 import { Info } from 'lucide-react';
 import { useState } from 'react';
@@ -47,6 +48,14 @@ export function EditCategoryDialog({
     onOpenChange,
     onSuccess,
 }: EditCategoryDialogProps) {
+    const { features } = usePage<SharedData>().props;
+    const canUseCashflowSavingsInvestmentsAndPeriods =
+        features.cashflowSavingsInvestmentsAndPeriods;
+    const categoryTypes = canUseCashflowSavingsInvestmentsAndPeriods
+        ? CATEGORY_TYPES
+        : CATEGORY_TYPES.filter(
+              (type) => type !== 'savings' && type !== 'investment',
+          );
     const [selectedType, setSelectedType] = useState<CategoryType>(
         category.type,
     );
@@ -181,7 +190,7 @@ export function EditCategoryDialog({
                                         />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {CATEGORY_TYPES.map((type) => (
+                                        {categoryTypes.map((type) => (
                                             <SelectItem key={type} value={type}>
                                                 {getCategoryTypeLabel(type)}
                                             </SelectItem>

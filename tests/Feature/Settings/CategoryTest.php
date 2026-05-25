@@ -3,6 +3,7 @@
 use App\Actions\CreateDefaultCategories;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
+use App\Features\CashflowSavingsInvestmentsAndPeriods;
 use App\Http\Controllers\Settings\CategoryController;
 use App\Http\Requests\Settings\StoreCategoryRequest;
 use App\Models\Category;
@@ -10,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     config(['landing.hide_auth_buttons' => false]);
@@ -340,8 +342,9 @@ test('non-transfer categories are forced to hidden cashflow direction', function
     ]);
 });
 
-test('users can create savings and investment categories', function (string $type) {
+test('users can create savings and investment categories when feature is enabled', function (string $type) {
     $user = User::factory()->create();
+    Feature::for($user)->activate(CashflowSavingsInvestmentsAndPeriods::class);
 
     $response = $this->actingAs($user)->post(route('categories.store'), [
         'name' => ucfirst($type),
@@ -364,8 +367,26 @@ test('users can create savings and investment categories', function (string $typ
     CategoryType::Investment->value,
 ]);
 
-test('migration updates existing default saving and investment categories', function () {
+test('users cannot create savings and investment categories when feature is disabled', function (string $type) {
     $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('categories.store'), [
+        'name' => ucfirst($type),
+        'icon' => $type === CategoryType::Savings->value ? 'PiggyBank' : 'TrendingUp',
+        'color' => 'lime',
+        'type' => $type,
+        'cashflow_direction' => 'outflow',
+    ]);
+
+    $response->assertSessionHasErrors(['type']);
+})->with([
+    CategoryType::Savings->value,
+    CategoryType::Investment->value,
+]);
+
+test('migration updates enabled user default saving and investment categories', function () {
+    $user = User::factory()->create(['email' => 'victoor89@gmail.com']);
+    $otherUser = User::factory()->create();
 
     $investments = Category::factory()->create([
         'user_id' => $user->id,
@@ -399,6 +420,14 @@ test('migration updates existing default saving and investment categories', func
         'type' => CategoryType::Expense,
         'cashflow_direction' => CategoryCashflowDirection::Hidden,
     ]);
+    $otherUserInvestment = Category::factory()->create([
+        'user_id' => $otherUser->id,
+        'name' => 'Investments',
+        'icon' => 'LineChart',
+        'color' => 'lime',
+        'type' => CategoryType::Transfer,
+        'cashflow_direction' => CategoryCashflowDirection::Outflow,
+    ]);
     $customTransfer = Category::factory()->create([
         'user_id' => $user->id,
         'name' => 'Investment transfer',
@@ -424,6 +453,9 @@ test('migration updates existing default saving and investment categories', func
         ->type->toBe(CategoryType::Savings)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
     expect($customTransfer->refresh())
+        ->type->toBe(CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($otherUserInvestment->refresh())
         ->type->toBe(CategoryType::Transfer)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
 });
@@ -482,8 +514,9 @@ test('guests cannot access category management', function () {
     $response->assertRedirect(route('register'));
 });
 
-test('default categories are created when user registers', function () {
+test('default categories use savings and investment types when feature is enabled', function () {
     $user = User::factory()->create();
+    Feature::for($user)->activate(CashflowSavingsInvestmentsAndPeriods::class);
 
     $service = new CreateDefaultCategories;
     $service->handle($user);
@@ -507,6 +540,25 @@ test('default categories are created when user registers', function () {
     expect($user->categories()->firstWhere('name', 'From account of relatives'))
         ->type->toBe(CategoryType::Transfer)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Inflow);
+});
+
+test('default categories use transfer types when feature is disabled', function () {
+    $user = User::factory()->create();
+
+    $service = new CreateDefaultCategories;
+    $service->handle($user);
+
+    $user->refresh();
+
+    expect($user->categories()->firstWhere('name', 'Investments'))
+        ->type->toBe(CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->firstWhere('name', 'Savings'))
+        ->type->toBe(CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
+    expect($user->categories()->firstWhere('name', 'Other investments'))
+        ->type->toBe(CategoryType::Transfer)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Outflow);
 });
 
 test('default categories are not created twice for the same user', function () {

@@ -112,14 +112,22 @@ export default function CashflowPage() {
         auth,
         period: initialPeriod,
         periodType: initialPeriodType,
+        features,
     } = usePage<{
         auth: { user: { currency_code: string } };
         period: string | null;
         periodType: CashflowPeriodType;
+        features: { cashflowSavingsInvestmentsAndPeriods: boolean };
     }>().props;
 
-    const [periodType, setPeriodType] =
-        useState<CashflowPeriodType>(initialPeriodType);
+    const canUseCashflowSavingsInvestmentsAndPeriods =
+        features.cashflowSavingsInvestmentsAndPeriods;
+
+    const [periodType, setPeriodType] = useState<CashflowPeriodType>(
+        canUseCashflowSavingsInvestmentsAndPeriods
+            ? initialPeriodType
+            : 'month',
+    );
 
     const [currentDate, setCurrentDate] = useState<Date>(() =>
         parsePeriodParam(initialPeriod, initialPeriodType),
@@ -171,6 +179,9 @@ export default function CashflowPage() {
                         periodType={periodType}
                         onDateChange={setCurrentDate}
                         onPeriodTypeChange={setPeriodType}
+                        showPeriodTypeSwitcher={
+                            canUseCashflowSavingsInvestmentsAndPeriods
+                        }
                     />
                 </div>
 
@@ -188,6 +199,9 @@ export default function CashflowPage() {
                         previous={summary.previous}
                         loading={isLoading}
                         currency={auth.user.currency_code}
+                        showTrackedAmounts={
+                            canUseCashflowSavingsInvestmentsAndPeriods
+                        }
                     />
                 </div>
 

@@ -27,6 +27,7 @@ interface PeriodNavigationProps {
     periodType: CashflowPeriodType;
     onDateChange: (date: Date) => void;
     onPeriodTypeChange: (periodType: CashflowPeriodType) => void;
+    showPeriodTypeSwitcher?: boolean;
 }
 
 const periodTypeOptions: Array<{
@@ -43,6 +44,7 @@ export function PeriodNavigation({
     periodType,
     onDateChange,
     onPeriodTypeChange,
+    showPeriodTypeSwitcher = false,
 }: PeriodNavigationProps) {
     const locale = useLocale();
     const now = new Date();
@@ -62,24 +64,28 @@ export function PeriodNavigation({
 
     return (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <ButtonGroup>
-                {periodTypeOptions.map((option) => (
-                    <Button
-                        key={option.value}
-                        type="button"
-                        variant={
-                            periodType === option.value ? 'default' : 'outline'
-                        }
-                        onClick={() => onPeriodTypeChange(option.value)}
-                        className={cn(
-                            periodType === option.value &&
-                                'border-primary bg-primary text-primary-foreground',
-                        )}
-                    >
-                        {option.label}
-                    </Button>
-                ))}
-            </ButtonGroup>
+            {showPeriodTypeSwitcher && (
+                <ButtonGroup>
+                    {periodTypeOptions.map((option) => (
+                        <Button
+                            key={option.value}
+                            type="button"
+                            variant={
+                                periodType === option.value
+                                    ? 'default'
+                                    : 'outline'
+                            }
+                            onClick={() => onPeriodTypeChange(option.value)}
+                            className={cn(
+                                periodType === option.value &&
+                                    'border-primary bg-primary text-primary-foreground',
+                            )}
+                        >
+                            {option.label}
+                        </Button>
+                    ))}
+                </ButtonGroup>
+            )}
 
             <ButtonGroup>
                 <Button

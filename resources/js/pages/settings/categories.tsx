@@ -54,7 +54,7 @@ import {
 } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -171,7 +171,11 @@ function CategoryRow({ row }: { row: Row<Category> }) {
 }
 
 export default function Categories() {
-    const { categories } = usePage<{ categories: Category[] }>().props;
+    const { categories, features } = usePage<
+        SharedData & { categories: Category[] }
+    >().props;
+    const canUseCashflowSavingsInvestmentsAndPeriods =
+        features.cashflowSavingsInvestmentsAndPeriods;
     const [sorting, setSorting] = useState<SortingState>([
         { id: 'name', desc: false },
     ]);
@@ -383,7 +387,12 @@ export default function Categories() {
                                 className="max-w-sm"
                             />
 
-                            <CreateCategoryDialog onSuccess={() => {}} />
+                            <CreateCategoryDialog
+                                onSuccess={() => {}}
+                                showSavingsAndInvestmentTypes={
+                                    canUseCashflowSavingsInvestmentsAndPeriods
+                                }
+                            />
                         </div>
 
                         <div className="overflow-hidden rounded-md border">

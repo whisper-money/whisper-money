@@ -5,9 +5,11 @@ namespace App\Http\Requests\Settings;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryColor;
 use App\Enums\CategoryType;
+use App\Features\CashflowSavingsInvestmentsAndPeriods;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Laravel\Pennant\Feature;
 
 class UpdateCategoryRequest extends FormRequest
 {
@@ -59,7 +61,7 @@ class UpdateCategoryRequest extends FormRequest
             'type' => [
                 'required',
                 'string',
-                Rule::enum(CategoryType::class),
+                Rule::in($this->allowedCategoryTypes()),
             ],
             'cashflow_direction' => [
                 'required',
@@ -67,5 +69,24 @@ class UpdateCategoryRequest extends FormRequest
                 Rule::enum(CategoryCashflowDirection::class),
             ],
         ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function allowedCategoryTypes(): array
+    {
+        $types = [
+            CategoryType::Income->value,
+            CategoryType::Expense->value,
+            CategoryType::Transfer->value,
+        ];
+
+        if (Feature::for($this->user())->active(CashflowSavingsInvestmentsAndPeriods::class)) {
+            $types[] = CategoryType::Savings->value;
+            $types[] = CategoryType::Investment->value;
+        }
+
+        return $types;
     }
 }
