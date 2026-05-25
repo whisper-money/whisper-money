@@ -1,5 +1,6 @@
 import { BankLogo } from '@/components/bank-logo';
 import InputError from '@/components/input-error';
+import AuthenticatedRedirectDialog from '@/components/landing/authenticated-redirect-dialog';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
 import { Button } from '@/components/ui/button';
@@ -1907,7 +1908,7 @@ export default function Welcome({
     hideAuthButtons?: boolean;
     popularBanks: PopularBank[];
 }) {
-    const { appUrl, subscriptionsEnabled, pricing, locale } =
+    const { appUrl, auth, subscriptionsEnabled, pricing, locale } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
@@ -2096,6 +2097,7 @@ export default function Welcome({
                     })}
                 </script>
             </Head>
+            <AuthenticatedRedirectDialog open={Boolean(auth.user)} />
             <div className="flex min-h-screen flex-col bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 <Header
                     canRegister={canRegister}
