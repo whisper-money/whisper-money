@@ -257,6 +257,53 @@ test('cashflow summary includes actual saved and invested amounts', function () 
         ->assertJsonPath('current.investments', 15000);
 });
 
+test('cashflow summary compares full quarter against previous full quarter', function () {
+    $incomeCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Income,
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 100000,
+        'transaction_date' => '2025-04-15',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 30000,
+        'transaction_date' => '2025-01-15',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 40000,
+        'transaction_date' => '2025-02-15',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 50000,
+        'transaction_date' => '2025-03-15',
+    ]);
+
+    $response = $this->getJson('/api/cashflow/summary?'.http_build_query([
+        'from' => '2025-04-01',
+        'to' => '2025-06-30',
+    ]));
+
+    $response->assertOk()
+        ->assertJsonPath('current.income', 100000)
+        ->assertJsonPath('previous.income', 120000);
+});
+
 test('cashflow summary handles zero income for savings rate', function () {
     $expenseCategory = Category::factory()->create([
         'user_id' => $this->user->id,
@@ -543,6 +590,44 @@ test('cashflow trend anchors the 12-month series to the requested period end mon
     expect($data)->toHaveCount(12);
     expect($data->keys()->first())->toBe('2024-06');
     expect($data->keys()->last())->toBe('2025-05');
+    expect($data['2025-04']['income'])->toBe(32000);
+    expect($data['2025-05']['income'])->toBe(48000);
+});
+
+test('cashflow trend can use explicit period bounds', function () {
+    $incomeCategory = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Income,
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 32000,
+        'transaction_date' => '2025-04-14',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $incomeCategory->id,
+        'amount' => 48000,
+        'transaction_date' => '2025-05-07',
+    ]);
+
+    $response = $this->getJson('/api/cashflow/trend?'.http_build_query([
+        'from' => '2025-04-01',
+        'to' => '2025-06-30',
+    ]));
+
+    $response->assertOk();
+
+    $data = collect($response->json('data'))->keyBy('month');
+
+    expect($data)->toHaveCount(3);
+    expect($data->keys()->all())->toBe(['2025-04', '2025-05', '2025-06']);
     expect($data['2025-04']['income'])->toBe(32000);
     expect($data['2025-05']['income'])->toBe(48000);
 });

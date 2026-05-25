@@ -34,16 +34,35 @@ class CashflowController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'logo']);
 
+        $periodType = $request->query('period_type');
+        $validPeriodType = is_string($periodType) && in_array($periodType, ['month', 'quarter', 'year'], true)
+            ? $periodType
+            : 'month';
+
         $period = $request->query('period');
-        $validPeriod = is_string($period) && preg_match('/^\d{4}-\d{2}$/', $period) === 1
-            ? $period
-            : null;
+        $validPeriod = $this->validPeriod($period, $validPeriodType);
 
         return Inertia::render('cashflow/index', [
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
             'period' => $validPeriod,
+            'periodType' => $validPeriodType,
         ]);
+    }
+
+    private function validPeriod(mixed $period, string $periodType): ?string
+    {
+        if (! is_string($period)) {
+            return null;
+        }
+
+        $pattern = match ($periodType) {
+            'quarter' => '/^\d{4}-Q[1-4]$/',
+            'year' => '/^\d{4}$/',
+            default => '/^\d{4}-\d{2}$/',
+        };
+
+        return preg_match($pattern, $period) === 1 ? $period : null;
     }
 }

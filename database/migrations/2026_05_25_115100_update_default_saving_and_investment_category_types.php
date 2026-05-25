@@ -14,8 +14,6 @@ return new class extends Migration
     public function up(): void
     {
         DB::table('categories')
-            ->where('type', CategoryType::Transfer->value)
-            ->where('cashflow_direction', CategoryCashflowDirection::Outflow->value)
             ->where(function (Builder $query): void {
                 $query->where(function (Builder $query): void {
                     $query->whereIn('name', ['Investments', 'Inversiones'])
@@ -31,8 +29,6 @@ return new class extends Migration
             ]);
 
         DB::table('categories')
-            ->where('type', CategoryType::Transfer->value)
-            ->where('cashflow_direction', CategoryCashflowDirection::Outflow->value)
             ->whereIn('name', ['Savings', 'Ahorros'])
             ->where('icon', 'PiggyBank')
             ->update([

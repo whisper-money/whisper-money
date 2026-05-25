@@ -383,6 +383,22 @@ test('migration updates existing default saving and investment categories', func
         'type' => CategoryType::Transfer,
         'cashflow_direction' => CategoryCashflowDirection::Outflow,
     ]);
+    $legacyExpenseInvestment = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Other investments',
+        'icon' => 'TrendingUp',
+        'color' => 'lime',
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
+    $legacySpanishSavings = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Ahorros',
+        'icon' => 'PiggyBank',
+        'color' => 'lime',
+        'type' => CategoryType::Expense,
+        'cashflow_direction' => CategoryCashflowDirection::Hidden,
+    ]);
     $customTransfer = Category::factory()->create([
         'user_id' => $user->id,
         'name' => 'Investment transfer',
@@ -399,6 +415,12 @@ test('migration updates existing default saving and investment categories', func
         ->type->toBe(CategoryType::Investment)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
     expect($savings->refresh())
+        ->type->toBe(CategoryType::Savings)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($legacyExpenseInvestment->refresh())
+        ->type->toBe(CategoryType::Investment)
+        ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
+    expect($legacySpanishSavings->refresh())
         ->type->toBe(CategoryType::Savings)
         ->cashflow_direction->toBe(CategoryCashflowDirection::Hidden);
     expect($customTransfer->refresh())
