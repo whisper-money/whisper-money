@@ -9,6 +9,7 @@ use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\ConnectBinanceRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
+use App\Services\AccountUserCurrencyService;
 use App\Services\Banking\BinanceClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ class BinanceController extends Controller
     /**
      * Validate Binance API credentials and create a connection.
      */
-    public function store(ConnectBinanceRequest $request): JsonResponse
+    public function store(ConnectBinanceRequest $request, AccountUserCurrencyService $accountUserCurrencyService): JsonResponse
     {
         $validated = $request->validated();
         $user = auth()->user();
@@ -71,7 +72,7 @@ class BinanceController extends Controller
         ]);
 
         if (! $user->isOnboarded()) {
-            $this->createAccountsFromPending($user, $connection);
+            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
             SyncBankingConnectionJob::dispatch($connection);
 
             return response()->json([

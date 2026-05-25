@@ -9,6 +9,7 @@ use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\ConnectCoinbaseRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
+use App\Services\AccountUserCurrencyService;
 use App\Services\Banking\CoinbaseClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ class CoinbaseController extends Controller
     /**
      * Validate Coinbase CDP API credentials and create a connection.
      */
-    public function store(ConnectCoinbaseRequest $request): JsonResponse
+    public function store(ConnectCoinbaseRequest $request, AccountUserCurrencyService $accountUserCurrencyService): JsonResponse
     {
         $validated = $request->validated();
         $user = auth()->user();
@@ -71,7 +72,7 @@ class CoinbaseController extends Controller
         ]);
 
         if (! $user->isOnboarded()) {
-            $this->createAccountsFromPending($user, $connection);
+            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
             SyncBankingConnectionJob::dispatch($connection);
 
             return response()->json([

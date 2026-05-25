@@ -56,6 +56,21 @@ it('can create a new account with plaintext name', function () {
     ]);
 });
 
+it('updates user currency from first manually created account', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'My Euro Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Checking->value,
+    ]);
+
+    $response->assertRedirect();
+
+    expect($this->user->refresh()->currency_code)->toBe('EUR');
+});
+
 it('can create a new account without a bank', function () {
     actingAs($this->user);
 

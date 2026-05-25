@@ -10,6 +10,7 @@ use App\Http\Requests\OpenBanking\MapAccountsRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
+use App\Services\AccountUserCurrencyService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,7 +19,7 @@ class AccountMappingController extends Controller
 {
     use CreatesAccountsFromPending;
 
-    public function show(BankingConnection $connection): Response|RedirectResponse
+    public function show(BankingConnection $connection, AccountUserCurrencyService $accountUserCurrencyService): Response|RedirectResponse
     {
         if ($connection->user_id !== auth()->id()) {
             abort(403);
@@ -35,7 +36,7 @@ class AccountMappingController extends Controller
 
         // During onboarding, skip the mapping UI — auto-create all accounts directly
         if (! $user->isOnboarded()) {
-            $this->createAccountsFromPending($user, $connection);
+            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
             SyncBankingConnectionJob::dispatch($connection);
 
             return redirect()->route('onboarding', ['step' => 'create-account'])
@@ -55,7 +56,7 @@ class AccountMappingController extends Controller
         ]);
     }
 
-    public function store(MapAccountsRequest $request, BankingConnection $connection): RedirectResponse
+    public function store(MapAccountsRequest $request, BankingConnection $connection, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse
     {
         if ($connection->user_id !== auth()->id()) {
             abort(403);
@@ -95,7 +96,7 @@ class AccountMappingController extends Controller
                     ?? $accountData['account_id']['iban']
                     ?? $connection->aspsp_name.' Account';
 
-                $user->accounts()->create([
+                $account = $user->accounts()->create([
                     'name' => $name,
                     'name_iv' => null,
                     'encrypted' => false,
@@ -106,6 +107,8 @@ class AccountMappingController extends Controller
                     'external_account_id' => $uid,
                     'iban' => $accountData['account_id']['iban'] ?? null,
                 ]);
+
+                $accountUserCurrencyService->syncFromFirstAccount($account);
             } elseif ($action === 'link') {
                 $existingAccount = $user->accounts()->find($mapping['existing_account_id']);
 
@@ -117,6 +120,8 @@ class AccountMappingController extends Controller
                         'bank_id' => $bank->id,
                         'linked_at' => now(),
                     ]);
+
+                    $accountUserCurrencyService->syncFromFirstAccount($existingAccount);
                 }
             }
         }

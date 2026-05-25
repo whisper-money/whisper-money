@@ -47,6 +47,38 @@ test('show redirects if no pending accounts', function () {
     $response->assertRedirect(route('settings.connections.index'));
 });
 
+test('show auto-creates pending accounts and updates currency during onboarding', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create(['currency_code' => 'USD']);
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'pending_accounts_data' => [
+            [
+                'uid' => 'ext-1',
+                'currency' => 'EUR',
+                'name' => 'Euro Checking',
+                'account_id' => ['iban' => 'ES1234567890'],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('open-banking.map-accounts', $connection))
+        ->assertRedirect(route('onboarding', ['step' => 'create-account']));
+
+    expect($user->refresh()->currency_code)->toBe('EUR');
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-1',
+        'currency_code' => 'EUR',
+    ]);
+
+    Queue::assertPushed(SyncBankingConnectionJob::class);
+});
+
 test('show returns 403 for other user\'s connection', function () {
     $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->onboarded()->create();
@@ -149,6 +181,121 @@ test('store creates investment accounts for crypto provider connections', functi
     'bitpanda' => ['bitpanda', 'Bitpanda', 'bitpanda-portfolio'],
     'coinbase' => ['coinbase', 'Coinbase', 'coinbase-portfolio'],
 ]);
+
+test('store updates user currency from first account created from mapping', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'pending_accounts_data' => [
+            [
+                'uid' => 'ext-1',
+                'currency' => 'EUR',
+                'name' => 'Euro Checking',
+                'account_id' => ['iban' => 'ES1234567890'],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('open-banking.map-accounts.store', $connection), [
+            'mappings' => [
+                [
+                    'bank_account_uid' => 'ext-1',
+                    'action' => 'create',
+                    'existing_account_id' => null,
+                ],
+            ],
+        ])
+        ->assertRedirect(route('settings.connections.index'));
+
+    expect($user->refresh()->currency_code)->toBe('EUR');
+});
+
+test('store does not update user currency from later mapped accounts', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'EUR']);
+    $existingConnection = BankingConnection::factory()->create(['user_id' => $user->id]);
+
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'currency_code' => 'EUR',
+        'banking_connection_id' => $existingConnection->id,
+        'external_account_id' => 'existing-ext',
+    ]);
+
+    $user->update(['currency_code' => 'USD']);
+
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Second Bank',
+        'pending_accounts_data' => [
+            [
+                'uid' => 'ext-2',
+                'currency' => 'GBP',
+                'name' => 'Pound Checking',
+                'account_id' => ['iban' => 'GB1234567890'],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('open-banking.map-accounts.store', $connection), [
+            'mappings' => [
+                [
+                    'bank_account_uid' => 'ext-2',
+                    'action' => 'create',
+                    'existing_account_id' => null,
+                ],
+            ],
+        ])
+        ->assertRedirect(route('settings.connections.index'));
+
+    expect($user->refresh()->currency_code)->toBe('USD');
+});
+
+test('store updates user currency when linking first account', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
+    $bank = Bank::factory()->create();
+    $existingAccount = Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'currency_code' => 'EUR',
+        'banking_connection_id' => null,
+    ]);
+
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'pending_accounts_data' => [
+            [
+                'uid' => 'ext-1',
+                'currency' => 'EUR',
+                'name' => 'Bank Account',
+                'account_id' => ['iban' => 'ES1234567890'],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('open-banking.map-accounts.store', $connection), [
+            'mappings' => [
+                [
+                    'bank_account_uid' => 'ext-1',
+                    'action' => 'link',
+                    'existing_account_id' => $existingAccount->id,
+                ],
+            ],
+        ])
+        ->assertRedirect(route('settings.connections.index'));
+
+    expect($user->refresh()->currency_code)->toBe('EUR');
+});
 
 test('store with action link links existing account', function () {
     Queue::fake();

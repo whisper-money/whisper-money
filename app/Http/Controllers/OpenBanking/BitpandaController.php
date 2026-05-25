@@ -9,6 +9,7 @@ use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\ConnectBitpandaRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
+use App\Services\AccountUserCurrencyService;
 use App\Services\Banking\BitpandaClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ class BitpandaController extends Controller
     /**
      * Validate Bitpanda API key and create a connection.
      */
-    public function store(ConnectBitpandaRequest $request): JsonResponse
+    public function store(ConnectBitpandaRequest $request, AccountUserCurrencyService $accountUserCurrencyService): JsonResponse
     {
         $validated = $request->validated();
         $user = auth()->user();
@@ -70,7 +71,7 @@ class BitpandaController extends Controller
         ]);
 
         if (! $user->isOnboarded()) {
-            $this->createAccountsFromPending($user, $connection);
+            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
             SyncBankingConnectionJob::dispatch($connection);
 
             return response()->json([
