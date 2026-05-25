@@ -37,18 +37,11 @@ import { useState } from 'react';
 
 export function CreateCategoryDialog({
     onSuccess,
-    showSavingsAndInvestmentTypes = false,
 }: {
     onSuccess?: () => void;
-    showSavingsAndInvestmentTypes?: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const [selectedType, setSelectedType] = useState<CategoryType | ''>('');
-    const categoryTypes = showSavingsAndInvestmentTypes
-        ? CATEGORY_TYPES
-        : CATEGORY_TYPES.filter(
-              (type) => type !== 'savings' && type !== 'investment',
-          );
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -175,7 +168,7 @@ export function CreateCategoryDialog({
                                         />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {categoryTypes.map((type) => (
+                                        {CATEGORY_TYPES.map((type) => (
                                             <SelectItem key={type} value={type}>
                                                 {getCategoryTypeLabel(type)}
                                             </SelectItem>

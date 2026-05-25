@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Features\CashflowSavingsInvestmentsAndPeriods;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class CashflowController extends Controller
 {
@@ -36,15 +34,10 @@ class CashflowController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'logo']);
 
-        $canUseCashflowSavingsInvestmentsAndPeriods = Feature::for($user)
-            ->active(CashflowSavingsInvestmentsAndPeriods::class);
-
         $periodType = $request->query('period_type');
-        $validPeriodType = $canUseCashflowSavingsInvestmentsAndPeriods
-            && is_string($periodType)
-            && in_array($periodType, ['month', 'quarter', 'year'], true)
-                ? $periodType
-                : 'month';
+        $validPeriodType = is_string($periodType) && in_array($periodType, ['month', 'quarter', 'year'], true)
+            ? $periodType
+            : 'month';
 
         $period = $request->query('period');
         $validPeriod = $this->validPeriod($period, $validPeriodType);

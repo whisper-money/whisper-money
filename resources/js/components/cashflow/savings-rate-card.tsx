@@ -16,7 +16,6 @@ interface SavingsRateCardProps {
     previous: CashflowSummary;
     loading?: boolean;
     currency?: string;
-    showTrackedAmounts?: boolean;
 }
 
 export function SavingsRateCard({
@@ -24,7 +23,6 @@ export function SavingsRateCard({
     previous,
     loading,
     currency = 'USD',
-    showTrackedAmounts = false,
 }: SavingsRateCardProps) {
     if (loading) {
         return (
@@ -89,36 +87,34 @@ export function SavingsRateCard({
                         </div>
                     )}
                 </div>
-                {showTrackedAmounts && (
-                    <div className="mt-3 grid grid-cols-2 gap-4 border-t pt-3">
-                        <div>
-                            <p className="text-xs text-muted-foreground">
-                                {__('Saved')}
-                            </p>
-                            <AmountDisplay
-                                amountInCents={current.savings}
-                                currencyCode={currency}
-                                minimumFractionDigits={0}
-                                maximumFractionDigits={0}
-                                weight="medium"
-                                highlightPositive
-                            />
-                        </div>
-                        <div>
-                            <p className="text-xs text-muted-foreground">
-                                {__('Invested')}
-                            </p>
-                            <AmountDisplay
-                                amountInCents={current.investments}
-                                currencyCode={currency}
-                                minimumFractionDigits={0}
-                                maximumFractionDigits={0}
-                                weight="medium"
-                                highlightPositive
-                            />
-                        </div>
+                <div className="mt-3 grid grid-cols-2 gap-4 border-t pt-3">
+                    <div>
+                        <p className="text-xs text-muted-foreground">
+                            {__('Saved')}
+                        </p>
+                        <AmountDisplay
+                            amountInCents={current.savings}
+                            currencyCode={currency}
+                            minimumFractionDigits={0}
+                            maximumFractionDigits={0}
+                            weight="medium"
+                            highlightPositive
+                        />
                     </div>
-                )}
+                    <div>
+                        <p className="text-xs text-muted-foreground">
+                            {__('Invested')}
+                        </p>
+                        <AmountDisplay
+                            amountInCents={current.investments}
+                            currencyCode={currency}
+                            minimumFractionDigits={0}
+                            maximumFractionDigits={0}
+                            weight="medium"
+                            highlightPositive
+                        />
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );

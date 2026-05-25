@@ -13,16 +13,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $enabledUserIds = DB::table('users')
-            ->where('email', 'victoor89@gmail.com')
-            ->pluck('id');
-
-        if ($enabledUserIds->isEmpty()) {
-            return;
-        }
-
         DB::table('categories')
-            ->whereIn('user_id', $enabledUserIds)
             ->where(function (Builder $query): void {
                 $query->where(function (Builder $query): void {
                     $query->whereIn('name', ['Investments', 'Inversiones'])
@@ -38,7 +29,6 @@ return new class extends Migration
             ]);
 
         DB::table('categories')
-            ->whereIn('user_id', $enabledUserIds)
             ->whereIn('name', ['Savings', 'Ahorros'])
             ->where('icon', 'PiggyBank')
             ->update([
@@ -52,16 +42,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $enabledUserIds = DB::table('users')
-            ->where('email', 'victoor89@gmail.com')
-            ->pluck('id');
-
-        if ($enabledUserIds->isEmpty()) {
-            return;
-        }
-
         DB::table('categories')
-            ->whereIn('user_id', $enabledUserIds)
             ->where('type', CategoryType::Investment->value)
             ->where(function (Builder $query): void {
                 $query->where(function (Builder $query): void {
@@ -78,7 +59,6 @@ return new class extends Migration
             ]);
 
         DB::table('categories')
-            ->whereIn('user_id', $enabledUserIds)
             ->where('type', CategoryType::Savings->value)
             ->whereIn('name', ['Savings', 'Ahorros'])
             ->where('icon', 'PiggyBank')

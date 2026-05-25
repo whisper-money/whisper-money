@@ -4,11 +4,9 @@ namespace App\Actions;
 
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
-use App\Features\CashflowSavingsInvestmentsAndPeriods;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Support\Str;
-use Laravel\Pennant\Feature;
 
 class CreateDefaultCategories
 {
@@ -19,13 +17,6 @@ class CreateDefaultCategories
     {
         $locale = $user->locale ?? app()->getLocale();
         $defaultCategories = self::getDefaultCategories($locale);
-
-        if (! Feature::for($user)->active(CashflowSavingsInvestmentsAndPeriods::class)) {
-            $defaultCategories = array_map(
-                fn (array $category): array => self::withoutCashflowSavingsInvestmentsAndPeriods($category),
-                $defaultCategories,
-            );
-        }
 
         $existingCategoryNames = $user->categories()
             ->whereIn('name', array_column($defaultCategories, 'name'))
@@ -50,24 +41,6 @@ class CreateDefaultCategories
         }
 
         Category::query()->insert($categories);
-    }
-
-    /**
-     * @param  array{name: string, icon: string, color: string, type: string, cashflow_direction?: string}  $category
-     * @return array{name: string, icon: string, color: string, type: string, cashflow_direction?: string}
-     */
-    private static function withoutCashflowSavingsInvestmentsAndPeriods(array $category): array
-    {
-        if ($category['type'] !== CategoryType::Savings->value
-            && $category['type'] !== CategoryType::Investment->value) {
-            return $category;
-        }
-
-        return [
-            ...$category,
-            'type' => CategoryType::Transfer->value,
-            'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
-        ];
     }
 
     /**
