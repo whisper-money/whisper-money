@@ -28,6 +28,70 @@ it('redirects new registration to email verification', function () {
     ]);
 });
 
+it('syncs user currency from first onboarding account after signup', function () {
+    Bank::factory()->create(['name' => 'Signup Test Bank']);
+
+    $page = visit('/register?force=1');
+
+    $page->assertSee('Create an account')
+        ->fill('name', 'Currency Signup User')
+        ->fill('email', 'currency-signup@example.com')
+        ->fill('password', 'password123456')
+        ->fill('password_confirmation', 'password123456')
+        ->click('@register-user-button')
+        ->wait(3)
+        ->assertPathIs('/email/verify')
+        ->assertNoJavascriptErrors();
+
+    $user = User::where('email', 'currency-signup@example.com')->firstOrFail();
+
+    expect($user->currency_code)->toBe('USD');
+
+    $user->forceFill(['email_verified_at' => now()])->save();
+
+    $this->actingAs($user->refresh());
+
+    $page = visit('/onboarding');
+
+    $page->assertPathIs('/onboarding')
+        ->assertSee('Welcome to')
+        ->click("Let's Get Started")
+        ->wait(1)
+        ->assertSee('Account Types')
+        ->click('Create Your First Account')
+        ->wait(1)
+        ->assertSee('Create an Account')
+        ->click('Manual')
+        ->wait(1)
+        ->click('Continue')
+        ->wait(1)
+        ->fill('#display_name', 'Euro Checking Account')
+        ->click('Select bank...')
+        ->wait(1)
+        ->fill('[placeholder="Search bank..."]', 'Signup')
+        ->wait(1)
+        ->click('Signup Test Bank')
+        ->wait(1)
+        ->click('Select account type')
+        ->wait(1)
+        ->click('[role="option"]:has-text("Checking")')
+        ->wait(1)
+        ->click('Select currency')
+        ->wait(1)
+        ->click('[role="option"]:has-text("EUR")')
+        ->wait(1)
+        ->click('Create Account')
+        ->wait(5)
+        ->assertNoJavascriptErrors();
+
+    $user->refresh();
+    $account = $user->accounts()->first();
+
+    expect($user->currency_code)->toBe('EUR');
+    expect($account)->not->toBeNull();
+    expect($account->currency_code)->toBe('EUR');
+});
+
 it('redirects onboarded user away from onboarding page to dashboard', function () {
     $user = User::factory()->onboarded()->create();
 

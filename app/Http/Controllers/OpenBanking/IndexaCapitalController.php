@@ -9,6 +9,7 @@ use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\ConnectIndexaCapitalRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
+use App\Services\AccountUserCurrencyService;
 use App\Services\Banking\IndexaCapitalClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ class IndexaCapitalController extends Controller
     /**
      * Validate the Indexa Capital API token and create a connection.
      */
-    public function store(ConnectIndexaCapitalRequest $request): JsonResponse
+    public function store(ConnectIndexaCapitalRequest $request, AccountUserCurrencyService $accountUserCurrencyService): JsonResponse
     {
         $validated = $request->validated();
         $user = auth()->user();
@@ -64,7 +65,7 @@ class IndexaCapitalController extends Controller
         ]);
 
         if (! $user->isOnboarded()) {
-            $this->createAccountsFromPending($user, $connection);
+            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
             SyncBankingConnectionJob::dispatch($connection);
 
             return response()->json([

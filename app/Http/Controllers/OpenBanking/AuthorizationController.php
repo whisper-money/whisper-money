@@ -11,6 +11,7 @@ use App\Http\Requests\OpenBanking\StartAuthorizationRequest;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
 use App\Models\User;
+use App\Services\AccountUserCurrencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -138,7 +139,7 @@ class AuthorizationController extends Controller
     /**
      * Handle the callback from bank authorization.
      */
-    public function callback(Request $request, BankingProviderInterface $provider): RedirectResponse
+    public function callback(Request $request, BankingProviderInterface $provider, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse
     {
         $user = auth()->user();
         $errorRedirectRoute = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
@@ -224,7 +225,7 @@ class AuthorizationController extends Controller
         ]);
 
         if (! $user->isOnboarded()) {
-            $this->createAccountsFromPending($user, $connection);
+            $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
             SyncBankingConnectionJob::dispatch($connection);
 
             return redirect()->route('onboarding', ['step' => 'create-account'])

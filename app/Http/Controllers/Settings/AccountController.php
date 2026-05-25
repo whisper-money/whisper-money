@@ -10,6 +10,7 @@ use App\Jobs\GenerateHistoricalLoanBalancesJob;
 use App\Jobs\GenerateHistoricalRealEstateBalancesJob;
 use App\Models\Account;
 use App\Models\User;
+use App\Services\AccountUserCurrencyService;
 use App\Services\LoanBalanceGeneratorService;
 use App\Services\RealEstateBalanceGeneratorService;
 use Carbon\Carbon;
@@ -46,7 +47,7 @@ class AccountController extends Controller
     /**
      * Store a newly created account.
      */
-    public function store(StoreAccountRequest $request, RealEstateBalanceGeneratorService $balanceGenerator, LoanBalanceGeneratorService $loanBalanceGenerator): RedirectResponse|JsonResponse
+    public function store(StoreAccountRequest $request, RealEstateBalanceGeneratorService $balanceGenerator, LoanBalanceGeneratorService $loanBalanceGenerator, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse|JsonResponse
     {
         /** @var User $user */
         $user = Auth::user();
@@ -168,10 +169,7 @@ class AccountController extends Controller
             }
         }
 
-        // Set user's currency_code from first account
-        if ($user->accounts()->count() === 1) {
-            $user->update(['currency_code' => $account->currency_code]);
-        }
+        $accountUserCurrencyService->syncFromFirstAccount($account);
 
         if ($request->wantsJson()) {
             return response()->json($account, 201);

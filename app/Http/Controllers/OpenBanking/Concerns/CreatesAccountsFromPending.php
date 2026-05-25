@@ -7,6 +7,7 @@ use App\Enums\BankingConnectionStatus;
 use App\Models\Bank;
 use App\Models\BankingConnection;
 use App\Models\User;
+use App\Services\AccountUserCurrencyService;
 
 trait CreatesAccountsFromPending
 {
@@ -17,7 +18,7 @@ trait CreatesAccountsFromPending
      * Indexa Capital, Binance, Bitpanda, and Coinbase; Checking for everything else) and clears the
      * pending data once accounts have been created.
      */
-    private function createAccountsFromPending(User $user, BankingConnection $connection): void
+    private function createAccountsFromPending(User $user, BankingConnection $connection, AccountUserCurrencyService $accountUserCurrencyService): void
     {
         $bank = Bank::firstOrCreate(
             ['name' => $connection->aspsp_name, 'user_id' => null],
@@ -44,7 +45,7 @@ trait CreatesAccountsFromPending
                 ?? $accountData['account_id']['iban']
                 ?? $connection->aspsp_name.' Account';
 
-            $user->accounts()->create([
+            $account = $user->accounts()->create([
                 'name' => $name,
                 'name_iv' => null,
                 'encrypted' => false,
@@ -55,6 +56,8 @@ trait CreatesAccountsFromPending
                 'external_account_id' => $uid,
                 'iban' => $accountData['account_id']['iban'] ?? null,
             ]);
+
+            $accountUserCurrencyService->syncFromFirstAccount($account);
         }
 
         $connection->update([
