@@ -46,14 +46,11 @@ class ApplySingleAutomationRuleJob implements ShouldQueue
             ->whereNull('description_iv')
             ->with(['account.bank', 'category', 'labels'])
             ->chunkById(100, function ($transactions) use ($service, $rule, $total, &$processed, &$applied, &$changed) {
-                foreach ($transactions as $transaction) {
-                    if ($service->applyRuleActions($transaction, $rule)) {
-                        $changed++;
-                    }
-                    $applied++;
-                    $processed++;
-                    $this->updateProgress(status: 'processing', processed: $processed, total: $total, applied: $applied, updated: $changed);
-                }
+                $changed += $service->applyRuleActionsToTransactions($transactions, $rule);
+                $applied += $transactions->count();
+                $processed += $transactions->count();
+
+                $this->updateProgress(status: 'processing', processed: $processed, total: $total, applied: $applied, updated: $changed);
             });
 
         $this->updateProgress(status: 'done', processed: $processed, total: $total, applied: $applied, updated: $changed);
