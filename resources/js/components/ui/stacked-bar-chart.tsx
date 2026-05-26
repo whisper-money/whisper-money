@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Bar, BarChart, Rectangle, XAxis } from 'recharts';
+import { Bar, BarChart, Rectangle, XAxis, type BarShapeProps } from 'recharts';
 
 import {
     ChartConfig,
@@ -31,13 +31,13 @@ interface StackedBarShapeProps {
     y: number;
     width: number;
     height: number;
-    fill: string;
-    payload: Record<string, unknown>;
+    fill?: string;
+    payload?: Record<string, unknown>;
     dataKey: string;
     dataKeys: string[];
 }
 
-function StackedBarShape({
+export function StackedBarShape({
     x,
     y,
     width,
@@ -49,8 +49,10 @@ function StackedBarShape({
 }: StackedBarShapeProps) {
     if (height <= 0) return null;
 
+    const segmentPayload = payload ?? {};
+    const radius = Math.min(BORDER_RADIUS, width / 2, height / 2);
     const visibleKeys = dataKeys.filter((key) => {
-        const value = payload[key];
+        const value = segmentPayload[key];
         return typeof value === 'number' && value > 0;
     });
 
@@ -61,36 +63,36 @@ function StackedBarShape({
 
     if (isFirstVisible && isLastVisible) {
         path = `
-            M ${x + BORDER_RADIUS} ${y}
-            H ${x + width - BORDER_RADIUS}
-            Q ${x + width} ${y} ${x + width} ${y + BORDER_RADIUS}
-            V ${y + height - BORDER_RADIUS}
-            Q ${x + width} ${y + height} ${x + width - BORDER_RADIUS} ${y + height}
-            H ${x + BORDER_RADIUS}
-            Q ${x} ${y + height} ${x} ${y + height - BORDER_RADIUS}
-            V ${y + BORDER_RADIUS}
-            Q ${x} ${y} ${x + BORDER_RADIUS} ${y}
+            M ${x + radius} ${y}
+            H ${x + width - radius}
+            Q ${x + width} ${y} ${x + width} ${y + radius}
+            V ${y + height - radius}
+            Q ${x + width} ${y + height} ${x + width - radius} ${y + height}
+            H ${x + radius}
+            Q ${x} ${y + height} ${x} ${y + height - radius}
+            V ${y + radius}
+            Q ${x} ${y} ${x + radius} ${y}
             Z
         `;
     } else if (isLastVisible) {
         path = `
-            M ${x + BORDER_RADIUS} ${y}
-            H ${x + width - BORDER_RADIUS}
-            Q ${x + width} ${y} ${x + width} ${y + BORDER_RADIUS}
+            M ${x + radius} ${y}
+            H ${x + width - radius}
+            Q ${x + width} ${y} ${x + width} ${y + radius}
             V ${y + height}
             H ${x}
-            V ${y + BORDER_RADIUS}
-            Q ${x} ${y} ${x + BORDER_RADIUS} ${y}
+            V ${y + radius}
+            Q ${x} ${y} ${x + radius} ${y}
             Z
         `;
     } else if (isFirstVisible) {
         path = `
             M ${x} ${y}
             H ${x + width}
-            V ${y + height - BORDER_RADIUS}
-            Q ${x + width} ${y + height} ${x + width - BORDER_RADIUS} ${y + height}
-            H ${x + BORDER_RADIUS}
-            Q ${x} ${y + height} ${x} ${y + height - BORDER_RADIUS}
+            V ${y + height - radius}
+            Q ${x + width} ${y + height} ${x + width - radius} ${y + height}
+            H ${x + radius}
+            Q ${x} ${y + height} ${x} ${y + height - radius}
             V ${y}
             Z
         `;
@@ -105,15 +107,19 @@ function StackedBarShape({
         `;
     }
 
-    return <path d={path} fill={fill} />;
+    return (
+        <path
+            d={path}
+            fill={fill ?? 'currentColor'}
+            stroke="var(--card)"
+            strokeLinejoin="round"
+            strokeWidth={1}
+        />
+    );
 }
 
-const CustomCursor = (props) => (
-  <Rectangle
-    {...props}
-    fillOpacity={0.25}
-    radius={5}
-  />
+const CustomCursor = (props: React.ComponentProps<typeof Rectangle>) => (
+    <Rectangle {...props} fillOpacity={0.25} radius={5} />
 );
 
 export interface StackedBarChartProps<T extends Record<string, unknown>> {
@@ -169,16 +175,20 @@ export function StackedBarChart<T extends Record<string, unknown>>({
     const shapeRenderers = useMemo(() => {
         return dataKeys.reduce(
             (acc, key) => {
-                acc[key] = (props: Record<string, unknown>) => (
+                acc[key] = (props: BarShapeProps) => (
                     <StackedBarShape
-                        {...(props as Omit<StackedBarShapeProps, 'dataKey' | 'dataKeys'>)}
+                        {...props}
                         dataKey={key}
                         dataKeys={dataKeys}
                     />
                 );
+
                 return acc;
             },
-            {} as Record<string, (props: Record<string, unknown>) => React.ReactNode>,
+            {} as Record<
+                string,
+                (props: BarShapeProps) => React.ReactElement | null
+            >,
         );
     }, [dataKeys]);
 
@@ -201,7 +211,7 @@ export function StackedBarChart<T extends Record<string, unknown>>({
                         tickFormatter={xAxisFormatter}
                     />
                     <ChartTooltip
-                        cursor={<CustomCursor/>}
+                        cursor={<CustomCursor />}
                         content={
                             <ChartTooltipContent
                                 hideLabel
