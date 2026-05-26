@@ -188,7 +188,7 @@ class AutomationRuleApplicationController extends Controller
             ->with(array_values(array_unique($eagerLoads)))
             ->orderByDesc('transaction_date')
             ->orderByDesc('created_at')
-            ->chunkById(500, function ($transactions) use ($rule, $service, $onlyUncategorized, &$ids) {
+            ->chunk(500, function ($transactions) use ($rule, $service, $onlyUncategorized, &$ids) {
                 foreach ($transactions as $transaction) {
                     if ($onlyUncategorized && $service->shouldSkipForOnlyUncategorized($rule, $transaction)) {
                         continue;
