@@ -1,4 +1,5 @@
 import { update } from '@/actions/App/Http/Controllers/BudgetController';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +30,7 @@ import {
 } from '@/types/budget';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
+import { Info } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Props {
@@ -107,6 +109,15 @@ export function EditBudgetDialog({
                     </DialogHeader>
 
                     <div className="space-y-4 py-4">
+                        <Alert>
+                            <Info className="h-4 w-4 opacity-50" />
+                            <AlertDescription>
+                                {__(
+                                    'Period and carry-over settings cannot be changed after a budget is created because budgets are calculated historically. If you need different settings, delete this budget and create a new one.',
+                                )}
+                            </AlertDescription>
+                        </Alert>
+
                         <div className="space-y-2">
                             <Label htmlFor="name">{__('Budget Name')}</Label>
                             <Input

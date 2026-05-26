@@ -1008,6 +1008,7 @@
     "Period": "Período",
     "Period Duration (days)": "Duración del Período (días)",
     "Period Type": "Tipo de Período",
+    "Period and carry-over settings cannot be changed after a budget is created because budgets are calculated historically. If you need different settings, delete this budget and create a new one.": "La configuración de período y arrastre no se puede cambiar después de crear un presupuesto porque los presupuestos se calculan históricamente. Si necesitas una configuración diferente, elimina este presupuesto y crea uno nuevo.",
     "Personal transfers": "Transferencias personales",
     "Peruvian Sol": "Sol peruano",
     "Pick whichever plan fits you, paste the matching code at checkout, and you are set.": "Elige el plan que prefieras, pega el código correspondiente al pagar y listo.",
