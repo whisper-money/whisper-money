@@ -9,13 +9,55 @@ import {
 import { CashflowSummary } from '@/hooks/use-cashflow-data';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
-import { ArrowDown, ArrowUp, TrendingDown, TrendingUp } from 'lucide-react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 
 interface NetCashflowCardProps {
     current: CashflowSummary;
     previous: CashflowSummary;
     loading?: boolean;
     currency?: string;
+}
+
+interface PeriodComparisonProps {
+    diff: number;
+    isFavorable: boolean;
+    currency: string;
+}
+
+function PeriodComparison({
+    diff,
+    isFavorable,
+    currency,
+}: PeriodComparisonProps) {
+    const isIncrease = diff >= 0;
+    const Icon = isIncrease ? TrendingUp : TrendingDown;
+
+    return (
+        <div className="mt-1 flex items-center gap-1 text-xs">
+            <Icon
+                className={cn(
+                    'size-3',
+                    isFavorable
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400',
+                )}
+            />
+            <span>
+                {isIncrease ? '+' : ''}
+                <AmountDisplay
+                    amountInCents={diff}
+                    currencyCode={currency}
+                    minimumFractionDigits={0}
+                    maximumFractionDigits={0}
+                    className="text-xs"
+                    highlightPositive
+                />
+            </span>
+            <span className="text-muted-foreground">
+                {__('vs last period')}
+            </span>
+        </div>
+    );
 }
 
 export function NetCashflowCard({
@@ -39,9 +81,10 @@ export function NetCashflowCard({
         );
     }
 
-    const isPositive = current.net >= 0;
     const diff = current.net - previous.net;
     const diffIsPositive = diff >= 0;
+    const incomeDiff = current.income - previous.income;
+    const expenseDiff = current.expense - previous.expense;
     const hasPreviousData = previous.income > 0 || previous.expense > 0;
 
     return (
@@ -55,23 +98,8 @@ export function NetCashflowCard({
             <CardContent>
                 <div className="flex items-baseline gap-2">
                     <div className={cn('flex items-center gap-1')}>
-                        {isPositive ? (
-                            <ArrowUp
-                                className={cn(
-                                    'size-4',
-                                    'text-green-600 dark:text-green-400',
-                                )}
-                            />
-                        ) : (
-                            <ArrowDown
-                                className={cn(
-                                    'size-4',
-                                    'text-red-600 dark:text-red-400',
-                                )}
-                            />
-                        )}
                         <AmountDisplay
-                            amountInCents={Math.abs(current.net)}
+                            amountInCents={current.net}
                             currencyCode={currency}
                             size="2xl"
                             weight="bold"
@@ -127,6 +155,13 @@ export function NetCashflowCard({
                             weight="medium"
                             highlightPositive
                         />
+                        {hasPreviousData && (
+                            <PeriodComparison
+                                diff={incomeDiff}
+                                isFavorable={incomeDiff >= 0}
+                                currency={currency}
+                            />
+                        )}
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground">
@@ -139,6 +174,13 @@ export function NetCashflowCard({
                             maximumFractionDigits={0}
                             weight="medium"
                         />
+                        {hasPreviousData && (
+                            <PeriodComparison
+                                diff={expenseDiff}
+                                isFavorable={expenseDiff <= 0}
+                                currency={currency}
+                            />
+                        )}
                     </div>
                 </div>
             </CardContent>

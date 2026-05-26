@@ -18,6 +18,72 @@ interface SavingsRateCardProps {
     currency?: string;
 }
 
+interface PercentageComparisonProps {
+    diff: number;
+}
+
+function PercentageComparison({ diff }: PercentageComparisonProps) {
+    const isPositive = diff >= 0;
+    const Icon = isPositive ? TrendingUp : TrendingDown;
+
+    return (
+        <div className="mt-2 flex items-center gap-1 text-sm">
+            <Icon
+                className={cn(
+                    'size-4',
+                    isPositive
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400',
+                )}
+            />
+            <span>
+                {isPositive ? '+' : ''}
+                {diff.toFixed(1)}%
+            </span>
+            <span className="text-muted-foreground">
+                {__('vs last period')}
+            </span>
+        </div>
+    );
+}
+
+interface AmountComparisonProps {
+    diff: number;
+    currency: string;
+}
+
+function AmountComparison({ diff, currency }: AmountComparisonProps) {
+    const isPositive = diff >= 0;
+    const Icon = isPositive ? TrendingUp : TrendingDown;
+
+    return (
+        <div className="mt-1 flex items-center gap-1 text-xs">
+            <Icon
+                className={cn(
+                    'size-3',
+                    isPositive
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400',
+                )}
+            />
+            <span>
+                {isPositive ? '+' : ''}
+                <AmountDisplay
+                    amountInCents={diff}
+                    currencyCode={currency}
+                    minimumFractionDigits={0}
+                    maximumFractionDigits={0}
+                    className="text-xs"
+                    highlightPositive
+                />
+            </span>
+            <span className="text-muted-foreground">
+                {__('vs last period')}
+            </span>
+        </div>
+    );
+}
+
 export function SavingsRateCard({
     current,
     previous,
@@ -40,7 +106,8 @@ export function SavingsRateCard({
     }
 
     const diff = current.savings_rate - previous.savings_rate;
-    const isPositive = diff >= 0;
+    const savingsDiff = current.savings - previous.savings;
+    const investmentsDiff = current.investments - previous.investments;
     const hasPreviousData = previous.income > 0;
 
     // Determine color based on savings rate
@@ -73,20 +140,8 @@ export function SavingsRateCard({
                     >
                         {current.savings_rate.toFixed(1)}%
                     </span>
-                    {hasPreviousData && (
-                        <div className={cn('flex items-center gap-1 text-sm')}>
-                            {isPositive ? (
-                                <TrendingUp className="size-4 text-green-600 dark:text-green-400" />
-                            ) : (
-                                <TrendingDown className="size-4 text-red-600 dark:text-red-400" />
-                            )}
-                            <span>
-                                {isPositive ? '+' : ''}
-                                {diff.toFixed(1)}%
-                            </span>
-                        </div>
-                    )}
                 </div>
+                {hasPreviousData && <PercentageComparison diff={diff} />}
                 <div className="mt-3 grid grid-cols-2 gap-4 border-t pt-3">
                     <div>
                         <p className="text-xs text-muted-foreground">
@@ -100,6 +155,12 @@ export function SavingsRateCard({
                             weight="medium"
                             highlightPositive
                         />
+                        {hasPreviousData && (
+                            <AmountComparison
+                                diff={savingsDiff}
+                                currency={currency}
+                            />
+                        )}
                     </div>
                     <div>
                         <p className="text-xs text-muted-foreground">
@@ -113,6 +174,12 @@ export function SavingsRateCard({
                             weight="medium"
                             highlightPositive
                         />
+                        {hasPreviousData && (
+                            <AmountComparison
+                                diff={investmentsDiff}
+                                currency={currency}
+                            />
+                        )}
                     </div>
                 </div>
             </CardContent>
