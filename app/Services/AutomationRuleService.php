@@ -45,7 +45,7 @@ class AutomationRuleService
             return false;
         }
 
-        $transactionData = $this->prepareTransactionData($transaction);
+        $transactionData = $this->prepareTransactionData($transaction, $rule);
 
         try {
             $normalizedRulesJson = $this->normalizeRuleJson($rule->rules_json);
@@ -92,14 +92,36 @@ class AutomationRuleService
     }
 
     /**
+     * @return array<int, string>
+     */
+    public function eagerLoadsForRuleEvaluation(AutomationRule $rule): array
+    {
+        $variables = $this->ruleVariables($rule);
+        $eagerLoads = [];
+
+        if (in_array('bank_name', $variables, true)) {
+            $eagerLoads[] = 'account.bank';
+        } elseif (in_array('account_name', $variables, true)) {
+            $eagerLoads[] = 'account';
+        }
+
+        if (in_array('category', $variables, true)) {
+            $eagerLoads[] = 'category';
+        }
+
+        return $eagerLoads;
+    }
+
+    /**
      * @return array{description: string, amount: float, transaction_date: string, bank_name: string, account_name: string, category: string|null, notes: string|null}
      */
-    private function prepareTransactionData(Transaction $transaction): array
+    private function prepareTransactionData(Transaction $transaction, ?AutomationRule $rule = null): array
     {
-        $transaction->loadMissing(['account.bank', 'category']);
+        $transaction->loadMissing($rule ? $this->eagerLoadsForRuleEvaluation($rule) : ['account.bank', 'category']);
 
-        $account = $transaction->account;
-        $bank = $account?->bank;
+        $account = $transaction->relationLoaded('account') ? $transaction->account : null;
+        $bank = $account?->relationLoaded('bank') ? $account->bank : null;
+        $category = $transaction->relationLoaded('category') ? $transaction->category : null;
 
         $accountName = '';
         if ($account && ! $account->encrypted) {
@@ -112,7 +134,7 @@ class AutomationRuleService
             'transaction_date' => $transaction->transaction_date->format('Y-m-d'),
             'bank_name' => mb_strtolower($bank->name ?? ''),
             'account_name' => mb_strtolower($accountName),
-            'category' => $transaction->category?->name,
+            'category' => $category?->name,
             'notes' => $transaction->notes
                 ? $this->normalizeWhitespace(mb_strtolower($transaction->notes))
                 : null,
@@ -139,6 +161,35 @@ class AutomationRuleService
         }
 
         return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function ruleVariables(AutomationRule $rule): array
+    {
+        $variables = [];
+        $this->collectRuleVariables($this->normalizeRuleJson($rule->rules_json), $variables);
+
+        return array_values(array_unique($variables));
+    }
+
+    /**
+     * @param  array<int, string>  $variables
+     */
+    private function collectRuleVariables(mixed $ruleJson, array &$variables): void
+    {
+        if (! is_array($ruleJson)) {
+            return;
+        }
+
+        if (isset($ruleJson['var']) && is_string($ruleJson['var'])) {
+            $variables[] = $ruleJson['var'];
+        }
+
+        foreach ($ruleJson as $value) {
+            $this->collectRuleVariables($value, $variables);
+        }
     }
 
     private function applyActions(Transaction $transaction, AutomationRule $rule): bool
