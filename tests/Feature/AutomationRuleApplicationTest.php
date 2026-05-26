@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -88,11 +89,26 @@ test('matches endpoint skips already categorized when only_uncategorized is true
 });
 
 test('matches endpoint avoids repeated relationship queries for description-only rules', function () {
-    Transaction::factory()->enableBanking()->count(501)->create([
+    Transaction::factory()->enableBanking()->create([
+        'id' => '00000000-0000-0000-0000-000000000001',
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
         'category_id' => null,
         'description' => 'Grocery Store',
+        'transaction_date' => '2024-01-01',
+        'amount' => -1000,
+    ]);
+
+    Transaction::factory()->enableBanking()->count(500)->sequence(
+        fn (Sequence $sequence): array => [
+            'id' => sprintf('ffffffff-ffff-ffff-ffff-%012d', $sequence->index),
+        ],
+    )->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Grocery Store',
+        'transaction_date' => '2024-01-02',
         'amount' => -1000,
     ]);
 
