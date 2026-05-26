@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Models\AutomationRule;
+use App\Models\LabelTransaction;
 use App\Models\Transaction;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use JWadhams\JsonLogic;
 
 class AutomationRuleService
@@ -57,14 +60,82 @@ class AutomationRuleService
     }
 
     /**
-     * Apply a single rule's actions to the transaction, ignoring rule
-     * priority and other rules. The transaction must already match the rule.
-     *
-     * Returns true if any attribute of the transaction was changed.
+     * @param  EloquentCollection<int, Transaction>  $transactions
      */
-    public function applyRuleActions(Transaction $transaction, AutomationRule $rule): bool
+    public function applyRuleActionsToTransactions(EloquentCollection $transactions, AutomationRule $rule): int
     {
-        return $this->applyActions($transaction, $rule);
+        if ($transactions->isEmpty()) {
+            return 0;
+        }
+
+        $rule->loadMissing('labels');
+        $transactions->loadMissing('labels');
+
+        $changedTransactionIds = [];
+
+        if ($rule->action_category_id !== null) {
+            $categoryTransactionIds = $transactions
+                ->filter(fn (Transaction $transaction): bool => $transaction->category_id !== $rule->action_category_id)
+                ->pluck('id')
+                ->all();
+
+            if ($categoryTransactionIds !== []) {
+                Transaction::query()
+                    ->whereIn('id', $categoryTransactionIds)
+                    ->update([
+                        'category_id' => $rule->action_category_id,
+                        'updated_at' => now(),
+                    ]);
+
+                foreach ($categoryTransactionIds as $transactionId) {
+                    $changedTransactionIds[$transactionId] = true;
+                }
+            }
+        }
+
+        if ($rule->action_note && $rule->action_note_iv === null) {
+            foreach ($transactions as $transaction) {
+                $existingNotes = $transaction->notes ?? '';
+
+                if ($this->noteAlreadyPresent($existingNotes, $rule->action_note)) {
+                    continue;
+                }
+
+                $transaction->notes = $existingNotes
+                    ? $existingNotes."\n".$rule->action_note
+                    : $rule->action_note;
+                $transaction->saveQuietly();
+                $changedTransactionIds[$transaction->id] = true;
+            }
+        }
+
+        $labelIds = $rule->labels->pluck('id')->all();
+        if ($labelIds !== []) {
+            $now = now();
+            $labelTransactionRows = [];
+
+            foreach ($transactions as $transaction) {
+                $transactionLabelIds = $transaction->labels->pluck('id')->all();
+                $missingLabelIds = array_diff($labelIds, $transactionLabelIds);
+
+                foreach ($missingLabelIds as $labelId) {
+                    $labelTransactionRows[] = [
+                        'id' => (string) Str::uuid(),
+                        'label_id' => $labelId,
+                        'transaction_id' => $transaction->id,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                    $changedTransactionIds[$transaction->id] = true;
+                }
+            }
+
+            if ($labelTransactionRows !== []) {
+                LabelTransaction::query()->insertOrIgnore($labelTransactionRows);
+            }
+        }
+
+        return count($changedTransactionIds);
     }
 
     /**

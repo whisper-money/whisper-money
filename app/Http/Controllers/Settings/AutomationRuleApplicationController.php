@@ -96,8 +96,6 @@ class AutomationRuleApplicationController extends Controller
         }
 
         if ($total <= self::SYNC_THRESHOLD) {
-            $changed = 0;
-
             $transactions = Transaction::query()
                 ->where('user_id', $automationRule->user_id)
                 ->whereIn('id', $matchingIds)
@@ -105,11 +103,7 @@ class AutomationRuleApplicationController extends Controller
                 ->with(['account.bank', 'category', 'labels'])
                 ->get();
 
-            foreach ($transactions as $transaction) {
-                if ($service->applyRuleActions($transaction, $automationRule)) {
-                    $changed++;
-                }
-            }
+            $changed = $service->applyRuleActionsToTransactions($transactions, $automationRule);
 
             $applied = $transactions->count();
 
