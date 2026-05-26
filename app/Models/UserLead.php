@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\LeadCohort;
 use App\Notifications\VerifyUserLeadEmailNotification;
+use Carbon\CarbonInterface;
 use Database\Factories\UserLeadFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -12,12 +13,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
+ * @property string $email
+ * @property ?CarbonInterface $invitation_sent_at
+ * @property ?CarbonInterface $re_invitation_sent_at
+ * @property int $re_invitation_count
  * @property ?LeadCohort $cohort
  */
 class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
@@ -36,6 +42,8 @@ class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
         'promo_code_monthly',
         'promo_code_yearly',
         'invitation_sent_at',
+        're_invitation_sent_at',
+        're_invitation_count',
     ];
 
     /**
@@ -48,6 +56,8 @@ class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'invitation_sent_at' => 'datetime',
+            're_invitation_sent_at' => 'datetime',
+            're_invitation_count' => 'integer',
             'cohort' => LeadCohort::class,
         ];
     }
@@ -90,6 +100,16 @@ class UserLead extends Model implements HasLocalePreference, MustVerifyEmail
     public function referrals(): HasMany
     {
         return $this->hasMany(UserLead::class, 'referred_by_id');
+    }
+
+    /**
+     * The user account created from this lead email, if any.
+     *
+     * @return HasOne<User, $this>
+     */
+    public function signedUpUser(): HasOne
+    {
+        return $this->hasOne(User::class, 'email', 'email')->withTrashed();
     }
 
     /**
