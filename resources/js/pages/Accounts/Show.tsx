@@ -16,6 +16,7 @@ import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indica
 import HeadingSmall from '@/components/heading-small';
 import InputError from '@/components/input-error';
 import { MobileBackButton } from '@/components/mobile-back-button';
+import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog';
 import { TransactionList } from '@/components/transactions/transaction-list';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { AmountInput } from '@/components/ui/amount-input';
@@ -39,6 +40,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
@@ -62,9 +64,10 @@ import { Label as LabelType } from '@/types/label';
 import { formatDateMedium } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
-import { ChevronDown, Pencil } from 'lucide-react';
+import { ChevronDown, Pencil, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { toast } from 'sonner';
 
 interface AccountWithDetails extends Account {
     real_estate_detail?: RealEstateDetail;
@@ -99,8 +102,11 @@ export default function AccountShow({
     const [editingDetails, setEditingDetails] = useState(false);
     const [editingLoanDetails, setEditingLoanDetails] = useState(false);
     const [editLoanDialogOpen, setEditLoanDialogOpen] = useState(false);
+    const [createTransactionOpen, setCreateTransactionOpen] = useState(false);
+    const [transactionRefreshKey, setTransactionRefreshKey] = useState(0);
     const [chartComputedData, setChartComputedData] =
         useState<ChartComputedData | null>(null);
+    const { isKeySet } = useEncryptionKey();
 
     const handleChartDataLoaded = useCallback((data: ChartComputedData) => {
         setChartComputedData(data);
@@ -110,6 +116,22 @@ export default function AccountShow({
         setChartRefreshKey((prev) => prev + 1);
     }
 
+    function handleAddTransaction() {
+        if (!isKeySet) {
+            toast.error(
+                __('Please unlock your encryption key to add transactions'),
+            );
+            return;
+        }
+
+        setCreateTransactionOpen(true);
+    }
+
+    function handleTransactionCreated() {
+        setTransactionRefreshKey((prev) => prev + 1);
+        handleBalanceUpdated();
+    }
+
     const isConnected = !!account.banking_connection_id;
     const isLoan = account.type === 'loan';
     const isRealEstate = account.type === 'real_estate';
@@ -117,6 +139,8 @@ export default function AccountShow({
     const loanDetail = account.loan_detail;
     const linkedLoanAccount = account.linked_loan_account;
     const hasLinkedLoan = isRealEstate && !!linkedLoanAccount;
+    const canCreateTransaction =
+        !isConnected && isTransactionalAccount(account);
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -256,7 +280,16 @@ export default function AccountShow({
                             </ButtonGroup>
                         </ButtonGroup>
                     ) : (
-                        <ButtonGroup>
+                        <div className="flex flex-wrap gap-2">
+                            {canCreateTransaction && (
+                                <Button
+                                    variant="outline"
+                                    onClick={handleAddTransaction}
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    {__('Add transaction')}
+                                </Button>
+                            )}
                             <ButtonGroup>
                                 <Button
                                     variant="outline"
@@ -264,8 +297,6 @@ export default function AccountShow({
                                 >
                                     {updateBalanceLabel}
                                 </Button>
-                            </ButtonGroup>
-                            <ButtonGroup>
                                 <Button
                                     variant="outline"
                                     onClick={() => setImportBalancesOpen(true)}
@@ -298,7 +329,7 @@ export default function AccountShow({
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </ButtonGroup>
-                        </ButtonGroup>
+                        </div>
                     )}
                 </div>
 
@@ -360,6 +391,7 @@ export default function AccountShow({
 
                 {isTransactionalAccount(account) && (
                     <TransactionList
+                        key={transactionRefreshKey}
                         categories={categories}
                         accounts={accounts}
                         banks={banks}
@@ -388,6 +420,20 @@ export default function AccountShow({
                 open={updateBalanceOpen}
                 onOpenChange={setUpdateBalanceOpen}
                 onSuccess={handleBalanceUpdated}
+            />
+
+            <EditTransactionDialog
+                transaction={null}
+                categories={categories}
+                accounts={accounts}
+                banks={banks}
+                labels={labels}
+                automationRules={automationRules}
+                open={createTransactionOpen}
+                onOpenChange={setCreateTransactionOpen}
+                onSuccess={handleTransactionCreated}
+                mode="create"
+                initialAccountId={account.id}
             />
 
             <BalancesModal

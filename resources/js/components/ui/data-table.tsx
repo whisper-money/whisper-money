@@ -232,7 +232,14 @@ export function DataTable<TData, TValue>({
                             <TableRow>
                                 <TableCell
                                     colSpan={visibleColumnCount}
-                                    className="h-24 text-center"
+                                    className="h-24 text-center align-middle"
+                                    style={
+                                        maxHeight
+                                            ? {
+                                                  height: 80,
+                                              }
+                                            : undefined
+                                    }
                                 >
                                     {emptyMessage}
                                 </TableCell>

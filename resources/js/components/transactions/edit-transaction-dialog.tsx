@@ -64,6 +64,7 @@ interface EditTransactionDialogProps {
     ) => void;
     onLabelCreated?: (label: Label) => void;
     mode: 'create' | 'edit';
+    initialAccountId?: string | null;
 }
 
 export function EditTransactionDialog({
@@ -79,6 +80,7 @@ export function EditTransactionDialog({
     onCategorized,
     onLabelCreated,
     mode,
+    initialAccountId = null,
 }: EditTransactionDialogProps) {
     const locale = useLocale();
     const STORAGE_KEY_UPDATE_BALANCE =
@@ -123,14 +125,20 @@ export function EditTransactionDialog({
             setDescription('');
             setAmount(0);
             const availableAccounts = filterTransactionalAccounts(accounts);
+            const initialAccount = availableAccounts.find(
+                (account) => account.id === initialAccountId,
+            );
             setAccountId(
-                availableAccounts.length > 0 ? availableAccounts[0].id : '',
+                initialAccount?.id ??
+                    (availableAccounts.length > 0
+                        ? availableAccounts[0].id
+                        : ''),
             );
             setCategoryId('null');
             setSelectedLabelIds([]);
             setNotes('');
         }
-    }, [mode, transaction, open, accounts]);
+    }, [mode, transaction, open, accounts, initialAccountId]);
 
     useEffect(() => {
         if (!open || mode !== 'create') return;
