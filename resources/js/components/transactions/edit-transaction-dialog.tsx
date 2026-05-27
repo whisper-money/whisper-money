@@ -704,6 +704,34 @@ export function EditTransactionDialog({
                             )}
                         </div>
 
+                        {mode === 'edit' &&
+                            (transaction?.creditor_name ||
+                                transaction?.debtor_name) && (
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    {transaction.creditor_name && (
+                                        <div className="space-y-2">
+                                            <FormLabel className="text-sm text-muted-foreground">
+                                                {__('Creditor')}
+                                            </FormLabel>
+                                            <div className="rounded-md border bg-muted px-3 py-2 text-sm">
+                                                {transaction.creditor_name}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {transaction.debtor_name && (
+                                        <div className="space-y-2">
+                                            <FormLabel className="text-sm text-muted-foreground">
+                                                {__('Debtor')}
+                                            </FormLabel>
+                                            <div className="rounded-md border bg-muted px-3 py-2 text-sm">
+                                                {transaction.debtor_name}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         <div className="space-y-2">
                             <FormLabel
                                 htmlFor="amount"
