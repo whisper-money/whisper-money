@@ -1,0 +1,95 @@
+import { type User } from '@/types';
+import { render, screen } from '@testing-library/react';
+import { type ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { UserMenuContent } from './user-menu-content';
+
+vi.mock('@/components/ui/dropdown-menu', () => ({
+    DropdownMenuGroup: ({ children }: { children: ReactNode }) => (
+        <div>{children}</div>
+    ),
+    DropdownMenuItem: ({ children }: { children: ReactNode }) => (
+        <div>{children}</div>
+    ),
+    DropdownMenuLabel: ({ children }: { children: ReactNode }) => (
+        <div>{children}</div>
+    ),
+    DropdownMenuSeparator: () => <hr />,
+}));
+
+vi.mock('@/components/user-info', () => ({
+    UserInfo: () => <div>User</div>,
+}));
+
+vi.mock('@/contexts/privacy-mode-context', () => ({
+    usePrivacyMode: () => ({
+        isPrivacyModeEnabled: false,
+        togglePrivacyMode: vi.fn(),
+    }),
+}));
+
+vi.mock('@/hooks/use-mobile-navigation', () => ({
+    useMobileNavigation: () => vi.fn(),
+}));
+
+vi.mock('@/lib/key-storage', () => ({
+    clearKey: vi.fn(),
+}));
+
+vi.mock('@inertiajs/react', () => ({
+    Link: ({
+        children,
+        href,
+        ...props
+    }: {
+        children: ReactNode;
+        href: string;
+        as?: string;
+        prefetch?: boolean;
+    }) => {
+        delete props.as;
+        delete props.prefetch;
+
+        return (
+            <a href={href} {...props}>
+                {children}
+            </a>
+        );
+    },
+    router: {
+        flushAll: vi.fn(),
+    },
+    usePage: () => ({
+        props: {
+            version: 'test-version',
+        },
+    }),
+}));
+
+describe('UserMenuContent', () => {
+    it('shows community above feedback in the user dropdown', () => {
+        const user: User = {
+            id: '0194d20b-2b25-7000-8000-000000000001',
+            name: 'Test User',
+            email: 'test@example.com',
+            currency_code: 'USD',
+            locale: 'en',
+            timezone: 'UTC',
+            email_verified_at: null,
+            created_at: '2026-01-01T00:00:00.000000Z',
+            updated_at: '2026-01-01T00:00:00.000000Z',
+        };
+
+        render(<UserMenuContent user={user} />);
+
+        const community = screen.getByRole('link', { name: /community/i });
+        const feedback = screen.getByRole('link', { name: /feedback/i });
+
+        expect(community.getAttribute('href')).toBe(
+            'https://discord.gg/2WZmDW9QZ8',
+        );
+        expect(community.compareDocumentPosition(feedback)).toBe(
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+    });
+});

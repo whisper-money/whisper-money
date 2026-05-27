@@ -1,7 +1,6 @@
 import { index as accountsIndex } from '@/actions/App/Http/Controllers/AccountController';
 import { index as budgetsIndex } from '@/actions/App/Http/Controllers/BudgetController';
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
-import DiscordIcon from '@/components/icons/DiscordIcon';
 import { cashflow, dashboard } from '@/routes';
 import { Features, NavItem } from '@/types';
 import {
@@ -81,11 +80,4 @@ export function getMainNavItems(features: Features, locale: string): NavItem[] {
     return items;
 }
 
-export const footerNavItems: NavItem[] = [
-    {
-        type: 'nav-item',
-        title: 'Community',
-        href: 'https://discord.gg/2WZmDW9QZ8',
-        icon: <DiscordIcon className="size-5" />,
-    },
-];
+export const footerNavItems: NavItem[] = [];
