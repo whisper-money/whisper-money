@@ -124,8 +124,8 @@ describe('EditTransactionDialog', () => {
         );
 
         expect(screen.getByText('Creditor')).toBeInTheDocument();
-        expect(screen.getByText('Amazon EU')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('Amazon EU')).toBeDisabled();
         expect(screen.getByText('Debtor')).toBeInTheDocument();
-        expect(screen.getByText('Victor Falcon')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('Victor Falcon')).toBeDisabled();
     });
 });

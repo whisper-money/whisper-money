@@ -713,9 +713,14 @@ export function EditTransactionDialog({
                                             <FormLabel className="text-sm text-muted-foreground">
                                                 {__('Creditor')}
                                             </FormLabel>
-                                            <div className="rounded-md border bg-muted px-3 py-2 text-sm">
-                                                {transaction.creditor_name}
-                                            </div>
+                                            <Input
+                                                value={
+                                                    transaction.creditor_name
+                                                }
+                                                disabled
+                                                readOnly
+                                                className="bg-muted"
+                                            />
                                         </div>
                                     )}
 
@@ -724,9 +729,12 @@ export function EditTransactionDialog({
                                             <FormLabel className="text-sm text-muted-foreground">
                                                 {__('Debtor')}
                                             </FormLabel>
-                                            <div className="rounded-md border bg-muted px-3 py-2 text-sm">
-                                                {transaction.debtor_name}
-                                            </div>
+                                            <Input
+                                                value={transaction.debtor_name}
+                                                disabled
+                                                readOnly
+                                                className="bg-muted"
+                                            />
                                         </div>
                                     )}
                                 </div>
