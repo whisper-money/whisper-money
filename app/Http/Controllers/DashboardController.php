@@ -104,19 +104,20 @@ class DashboardController extends Controller
             ->groupBy('transactions.category_id')
             ->with('category')
             ->get()
+            ->filter(fn ($item): bool => (int) $item->total_amount < 0)
             ->map(function ($item) {
                 return [
                     'category_id' => $item->category_id,
                     'category' => $item->category,
-                    'amount' => abs($item->total_amount),
+                    'amount' => (int) -$item->total_amount,
                 ];
             });
     }
 
     private function calculateCashflowSummary(string $userId, Carbon $from, Carbon $to): array
     {
-        $income = $this->getTransactionSum($userId, $from, $to, CategoryType::Income);
-        $expense = abs($this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
+        $income = max(0, $this->getTransactionSum($userId, $from, $to, CategoryType::Income));
+        $expense = max(0, -$this->getTransactionSum($userId, $from, $to, CategoryType::Expense));
 
         $net = $income - $expense;
         $savingsRate = $income > 0 ? round((($income - $expense) / $income) * 100, 1) : 0;

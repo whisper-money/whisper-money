@@ -470,11 +470,12 @@ class DashboardAnalyticsController extends Controller
             ->groupBy('transactions.category_id')
             ->with('category')
             ->get()
+            ->filter(fn ($item): bool => (int) $item->total_amount < 0)
             ->map(function ($item) {
                 return [
                     'category_id' => $item->category_id,
                     'category' => $item->category,
-                    'amount' => abs($item->total_amount),
+                    'amount' => (int) -$item->total_amount,
                 ];
             });
     }
@@ -519,7 +520,7 @@ class DashboardAnalyticsController extends Controller
             })
             ->sum('transactions.amount');
 
-        return abs($spending);
+        return max(0, -$spending);
     }
 
     private function calculateCashFlow(Carbon $from, Carbon $to): array
@@ -545,8 +546,8 @@ class DashboardAnalyticsController extends Controller
             ->sum('transactions.amount');
 
         return [
-            'income' => $income,
-            'expense' => abs($expense),
+            'income' => max(0, $income),
+            'expense' => max(0, -$expense),
         ];
     }
 
