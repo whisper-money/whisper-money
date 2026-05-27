@@ -22,9 +22,15 @@ class TransactionCounterpartyExtractor
             return null;
         }
 
-        $name = trim($value);
+        $name = preg_replace('/[;\s]+/u', ' ', trim($value));
 
-        if ($name === '') {
+        if (! is_string($name)) {
+            return null;
+        }
+
+        $name = trim($name);
+
+        if ($name === '' || preg_match('/[\pL\pN]/u', $name) !== 1) {
             return null;
         }
 
