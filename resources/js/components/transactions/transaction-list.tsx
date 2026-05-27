@@ -181,6 +181,8 @@ function getInitialColumnVisibility(): VisibilityState {
     const defaultVisibility = {
         transaction_date: true,
         account: true,
+        creditor_name: false,
+        debtor_name: false,
         labels: true,
         notes: false,
     };
@@ -293,6 +295,8 @@ export function TransactionList({
         categoryIds: [],
         accountIds: accountId ? [accountId] : [],
         labelIds: [],
+        creditorName: '',
+        debtorName: '',
         searchText: '',
     });
     const [editTransaction, setEditTransaction] =
@@ -811,6 +815,24 @@ export function TransactionList({
                 return false;
             }
 
+            if (
+                filters.creditorName &&
+                !transaction.creditor_name
+                    ?.toLowerCase()
+                    .includes(filters.creditorName.toLowerCase())
+            ) {
+                return false;
+            }
+
+            if (
+                filters.debtorName &&
+                !transaction.debtor_name
+                    ?.toLowerCase()
+                    .includes(filters.debtorName.toLowerCase())
+            ) {
+                return false;
+            }
+
             return true;
         });
     }, [transactions, filters, isKeySet, accountId, searchMatchedIds]);
@@ -844,6 +866,14 @@ export function TransactionList({
                     const categoryA = a.category?.name || '';
                     const categoryB = b.category?.name || '';
                     comparison = categoryA.localeCompare(categoryB);
+                } else if (id === 'creditor_name') {
+                    comparison = (a.creditor_name || '').localeCompare(
+                        b.creditor_name || '',
+                    );
+                } else if (id === 'debtor_name') {
+                    comparison = (a.debtor_name || '').localeCompare(
+                        b.debtor_name || '',
+                    );
                 }
 
                 if (comparison !== 0) {

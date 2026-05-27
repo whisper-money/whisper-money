@@ -44,6 +44,48 @@ test('assigns category when "in" operator matches description', function () {
     expect($transaction->fresh()->category_id)->toBe($this->category->id);
 });
 
+test('assigns category when rule matches creditor name', function () {
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['amazon', ['var' => 'creditor_name']]],
+        'action_category_id' => $this->category->id,
+    ]);
+
+    $transaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Card payment',
+        'creditor_name' => 'Amazon EU',
+        'amount' => -5000,
+    ]);
+
+    app(AutomationRuleService::class)->applyRules($transaction);
+
+    expect($transaction->fresh()->category_id)->toBe($this->category->id);
+});
+
+test('assigns category when rule matches debtor name', function () {
+    AutomationRule::factory()->create([
+        'user_id' => $this->user->id,
+        'priority' => 1,
+        'rules_json' => ['in' => ['payroll', ['var' => 'debtor_name']]],
+        'action_category_id' => $this->category->id,
+    ]);
+
+    $transaction = Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Incoming transfer',
+        'debtor_name' => 'Payroll GmbH',
+        'amount' => 500000,
+    ]);
+
+    app(AutomationRuleService::class)->applyRules($transaction);
+
+    expect($transaction->fresh()->category_id)->toBe($this->category->id);
+});
+
 test('assigns labels when rule matches', function () {
     $label = Label::factory()->create(['user_id' => $this->user->id]);
 

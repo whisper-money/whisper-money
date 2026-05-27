@@ -27,6 +27,8 @@ class BulkReEvaluateRulesRequest extends FormRequest
             'filters.account_ids.*' => ['string', 'uuid'],
             'filters.label_ids' => ['nullable', 'array'],
             'filters.label_ids.*' => ['string', 'uuid'],
+            'filters.creditor_name' => ['nullable', 'string'],
+            'filters.debtor_name' => ['nullable', 'string'],
             'filters.search' => ['nullable', 'string'],
         ];
     }

@@ -25,6 +25,8 @@ class UpdateTransactionRequest extends FormRequest
             'description_iv' => ['nullable', 'string', 'size:16'],
             'notes' => ['nullable', 'string'],
             'notes_iv' => ['nullable', 'string', 'size:16'],
+            'creditor_name' => ['nullable', 'string', 'max:255'],
+            'debtor_name' => ['nullable', 'string', 'max:255'],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => [
                 'required',

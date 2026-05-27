@@ -17,6 +17,8 @@ export interface Transaction {
     currency_code: string;
     notes: string | null;
     notes_iv: string | null;
+    creditor_name?: string | null;
+    debtor_name?: string | null;
     source: TransactionSource;
     label_ids?: UUID[];
     created_at: string;
@@ -46,5 +48,7 @@ export interface TransactionFilters {
     categoryIds: UUID[];
     accountIds: UUID[];
     labelIds: UUID[];
+    creditorName: string;
+    debtorName: string;
     searchText: string;
 }

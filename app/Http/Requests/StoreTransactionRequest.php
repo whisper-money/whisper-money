@@ -36,6 +36,8 @@ class StoreTransactionRequest extends FormRequest
             'currency_code' => ['required', 'string', 'size:3'],
             'notes' => ['nullable', 'string'],
             'notes_iv' => ['nullable', 'string', 'size:16'],
+            'creditor_name' => ['nullable', 'string', 'max:255'],
+            'debtor_name' => ['nullable', 'string', 'max:255'],
             'source' => ['required', Rule::enum(TransactionSource::class)],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => [

@@ -252,6 +252,78 @@ export function createTransactionColumns({
             enableHiding: false,
         },
         {
+            accessorKey: 'creditor_name',
+            meta: {
+                label: __('Creditor'),
+                cellClassName: 'max-w-[180px] whitespace-normal',
+            },
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === 'asc')
+                        }
+                    >
+                        {__('Creditor')}
+                        {column.getIsSorted() === 'desc' ? (
+                            <ArrowDown className="h-3 w-3" />
+                        ) : column.getIsSorted() === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                        ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-25" />
+                        )}
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const creditorName = row.original.creditor_name;
+
+                return creditorName ? (
+                    <div className="truncate">{creditorName}</div>
+                ) : (
+                    <div className="text-muted-foreground">—</div>
+                );
+            },
+            enableHiding: true,
+        },
+        {
+            accessorKey: 'debtor_name',
+            meta: {
+                label: __('Debtor'),
+                cellClassName: 'max-w-[180px] whitespace-normal',
+            },
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === 'asc')
+                        }
+                    >
+                        {__('Debtor')}
+                        {column.getIsSorted() === 'desc' ? (
+                            <ArrowDown className="h-3 w-3" />
+                        ) : column.getIsSorted() === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                        ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-25" />
+                        )}
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const debtorName = row.original.debtor_name;
+
+                return debtorName ? (
+                    <div className="truncate">{debtorName}</div>
+                ) : (
+                    <div className="text-muted-foreground">—</div>
+                );
+            },
+            enableHiding: true,
+        },
+        {
             accessorKey: 'amount',
             meta: { label: __('Amount') },
             header: () => {

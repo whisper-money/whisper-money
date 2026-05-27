@@ -52,32 +52,46 @@ export function TransactionFilters({
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
     const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
     const [searchText, setSearchText] = useState(filters.searchText);
+    const [creditorName, setCreditorName] = useState(filters.creditorName);
+    const [debtorName, setDebtorName] = useState(filters.debtorName);
     const isUncategorizedSelected = filters.categoryIds.includes(
         UNCATEGORIZED_CATEGORY_ID,
     );
 
-    // Debounce search text updates
+    // Debounce text filter updates
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (searchText !== filters.searchText) {
+            if (
+                searchText !== filters.searchText ||
+                creditorName !== filters.creditorName ||
+                debtorName !== filters.debtorName
+            ) {
                 onFiltersChange({
                     ...filters,
                     searchText,
+                    creditorName,
+                    debtorName,
                 });
             }
         }, 300);
 
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchText]);
+    }, [searchText, creditorName, debtorName]);
 
     // Sync local state when filters change externally
     useEffect(() => {
         if (filters.searchText !== searchText) {
             setSearchText(filters.searchText);
         }
+        if (filters.creditorName !== creditorName) {
+            setCreditorName(filters.creditorName);
+        }
+        if (filters.debtorName !== debtorName) {
+            setDebtorName(filters.debtorName);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filters.searchText]);
+    }, [filters.searchText, filters.creditorName, filters.debtorName]);
 
     function handleCategoryToggle(categoryId: string) {
         const newCategoryIds = filters.categoryIds.includes(categoryId)
@@ -105,6 +119,8 @@ export function TransactionFilters({
 
     function clearFilters() {
         setSearchText('');
+        setCreditorName('');
+        setDebtorName('');
         onFiltersChange({
             dateFrom: null,
             dateTo: null,
@@ -113,6 +129,8 @@ export function TransactionFilters({
             categoryIds: [],
             accountIds: [],
             labelIds: [],
+            creditorName: '',
+            debtorName: '',
             searchText: '',
         });
     }
@@ -124,6 +142,8 @@ export function TransactionFilters({
         (filters.amountMax !== null ? 1 : 0) +
         filters.categoryIds.length +
         filters.labelIds.length +
+        (filters.creditorName ? 1 : 0) +
+        (filters.debtorName ? 1 : 0) +
         (hideAccountFilter ? 0 : filters.accountIds.length);
 
     return (
@@ -249,6 +269,28 @@ export function TransactionFilters({
                                                 })
                                             }
                                             placeholder={__('Max')}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <FormLabel>
+                                        {__('Counterparties')}
+                                    </FormLabel>
+                                    <div className="grid grid-cols-2 gap-2 pt-2">
+                                        <Input
+                                            value={creditorName}
+                                            onChange={(e) =>
+                                                setCreditorName(e.target.value)
+                                            }
+                                            placeholder={__('Creditor name')}
+                                        />
+                                        <Input
+                                            value={debtorName}
+                                            onChange={(e) =>
+                                                setDebtorName(e.target.value)
+                                            }
+                                            placeholder={__('Debtor name')}
                                         />
                                     </div>
                                 </div>

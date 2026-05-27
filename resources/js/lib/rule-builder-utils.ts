@@ -45,6 +45,16 @@ export const FIELD_CONFIG: Record<
         type: 'string',
         operators: ['contains', 'equals'],
     },
+    creditor_name: {
+        label: 'Creditor Name',
+        type: 'string',
+        operators: ['contains', 'equals', 'is_empty', 'is_not_empty'],
+    },
+    debtor_name: {
+        label: 'Debtor Name',
+        type: 'string',
+        operators: ['contains', 'equals', 'is_empty', 'is_not_empty'],
+    },
     account_name: {
         label: 'Account Name',
         type: 'string',

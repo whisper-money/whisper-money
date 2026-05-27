@@ -1,13 +1,14 @@
+import type { ColumnMapping, ParsedTransaction } from '@/types/import';
 import { DateFormat } from '@/types/import';
 import { describe, expect, it } from 'vitest';
 import {
+    autoDetectColumns,
     autoDetectDateFormat,
     calculateBalancesFromTransactions,
     convertRowsToTransactions,
     getLatestTransactionDate,
     getLocaleDateFormat,
 } from './file-parser';
-import type { ColumnMapping, ParsedTransaction } from '@/types/import';
 
 describe('getLocaleDateFormat', () => {
     it('returns null for undefined locale', () => {
@@ -58,6 +59,8 @@ describe('convertRowsToTransactions', () => {
                     description: 'description',
                     amount: 'amount',
                     balance: null,
+                    creditor_name: null,
+                    debtor_name: null,
                 },
                 DateFormat.DayMonthYear,
             );
@@ -67,6 +70,49 @@ describe('convertRowsToTransactions', () => {
         } finally {
             process.env.TZ = originalTimezone;
         }
+    });
+});
+
+describe('autoDetectColumns', () => {
+    it('detects creditor and debtor name columns', () => {
+        const mapping = autoDetectColumns([
+            'Transaction Date',
+            'Description',
+            'Amount',
+            'Creditor Name',
+            'Debtor Name',
+        ]);
+
+        expect(mapping.creditor_name).toBe('Creditor Name');
+        expect(mapping.debtor_name).toBe('Debtor Name');
+    });
+});
+
+describe('convertRowsToTransactions counterparty fields', () => {
+    it('maps optional creditor and debtor names', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Transfer',
+                    amount: '10.00',
+                    creditor: 'Landlord LLC',
+                    debtor: 'Victor Falcon',
+                },
+            ],
+            {
+                transaction_date: 'date',
+                description: 'description',
+                amount: 'amount',
+                balance: null,
+                creditor_name: 'creditor',
+                debtor_name: 'debtor',
+            },
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].creditor_name).toBe('Landlord LLC');
+        expect(transactions[0].debtor_name).toBe('Victor Falcon');
     });
 });
 
@@ -161,6 +207,8 @@ describe('getLatestTransactionDate', () => {
         description: 'desc',
         amount: 'amount',
         balance: null,
+        creditor_name: null,
+        debtor_name: null,
     };
 
     it('returns null when no date column set', () => {
@@ -193,10 +241,7 @@ describe('getLatestTransactionDate', () => {
 });
 
 describe('calculateBalancesFromTransactions', () => {
-    function txn(
-        date: string,
-        amount: number,
-    ): ParsedTransaction {
+    function txn(date: string, amount: number): ParsedTransaction {
         return {
             transaction_date: date,
             description: 'x',
@@ -224,10 +269,7 @@ describe('calculateBalancesFromTransactions', () => {
     });
 
     it('handles reference date with no transactions on it', () => {
-        const txns = [
-            txn('2024-01-01', 1000),
-            txn('2024-01-02', -200),
-        ];
+        const txns = [txn('2024-01-01', 1000), txn('2024-01-02', -200)];
         const balances = calculateBalancesFromTransactions(
             txns,
             '2024-01-05',

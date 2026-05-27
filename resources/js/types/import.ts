@@ -18,6 +18,8 @@ export interface ColumnMapping {
     description: string | string[] | null;
     amount: string | null;
     balance: string | null;
+    creditor_name: string | null;
+    debtor_name: string | null;
 }
 
 export interface ParsedRow {
@@ -29,6 +31,8 @@ export interface ParsedTransaction {
     description: string;
     amount: number;
     balance?: number | null;
+    creditor_name?: string | null;
+    debtor_name?: string | null;
     isDuplicate?: boolean;
     selected?: boolean;
     validationErrors?: string[];

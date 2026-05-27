@@ -277,6 +277,8 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         description: null,
         amount: null,
         balance: null,
+        creditor_name: null,
+        debtor_name: null,
     };
 
     if (!headers || headers.length === 0) {
@@ -328,6 +330,26 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
         'saldo actual',
         'saldo disponible',
     ];
+    const creditorPatterns = [
+        'creditor',
+        'creditor name',
+        'beneficiary',
+        'beneficiary name',
+        'payee',
+        'recipient',
+        'contraparte acreedora',
+        'acreedor',
+    ];
+    const debtorPatterns = [
+        'debtor',
+        'debtor name',
+        'payer',
+        'sender',
+        'originator',
+        'ordering party',
+        'contraparte deudora',
+        'deudor',
+    ];
 
     for (let i = 0; i < lowerHeaders.length; i++) {
         const header = lowerHeaders[i];
@@ -360,6 +382,20 @@ export function autoDetectColumns(headers: string[]): ColumnMapping {
             balancePatterns.some((p) => header.includes(p))
         ) {
             mapping.balance = originalHeader;
+        }
+
+        if (
+            !mapping.creditor_name &&
+            creditorPatterns.some((p) => header.includes(p))
+        ) {
+            mapping.creditor_name = originalHeader;
+        }
+
+        if (
+            !mapping.debtor_name &&
+            debtorPatterns.some((p) => header.includes(p))
+        ) {
+            mapping.debtor_name = originalHeader;
         }
     }
 
@@ -508,6 +544,19 @@ function getDescriptionFromRow(row: ParsedRow, mapping: ColumnMapping): string {
         .join('\n');
 }
 
+function getOptionalTextFromRow(
+    row: ParsedRow,
+    column: string | null,
+): string | null {
+    if (!column) {
+        return null;
+    }
+
+    const value = String(row[column] || '').trim();
+
+    return value.length > 0 ? value.slice(0, 255) : null;
+}
+
 export function validateTransaction(
     row: ParsedRow,
     mapping: ColumnMapping,
@@ -581,6 +630,8 @@ export function convertRowsToTransactions(
         }
 
         const formattedDate = formatLocalDate(date);
+        const creditorName = getOptionalTextFromRow(row, mapping.creditor_name);
+        const debtorName = getOptionalTextFromRow(row, mapping.debtor_name);
 
         let balance: number | null = null;
         if (mapping.balance && row[mapping.balance]) {
@@ -597,6 +648,8 @@ export function convertRowsToTransactions(
             description,
             amount: Math.round(amount * 100),
             balance,
+            creditor_name: creditorName,
+            debtor_name: debtorName,
             validationErrors: [],
         });
     }
