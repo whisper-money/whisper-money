@@ -25,6 +25,8 @@ export interface TransactionData {
     account_name: string;
     category: string | null;
     notes: string | null;
+    creditor_name: string | null;
+    debtor_name: string | null;
 }
 
 function normalizeRuleJson(rulesJson: unknown): unknown {
@@ -49,7 +51,10 @@ function normalizeRuleJson(rulesJson: unknown): unknown {
                 typeof item === 'object' &&
                 item !== null &&
                 'var' in item &&
-                (item.var === 'description' || item.var === 'notes')
+                (item.var === 'description' ||
+                    item.var === 'notes' ||
+                    item.var === 'creditor_name' ||
+                    item.var === 'debtor_name')
             ) {
                 return item;
             }
@@ -126,6 +131,12 @@ export async function prepareTransactionData(
         category: category?.name || null,
         notes: transaction.decryptedNotes
             ? normalizeWhitespace(transaction.decryptedNotes.toLowerCase())
+            : null,
+        creditor_name: transaction.creditor_name
+            ? normalizeWhitespace(transaction.creditor_name.toLowerCase())
+            : null,
+        debtor_name: transaction.debtor_name
+            ? normalizeWhitespace(transaction.debtor_name.toLowerCase())
             : null,
     };
 }
@@ -229,6 +240,8 @@ export interface NewTransactionData {
     transaction_date: string;
     account_id: UUID;
     notes?: string;
+    creditor_name?: string | null;
+    debtor_name?: string | null;
 }
 
 export async function evaluateRulesForNewTransaction(
@@ -278,6 +291,12 @@ export async function evaluateRulesForNewTransaction(
         category: null,
         notes: transactionData.notes
             ? normalizeWhitespace(transactionData.notes.toLowerCase())
+            : null,
+        creditor_name: transactionData.creditor_name
+            ? normalizeWhitespace(transactionData.creditor_name.toLowerCase())
+            : null,
+        debtor_name: transactionData.debtor_name
+            ? normalizeWhitespace(transactionData.debtor_name.toLowerCase())
             : null,
     };
 

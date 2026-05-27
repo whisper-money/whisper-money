@@ -522,6 +522,8 @@ export function ImportTransactionsDrawer({
                                 amount: transaction.amount / 100,
                                 transaction_date: transaction.transaction_date,
                                 account_id: selectedAccount.id,
+                                creditor_name: transaction.creditor_name,
+                                debtor_name: transaction.debtor_name,
                             },
                             rules,
                             categories,

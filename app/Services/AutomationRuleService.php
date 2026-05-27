@@ -184,7 +184,7 @@ class AutomationRuleService
     }
 
     /**
-     * @return array{description: string, amount: float, transaction_date: string, bank_name: string, account_name: string, category: string|null, notes: string|null}
+     * @return array{description: string, amount: float, transaction_date: string, bank_name: string, account_name: string, category: string|null, notes: string|null, creditor_name: string|null, debtor_name: string|null}
      */
     private function prepareTransactionData(Transaction $transaction, ?AutomationRule $rule = null): array
     {
@@ -208,6 +208,12 @@ class AutomationRuleService
             'category' => $category?->name,
             'notes' => $transaction->notes
                 ? $this->normalizeWhitespace(mb_strtolower($transaction->notes))
+                : null,
+            'creditor_name' => $transaction->creditor_name
+                ? $this->normalizeWhitespace(mb_strtolower($transaction->creditor_name))
+                : null,
+            'debtor_name' => $transaction->debtor_name
+                ? $this->normalizeWhitespace(mb_strtolower($transaction->debtor_name))
                 : null,
         ];
     }

@@ -60,6 +60,37 @@ test('matches endpoint returns transactions matching the rule', function () {
         ->assertJsonCount(1, 'data');
 });
 
+test('matches endpoint returns transactions matching creditor name rule', function () {
+    $this->rule->update([
+        'rules_json' => ['in' => ['amazon', ['var' => 'creditor_name']]],
+    ]);
+
+    Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Card payment',
+        'creditor_name' => 'Amazon EU',
+        'amount' => -1000,
+    ]);
+
+    Transaction::factory()->enableBanking()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+        'description' => 'Card payment',
+        'creditor_name' => 'Coffee Shop',
+        'amount' => -500,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('automation-rules.matches', $this->rule));
+
+    $response->assertOk()
+        ->assertJsonPath('total', 1)
+        ->assertJsonCount(1, 'data');
+});
+
 test('matches endpoint skips already categorized when only_uncategorized is true', function () {
     Transaction::factory()->enableBanking()->create([
         'user_id' => $this->user->id,
