@@ -247,6 +247,54 @@ test('top categories returns highest spending categories', function () {
     expect($data[1]['amount'])->toBe(3000);
 });
 
+test('dashboard analytics net refunds in expense categories', function () {
+    $foodDelivery = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Food Delivery',
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => -8000,
+        'transaction_date' => '2026-05-05',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => 2000,
+        'transaction_date' => '2026-05-06',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => 2000,
+        'transaction_date' => '2026-05-07',
+    ]);
+
+    $period = [
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+    ];
+
+    $monthlySpending = $this->getJson('/api/dashboard/monthly-spending?'.http_build_query($period));
+    $cashFlow = $this->getJson('/api/dashboard/cash-flow?'.http_build_query($period));
+    $topCategories = $this->getJson('/api/dashboard/top-categories?'.http_build_query($period));
+
+    $monthlySpending->assertOk()
+        ->assertJsonPath('current', 4000);
+
+    $cashFlow->assertOk()
+        ->assertJsonPath('current.income', 0)
+        ->assertJsonPath('current.expense', 4000);
+
+    $topCategories->assertOk()
+        ->assertJsonPath('0.category.name', 'Food Delivery')
+        ->assertJsonPath('0.amount', 4000)
+        ->assertJsonPath('0.total_amount', 4000);
+});
+
 test('top categories excludes soft deleted categories', function () {
     $activeCategory = Category::factory()->create([
         'user_id' => $this->user->id,

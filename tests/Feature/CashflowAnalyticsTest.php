@@ -490,6 +490,75 @@ test('cashflow trend returns monthly data for specified months', function () {
     expect($data['data'][0])->toHaveKeys(['month', 'income', 'expense', 'net']);
 });
 
+test('cashflow analytics net refunds in expense categories', function () {
+    $foodDelivery = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'type' => CategoryType::Expense,
+        'name' => 'Food Delivery',
+    ]);
+
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => -8000,
+        'transaction_date' => '2026-05-05',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => 2000,
+        'transaction_date' => '2026-05-06',
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $foodDelivery->id,
+        'amount' => 2000,
+        'transaction_date' => '2026-05-07',
+    ]);
+
+    $summary = $this->getJson('/api/cashflow/summary?'.http_build_query([
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+    ]));
+    $trend = $this->getJson('/api/cashflow/trend?'.http_build_query([
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+    ]));
+    $breakdown = $this->getJson('/api/cashflow/breakdown?'.http_build_query([
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+        'type' => 'expense',
+    ]));
+    $sankey = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => '2026-05-01',
+        'to' => '2026-05-31',
+    ]));
+
+    $summary->assertOk()
+        ->assertJsonPath('current.expense', 4000)
+        ->assertJsonPath('current.net', -4000);
+
+    $trend->assertOk()
+        ->assertJsonPath('data.0.expense', 4000)
+        ->assertJsonPath('data.0.net', -4000);
+
+    $breakdown->assertOk()
+        ->assertJsonPath('total', 4000)
+        ->assertJsonPath('data.0.category.name', 'Food Delivery')
+        ->assertJsonPath('data.0.amount', 4000);
+
+    $sankey->assertOk()
+        ->assertJsonPath('total_income', 0)
+        ->assertJsonPath('total_expense', 4000)
+        ->assertJsonPath('expense_categories.0.category.name', 'Food Delivery')
+        ->assertJsonPath('expense_categories.0.amount', 4000);
+});
+
 test('cashflow trend does not include tracked transfers', function () {
     $incomeCategory = Category::factory()->create([
         'user_id' => $this->user->id,
@@ -873,10 +942,7 @@ test('sankey includes unknown income and expense categories', function () {
     expect($data['expense_categories'][0]['amount'])->toBe(50000);
 });
 
-test('sankey income category with mixed positive and negative transactions shows only positive amounts', function () {
-    // Reproduces a real-world scenario where an "Income from Rents" category contains
-    // both income receipts and property-related expense payments. The Sankey should
-    // show only the actual money received (positive flows), not abs(net).
+test('sankey income category nets mixed positive and negative transactions', function () {
     $incomeFromRents = Category::factory()->create([
         'user_id' => $this->user->id,
         'type' => CategoryType::Income,
@@ -885,49 +951,19 @@ test('sankey income category with mixed positive and negative transactions shows
 
     $account = Account::factory()->create(['user_id' => $this->user->id]);
 
-    // Mar 13: -€124.03 — BIZUM sent (Lavadora)
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
         'category_id' => $incomeFromRents->id,
-        'amount' => -12403,
-        'transaction_date' => '2026-03-13',
-    ]);
-
-    // Mar 10: +€38.04 — BIZUM received (luz febrero 2026)
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $account->id,
-        'category_id' => $incomeFromRents->id,
-        'amount' => 3804,
+        'amount' => 30000,
         'transaction_date' => '2026-03-10',
     ]);
-
-    // Mar 9: -€38.04 — Endesa energy payment
     Transaction::factory()->create([
         'user_id' => $this->user->id,
         'account_id' => $account->id,
         'category_id' => $incomeFromRents->id,
-        'amount' => -3804,
-        'transaction_date' => '2026-03-09',
-    ]);
-
-    // Mar 4: +€41.34 — BIZUM received (agua Febrero 2026)
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $account->id,
-        'category_id' => $incomeFromRents->id,
-        'amount' => 4134,
-        'transaction_date' => '2026-03-04',
-    ]);
-
-    // Mar 2: -€105.92 — Comunidad de Propietarios
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $account->id,
-        'category_id' => $incomeFromRents->id,
-        'amount' => -10592,
-        'transaction_date' => '2026-03-02',
+        'amount' => -10000,
+        'transaction_date' => '2026-03-13',
     ]);
 
     $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
@@ -938,18 +974,12 @@ test('sankey income category with mixed positive and negative transactions shows
     $response->assertOk();
     $data = $response->json();
 
-    // Positive flows only → income side: €38.04 + €41.34 = €79.38 (7938 cents)
     $rentIncome = collect($data['income_categories'])->firstWhere('category.name', 'Income from Rents');
     expect($rentIncome)->not->toBeNull();
-    expect($rentIncome['amount'])->toBe(7938);
-    expect($data['total_income'])->toBe(7938);
-
-    // Negative flows → expense side: €124.03 + €38.04 + €105.92 = €267.99 (26799 cents)
-    // The category appears on BOTH sides of the Sankey.
-    $rentExpense = collect($data['expense_categories'])->firstWhere('category.name', 'Income from Rents');
-    expect($rentExpense)->not->toBeNull();
-    expect($rentExpense['amount'])->toBe(26799);
-    expect($data['total_expense'])->toBe(26799);
+    expect($rentIncome['amount'])->toBe(20000);
+    expect($data['total_income'])->toBe(20000);
+    expect(collect($data['expense_categories'])->pluck('category.name'))->not->toContain('Income from Rents');
+    expect($data['total_expense'])->toBe(0);
 });
 
 test('sankey excludes hidden transfer categories from both sides', function () {
