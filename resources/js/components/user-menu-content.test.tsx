@@ -40,19 +40,22 @@ vi.mock('@inertiajs/react', () => ({
     Link: ({
         children,
         href,
-        as: _as,
-        prefetch: _prefetch,
         ...props
     }: {
         children: ReactNode;
         href: string;
         as?: string;
         prefetch?: boolean;
-    }) => (
-        <a href={href} {...props}>
-            {children}
-        </a>
-    ),
+    }) => {
+        delete props.as;
+        delete props.prefetch;
+
+        return (
+            <a href={href} {...props}>
+                {children}
+            </a>
+        );
+    },
     router: {
         flushAll: vi.fn(),
     },
