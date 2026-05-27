@@ -162,6 +162,41 @@ test('sync handles pagination with continuation key', function () {
     expect($account->transactions()->count())->toBe(2);
 });
 
+test('sync stores creditor and debtor names from raw payload', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('getTransactions')
+        ->once()
+        ->andReturn([
+            'transactions' => [
+                [
+                    'transaction_id' => 'txn-001',
+                    'transaction_amount' => ['amount' => '99.99', 'currency' => 'EUR'],
+                    'credit_debit_indicator' => 'DBIT',
+                    'booking_date' => '2025-01-15',
+                    'remittance_information' => ['Card payment'],
+                    'creditor' => ['name' => 'Amazon EU'],
+                    'debtor' => ['name' => 'Victor Falcon'],
+                ],
+            ],
+            'continuation_key' => null,
+        ]);
+
+    $service = new TransactionSyncService($mockProvider, new TransactionDescriptionFormatter);
+    $service->sync($account, '2025-01-01', '2025-01-31');
+
+    $transaction = $account->transactions()->first();
+    expect($transaction->creditor_name)->toBe('Amazon EU')
+        ->and($transaction->debtor_name)->toBe('Victor Falcon');
+});
+
 test('sync uses creditor name as fallback description', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);

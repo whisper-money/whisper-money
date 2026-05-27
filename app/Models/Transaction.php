@@ -49,6 +49,8 @@ class Transaction extends Model
         'external_transaction_id',
         'dedup_fingerprint',
         'raw_data',
+        'creditor_name',
+        'debtor_name',
     ];
 
     protected function casts(): array
@@ -138,9 +140,23 @@ class Transaction extends Model
             $query->whereHas('labels', fn (Builder $q) => $q->whereIn('labels.id', $filters['label_ids']));
         }
 
+        if (! empty($filters['creditor_name'])) {
+            $term = '%'.$filters['creditor_name'].'%';
+            $query->where('creditor_name', 'LIKE', $term);
+        }
+
+        if (! empty($filters['debtor_name'])) {
+            $term = '%'.$filters['debtor_name'].'%';
+            $query->where('debtor_name', 'LIKE', $term);
+        }
+
         if (! empty($filters['search'])) {
             $term = '%'.$filters['search'].'%';
-            $query->where(fn (Builder $q) => $q->where('description', 'LIKE', $term)->orWhere('notes', 'LIKE', $term));
+            $query->where(fn (Builder $q) => $q
+                ->where('description', 'LIKE', $term)
+                ->orWhere('notes', 'LIKE', $term)
+                ->orWhere('creditor_name', 'LIKE', $term)
+                ->orWhere('debtor_name', 'LIKE', $term));
         }
 
         return $query;

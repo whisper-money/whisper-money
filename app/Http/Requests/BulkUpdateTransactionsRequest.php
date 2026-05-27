@@ -40,6 +40,9 @@ class BulkUpdateTransactionsRequest extends FormRequest
                     $query->where('user_id', $this->user()->id);
                 }),
             ],
+            'filters.creditor_name' => ['nullable', 'string'],
+            'filters.debtor_name' => ['nullable', 'string'],
+            'filters.search' => ['nullable', 'string'],
             'filters.search_text' => ['nullable', 'string'],
             'category_id' => [
                 'nullable',

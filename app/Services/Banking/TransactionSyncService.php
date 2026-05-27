@@ -106,6 +106,7 @@ class TransactionSyncService
         $amount = $this->parseAmount($data);
         $rawDescription = $this->parseDescription($data);
         $formatted = $this->descriptionFormatter->format($rawDescription, $bankName);
+        $counterparties = TransactionCounterpartyExtractor::fromPayload($data);
         $transactionDate = $this->parseDate($data);
         $currency = $data['transaction_amount']['currency'] ?? $account->currency_code;
 
@@ -124,6 +125,7 @@ class TransactionSyncService
                 'external_transaction_id' => $externalId,
                 'dedup_fingerprint' => $fingerprint,
                 'raw_data' => $data,
+                ...$counterparties,
             ]);
         } catch (UniqueConstraintViolationException) {
             // Concurrent sync inserted the same fingerprint between our

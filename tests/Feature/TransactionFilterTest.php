@@ -214,6 +214,79 @@ test('search matches description', function () {
     );
 });
 
+test('filter by creditor name', function () {
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => 'Amazon EU',
+    ]);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => 'Coffee Shop',
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'creditor_name' => 'Amazon',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.creditor_name', 'Amazon EU')
+        ->where('appliedFilters.creditor_name', 'Amazon')
+    );
+});
+
+test('filter by debtor name', function () {
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'debtor_name' => 'Payroll GmbH',
+    ]);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'debtor_name' => 'Other Sender',
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'debtor_name' => 'Payroll',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.debtor_name', 'Payroll GmbH')
+        ->where('appliedFilters.debtor_name', 'Payroll')
+    );
+});
+
+test('search matches counterparty names', function () {
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Card payment',
+        'creditor_name' => 'Amazon EU',
+    ]);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'description' => 'Card payment',
+        'creditor_name' => 'Coffee Shop',
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'search' => 'Amazon',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->where('transactions.data.0.creditor_name', 'Amazon EU')
+    );
+});
+
 test('search matches notes', function () {
     Transaction::factory()->plaintext()->create([
         'user_id' => $this->user->id,

@@ -110,6 +110,8 @@ interface AppliedFilters {
     category_ids: string[];
     account_ids: string[];
     label_ids: string[];
+    creditor_name: string;
+    debtor_name: string;
     search: string;
     sort: string;
 }
@@ -139,6 +141,8 @@ function serverToClientFilters(applied: AppliedFilters): Filters {
         categoryIds: applied.category_ids,
         accountIds: applied.account_ids,
         labelIds: applied.label_ids,
+        creditorName: applied.creditor_name,
+        debtorName: applied.debtor_name,
         searchText: applied.search,
     };
 }
@@ -169,6 +173,12 @@ function clientFiltersToQueryParams(
     }
     if (filters.labelIds.length > 0) {
         params.label_ids = filters.labelIds.join(',');
+    }
+    if (filters.creditorName) {
+        params.creditor_name = filters.creditorName;
+    }
+    if (filters.debtorName) {
+        params.debtor_name = filters.debtorName;
     }
     if (filters.searchText) {
         params.search = filters.searchText;
@@ -205,6 +215,12 @@ function clientFiltersToBackendFilters(
     }
     if (filters.labelIds.length > 0) {
         result.label_ids = filters.labelIds;
+    }
+    if (filters.creditorName) {
+        result.creditor_name = filters.creditorName;
+    }
+    if (filters.debtorName) {
+        result.debtor_name = filters.debtorName;
     }
     if (filters.searchText) {
         result.search = filters.searchText;
@@ -328,6 +344,8 @@ function getInitialColumnVisibility(): VisibilityState {
     const defaultVisibility = {
         transaction_date: true,
         account: true,
+        creditor_name: false,
+        debtor_name: false,
         labels: true,
         notes: false,
     };
@@ -515,7 +533,9 @@ export default function Transactions({
                 JSON.stringify(newFilters.accountIds) ===
                     JSON.stringify(filters.accountIds) &&
                 JSON.stringify(newFilters.labelIds) ===
-                    JSON.stringify(filters.labelIds);
+                    JSON.stringify(filters.labelIds) &&
+                newFilters.creditorName === filters.creditorName &&
+                newFilters.debtorName === filters.debtorName;
 
             navigateWithFilters(
                 newFilters,

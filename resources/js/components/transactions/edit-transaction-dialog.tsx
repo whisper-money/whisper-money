@@ -420,6 +420,8 @@ export function EditTransactionDialog({
                     currency_code: selectedAccount.currency_code,
                     notes: encryptedNotes,
                     notes_iv: notesIv,
+                    creditor_name: null,
+                    debtor_name: null,
                     source: 'manually_created' as const,
                     label_ids:
                         finalLabelIds.length > 0 ? finalLabelIds : undefined,

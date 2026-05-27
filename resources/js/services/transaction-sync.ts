@@ -18,6 +18,8 @@ interface TransactionFilters {
     categoryIds?: number[];
     accountIds?: string[];
     labelIds?: string[];
+    creditorName?: string;
+    debtorName?: string;
     searchText?: string;
 }
 
@@ -157,6 +159,12 @@ class TransactionSyncService {
         }
         if (filters.labelIds && filters.labelIds.length > 0) {
             requestFilters.label_ids = filters.labelIds;
+        }
+        if (filters.creditorName) {
+            requestFilters.creditor_name = filters.creditorName;
+        }
+        if (filters.debtorName) {
+            requestFilters.debtor_name = filters.debtorName;
         }
 
         const response = await axios.patch('/transactions/bulk', {

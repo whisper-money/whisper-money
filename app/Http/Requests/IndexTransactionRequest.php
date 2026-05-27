@@ -39,8 +39,10 @@ class IndexTransactionRequest extends FormRequest
             'account_ids.*' => ['string', 'uuid'],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['string', 'uuid'],
+            'creditor_name' => ['nullable', 'string', 'max:255'],
+            'debtor_name' => ['nullable', 'string', 'max:255'],
             'search' => ['nullable', 'string', 'max:200'],
-            'sort' => ['nullable', 'string', 'in:transaction_date,-transaction_date,amount,-amount,description,-description'],
+            'sort' => ['nullable', 'string', 'in:transaction_date,-transaction_date,amount,-amount,description,-description,creditor_name,-creditor_name,debtor_name,-debtor_name'],
             'cursor' => ['nullable', 'string'],
             'per_page' => ['nullable', 'integer', 'min:10', 'max:100'],
         ];
