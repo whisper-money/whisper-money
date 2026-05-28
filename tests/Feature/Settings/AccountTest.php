@@ -132,6 +132,25 @@ it('accepts new latam currency when creating account', function () {
     ]);
 });
 
+it('accepts Pakistani rupee when creating account', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Pakistan Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'PKR',
+        'type' => AccountType::Checking->value,
+    ]);
+
+    $response->assertRedirect();
+
+    assertDatabaseHas('accounts', [
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'PKR',
+    ]);
+});
+
 it('accepts bitcoin when creating account', function () {
     actingAs($this->user);
 
