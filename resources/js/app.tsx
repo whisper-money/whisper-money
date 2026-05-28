@@ -25,6 +25,7 @@ import {
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
     isPostMessageDataCloneNoise,
+    isSafariCashbackExtensionNoise,
 } from './lib/sentry';
 import { showSubscriptionPaymentIssueToast } from './lib/subscription-payment-issue-toast';
 import type { ExpiredBankingConnectionNotification, SharedData } from './types';
@@ -42,7 +43,8 @@ Sentry.init({
         if (
             isChunkLoadErrorEvent(event) ||
             isPostMessageDataCloneNoise(event) ||
-            isFacebookInAppBrowserJavaBridgeNoise(event)
+            isFacebookInAppBrowserJavaBridgeNoise(event) ||
+            isSafariCashbackExtensionNoise(event)
         ) {
             return null;
         }

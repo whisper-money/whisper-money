@@ -4,6 +4,7 @@ import {
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
     isPostMessageDataCloneNoise,
+    isSafariCashbackExtensionNoise,
 } from './sentry';
 
 describe('isChunkLoadErrorEvent', () => {
@@ -84,6 +85,54 @@ describe('isFacebookInAppBrowserJavaBridgeNoise', () => {
         };
 
         expect(isFacebookInAppBrowserJavaBridgeNoise(event)).toBe(false);
+    });
+});
+
+describe('isSafariCashbackExtensionNoise', () => {
+    it('drops Safari cashback extension response handler errors', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'TypeError',
+                        value: "undefined is not an object (evaluating 'response.cashbackReminder')",
+                        stacktrace: {
+                            frames: [
+                                {
+                                    filename: 'webkit-masked-url://hidden/',
+                                    function: 'onResponse',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        };
+
+        expect(isSafariCashbackExtensionNoise(event)).toBe(true);
+    });
+
+    it('keeps cashback errors from application code', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'TypeError',
+                        value: "undefined is not an object (evaluating 'response.cashbackReminder')",
+                        stacktrace: {
+                            frames: [
+                                {
+                                    filename: '/build/assets/app.js',
+                                    function: 'handleResponse',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        };
+
+        expect(isSafariCashbackExtensionNoise(event)).toBe(false);
     });
 });
 
