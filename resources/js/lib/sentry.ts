@@ -5,6 +5,7 @@ const CLONE_ERROR_MESSAGE_PATTERN =
     /object (can not|could not|couldn't|can't) be cloned/i;
 const FACEBOOK_IAB_JAVA_OBJECT_GONE_PATTERN =
     /Error invoking .+: Java object is gone/i;
+const SAFARI_CASHBACK_EXTENSION_PATTERN = /response\.cashbackReminder/i;
 
 export function isChunkLoadErrorEvent(event: Event): boolean {
     return (
@@ -50,6 +51,24 @@ export function isFacebookInAppBrowserJavaBridgeNoise(event: Event): boolean {
                             'iabjs://navigation_performance_logger_android',
                         ),
                     ),
+                )
+            );
+        }) ?? false
+    );
+}
+
+export function isSafariCashbackExtensionNoise(event: Event): boolean {
+    return (
+        event.exception?.values?.some((exception) => {
+            const exceptionValue = exception.value ?? '';
+            const frames = exception.stacktrace?.frames ?? [];
+
+            return (
+                SAFARI_CASHBACK_EXTENSION_PATTERN.test(exceptionValue) &&
+                frames.some(
+                    (frame) =>
+                        frame.function === 'onResponse' &&
+                        frame.filename === 'webkit-masked-url://hidden/',
                 )
             );
         }) ?? false
