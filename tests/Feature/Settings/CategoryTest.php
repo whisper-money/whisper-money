@@ -129,24 +129,27 @@ test('different users can create categories with the same name', function () {
     ]);
 });
 
-test('category names from deleted categories remain reserved', function () {
+test('users can recreate a category with the same name after deleting it', function () {
     $user = User::factory()->create();
     $category = Category::factory()->create([
         'user_id' => $user->id,
-        'name' => 'Healthcare',
+        'name' => 'Supermercados',
     ]);
 
     $category->delete();
 
     $response = $this->actingAs($user)->post(route('categories.store'), [
-        'name' => 'Healthcare',
-        'icon' => 'Heart',
-        'color' => 'pink',
+        'name' => 'Supermercados',
+        'icon' => 'ShoppingCart',
+        'color' => 'green',
         'type' => 'expense',
         'cashflow_direction' => 'hidden',
     ]);
 
-    $response->assertSessionHasErrors(['name']);
+    $response->assertRedirect(route('categories.index'));
+
+    expect($user->categories()->where('name', 'Supermercados')->count())->toBe(1)
+        ->and($user->categories()->withTrashed()->where('name', 'Supermercados')->count())->toBe(2);
 });
 
 test('category icon is required', function () {

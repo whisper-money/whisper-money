@@ -48,6 +48,7 @@ class UpdateCategoryRequest extends FormRequest
                 'max:255',
                 Rule::unique('categories', 'name')
                     ->where('user_id', auth()->id())
+                    ->withoutTrashed()
                     ->ignore($this->route('category')),
             ],
             'icon' => ['required', 'string'],

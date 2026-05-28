@@ -76,7 +76,8 @@ class CategoryController extends Controller
 
     private function throwDuplicateCategoryNameValidationException(UniqueConstraintViolationException $exception): never
     {
-        if (! str_contains($exception->getMessage(), 'categories_user_id_name_unique')) {
+        if (! str_contains($exception->getMessage(), 'categories_user_id_name_unique')
+            && ! str_contains($exception->getMessage(), 'categories_user_id_name_active_unique')) {
             throw $exception;
         }
 
