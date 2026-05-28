@@ -57,6 +57,12 @@ return [
             'allows_account' => true,
         ],
         [
+            'code' => 'PKR',
+            'name' => 'Pakistani Rupee',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
             'code' => 'MXN',
             'name' => 'Mexican Peso',
             'allows_primary' => true,
