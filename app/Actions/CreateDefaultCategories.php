@@ -282,18 +282,21 @@ class CreateDefaultCategories
                 'icon' => 'LineChart',
                 'color' => 'lime',
                 'type' => CategoryType::Investment->value,
+                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
                 'name' => 'Savings',
                 'icon' => 'PiggyBank',
                 'color' => 'lime',
                 'type' => CategoryType::Savings->value,
+                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
                 'name' => 'Other investments',
                 'icon' => 'TrendingUp',
                 'color' => 'lime',
                 'type' => CategoryType::Investment->value,
+                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
             ],
             [
                 'name' => 'Financial services and commission',

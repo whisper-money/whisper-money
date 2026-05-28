@@ -21,7 +21,17 @@ class StoreCategoryRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->input('type') !== CategoryType::Transfer->value) {
+        $type = CategoryType::tryFrom((string) $this->input('type'));
+
+        if (in_array($type, [CategoryType::Savings, CategoryType::Investment], true)) {
+            $this->merge([
+                'cashflow_direction' => CategoryCashflowDirection::Outflow->value,
+            ]);
+
+            return;
+        }
+
+        if ($type !== CategoryType::Transfer) {
             $this->merge([
                 'cashflow_direction' => CategoryCashflowDirection::Hidden->value,
             ]);

@@ -1,6 +1,5 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { CategoryCashflowDirectionFields } from '@/components/categories/category-cashflow-direction-fields';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CreateButton } from '@/components/ui/create-button';
@@ -32,7 +31,6 @@ import {
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
-import { Info } from 'lucide-react';
 import { useState } from 'react';
 
 export function CreateCategoryDialog({
@@ -180,20 +178,11 @@ export function CreateCategoryDialog({
                                         {errors.type}
                                     </p>
                                 )}
-                                {selectedType === 'transfer' && (
-                                    <Alert>
-                                        <Info className="h-4 w-4 opacity-50" />
-                                        <AlertDescription className="text-sm">
-                                            {__(
-                                                'Transactions in this category will\n                                            not be counted in top expenses or\n                                            income. Transfer categories are\n                                            mainly used for transactions between\n                                            accounts.',
-                                            )}
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
                             </div>
 
                             <CategoryCashflowDirectionFields
                                 selectedType={selectedType}
+                                defaultValue="hidden"
                             />
 
                             <div className="flex justify-end gap-2">
@@ -206,9 +195,7 @@ export function CreateCategoryDialog({
                                     {__('Cancel')}
                                 </Button>
                                 <Button type="submit" disabled={processing}>
-                                    {processing
-                                        ? __('Creating...')
-                                        : __('Create')}
+                                    {processing ? __('Saving...') : __('Save')}
                                 </Button>
                             </div>
                         </>
