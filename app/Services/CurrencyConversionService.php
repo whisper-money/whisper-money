@@ -86,6 +86,11 @@ class CurrencyConversionService
             foreach ($this->rateUrls($currency, $candidateDate) as $url) {
                 try {
                     $response = Http::timeout(10)->get($url);
+
+                    if ($response->notFound()) {
+                        continue;
+                    }
+
                     $response->throw();
 
                     return $response->json($currency) ?? [];
@@ -95,7 +100,16 @@ class CurrencyConversionService
             }
         }
 
-        throw new RuntimeException("Failed to fetch currency rates for {$currency} on {$date}: {$lastException?->getMessage()}", 0, $lastException);
+        if ($lastException !== null) {
+            throw new RuntimeException("Failed to fetch currency rates for {$currency} on {$date}: {$lastException->getMessage()}", 0, $lastException);
+        }
+
+        Log::warning('Currency rates unavailable, all sources returned 404', [
+            'currency' => $currency,
+            'date' => $date,
+        ]);
+
+        return [];
     }
 
     /**

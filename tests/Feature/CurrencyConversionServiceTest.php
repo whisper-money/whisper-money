@@ -73,6 +73,18 @@ test('throws when both primary and fallback fail', function () {
     $service->convert('BTC', 'EUR', 1.0, '2026-01-15');
 })->throws(RuntimeException::class);
 
+test('returns zero when base currency is unknown and all sources return 404', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*' => Http::response('Not Found', 404),
+        'currency-api.pages.dev/*' => Http::response('Not Found', 404),
+    ]);
+
+    $service = new CurrencyConversionService;
+    $result = $service->convert('BTC', 'XXX', 1.0, '2026-01-15');
+
+    expect($result)->toBe(0.0);
+});
+
 test('falls back to previous historical date when requested release is missing', function () {
     Http::fake([
         'cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@2025-12-10/*' => Http::response('Not Found', 404),
