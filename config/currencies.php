@@ -117,6 +117,12 @@ return [
             'allows_account' => true,
         ],
         [
+            'code' => 'BRL',
+            'name' => 'Brazilian Real',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
             'code' => 'BTC',
             'name' => 'Bitcoin',
             'allows_primary' => false,
