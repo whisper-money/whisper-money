@@ -1,6 +1,5 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { CategoryCashflowDirectionFields } from '@/components/categories/category-cashflow-direction-fields';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,7 +30,6 @@ import {
 import { __ } from '@/utils/i18n';
 import { Form } from '@inertiajs/react';
 import * as Icons from 'lucide-react';
-import { Info } from 'lucide-react';
 import { useState } from 'react';
 
 interface EditCategoryDialogProps {
@@ -192,16 +190,6 @@ export function EditCategoryDialog({
                                     <p className="text-sm text-red-500">
                                         {errors.type}
                                     </p>
-                                )}
-                                {selectedType === 'transfer' && (
-                                    <Alert>
-                                        <Info className="h-4 w-4 opacity-50" />
-                                        <AlertDescription className="text-sm">
-                                            {__(
-                                                'Transactions in this category will\n                                            not be counted in top expenses or\n                                            income. Transfer categories are\n                                            mainly used for transactions between\n                                            accounts.',
-                                            )}
-                                        </AlertDescription>
-                                    </Alert>
                                 )}
                             </div>
 

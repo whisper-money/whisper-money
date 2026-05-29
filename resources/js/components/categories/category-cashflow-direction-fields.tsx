@@ -1,4 +1,3 @@
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -9,32 +8,29 @@ import {
 } from '@/components/ui/select';
 import { CategoryCashflowDirection, CategoryType } from '@/types/category';
 import { __ } from '@/utils/i18n';
-import { Info } from 'lucide-react';
 import { useState } from 'react';
 
-const cashflowDirectionOptions: Array<{
+const transferCashflowOptions: Array<{
     value: CategoryCashflowDirection;
     label: string;
     description: string;
 }> = [
     {
         value: 'hidden',
-        label: __('Do not show'),
-        description: __('Keep this transfer out of cashflow analytics.'),
+        label: 'Do not show in cashflow chart',
+        description: 'This transfer category stays out of the cashflow chart.',
     },
     {
         value: 'outflow',
-        label: __('Show as cash outflow'),
-        description: __(
-            'Track money leaving your available cash, like investments or savings transfers.',
-        ),
+        label: 'Show in cashflow chart as outflow',
+        description:
+            'Show this transfer category as money leaving available cash.',
     },
     {
         value: 'inflow',
-        label: __('Show as cash inflow'),
-        description: __(
-            'Track money entering your available cash without counting it as income.',
-        ),
+        label: 'Show in cashflow chart as inflow',
+        description:
+            'Show this transfer category as money entering available cash.',
     },
 ];
 
@@ -43,69 +39,111 @@ interface CategoryCashflowDirectionFieldsProps {
     defaultValue?: CategoryCashflowDirection;
 }
 
+function getTypeEffectDescription(selectedType: CategoryType | ''): string {
+    switch (selectedType) {
+        case 'income':
+            return __(
+                'Income categories count as cash inflow and appear in income charts. They do not appear in top spending categories.',
+            );
+        case 'expense':
+            return __(
+                'Expense categories count as cash outflow and appear in spending charts, including top spending categories.',
+            );
+        case 'transfer':
+            return __(
+                'Transfer categories are excluded from income, expenses, and top spending categories. Choose whether to show them in the cashflow chart.',
+            );
+        case 'savings':
+            return __(
+                'Savings categories appear as saved money at the top of cashflow and as cash outflow in the cashflow chart. They stay out of income, expenses, and top spending categories.',
+            );
+        case 'investment':
+            return __(
+                'Investment categories appear as invested money at the top of cashflow and as cash outflow in the cashflow chart. They stay out of income, expenses, and top spending categories.',
+            );
+        default:
+            return __(
+                'Choose a category type to see how it affects cashflow and charts.',
+            );
+    }
+}
+
 export function CategoryCashflowDirectionFields({
     selectedType,
     defaultValue = 'hidden',
 }: CategoryCashflowDirectionFieldsProps) {
     const [cashflowDirection, setCashflowDirection] =
         useState<CategoryCashflowDirection>(defaultValue);
-    const selectedOption = cashflowDirectionOptions.find(
+    const isTransfer = selectedType === 'transfer';
+    const selectedOption = transferCashflowOptions.find(
         (option) => option.value === cashflowDirection,
     );
-
-    if (selectedType !== 'transfer') {
-        return null;
-    }
 
     return (
         <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
             <div className="space-y-1">
                 <Label htmlFor="cashflow_direction">
-                    {__('Cashflow analytics')}
+                    {__('Cashflow and charts')}
                 </Label>
-                <p className="text-xs text-muted-foreground">
-                    {__(
-                        'Transfer categories stay out of income and expense totals, but you can still track them in the money flow chart.',
-                    )}
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                    {getTypeEffectDescription(selectedType)}
                 </p>
             </div>
 
-            <Select
-                name="cashflow_direction"
-                defaultValue={defaultValue}
-                onValueChange={(value) =>
-                    setCashflowDirection(value as CategoryCashflowDirection)
-                }
-                required
-            >
-                <SelectTrigger id="cashflow_direction">
-                    <SelectValue
-                        placeholder={__('Choose how to report this transfer')}
-                    />
-                </SelectTrigger>
-                <SelectContent>
-                    {cashflowDirectionOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-
-            {selectedOption && (
-                <p className="px-1 text-xs leading-relaxed text-muted-foreground">
-                    {selectedOption.description}
-                </p>
+            {!isTransfer && (
+                <input
+                    type="hidden"
+                    name="cashflow_direction"
+                    value={
+                        selectedType === 'savings' ||
+                        selectedType === 'investment'
+                            ? 'outflow'
+                            : 'hidden'
+                    }
+                />
             )}
 
-            <Alert>
-                <Info className="h-4 w-4 opacity-50" />
-                <AlertDescription className="text-xs leading-relaxed">
-                    {__(
-                        'Tracked transfers appear in the money flow Sankey chart. They are not counted as income or expenses.',
+            {isTransfer && (
+                <>
+                    <Select
+                        name="cashflow_direction"
+                        value={cashflowDirection}
+                        onValueChange={(value) =>
+                            setCashflowDirection(
+                                value as CategoryCashflowDirection,
+                            )
+                        }
+                        required
+                    >
+                        <SelectTrigger
+                            id="cashflow_direction"
+                            data-testid="cashflow-direction-trigger"
+                        >
+                            <SelectValue
+                                placeholder={__(
+                                    'Choose cashflow chart visibility',
+                                )}
+                            />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {transferCashflowOptions.map((option) => (
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                >
+                                    {__(option.label)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {selectedOption && (
+                        <p className="px-1 text-xs leading-relaxed text-muted-foreground">
+                            {__(selectedOption.description)}
+                        </p>
                     )}
-                </AlertDescription>
-            </Alert>
+                </>
+            )}
         </div>
     );
 }

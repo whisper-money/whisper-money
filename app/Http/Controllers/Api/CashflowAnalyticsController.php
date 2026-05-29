@@ -233,8 +233,12 @@ class CashflowAnalyticsController extends Controller
 
         $regularCategories = $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {
+                $categoryType = $this->categoryType($transaction);
+
                 return $transaction->category_id !== null
-                    && $this->categoryType($transaction) === $type;
+                    && ($categoryType === $type
+                        || ($type === CategoryType::Expense
+                            && in_array($categoryType, [CategoryType::Savings, CategoryType::Investment], true)));
             })
             ->groupBy('category_id')
             ->map(function (Collection $transactions) use ($userCurrency): array {

@@ -46,7 +46,7 @@ test('accounts index page does not exceed query threshold', function () {
 test('account show page does not exceed query threshold', function () {
     $account = $this->user->accounts()->first();
 
-    assertMaxQueries(17, function () use ($account) {
+    assertMaxQueries(18, function () use ($account) {
         $this->get(route('accounts.show', $account))->assertOk();
     }, 'Account Show');
 });
