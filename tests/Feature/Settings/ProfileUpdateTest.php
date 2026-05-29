@@ -72,6 +72,25 @@ test('profile accepts Pakistani rupee as primary currency', function () {
     expect($user->refresh()->currency_code)->toBe('PKR');
 });
 
+test('profile accepts Brazilian real as primary currency', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'currency_code' => 'BRL',
+            'month_start_day' => 1,
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('account.edit'));
+
+    expect($user->refresh()->currency_code)->toBe('BRL');
+});
+
 test('profile rejects bitcoin as primary currency', function () {
     $user = User::factory()->create();
 
