@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Boot-time artisan commands run as root; this keeps any file they create
+# (including laravel.log) group-writable so the www-data fpm/queue workers
+# can append to it afterwards.
+umask 0002
+
 echo "=== Whisper Money Container Startup ==="
 
 # Ensure storage directories exist (volume may be empty on first deploy)
@@ -10,8 +15,12 @@ mkdir -p /app/storage/framework/cache/data
 mkdir -p /app/storage/framework/sessions
 mkdir -p /app/storage/framework/views
 mkdir -p /app/storage/logs
+# Pre-create the log file group-writable so a stale root-owned file from a
+# persisted volume cannot block writes from the www-data workers.
+touch /app/storage/logs/laravel.log
 chown -R www-data:www-data /app/storage
 chmod -R 775 /app/storage
+chmod 664 /app/storage/logs/laravel.log
 
 # Auto-generate APP_KEY if not set or invalid (must start with "base64:")
 if [ -z "$APP_KEY" ] || [[ ! "$APP_KEY" =~ ^base64: ]]; then
@@ -88,6 +97,7 @@ php artisan storage:link 2>/dev/null || true
 echo "Re-applying storage ownership..."
 chown -R www-data:www-data /app/storage /app/bootstrap/cache
 chmod -R 775 /app/storage /app/bootstrap/cache
+chmod 664 /app/storage/logs/laravel.log
 
 echo "=== Startup complete, launching services ==="
 
