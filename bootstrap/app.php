@@ -7,12 +7,14 @@ use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\SetSentryUser;
+use App\Jobs\SyncBankingConnectionJob;
 use App\Services\AuthEntryPointService;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -52,4 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         Integration::handles($exceptions);
+
+        $exceptions->dontReportWhen(fn (Throwable $e): bool => $e instanceof MaxAttemptsExceededException
+            && $e->job?->resolveName() === SyncBankingConnectionJob::class);
     })->create();
