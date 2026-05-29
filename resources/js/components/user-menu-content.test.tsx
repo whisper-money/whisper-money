@@ -86,7 +86,7 @@ describe('UserMenuContent', () => {
         const feedback = screen.getByRole('link', { name: /feedback/i });
 
         expect(community.getAttribute('href')).toBe(
-            'https://discord.gg/2WZmDW9QZ8',
+            'https://discord.gg/m8hUhx6D9D',
         );
         expect(community.compareDocumentPosition(feedback)).toBe(
             Node.DOCUMENT_POSITION_FOLLOWING,

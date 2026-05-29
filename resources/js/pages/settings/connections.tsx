@@ -466,7 +466,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                 </Button>
                                                             )}
                                                             <a
-                                                                href="https://discord.gg/2WZmDW9QZ8"
+                                                                href="https://discord.gg/m8hUhx6D9D"
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
