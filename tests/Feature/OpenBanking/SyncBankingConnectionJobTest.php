@@ -18,8 +18,10 @@ use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
 use Carbon\Carbon;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Queue\MaxAttemptsExceededException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -1453,4 +1455,22 @@ test('successful sync clears rate_limited_until', function () {
 
     $connection->refresh();
     expect($connection->rate_limited_until)->toBeNull();
+});
+
+test('does not report MaxAttemptsExceededException raised for SyncBankingConnectionJob', function () {
+    $queueJob = Mockery::mock(Job::class);
+    $queueJob->shouldReceive('resolveName')->andReturn(SyncBankingConnectionJob::class);
+
+    $exception = MaxAttemptsExceededException::forJob($queueJob);
+
+    expect(app(ExceptionHandler::class)->shouldReport($exception))->toBeFalse();
+});
+
+test('still reports MaxAttemptsExceededException raised for other jobs', function () {
+    $queueJob = Mockery::mock(Job::class);
+    $queueJob->shouldReceive('resolveName')->andReturn(SendDailyBankTransactionsSyncedEmailJob::class);
+
+    $exception = MaxAttemptsExceededException::forJob($queueJob);
+
+    expect(app(ExceptionHandler::class)->shouldReport($exception))->toBeTrue();
 });

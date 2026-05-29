@@ -129,9 +129,32 @@ class EnableBankingProvider implements BankingProviderInterface
 
     public function getBalances(string $accountId): array
     {
-        $response = $this->client()->get("/accounts/{$accountId}/balances");
+        try {
+            $response = $this->client()->get("/accounts/{$accountId}/balances");
 
-        $response->throw();
+            $response->throw();
+        } catch (ConnectionException $e) {
+            throw new TransientBankingProviderException(
+                'EnableBanking did not respond while fetching account balances.',
+                provider: 'enablebanking',
+                previous: $e,
+            );
+        } catch (RequestException $e) {
+            if (! $this->isAspspError($e)) {
+                throw $e;
+            }
+
+            $body = $this->errorBody($e);
+            $providerCode = $body['error'] ?? null;
+
+            throw new TransientBankingProviderException(
+                'EnableBanking bank connector failed while fetching account balances.',
+                provider: 'enablebanking',
+                statusCode: $e->response->status(),
+                providerCode: is_string($providerCode) ? $providerCode : null,
+                previous: $e,
+            );
+        }
 
         return $response->json();
     }

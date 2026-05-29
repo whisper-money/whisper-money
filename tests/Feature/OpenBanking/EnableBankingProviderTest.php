@@ -71,6 +71,69 @@ test('getTransactions keeps non-ASPSP client errors reportable', function () {
         ->toThrow(RequestException::class);
 });
 
+test('getBalances wraps connection failures as non-reportable transient errors', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/balances' => Http::failedConnection(),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getBalances('ext-123');
+    } catch (TransientBankingProviderException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->provider)->toBe('enablebanking')
+            ->and($e->statusCode)->toBeNull()
+            ->and($e->providerCode)->toBeNull()
+            ->and($e->getPrevious())->toBeInstanceOf(ConnectionException::class);
+
+        return;
+    }
+
+    test()->fail('Expected transient banking provider exception.');
+});
+
+test('getBalances wraps EnableBanking ASPSP errors as non-reportable transient errors', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
+            'code' => 400,
+            'message' => 'Error interacting with ASPSP',
+            'error' => 'ASPSP_ERROR',
+        ], 400),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getBalances('ext-123');
+    } catch (TransientBankingProviderException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->provider)->toBe('enablebanking')
+            ->and($e->statusCode)->toBe(400)
+            ->and($e->providerCode)->toBe('ASPSP_ERROR')
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected transient banking provider exception.');
+});
+
+test('getBalances keeps non-ASPSP client errors reportable', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
+            'code' => 400,
+            'message' => 'Invalid account',
+            'error' => 'VALIDATION_ERROR',
+        ], 400),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    expect(fn () => $provider->getBalances('ext-123'))
+        ->toThrow(RequestException::class);
+});
+
 function enableBankingProviderForTest(): EnableBankingProvider
 {
     $privateKey = <<<'PEM'
