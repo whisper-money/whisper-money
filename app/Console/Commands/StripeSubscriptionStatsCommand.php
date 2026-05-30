@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Services\Stripe\SubscriptionStatsCollector;
 use Illuminate\Console\Command;
-use Laravel\Cashier\Cashier;
 use Stripe\Exception\ApiErrorException;
-use Stripe\Subscription;
 
 class StripeSubscriptionStatsCommand extends Command
 {
@@ -23,72 +22,27 @@ class StripeSubscriptionStatsCommand extends Command
      */
     private array $trialing = [];
 
+    public function __construct(private SubscriptionStatsCollector $collector)
+    {
+        parent::__construct();
+    }
+
     public function handle(): int
     {
         try {
-            $this->collect('active', $this->active);
-            $this->collect('trialing', $this->trialing);
+            $stats = $this->collector->collect();
         } catch (ApiErrorException $exception) {
             $this->error("Stripe API error: {$exception->getMessage()}");
 
             return self::FAILURE;
         }
 
+        $this->active = $stats['active'];
+        $this->trialing = $stats['trialing'];
+
         $this->render();
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param  array<string, array{count: int, mrr: float}>  $bucket
-     *
-     * @throws ApiErrorException
-     */
-    private function collect(string $status, array &$bucket): void
-    {
-        $subscriptions = Cashier::stripe()->subscriptions->all([
-            'status' => $status,
-            'limit' => 100,
-            'expand' => ['data.items.data.price'],
-        ]);
-
-        /** @var Subscription $subscription */
-        foreach ($subscriptions->autoPagingIterator() as $subscription) {
-            $currency = strtolower((string) $subscription->currency);
-
-            $bucket[$currency] ??= ['count' => 0, 'mrr' => 0.0];
-            $bucket[$currency]['count']++;
-            $bucket[$currency]['mrr'] += $this->monthlyValue($subscription);
-        }
-    }
-
-    private function monthlyValue(Subscription $subscription): float
-    {
-        $monthly = 0.0;
-
-        foreach ($subscription->items->data as $item) {
-            $price = $item->price;
-
-            if ($price->recurring === null) {
-                continue;
-            }
-
-            $amount = ($price->unit_amount ?? 0) / 100;
-            $quantity = $item->quantity ?? 1;
-            $intervalCount = $price->recurring->interval_count ?: 1;
-
-            $perMonth = match ($price->recurring->interval) {
-                'day' => $amount * 365 / 12,
-                'week' => $amount * 52 / 12,
-                'month' => $amount,
-                'year' => $amount / 12,
-                default => 0.0,
-            };
-
-            $monthly += ($perMonth / $intervalCount) * $quantity;
-        }
-
-        return $monthly;
     }
 
     private function render(): void

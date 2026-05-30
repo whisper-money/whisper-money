@@ -43,4 +43,8 @@ return [
         'redirect_url' => env('ENABLEBANKING_REDIRECT_URL'),
     ],
 
+    'discord' => [
+        'webhook_url' => env('DISCORD_WEBHOOK_URL'),
+    ],
+
 ];

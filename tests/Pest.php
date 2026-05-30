@@ -10,6 +10,10 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Stripe\Collection as StripeCollection;
+use Stripe\Service\SubscriptionService;
+use Stripe\StripeClient;
+use Stripe\Subscription;
 use Tests\TestCase;
 
 /*
@@ -150,6 +154,68 @@ function assertMaxQueries(int $max, Closure $callback, string $context = ''): vo
     }
 
     expect($result['count'])->toBeLessThanOrEqual($max);
+}
+
+/**
+ * Build a fake Stripe subscription object for stats tests.
+ */
+function makeStripeSubscription(string $currency, int $unitAmount, string $interval, int $quantity = 1, int $intervalCount = 1): Subscription
+{
+    return Subscription::constructFrom([
+        'object' => 'subscription',
+        'currency' => $currency,
+        'items' => [
+            'object' => 'list',
+            'data' => [
+                [
+                    'object' => 'subscription_item',
+                    'quantity' => $quantity,
+                    'price' => [
+                        'object' => 'price',
+                        'unit_amount' => $unitAmount,
+                        'recurring' => [
+                            'interval' => $interval,
+                            'interval_count' => $intervalCount,
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+}
+
+/**
+ * @param  list<Subscription>  $subscriptions
+ */
+function makeSubscriptionCollection(array $subscriptions): StripeCollection
+{
+    return StripeCollection::constructFrom([
+        'object' => 'list',
+        'has_more' => false,
+        'data' => array_map(fn (Subscription $s) => $s->toArray(), $subscriptions),
+    ]);
+}
+
+/**
+ * Bind a mocked Stripe client that returns subscriptions per status.
+ *
+ * @param  array<string, list<Subscription>>  $byStatus
+ */
+function bindMockStripeClientForStats(array $byStatus): void
+{
+    $subscriptionService = Mockery::mock(SubscriptionService::class);
+
+    $subscriptionService->shouldReceive('all')
+        ->andReturnUsing(function (array $params) use ($byStatus): StripeCollection {
+            $status = $params['status'] ?? 'active';
+
+            return makeSubscriptionCollection($byStatus[$status] ?? []);
+        });
+
+    $stripeClient = Mockery::mock(StripeClient::class);
+    $stripeClient->subscriptions = $subscriptionService;
+
+    app()->bind(StripeClient::class, fn () => $stripeClient);
 }
 
 function createCategoryViaUI($page, string $name, string $color = 'green', string $type = 'Expense'): void
