@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { formatDateLong } from '@/utils/date';
+import { __ } from '@/utils/i18n';
 import { CheckCircle2 } from 'lucide-react';
 
 interface CategorizerCardProps {
@@ -91,6 +92,36 @@ export function CategorizerCard({
                                                 className="text-sm text-zinc-600 dark:text-zinc-400"
                                             />
                                         </div>
+                                    )}
+
+                                    {(transaction.creditor_name ||
+                                        transaction.debtor_name) && (
+                                        <dl className="flex flex-col gap-1 text-sm">
+                                            {transaction.creditor_name && (
+                                                <div className="flex items-center gap-2">
+                                                    <dt className="text-muted-foreground">
+                                                        {__('Creditor')}
+                                                    </dt>
+                                                    <dd className="text-zinc-700 dark:text-zinc-300">
+                                                        {
+                                                            transaction.creditor_name
+                                                        }
+                                                    </dd>
+                                                </div>
+                                            )}
+                                            {transaction.debtor_name && (
+                                                <div className="flex items-center gap-2">
+                                                    <dt className="text-muted-foreground">
+                                                        {__('Debtor')}
+                                                    </dt>
+                                                    <dd className="text-zinc-700 dark:text-zinc-300">
+                                                        {
+                                                            transaction.debtor_name
+                                                        }
+                                                    </dd>
+                                                </div>
+                                            )}
+                                        </dl>
                                     )}
                                 </div>
                             </div>
