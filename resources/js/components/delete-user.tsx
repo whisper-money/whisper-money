@@ -49,7 +49,9 @@ export default function DeleteUser() {
         <div className="space-y-6">
             <HeadingSmall
                 title={__('Delete account')}
-                description={__('Mark your account as deleted and disable access')}
+                description={__(
+                    'Mark your account as deleted and disable access',
+                )}
             />
 
             <div className="space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">

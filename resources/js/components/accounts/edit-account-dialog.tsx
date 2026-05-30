@@ -361,7 +361,9 @@ export function EditAccountDialog({
                                 type="submit"
                                 disabled={isSubmitting || !initialValues}
                             >
-                                {isSubmitting ? 'Updating...' : 'Update'}
+                                {isSubmitting
+                                    ? __('Updating...')
+                                    : __('Update')}
                             </Button>
                         </div>
                     </div>

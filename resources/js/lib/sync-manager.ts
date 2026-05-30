@@ -1,6 +1,6 @@
-import { __ } from '@/utils/i18n';
 import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
+import { __ } from '@/utils/i18n';
 import axios from 'axios';
 import { db } from './dexie-db';
 
