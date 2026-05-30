@@ -502,6 +502,8 @@ export function parseAmount(amountStr: string | number): number | null {
 
     let str = String(amountStr).trim();
 
+    const isNegative = /^-/.test(str) || /^\(.*\)$/.test(str);
+
     const dotPos = str.lastIndexOf('.');
     const commaPos = str.lastIndexOf(',');
 
@@ -526,7 +528,7 @@ export function parseAmount(amountStr: string | number): number | null {
         return null;
     }
 
-    return amount;
+    return isNegative ? -Math.abs(amount) : amount;
 }
 
 function getDescriptionFromRow(row: ParsedRow, mapping: ColumnMapping): string {
@@ -634,12 +636,19 @@ export function convertRowsToTransactions(
         const debtorName = getOptionalTextFromRow(row, mapping.debtor_name);
 
         let balance: number | null = null;
-        if (mapping.balance && row[mapping.balance]) {
-            const parsedBalance = parseAmount(
-                row[mapping.balance] as string | number,
-            );
-            if (parsedBalance !== null) {
-                balance = Math.round(parsedBalance * 100);
+        if (mapping.balance) {
+            const rawBalance = row[mapping.balance];
+            if (
+                rawBalance !== null &&
+                rawBalance !== undefined &&
+                String(rawBalance).trim() !== ''
+            ) {
+                const parsedBalance = parseAmount(
+                    rawBalance as string | number,
+                );
+                if (parsedBalance !== null) {
+                    balance = Math.round(parsedBalance * 100);
+                }
             }
         }
 

@@ -632,7 +632,8 @@ export function ImportTransactionsDrawer({
         for (const transaction of newTransactions) {
             if (
                 transaction.balance !== null &&
-                transaction.balance !== undefined
+                transaction.balance !== undefined &&
+                !balancesToImport.has(transaction.transaction_date)
             ) {
                 balancesToImport.set(
                     transaction.transaction_date,

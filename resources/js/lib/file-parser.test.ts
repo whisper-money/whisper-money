@@ -73,6 +73,85 @@ describe('convertRowsToTransactions', () => {
     });
 });
 
+describe('convertRowsToTransactions balance column', () => {
+    const mapping: ColumnMapping = {
+        transaction_date: 'date',
+        description: 'description',
+        amount: 'amount',
+        balance: 'balance',
+        creditor_name: null,
+        debtor_name: null,
+    };
+
+    it('keeps a zero balance instead of dropping it', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Drained account',
+                    amount: '-10.00',
+                    balance: 0,
+                },
+            ],
+            mapping,
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].balance).toBe(0);
+    });
+
+    it('keeps a zero balance provided as a string', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Drained account',
+                    amount: '-10.00',
+                    balance: '0',
+                },
+            ],
+            mapping,
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].balance).toBe(0);
+    });
+
+    it('keeps a negative balance', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'Overdrawn',
+                    amount: '-10.00',
+                    balance: '-25.50',
+                },
+            ],
+            mapping,
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].balance).toBe(-2550);
+    });
+
+    it('leaves balance null when the cell is empty', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '2026-05-04',
+                    description: 'No balance',
+                    amount: '-10.00',
+                    balance: '',
+                },
+            ],
+            mapping,
+            DateFormat.YearMonthDay,
+        );
+
+        expect(transactions[0].balance).toBeNull();
+    });
+});
+
 describe('autoDetectColumns', () => {
     it('detects creditor and debtor name columns', () => {
         const mapping = autoDetectColumns([
