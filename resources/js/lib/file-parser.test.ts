@@ -5,6 +5,7 @@ import {
     autoDetectColumns,
     autoDetectDateFormat,
     calculateBalancesFromTransactions,
+    collectBalancesToImport,
     convertRowsToTransactions,
     getLatestTransactionDate,
     getLocaleDateFormat,
@@ -367,5 +368,63 @@ describe('calculateBalancesFromTransactions', () => {
         );
         expect(balances.size).toBe(1);
         expect(balances.get('2024-01-05')).toBe(5000);
+    });
+});
+
+describe('collectBalancesToImport', () => {
+    function txn(date: string, balance?: number | null): ParsedTransaction {
+        return {
+            transaction_date: date,
+            description: 'x',
+            amount: 0,
+            balance,
+        };
+    }
+
+    it('uses the first (newest) balance when a date repeats', () => {
+        // Rows are newest-on-top; the first one holds the correct balance.
+        const transactions = [
+            txn('2024-01-15', 10000),
+            txn('2024-01-15', 8000),
+            txn('2024-01-15', 5000),
+        ];
+
+        const balances = collectBalancesToImport(transactions);
+
+        expect(balances.get('2024-01-15')).toBe(10000);
+    });
+
+    it('keeps the first balance per date across multiple days', () => {
+        const transactions = [
+            txn('2024-01-16', 12000),
+            txn('2024-01-15', 10000),
+            txn('2024-01-15', 8000),
+            txn('2024-01-14', 4000),
+        ];
+
+        const balances = collectBalancesToImport(transactions);
+
+        expect(balances.get('2024-01-16')).toBe(12000);
+        expect(balances.get('2024-01-15')).toBe(10000);
+        expect(balances.get('2024-01-14')).toBe(4000);
+    });
+
+    it('keeps the first valid balance even when it is zero', () => {
+        const transactions = [txn('2024-01-15', 0), txn('2024-01-15', 9000)];
+
+        const balances = collectBalancesToImport(transactions);
+
+        expect(balances.get('2024-01-15')).toBe(0);
+    });
+
+    it('skips transactions without a balance', () => {
+        const transactions = [
+            txn('2024-01-15', null),
+            txn('2024-01-14', undefined),
+        ];
+
+        const balances = collectBalancesToImport(transactions);
+
+        expect(balances.size).toBe(0);
     });
 });

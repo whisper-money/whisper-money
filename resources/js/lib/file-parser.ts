@@ -746,3 +746,29 @@ export function calculateBalancesFromTransactions(
 
     return balances;
 }
+
+/**
+ * Build the map of balances to store per date from imported transactions.
+ *
+ * CSV rows are newest-on-top and imported top-to-bottom, so when several
+ * transactions share a date the first one encountered is the newest and holds
+ * the correct end-of-day balance. A balance of 0 (or negative) is valid and
+ * kept; only null/undefined balances are skipped.
+ */
+export function collectBalancesToImport(
+    transactions: ParsedTransaction[],
+): Map<string, number> {
+    const balances = new Map<string, number>();
+
+    for (const transaction of transactions) {
+        if (
+            transaction.balance !== null &&
+            transaction.balance !== undefined &&
+            !balances.has(transaction.transaction_date)
+        ) {
+            balances.set(transaction.transaction_date, transaction.balance);
+        }
+    }
+
+    return balances;
+}
