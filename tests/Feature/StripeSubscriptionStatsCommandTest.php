@@ -8,13 +8,16 @@ use Stripe\Subscription;
 function makeStripeSubscription(string $currency, int $unitAmount, string $interval, int $quantity = 1, int $intervalCount = 1): Subscription
 {
     return Subscription::constructFrom([
+        'object' => 'subscription',
         'currency' => $currency,
         'items' => [
             'object' => 'list',
             'data' => [
                 [
+                    'object' => 'subscription_item',
                     'quantity' => $quantity,
                     'price' => [
+                        'object' => 'price',
                         'unit_amount' => $unitAmount,
                         'recurring' => [
                             'interval' => $interval,
