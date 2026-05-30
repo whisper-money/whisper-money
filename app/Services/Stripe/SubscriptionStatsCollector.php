@@ -4,7 +4,7 @@ namespace App\Services\Stripe;
 
 use Laravel\Cashier\Cashier;
 use Stripe\Exception\ApiErrorException;
-use Stripe\StripeObject;
+use Stripe\Subscription;
 
 class SubscriptionStatsCollector
 {
@@ -36,7 +36,7 @@ class SubscriptionStatsCollector
             'expand' => ['data.items.data.price'],
         ]);
 
-        /** @var StripeObject $subscription */
+        /** @var Subscription $subscription */
         foreach ($subscriptions->autoPagingIterator() as $subscription) {
             $currency = strtolower((string) $subscription->currency);
 
@@ -48,14 +48,14 @@ class SubscriptionStatsCollector
         return $bucket;
     }
 
-    private function monthlyValue(StripeObject $subscription): float
+    private function monthlyValue(Subscription $subscription): float
     {
         $monthly = 0.0;
 
         foreach ($subscription->items->data as $item) {
             $price = $item->price;
 
-            if ($price === null || $price->recurring === null) {
+            if ($price->recurring === null) {
                 continue;
             }
 
