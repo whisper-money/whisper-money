@@ -1,10 +1,10 @@
+import { __ } from '@/utils/i18n';
 import {
     format as dateFnsFormat,
     isToday as dateFnsIsToday,
     isYesterday as dateFnsIsYesterday,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { __ } from '@/utils/i18n';
 
 /**
  * Get the date-fns locale object based on locale code
