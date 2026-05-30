@@ -15,6 +15,7 @@ import { importKey } from '@/lib/crypto';
 import {
     autoDetectColumns,
     calculateBalancesFromTransactions,
+    collectBalancesToImport,
     convertRowsToTransactions,
     parseFile,
 } from '@/lib/file-parser';
@@ -628,18 +629,7 @@ export function ImportTransactionsDrawer({
             setImportProgress(processedCount);
         }
 
-        const balancesToImport = new Map<string, number>();
-        for (const transaction of newTransactions) {
-            if (
-                transaction.balance !== null &&
-                transaction.balance !== undefined
-            ) {
-                balancesToImport.set(
-                    transaction.transaction_date,
-                    transaction.balance,
-                );
-            }
-        }
+        const balancesToImport = collectBalancesToImport(newTransactions);
 
         if (balancesToImport.size > 0) {
             try {

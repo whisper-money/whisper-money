@@ -502,6 +502,8 @@ export function parseAmount(amountStr: string | number): number | null {
 
     let str = String(amountStr).trim();
 
+    const isNegative = /^-/.test(str) || /^\(.*\)$/.test(str);
+
     const dotPos = str.lastIndexOf('.');
     const commaPos = str.lastIndexOf(',');
 
@@ -526,7 +528,7 @@ export function parseAmount(amountStr: string | number): number | null {
         return null;
     }
 
-    return amount;
+    return isNegative ? -Math.abs(amount) : amount;
 }
 
 function getDescriptionFromRow(row: ParsedRow, mapping: ColumnMapping): string {
@@ -634,12 +636,19 @@ export function convertRowsToTransactions(
         const debtorName = getOptionalTextFromRow(row, mapping.debtor_name);
 
         let balance: number | null = null;
-        if (mapping.balance && row[mapping.balance]) {
-            const parsedBalance = parseAmount(
-                row[mapping.balance] as string | number,
-            );
-            if (parsedBalance !== null) {
-                balance = Math.round(parsedBalance * 100);
+        if (mapping.balance) {
+            const rawBalance = row[mapping.balance];
+            if (
+                rawBalance !== null &&
+                rawBalance !== undefined &&
+                String(rawBalance).trim() !== ''
+            ) {
+                const parsedBalance = parseAmount(
+                    rawBalance as string | number,
+                );
+                if (parsedBalance !== null) {
+                    balance = Math.round(parsedBalance * 100);
+                }
             }
         }
 
@@ -733,6 +742,32 @@ export function calculateBalancesFromTransactions(
         const nextNet = dailyNet.get(nextDate) ?? 0;
         const nextBalance = balances.get(nextDate) ?? 0;
         balances.set(dates[i], nextBalance - nextNet);
+    }
+
+    return balances;
+}
+
+/**
+ * Build the map of balances to store per date from imported transactions.
+ *
+ * CSV rows are newest-on-top and imported top-to-bottom, so when several
+ * transactions share a date the first one encountered is the newest and holds
+ * the correct end-of-day balance. A balance of 0 (or negative) is valid and
+ * kept; only null/undefined balances are skipped.
+ */
+export function collectBalancesToImport(
+    transactions: ParsedTransaction[],
+): Map<string, number> {
+    const balances = new Map<string, number>();
+
+    for (const transaction of transactions) {
+        if (
+            transaction.balance !== null &&
+            transaction.balance !== undefined &&
+            !balances.has(transaction.transaction_date)
+        ) {
+            balances.set(transaction.transaction_date, transaction.balance);
+        }
     }
 
     return balances;
