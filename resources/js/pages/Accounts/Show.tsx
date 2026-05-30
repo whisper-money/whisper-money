@@ -398,7 +398,7 @@ export default function AccountShow({
                         labels={labels}
                         automationRules={automationRules}
                         accountId={account.id}
-                        pageSize={10}
+                        pageSize={50}
                         hideAccountFilter={true}
                         showActionsMenu={false}
                         maxHeight={600}

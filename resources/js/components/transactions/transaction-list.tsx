@@ -1,5 +1,6 @@
 import { useLocale } from '@/hooks/use-locale';
 import { __ } from '@/utils/i18n';
+import { Link } from '@inertiajs/react';
 import {
     Cell,
     ColumnFiltersState,
@@ -15,6 +16,7 @@ import {
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, isWithinInterval, parseISO } from 'date-fns';
+import { ExternalLink } from 'lucide-react';
 import {
     createElement,
     useCallback,
@@ -26,6 +28,7 @@ import {
 import { toast } from 'sonner';
 
 import { single as reEvaluateSingle } from '@/actions/App/Http/Controllers/ReEvaluateTransactionRulesController';
+import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
 import {
     AutomateCategorizationDialog,
     type AutomateCategorizationCandidate,
@@ -1385,6 +1388,22 @@ export function TransactionList({
                                     ) : (
                                         <>{__('Load more')}</>
                                     )}
+                                </Button>
+                            )}
+                            {accountId && (
+                                <Button asChild variant="outline">
+                                    <Link
+                                        href={
+                                            transactionsIndex({
+                                                query: {
+                                                    account_ids: accountId,
+                                                },
+                                            }).url
+                                        }
+                                    >
+                                        <ExternalLink />
+                                        {__('View in Transactions')}
+                                    </Link>
                                 </Button>
                             )}
                         </DataTablePagination>
