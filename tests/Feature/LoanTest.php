@@ -111,7 +111,7 @@ it('projects from existing balance entries instead of original loan params', fun
     // (e.g. the user has been making extra payments)
     AccountBalance::create([
         'account_id' => $account->id,
-        'balance_date' => now()->subMonth()->startOfMonth()->toDateString(),
+        'balance_date' => now()->startOfMonth()->subMonth()->toDateString(),
         'balance' => 4489670,
     ]);
 
@@ -161,7 +161,7 @@ it('generates correct monthly balance when existing entries differ from theoreti
     // Balance from last month that's lower than theoretical schedule
     AccountBalance::create([
         'account_id' => $account->id,
-        'balance_date' => now()->subMonth()->startOfMonth()->toDateString(),
+        'balance_date' => now()->startOfMonth()->subMonth()->toDateString(),
         'balance' => 4489670,
     ]);
 
@@ -192,7 +192,7 @@ it('generates projection from last account balance entry', function () {
 
     AccountBalance::create([
         'account_id' => $account->id,
-        'balance_date' => now()->subMonth()->startOfMonth()->toDateString(),
+        'balance_date' => now()->startOfMonth()->subMonth()->toDateString(),
         'balance' => 19700000,
     ]);
 
@@ -924,7 +924,7 @@ it('returns projected data for loan accounts in balance evolution API', function
 
     AccountBalance::create([
         'account_id' => $account->id,
-        'balance_date' => now()->subMonth()->startOfMonth()->toDateString(),
+        'balance_date' => now()->startOfMonth()->subMonth()->toDateString(),
         'balance' => 19700000,
     ]);
 
@@ -958,7 +958,7 @@ it('does not return projected data for non-loan accounts', function () {
 
     AccountBalance::create([
         'account_id' => $account->id,
-        'balance_date' => now()->subMonth()->startOfMonth()->toDateString(),
+        'balance_date' => now()->startOfMonth()->subMonth()->toDateString(),
         'balance' => 500000,
     ]);
 

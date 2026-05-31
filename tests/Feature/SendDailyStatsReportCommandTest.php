@@ -32,6 +32,25 @@ test('posts yesterday user counts and stripe stats to discord', function () {
     });
 });
 
+test('total reflects users at end of yesterday and excludes users created today', function () {
+    Http::fake();
+    bindMockStripeClientForStats(['active' => [], 'trialing' => []]);
+
+    $tz = 'Europe/Madrid';
+    User::factory()->create(['created_at' => Carbon::now($tz)->subDays(10)->utc()]);
+    User::factory()->create(['created_at' => Carbon::now($tz)->subDay()->setTime(12, 0)->utc()]);
+    User::factory()->create(['created_at' => Carbon::now($tz)->setTime(8, 0)->utc()]);
+
+    $this->artisan('stats:daily-report')->assertSuccessful();
+
+    Http::assertSent(function ($request) {
+        $users = collect($request['embeds'][0]['fields'])->firstWhere('name', '👥 Users');
+
+        return str_contains($users['value'], 'New yesterday: **1**')
+            && str_contains($users['value'], 'Total: **2**');
+    });
+});
+
 test('reports zero new users when none were created yesterday', function () {
     Http::fake();
     bindMockStripeClientForStats(['active' => [], 'trialing' => []]);

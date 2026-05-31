@@ -41,8 +41,12 @@ class SendDailyStatsReportCommand extends Command
             ->whereBetween('created_at', [$yesterdayStart->copy()->utc(), $todayStart->copy()->utc()])
             ->count();
 
+        $totalUsers = User::query()
+            ->where('created_at', '<', $todayStart->copy()->utc())
+            ->count();
+
         $this->discord->send('', [
-            $this->buildEmbed($stats, $newUsers, User::query()->count(), $yesterdayStart),
+            $this->buildEmbed($stats, $newUsers, $totalUsers, $yesterdayStart),
         ]);
 
         $this->info('Daily stats report sent to Discord.');
