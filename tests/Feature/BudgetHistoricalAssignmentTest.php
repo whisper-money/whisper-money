@@ -23,7 +23,7 @@ test('budget creation dispatches the historical assignment job', function () {
         'name' => 'Test Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -54,7 +54,7 @@ test('historical transactions matching by category are assigned', function () {
         'name' => 'Category Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -91,7 +91,7 @@ test('historical transactions matching by label are assigned', function () {
         'name' => 'Label Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'label_id' => $label->id,
+        'label_ids' => [$label->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -131,7 +131,7 @@ test('transactions outside the period date range are not assigned', function () 
         'name' => 'Date Range Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -179,7 +179,7 @@ test('transactions on boundary dates are assigned', function () {
         'name' => 'Boundary Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -217,7 +217,7 @@ test('soft deleted transactions are not assigned', function () {
         'name' => 'Soft Delete Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -248,7 +248,7 @@ test('duplicate assignments are prevented', function () {
         'name' => 'Duplicate Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -303,7 +303,7 @@ test('multiple budgets assign independently', function () {
         'name' => 'Budget 1',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category1->id,
+        'category_ids' => [$category1->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -313,7 +313,7 @@ test('multiple budgets assign independently', function () {
         'name' => 'Budget 2',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category2->id,
+        'category_ids' => [$category2->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);

@@ -1,6 +1,7 @@
 import { update } from '@/actions/App/Http/Controllers/BudgetController';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AmountInput } from '@/components/ui/amount-input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -128,6 +129,32 @@ export function EditBudgetDialog({
                                 placeholder={__('e.g., Monthly Budget')}
                                 required
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>{__('Tracking')}</Label>
+                            <div className="flex flex-wrap items-center gap-1">
+                                {[
+                                    ...(budget.categories?.map(
+                                        (category) => category.name,
+                                    ) ?? []),
+                                    ...(budget.labels?.map(
+                                        (label) => label.name,
+                                    ) ?? []),
+                                ].map((trackingName) => (
+                                    <Badge
+                                        key={trackingName}
+                                        variant="secondary"
+                                    >
+                                        {trackingName}
+                                    </Badge>
+                                ))}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                {__(
+                                    'Tracked categories and labels cannot be changed after creation.',
+                                )}
+                            </p>
                         </div>
 
                         <div className="space-y-2">

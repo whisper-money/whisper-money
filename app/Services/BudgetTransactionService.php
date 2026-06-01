@@ -21,22 +21,24 @@ class BudgetTransactionService
         // Ensure labels are available for matching (safe if already loaded).
         $transaction->loadMissing('labels');
 
+        $transactionLabelIds = $transaction->labels->pluck('id');
+
         // Find budget periods that potentially match this transaction.
         $budgetPeriods = BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($transaction, $userId) {
+            ->whereHas('budget', function ($query) use ($transaction, $transactionLabelIds, $userId) {
                 $query->where('user_id', $userId)
-                    ->where(function ($q) use ($transaction) {
-                        $q->where('category_id', $transaction->category_id)
-                            ->orWhere(function ($labelQuery) use ($transaction) {
-                                $labelQuery->whereHas('label', function ($lq) use ($transaction) {
-                                    $lq->whereIn('id', $transaction->labels->pluck('id'));
-                                });
+                    ->where(function ($q) use ($transaction, $transactionLabelIds) {
+                        $q->whereHas('categories', function ($cq) use ($transaction) {
+                            $cq->whereKey($transaction->category_id);
+                        })
+                            ->orWhereHas('labels', function ($lq) use ($transactionLabelIds) {
+                                $lq->whereIn('labels.id', $transactionLabelIds);
                             });
                     });
             })
             ->where('start_date', '<=', $transaction->transaction_date)
             ->where('end_date', '>=', $transaction->transaction_date)
-            ->with('budget')
+            ->with('budget.categories:id', 'budget.labels:id')
             ->get();
 
         // Narrow down to periods whose budget actually matches the transaction.
@@ -45,8 +47,12 @@ class BudgetTransactionService
         foreach ($budgetPeriods as $period) {
             $budget = $period->budget;
 
-            $matchesCategory = $budget->category_id && $budget->category_id === $transaction->category_id;
-            $matchesLabel = $budget->label_id && $transaction->labels->contains('id', $budget->label_id);
+            $matchesCategory = $transaction->category_id
+                && $budget->categories->contains('id', $transaction->category_id);
+            $matchesLabel = $budget->labels
+                ->pluck('id')
+                ->intersect($transactionLabelIds)
+                ->isNotEmpty();
 
             if ($matchesCategory || $matchesLabel) {
                 $matchingPeriodIds[] = $period->id;
@@ -91,7 +97,7 @@ class BudgetTransactionService
     public function assignHistoricalTransactionsToPeriod(BudgetPeriod $period): int
     {
         // Load the budget with its relationships
-        $budget = $period->budget()->with(['category', 'label'])->first();
+        $budget = $period->budget()->with(['categories:id', 'labels:id'])->first();
 
         if (! $budget) {
             return 0;
@@ -99,10 +105,13 @@ class BudgetTransactionService
 
         $assignedCount = 0;
 
+        $categoryIds = $budget->categories->pluck('id');
+        $labelIds = $budget->labels->pluck('id');
+
         Log::info('Building query for historical transactions', [
             'user_id' => $budget->user_id,
-            'category_id' => $budget->category_id,
-            'label_id' => $budget->label_id,
+            'category_ids' => $categoryIds->all(),
+            'label_ids' => $labelIds->all(),
             'start_date' => $period->start_date->toDateString(),
             'end_date' => $period->end_date->toDateString(),
         ]);
@@ -113,15 +122,15 @@ class BudgetTransactionService
             ->whereBetween('transaction_date', [$period->start_date, $period->end_date])
             ->withoutTrashed();
 
-        // Filter by category OR label
-        $query->where(function ($q) use ($budget) {
-            if ($budget->category_id) {
-                $q->where('category_id', $budget->category_id);
+        // Filter by any tracked category OR label
+        $query->where(function ($q) use ($categoryIds, $labelIds) {
+            if ($categoryIds->isNotEmpty()) {
+                $q->whereIn('category_id', $categoryIds);
             }
 
-            if ($budget->label_id) {
-                $q->orWhereHas('labels', function ($labelQuery) use ($budget) {
-                    $labelQuery->where('labels.id', $budget->label_id);
+            if ($labelIds->isNotEmpty()) {
+                $q->orWhereHas('labels', function ($labelQuery) use ($labelIds) {
+                    $labelQuery->whereIn('labels.id', $labelIds);
                 });
             }
         });

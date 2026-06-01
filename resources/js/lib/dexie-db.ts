@@ -1,8 +1,8 @@
 import type {
     Budget,
     BudgetCategory,
+    BudgetLabel,
     BudgetPeriod,
-    BudgetPeriodAllocation,
 } from '@/types/budget';
 import type { Transaction } from '@/types/transaction';
 import Dexie, { type EntityTable } from 'dexie';
@@ -16,8 +16,8 @@ type WhisperMoneyDB = Dexie & {
     transactions: EntityTable<Transaction, 'id'>;
     budgets: EntityTable<Budget, 'id'>;
     budget_categories: EntityTable<BudgetCategory, 'id'>;
+    budget_labels: EntityTable<BudgetLabel, 'id'>;
     budget_periods: EntityTable<BudgetPeriod, 'id'>;
-    budget_period_allocations: EntityTable<BudgetPeriodAllocation, 'id'>;
     sync_metadata: EntityTable<SyncMetadata, 'key'>;
 };
 
@@ -77,6 +77,18 @@ function initializeDatabase(): WhisperMoneyDB {
         budget_periods: 'id, budget_id, start_date, updated_at',
         budget_period_allocations:
             'id, budget_period_id, budget_category_id, updated_at',
+        sync_metadata: 'key',
+    });
+
+    // Version 10: Multi-category/label budgets share a single pool, so the
+    // per-category allocations table is dropped and a budget_labels pivot added.
+    database.version(10).stores({
+        transactions: 'id, user_id, account_id, updated_at',
+        budgets: 'id, user_id, updated_at',
+        budget_categories: 'id, budget_id, updated_at',
+        budget_labels: 'id, budget_id, updated_at',
+        budget_periods: 'id, budget_id, start_date, updated_at',
+        budget_period_allocations: null,
         sync_metadata: 'key',
     });
 

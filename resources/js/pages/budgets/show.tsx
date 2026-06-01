@@ -6,6 +6,7 @@ import { EditBudgetDialog } from '@/components/budgets/edit-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { MobileBackButton } from '@/components/mobile-back-button';
 import { TransactionList } from '@/components/transactions/transaction-list';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -74,10 +75,11 @@ export default function BudgetShow({
         },
     ];
 
-    const trackingLabel = useMemo((): string | null => {
-        if (budget.category) return budget.category.name;
-        if (budget.label) return budget.label.name;
-        return null;
+    const trackingNames = useMemo(() => {
+        return [
+            ...(budget.categories?.map((category) => category.name) ?? []),
+            ...(budget.labels?.map((label) => label.name) ?? []),
+        ];
     }, [budget]);
 
     const periodTransactions = useMemo(() => {
@@ -101,21 +103,26 @@ export default function BudgetShow({
                         <HeadingSmall
                             title={budget.name}
                             description={
-                                <div className="flex flex-row items-center gap-1 text-sm">
-                                    <div className="inline">
-                                        {trackingLabel !== null ? (
-                                            <>
-                                                <span className="opacity-50">
-                                                    {__('Tracking')}{' '}
-                                                </span>
-                                                <span>{trackingLabel}</span>
-                                            </>
-                                        ) : (
+                                <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
+                                    {trackingNames.length > 0 ? (
+                                        <>
                                             <span className="opacity-50">
-                                                {__('No tracking')}
+                                                {__('Tracking')}{' '}
                                             </span>
-                                        )}
-                                    </div>
+                                            {trackingNames.map((name) => (
+                                                <Badge
+                                                    key={name}
+                                                    variant="secondary"
+                                                >
+                                                    {name}
+                                                </Badge>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <span className="opacity-50">
+                                            {__('No tracking')}
+                                        </span>
+                                    )}
                                 </div>
                             }
                         />

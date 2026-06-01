@@ -73,10 +73,11 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
         return 'text-green-600 dark:text-green-400';
     }, [stats.percentageUsed]);
 
-    const trackingLabel = useMemo(() => {
-        if (budget.category) return budget.category.name;
-        if (budget.label) return budget.label.name;
-        return __('No tracking');
+    const trackingNames = useMemo(() => {
+        return [
+            ...(budget.categories?.map((category) => category.name) ?? []),
+            ...(budget.labels?.map((label) => label.name) ?? []),
+        ];
     }, [budget]);
 
     return (
@@ -138,10 +139,32 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t pt-4">
-                    <span className="text-sm text-muted-foreground">
-                        {__('Tracking:')} {trackingLabel}
-                    </span>
+                <div className="flex items-center justify-between gap-2 border-t pt-4">
+                    <div className="flex flex-wrap items-center gap-1">
+                        <span className="text-sm text-muted-foreground">
+                            {__('Tracking:')}
+                        </span>
+                        {trackingNames.length > 0 ? (
+                            <>
+                                {trackingNames.slice(0, 2).map((name) => (
+                                    <Badge key={name} variant="secondary">
+                                        {name}
+                                    </Badge>
+                                ))}
+                                {trackingNames.length > 2 && (
+                                    <Badge variant="secondary">
+                                        {__('+:count', {
+                                            count: trackingNames.length - 2,
+                                        })}
+                                    </Badge>
+                                )}
+                            </>
+                        ) : (
+                            <span className="text-sm text-muted-foreground">
+                                {__('No tracking')}
+                            </span>
+                        )}
+                    </div>
                     <Link href={show({ budget: budget.id }).url}>
                         <Button
                             className="cursor-pointer"

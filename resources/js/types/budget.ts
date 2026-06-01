@@ -23,15 +23,27 @@ export interface Budget {
     name: string;
     period_type: BudgetPeriodType;
     period_start_day: number | null;
-    category_id: UUID | null;
-    label_id: UUID | null;
     rollover_type: RolloverType;
     created_at: string;
     updated_at: string;
     deleted_at: string | null;
-    category?: Category;
-    label?: Label;
+    categories?: Category[];
+    labels?: Label[];
     periods?: BudgetPeriod[];
+}
+
+export interface BudgetCategory {
+    id: UUID;
+    budget_id: UUID;
+    category_id: UUID;
+    updated_at: string;
+}
+
+export interface BudgetLabel {
+    id: UUID;
+    budget_id: UUID;
+    label_id: UUID;
+    updated_at: string;
 }
 
 export interface BudgetPeriod {

@@ -22,8 +22,10 @@ class StoreBudgetRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'period_type' => ['required', Rule::enum(BudgetPeriodType::class)],
             'period_start_day' => ['nullable', 'integer', 'min:0', 'max:31'],
-            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', $userId)],
-            'label_id' => ['nullable', Rule::exists('labels', 'id')->where('user_id', $userId)],
+            'category_ids' => ['nullable', 'array'],
+            'category_ids.*' => [Rule::exists('categories', 'id')->where('user_id', $userId)],
+            'label_ids' => ['nullable', 'array'],
+            'label_ids.*' => [Rule::exists('labels', 'id')->where('user_id', $userId)],
             'rollover_type' => ['required', Rule::enum(RolloverType::class)],
             'allocated_amount' => ['required', 'integer', 'min:0'],
         ];
@@ -32,13 +34,13 @@ class StoreBudgetRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            $hasCategoryId = ! empty($this->category_id);
-            $hasLabelId = ! empty($this->label_id);
+            $hasCategories = ! empty($this->category_ids);
+            $hasLabels = ! empty($this->label_ids);
 
-            if (! $hasCategoryId && ! $hasLabelId) {
+            if (! $hasCategories && ! $hasLabels) {
                 $validator->errors()->add(
                     'selection',
-                    'You must select either a category or a label.'
+                    'You must select at least one category or label.'
                 );
             }
         });

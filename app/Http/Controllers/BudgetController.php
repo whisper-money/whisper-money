@@ -28,7 +28,7 @@ class BudgetController extends Controller
         $user = $request->user();
         $budgets = $user
             ->budgets()
-            ->with(['category', 'label', 'periods' => function ($query) {
+            ->with(['categories', 'labels', 'periods' => function ($query) {
                 $query->where('start_date', '<=', today())
                     ->where('end_date', '>=', today())
                     ->with(['budgetTransactions']);
@@ -80,7 +80,7 @@ class BudgetController extends Controller
             ->orderBy('start_date', 'asc')
             ->first();
 
-        $budget->load(['category', 'label']);
+        $budget->load(['categories', 'labels']);
 
         $categories = Category::query()
             ->where('user_id', $user->id)
@@ -120,10 +120,11 @@ class BudgetController extends Controller
                 'name' => $request->name,
                 'period_type' => $request->period_type,
                 'period_start_day' => $request->period_start_day,
-                'category_id' => $request->category_id,
-                'label_id' => $request->label_id,
                 'rollover_type' => $request->rollover_type,
             ]);
+
+            $budget->categories()->sync($request->category_ids ?? []);
+            $budget->labels()->sync($request->label_ids ?? []);
 
             $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount, null, true);
 
@@ -145,8 +146,6 @@ class BudgetController extends Controller
                 'name',
                 'period_type',
                 'period_start_day',
-                'category_id',
-                'label_id',
                 'rollover_type',
             ]));
 
