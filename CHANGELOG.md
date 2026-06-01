@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.2.4](https://github.com/whisper-money/whisper-money/compare/v0.2.3...v0.2.4) (2026-06-01)
+
+
+### Bug Fixes
+
+* **accounts:** sync currency from first account ([#430](https://github.com/whisper-money/whisper-money/issues/430)) ([0d4c683](https://github.com/whisper-money/whisper-money/commit/0d4c68361afc114615323418e2cfcf380e5ac13f))
+* **accounts:** translate update button in edit account modal ([#455](https://github.com/whisper-money/whisper-money/issues/455)) ([65175e1](https://github.com/whisper-money/whisper-money/commit/65175e184a900404b12a5acccabfa0d700ba57ea))
+* **automation:** avoid rule preview n+1 ([#431](https://github.com/whisper-money/whisper-money/issues/431)) ([fd67cf7](https://github.com/whisper-money/whisper-money/commit/fd67cf7c72148ce6e3afa97a2cb35893f3457e4b))
+* **automation:** avoid skipping rule matches ([#433](https://github.com/whisper-money/whisper-money/issues/433)) ([9772cfc](https://github.com/whisper-money/whisper-money/commit/9772cfc37c19d521ab8b1cd64a5de467ae4ae5ce))
+* **banking:** handle balance-fetch timeouts and silence handled retries ([#450](https://github.com/whisper-money/whisper-money/issues/450)) ([64b78e3](https://github.com/whisper-money/whisper-money/commit/64b78e36801a34321ee2fc12ef41a2938d13c572))
+* batch automation rule application ([#435](https://github.com/whisper-money/whisper-money/issues/435)) ([606093d](https://github.com/whisper-money/whisper-money/commit/606093d311f307abe76e2c5ac10c7afc6f927578))
+* **budgets:** explain locked edit fields ([#437](https://github.com/whisper-money/whisper-money/issues/437)) ([235911b](https://github.com/whisper-money/whisper-money/commit/235911b960c80ba1f18dc059ced6af7b43b225da))
+* **cashflow:** clarify period comparisons ([#436](https://github.com/whisper-money/whisper-money/issues/436)) ([0250fdc](https://github.com/whisper-money/whisper-money/commit/0250fdc268ab27e4058a4a5bf6efa4b699133944))
+* **cashflow:** defer period label translation ([#427](https://github.com/whisper-money/whisper-money/issues/427)) ([1278a2b](https://github.com/whisper-money/whisper-money/commit/1278a2b972bf85649d0f2390277765b8a3f0bc8b))
+* **cashflow:** stack mobile header controls ([#426](https://github.com/whisper-money/whisper-money/issues/426)) ([949ca11](https://github.com/whisper-money/whisper-money/commit/949ca110fa2d250e316af45d5ca42a932b919343))
+* **categories:** allow recreate after delete ([#444](https://github.com/whisper-money/whisper-money/issues/444)) ([2fa822e](https://github.com/whisper-money/whisper-money/commit/2fa822e6d960f73b4d168e012a1a003a86415f85))
+* **categories:** expose cashflow setting on create ([#448](https://github.com/whisper-money/whisper-money/issues/448)) ([5119528](https://github.com/whisper-money/whisper-money/commit/5119528149a1ea1686e70d081418a10ec61edd68))
+* **chart:** mask stacked bar edges ([#439](https://github.com/whisper-money/whisper-money/issues/439)) ([d5d262e](https://github.com/whisper-money/whisper-money/commit/d5d262e9fd5720b21bbe1c44500ef1034290cf9a))
+* **currency:** degrade gracefully when rates return 404 ([#449](https://github.com/whisper-money/whisper-money/issues/449)) ([bef657c](https://github.com/whisper-money/whisper-money/commit/bef657c2ed8a7ed7be1b7c7d232dc037d76ee39a))
+* filter Safari cashback extension errors ([#447](https://github.com/whisper-money/whisper-money/issues/447)) ([0b94067](https://github.com/whisper-money/whisper-money/commit/0b9406714e158244b64cb449e6b19320305ee6b9))
+* **import:** correct balance for same-day, zero and negative values ([#456](https://github.com/whisper-money/whisper-money/issues/456)) ([144d919](https://github.com/whisper-money/whisper-money/commit/144d919c0b23d8231b1095e148d4ca4a58f0e955))
+* **logging:** keep laravel.log writable across container UIDs ([#451](https://github.com/whisper-money/whisper-money/issues/451)) ([741dc49](https://github.com/whisper-money/whisper-money/commit/741dc49d5371b3aa867d45c78974fe0049d6b346))
+* move community link to user menu ([#442](https://github.com/whisper-money/whisper-money/issues/442)) ([4f46ae3](https://github.com/whisper-money/whisper-money/commit/4f46ae3e2d9e365a1bb45355fe2f2c310cab2bb8))
+* net category refunds in cashflow ([#441](https://github.com/whisper-money/whisper-money/issues/441)) ([6caadad](https://github.com/whisper-money/whisper-money/commit/6caadad1dbc267ea5d2bb58f2ce92200146349bf))
+* **register:** don't block signup on unrecognized browser timezone ([#462](https://github.com/whisper-money/whisper-money/issues/462)) ([96ee311](https://github.com/whisper-money/whisper-money/commit/96ee311299b0fb6d8234fd17cab44caa3c886488))
+
+
+### Features
+
+* **accounts:** add transaction action ([#438](https://github.com/whisper-money/whisper-money/issues/438)) ([534a147](https://github.com/whisper-money/whisper-money/commit/534a14790e777f3bd3d993fe6083fef40a9727ab))
+* **accounts:** show 50 transactions per page and link to full list ([#459](https://github.com/whisper-money/whisper-money/issues/459)) ([85ea3cc](https://github.com/whisper-money/whisper-money/commit/85ea3cc71416d446fdc8858fbd8a562a02334182))
+* add BRL currency support ([#453](https://github.com/whisper-money/whisper-money/issues/453)) ([4dec0ab](https://github.com/whisper-money/whisper-money/commit/4dec0ab7ca14e3100ee2b584a22b39f8cdf8e110))
+* add Discord admin feed for daily stats and Stripe events ([#458](https://github.com/whisper-money/whisper-money/issues/458)) ([0b528b7](https://github.com/whisper-money/whisper-money/commit/0b528b79025314294db53a61a07231199b2b864c)), closes [#457](https://github.com/whisper-money/whisper-money/issues/457)
+* add PKR currency support ([#443](https://github.com/whisper-money/whisper-money/issues/443)) ([cfa61fd](https://github.com/whisper-money/whisper-money/commit/cfa61fd23cc9b7888755684d24ede3f6a35863cb))
+* add Stripe subscription stats command ([#457](https://github.com/whisper-money/whisper-money/issues/457)) ([670a0a6](https://github.com/whisper-money/whisper-money/commit/670a0a65c73d19da091f95ea9a381d7dcab1b240))
+* **budgets:** track multiple categories and labels per budget ([#466](https://github.com/whisper-money/whisper-money/issues/466)) ([71dd6e2](https://github.com/whisper-money/whisper-money/commit/71dd6e2b7fcf44d889641842a13e19091a47d186))
+* **cashflow:** add savings and period views ([#424](https://github.com/whisper-money/whisper-money/issues/424)) ([ed737db](https://github.com/whisper-money/whisper-money/commit/ed737db7b28442ea3674290eb7eb3f15744dd5b2))
+* **cashflow:** rework summary cards into net + saved/invested ([#465](https://github.com/whisper-money/whisper-money/issues/465)) ([5ce439f](https://github.com/whisper-money/whisper-money/commit/5ce439f463bfdac7ebb3aa5c0396d098999fdad6))
+* **categorize:** show debtor and creditor names ([#454](https://github.com/whisper-money/whisper-money/issues/454)) ([05ee8dc](https://github.com/whisper-money/whisper-money/commit/05ee8dc44258e7c9e6dcb6e77afedeb92f3329a2))
+* **currency:** add Saudi Riyal (SAR) ([#461](https://github.com/whisper-money/whisper-money/issues/461)) ([a71626a](https://github.com/whisper-money/whisper-money/commit/a71626a350a568fc0591847aba6b0faac0d484fb))
+* **discord:** enrich Stripe event messages and dedupe deliveries ([#460](https://github.com/whisper-money/whisper-money/issues/460)) ([f9bf0ea](https://github.com/whisper-money/whisper-money/commit/f9bf0ea5fff32f26af8d05dc5645a302524b3a95))
+* **landing:** redirect signed-in users ([#429](https://github.com/whisper-money/whisper-money/issues/429)) ([4f42de7](https://github.com/whisper-money/whisper-money/commit/4f42de74a1beda4b7032a6e2fe6d9d1eec4edd4c))
+* **leads:** add user lead re-invite campaign ([#432](https://github.com/whisper-money/whisper-money/issues/432)) ([7b03d7c](https://github.com/whisper-money/whisper-money/commit/7b03d7cf230ef0cea3fe4ce6ea2215e3348910f9))
+* **leads:** schedule invitation emails ([#434](https://github.com/whisper-money/whisper-money/issues/434)) ([d5d22b9](https://github.com/whisper-money/whisper-money/commit/d5d22b9d5724cfb7363ead047946ff587772d9ea))
+* **posthog:** route analytics through reverse proxy ([#463](https://github.com/whisper-money/whisper-money/issues/463)) ([448bb2e](https://github.com/whisper-money/whisper-money/commit/448bb2e64af8ebb8b2a28700d793b97fba75bf6d))
+* **transactions:** add counterparty fields ([#440](https://github.com/whisper-money/whisper-money/issues/440)) ([10da06e](https://github.com/whisper-money/whisper-money/commit/10da06ed849c019fcd041d5889d5864a6c26844f))
+
 ## [0.2.3](https://github.com/whisper-money/whisper-money/compare/v0.2.2...v0.2.3) (2026-05-25)
 
 
