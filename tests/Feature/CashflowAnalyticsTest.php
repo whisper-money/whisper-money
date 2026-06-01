@@ -73,6 +73,8 @@ test('cashflow summary returns income, expense, net, and savings rate', function
 });
 
 test('cashflow analytics convert foreign currency transactions to user currency', function () {
+    $this->travelTo(now()->startOfMonth()->addDays(14));
+
     $date = now()->startOfMonth()->addDays(4);
     $from = $date->copy()->startOfMonth()->toDateString();
     $to = $date->copy()->endOfMonth()->toDateString();
