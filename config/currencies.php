@@ -123,6 +123,12 @@ return [
             'allows_account' => true,
         ],
         [
+            'code' => 'SAR',
+            'name' => 'Saudi Riyal',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
             'code' => 'BTC',
             'name' => 'Bitcoin',
             'allows_primary' => false,

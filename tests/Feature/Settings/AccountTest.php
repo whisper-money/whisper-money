@@ -170,6 +170,25 @@ it('accepts Brazilian real when creating account', function () {
     ]);
 });
 
+it('accepts Saudi riyal when creating account', function () {
+    actingAs($this->user);
+
+    $response = $this->post(route('accounts.store'), [
+        'name' => 'Saudi Account',
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'SAR',
+        'type' => AccountType::Checking->value,
+    ]);
+
+    $response->assertRedirect();
+
+    assertDatabaseHas('accounts', [
+        'user_id' => $this->user->id,
+        'bank_id' => $this->bank->id,
+        'currency_code' => 'SAR',
+    ]);
+});
+
 it('accepts bitcoin when creating account', function () {
     actingAs($this->user);
 
