@@ -35,7 +35,7 @@ class CreateNewUser implements CreatesNewUsers
                 Rule::unique(User::class),
             ],
             'password' => $this->passwordRules(),
-            'timezone' => ['nullable', 'string', 'timezone'],
+            'timezone' => ['nullable', 'string', 'max:255'],
         ])->validate();
 
         $user = User::create([
@@ -43,7 +43,7 @@ class CreateNewUser implements CreatesNewUsers
             'email' => $input['email'],
             'password' => $input['password'],
             'locale' => $this->detectLocaleFromRequest(),
-            'timezone' => $input['timezone'] ?? null,
+            'timezone' => $this->normalizeTimezone($input['timezone'] ?? null),
         ]);
 
         if (! config('mail.email_verification_enabled')) {
@@ -51,6 +51,23 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         return $user;
+    }
+
+    /**
+     * Normalize a browser-detected timezone, discarding identifiers PHP does
+     * not recognize so a hidden auto-detected field can never block registration.
+     */
+    protected function normalizeTimezone(?string $timezone): ?string
+    {
+        if ($timezone === null || $timezone === '') {
+            return null;
+        }
+
+        if (! in_array($timezone, timezone_identifiers_list(\DateTimeZone::ALL_WITH_BC), true)) {
+            return null;
+        }
+
+        return $timezone;
     }
 
     /**

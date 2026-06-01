@@ -93,6 +93,42 @@ test('new users store their detected timezone on registration', function () {
     expect($user->timezone)->toBe('America/New_York');
 });
 
+test('new users can register with a legacy timezone alias', function () {
+    Queue::fake();
+
+    $response = $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => 'Asia/Calcutta',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('onboarding', absolute: false));
+
+    expect(User::where('email', 'test@example.com')->first()->timezone)
+        ->toBe('Asia/Calcutta');
+});
+
+test('new users can register when the browser sends an unrecognized timezone', function () {
+    Queue::fake();
+
+    $response = $this->post(route('register.store'), [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'timezone' => 'Not/AZone',
+    ]);
+
+    $this->assertAuthenticated();
+    $response->assertRedirect(route('onboarding', absolute: false));
+
+    expect(User::where('email', 'test@example.com')->first()->timezone)
+        ->toBeNull();
+});
+
 test('new users can register without a timezone', function () {
     Queue::fake();
 

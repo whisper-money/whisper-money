@@ -69,6 +69,8 @@ export default function Register({
                             value={detectedTimezone}
                         />
 
+                        <InputError message={errors.timezone} />
+
                         <div className="grid gap-6">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">{__('Name')}</Label>
