@@ -82,6 +82,8 @@ export function NetCashflowCard({
     }
 
     const diff = current.net - previous.net;
+    const rateDiff = current.savings_rate - previous.savings_rate;
+    const rateDiffIsPositive = rateDiff >= 0;
     const diffIsPositive = diff >= 0;
     const incomeDiff = current.income - previous.income;
     const expenseDiff = current.expense - previous.expense;
@@ -96,7 +98,7 @@ export function NetCashflowCard({
                 <CardDescription>{__('Income minus expenses')}</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex items-baseline gap-2">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <div className={cn('flex items-center gap-1')}>
                         <AmountDisplay
                             amountInCents={current.net}
@@ -108,39 +110,48 @@ export function NetCashflowCard({
                             highlightPositive
                         />
                     </div>
+                    <span className="text-lg font-medium text-muted-foreground tabular-nums">
+                        {current.savings_rate.toFixed(1)}%
+                    </span>
                 </div>
                 {hasPreviousData && (
-                    <div className={cn('mt-2 flex items-center gap-1 text-sm')}>
-                        {diffIsPositive ? (
-                            <TrendingUp
-                                className={cn(
-                                    'size-4',
-                                    'text-green-600 dark:text-green-400',
-                                )}
-                            />
-                        ) : (
-                            <TrendingDown
-                                className={cn(
-                                    'size-4',
-                                    'text-red-600 dark:text-red-400',
-                                )}
-                            />
-                        )}
-                        <span>
-                            {diffIsPositive ? '+' : ''}
-                            <AmountDisplay
-                                amountInCents={diff}
-                                currencyCode={currency}
-                                minimumFractionDigits={0}
-                                maximumFractionDigits={0}
-                                className="text-sm"
-                                highlightPositive
-                            />
-                        </span>
-                        <span className="text-muted-foreground">
-                            {__('vs last period')}
-                        </span>
-                    </div>
+                    <>
+                        <div className="mt-2 flex items-center gap-1 text-sm">
+                            {rateDiffIsPositive ? (
+                                <TrendingUp className="size-4 text-green-600 dark:text-green-400" />
+                            ) : (
+                                <TrendingDown className="size-4 text-red-600 dark:text-red-400" />
+                            )}
+                            <span>
+                                {rateDiffIsPositive ? '+' : ''}
+                                {rateDiff.toFixed(1)}%
+                            </span>
+                            <span className="text-muted-foreground">
+                                {__('vs last period')}
+                            </span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-1 text-xs">
+                            {diffIsPositive ? (
+                                <TrendingUp className="size-3 text-green-600 dark:text-green-400" />
+                            ) : (
+                                <TrendingDown className="size-3 text-red-600 dark:text-red-400" />
+                            )}
+                            <span>
+                                {diffIsPositive ? '+' : ''}
+                                <AmountDisplay
+                                    amountInCents={diff}
+                                    currencyCode={currency}
+                                    minimumFractionDigits={0}
+                                    maximumFractionDigits={0}
+                                    className="text-xs"
+                                    highlightPositive
+                                />
+                            </span>
+                            <span className="text-muted-foreground">
+                                {__('vs last period')}
+                            </span>
+                        </div>
+                    </>
                 )}
                 <div className="mt-3 grid grid-cols-2 gap-4 border-t pt-3">
                     <div>

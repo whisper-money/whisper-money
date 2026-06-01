@@ -1,7 +1,7 @@
 import { BreakdownCard } from '@/components/cashflow/breakdown-card';
 import { NetCashflowCard } from '@/components/cashflow/net-cashflow-card';
 import { PeriodNavigation } from '@/components/cashflow/period-navigation';
-import { SavingsRateCard } from '@/components/cashflow/savings-rate-card';
+import { SavedInvestedCard } from '@/components/cashflow/saved-invested-card';
 import { CashflowTrendChart, SankeyChart } from '@/components/charts';
 import HeadingSmall from '@/components/heading-small';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -183,7 +183,7 @@ export default function CashflowPage() {
                         currency={auth.user.currency_code}
                     />
 
-                    <SavingsRateCard
+                    <SavedInvestedCard
                         current={summary.current}
                         previous={summary.previous}
                         loading={isLoading}
