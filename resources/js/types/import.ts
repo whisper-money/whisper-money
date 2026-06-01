@@ -11,6 +11,7 @@ export enum DateFormat {
     YearMonthDay = 'YYYY-MM-DD',
     MonthDayYear = 'MM-DD-YYYY',
     DayMonthYear = 'DD-MM-YYYY',
+    YearMonthDayCompact = 'YYYYMMDD',
 }
 
 export interface ColumnMapping {

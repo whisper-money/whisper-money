@@ -72,6 +72,30 @@ describe('convertRowsToTransactions', () => {
             process.env.TZ = originalTimezone;
         }
     });
+
+    it('parses YYYYMMDD compact dates', () => {
+        const transactions = convertRowsToTransactions(
+            [
+                {
+                    date: '20241231',
+                    description: 'New Year Eve',
+                    amount: '10.00',
+                },
+            ],
+            {
+                transaction_date: 'date',
+                description: 'description',
+                amount: 'amount',
+                balance: null,
+                creditor_name: null,
+                debtor_name: null,
+            },
+            DateFormat.YearMonthDayCompact,
+        );
+
+        expect(transactions).toHaveLength(1);
+        expect(transactions[0].transaction_date).toBe('2024-12-31');
+    });
 });
 
 describe('convertRowsToTransactions balance column', () => {
@@ -277,6 +301,17 @@ describe('autoDetectDateFormat', () => {
         ];
         expect(autoDetectDateFormat(data, 'date', 'en-US')).toBe(
             DateFormat.DayMonthYear,
+        );
+    });
+
+    it('detects YYYYMMDD compact format unambiguously', () => {
+        const data = [
+            { date: '20240115' },
+            { date: '20240220' },
+            { date: '20240325' },
+        ];
+        expect(autoDetectDateFormat(data, 'date')).toBe(
+            DateFormat.YearMonthDayCompact,
         );
     });
 });
