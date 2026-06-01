@@ -407,6 +407,12 @@ export function TransactionList({
                                     ...transaction,
                                     decryptedDescription,
                                     decryptedNotes,
+                                    label_ids:
+                                        transaction.label_ids ??
+                                        transaction.labels?.map(
+                                            (label) => label.id,
+                                        ) ??
+                                        [],
                                 } as DecryptedTransaction;
                             } catch (error) {
                                 console.error(

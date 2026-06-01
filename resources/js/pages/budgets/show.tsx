@@ -20,6 +20,7 @@ import { BreadcrumbItem } from '@/types';
 import { Account, Bank } from '@/types/account';
 import { Budget, BudgetPeriod } from '@/types/budget';
 import { Category } from '@/types/category';
+import { Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { Head, router } from '@inertiajs/react';
 import { ChevronDown, Loader2 } from 'lucide-react';
@@ -33,6 +34,7 @@ interface Props {
     categories: Category[];
     accounts: Account[];
     banks: Bank[];
+    labels: Label[];
     currencyCode: string;
 }
 
@@ -44,6 +46,7 @@ export default function BudgetShow({
     categories,
     accounts,
     banks,
+    labels,
     currencyCode,
 }: Props) {
     const [editOpen, setEditOpen] = useState(false);
@@ -197,6 +200,7 @@ export default function BudgetShow({
                         categories={categories}
                         accounts={accounts}
                         banks={banks}
+                        labels={labels}
                         transactions={periodTransactions}
                         pageSize={10}
                         showActionsMenu={false}

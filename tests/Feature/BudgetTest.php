@@ -30,7 +30,7 @@ test('user can create a budget', function () {
     $budget = Budget::where('user_id', $user->id)->first();
     $this->assertNotNull($budget);
     $this->assertTrue($budget->categories->pluck('id')->contains($category->id));
-    $this->assertCount(1, $budget->periods);
+    $this->assertCount(2, $budget->periods);
 });
 
 test('user can create a yearly budget', function () {
@@ -51,10 +51,12 @@ test('user can create a yearly budget', function () {
 
     $budget = Budget::where('user_id', $user->id)->where('period_type', 'yearly')->first();
 
+    $currentPeriod = $budget->getCurrentPeriod();
+
     expect($budget)->not->toBeNull()
-        ->and($budget->periods()->count())->toBe(1)
-        ->and($budget->periods()->first()->start_date->toDateString())->toBe(now()->startOfYear()->toDateString())
-        ->and($budget->periods()->first()->end_date->toDateString())->toBe(now()->endOfYear()->toDateString());
+        ->and($budget->periods()->count())->toBe(2)
+        ->and($currentPeriod->start_date->toDateString())->toBe(now()->startOfYear()->toDateString())
+        ->and($currentPeriod->end_date->toDateString())->toBe(now()->endOfYear()->toDateString());
 });
 
 test('user can view their budgets', function () {
@@ -337,9 +339,9 @@ test('budget period is automatically generated', function () {
 
     $budget = Budget::where('user_id', $user->id)->first();
     $this->assertNotNull($budget);
-    $this->assertCount(1, $budget->periods);
+    $this->assertCount(2, $budget->periods);
 
-    $period = $budget->periods->first();
+    $period = $budget->getCurrentPeriod();
     $this->assertNotNull($period->start_date);
     $this->assertNotNull($period->end_date);
 });

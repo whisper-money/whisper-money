@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
+use App\Models\Label;
 use App\Services\BudgetPeriodService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -101,6 +102,11 @@ class BudgetController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'logo']);
 
+        $labels = Label::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'color']);
+
         return Inertia::render('budgets/show', [
             'budget' => $budget,
             'currentPeriod' => $viewedPeriod,
@@ -109,6 +115,7 @@ class BudgetController extends Controller
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
+            'labels' => $labels,
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }
@@ -127,12 +134,14 @@ class BudgetController extends Controller
             $budget->labels()->sync($request->label_ids ?? []);
 
             $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount, null, true);
+            $previousPeriod = $this->budgetPeriodService->generatePreviousPeriod($budget, $period, $request->allocated_amount, true);
 
-            return ['budget' => $budget, 'period' => $period];
+            return ['budget' => $budget, 'period' => $period, 'previousPeriod' => $previousPeriod];
         });
 
-        // Dispatch job to assign historical transactions
+        // Dispatch jobs to assign historical transactions for the current and previous periods
         AssignHistoricalTransactionsToBudget::dispatch($result['budget'], $result['period']);
+        AssignHistoricalTransactionsToBudget::dispatch($result['budget'], $result['previousPeriod']);
 
         return redirect()->route('budgets.show', $result['budget']);
     }
