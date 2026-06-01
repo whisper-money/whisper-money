@@ -33,6 +33,13 @@ class BudgetPeriodService
         ]);
     }
 
+    public function generatePreviousPeriod(Budget $budget, BudgetPeriod $period, ?int $allocatedAmount = null, bool $processHistorical = false): BudgetPeriod
+    {
+        $referenceDate = $period->start_date->copy()->subDay();
+
+        return $this->generatePeriod($budget, $allocatedAmount ?? $period->allocated_amount, $referenceDate, $processHistorical);
+    }
+
     public function closePeriod(BudgetPeriod $period): void
     {
         $budget = $period->budget;

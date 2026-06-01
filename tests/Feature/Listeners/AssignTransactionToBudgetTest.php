@@ -34,9 +34,8 @@ function runQueuedAssignTransactionListener(): CallQueuedListener
 
 test('queued listener re-runs assignment when TransactionCreated fires', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
     BudgetPeriod::factory()->create([
         'budget_id' => $budget->id,
@@ -65,9 +64,8 @@ test('queued listener re-runs assignment when TransactionCreated fires', functio
 test('queued listener runs when TransactionUpdated changes category', function () {
     $oldCategory = Category::factory()->create(['user_id' => $this->user->id]);
     $newCategory = Category::factory()->create(['user_id' => $this->user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($newCategory)->create([
         'user_id' => $this->user->id,
-        'category_id' => $newCategory->id,
     ]);
     BudgetPeriod::factory()->create([
         'budget_id' => $budget->id,
@@ -97,9 +95,8 @@ test('queued listener runs when TransactionUpdated changes category', function (
 
 test('queued listener runs when TransactionUpdated changes labels', function () {
     $label = Label::factory()->create(['user_id' => $this->user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forLabels($label)->create([
         'user_id' => $this->user->id,
-        'label_id' => $label->id,
     ]);
     $period = BudgetPeriod::factory()->create([
         'budget_id' => $budget->id,

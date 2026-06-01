@@ -9,6 +9,7 @@ use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Budget;
 use App\Models\Category;
+use App\Models\Label;
 use App\Services\BudgetPeriodService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +29,7 @@ class BudgetController extends Controller
         $user = $request->user();
         $budgets = $user
             ->budgets()
-            ->with(['category', 'label', 'periods' => function ($query) {
+            ->with(['categories', 'labels', 'periods' => function ($query) {
                 $query->where('start_date', '<=', today())
                     ->where('end_date', '>=', today())
                     ->with(['budgetTransactions']);
@@ -80,7 +81,7 @@ class BudgetController extends Controller
             ->orderBy('start_date', 'asc')
             ->first();
 
-        $budget->load(['category', 'label']);
+        $budget->load(['categories', 'labels']);
 
         $categories = Category::query()
             ->where('user_id', $user->id)
@@ -101,6 +102,11 @@ class BudgetController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'logo']);
 
+        $labels = Label::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'color']);
+
         return Inertia::render('budgets/show', [
             'budget' => $budget,
             'currentPeriod' => $viewedPeriod,
@@ -109,6 +115,7 @@ class BudgetController extends Controller
             'categories' => $categories,
             'accounts' => $accounts,
             'banks' => $banks,
+            'labels' => $labels,
             'currencyCode' => $user->currency_code ?? 'USD',
         ]);
     }
@@ -120,18 +127,21 @@ class BudgetController extends Controller
                 'name' => $request->name,
                 'period_type' => $request->period_type,
                 'period_start_day' => $request->period_start_day,
-                'category_id' => $request->category_id,
-                'label_id' => $request->label_id,
                 'rollover_type' => $request->rollover_type,
             ]);
 
-            $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount, null, true);
+            $budget->categories()->sync($request->category_ids ?? []);
+            $budget->labels()->sync($request->label_ids ?? []);
 
-            return ['budget' => $budget, 'period' => $period];
+            $period = $this->budgetPeriodService->generatePeriod($budget, $request->allocated_amount, null, true);
+            $previousPeriod = $this->budgetPeriodService->generatePreviousPeriod($budget, $period, $request->allocated_amount, true);
+
+            return ['budget' => $budget, 'period' => $period, 'previousPeriod' => $previousPeriod];
         });
 
-        // Dispatch job to assign historical transactions
+        // Dispatch jobs to assign historical transactions for the current and previous periods
         AssignHistoricalTransactionsToBudget::dispatch($result['budget'], $result['period']);
+        AssignHistoricalTransactionsToBudget::dispatch($result['budget'], $result['previousPeriod']);
 
         return redirect()->route('budgets.show', $result['budget']);
     }
@@ -145,8 +155,6 @@ class BudgetController extends Controller
                 'name',
                 'period_type',
                 'period_start_day',
-                'category_id',
-                'label_id',
                 'rollover_type',
             ]));
 

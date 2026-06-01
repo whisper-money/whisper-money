@@ -36,9 +36,8 @@ test('user can view budgets list with existing budgets', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
         'name' => 'Test Budget',
     ]);
 
@@ -67,9 +66,8 @@ test('user can view a specific budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
         'name' => 'My Monthly Budget',
     ]);
 
@@ -87,9 +85,8 @@ test('user can open edit budget dialog', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
         'name' => 'Original Name',
     ]);
 
@@ -108,9 +105,8 @@ test('user can open delete budget dialog', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
         'name' => 'Budget to Delete',
     ]);
 

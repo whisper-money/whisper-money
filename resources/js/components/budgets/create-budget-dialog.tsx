@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label as UILabel } from '@/components/ui/label';
+import { MultiSelect } from '@/components/ui/multi-select';
 import {
     Select,
     SelectContent,
@@ -29,11 +30,12 @@ import {
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
-import { Category } from '@/types/category';
-import { Label } from '@/types/label';
+import { Category, getCategoryColorClasses } from '@/types/category';
+import { getLabelColorClasses, Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { Plus, X } from 'lucide-react';
+import * as Icons from 'lucide-react';
+import { Plus, Tag } from 'lucide-react';
 import React, { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 
@@ -53,8 +55,10 @@ export function CreateBudgetDialog({
     const [name, setName] = useState('');
     const [periodType, setPeriodType] = useState<BudgetPeriodType>('monthly');
     const [periodStartDay, setPeriodStartDay] = useState<number>(1);
-    const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
-    const [selectedLabelId, setSelectedLabelId] = useState<string>('');
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
+        [],
+    );
+    const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
     const [allocatedAmount, setAllocatedAmount] = useState<number>(0);
     const [rolloverType, setRolloverType] =
         useState<RolloverType>('carry_over');
@@ -70,9 +74,9 @@ export function CreateBudgetDialog({
 
         const newErrors: Record<string, string> = {};
 
-        if (!selectedCategoryId && !selectedLabelId) {
+        if (selectedCategoryIds.length === 0 && selectedLabelIds.length === 0) {
             newErrors.selection = __(
-                'You must select either a category or a label.',
+                'You must select at least one category or label.',
             );
         }
 
@@ -89,8 +93,8 @@ export function CreateBudgetDialog({
                 name,
                 period_type: periodType,
                 period_start_day: periodType === 'yearly' ? 1 : periodStartDay,
-                category_id: selectedCategoryId || null,
-                label_id: selectedLabelId || null,
+                category_ids: selectedCategoryIds,
+                label_ids: selectedLabelIds,
                 rollover_type: rolloverType,
                 allocated_amount: allocatedAmount,
             },
@@ -100,8 +104,8 @@ export function CreateBudgetDialog({
                     setName('');
                     setPeriodType('monthly');
                     setPeriodStartDay(1);
-                    setSelectedCategoryId('');
-                    setSelectedLabelId('');
+                    setSelectedCategoryIds([]);
+                    setSelectedLabelIds([]);
                     setAllocatedAmount(0);
                     setRolloverType('carry_over');
                     setErrors({});
@@ -139,7 +143,7 @@ export function CreateBudgetDialog({
                         <DialogTitle>{__('Create Budget')}</DialogTitle>
                         <DialogDescription>
                             {__(
-                                'Set up a spending limit for a category or label.',
+                                'Set up a spending limit across one or more categories or labels.',
                             )}
                         </DialogDescription>
                     </DialogHeader>
@@ -222,98 +226,71 @@ export function CreateBudgetDialog({
                             )}
 
                             <div className="space-y-2">
-                                <UILabel htmlFor="category">
-                                    {__('Category (Optional)')}
+                                <UILabel htmlFor="categories">
+                                    {__('Categories')}
                                 </UILabel>
-                                <div className="flex gap-2">
-                                    <Select
-                                        value={selectedCategoryId || undefined}
-                                        onValueChange={setSelectedCategoryId}
-                                    >
-                                        <SelectTrigger
-                                            id="category"
-                                            className="flex-1"
-                                        >
-                                            <SelectValue
-                                                placeholder={__(
-                                                    'Select a category',
-                                                )}
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {allCategories.map((category) => (
-                                                <SelectItem
-                                                    key={category.id}
-                                                    value={category.id}
-                                                >
-                                                    {category.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {selectedCategoryId && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() =>
-                                                setSelectedCategoryId('')
-                                            }
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
+                                <MultiSelect
+                                    id="categories"
+                                    options={allCategories.map((category) => {
+                                        const colorClasses =
+                                            getCategoryColorClasses(
+                                                category.color,
+                                            );
+                                        const IconComponent = Icons[
+                                            category.icon as keyof typeof Icons
+                                        ] as Icons.LucideIcon | undefined;
+
+                                        return {
+                                            value: category.id,
+                                            label: category.name,
+                                            icon: IconComponent ? (
+                                                <IconComponent className="h-3 w-3 opacity-80" />
+                                            ) : undefined,
+                                            badgeClassName: cn(
+                                                colorClasses.bg,
+                                                colorClasses.text,
+                                            ),
+                                        };
+                                    })}
+                                    selected={selectedCategoryIds}
+                                    onChange={setSelectedCategoryIds}
+                                    placeholder={__('Select categories')}
+                                    searchPlaceholder={__('Search categories…')}
+                                    emptyText={__('No categories found.')}
+                                />
                             </div>
 
                             <div className="space-y-2">
-                                <UILabel htmlFor="label">
-                                    {__('Label (Optional)')}
+                                <UILabel htmlFor="labels">
+                                    {__('Labels')}
                                 </UILabel>
-                                <div className="flex gap-2">
-                                    <Select
-                                        value={selectedLabelId || undefined}
-                                        onValueChange={(value) =>
-                                            setSelectedLabelId(value)
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="label"
-                                            className="flex-1"
-                                        >
-                                            <SelectValue
-                                                placeholder={__(
-                                                    'Select a label',
-                                                )}
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {allLabels.map((label) => (
-                                                <SelectItem
-                                                    key={label.id}
-                                                    value={label.id}
-                                                >
-                                                    {label.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {selectedLabelId && (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() =>
-                                                setSelectedLabelId('')
-                                            }
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
+                                <MultiSelect
+                                    id="labels"
+                                    options={allLabels.map((label) => {
+                                        const colorClasses =
+                                            getLabelColorClasses(label.color);
+
+                                        return {
+                                            value: label.id,
+                                            label: label.name,
+                                            icon: (
+                                                <Tag className="h-3 w-3 opacity-80" />
+                                            ),
+                                            badgeClassName: cn(
+                                                colorClasses.bg,
+                                                colorClasses.text,
+                                            ),
+                                        };
+                                    })}
+                                    selected={selectedLabelIds}
+                                    onChange={setSelectedLabelIds}
+                                    placeholder={__('Select labels')}
+                                    searchPlaceholder={__('Search labels…')}
+                                    emptyText={__('No labels found.')}
+                                />
                                 <p className="text-sm text-muted-foreground">
                                     {__(
-                                        'Select at least a category or a label to track.',
+                                        'Select at least one category or label to track.',
                                     )}
                                 </p>
                             </div>
@@ -385,7 +362,8 @@ export function CreateBudgetDialog({
                             disabled={
                                 isSubmitting ||
                                 !name ||
-                                (!selectedCategoryId && !selectedLabelId) ||
+                                (selectedCategoryIds.length === 0 &&
+                                    selectedLabelIds.length === 0) ||
                                 allocatedAmount <= 0
                             }
                         >

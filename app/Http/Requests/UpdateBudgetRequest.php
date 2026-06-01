@@ -16,14 +16,10 @@ class UpdateBudgetRequest extends FormRequest
 
     public function rules(): array
     {
-        $userId = $this->user()->id;
-
         return [
             'name' => ['sometimes', 'string', 'max:255'],
             'period_type' => ['sometimes', Rule::enum(BudgetPeriodType::class)],
             'period_start_day' => ['nullable', 'integer', 'min:0', 'max:31'],
-            'category_id' => ['nullable', Rule::exists('categories', 'id')->where('user_id', $userId)],
-            'label_id' => ['nullable', Rule::exists('labels', 'id')->where('user_id', $userId)],
             'rollover_type' => ['sometimes', Rule::enum(RolloverType::class)],
             'allocated_amount' => ['sometimes', 'integer', 'min:0'],
         ];

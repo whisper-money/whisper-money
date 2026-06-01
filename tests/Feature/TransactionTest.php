@@ -624,11 +624,9 @@ test('when budget with label exists, updating transaction with that label assign
     $label = Label::factory()->create(['user_id' => $user->id, 'name' => 'Work']);
 
     // Create a budget filtered by this label
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forLabels($label)->create([
         'user_id' => $user->id,
         'name' => 'Work Expenses',
-        'label_id' => $label->id,
-        'category_id' => null,
     ]);
 
     // Create the current budget period

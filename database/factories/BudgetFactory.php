@@ -4,8 +4,11 @@ namespace Database\Factories;
 
 use App\Enums\BudgetPeriodType;
 use App\Models\Budget;
+use App\Models\Category;
+use App\Models\Label;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Arr;
 
 /**
  * @extends Factory<Budget>
@@ -49,5 +52,37 @@ class BudgetFactory extends Factory
             'period_type' => BudgetPeriodType::Yearly,
             'period_start_day' => 1,
         ]);
+    }
+
+    /**
+     * Attach one or more categories to the budget after creation.
+     *
+     * @param  Category|array<int, Category|string>  $categories
+     */
+    public function forCategories(Category|array $categories): static
+    {
+        $ids = collect(Arr::wrap($categories))
+            ->map(fn ($category) => $category instanceof Category ? $category->id : $category)
+            ->all();
+
+        return $this->afterCreating(function (Budget $budget) use ($ids) {
+            $budget->categories()->syncWithoutDetaching($ids);
+        });
+    }
+
+    /**
+     * Attach one or more labels to the budget after creation.
+     *
+     * @param  Label|array<int, Label|string>  $labels
+     */
+    public function forLabels(Label|array $labels): static
+    {
+        $ids = collect(Arr::wrap($labels))
+            ->map(fn ($label) => $label instanceof Label ? $label->id : $label)
+            ->all();
+
+        return $this->afterCreating(function (Budget $budget) use ($ids) {
+            $budget->labels()->syncWithoutDetaching($ids);
+        });
     }
 }

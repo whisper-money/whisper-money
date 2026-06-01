@@ -28,9 +28,8 @@ test('assignHistoricalTransactionsToPeriod returns correct count', function () {
         ]);
     }
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -47,9 +46,8 @@ test('assignHistoricalTransactionsToPeriod returns correct count', function () {
 test('assignHistoricalTransactionsToPeriod handles empty results', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -83,9 +81,8 @@ test('assignHistoricalTransactionsToPeriod processes large batches', function ()
     // Insert in batches
     Transaction::insert($transactions->toArray());
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -125,9 +122,8 @@ test('assignHistoricalTransactionsToPeriod excludes transactions outside date ra
         'amount' => -1000,
     ]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -161,9 +157,8 @@ test('assignHistoricalTransactionsToPeriod works with category-based budgets', f
         'amount' => -1000,
     ]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -197,9 +192,8 @@ test('assignHistoricalTransactionsToPeriod works with label-based budgets', func
     ]);
     $transaction2->labels()->attach($otherLabel->id);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forLabels($label)->create([
         'user_id' => $this->user->id,
-        'label_id' => $label->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -226,9 +220,8 @@ test('assignHistoricalTransactionsToPeriod works with transactions having multip
     ]);
     $transaction->labels()->attach([$targetLabel->id, $otherLabel1->id, $otherLabel2->id]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forLabels($targetLabel)->create([
         'user_id' => $this->user->id,
-        'label_id' => $targetLabel->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -252,9 +245,8 @@ test('assignHistoricalTransactionsToPeriod stores negated transaction amount for
         'amount' => -5000, // Expense (negative)
     ]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -280,9 +272,8 @@ test('assignHistoricalTransactionsToPeriod stores refund as negative amount', fu
         'amount' => 1000, // Refund (positive)
     ]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -317,9 +308,8 @@ test('budget spending correctly reflects mix of expenses and refunds', function 
         'amount' => 1000,
     ]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -339,9 +329,8 @@ test('budget spending correctly reflects mix of expenses and refunds', function 
 test('assignTransaction stores refund as negative budget transaction amount', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -386,9 +375,8 @@ test('assignHistoricalTransactionsToPeriod only assigns to correct user', functi
         'amount' => -1000,
     ]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user1->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -406,9 +394,8 @@ test('assignHistoricalTransactionsToPeriod only assigns to correct user', functi
 test('assignTransaction is idempotent when called twice (regression for PHP-LARAVEL-A)', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -434,9 +421,8 @@ test('assignTransaction is idempotent when called twice (regression for PHP-LARA
 test('assignTransaction retries deadlocks during reconciliation (regression for PHP-LARAVEL-D)', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -469,9 +455,8 @@ test('assignTransaction removes stale rows when category changes', function () {
     $oldCategory = Category::factory()->create(['user_id' => $this->user->id]);
     $newCategory = Category::factory()->create(['user_id' => $this->user->id]);
 
-    $oldBudget = Budget::factory()->create([
+    $oldBudget = Budget::factory()->forCategories($oldCategory)->create([
         'user_id' => $this->user->id,
-        'category_id' => $oldCategory->id,
     ]);
     $oldPeriod = BudgetPeriod::factory()->create([
         'budget_id' => $oldBudget->id,
@@ -479,9 +464,8 @@ test('assignTransaction removes stale rows when category changes', function () {
         'end_date' => now()->addDays(30),
     ]);
 
-    $newBudget = Budget::factory()->create([
+    $newBudget = Budget::factory()->forCategories($newCategory)->create([
         'user_id' => $this->user->id,
-        'category_id' => $newCategory->id,
     ]);
     $newPeriod = BudgetPeriod::factory()->create([
         'budget_id' => $newBudget->id,
@@ -510,9 +494,8 @@ test('assignTransaction removes stale rows when category changes', function () {
 test('assignTransaction updates amount on existing row when transaction amount changes', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
     $period = BudgetPeriod::factory()->create([
         'budget_id' => $budget->id,
@@ -557,9 +540,8 @@ test('assignTransaction leaves table untouched when no budgets match', function 
 test('assignTransaction survives pre-existing duplicate row (regression for PHP-LARAVEL-A/B race)', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -603,9 +585,8 @@ test('assignHistoricalTransactionsToPeriod reruns converge existing rows without
         'amount' => -2500,
     ]);
 
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $this->user->id,
-        'category_id' => $category->id,
     ]);
 
     $period = BudgetPeriod::factory()->create([
@@ -627,4 +608,98 @@ test('assignHistoricalTransactionsToPeriod reruns converge existing rows without
 
     expect(BudgetTransaction::where('transaction_id', $transaction->id)->count())->toBe(1)
         ->and((int) BudgetTransaction::where('transaction_id', $transaction->id)->value('amount'))->toBe(2500);
+});
+
+test('assignHistoricalTransactionsToPeriod matches transactions across multiple categories', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id]);
+    $restaurants = Category::factory()->create(['user_id' => $this->user->id]);
+    $unrelated = Category::factory()->create(['user_id' => $this->user->id]);
+
+    foreach ([$food, $restaurants, $unrelated] as $category) {
+        Transaction::factory()->create([
+            'user_id' => $this->user->id,
+            'category_id' => $category->id,
+            'transaction_date' => now()->subDays(5),
+            'amount' => -1000,
+        ]);
+    }
+
+    $budget = Budget::factory()->forCategories([$food, $restaurants])->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $count = $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    expect($count)->toBe(2);
+});
+
+test('assignHistoricalTransactionsToPeriod pools matches from categories and labels', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    // Matches via category.
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $category->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -1000,
+    ]);
+
+    // Matches via label (different category).
+    $labelled = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => Category::factory()->create(['user_id' => $this->user->id])->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -1000,
+    ]);
+    $labelled->labels()->attach($label->id);
+
+    $budget = Budget::factory()
+        ->forCategories($category)
+        ->forLabels($label)
+        ->create(['user_id' => $this->user->id]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $count = $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    expect($count)->toBe(2);
+});
+
+test('assignTransaction matches a budget tracking multiple categories', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id]);
+    $restaurants = Category::factory()->create(['user_id' => $this->user->id]);
+
+    $budget = Budget::factory()->forCategories([$food, $restaurants])->create([
+        'user_id' => $this->user->id,
+    ]);
+
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $restaurants->id,
+        'transaction_date' => now()->subDays(5),
+        'amount' => -1500,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)
+        ->where('budget_period_id', $period->id)
+        ->exists())->toBeTrue();
 });

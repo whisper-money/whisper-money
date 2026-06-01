@@ -2,6 +2,7 @@
 
 use App\Models\Budget;
 use App\Models\Category;
+use App\Models\Label;
 use App\Models\User;
 
 test('user can create a budget', function () {
@@ -13,7 +14,7 @@ test('user can create a budget', function () {
         'name' => 'Monthly Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 100000,
     ]);
@@ -24,12 +25,12 @@ test('user can create a budget', function () {
         'user_id' => $user->id,
         'name' => 'Monthly Budget',
         'period_type' => 'monthly',
-        'category_id' => $category->id,
     ]);
 
     $budget = Budget::where('user_id', $user->id)->first();
     $this->assertNotNull($budget);
-    $this->assertCount(1, $budget->periods);
+    $this->assertTrue($budget->categories->pluck('id')->contains($category->id));
+    $this->assertCount(2, $budget->periods);
 });
 
 test('user can create a yearly budget', function () {
@@ -41,7 +42,7 @@ test('user can create a yearly budget', function () {
         'name' => 'Yearly Budget',
         'period_type' => 'yearly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 1200000,
     ]);
@@ -50,10 +51,12 @@ test('user can create a yearly budget', function () {
 
     $budget = Budget::where('user_id', $user->id)->where('period_type', 'yearly')->first();
 
+    $currentPeriod = $budget->getCurrentPeriod();
+
     expect($budget)->not->toBeNull()
-        ->and($budget->periods()->count())->toBe(1)
-        ->and($budget->periods()->first()->start_date->toDateString())->toBe(now()->startOfYear()->toDateString())
-        ->and($budget->periods()->first()->end_date->toDateString())->toBe(now()->endOfYear()->toDateString());
+        ->and($budget->periods()->count())->toBe(2)
+        ->and($currentPeriod->start_date->toDateString())->toBe(now()->startOfYear()->toDateString())
+        ->and($currentPeriod->end_date->toDateString())->toBe(now()->endOfYear()->toDateString());
 });
 
 test('user can view their budgets', function () {
@@ -74,9 +77,8 @@ test('user can view a specific budget', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $category = Category::factory()->create(['user_id' => $user->id]);
-    $budget = Budget::factory()->create([
+    $budget = Budget::factory()->forCategories($category)->create([
         'user_id' => $user->id,
-        'category_id' => $category->id,
     ]);
 
     $response = $this->actingAs($user)->get("/budgets/{$budget->id}");
@@ -330,16 +332,77 @@ test('budget period is automatically generated', function () {
         'name' => 'Test Budget',
         'period_type' => 'monthly',
         'period_start_day' => 1,
-        'category_id' => $category->id,
+        'category_ids' => [$category->id],
         'rollover_type' => 'reset',
         'allocated_amount' => 50000,
     ]);
 
     $budget = Budget::where('user_id', $user->id)->first();
     $this->assertNotNull($budget);
-    $this->assertCount(1, $budget->periods);
+    $this->assertCount(2, $budget->periods);
 
-    $period = $budget->periods->first();
+    $period = $budget->getCurrentPeriod();
     $this->assertNotNull($period->start_date);
     $this->assertNotNull($period->end_date);
+});
+
+test('user can create a budget tracking multiple categories and labels', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $food = Category::factory()->create(['user_id' => $user->id]);
+    $restaurants = Category::factory()->create(['user_id' => $user->id]);
+    $trip = Label::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->post('/budgets', [
+        'name' => 'Food Budget',
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+        'category_ids' => [$food->id, $restaurants->id],
+        'label_ids' => [$trip->id],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 80000,
+    ]);
+
+    $response->assertRedirect();
+
+    $budget = Budget::where('user_id', $user->id)->first();
+
+    expect($budget->categories->pluck('id')->all())
+        ->toEqualCanonicalizing([$food->id, $restaurants->id])
+        ->and($budget->labels->pluck('id')->all())->toEqualCanonicalizing([$trip->id]);
+});
+
+test('creating a budget requires at least one category or label', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $response = $this->actingAs($user)->post('/budgets', [
+        'name' => 'Empty Budget',
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+        'category_ids' => [],
+        'label_ids' => [],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 50000,
+    ]);
+
+    $response->assertSessionHasErrors('selection');
+    expect(Budget::where('user_id', $user->id)->count())->toBe(0);
+});
+
+test('creating a budget rejects categories owned by another user', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $otherUser = User::factory()->create();
+    $foreignCategory = Category::factory()->create(['user_id' => $otherUser->id]);
+
+    $response = $this->actingAs($user)->post('/budgets', [
+        'name' => 'Sneaky Budget',
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+        'category_ids' => [$foreignCategory->id],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 50000,
+    ]);
+
+    $response->assertSessionHasErrors('category_ids.0');
+    expect(Budget::where('user_id', $user->id)->count())->toBe(0);
 });
