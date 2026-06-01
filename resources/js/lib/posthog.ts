@@ -13,7 +13,11 @@ const getPostHogApiKey = (): string | undefined => {
 };
 
 const getPostHogHost = (): string => {
-    return import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com';
+    return import.meta.env.VITE_POSTHOG_HOST || 'https://t.whisper.money';
+};
+
+const getPostHogUiHost = (): string => {
+    return import.meta.env.VITE_POSTHOG_UI_HOST || 'https://eu.posthog.com';
 };
 
 export const isPostHogSessionRecordingEnabled = (): boolean => {
@@ -42,6 +46,7 @@ export function initializePostHog(): void {
 
     posthog.init(apiKey, {
         api_host: host,
+        ui_host: getPostHogUiHost(),
         person_profiles: 'always',
         disable_session_recording: !isPostHogSessionRecordingEnabled(),
         loaded: () => {
