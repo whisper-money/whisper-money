@@ -593,6 +593,19 @@ export function ImportStepMapping({
                                     {__('DD-MM-YYYY (e.g., 31-12-2024)')}
                                 </Label>
                             </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                    value={DateFormat.YearMonthDayCompact}
+                                    id="format-ymd-compact"
+                                />
+
+                                <Label
+                                    htmlFor="format-ymd-compact"
+                                    className="cursor-pointer font-normal"
+                                >
+                                    {__('YYYYMMDD (e.g., 20241231)')}
+                                </Label>
+                            </div>
                         </RadioGroup>
                     </div>
                 )}

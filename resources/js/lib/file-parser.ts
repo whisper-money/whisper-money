@@ -224,12 +224,14 @@ export function autoDetectDateFormat(
         DateFormat.YearMonthDay,
         DateFormat.DayMonthYear,
         DateFormat.MonthDayYear,
+        DateFormat.YearMonthDayCompact,
     ];
     const sampleSize = Math.min(10, data.length);
     const scores: Record<DateFormat, number> = {
         [DateFormat.YearMonthDay]: 0,
         [DateFormat.DayMonthYear]: 0,
         [DateFormat.MonthDayYear]: 0,
+        [DateFormat.YearMonthDayCompact]: 0,
     };
 
     for (let i = 0; i < sampleSize; i++) {
@@ -427,7 +429,14 @@ export function parseDate(
         month: number | undefined,
         day: number | undefined;
 
-    if (str.length === 5) {
+    if (format === DateFormat.YearMonthDayCompact) {
+        const compactArray = /^(\d{4})(\d{2})(\d{2})$/.exec(str);
+        if (compactArray) {
+            year = Number(compactArray[1]);
+            month = Number(compactArray[2]);
+            day = Number(compactArray[3]);
+        }
+    } else if (str.length === 5) {
         const dateRegex = /^(\d{1,2})-(\d{1,2})$/;
         const dateArray = dateRegex.exec(str);
         if (dateArray) {
