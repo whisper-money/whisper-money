@@ -21,6 +21,8 @@ import { useState } from 'react';
 export interface MultiSelectOption {
     value: string;
     label: string;
+    icon?: React.ReactNode;
+    badgeClassName?: string;
 }
 
 interface Props {
@@ -111,6 +113,11 @@ export function MultiSelect({
                                                         : 'opacity-0',
                                                 )}
                                             />
+                                            {option.icon && (
+                                                <span className="mr-2 flex items-center">
+                                                    {option.icon}
+                                                </span>
+                                            )}
                                             {option.label}
                                         </CommandItem>
                                     );
@@ -126,9 +133,10 @@ export function MultiSelect({
                     {selectedOptions.map((option) => (
                         <Badge
                             key={option.value}
-                            variant="secondary"
-                            className="gap-1"
+                            variant={option.badgeClassName ? undefined : 'secondary'}
+                            className={cn('gap-1', option.badgeClassName)}
                         >
+                            {option.icon}
                             {option.label}
                             <button
                                 type="button"

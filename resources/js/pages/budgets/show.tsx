@@ -5,8 +5,9 @@ import { DeleteBudgetDialog } from '@/components/budgets/delete-budget-dialog';
 import { EditBudgetDialog } from '@/components/budgets/edit-budget-dialog';
 import HeadingSmall from '@/components/heading-small';
 import { MobileBackButton } from '@/components/mobile-back-button';
+import { CategoryBadge } from '@/components/shared/category-combobox';
+import { LabelBadge } from '@/components/shared/label-combobox';
 import { TransactionList } from '@/components/transactions/transaction-list';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -78,12 +79,8 @@ export default function BudgetShow({
         },
     ];
 
-    const trackingNames = useMemo(() => {
-        return [
-            ...(budget.categories?.map((category) => category.name) ?? []),
-            ...(budget.labels?.map((label) => label.name) ?? []),
-        ];
-    }, [budget]);
+    const trackingCount =
+        (budget.categories?.length ?? 0) + (budget.labels?.length ?? 0);
 
     const periodTransactions = useMemo(() => {
         return (
@@ -107,18 +104,24 @@ export default function BudgetShow({
                             title={budget.name}
                             description={
                                 <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
-                                    {trackingNames.length > 0 ? (
+                                    {trackingCount > 0 ? (
                                         <>
                                             <span className="opacity-50">
                                                 {__('Tracking')}{' '}
                                             </span>
-                                            {trackingNames.map((name) => (
-                                                <Badge
-                                                    key={name}
-                                                    variant="secondary"
-                                                >
-                                                    {name}
-                                                </Badge>
+                                            {budget.categories?.map(
+                                                (category) => (
+                                                    <CategoryBadge
+                                                        key={category.id}
+                                                        category={category}
+                                                    />
+                                                ),
+                                            )}
+                                            {budget.labels?.map((label) => (
+                                                <LabelBadge
+                                                    key={label.id}
+                                                    label={label}
+                                                />
                                             ))}
                                         </>
                                     ) : (

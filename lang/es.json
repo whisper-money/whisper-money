@@ -1,8 +1,8 @@
 {
     "+:count": "+:count",
     ":count selected": ":count seleccionadas",
-    "Categories (Optional)": "Categorías (Opcional)",
-    "Labels (Optional)": "Etiquetas (Opcional)",
+    "Categories": "Categorías",
+    "Labels": "Etiquetas",
     "No results.": "Sin resultados.",
     "Remove :label": "Eliminar :label",
     "Search categories…": "Buscar categorías…",

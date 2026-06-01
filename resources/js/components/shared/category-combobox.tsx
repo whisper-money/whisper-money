@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Command,
@@ -219,6 +220,23 @@ export const CategoryIcon = memo(function CategoryIcon({
         </div>
     );
 });
+
+export function CategoryBadge({ category }: { category: Category }) {
+    const colorClasses = getCategoryColorClasses(category.color);
+
+    return (
+        <Badge
+            className={cn(
+                'gap-1 px-2 py-0.5',
+                colorClasses.bg,
+                colorClasses.text,
+            )}
+        >
+            <DynamicIcon name={category.icon} className="h-3 w-3 opacity-80" />
+            {category.name}
+        </Badge>
+    );
+}
 
 const DynamicIcon = memo(function DynamicIcon({
     name,

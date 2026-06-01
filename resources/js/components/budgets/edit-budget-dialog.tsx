@@ -1,7 +1,8 @@
 import { update } from '@/actions/App/Http/Controllers/BudgetController';
+import { CategoryBadge } from '@/components/shared/category-combobox';
+import { LabelBadge } from '@/components/shared/label-combobox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AmountInput } from '@/components/ui/amount-input';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -134,20 +135,14 @@ export function EditBudgetDialog({
                         <div className="space-y-2">
                             <Label>{__('Tracking')}</Label>
                             <div className="flex flex-wrap items-center gap-1">
-                                {[
-                                    ...(budget.categories?.map(
-                                        (category) => category.name,
-                                    ) ?? []),
-                                    ...(budget.labels?.map(
-                                        (label) => label.name,
-                                    ) ?? []),
-                                ].map((trackingName) => (
-                                    <Badge
-                                        key={trackingName}
-                                        variant="secondary"
-                                    >
-                                        {trackingName}
-                                    </Badge>
+                                {budget.categories?.map((category) => (
+                                    <CategoryBadge
+                                        key={category.id}
+                                        category={category}
+                                    />
+                                ))}
+                                {budget.labels?.map((label) => (
+                                    <LabelBadge key={label.id} label={label} />
                                 ))}
                             </div>
                             <p className="text-sm text-muted-foreground">

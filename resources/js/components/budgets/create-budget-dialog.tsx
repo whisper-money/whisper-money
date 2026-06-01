@@ -30,11 +30,12 @@ import {
     ROLLOVER_TYPES,
     RolloverType,
 } from '@/types/budget';
-import { Category } from '@/types/category';
-import { Label } from '@/types/label';
+import { Category, getCategoryColorClasses } from '@/types/category';
+import { getLabelColorClasses, Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import * as Icons from 'lucide-react';
+import { Plus, Tag } from 'lucide-react';
 import React, { useState } from 'react';
 import { Card, CardContent } from '../ui/card';
 
@@ -226,14 +227,31 @@ export function CreateBudgetDialog({
 
                             <div className="space-y-2">
                                 <UILabel htmlFor="categories">
-                                    {__('Categories (Optional)')}
+                                    {__('Categories')}
                                 </UILabel>
                                 <MultiSelect
                                     id="categories"
-                                    options={allCategories.map((category) => ({
-                                        value: category.id,
-                                        label: category.name,
-                                    }))}
+                                    options={allCategories.map((category) => {
+                                        const colorClasses =
+                                            getCategoryColorClasses(
+                                                category.color,
+                                            );
+                                        const IconComponent = Icons[
+                                            category.icon as keyof typeof Icons
+                                        ] as Icons.LucideIcon | undefined;
+
+                                        return {
+                                            value: category.id,
+                                            label: category.name,
+                                            icon: IconComponent ? (
+                                                <IconComponent className="h-3 w-3 opacity-80" />
+                                            ) : undefined,
+                                            badgeClassName: cn(
+                                                colorClasses.bg,
+                                                colorClasses.text,
+                                            ),
+                                        };
+                                    })}
                                     selected={selectedCategoryIds}
                                     onChange={setSelectedCategoryIds}
                                     placeholder={__('Select categories')}
@@ -244,14 +262,26 @@ export function CreateBudgetDialog({
 
                             <div className="space-y-2">
                                 <UILabel htmlFor="labels">
-                                    {__('Labels (Optional)')}
+                                    {__('Labels')}
                                 </UILabel>
                                 <MultiSelect
                                     id="labels"
-                                    options={allLabels.map((label) => ({
-                                        value: label.id,
-                                        label: label.name,
-                                    }))}
+                                    options={allLabels.map((label) => {
+                                        const colorClasses =
+                                            getLabelColorClasses(label.color);
+
+                                        return {
+                                            value: label.id,
+                                            label: label.name,
+                                            icon: (
+                                                <Tag className="h-3 w-3 opacity-80" />
+                                            ),
+                                            badgeClassName: cn(
+                                                colorClasses.bg,
+                                                colorClasses.text,
+                                            ),
+                                        };
+                                    })}
                                     selected={selectedLabelIds}
                                     onChange={setSelectedLabelIds}
                                     placeholder={__('Select labels')}
