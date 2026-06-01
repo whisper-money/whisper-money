@@ -52,7 +52,8 @@ Sentry.init({
         return event;
     },
     enabled:
-        import.meta.env.PROD && Boolean(import.meta.env.SENTRY_LARAVEL_DSN),
+        import.meta.env.MODE === 'production' &&
+        Boolean(import.meta.env.SENTRY_LARAVEL_DSN),
 });
 
 initializePostHog();
