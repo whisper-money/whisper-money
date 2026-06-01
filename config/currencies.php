@@ -87,12 +87,6 @@ return [
             'allows_account' => true,
         ],
         [
-            'code' => 'COP',
-            'name' => 'Colombian Peso',
-            'allows_primary' => true,
-            'allows_account' => true,
-        ],
-        [
             'code' => 'PYG',
             'name' => 'Paraguayan Guarani',
             'allows_primary' => true,
@@ -119,6 +113,18 @@ return [
         [
             'code' => 'BRL',
             'name' => 'Brazilian Real',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
+            'code' => 'COP',
+            'name' => 'Colombian Peso',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
+            'code' => 'DOP',
+            'name' => 'Dominican Peso',
             'allows_primary' => true,
             'allows_account' => true,
         ],
