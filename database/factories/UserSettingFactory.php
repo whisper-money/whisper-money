@@ -24,6 +24,7 @@ class UserSettingFactory extends Factory
             'chart_color_scheme' => ChartColorScheme::Colorful,
             'include_loans_in_net_worth_chart' => true,
             'include_real_estate_in_net_worth_chart' => true,
+            'notify_on_bank_transactions_synced' => true,
         ];
     }
 

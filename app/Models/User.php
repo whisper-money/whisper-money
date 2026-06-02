@@ -237,6 +237,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return ! $this->isDeleted();
     }
 
+    public function wantsBankTransactionsSyncedEmail(): bool
+    {
+        return $this->setting->notify_on_bank_transactions_synced ?? true;
+    }
+
     public function routeNotificationForMail(?Notification $notification = null): ?string
     {
         if (! $this->canReceiveEmails()) {
