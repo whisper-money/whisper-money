@@ -10,6 +10,7 @@ use App\Http\Controllers\Settings\ChartColorSchemeController;
 use App\Http\Controllers\Settings\LabelController;
 use App\Http\Controllers\Settings\NetWorthChartLoanPreferenceController;
 use App\Http\Controllers\Settings\NetWorthChartRealEstatePreferenceController;
+use App\Http\Controllers\Settings\NotificationPreferenceController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TimezoneController;
@@ -39,6 +40,9 @@ Route::middleware('auth')->group(function () {
     Route::post('settings/accounts', [AccountController::class, 'store'])->name('accounts.store');
     Route::patch('settings/accounts/{account}', [AccountController::class, 'update'])->name('accounts.update');
     Route::delete('settings/accounts/{account}', [AccountController::class, 'destroy'])->name('accounts.destroy');
+
+    Route::patch('settings/notifications', [NotificationPreferenceController::class, 'update'])
+        ->name('notifications.update');
 
     Route::get('settings/banks', [BankController::class, 'index'])->name('banks.index');
     Route::post('settings/banks', [BankController::class, 'store'])->name('banks.store');

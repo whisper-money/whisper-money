@@ -14,4 +14,8 @@
 {{ __('Best,') }}<br>
 {{ __('Álvaro & Víctor') }}<br>
 {{ __('Founders of Whisper Money') }}
+
+<x-slot:subcopy>
+{{ __('Don\'t want these emails? Manage notifications in [account settings](:url).', ['url' => route('account.edit')]) }}
+</x-slot:subcopy>
 </x-mail::message>

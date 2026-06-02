@@ -485,6 +485,38 @@ test('daily bank sync email job sends pending transactions once per day', functi
     Mail::assertQueued(BankTransactionsSyncedEmail::class, 1);
 });
 
+test('daily bank sync email job does not send when user disabled the notification', function () {
+    Mail::fake();
+
+    test()->travelTo(Carbon::parse('2026-04-15 09:00:00'));
+
+    $user = User::factory()->onboarded()->create();
+    $user->setting()->create(['notify_on_bank_transactions_synced' => false]);
+    $bank = Bank::factory()->create(['name' => 'Opted Out Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'bank_id' => $bank->id,
+    ]);
+
+    Transaction::factory()->count(2)->enableBanking()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'created_at' => now()->subMinutes(10),
+        'updated_at' => now()->subMinutes(10),
+    ]);
+
+    $job = new SendDailyBankTransactionsSyncedEmailJob($user, now()->toDateString());
+    $job->handle();
+
+    Mail::assertNothingQueued();
+    expect(UserMailLog::query()->count())->toBe(0);
+});
+
 test('daily bank sync email job releases during quiet hours in user timezone', function () {
     Mail::fake();
 

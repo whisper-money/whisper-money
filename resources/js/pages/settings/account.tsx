@@ -6,6 +6,7 @@ import TwoFactorRecoveryCodes from '@/components/two-factor-recovery-codes';
 import TwoFactorSetupModal from '@/components/two-factor-setup-modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -26,7 +27,7 @@ import { type BreadcrumbItem, type SharedData } from '@/types';
 import { LANGUAGE_OPTIONS } from '@/types/language';
 import { __ } from '@/utils/i18n';
 import { Transition } from '@headlessui/react';
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { ShieldBan, ShieldCheck } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -42,15 +43,30 @@ export default function Account({
     status,
     requiresConfirmation = false,
     twoFactorEnabled = false,
+    notifyOnBankTransactionsSynced = true,
 }: {
     mustVerifyEmail: boolean;
     status?: string;
     requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;
+    notifyOnBankTransactionsSynced?: boolean;
 }) {
     const { auth, currencies } = usePage<SharedData>().props;
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
+    const [notifyBankTransactions, setNotifyBankTransactions] = useState(
+        notifyOnBankTransactionsSynced,
+    );
+
+    const handleNotifyBankTransactionsChange = (checked: boolean) => {
+        setNotifyBankTransactions(checked);
+
+        router.patch(
+            '/settings/notifications',
+            { notifications: { bank_transactions_synced: checked } },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
 
     const {
         qrCodeSvg,
@@ -253,6 +269,40 @@ export default function Account({
                             </>
                         )}
                     </Form>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-6">
+                    <HeadingSmall
+                        title={__('Notifications')}
+                        description={__(
+                            'Manage the automatic notifications you receive',
+                        )}
+                    />
+
+                    <div className="flex items-start gap-3">
+                        <Checkbox
+                            id="notify-on-bank-transactions-synced"
+                            checked={notifyBankTransactions}
+                            onCheckedChange={(checked) =>
+                                handleNotifyBankTransactionsChange(
+                                    checked === true,
+                                )
+                            }
+                            className="mt-0.5"
+                        />
+                        <div className="grid gap-1">
+                            <Label htmlFor="notify-on-bank-transactions-synced">
+                                {__('New transactions from connected banks')}
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                                {__(
+                                    'Receive an email when new transactions are imported from your connected banks. Sent at most once a day.',
+                                )}
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <Separator />
