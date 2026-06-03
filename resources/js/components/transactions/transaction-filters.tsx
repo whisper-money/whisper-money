@@ -373,13 +373,15 @@ export function TransactionFilters({
                                                         >
                                                             <div
                                                                 className={cn(
-                                                                    'mr-1 flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary p-1',
+                                                                    'mr-1 flex size-4 shrink-0 items-center justify-center rounded-[4px] border',
                                                                     isUncategorizedSelected
-                                                                        ? 'bg-primary/10 text-primary-foreground'
-                                                                        : 'opacity-50 [&_svg]:invisible',
+                                                                        ? 'border-primary bg-primary text-primary-foreground'
+                                                                        : 'border-input',
                                                                 )}
                                                             >
-                                                                <Check className="size-3" />
+                                                                {isUncategorizedSelected && (
+                                                                    <Check className="size-3" />
+                                                                )}
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -421,18 +423,20 @@ export function TransactionFilters({
                                                                     >
                                                                         <div
                                                                             className={cn(
-                                                                                'mr-1 flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary p-1',
+                                                                                'mr-1 flex size-4 shrink-0 items-center justify-center rounded-[4px] border',
                                                                                 state ===
                                                                                     'unchecked'
-                                                                                    ? 'opacity-50 [&_svg]:invisible'
-                                                                                    : 'bg-primary/10 text-primary-foreground',
+                                                                                    ? 'border-input'
+                                                                                    : 'border-primary bg-primary text-primary-foreground',
                                                                             )}
                                                                         >
                                                                             {state ===
-                                                                            'indeterminate' ? (
-                                                                                <Icons.Minus className="size-3" />
-                                                                            ) : (
+                                                                                'checked' && (
                                                                                 <Check className="size-3" />
+                                                                            )}
+                                                                            {state ===
+                                                                                'indeterminate' && (
+                                                                                <Icons.Minus className="size-3" />
                                                                             )}
                                                                         </div>
                                                                         <div className="flex min-w-0 items-center gap-2">
