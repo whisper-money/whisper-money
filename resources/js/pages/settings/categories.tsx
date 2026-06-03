@@ -14,8 +14,8 @@ import {
     VisibilityState,
 } from '@tanstack/react-table';
 import * as Icons from 'lucide-react';
-import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
-import { useState } from 'react';
+import { MoreHorizontal } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { CreateCategoryDialog } from '@/components/categories/create-category-dialog';
@@ -54,6 +54,11 @@ import {
 } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import {
+    buildCategoryTree,
+    type CategoryNode,
+    flattenCategoryTree,
+} from '@/lib/category-tree';
 import { type BreadcrumbItem } from '@/types';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 
@@ -64,7 +69,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function CategoryActions({ category }: { category: Category }) {
+function CategoryActions({
+    category,
+    categories,
+}: {
+    category: Category;
+    categories: Category[];
+}) {
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -93,6 +104,7 @@ function CategoryActions({ category }: { category: Category }) {
 
             <EditCategoryDialog
                 category={category}
+                categories={categories}
                 open={editOpen}
                 onOpenChange={setEditOpen}
                 onSuccess={() => {}}
@@ -100,6 +112,7 @@ function CategoryActions({ category }: { category: Category }) {
 
             <DeleteCategoryDialog
                 category={category}
+                categories={categories}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
                 onSuccess={() => {}}
@@ -108,7 +121,13 @@ function CategoryActions({ category }: { category: Category }) {
     );
 }
 
-function CategoryRow({ row }: { row: Row<Category> }) {
+function CategoryRow({
+    row,
+    categories,
+}: {
+    row: Row<Category>;
+    categories: Category[];
+}) {
     const category = row.original;
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -155,6 +174,7 @@ function CategoryRow({ row }: { row: Row<Category> }) {
 
             <EditCategoryDialog
                 category={category}
+                categories={categories}
                 open={editOpen}
                 onOpenChange={setEditOpen}
                 onSuccess={() => {}}
@@ -162,6 +182,7 @@ function CategoryRow({ row }: { row: Row<Category> }) {
 
             <DeleteCategoryDialog
                 category={category}
+                categories={categories}
                 open={deleteOpen}
                 onOpenChange={setDeleteOpen}
                 onSuccess={() => {}}
@@ -172,9 +193,15 @@ function CategoryRow({ row }: { row: Row<Category> }) {
 
 export default function Categories() {
     const { categories } = usePage<{ categories: Category[] }>().props;
-    const [sorting, setSorting] = useState<SortingState>([
-        { id: 'name', desc: false },
-    ]);
+
+    // Depth-first tree order keeps every category next to its parent, with
+    // siblings sorted by name at each level.
+    const orderedCategories = useMemo<CategoryNode[]>(
+        () => flattenCategoryTree(buildCategoryTree(categories)),
+        [categories],
+    );
+
+    const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
         {},
@@ -183,20 +210,7 @@ export default function Categories() {
     const columns: ColumnDef<Category>[] = [
         {
             accessorKey: 'name',
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === 'asc')
-                        }
-                    >
-                        {__('Name')}
-
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            },
+            header: () => <span className="px-3">{__('Name')}</span>,
             cell: ({ row }) => {
                 const iconName = row.original.icon;
                 const IconComponent = Icons[iconName as keyof typeof Icons] as
@@ -204,12 +218,25 @@ export default function Categories() {
                     | undefined;
                 const Icon = IconComponent || Icons.Tag;
 
+                const depth = (row.original as CategoryNode).depth ?? 0;
+
                 return (
-                    <div className="flex items-center gap-3 pl-3">
+                    <div
+                        className="flex items-center gap-3 pl-3"
+                        style={{ paddingLeft: `${0.75 + depth * 1.5}rem` }}
+                    >
+                        {depth > 0 && (
+                            <span
+                                aria-hidden
+                                className="text-muted-foreground select-none"
+                            >
+                                └
+                            </span>
+                        )}
                         <Icon className="h-4 w-4 opacity-80" />
-                        <div className="font-medium">
+                        <span className="font-medium">
                             {row.getValue('name')}
-                        </div>
+                        </span>
                     </div>
                 );
             },
@@ -335,12 +362,17 @@ export default function Categories() {
         {
             id: 'actions',
             enableHiding: false,
-            cell: ({ row }) => <CategoryActions category={row.original} />,
+            cell: ({ row }) => (
+                <CategoryActions
+                    category={row.original}
+                    categories={categories}
+                />
+            ),
         },
     ];
 
     const table = useReactTable({
-        data: categories,
+        data: orderedCategories,
         columns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
@@ -383,7 +415,10 @@ export default function Categories() {
                                 className="max-w-sm"
                             />
 
-                            <CreateCategoryDialog onSuccess={() => {}} />
+                            <CreateCategoryDialog
+                                categories={categories}
+                                onSuccess={() => {}}
+                            />
                         </div>
 
                         <div className="overflow-hidden rounded-md border">
@@ -423,6 +458,7 @@ export default function Categories() {
                                                 <CategoryRow
                                                     key={row.id}
                                                     row={row}
+                                                    categories={categories}
                                                 />
                                             ))
                                     ) : (

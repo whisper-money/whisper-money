@@ -1,5 +1,6 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { CategoryCashflowDirectionFields } from '@/components/categories/category-cashflow-direction-fields';
+import { ParentCategoryField } from '@/components/categories/parent-category-field';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import {
     CATEGORY_TYPES,
     getCategoryColorClasses,
     getCategoryTypeLabel,
+    type Category,
     type CategoryType,
 } from '@/types/category';
 import { __ } from '@/utils/i18n';
@@ -35,12 +37,15 @@ import * as Icons from 'lucide-react';
 import { useState } from 'react';
 
 export function CreateCategoryDialog({
+    categories,
     onSuccess,
 }: {
+    categories: Category[];
     onSuccess?: () => void;
 }) {
     const [open, setOpen] = useState(false);
     const [selectedType, setSelectedType] = useState<CategoryType | ''>('');
+    const [parent, setParent] = useState<Category | null>(null);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -77,6 +82,18 @@ export function CreateCategoryDialog({
 
                                 <InputError message={errors.name} />
                             </div>
+
+                            <ParentCategoryField
+                                categories={categories}
+                                value={parent?.id ?? null}
+                                onChange={(next) => {
+                                    setParent(next);
+                                    if (next) {
+                                        setSelectedType(next.type);
+                                    }
+                                }}
+                                error={errors.parent_id}
+                            />
 
                             <div className="space-y-2">
                                 <Label htmlFor="icon">{__('Icon')}</Label>
@@ -140,35 +157,64 @@ export function CreateCategoryDialog({
                                 <InputError message={errors.color} />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="type">{__('Type')}</Label>
-                                <Select
-                                    name="type"
-                                    required
-                                    onValueChange={(value) =>
-                                        setSelectedType(value as CategoryType)
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue
-                                            placeholder={__('Select a type')}
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {CATEGORY_TYPES.map((type) => (
-                                            <SelectItem key={type} value={type}>
-                                                {getCategoryTypeLabel(type)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <InputError message={errors.type} />
-                            </div>
+                            {parent ? (
+                                <div className="space-y-2">
+                                    <Label>{__('Type')}</Label>
+                                    <input
+                                        type="hidden"
+                                        name="type"
+                                        value={parent.type}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        {getCategoryTypeLabel(parent.type)}
+                                        {' · '}
+                                        {__('Inherited from parent')}
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="type">
+                                            {__('Type')}
+                                        </Label>
+                                        <Select
+                                            name="type"
+                                            required
+                                            onValueChange={(value) =>
+                                                setSelectedType(
+                                                    value as CategoryType,
+                                                )
+                                            }
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue
+                                                    placeholder={__(
+                                                        'Select a type',
+                                                    )}
+                                                />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {CATEGORY_TYPES.map((type) => (
+                                                    <SelectItem
+                                                        key={type}
+                                                        value={type}
+                                                    >
+                                                        {getCategoryTypeLabel(
+                                                            type,
+                                                        )}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors.type} />
+                                    </div>
 
-                            <CategoryCashflowDirectionFields
-                                selectedType={selectedType}
-                                defaultValue="hidden"
-                            />
+                                    <CategoryCashflowDirectionFields
+                                        selectedType={selectedType}
+                                        defaultValue="hidden"
+                                    />
+                                </>
+                            )}
 
                             <div className="flex justify-end gap-2">
                                 <Button

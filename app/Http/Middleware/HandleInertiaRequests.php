@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Features\CalculateBalancesOnImport;
+use App\Features\CategoryTree;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
@@ -185,6 +186,9 @@ class HandleInertiaRequests extends Middleware
             'cashflow' => true,
             'calculateBalancesOnImport' => $user
                 ? Feature::for($user)->active(CalculateBalancesOnImport::class)
+                : false,
+            'categoryTree' => $user
+                ? Feature::for($user)->active(CategoryTree::class)
                 : false,
         ];
     }

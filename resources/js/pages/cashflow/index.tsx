@@ -125,6 +125,11 @@ export default function CashflowPage() {
         parsePeriodParam(initialPeriod, initialPeriodType),
     );
 
+    const [sankeyDrill, setSankeyDrill] = useState<{
+        id: string;
+        label: string;
+    } | null>(null);
+
     const period = getPeriodRange(currentDate, periodType);
 
     const {
@@ -134,7 +139,16 @@ export default function CashflowPage() {
         incomeBreakdown,
         expenseBreakdown,
         isLoading,
-    } = useCashflowData({ ...period, periodType });
+    } = useCashflowData({
+        ...period,
+        periodType,
+        sankeyParent: sankeyDrill?.id ?? null,
+    });
+
+    // Leaving the period resets any Sankey drill-down.
+    useEffect(() => {
+        setSankeyDrill(null);
+    }, [currentDate, periodType]);
 
     useEffect(() => {
         const periodParam = formatPeriodParam(currentDate, periodType);
@@ -202,9 +216,28 @@ export default function CashflowPage() {
                 {/* Sankey Diagram */}
                 <Card>
                     <CardHeader className="pb-4">
-                        <CardTitle className="text-base">
-                            {__('Money Flow')}
-                        </CardTitle>
+                        <div className="flex items-center justify-between gap-2">
+                            <CardTitle className="text-base">
+                                {__('Money Flow')}
+                            </CardTitle>
+                            {sankeyDrill && (
+                                <nav className="flex items-center gap-1 text-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSankeyDrill(null)}
+                                        className="text-muted-foreground hover:text-foreground hover:underline"
+                                    >
+                                        {__('All categories')}
+                                    </button>
+                                    <span className="text-muted-foreground">
+                                        ›
+                                    </span>
+                                    <span className="font-medium">
+                                        {sankeyDrill.label}
+                                    </span>
+                                </nav>
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
@@ -215,6 +248,9 @@ export default function CashflowPage() {
                                 height={400}
                                 currency={auth.user.currency_code}
                                 period={period}
+                                onDrill={(id, label) =>
+                                    setSankeyDrill({ id, label })
+                                }
                             />
                         )}
                     </CardContent>

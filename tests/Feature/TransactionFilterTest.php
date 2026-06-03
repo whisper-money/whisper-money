@@ -121,6 +121,30 @@ test('filter by category', function () {
     );
 });
 
+test('filtering by a parent category includes transactions from its descendants', function () {
+    $parent = Category::factory()->create(['user_id' => $this->user->id]);
+    $child = Category::factory()->childOf($parent)->create(['user_id' => $this->user->id]);
+    $grandchild = Category::factory()->childOf($child)->create(['user_id' => $this->user->id]);
+    $unrelated = Category::factory()->create(['user_id' => $this->user->id]);
+
+    foreach ([$parent, $child, $grandchild, $unrelated] as $category) {
+        Transaction::factory()->plaintext()->create([
+            'user_id' => $this->user->id,
+            'account_id' => $this->account->id,
+            'category_id' => $category->id,
+        ]);
+    }
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'category_ids' => $parent->id,
+    ]));
+
+    // Parent + child + grandchild, but not the unrelated category.
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 3)
+    );
+});
+
 test('filter by uncategorized', function () {
     $category = Category::factory()->create(['user_id' => $this->user->id]);
 

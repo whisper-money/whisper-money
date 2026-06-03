@@ -12,6 +12,11 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    buildCategoryTree,
+    flattenCategoryTree,
+    getCategoryPath,
+} from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { __ } from '@/utils/i18n';
@@ -22,7 +27,7 @@ import {
     HelpCircle,
     type LucideIcon,
 } from 'lucide-react';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 const iconCache = new Map<string, LucideIcon>();
 
@@ -72,8 +77,9 @@ export function CategoryCombobox({
             ? categories.find((c) => c.id === value)
             : null;
 
-    const sortedCategories = [...categories].sort((a, b) =>
-        a.name.localeCompare(b.name),
+    const orderedNodes = useMemo(
+        () => flattenCategoryTree(buildCategoryTree(categories)),
+        [categories],
     );
 
     useEffect(() => {
@@ -166,16 +172,21 @@ export function CategoryCombobox({
                                 />
                             </CommandItem>
                         )}
-                        {sortedCategories.map((category) => (
+                        {orderedNodes.map((category) => (
                             <CommandItem
                                 key={category.id}
-                                value={category.name}
+                                value={getCategoryPath(category.id, categories)}
                                 onSelect={() => {
                                     onValueChange(String(category.id));
                                     setOpen(false);
                                 }}
                             >
-                                <div className="flex items-center gap-2">
+                                <div
+                                    className="flex items-center gap-2"
+                                    style={{
+                                        paddingLeft: `${category.depth * 1.25}rem`,
+                                    }}
+                                >
                                     <CategoryIcon category={category} />
                                     <span className="truncate">
                                         {category.name}

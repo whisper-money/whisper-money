@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class BudgetTransactionService
 {
+    public function __construct(private readonly CategoryTree $tree = new CategoryTree) {}
+
     public function assignTransaction(Transaction $transaction): void
     {
         $userId = $transaction->user_id;
@@ -23,13 +25,20 @@ class BudgetTransactionService
 
         $transactionLabelIds = $transaction->labels->pluck('id');
 
+        // A budget tracking a parent category also covers its children, so a
+        // transaction matches a budget when any of its category's ancestors
+        // (or itself) is attached to that budget.
+        $categoryMatchIds = $transaction->category_id
+            ? $this->tree->ancestorAndSelfIds($userId, $transaction->category_id)
+            : [];
+
         // Find budget periods that potentially match this transaction.
         $budgetPeriods = BudgetPeriod::query()
-            ->whereHas('budget', function ($query) use ($transaction, $transactionLabelIds, $userId) {
+            ->whereHas('budget', function ($query) use ($categoryMatchIds, $transactionLabelIds, $userId) {
                 $query->where('user_id', $userId)
-                    ->where(function ($q) use ($transaction, $transactionLabelIds) {
-                        $q->whereHas('categories', function ($cq) use ($transaction) {
-                            $cq->whereKey($transaction->category_id);
+                    ->where(function ($q) use ($categoryMatchIds, $transactionLabelIds) {
+                        $q->whereHas('categories', function ($cq) use ($categoryMatchIds) {
+                            $cq->whereIn('categories.id', $categoryMatchIds);
                         })
                             ->orWhereHas('labels', function ($lq) use ($transactionLabelIds) {
                                 $lq->whereIn('labels.id', $transactionLabelIds);
@@ -47,8 +56,8 @@ class BudgetTransactionService
         foreach ($budgetPeriods as $period) {
             $budget = $period->budget;
 
-            $matchesCategory = $transaction->category_id
-                && $budget->categories->contains('id', $transaction->category_id);
+            $matchesCategory = $categoryMatchIds !== []
+                && $budget->categories->pluck('id')->intersect($categoryMatchIds)->isNotEmpty();
             $matchesLabel = $budget->labels
                 ->pluck('id')
                 ->intersect($transactionLabelIds)
@@ -105,7 +114,8 @@ class BudgetTransactionService
 
         $assignedCount = 0;
 
-        $categoryIds = $budget->categories->pluck('id');
+        // Tracking a parent category also tracks its children's spending.
+        $categoryIds = collect($this->tree->expand($budget->user_id, $budget->categories->pluck('id')->all()));
         $labelIds = $budget->labels->pluck('id');
 
         Log::info('Building query for historical transactions', [

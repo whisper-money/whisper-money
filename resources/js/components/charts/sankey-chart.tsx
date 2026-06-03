@@ -28,6 +28,8 @@ interface SankeyChartProps {
     currency?: string;
     groupingThreshold?: number;
     period?: { from: Date; to: Date };
+    /** Drill into a parent category node instead of navigating to it. */
+    onDrill?: (categoryId: string, label: string) => void;
 }
 
 interface NodeData {
@@ -39,6 +41,7 @@ interface NodeData {
     height: number;
     column: 0 | 1 | 2;
     category?: Category;
+    hasChildren?: boolean;
 }
 
 interface LinkData {
@@ -149,6 +152,7 @@ export function SankeyChart({
     currency = 'USD',
     groupingThreshold = 0.03,
     period,
+    onDrill,
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
@@ -242,6 +246,7 @@ export function SankeyChart({
                 height: nodeHeight,
                 column: 0,
                 category: item.category,
+                hasChildren: item.has_children,
             };
             incomeY += nodeHeight + NODE_PADDING;
             return node;
@@ -308,6 +313,7 @@ export function SankeyChart({
                 height: nodeHeight,
                 column: 2,
                 category: item.category,
+                hasChildren: item.has_children,
             };
             expenseY += nodeHeight + NODE_PADDING;
             return node;
@@ -488,8 +494,25 @@ export function SankeyChart({
                                       },
                                   }).url
                                 : null;
+                        const canDrill =
+                            !isOtherNode &&
+                            !!node.hasChildren &&
+                            !!node.category &&
+                            !!onDrill;
                         const isNavigable =
-                            !isOtherNode && categoryUrl !== null;
+                            !isOtherNode && !canDrill && categoryUrl !== null;
+                        const isInteractive = canDrill || isNavigable;
+
+                        const activate = () => {
+                            if (canDrill && node.category) {
+                                onDrill?.(node.category.id, node.label);
+                                return;
+                            }
+
+                            if (categoryUrl) {
+                                router.visit(categoryUrl);
+                            }
+                        };
 
                         const nodeContent = (
                             <g
@@ -497,12 +520,12 @@ export function SankeyChart({
                                 onMouseEnter={() => setHoveredNode(node.id)}
                                 onMouseLeave={() => setHoveredNode(null)}
                                 onClick={() => {
-                                    if (categoryUrl) {
-                                        router.visit(categoryUrl);
+                                    if (isInteractive) {
+                                        activate();
                                     }
                                 }}
                                 onKeyDown={(event) => {
-                                    if (!categoryUrl) {
+                                    if (!isInteractive) {
                                         return;
                                     }
 
@@ -511,22 +534,30 @@ export function SankeyChart({
                                         event.key === ' '
                                     ) {
                                         event.preventDefault();
-                                        router.visit(categoryUrl);
+                                        activate();
                                     }
                                 }}
-                                role={isNavigable ? 'link' : undefined}
-                                tabIndex={isNavigable ? 0 : undefined}
+                                role={
+                                    canDrill
+                                        ? 'button'
+                                        : isNavigable
+                                          ? 'link'
+                                          : undefined
+                                }
+                                tabIndex={isInteractive ? 0 : undefined}
                                 aria-label={
-                                    isNavigable
-                                        ? `View ${node.label} transactions`
-                                        : undefined
+                                    canDrill
+                                        ? `Drill into ${node.label}`
+                                        : isNavigable
+                                          ? `View ${node.label} transactions`
+                                          : undefined
                                 }
                                 className={cn(
                                     'transition-all duration-200',
                                     isOtherNode && 'cursor-pointer',
-                                    isNavigable && 'cursor-pointer',
+                                    isInteractive && 'cursor-pointer',
                                     !isOtherNode &&
-                                        !isNavigable &&
+                                        !isInteractive &&
                                         'cursor-default',
                                 )}
                             >

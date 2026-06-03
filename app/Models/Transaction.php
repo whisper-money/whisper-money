@@ -6,6 +6,7 @@ use App\Enums\TransactionSource;
 use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
 use App\Events\TransactionUpdated;
+use App\Services\CategoryTree;
 use Carbon\Carbon;
 use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -121,6 +122,14 @@ class Transaction extends Model
             $ids = collect($filters['category_ids']);
             $hasUncategorized = $ids->contains('uncategorized');
             $realIds = $ids->reject(fn ($id) => $id === 'uncategorized')->values()->all();
+
+            if ($realIds !== []) {
+                $userId = $filters['user_id'] ?? Category::query()->whereIn('id', $realIds)->value('user_id');
+
+                if ($userId !== null) {
+                    $realIds = app(CategoryTree::class)->expand($userId, $realIds);
+                }
+            }
 
             $query->where(function (Builder $q) use ($realIds, $hasUncategorized) {
                 if (! empty($realIds)) {
