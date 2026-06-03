@@ -550,6 +550,34 @@ test('default categories are created when user registers', function () {
         ->cashflow_direction->toBe(CategoryCashflowDirection::Inflow);
 });
 
+test('default categories nest children under their configured parent', function () {
+    $user = User::factory()->create();
+
+    (new CreateDefaultCategories)->handle($user);
+
+    $categories = $user->categories()->get()->keyBy('name');
+
+    expect($categories->get('Food')->parent_id)->toBeNull();
+    expect($categories->get('Groceries')->parent_id)->toBe($categories->get('Food')->id);
+    expect($categories->get('Electricity')->parent_id)->toBe($categories->get('Utility services')->id);
+    expect($categories->get('Fuel')->parent_id)->toBe($categories->get('Transportation')->id);
+    expect($categories->get('Other investments')->parent_id)->toBe($categories->get('Investments')->id);
+    expect($categories->get('Salary')->parent_id)->toBeNull();
+});
+
+test('default child categories attach to an already existing parent', function () {
+    $user = User::factory()->create();
+    $food = Category::factory()->create([
+        'user_id' => $user->id,
+        'name' => 'Food',
+        'type' => CategoryType::Expense,
+    ]);
+
+    (new CreateDefaultCategories)->handle($user);
+
+    expect($user->categories()->firstWhere('name', 'Groceries')->parent_id)->toBe($food->id);
+});
+
 test('default categories are not created twice for the same user', function () {
     $user = User::factory()->create();
 
@@ -569,7 +597,7 @@ test('default categories are created without repeated category lookups', functio
     $categorySelects = 0;
 
     DB::listen(function ($query) use (&$categorySelects) {
-        if (str_starts_with($query->sql, 'select `name` from `categories`')) {
+        if (str_starts_with($query->sql, 'select `id`, `name` from `categories`')) {
             $categorySelects++;
         }
     });
