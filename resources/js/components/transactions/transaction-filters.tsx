@@ -1,12 +1,13 @@
 import { __ } from '@/utils/i18n';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
-import { Check, ChevronsUpDown, Tag, X } from 'lucide-react';
+import { ChevronsUpDown, Tag, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Command,
     CommandEmpty,
@@ -371,18 +372,12 @@ export function TransactionFilters({
                                                                 )
                                                             }
                                                         >
-                                                            <div
-                                                                className={cn(
-                                                                    'mr-1 flex size-4 shrink-0 items-center justify-center rounded-[4px] border',
+                                                            <Checkbox
+                                                                checked={
                                                                     isUncategorizedSelected
-                                                                        ? 'border-primary bg-primary text-primary-foreground'
-                                                                        : 'border-input',
-                                                                )}
-                                                            >
-                                                                {isUncategorizedSelected && (
-                                                                    <Check className="size-3" />
-                                                                )}
-                                                            </div>
+                                                                }
+                                                                className="pointer-events-none mr-1"
+                                                            />
                                                             <div className="flex items-center gap-2">
                                                                 <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
                                                                     <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
@@ -421,24 +416,16 @@ export function TransactionFilters({
                                                                             paddingLeft: `${0.5 + category.depth * 1.25}rem`,
                                                                         }}
                                                                     >
-                                                                        <div
-                                                                            className={cn(
-                                                                                'mr-1 flex size-4 shrink-0 items-center justify-center rounded-[4px] border',
+                                                                        <Checkbox
+                                                                            checked={
                                                                                 state ===
-                                                                                    'unchecked'
-                                                                                    ? 'border-input'
-                                                                                    : 'border-primary bg-primary text-primary-foreground',
-                                                                            )}
-                                                                        >
-                                                                            {state ===
-                                                                                'checked' && (
-                                                                                <Check className="size-3" />
-                                                                            )}
-                                                                            {state ===
-                                                                                'indeterminate' && (
-                                                                                <Icons.Minus className="size-3" />
-                                                                            )}
-                                                                        </div>
+                                                                                'indeterminate'
+                                                                                    ? 'indeterminate'
+                                                                                    : state ===
+                                                                                      'checked'
+                                                                            }
+                                                                            className="pointer-events-none mr-1"
+                                                                        />
                                                                         <div className="flex min-w-0 items-center gap-2">
                                                                             <div
                                                                                 className={cn(
@@ -540,16 +527,12 @@ export function TransactionFilters({
                                                                         )
                                                                     }
                                                                 >
-                                                                    <div
-                                                                        className={cn(
-                                                                            'mr-1 flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary p-1',
+                                                                    <Checkbox
+                                                                        checked={
                                                                             isSelected
-                                                                                ? 'bg-primary/10 text-primary-foreground'
-                                                                                : 'opacity-50 [&_svg]:invisible',
-                                                                        )}
-                                                                    >
-                                                                        <Check className="size-3" />
-                                                                    </div>
+                                                                        }
+                                                                        className="pointer-events-none mr-1"
+                                                                    />
                                                                     <div className="flex items-center gap-2">
                                                                         <div
                                                                             className={cn(
