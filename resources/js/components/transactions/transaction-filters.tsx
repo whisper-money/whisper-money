@@ -100,10 +100,42 @@ export function TransactionFilters({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters.searchText, filters.creditorName, filters.debtorName]);
 
-    const categoryTree = useMemo(
-        () => flattenCategoryTree(buildCategoryTree(categories)),
-        [categories],
-    );
+    // Snapshot of which categories were selected when the dropdown opened.
+    // Ordering uses this snapshot, so toggling while open never reshuffles the
+    // list under the cursor; it only re-sorts the next time it is opened.
+    const [categoryOrderSnapshot, setCategoryOrderSnapshot] = useState<
+        Set<string>
+    >(new Set());
+
+    const categoryTree = useMemo(() => {
+        // A branch sorts to the top when it (or a descendant) was selected.
+        const branchSelected = new Set<string>();
+        if (categoryOrderSnapshot.size > 0) {
+            const parentOf = new Map(
+                categories.map((c) => [c.id, c.parent_id]),
+            );
+            for (const id of categoryOrderSnapshot) {
+                let current: string | null | undefined = id;
+                let guard = 0;
+                while (current != null && guard++ < 10) {
+                    branchSelected.add(current);
+                    current = parentOf.get(current);
+                }
+            }
+        }
+
+        const compare = (a: Category, b: Category) => {
+            const aSelected = branchSelected.has(a.id);
+            const bSelected = branchSelected.has(b.id);
+            if (aSelected !== bSelected) {
+                return aSelected ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name);
+        };
+
+        return flattenCategoryTree(buildCategoryTree(categories, compare));
+    }, [categories, categoryOrderSnapshot]);
+
     const selectedCategorySet = useMemo(
         () => new Set(filters.categoryIds),
         [filters.categoryIds],
@@ -319,9 +351,16 @@ export function TransactionFilters({
                                     <div className="pt-2">
                                         <Popover
                                             open={categoryDropdownOpen}
-                                            onOpenChange={
-                                                setCategoryDropdownOpen
-                                            }
+                                            onOpenChange={(open) => {
+                                                if (open) {
+                                                    setCategoryOrderSnapshot(
+                                                        new Set(
+                                                            filters.categoryIds,
+                                                        ),
+                                                    );
+                                                }
+                                                setCategoryDropdownOpen(open);
+                                            }}
                                         >
                                             <PopoverTrigger asChild>
                                                 <Button
