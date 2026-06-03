@@ -70,7 +70,7 @@ export function DeleteCategoryDialog({
                         onSuccess?.();
                     }}
                 >
-                    {({ processing }) => (
+                    {({ processing, errors }) => (
                         <div className="space-y-4">
                             {hasChildren && (
                                 <div className="space-y-2">
@@ -112,6 +112,11 @@ export function DeleteCategoryDialog({
                                         </p>
                                     )}
                                 </div>
+                            )}
+                            {errors.strategy && (
+                                <p className="text-sm text-red-500">
+                                    {errors.strategy}
+                                </p>
                             )}
                             <DialogFooter>
                                 <Button

@@ -153,6 +153,33 @@ test('deleting a parent with the cascade strategy removes the subtree and uncate
     expect($transaction->refresh()->category_id)->toBeNull();
 });
 
+test('deleting a parent with the promote strategy rejects child name collisions at the top level', function () {
+    $user = User::factory()->create();
+    Category::factory()->create(['user_id' => $user->id, 'name' => 'Other', 'type' => CategoryType::Expense]);
+    $root = Category::factory()->create(['user_id' => $user->id, 'name' => 'Food', 'type' => CategoryType::Expense]);
+    $child = Category::factory()->childOf($root)->create(['user_id' => $user->id, 'name' => 'Other']);
+
+    $this->actingAs($user)->delete(route('categories.destroy', $root), ['strategy' => 'promote'])
+        ->assertSessionHasErrors(['strategy']);
+
+    $this->assertNotSoftDeleted('categories', ['id' => $root->id]);
+    expect($child->refresh()->parent_id)->toBe($root->id);
+});
+
+test('deleting a parent with the reparent strategy rejects child name collisions at the destination level', function () {
+    $user = User::factory()->create();
+    $root = Category::factory()->create(['user_id' => $user->id, 'name' => 'Food', 'type' => CategoryType::Expense]);
+    Category::factory()->childOf($root)->create(['user_id' => $user->id, 'name' => 'Other']);
+    $parent = Category::factory()->childOf($root)->create(['user_id' => $user->id, 'name' => 'Eating out']);
+    $child = Category::factory()->childOf($parent)->create(['user_id' => $user->id, 'name' => 'Other']);
+
+    $this->actingAs($user)->delete(route('categories.destroy', $parent))
+        ->assertSessionHasErrors(['strategy']);
+
+    $this->assertNotSoftDeleted('categories', ['id' => $parent->id]);
+    expect($child->refresh()->parent_id)->toBe($parent->id);
+});
+
 test('updating a parent type cascades to all descendants', function () {
     $user = User::factory()->create();
     $root = Category::factory()->create([

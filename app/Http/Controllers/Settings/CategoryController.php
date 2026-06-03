@@ -94,7 +94,13 @@ class CategoryController extends Controller
      */
     private function detachChildrenAndDelete(Category $category, ?string $newParentId): void
     {
-        $category->children()->update(['parent_id' => $newParentId]);
+        try {
+            $category->children()->update(['parent_id' => $newParentId]);
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'strategy' => __('A category with the same name already exists at the destination level. Rename it first.'),
+            ]);
+        }
 
         $category->delete();
     }
