@@ -290,11 +290,11 @@ class CashflowAnalyticsController extends Controller
                 'amount' => $item['amount'],
             ]);
 
-        $categorized = $this->rollUpByTree(
-            $regularCategories->concat($transferCategories)->values(),
+        $categorized = collect($this->rollUpByTree(
+            $regularCategories->concat($transferCategories)->values()->all(),
             $userId,
             $drillParentId,
-        );
+        ));
 
         $uncategorized = $transactions
             ->filter(function (Transaction $transaction) use ($operator): bool {
@@ -410,7 +410,7 @@ class CashflowAnalyticsController extends Controller
                 'amount' => $item['amount'],
             ]);
 
-        $categorized = $this->rollUpByTree($categorized->values(), $userId, $drillParentId);
+        $categorized = collect($this->rollUpByTree($categorized->values()->all(), $userId, $drillParentId));
 
         $uncategorized = $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {
@@ -511,10 +511,10 @@ class CashflowAnalyticsController extends Controller
      * rolled up over its own subtree) plus a "(direct)" node for transactions
      * sitting on the parent itself. Items outside the drilled subtree drop out.
      *
-     * @param  Collection<int, array{category_id: ?string, category: Category, amount: int}>  $categorized
-     * @return Collection<int, array{category_id: ?string, category: Category, amount: int, has_children: bool, is_direct: bool}>
+     * @param  array<int, array{category_id: ?string, category: Category|null, amount: int}>  $categorized
+     * @return array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>
      */
-    private function rollUpByTree(Collection $categorized, string $userId, ?string $drillParentId): Collection
+    private function rollUpByTree(array $categorized, string $userId, ?string $drillParentId): array
     {
         $categories = Category::query()
             ->where('user_id', $userId)
@@ -585,7 +585,7 @@ class CashflowAnalyticsController extends Controller
             $nodes[$key]['amount'] += $item['amount'];
         }
 
-        return collect(array_values($nodes));
+        return array_values($nodes);
     }
 
     /**

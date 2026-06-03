@@ -2,7 +2,6 @@ import InputError from '@/components/input-error';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { Label } from '@/components/ui/label';
 import { getDescendantIds } from '@/lib/category-tree';
-import { type SharedData } from '@/types';
 import { type Category } from '@/types/category';
 import { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
@@ -25,7 +24,9 @@ export function ParentCategoryField({
     excludeId,
     error,
 }: ParentCategoryFieldProps) {
-    const enabled = usePage<SharedData>().props.features.categoryTree;
+    const enabled =
+        usePage<{ categoryTreeEnabled?: boolean }>().props
+            .categoryTreeEnabled ?? false;
 
     const byId = useMemo(
         () => new Map(categories.map((c) => [c.id, c])),

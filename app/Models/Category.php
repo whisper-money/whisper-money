@@ -13,6 +13,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property string $id
+ * @property string $name
+ * @property string $icon
+ * @property string $color
+ * @property CategoryType $type
+ * @property CategoryCashflowDirection $cashflow_direction
+ * @property string $user_id
+ * @property string|null $parent_id
+ */
 class Category extends Model
 {
     /** @use HasFactory<CategoryFactory> */
@@ -29,7 +39,7 @@ class Category extends Model
      *
      * @var list<string>
      */
-    public const array FRONTEND_COLUMNS = [
+    private const array FRONTEND_COLUMNS = [
         'id',
         'name',
         'icon',
