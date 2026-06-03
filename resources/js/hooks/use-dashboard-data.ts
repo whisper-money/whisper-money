@@ -2,6 +2,7 @@ import { useLocale } from '@/hooks/use-locale';
 import { getAccountSign } from '@/lib/chart-calculations';
 import { Account, AccountType, Bank } from '@/types/account';
 import { Category } from '@/types/category';
+import { formatMonthFromYearMonth } from '@/utils/date';
 import { format, subDays, subMonths } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -66,7 +67,7 @@ export function deriveAccountMetrics(
     return Object.values(accounts).map((account) => {
         const investedKey = account.id + '_invested';
         const history = data.map((point) => ({
-            date: formatMonth(point.month as string, locale),
+            date: formatMonthFromYearMonth(point.month as string, locale),
             value:
                 typeof point[account.id] === 'number'
                     ? getAccountSign(account.type) *
@@ -98,20 +99,6 @@ export function deriveAccountMetrics(
             investedAmount: account.invested_amount ?? null,
         } as AccountWithMetrics;
     });
-}
-
-function formatMonth(yearMonth: string, locale = 'en-US'): string {
-    const [year, month] = yearMonth.split('-');
-    const date = new Date(parseInt(year), parseInt(month) - 1);
-
-    const isCurrentYear = date.getFullYear() === new Date().getFullYear();
-
-    return date.toLocaleDateString(
-        locale,
-        isCurrentYear
-            ? { month: 'short' }
-            : { year: '2-digit', month: 'short' },
-    );
 }
 
 export function useDashboardData(): DashboardData & { refetch: () => void } {
