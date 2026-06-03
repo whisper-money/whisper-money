@@ -135,6 +135,36 @@ class CategoryTree
     }
 
     /**
+     * Map every category id of a user to its top-level ancestor id (roots map
+     * to themselves). Used to roll child amounts up into their parent.
+     *
+     * @return array<string, string>
+     */
+    public function rootAncestorMap(string $userId): array
+    {
+        $parents = Category::query()
+            ->where('user_id', $userId)
+            ->pluck('parent_id', 'id')
+            ->all();
+
+        $map = [];
+
+        foreach ($parents as $id => $parentId) {
+            $rootId = $id;
+            $guard = 0;
+
+            while ($parentId !== null && array_key_exists($parentId, $parents) && $guard++ < Category::MAX_DEPTH) {
+                $rootId = $parentId;
+                $parentId = $parents[$parentId];
+            }
+
+            $map[$id] = $rootId;
+        }
+
+        return $map;
+    }
+
+    /**
      * Whether assigning $parentId as the parent of $category would create a
      * cycle (the parent is the category itself or one of its descendants).
      */

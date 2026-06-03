@@ -333,6 +333,44 @@ test('top categories excludes soft deleted categories', function () {
         ->and($response->json('0.category.id'))->toBe($activeCategory->id);
 });
 
+test('top categories rolls child spending up into the top-level parent', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
+    $groceries = Category::factory()->childOf($food)->create(['user_id' => $this->user->id, 'name' => 'Groceries']);
+    $restaurants = Category::factory()->childOf($food)->create(['user_id' => $this->user->id, 'name' => 'Restaurants']);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $food->id,
+        'amount' => -1000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $groceries->id,
+        'amount' => -2000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $restaurants->id,
+        'amount' => -3000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/dashboard/top-categories?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $data = $response->json();
+
+    expect($data)->toHaveCount(1);
+    expect($data[0]['category']['id'])->toBe($food->id);
+    expect($data[0]['amount'])->toBe(6000);
+    expect($data[0]['total_amount'])->toBe(6000);
+});
+
 test('net worth evolution returns monthly data points with per-account balances', function () {
     $account1 = Account::factory()->create([
         'user_id' => $this->user->id,
