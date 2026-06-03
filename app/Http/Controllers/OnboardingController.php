@@ -19,8 +19,7 @@ class OnboardingController extends Controller
         $user = $request->user();
 
         $banks = Bank::query()
-            ->whereNull('user_id')
-            ->orWhere('user_id', $user->id)
+            ->availableForUser($user)
             ->orderBy('name')
             ->get(['id', 'name', 'logo']);
 

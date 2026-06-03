@@ -14,11 +14,7 @@ class BankController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Bank::query()
-            ->where(function (Builder $q) {
-                $q->whereNull('user_id')
-                    ->orWhere('user_id', auth()->id());
-            });
+        $query = Bank::query()->availableForUser($request->user());
 
         $search = trim((string) $request->input('search', ''));
 
