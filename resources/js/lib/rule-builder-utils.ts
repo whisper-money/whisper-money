@@ -60,11 +60,6 @@ export const FIELD_CONFIG: Record<
         type: 'string',
         operators: ['contains', 'equals'],
     },
-    category: {
-        label: 'Category',
-        type: 'string',
-        operators: ['equals', 'is_empty', 'is_not_empty'],
-    },
 };
 
 export const OPERATOR_LABELS: Record<Operator, string> = {
@@ -85,7 +80,7 @@ function buildConditionJsonLogic(condition: Condition): JsonLogicRule {
         case 'contains':
             return { in: [value, { var: field }] };
         case 'equals':
-            if (FIELD_CONFIG[field].type === 'number') {
+            if (FIELD_CONFIG[field]?.type === 'number') {
                 return { '==': [{ var: field }, parseFloat(value)] };
             }
             return { '==': [{ var: field }, value] };

@@ -1380,3 +1380,93 @@ test('breakdown includes unknown income category', function () {
     expect($unknownCategory['amount'])->toBe(50000);
     expect($unknownCategory['percentage'])->toEqual(20.0); // 50k / 250k = 20%
 });
+
+test('sankey rolls child category amounts up to their top-level parent by default', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+    $parent = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'name' => 'Food',
+        'type' => CategoryType::Expense,
+    ]);
+    $child = Category::factory()->childOf($parent)->create([
+        'user_id' => $this->user->id,
+        'name' => 'Groceries',
+    ]);
+
+    // $100 directly on the parent, $50 on the child.
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $parent->id,
+        'amount' => -10000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $child->id,
+        'amount' => -5000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    $expense = collect($response->json('expense_categories'));
+
+    expect($expense)->toHaveCount(1);
+    $node = $expense->first();
+    expect($node['category_id'])->toBe($parent->id)
+        ->and($node['amount'])->toBe(15000)
+        ->and($node['has_children'])->toBeTrue();
+});
+
+test('drilling into a parent splits it into children plus a direct node', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+    $parent = Category::factory()->create([
+        'user_id' => $this->user->id,
+        'name' => 'Food',
+        'type' => CategoryType::Expense,
+    ]);
+    $child = Category::factory()->childOf($parent)->create([
+        'user_id' => $this->user->id,
+        'name' => 'Groceries',
+    ]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $parent->id,
+        'amount' => -10000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $account->id,
+        'category_id' => $child->id,
+        'amount' => -5000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/cashflow/sankey?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+        'parent' => $parent->id,
+    ]));
+
+    $response->assertOk();
+    $expense = collect($response->json('expense_categories'));
+
+    expect($expense)->toHaveCount(2);
+
+    $childNode = $expense->firstWhere('is_direct', false);
+    expect($childNode['category_id'])->toBe($child->id)
+        ->and($childNode['amount'])->toBe(5000);
+
+    $directNode = $expense->firstWhere('is_direct', true);
+    expect($directNode['category_id'])->toBe($parent->id)
+        ->and($directNode['amount'])->toBe(10000);
+});

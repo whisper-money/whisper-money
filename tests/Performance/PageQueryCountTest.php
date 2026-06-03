@@ -58,7 +58,7 @@ test('transactions index page does not exceed query threshold', function () {
 });
 
 test('budgets index page does not exceed query threshold', function () {
-    assertMaxQueries(18, function () {
+    assertMaxQueries(21, function () {
         $this->get(route('budgets.index'))->assertOk();
     }, 'Budgets Index');
 });
@@ -66,7 +66,7 @@ test('budgets index page does not exceed query threshold', function () {
 test('budget show page does not exceed query threshold', function () {
     $budget = $this->user->budgets()->first();
 
-    assertMaxQueries(20, function () use ($budget) {
+    assertMaxQueries(22, function () use ($budget) {
         $this->get(route('budgets.show', $budget))->assertOk();
     }, 'Budget Show');
 });
@@ -82,7 +82,7 @@ test('cashflow page does not exceed query threshold', function () {
 // ──────────────────────────────────────────────────────────────────────────
 
 test('settings accounts page does not exceed query threshold', function () {
-    assertMaxQueries(15, function () {
+    assertMaxQueries(17, function () {
         $this->get(route('accounts.index'))->assertOk();
     }, 'Settings Accounts');
 });

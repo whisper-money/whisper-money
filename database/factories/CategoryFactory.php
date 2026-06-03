@@ -27,6 +27,20 @@ class CategoryFactory extends Factory
             'type' => fake()->randomElement(CategoryType::cases()),
             'cashflow_direction' => CategoryCashflowDirection::Hidden,
             'user_id' => User::factory(),
+            'parent_id' => null,
         ];
+    }
+
+    /**
+     * Nest the category under a parent, inheriting its owner and type.
+     */
+    public function childOf(Category $parent): static
+    {
+        return $this->state(fn (): array => [
+            'parent_id' => $parent->id,
+            'user_id' => $parent->user_id,
+            'type' => $parent->type,
+            'cashflow_direction' => $parent->cashflow_direction,
+        ]);
     }
 }

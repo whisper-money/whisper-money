@@ -39,16 +39,18 @@ class CashflowAnalyticsController extends Controller
         $validated = $request->validate([
             'from' => 'required|date',
             'to' => 'required|date',
+            'parent' => 'nullable|uuid',
         ]);
 
         $from = Carbon::parse($validated['from']);
         $to = Carbon::parse($validated['to']);
         $user = $request->user();
+        $drillParentId = $validated['parent'] ?? null;
 
         // Split by sign, not by category type: a single category can appear on
         // both sides when it has both incoming and outgoing transactions.
-        $incomeCategories = $this->getSankeyBreakdown($user->id, $user->currency_code, $from, $to, '>');
-        $expenseCategories = $this->getSankeyBreakdown($user->id, $user->currency_code, $from, $to, '<');
+        $incomeCategories = $this->getSankeyBreakdown($user->id, $user->currency_code, $from, $to, '>', $drillParentId);
+        $expenseCategories = $this->getSankeyBreakdown($user->id, $user->currency_code, $from, $to, '<', $drillParentId);
 
         $totalIncome = $incomeCategories->sum('amount');
         $totalExpense = $expenseCategories->sum('amount');
@@ -114,16 +116,18 @@ class CashflowAnalyticsController extends Controller
             'from' => 'required|date',
             'to' => 'required|date',
             'type' => 'required|in:income,expense',
+            'parent' => 'nullable|uuid',
         ]);
 
         $period = PeriodComparator::fromRequest($validated);
         $previousPeriod = $period->previous();
         $user = $request->user();
+        $drillParentId = $validated['parent'] ?? null;
 
         $categoryType = $validated['type'] === 'income' ? CategoryType::Income : CategoryType::Expense;
 
-        $current = $this->getCategoryBreakdown($user->id, $user->currency_code, $period->from, $period->to, $categoryType);
-        $previous = $this->getCategoryBreakdown($user->id, $user->currency_code, $previousPeriod->from, $previousPeriod->to, $categoryType);
+        $current = $this->getCategoryBreakdown($user->id, $user->currency_code, $period->from, $period->to, $categoryType, $drillParentId);
+        $previous = $this->getCategoryBreakdown($user->id, $user->currency_code, $previousPeriod->from, $previousPeriod->to, $categoryType, $drillParentId);
 
         $currentTotal = $current->sum('amount');
         $previousTotal = $previous->sum('amount');
@@ -138,6 +142,8 @@ class CashflowAnalyticsController extends Controller
                 'amount' => $item['amount'],
                 'percentage' => $currentTotal > 0 ? round(($item['amount'] / $currentTotal) * 100, 1) : 0,
                 'previous_amount' => $previousAmount,
+                'has_children' => $item['has_children'] ?? false,
+                'is_direct' => $item['is_direct'] ?? false,
             ];
         })->sortByDesc('amount')->values();
 
@@ -219,7 +225,7 @@ class CashflowAnalyticsController extends Controller
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency)));
     }
 
-    private function getSankeyBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, string $operator): Collection
+    private function getSankeyBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, string $operator, ?string $drillParentId = null): Collection
     {
         $isIncome = $operator === '>';
         $type = $isIncome ? CategoryType::Income : CategoryType::Expense;
@@ -284,7 +290,11 @@ class CashflowAnalyticsController extends Controller
                 'amount' => $item['amount'],
             ]);
 
-        $categorized = $regularCategories->concat($transferCategories)->values();
+        $categorized = collect($this->rollUpByTree(
+            $regularCategories->concat($transferCategories)->values()->all(),
+            $userId,
+            $drillParentId,
+        ));
 
         $uncategorized = $transactions
             ->filter(function (Transaction $transaction) use ($operator): bool {
@@ -293,7 +303,7 @@ class CashflowAnalyticsController extends Controller
             })
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
 
-        if ($uncategorized != 0) {
+        if ($drillParentId === null && $uncategorized != 0) {
             $categorized->push([
                 'category_id' => null,
                 'category' => (new Category)->forceFill([
@@ -304,6 +314,8 @@ class CashflowAnalyticsController extends Controller
                     'icon' => 'HelpCircle',
                 ]),
                 'amount' => abs($uncategorized),
+                'has_children' => false,
+                'is_direct' => false,
             ]);
         }
 
@@ -368,7 +380,7 @@ class CashflowAnalyticsController extends Controller
             });
     }
 
-    private function getCategoryBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, CategoryType $type): Collection
+    private function getCategoryBreakdown(string $userId, string $userCurrency, Carbon $from, Carbon $to, CategoryType $type, ?string $drillParentId = null): Collection
     {
         $transactions = Transaction::query()
             ->where('transactions.user_id', $userId)
@@ -398,6 +410,8 @@ class CashflowAnalyticsController extends Controller
                 'amount' => $item['amount'],
             ]);
 
+        $categorized = collect($this->rollUpByTree($categorized->values()->all(), $userId, $drillParentId));
+
         $uncategorized = $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {
                 return $transaction->category_id === null
@@ -406,7 +420,7 @@ class CashflowAnalyticsController extends Controller
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
 
         // Add uncategorized as a special category if there are any
-        if ($uncategorized != 0) {
+        if ($drillParentId === null && $uncategorized != 0) {
             $categorized->push([
                 'category_id' => null,
                 'category' => (new Category)->forceFill([
@@ -417,6 +431,8 @@ class CashflowAnalyticsController extends Controller
                     'icon' => 'HelpCircle',
                 ]),
                 'amount' => abs($uncategorized),
+                'has_children' => false,
+                'is_direct' => false,
             ]);
         }
 
@@ -485,5 +501,124 @@ class CashflowAnalyticsController extends Controller
     private function categoryNetAmountMatchesSide(int $amount, CategoryType $type): bool
     {
         return $type === CategoryType::Income ? $amount > 0 : $amount < 0;
+    }
+
+    /**
+     * Roll category amounts up the tree.
+     *
+     * With no drill target, every amount folds into its top-level ancestor.
+     * When drilling into a parent, the parent's children become the nodes (each
+     * rolled up over its own subtree) plus a "(direct)" node for transactions
+     * sitting on the parent itself. Items outside the drilled subtree drop out.
+     *
+     * @param  array<int, array{category_id: ?string, category: Category|null, amount: int}>  $categorized
+     * @return array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>
+     */
+    private function rollUpByTree(array $categorized, string $userId, ?string $drillParentId): array
+    {
+        $categories = Category::query()
+            ->where('user_id', $userId)
+            ->forDisplay()
+            ->get()
+            ->keyBy('id');
+
+        $parentMap = $categories->mapWithKeys(fn (Category $category): array => [$category->id => $category->parent_id])->all();
+        $childCounts = [];
+        foreach ($parentMap as $parentId) {
+            if ($parentId !== null) {
+                $childCounts[$parentId] = ($childCounts[$parentId] ?? 0) + 1;
+            }
+        }
+
+        $nodes = [];
+        foreach ($categorized as $item) {
+            $categoryId = $item['category_id'];
+
+            if ($categoryId === null || ! array_key_exists($categoryId, $parentMap)) {
+                // Uncategorized only belongs in the top-level view.
+                if ($drillParentId === null) {
+                    $key = 'uncategorized';
+                    $nodes[$key] ??= ['category_id' => null, 'category' => $item['category'], 'amount' => 0, 'has_children' => false, 'is_direct' => false];
+                    $nodes[$key]['amount'] += $item['amount'];
+                }
+
+                continue;
+            }
+
+            $target = $this->displayNodeFor($categoryId, $parentMap, $drillParentId);
+
+            if ($target === null) {
+                continue;
+            }
+
+            $displayCategory = $categories->get($target['id']);
+
+            if ($displayCategory === null) {
+                continue;
+            }
+
+            if ($target['is_direct']) {
+                $key = $target['id'].':direct';
+                $category = (new Category)->forceFill([
+                    'id' => $displayCategory->id,
+                    'name' => $displayCategory->name.' ('.__('direct').')',
+                    'icon' => $displayCategory->icon,
+                    'color' => $displayCategory->color,
+                    'type' => $displayCategory->type,
+                    'cashflow_direction' => $displayCategory->cashflow_direction,
+                    'parent_id' => $displayCategory->parent_id,
+                ]);
+                $nodes[$key] ??= ['category_id' => $displayCategory->id, 'category' => $category, 'amount' => 0, 'has_children' => false, 'is_direct' => true];
+                $nodes[$key]['amount'] += $item['amount'];
+
+                continue;
+            }
+
+            $key = $target['id'];
+            $nodes[$key] ??= [
+                'category_id' => $displayCategory->id,
+                'category' => $displayCategory,
+                'amount' => 0,
+                'has_children' => ($childCounts[$displayCategory->id] ?? 0) > 0,
+                'is_direct' => false,
+            ];
+            $nodes[$key]['amount'] += $item['amount'];
+        }
+
+        return array_values($nodes);
+    }
+
+    /**
+     * Resolve which node a category's amount should be attributed to.
+     *
+     * @param  array<string, ?string>  $parentMap
+     * @return array{id: string, is_direct: bool}|null
+     */
+    private function displayNodeFor(string $categoryId, array $parentMap, ?string $drillParentId): ?array
+    {
+        $chain = [];
+        $current = $categoryId;
+        $guard = 0;
+
+        while ($current !== null && $guard++ < Category::MAX_DEPTH + 1) {
+            array_unshift($chain, $current);
+            $current = $parentMap[$current] ?? null;
+        }
+
+        if ($drillParentId === null) {
+            return ['id' => $chain[0], 'is_direct' => false];
+        }
+
+        $index = array_search($drillParentId, $chain, true);
+
+        if ($index === false) {
+            return null;
+        }
+
+        if ($index === count($chain) - 1) {
+            return ['id' => $drillParentId, 'is_direct' => true];
+        }
+
+        return ['id' => $chain[$index + 1], 'is_direct' => false];
     }
 }

@@ -144,8 +144,8 @@ class HandleInertiaRequests extends Middleware
                     return $data;
                 }) : [],
             'categories' => fn () => $user ? $user->categories()
-                ->orderBy('name')
-                ->get(['id', 'name', 'icon', 'color']) : [],
+                ->forDisplay()
+                ->get() : [],
             'banks' => fn () => $user ? $user->banks()
                 ->orderBy('name')
                 ->get(['id', 'name', 'logo']) : [],

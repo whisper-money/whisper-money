@@ -20,6 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { buildCategoryTree, flattenCategoryTree } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import {
@@ -231,7 +232,9 @@ export function CreateBudgetDialog({
                                 </UILabel>
                                 <MultiSelect
                                     id="categories"
-                                    options={allCategories.map((category) => {
+                                    options={flattenCategoryTree(
+                                        buildCategoryTree(allCategories),
+                                    ).map((category) => {
                                         const colorClasses =
                                             getCategoryColorClasses(
                                                 category.color,
@@ -243,6 +246,8 @@ export function CreateBudgetDialog({
                                         return {
                                             value: category.id,
                                             label: category.name,
+                                            depth: category.depth,
+                                            parentValue: category.parent_id,
                                             icon: IconComponent ? (
                                                 <IconComponent className="h-3 w-3 opacity-80" />
                                             ) : undefined,

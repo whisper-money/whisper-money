@@ -1,12 +1,13 @@
 import { __ } from '@/utils/i18n';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
-import { Check, ChevronsUpDown, Tag, X } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { ChevronsUpDown, Tag, X } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Command,
     CommandEmpty,
@@ -21,6 +22,12 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    buildCategoryTree,
+    categorySelectionState,
+    flattenCategoryTree,
+    toggleCategorySelection,
+} from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Account } from '@/types/account';
 import { type Category, getCategoryColorClasses } from '@/types/category';
@@ -50,6 +57,7 @@ export function TransactionFilters({
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+    const [categorySearch, setCategorySearch] = useState('');
     const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
     const [searchText, setSearchText] = useState(filters.searchText);
     const [creditorName, setCreditorName] = useState(filters.creditorName);
@@ -93,12 +101,87 @@ export function TransactionFilters({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters.searchText, filters.creditorName, filters.debtorName]);
 
-    function handleCategoryToggle(categoryId: string) {
-        const newCategoryIds = filters.categoryIds.includes(categoryId)
-            ? filters.categoryIds.filter((id) => id !== categoryId)
-            : [...filters.categoryIds, categoryId];
+    // Snapshot of which categories were selected when the dropdown opened.
+    // Ordering uses this snapshot, so toggling while open never reshuffles the
+    // list under the cursor; it only re-sorts the next time it is opened.
+    const [categoryOrderSnapshot, setCategoryOrderSnapshot] = useState<
+        Set<string>
+    >(new Set());
 
-        onFiltersChange({ ...filters, categoryIds: newCategoryIds });
+    const categoryTree = useMemo(() => {
+        // A branch sorts to the top when it (or a descendant) was selected.
+        const branchSelected = new Set<string>();
+        if (categoryOrderSnapshot.size > 0) {
+            const parentOf = new Map(
+                categories.map((c) => [c.id, c.parent_id]),
+            );
+            for (const id of categoryOrderSnapshot) {
+                let current: string | null | undefined = id;
+                let guard = 0;
+                while (current != null && guard++ < 10) {
+                    branchSelected.add(current);
+                    current = parentOf.get(current);
+                }
+            }
+        }
+
+        const compare = (a: Category, b: Category) => {
+            const aSelected = branchSelected.has(a.id);
+            const bSelected = branchSelected.has(b.id);
+            if (aSelected !== bSelected) {
+                return aSelected ? -1 : 1;
+            }
+            return a.name.localeCompare(b.name);
+        };
+
+        return flattenCategoryTree(buildCategoryTree(categories, compare));
+    }, [categories, categoryOrderSnapshot]);
+
+    const selectedCategorySet = useMemo(
+        () => new Set(filters.categoryIds),
+        [filters.categoryIds],
+    );
+
+    // Tree-aware search: keep each match together with its ancestors so a
+    // matching child still shows its parent chain for context.
+    const visibleCategoryTree = useMemo(() => {
+        const query = categorySearch.trim().toLowerCase();
+        if (!query) {
+            return categoryTree;
+        }
+
+        const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
+        const include = new Set<string>();
+        for (const category of categories) {
+            if (!category.name.toLowerCase().includes(query)) {
+                continue;
+            }
+            let id: string | null | undefined = category.id;
+            let guard = 0;
+            while (id != null && guard++ < 10) {
+                include.add(id);
+                id = parentOf.get(id);
+            }
+        }
+
+        return categoryTree.filter((node) => include.has(node.id));
+    }, [categoryTree, categories, categorySearch]);
+
+    const showUncategorizedRow =
+        categorySearch.trim() === '' ||
+        'uncategorized'.includes(categorySearch.trim().toLowerCase());
+    const hasCategoryResults =
+        visibleCategoryTree.length > 0 || showUncategorizedRow;
+
+    function handleCategoryToggle(categoryId: string) {
+        onFiltersChange({
+            ...filters,
+            categoryIds: toggleCategorySelection(
+                filters.categoryIds,
+                categoryId,
+                categories,
+            ),
+        });
     }
 
     function handleAccountToggle(accountId: number) {
@@ -300,9 +383,18 @@ export function TransactionFilters({
                                     <div className="pt-2">
                                         <Popover
                                             open={categoryDropdownOpen}
-                                            onOpenChange={
-                                                setCategoryDropdownOpen
-                                            }
+                                            onOpenChange={(open) => {
+                                                if (open) {
+                                                    setCategoryOrderSnapshot(
+                                                        new Set(
+                                                            filters.categoryIds,
+                                                        ),
+                                                    );
+                                                } else {
+                                                    setCategorySearch('');
+                                                }
+                                                setCategoryDropdownOpen(open);
+                                            }}
                                         >
                                             <PopoverTrigger asChild>
                                                 <Button
@@ -334,49 +426,55 @@ export function TransactionFilters({
                                                 className="w-full p-0"
                                                 align="start"
                                             >
-                                                <Command>
+                                                <Command shouldFilter={false}>
                                                     <CommandInput
                                                         placeholder={__(
                                                             'Search categories...',
                                                         )}
+                                                        value={categorySearch}
+                                                        onValueChange={
+                                                            setCategorySearch
+                                                        }
                                                     />
                                                     <CommandList>
-                                                        <CommandEmpty>
-                                                            {__(
-                                                                'No category found.',
-                                                            )}
-                                                        </CommandEmpty>
-                                                        <CommandItem
-                                                            onSelect={() =>
-                                                                handleCategoryToggle(
-                                                                    UNCATEGORIZED_CATEGORY_ID,
-                                                                )
-                                                            }
-                                                        >
-                                                            <div
-                                                                className={cn(
-                                                                    'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
-                                                                    isUncategorizedSelected
-                                                                        ? 'bg-primary/10 text-primary-foreground'
-                                                                        : 'opacity-50 [&_svg]:invisible',
-                                                                )}
-                                                            >
-                                                                <Check className="size-3" />
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                                                    <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
-                                                                </div>
+                                                        {!hasCategoryResults && (
+                                                            <div className="py-6 text-center text-sm text-muted-foreground">
                                                                 {__(
-                                                                    'Uncategorized',
+                                                                    'No category found.',
                                                                 )}
                                                             </div>
-                                                        </CommandItem>
-                                                        {categories.map(
+                                                        )}
+                                                        {showUncategorizedRow && (
+                                                            <CommandItem
+                                                                onSelect={() =>
+                                                                    handleCategoryToggle(
+                                                                        UNCATEGORIZED_CATEGORY_ID,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Checkbox
+                                                                    checked={
+                                                                        isUncategorizedSelected
+                                                                    }
+                                                                    className="pointer-events-none mr-1"
+                                                                />
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                                                        <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
+                                                                    </div>
+                                                                    {__(
+                                                                        'Uncategorized',
+                                                                    )}
+                                                                </div>
+                                                            </CommandItem>
+                                                        )}
+                                                        {visibleCategoryTree.map(
                                                             (category) => {
-                                                                const isSelected =
-                                                                    filters.categoryIds.includes(
+                                                                const state =
+                                                                    categorySelectionState(
                                                                         category.id,
+                                                                        selectedCategorySet,
+                                                                        categories,
                                                                     );
                                                                 const colorClasses =
                                                                     getCategoryColorClasses(
@@ -387,26 +485,32 @@ export function TransactionFilters({
                                                                         key={
                                                                             category.id
                                                                         }
+                                                                        value={
+                                                                            category.name
+                                                                        }
                                                                         onSelect={() =>
                                                                             handleCategoryToggle(
                                                                                 category.id,
                                                                             )
                                                                         }
+                                                                        style={{
+                                                                            paddingLeft: `${0.5 + category.depth * 1.25}rem`,
+                                                                        }}
                                                                     >
-                                                                        <div
-                                                                            className={cn(
-                                                                                'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
-                                                                                isSelected
-                                                                                    ? 'bg-primary/10 text-primary-foreground'
-                                                                                    : 'opacity-50 [&_svg]:invisible',
-                                                                            )}
-                                                                        >
-                                                                            <Check className="size-3" />
-                                                                        </div>
-                                                                        <div className="flex items-center gap-2">
+                                                                        <Checkbox
+                                                                            checked={
+                                                                                state ===
+                                                                                'indeterminate'
+                                                                                    ? 'indeterminate'
+                                                                                    : state ===
+                                                                                      'checked'
+                                                                            }
+                                                                            className="pointer-events-none mr-1"
+                                                                        />
+                                                                        <div className="flex min-w-0 items-center gap-2">
                                                                             <div
                                                                                 className={cn(
-                                                                                    'flex h-5 w-5 items-center justify-center rounded-full',
+                                                                                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
                                                                                     colorClasses.bg,
                                                                                 )}
                                                                             >
@@ -419,7 +523,7 @@ export function TransactionFilters({
                                                                                     }
                                                                                 />
                                                                             </div>
-                                                                            <span>
+                                                                            <span className="truncate">
                                                                                 {
                                                                                     category.name
                                                                                 }
@@ -504,16 +608,12 @@ export function TransactionFilters({
                                                                         )
                                                                     }
                                                                 >
-                                                                    <div
-                                                                        className={cn(
-                                                                            'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
+                                                                    <Checkbox
+                                                                        checked={
                                                                             isSelected
-                                                                                ? 'bg-primary/10 text-primary-foreground'
-                                                                                : 'opacity-50 [&_svg]:invisible',
-                                                                        )}
-                                                                    >
-                                                                        <Check className="size-3" />
-                                                                    </div>
+                                                                        }
+                                                                        className="pointer-events-none mr-1"
+                                                                    />
                                                                     <div className="flex items-center gap-2">
                                                                         <div
                                                                             className={cn(

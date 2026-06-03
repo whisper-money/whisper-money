@@ -703,3 +703,58 @@ test('assignTransaction matches a budget tracking multiple categories', function
         ->where('budget_period_id', $period->id)
         ->exists())->toBeTrue();
 });
+
+test('a budget tracking a parent category includes child category transactions historically', function () {
+    $parent = Category::factory()->create(['user_id' => $this->user->id]);
+    $child = Category::factory()->childOf($parent)->create(['user_id' => $this->user->id]);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $parent->id,
+        'transaction_date' => now()->subDay(),
+        'amount' => -1000,
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $child->id,
+        'transaction_date' => now()->subDay(),
+        'amount' => -2000,
+    ]);
+
+    $budget = Budget::factory()->forCategories($parent)->create(['user_id' => $this->user->id]);
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $count = $this->service->assignHistoricalTransactionsToPeriod($period);
+
+    expect($count)->toBe(2);
+    expect((int) $period->budgetTransactions()->sum('amount'))->toBe(3000);
+});
+
+test('assigning a child category transaction matches a budget tracking the parent', function () {
+    $parent = Category::factory()->create(['user_id' => $this->user->id]);
+    $child = Category::factory()->childOf($parent)->create(['user_id' => $this->user->id]);
+
+    $budget = Budget::factory()->forCategories($parent)->create(['user_id' => $this->user->id]);
+    $period = BudgetPeriod::factory()->create([
+        'budget_id' => $budget->id,
+        'start_date' => now()->subDays(30),
+        'end_date' => now()->addDays(30),
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $child->id,
+        'transaction_date' => now(),
+        'amount' => -1500,
+    ]);
+
+    $this->service->assignTransaction($transaction);
+
+    expect(BudgetTransaction::where('transaction_id', $transaction->id)
+        ->where('budget_period_id', $period->id)
+        ->exists())->toBeTrue();
+});

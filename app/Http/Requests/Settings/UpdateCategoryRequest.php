@@ -5,14 +5,16 @@ namespace App\Http\Requests\Settings;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryColor;
 use App\Enums\CategoryType;
-use App\Http\Requests\Concerns\ResolvesCategoryCashflowDirection;
+use App\Http\Requests\Settings\Concerns\PreparesCategoryAttributes;
+use App\Models\Category;
+use App\Rules\ValidCategoryParent;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateCategoryRequest extends FormRequest
 {
-    use ResolvesCategoryCashflowDirection;
+    use PreparesCategoryAttributes;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -29,15 +31,23 @@ class UpdateCategoryRequest extends FormRequest
      */
     public function rules(): array
     {
+        $category = $this->route('category');
+
         return [
             'name' => [
                 'required',
                 'string',
                 'max:255',
                 Rule::unique('categories', 'name')
-                    ->where('user_id', auth()->id())
+                    ->where(fn ($query) => $this->scopeUniqueToSiblings($query))
                     ->withoutTrashed()
-                    ->ignore($this->route('category')),
+                    ->ignore($category),
+            ],
+            'parent_id' => [
+                'nullable',
+                'string',
+                'uuid',
+                new ValidCategoryParent($category instanceof Category ? $category : null),
             ],
             'icon' => ['required', 'string'],
             'color' => [

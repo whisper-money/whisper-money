@@ -7,14 +7,17 @@ use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\AccountBalance;
+use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\BalanceLookup;
+use App\Services\CategoryTree;
 use App\Services\ExchangeRateService;
 use App\Services\LoanAmortizationService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class DashboardAnalyticsController extends Controller
@@ -23,6 +26,7 @@ class DashboardAnalyticsController extends Controller
         private ExchangeRateService $exchangeRateService,
         private AccountMetricsService $accountMetricsService,
         private LoanAmortizationService $loanAmortizationService,
+        private CategoryTree $tree,
     ) {}
 
     public function netWorth(Request $request)
@@ -456,9 +460,17 @@ class DashboardAnalyticsController extends Controller
         return response()->json($top);
     }
 
-    private function getCategorySpending(string $userId, Carbon $from, Carbon $to)
+    /**
+     * Spending per top-level category: child category amounts roll up into
+     * their root ancestor so the dashboard only lists parents.
+     *
+     * @return Collection<int, array{category_id: string, amount: int, category: Category}>
+     */
+    private function getCategorySpending(string $userId, Carbon $from, Carbon $to): Collection
     {
-        return Transaction::query()
+        $rootMap = $this->tree->rootAncestorMap($userId);
+
+        $rolledUp = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
@@ -468,16 +480,23 @@ class DashboardAnalyticsController extends Controller
             })
             ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
             ->groupBy('transactions.category_id')
-            ->with('category')
             ->get()
-            ->filter(fn ($item): bool => (int) $item->total_amount < 0)
-            ->map(function ($item) {
-                return [
-                    'category_id' => $item->category_id,
-                    'category' => $item->category,
-                    'amount' => (int) -$item->total_amount,
-                ];
-            });
+            ->groupBy(fn ($item): string => $rootMap[$item->category_id] ?? $item->category_id)
+            ->map(fn (Collection $items, string $rootId): array => [
+                'category_id' => $rootId,
+                'amount' => (int) -$items->sum('total_amount'),
+            ])
+            ->filter(fn (array $item): bool => $item['amount'] > 0);
+
+        $categories = Category::query()
+            ->whereIn('id', $rolledUp->keys())
+            ->get()
+            ->keyBy('id');
+
+        return $rolledUp
+            ->map(fn (array $item): array => [...$item, 'category' => $categories->get($item['category_id'])])
+            ->filter(fn (array $item): bool => $item['category'] !== null)
+            ->values();
     }
 
     private function calculateNetWorthAt(Carbon $date, string $userCurrency): int

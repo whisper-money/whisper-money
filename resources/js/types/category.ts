@@ -136,6 +136,8 @@ export const CATEGORY_CASHFLOW_DIRECTIONS = [
 export type CategoryCashflowDirection =
     (typeof CATEGORY_CASHFLOW_DIRECTIONS)[number];
 
+export const CATEGORY_MAX_DEPTH = 3;
+
 export interface Category {
     id: UUID;
     name: string;
@@ -143,6 +145,7 @@ export interface Category {
     color: CategoryColor;
     type: CategoryType;
     cashflow_direction: CategoryCashflowDirection;
+    parent_id: UUID | null;
 }
 
 export function getCategoryColorClasses(color: CategoryColor): {

@@ -285,13 +285,13 @@ it('can use is empty operator for nullable fields', function () {
         ->wait(1)
         ->click('button:has-text("Create Rule")')
         ->wait(0.5)
-        ->fill('title', 'Empty Category Rule')
+        ->fill('title', 'Empty Creditor Rule')
         ->click('button:has-text("Description")')
         ->wait(0.5)
-        ->click('[role="option"]:has-text("Category")')
+        ->click('[role="option"]:has-text("Creditor Name")')
         ->wait(1)
-        // Click the operator dropdown - it shows "equals" by default for Category field
-        ->click('button[role="combobox"]:has-text("equals")')
+        // Click the operator dropdown - it shows "contains" by default for Creditor Name
+        ->click('button[role="combobox"]:has-text("contains")')
         ->wait(0.5)
         ->click('[role="option"]:has-text("is empty")')
         ->wait(0.5)
@@ -303,11 +303,11 @@ it('can use is empty operator for nullable fields', function () {
 
     $page->navigate('/settings/automation-rules')->wait(1);
 
-    $page->assertSee('Empty Category Rule')
+    $page->assertSee('Empty Creditor Rule')
         ->assertNoJavascriptErrors();
 
     $this->assertDatabaseHas('automation_rules', [
         'user_id' => $user->id,
-        'title' => 'Empty Category Rule',
+        'title' => 'Empty Creditor Rule',
     ]);
 });

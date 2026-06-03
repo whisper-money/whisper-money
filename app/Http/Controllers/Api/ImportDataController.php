@@ -20,8 +20,8 @@ class ImportDataController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']),
             'categories' => $user->categories()
-                ->orderBy('name')
-                ->get(['id', 'name', 'icon', 'color']),
+                ->forDisplay()
+                ->get(),
             'banks' => $user->banks()
                 ->orderBy('name')
                 ->get(['id', 'name', 'logo']),

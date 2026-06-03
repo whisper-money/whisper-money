@@ -29,8 +29,8 @@ class OnboardingController extends Controller
 
         $categories = Category::query()
             ->where('user_id', $user->id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'icon', 'color', 'type']);
+            ->forDisplay()
+            ->get();
 
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
