@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests\OpenBanking;
 
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class MapAccountsRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     public function authorize(): bool
     {
         return $this->route('connection')->user_id === $this->user()->id;
@@ -25,7 +27,7 @@ class MapAccountsRequest extends FormRequest
                 'nullable',
                 'uuid',
                 'required_if:mappings.*.action,link',
-                Rule::exists('accounts', 'id')->where('user_id', $this->user()->id),
+                $this->userOwned('accounts'),
             ],
         ];
     }

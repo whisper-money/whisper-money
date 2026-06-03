@@ -4,11 +4,14 @@ namespace App\Http\Requests;
 
 use App\Enums\BudgetPeriodType;
 use App\Enums\RolloverType;
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreBudgetRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     public function authorize(): bool
     {
         return true;
@@ -16,16 +19,14 @@ class StoreBudgetRequest extends FormRequest
 
     public function rules(): array
     {
-        $userId = $this->user()->id;
-
         return [
             'name' => ['required', 'string', 'max:255'],
             'period_type' => ['required', Rule::enum(BudgetPeriodType::class)],
             'period_start_day' => ['nullable', 'integer', 'min:0', 'max:31'],
             'category_ids' => ['nullable', 'array'],
-            'category_ids.*' => [Rule::exists('categories', 'id')->where('user_id', $userId)],
+            'category_ids.*' => [$this->userOwned('categories')],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => [Rule::exists('labels', 'id')->where('user_id', $userId)],
+            'label_ids.*' => [$this->userOwned('labels')],
             'rollover_type' => ['required', Rule::enum(RolloverType::class)],
             'allocated_amount' => ['required', 'integer', 'min:0'],
         ];

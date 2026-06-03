@@ -3,11 +3,14 @@
 namespace App\Http\Requests;
 
 use App\Enums\TransactionSource;
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreTransactionRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     public function authorize(): bool
     {
         return true;
@@ -17,18 +20,8 @@ class StoreTransactionRequest extends FormRequest
     {
         return [
             'id' => ['sometimes', 'uuid'],
-            'account_id' => [
-                'required',
-                Rule::exists('accounts', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
-            'category_id' => [
-                'nullable',
-                Rule::exists('categories', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
+            'account_id' => ['required', $this->userOwned('accounts')],
+            'category_id' => ['nullable', $this->userOwned('categories')],
             'description' => ['required', 'string'],
             'description_iv' => ['nullable', 'string', 'size:16'],
             'transaction_date' => ['required', 'date'],
@@ -40,13 +33,7 @@ class StoreTransactionRequest extends FormRequest
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'source' => ['required', Rule::enum(TransactionSource::class)],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => [
-                'string',
-                'uuid',
-                Rule::exists('labels', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
+            'label_ids.*' => ['string', 'uuid', $this->userOwned('labels')],
         ];
     }
 
