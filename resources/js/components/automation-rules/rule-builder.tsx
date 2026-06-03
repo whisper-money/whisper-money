@@ -1,3 +1,4 @@
+import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -225,7 +226,7 @@ export function RuleBuilder({ value, onChange, error }: RuleBuilderProps) {
                 {__('Add Group')}
             </Button>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            <InputError message={error} />
         </div>
     );
 }

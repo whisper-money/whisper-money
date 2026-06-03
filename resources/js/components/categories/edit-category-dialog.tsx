@@ -1,5 +1,6 @@
 import { update } from '@/actions/App/Http/Controllers/Settings/CategoryController';
 import { CategoryCashflowDirectionFields } from '@/components/categories/category-cashflow-direction-fields';
+import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -78,11 +79,7 @@ export function EditCategoryDialog({
                                     required
                                 />
 
-                                {errors.name && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.name}
-                                    </p>
-                                )}
+                                <InputError message={errors.name} />
                             </div>
 
                             <div className="space-y-2">
@@ -116,11 +113,7 @@ export function EditCategoryDialog({
                                         })}
                                     </SelectContent>
                                 </Select>
-                                {errors.icon && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.icon}
-                                    </p>
-                                )}
+                                <InputError message={errors.icon} />
                             </div>
 
                             <div className="space-y-2">
@@ -156,11 +149,7 @@ export function EditCategoryDialog({
                                         })}
                                     </SelectContent>
                                 </Select>
-                                {errors.color && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.color}
-                                    </p>
-                                )}
+                                <InputError message={errors.color} />
                             </div>
 
                             <div className="space-y-2">
@@ -186,11 +175,7 @@ export function EditCategoryDialog({
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                {errors.type && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.type}
-                                    </p>
-                                )}
+                                <InputError message={errors.type} />
                             </div>
 
                             <CategoryCashflowDirectionFields

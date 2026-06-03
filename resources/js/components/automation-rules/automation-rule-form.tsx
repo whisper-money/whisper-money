@@ -3,6 +3,7 @@ import {
     update,
 } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { RuleBuilder } from '@/components/automation-rules/rule-builder';
+import InputError from '@/components/input-error';
 import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { Button } from '@/components/ui/button';
@@ -170,9 +171,7 @@ export function AutomationRuleForm({
                     required
                 />
 
-                {errors.title && (
-                    <p className="text-sm text-red-500">{errors.title}</p>
-                )}
+                <InputError message={errors.title} />
             </div>
 
             <RuleBuilder
@@ -220,9 +219,7 @@ export function AutomationRuleForm({
                     />
                 </div>
 
-                {actionError && (
-                    <p className="text-sm text-red-500">{actionError}</p>
-                )}
+                <InputError message={actionError} />
             </div>
 
             <div className="flex justify-end gap-2">
