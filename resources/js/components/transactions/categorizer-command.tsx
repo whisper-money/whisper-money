@@ -9,12 +9,17 @@ import {
 } from '@/components/ui/command';
 import { Kbd } from '@/components/ui/kbd';
 import { type AnimationState } from '@/hooks/use-categorize-transactions';
+import {
+    buildCategoryTree,
+    flattenCategoryTree,
+    getCategoryPath,
+} from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { type RefObject } from 'react';
+import { type RefObject, useMemo } from 'react';
 
 interface CategorizerCommandProps {
     sortedCategories: Category[];
@@ -37,6 +42,11 @@ export function CategorizerCommand({
     commandInputRef,
     disabled = false,
 }: CategorizerCommandProps) {
+    const treeCategories = useMemo(
+        () => flattenCategoryTree(buildCategoryTree(sortedCategories)),
+        [sortedCategories],
+    );
+
     if (animationState === 'success' || !currentTransaction) {
         return null;
     }
@@ -81,19 +91,25 @@ export function CategorizerCommand({
                 <CommandList className="max-h-64">
                     <CommandEmpty>{__('No categories found.')}</CommandEmpty>
                     <CommandGroup>
-                        {sortedCategories.map((category) => {
+                        {treeCategories.map((category) => {
                             const colorClasses = getCategoryColorClasses(
                                 category.color,
                             );
                             return (
                                 <CommandItem
                                     key={category.id}
-                                    value={category.name}
+                                    value={getCategoryPath(
+                                        category.id,
+                                        sortedCategories,
+                                    )}
                                     onSelect={() => onCategorySelect(category)}
                                     disabled={
                                         animationState !== 'idle' || disabled
                                     }
                                     className="group cursor-pointer gap-3 p-2"
+                                    style={{
+                                        paddingLeft: `${0.5 + category.depth * 1.25}rem`,
+                                    }}
                                 >
                                     <div
                                         className={cn(

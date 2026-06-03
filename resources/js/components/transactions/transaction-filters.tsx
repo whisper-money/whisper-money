@@ -373,7 +373,7 @@ export function TransactionFilters({
                                                         >
                                                             <div
                                                                 className={cn(
-                                                                    'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
+                                                                    'mr-1 flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary p-1',
                                                                     isUncategorizedSelected
                                                                         ? 'bg-primary/10 text-primary-foreground'
                                                                         : 'opacity-50 [&_svg]:invisible',
@@ -382,7 +382,7 @@ export function TransactionFilters({
                                                                 <Check className="size-3" />
                                                             </div>
                                                             <div className="flex items-center gap-2">
-                                                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                                                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
                                                                     <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
                                                                 </div>
                                                                 {__(
@@ -421,7 +421,7 @@ export function TransactionFilters({
                                                                     >
                                                                         <div
                                                                             className={cn(
-                                                                                'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
+                                                                                'mr-1 flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary p-1',
                                                                                 state ===
                                                                                     'unchecked'
                                                                                     ? 'opacity-50 [&_svg]:invisible'
@@ -435,10 +435,10 @@ export function TransactionFilters({
                                                                                 <Check className="size-3" />
                                                                             )}
                                                                         </div>
-                                                                        <div className="flex items-center gap-2">
+                                                                        <div className="flex min-w-0 items-center gap-2">
                                                                             <div
                                                                                 className={cn(
-                                                                                    'flex h-5 w-5 items-center justify-center rounded-full',
+                                                                                    'flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
                                                                                     colorClasses.bg,
                                                                                 )}
                                                                             >
@@ -451,7 +451,7 @@ export function TransactionFilters({
                                                                                     }
                                                                                 />
                                                                             </div>
-                                                                            <span>
+                                                                            <span className="truncate">
                                                                                 {
                                                                                     category.name
                                                                                 }
@@ -538,7 +538,7 @@ export function TransactionFilters({
                                                                 >
                                                                     <div
                                                                         className={cn(
-                                                                            'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
+                                                                            'mr-1 flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary p-1',
                                                                             isSelected
                                                                                 ? 'bg-primary/10 text-primary-foreground'
                                                                                 : 'opacity-50 [&_svg]:invisible',
