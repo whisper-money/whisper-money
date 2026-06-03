@@ -4,6 +4,7 @@ namespace App\Http\Requests\Settings;
 
 use App\Enums\AccountType;
 use App\Enums\PropertyType;
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class UpdateAccountRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -59,10 +62,7 @@ class UpdateAccountRequest extends FormRequest
                 'linked_loan_account_id' => [
                     'nullable',
                     'string',
-                    Rule::exists('accounts', 'id')->where(function ($query) {
-                        $query->where('user_id', $this->user()->id)
-                            ->where('type', AccountType::Loan->value);
-                    }),
+                    $this->userOwnedAccountOfType(AccountType::Loan),
                 ],
                 'notes' => ['nullable', 'string', 'max:2000'],
                 'revaluation_percentage' => ['nullable', 'numeric', 'min:-100', 'max:100'],

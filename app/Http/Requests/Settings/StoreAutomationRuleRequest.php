@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreAutomationRuleRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -35,9 +37,7 @@ class StoreAutomationRuleRequest extends FormRequest
             'action_category_id' => [
                 'nullable',
                 'string',
-                Rule::exists('categories', 'id')->where(function ($query) {
-                    $query->where('user_id', auth()->id());
-                }),
+                $this->userOwned('categories'),
             ],
             'action_note' => ['nullable', 'string'],
             'action_note_iv' => ['nullable', 'string', 'required_with:action_note'],
@@ -46,9 +46,7 @@ class StoreAutomationRuleRequest extends FormRequest
                 'required',
                 'string',
                 'uuid',
-                Rule::exists('labels', 'id')->where(function ($query) {
-                    $query->where('user_id', auth()->id());
-                }),
+                $this->userOwned('labels'),
             ],
         ];
     }

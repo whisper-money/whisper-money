@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateTransactionRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     public function authorize(): bool
     {
         return true;
@@ -15,12 +17,7 @@ class UpdateTransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_id' => [
-                'nullable',
-                Rule::exists('categories', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
+            'category_id' => ['nullable', $this->userOwned('categories')],
             'description' => ['sometimes', 'string'],
             'description_iv' => ['nullable', 'string', 'size:16'],
             'notes' => ['nullable', 'string'],
@@ -28,14 +25,7 @@ class UpdateTransactionRequest extends FormRequest
             'creditor_name' => ['nullable', 'string', 'max:255'],
             'debtor_name' => ['nullable', 'string', 'max:255'],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => [
-                'required',
-                'string',
-                'uuid',
-                Rule::exists('labels', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
+            'label_ids.*' => ['required', 'string', 'uuid', $this->userOwned('labels')],
         ];
     }
 

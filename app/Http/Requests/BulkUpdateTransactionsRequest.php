@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class BulkUpdateTransactionsRequest extends FormRequest
 {
+    use ValidatesUserOwnedResources;
+
     public function authorize(): bool
     {
         return true;
@@ -23,44 +25,20 @@ class BulkUpdateTransactionsRequest extends FormRequest
             'filters.amount_min' => ['nullable', 'numeric'],
             'filters.amount_max' => ['nullable', 'numeric'],
             'filters.category_ids' => ['nullable', 'array'],
-            'filters.category_ids.*' => [
-                'string',
-                'uuid',
-                Rule::exists('categories', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
+            'filters.category_ids.*' => ['string', 'uuid', $this->userOwned('categories')],
             'filters.account_ids' => ['nullable', 'array'],
             'filters.account_ids.*' => ['string', 'uuid'],
             'filters.label_ids' => ['nullable', 'array'],
-            'filters.label_ids.*' => [
-                'string',
-                'uuid',
-                Rule::exists('labels', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
+            'filters.label_ids.*' => ['string', 'uuid', $this->userOwned('labels')],
             'filters.creditor_name' => ['nullable', 'string'],
             'filters.debtor_name' => ['nullable', 'string'],
             'filters.search' => ['nullable', 'string'],
             'filters.search_text' => ['nullable', 'string'],
-            'category_id' => [
-                'nullable',
-                Rule::exists('categories', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
+            'category_id' => ['nullable', $this->userOwned('categories')],
             'notes' => ['nullable', 'string'],
             'notes_iv' => ['nullable', 'string', 'size:16'],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => [
-                'required',
-                'string',
-                'uuid',
-                Rule::exists('labels', 'id')->where(function ($query) {
-                    $query->where('user_id', $this->user()->id);
-                }),
-            ],
+            'label_ids.*' => ['required', 'string', 'uuid', $this->userOwned('labels')],
         ];
     }
 
