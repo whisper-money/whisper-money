@@ -2,7 +2,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Command,
-    CommandEmpty,
     CommandInput,
     CommandItem,
     CommandList,
@@ -86,6 +85,39 @@ export function CategoryCombobox({
         [categories],
     );
 
+    const query = filterValue.trim().toLowerCase();
+
+    // Tree-aware search: keep every match plus its ancestors, so a matching
+    // child is always shown under its parent for context.
+    const visibleNodes = useMemo(() => {
+        if (!query) {
+            return orderedNodes;
+        }
+
+        const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
+        const include = new Set<string>();
+        for (const category of categories) {
+            if (!category.name.toLowerCase().includes(query)) {
+                continue;
+            }
+            let id: string | null | undefined = category.id;
+            let guard = 0;
+            while (id != null && guard++ < 10) {
+                include.add(id);
+                id = parentOf.get(id);
+            }
+        }
+
+        return orderedNodes.filter((node) => include.has(node.id));
+    }, [orderedNodes, categories, query]);
+
+    const showNone =
+        showUncategorized &&
+        (query === '' ||
+            noneLabel.toLowerCase().includes(query) ||
+            'uncategorized'.includes(query));
+    const hasResults = visibleNodes.length > 0 || showNone;
+
     useEffect(() => {
         if (filterValue && listRef.current) {
             listRef.current.scrollTop = 0;
@@ -143,7 +175,7 @@ export function CategoryCombobox({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0" align="start">
-                <Command>
+                <Command shouldFilter={false}>
                     <CommandInput
                         placeholder={__('Search categories...')}
                         value={filterValue}
@@ -151,8 +183,12 @@ export function CategoryCombobox({
                     />
 
                     <CommandList ref={listRef}>
-                        <CommandEmpty>{__('No category found.')}</CommandEmpty>
-                        {showUncategorized && (
+                        {!hasResults && (
+                            <div className="py-6 text-center text-sm text-muted-foreground">
+                                {__('No category found.')}
+                            </div>
+                        )}
+                        {showNone && (
                             <CommandItem
                                 value="uncategorized"
                                 onSelect={() => {
@@ -176,7 +212,7 @@ export function CategoryCombobox({
                                 />
                             </CommandItem>
                         )}
-                        {orderedNodes.map((category) => (
+                        {visibleNodes.map((category) => (
                             <CommandItem
                                 key={category.id}
                                 value={getCategoryPath(category.id, categories)}
