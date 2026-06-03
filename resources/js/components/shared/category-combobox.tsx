@@ -54,6 +54,8 @@ interface CategoryComboboxProps {
     triggerClassName?: string;
     showUncategorized?: boolean;
     withoutChevronIcon?: boolean;
+    /** Label for the empty / "no category" option (defaults to Uncategorized). */
+    emptyOptionLabel?: string;
     'data-testid'?: string;
 }
 
@@ -66,8 +68,10 @@ export function CategoryCombobox({
     triggerClassName,
     showUncategorized = true,
     withoutChevronIcon = false,
+    emptyOptionLabel,
     'data-testid': dataTestId,
 }: CategoryComboboxProps) {
+    const noneLabel = emptyOptionLabel ?? __('Uncategorized');
     const [open, setOpen] = useState(false);
     const [filterValue, setFilterValue] = useState('');
     const listRef = useRef<HTMLDivElement>(null);
@@ -125,7 +129,7 @@ export function CategoryCombobox({
                                 <HelpCircle className="h-3 w-3 text-zinc-500" />
                             </div>
                             <span className="truncate text-zinc-500">
-                                {__('Uncategorized')}
+                                {noneLabel}
                             </span>
                         </div>
                     ) : (
@@ -160,7 +164,7 @@ export function CategoryCombobox({
                                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
                                         <HelpCircle className="h-3 w-3 text-zinc-500" />
                                     </div>
-                                    <span>{__('Uncategorized')}</span>
+                                    <span>{noneLabel}</span>
                                 </div>
                                 <Check
                                     className={cn(
