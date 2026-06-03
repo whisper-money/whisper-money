@@ -418,7 +418,7 @@ export function TransactionFilters({
                                                                             )
                                                                         }
                                                                         style={{
-                                                                            paddingLeft: `${category.depth * 1.25}rem`,
+                                                                            paddingLeft: `${0.5 + category.depth * 1.25}rem`,
                                                                         }}
                                                                     >
                                                                         <div
