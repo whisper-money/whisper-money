@@ -72,8 +72,8 @@ class TransactionController extends Controller
 
         $categories = Category::query()
             ->where('user_id', $user->id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'icon', 'color']);
+            ->forDisplay()
+            ->get();
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
@@ -114,8 +114,8 @@ class TransactionController extends Controller
 
         $categories = Category::query()
             ->where('user_id', $user->id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'icon', 'color', 'type']);
+            ->forDisplay()
+            ->get();
 
         $accounts = Account::query()
             ->where('user_id', $user->id)

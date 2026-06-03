@@ -518,7 +518,8 @@ class CashflowAnalyticsController extends Controller
     {
         $categories = Category::query()
             ->where('user_id', $userId)
-            ->get(['id', 'name', 'icon', 'color', 'type', 'cashflow_direction', 'parent_id'])
+            ->forDisplay()
+            ->get()
             ->keyBy('id');
 
         $parentMap = $categories->mapWithKeys(fn (Category $category): array => [$category->id => $category->parent_id])->all();

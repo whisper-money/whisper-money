@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
 use Database\Factories\CategoryFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,22 @@ class Category extends Model
      * Maximum allowed nesting depth (a root counts as level 1).
      */
     public const int MAX_DEPTH = 3;
+
+    /**
+     * Columns sent to the frontend. Always returns the full Category shape so
+     * every selector receives the same object regardless of what it needs.
+     *
+     * @var list<string>
+     */
+    public const array FRONTEND_COLUMNS = [
+        'id',
+        'name',
+        'icon',
+        'color',
+        'type',
+        'cashflow_direction',
+        'parent_id',
+    ];
 
     protected $fillable = [
         'name',
@@ -80,5 +97,17 @@ class Category extends Model
     public function isRoot(): bool
     {
         return $this->parent_id === null;
+    }
+
+    /**
+     * Scope for fetching categories to send to the frontend: the full, ordered
+     * Category shape used by every category selector.
+     *
+     * @param  Builder<Category>  $query
+     * @return Builder<Category>
+     */
+    public function scopeForDisplay(Builder $query): Builder
+    {
+        return $query->orderBy('name')->select(self::FRONTEND_COLUMNS);
     }
 }
