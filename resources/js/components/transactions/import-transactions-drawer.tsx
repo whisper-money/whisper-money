@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/drawer';
 import { Progress } from '@/components/ui/progress';
 import { importKey } from '@/lib/crypto';
+import { getCsrfToken } from '@/lib/csrf';
 import {
     autoDetectColumns,
     calculateBalancesFromTransactions,
@@ -633,12 +634,7 @@ export function ImportTransactionsDrawer({
 
         if (balancesToImport.size > 0) {
             try {
-                const xsrfToken = decodeURIComponent(
-                    document.cookie
-                        .split('; ')
-                        .find((row) => row.startsWith('XSRF-TOKEN='))
-                        ?.split('=')[1] || '',
-                );
+                const xsrfToken = getCsrfToken();
 
                 const balanceRecords = Array.from(balancesToImport.entries());
 

@@ -12,6 +12,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { getCsrfToken } from '@/lib/csrf';
 import { SharedData } from '@/types';
 import { Account } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -87,12 +88,7 @@ export function CreateAccountDialog({
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                     Accept: 'application/json',
                 },
             });

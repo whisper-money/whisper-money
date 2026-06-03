@@ -14,6 +14,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import { getLabelColorClasses, LABEL_COLORS, type Label } from '@/types/label';
 import { __ } from '@/utils/i18n';
@@ -101,12 +102,7 @@ export function LabelCombobox({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({

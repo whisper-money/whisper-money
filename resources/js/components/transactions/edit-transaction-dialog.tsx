@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
 import { decrypt, importKey } from '@/lib/crypto';
+import { getCsrfToken } from '@/lib/csrf';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
@@ -281,12 +282,7 @@ export function EditTransactionDialog({
         transactionDateStr: string,
         transactionAmount: number,
     ) {
-        const xsrfToken = decodeURIComponent(
-            document.cookie
-                .split('; ')
-                .find((row) => row.startsWith('XSRF-TOKEN='))
-                ?.split('=')[1] || '',
-        );
+        const xsrfToken = getCsrfToken();
 
         try {
             // Fetch balances from backend

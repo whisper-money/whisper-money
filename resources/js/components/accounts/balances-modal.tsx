@@ -34,6 +34,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLocale } from '@/hooks/use-locale';
+import { getCsrfToken } from '@/lib/csrf';
 import type { SharedData } from '@/types';
 import type { Account, AccountBalance } from '@/types/account';
 import {
@@ -158,12 +159,7 @@ export function BalancesModal({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
@@ -202,12 +198,7 @@ export function BalancesModal({
                 {
                     method: 'DELETE',
                     headers: {
-                        'X-XSRF-TOKEN': decodeURIComponent(
-                            document.cookie
-                                .split('; ')
-                                .find((row) => row.startsWith('XSRF-TOKEN='))
-                                ?.split('=')[1] || '',
-                        ),
+                        'X-XSRF-TOKEN': getCsrfToken(),
                         Accept: 'application/json',
                     },
                 },

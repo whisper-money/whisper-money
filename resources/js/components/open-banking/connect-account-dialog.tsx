@@ -17,6 +17,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { getCsrfToken } from '@/lib/csrf';
 import type {
     BankingConnection,
     EnableBankingInstitution,
@@ -80,15 +81,6 @@ interface ConnectAccountDialogProps {
 }
 
 type Step = 'country' | 'bank' | 'confirm';
-
-function getCsrfToken(): string {
-    return decodeURIComponent(
-        document.cookie
-            .split('; ')
-            .find((row) => row.startsWith('XSRF-TOKEN='))
-            ?.split('=')[1] || '',
-    );
-}
 
 export function ConnectAccountDialog({
     open,

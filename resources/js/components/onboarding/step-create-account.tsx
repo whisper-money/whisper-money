@@ -9,6 +9,7 @@ import { StepHeader } from '@/components/onboarding/step-header';
 import { ConnectAccountInline } from '@/components/open-banking/connect-account-inline';
 import { Button } from '@/components/ui/button';
 import { CreatedAccount } from '@/hooks/use-onboarding-state';
+import { getCsrfToken } from '@/lib/csrf';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
 import { formatCurrency } from '@/utils/currency';
@@ -128,12 +129,7 @@ export function StepCreateAccount({
             method: 'POST',
             body: formData,
             headers: {
-                'X-XSRF-TOKEN': decodeURIComponent(
-                    document.cookie
-                        .split('; ')
-                        .find((row) => row.startsWith('XSRF-TOKEN='))
-                        ?.split('=')[1] || '',
-                ),
+                'X-XSRF-TOKEN': getCsrfToken(),
                 Accept: 'application/json',
             },
         });
@@ -262,12 +258,7 @@ export function StepCreateAccount({
                 }),
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                     Accept: 'application/json',
                 },
             });
