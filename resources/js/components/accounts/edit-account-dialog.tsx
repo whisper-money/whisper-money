@@ -9,6 +9,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { decrypt, importKey } from '@/lib/crypto';
+import { getCsrfToken } from '@/lib/csrf';
 import { getStoredKey } from '@/lib/key-storage';
 import type { Account, LoanDetail, RealEstateDetail } from '@/types/account';
 import { __ } from '@/utils/i18n';
@@ -165,12 +166,7 @@ export function EditAccountDialog({
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-XSRF-TOKEN': decodeURIComponent(
-                        document.cookie
-                            .split('; ')
-                            .find((row) => row.startsWith('XSRF-TOKEN='))
-                            ?.split('=')[1] || '',
-                    ),
+                    'X-XSRF-TOKEN': getCsrfToken(),
                     Accept: 'application/json',
                 },
             });

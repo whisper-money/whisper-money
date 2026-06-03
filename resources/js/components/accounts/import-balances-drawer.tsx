@@ -12,6 +12,7 @@ import {
     loadBalanceImportConfig,
     saveBalanceImportConfig,
 } from '@/lib/balance-import-config-storage';
+import { getCsrfToken } from '@/lib/csrf';
 import {
     autoDetectDateFormat,
     parseAmount,
@@ -425,12 +426,7 @@ export function ImportBalancesDrawer({
         const BATCH_SIZE = 50;
         let processedCount = 0;
 
-        const xsrfToken = decodeURIComponent(
-            document.cookie
-                .split('; ')
-                .find((row) => row.startsWith('XSRF-TOKEN='))
-                ?.split('=')[1] || '',
-        );
+        const xsrfToken = getCsrfToken();
 
         for (let i = 0; i < state.balances.length; i += BATCH_SIZE) {
             const batch = state.balances.slice(i, i + BATCH_SIZE);

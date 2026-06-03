@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
+import { getCsrfToken } from '@/lib/csrf';
 import type {
     BankingConnection,
     EnableBankingInstitution,
@@ -69,15 +70,6 @@ const COINBASE_INSTITUTION: EnableBankingInstitution = {
 };
 
 type Step = 'country' | 'bank' | 'confirm';
-
-function getCsrfToken(): string {
-    return decodeURIComponent(
-        document.cookie
-            .split('; ')
-            .find((row) => row.startsWith('XSRF-TOKEN='))
-            ?.split('=')[1] || '',
-    );
-}
 
 interface ConnectAccountInlineProps {
     onBack: () => void;
