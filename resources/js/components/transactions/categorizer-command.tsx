@@ -1,7 +1,6 @@
 import { CategoryIcon } from '@/components/shared/category-combobox';
 import {
     Command,
-    CommandEmpty,
     CommandGroup,
     CommandInput,
     CommandItem,
@@ -47,6 +46,34 @@ export function CategorizerCommand({
         [sortedCategories],
     );
 
+    const query = searchValue.trim().toLowerCase();
+
+    // Tree-aware search: keep each match together with its ancestors so a
+    // matching child still shows its parent chain for context.
+    const visibleCategories = useMemo(() => {
+        if (!query) {
+            return treeCategories;
+        }
+
+        const parentOf = new Map(
+            sortedCategories.map((c) => [c.id, c.parent_id]),
+        );
+        const include = new Set<string>();
+        for (const category of sortedCategories) {
+            if (!category.name.toLowerCase().includes(query)) {
+                continue;
+            }
+            let id: string | null | undefined = category.id;
+            let guard = 0;
+            while (id != null && guard++ < 10) {
+                include.add(id);
+                id = parentOf.get(id);
+            }
+        }
+
+        return treeCategories.filter((node) => include.has(node.id));
+    }, [treeCategories, sortedCategories, query]);
+
     if (animationState === 'success' || !currentTransaction) {
         return null;
     }
@@ -78,7 +105,7 @@ export function CategorizerCommand({
             </div>
             <Command
                 className="rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900"
-                shouldFilter={true}
+                shouldFilter={false}
             >
                 <CommandInput
                     ref={commandInputRef}
@@ -89,9 +116,13 @@ export function CategorizerCommand({
                 />
 
                 <CommandList className="max-h-64">
-                    <CommandEmpty>{__('No categories found.')}</CommandEmpty>
+                    {visibleCategories.length === 0 && (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                            {__('No categories found.')}
+                        </div>
+                    )}
                     <CommandGroup>
-                        {treeCategories.map((category) => {
+                        {visibleCategories.map((category) => {
                             const colorClasses = getCategoryColorClasses(
                                 category.color,
                             );
