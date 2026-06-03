@@ -2,7 +2,7 @@ import { __ } from '@/utils/i18n';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { Check, ChevronsUpDown, Tag, X } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,12 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    buildCategoryTree,
+    categorySelectionState,
+    flattenCategoryTree,
+    toggleCategorySelection,
+} from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
 import { type Account } from '@/types/account';
 import { type Category, getCategoryColorClasses } from '@/types/category';
@@ -93,12 +99,24 @@ export function TransactionFilters({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters.searchText, filters.creditorName, filters.debtorName]);
 
-    function handleCategoryToggle(categoryId: string) {
-        const newCategoryIds = filters.categoryIds.includes(categoryId)
-            ? filters.categoryIds.filter((id) => id !== categoryId)
-            : [...filters.categoryIds, categoryId];
+    const categoryTree = useMemo(
+        () => flattenCategoryTree(buildCategoryTree(categories)),
+        [categories],
+    );
+    const selectedCategorySet = useMemo(
+        () => new Set(filters.categoryIds),
+        [filters.categoryIds],
+    );
 
-        onFiltersChange({ ...filters, categoryIds: newCategoryIds });
+    function handleCategoryToggle(categoryId: string) {
+        onFiltersChange({
+            ...filters,
+            categoryIds: toggleCategorySelection(
+                filters.categoryIds,
+                categoryId,
+                categories,
+            ),
+        });
     }
 
     function handleAccountToggle(accountId: number) {
@@ -372,11 +390,13 @@ export function TransactionFilters({
                                                                 )}
                                                             </div>
                                                         </CommandItem>
-                                                        {categories.map(
+                                                        {categoryTree.map(
                                                             (category) => {
-                                                                const isSelected =
-                                                                    filters.categoryIds.includes(
+                                                                const state =
+                                                                    categorySelectionState(
                                                                         category.id,
+                                                                        selectedCategorySet,
+                                                                        categories,
                                                                     );
                                                                 const colorClasses =
                                                                     getCategoryColorClasses(
@@ -387,21 +407,33 @@ export function TransactionFilters({
                                                                         key={
                                                                             category.id
                                                                         }
+                                                                        value={
+                                                                            category.name
+                                                                        }
                                                                         onSelect={() =>
                                                                             handleCategoryToggle(
                                                                                 category.id,
                                                                             )
                                                                         }
+                                                                        style={{
+                                                                            paddingLeft: `${category.depth * 1.25}rem`,
+                                                                        }}
                                                                     >
                                                                         <div
                                                                             className={cn(
                                                                                 'mr-1 flex size-4 items-center justify-center rounded-sm border border-primary p-1',
-                                                                                isSelected
-                                                                                    ? 'bg-primary/10 text-primary-foreground'
-                                                                                    : 'opacity-50 [&_svg]:invisible',
+                                                                                state ===
+                                                                                    'unchecked'
+                                                                                    ? 'opacity-50 [&_svg]:invisible'
+                                                                                    : 'bg-primary/10 text-primary-foreground',
                                                                             )}
                                                                         >
-                                                                            <Check className="size-3" />
+                                                                            {state ===
+                                                                            'indeterminate' ? (
+                                                                                <Icons.Minus className="size-3" />
+                                                                            ) : (
+                                                                                <Check className="size-3" />
+                                                                            )}
                                                                         </div>
                                                                         <div className="flex items-center gap-2">
                                                                             <div
