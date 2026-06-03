@@ -2,16 +2,14 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\AccountType;
-use App\Enums\PropertyType;
+use App\Http\Requests\Concerns\ValidatesAccountDetailRules;
 use App\Http\Requests\Concerns\ValidatesUserOwnedResources;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreRealEstateDetailRequest extends FormRequest
 {
-    use ValidatesUserOwnedResources;
+    use ValidatesAccountDetailRules, ValidatesUserOwnedResources;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -28,23 +26,6 @@ class StoreRealEstateDetailRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'property_type' => [
-                'required',
-                'string',
-                Rule::in(array_map(fn ($type) => $type->value, PropertyType::cases())),
-            ],
-            'address' => ['nullable', 'string', 'max:500'],
-            'purchase_price' => ['nullable', 'integer', 'min:0'],
-            'purchase_date' => ['nullable', 'date', 'before_or_equal:today'],
-            'area_value' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'area_unit' => ['nullable', 'string', Rule::in(['sqm', 'sqft', 'acres', 'hectares'])],
-            'linked_loan_account_id' => [
-                'nullable',
-                'string',
-                $this->userOwnedAccountOfType(AccountType::Loan),
-            ],
-            'notes' => ['nullable', 'string', 'max:2000'],
-        ];
+        return $this->realEstateDetailRules(withRevaluation: false);
     }
 }
