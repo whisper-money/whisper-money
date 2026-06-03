@@ -57,6 +57,7 @@ export function TransactionFilters({
 }: TransactionFiltersProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+    const [categorySearch, setCategorySearch] = useState('');
     const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
     const [searchText, setSearchText] = useState(filters.searchText);
     const [creditorName, setCreditorName] = useState(filters.creditorName);
@@ -140,6 +141,37 @@ export function TransactionFilters({
         () => new Set(filters.categoryIds),
         [filters.categoryIds],
     );
+
+    // Tree-aware search: keep each match together with its ancestors so a
+    // matching child still shows its parent chain for context.
+    const visibleCategoryTree = useMemo(() => {
+        const query = categorySearch.trim().toLowerCase();
+        if (!query) {
+            return categoryTree;
+        }
+
+        const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
+        const include = new Set<string>();
+        for (const category of categories) {
+            if (!category.name.toLowerCase().includes(query)) {
+                continue;
+            }
+            let id: string | null | undefined = category.id;
+            let guard = 0;
+            while (id != null && guard++ < 10) {
+                include.add(id);
+                id = parentOf.get(id);
+            }
+        }
+
+        return categoryTree.filter((node) => include.has(node.id));
+    }, [categoryTree, categories, categorySearch]);
+
+    const showUncategorizedRow =
+        categorySearch.trim() === '' ||
+        'uncategorized'.includes(categorySearch.trim().toLowerCase());
+    const hasCategoryResults =
+        visibleCategoryTree.length > 0 || showUncategorizedRow;
 
     function handleCategoryToggle(categoryId: string) {
         onFiltersChange({
@@ -358,6 +390,8 @@ export function TransactionFilters({
                                                             filters.categoryIds,
                                                         ),
                                                     );
+                                                } else {
+                                                    setCategorySearch('');
                                                 }
                                                 setCategoryDropdownOpen(open);
                                             }}
@@ -392,41 +426,49 @@ export function TransactionFilters({
                                                 className="w-full p-0"
                                                 align="start"
                                             >
-                                                <Command>
+                                                <Command shouldFilter={false}>
                                                     <CommandInput
                                                         placeholder={__(
                                                             'Search categories...',
                                                         )}
+                                                        value={categorySearch}
+                                                        onValueChange={
+                                                            setCategorySearch
+                                                        }
                                                     />
                                                     <CommandList>
-                                                        <CommandEmpty>
-                                                            {__(
-                                                                'No category found.',
-                                                            )}
-                                                        </CommandEmpty>
-                                                        <CommandItem
-                                                            onSelect={() =>
-                                                                handleCategoryToggle(
-                                                                    UNCATEGORIZED_CATEGORY_ID,
-                                                                )
-                                                            }
-                                                        >
-                                                            <Checkbox
-                                                                checked={
-                                                                    isUncategorizedSelected
-                                                                }
-                                                                className="pointer-events-none mr-1"
-                                                            />
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                                                    <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
-                                                                </div>
+                                                        {!hasCategoryResults && (
+                                                            <div className="py-6 text-center text-sm text-muted-foreground">
                                                                 {__(
-                                                                    'Uncategorized',
+                                                                    'No category found.',
                                                                 )}
                                                             </div>
-                                                        </CommandItem>
-                                                        {categoryTree.map(
+                                                        )}
+                                                        {showUncategorizedRow && (
+                                                            <CommandItem
+                                                                onSelect={() =>
+                                                                    handleCategoryToggle(
+                                                                        UNCATEGORIZED_CATEGORY_ID,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Checkbox
+                                                                    checked={
+                                                                        isUncategorizedSelected
+                                                                    }
+                                                                    className="pointer-events-none mr-1"
+                                                                />
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                                                        <Icons.HelpCircle className="h-3 w-3 text-zinc-500" />
+                                                                    </div>
+                                                                    {__(
+                                                                        'Uncategorized',
+                                                                    )}
+                                                                </div>
+                                                            </CommandItem>
+                                                        )}
+                                                        {visibleCategoryTree.map(
                                                             (category) => {
                                                                 const state =
                                                                     categorySelectionState(
