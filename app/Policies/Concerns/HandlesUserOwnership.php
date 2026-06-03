@@ -36,7 +36,7 @@ trait HandlesUserOwnership
      */
     public function update(User $user, Model $model): bool
     {
-        return $user->id === $model->user_id;
+        return $user->id === $model->getAttribute('user_id');
     }
 
     /**
@@ -44,7 +44,7 @@ trait HandlesUserOwnership
      */
     public function delete(User $user, Model $model): bool
     {
-        return $user->id === $model->user_id;
+        return $user->id === $model->getAttribute('user_id');
     }
 
     /**
