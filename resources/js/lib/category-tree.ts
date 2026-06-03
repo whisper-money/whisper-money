@@ -6,12 +6,19 @@ export interface CategoryNode extends Category {
     children: CategoryNode[];
 }
 
+const compareByName = (a: Category, b: Category): number =>
+    a.name.localeCompare(b.name);
+
 /**
- * Build a nested tree from a flat list of categories, sorting siblings by name
- * at every level. Orphans (a parent that is missing from the list) are treated
- * as roots so nothing silently disappears.
+ * Build a nested tree from a flat list of categories. Siblings are sorted with
+ * `compare` at every level (defaults to name), so children always stay grouped
+ * under their parent regardless of the chosen order. Orphans (a parent that is
+ * missing from the list) are treated as roots so nothing silently disappears.
  */
-export function buildCategoryTree(categories: Category[]): CategoryNode[] {
+export function buildCategoryTree(
+    categories: Category[],
+    compare: (a: Category, b: Category) => number = compareByName,
+): CategoryNode[] {
     const byId = new Map<UUID, CategoryNode>();
     for (const category of categories) {
         byId.set(category.id, { ...category, depth: 0, children: [] });
@@ -29,7 +36,7 @@ export function buildCategoryTree(categories: Category[]): CategoryNode[] {
     }
 
     const sortAndDepth = (nodes: CategoryNode[], depth: number) => {
-        nodes.sort((a, b) => a.name.localeCompare(b.name));
+        nodes.sort(compare);
         for (const node of nodes) {
             node.depth = depth;
             sortAndDepth(node.children, depth + 1);

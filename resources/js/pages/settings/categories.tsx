@@ -14,7 +14,7 @@ import {
     VisibilityState,
 } from '@tanstack/react-table';
 import * as Icons from 'lucide-react';
-import { MoreHorizontal } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { index as categoriesIndex } from '@/actions/App/Http/Controllers/Settings/CategoryController';
@@ -61,6 +61,8 @@ import {
 } from '@/lib/category-tree';
 import { type BreadcrumbItem } from '@/types';
 import { type Category, getCategoryColorClasses } from '@/types/category';
+
+type SortField = 'name' | 'color' | 'type';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -194,11 +196,50 @@ function CategoryRow({
 export default function Categories() {
     const { categories } = usePage<{ categories: Category[] }>().props;
 
-    // Depth-first tree order keeps every category next to its parent, with
-    // siblings sorted by name at each level.
-    const orderedCategories = useMemo<CategoryNode[]>(
-        () => flattenCategoryTree(buildCategoryTree(categories)),
-        [categories],
+    const [sortField, setSortField] = useState<SortField>('name');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+    const toggleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+            return;
+        }
+
+        setSortField(field);
+        setSortDirection('asc');
+    };
+
+    // Sort siblings by the chosen column at every level so subcategories stay
+    // grouped under their parent, then flatten to depth-first display order.
+    const orderedCategories = useMemo<CategoryNode[]>(() => {
+        const compare = (a: Category, b: Category) => {
+            const result = String(a[sortField] ?? '').localeCompare(
+                String(b[sortField] ?? ''),
+            );
+
+            return sortDirection === 'asc' ? result : -result;
+        };
+
+        return flattenCategoryTree(buildCategoryTree(categories, compare));
+    }, [categories, sortField, sortDirection]);
+
+    const sortHeader = (field: SortField, label: string) => (
+        <Button
+            variant="ghost"
+            className="px-3"
+            onClick={() => toggleSort(field)}
+        >
+            {label}
+            {sortField === field ? (
+                sortDirection === 'asc' ? (
+                    <ArrowUp className="ml-2 h-4 w-4" />
+                ) : (
+                    <ArrowDown className="ml-2 h-4 w-4" />
+                )
+            ) : (
+                <ArrowUpDown className="ml-2 h-4 w-4 opacity-40" />
+            )}
+        </Button>
     );
 
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -210,7 +251,7 @@ export default function Categories() {
     const columns: ColumnDef<Category>[] = [
         {
             accessorKey: 'name',
-            header: () => <span className="px-3">{__('Name')}</span>,
+            header: () => sortHeader('name', __('Name')),
             cell: ({ row }) => {
                 const iconName = row.original.icon;
                 const IconComponent = Icons[iconName as keyof typeof Icons] as
@@ -243,7 +284,7 @@ export default function Categories() {
         },
         {
             accessorKey: 'color',
-            header: __('Color'),
+            header: () => sortHeader('color', __('Color')),
             cell: ({ row }) => {
                 const color = row.getValue('color') as Category['color'];
                 if (!color) {
@@ -264,7 +305,7 @@ export default function Categories() {
         },
         {
             accessorKey: 'type',
-            header: __('Type'),
+            header: () => sortHeader('type', __('Type')),
             cell: ({ row }) => {
                 const type = row.getValue('type') as Category['type'];
                 const cashflowDirection = row.original.cashflow_direction;
