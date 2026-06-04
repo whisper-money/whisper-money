@@ -471,8 +471,6 @@ class DashboardAnalyticsController extends Controller
      * Without a drill target, child amounts fold into their top-level ancestor
      * so only parents are listed. With one, the parent's children become the
      * rows (plus a direct node for transactions sitting on the parent itself).
-     *
-     * @return Collection<int, array{category_id: ?string, amount: int, category: Category|null, has_children: bool, is_direct: bool}>
      */
     private function getCategorySpending(string $userId, Carbon $from, Carbon $to, ?string $drillParentId = null): Collection
     {

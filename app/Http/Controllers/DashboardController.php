@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\CategoryType;
 use App\Models\Account;
-use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\CategoryTree;
@@ -102,8 +101,6 @@ class DashboardController extends Controller
     /**
      * Spending per top-level category: child category amounts roll up into
      * their root ancestor so the dashboard only lists parents.
-     *
-     * @return Collection<int, array{category_id: ?string, amount: int, category: Category|null, has_children: bool, is_direct: bool}>
      */
     private function getCategorySpending(string $userId, Carbon $from, Carbon $to): Collection
     {
