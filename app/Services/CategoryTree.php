@@ -135,33 +135,122 @@ class CategoryTree
     }
 
     /**
-     * Map every category id of a user to its top-level ancestor id (roots map
-     * to themselves). Used to roll child amounts up into their parent.
+     * Roll category amounts up the tree.
      *
-     * @return array<string, string>
+     * With no drill target, every amount folds into its top-level ancestor.
+     * When drilling into a parent, the parent's children become the nodes (each
+     * rolled up over its own subtree) plus a "Parent" node for transactions
+     * sitting on the parent itself. Items outside the drilled subtree drop out.
+     *
+     * @param  array<int, array{category_id: ?string, category: Category|null, amount: int}>  $categorized
+     * @return array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>
      */
-    public function rootAncestorMap(string $userId): array
+    public function rollUp(array $categorized, string $userId, ?string $drillParentId): array
     {
-        $parents = Category::query()
+        $categories = Category::query()
             ->where('user_id', $userId)
-            ->pluck('parent_id', 'id')
-            ->all();
+            ->forDisplay()
+            ->get()
+            ->keyBy('id');
 
-        $map = [];
-
-        foreach ($parents as $id => $parentId) {
-            $rootId = $id;
-            $guard = 0;
-
-            while ($parentId !== null && array_key_exists($parentId, $parents) && $guard++ < Category::MAX_DEPTH) {
-                $rootId = $parentId;
-                $parentId = $parents[$parentId];
+        $parentMap = $categories->mapWithKeys(fn (Category $category): array => [$category->id => $category->parent_id])->all();
+        $childCounts = [];
+        foreach ($parentMap as $parentId) {
+            if ($parentId !== null) {
+                $childCounts[$parentId] = ($childCounts[$parentId] ?? 0) + 1;
             }
-
-            $map[$id] = $rootId;
         }
 
-        return $map;
+        $nodes = [];
+        foreach ($categorized as $item) {
+            $categoryId = $item['category_id'];
+
+            if ($categoryId === null || ! array_key_exists($categoryId, $parentMap)) {
+                // Uncategorized only belongs in the top-level view.
+                if ($drillParentId === null) {
+                    $key = 'uncategorized';
+                    $nodes[$key] ??= ['category_id' => null, 'category' => $item['category'], 'amount' => 0, 'has_children' => false, 'is_direct' => false];
+                    $nodes[$key]['amount'] += $item['amount'];
+                }
+
+                continue;
+            }
+
+            $target = $this->displayNodeFor($categoryId, $parentMap, $drillParentId);
+
+            if ($target === null) {
+                continue;
+            }
+
+            $displayCategory = $categories->get($target['id']);
+
+            if ($displayCategory === null) {
+                continue;
+            }
+
+            if ($target['is_direct']) {
+                $key = $target['id'].':direct';
+                $category = (new Category)->forceFill([
+                    'id' => $displayCategory->id,
+                    'name' => __('Parent'),
+                    'icon' => $displayCategory->icon,
+                    'color' => $displayCategory->color,
+                    'type' => $displayCategory->type,
+                    'cashflow_direction' => $displayCategory->cashflow_direction,
+                    'parent_id' => $displayCategory->parent_id,
+                ]);
+                $nodes[$key] ??= ['category_id' => $displayCategory->id, 'category' => $category, 'amount' => 0, 'has_children' => false, 'is_direct' => true];
+                $nodes[$key]['amount'] += $item['amount'];
+
+                continue;
+            }
+
+            $key = $target['id'];
+            $nodes[$key] ??= [
+                'category_id' => $displayCategory->id,
+                'category' => $displayCategory,
+                'amount' => 0,
+                'has_children' => ($childCounts[$displayCategory->id] ?? 0) > 0,
+                'is_direct' => false,
+            ];
+            $nodes[$key]['amount'] += $item['amount'];
+        }
+
+        return array_values($nodes);
+    }
+
+    /**
+     * Resolve which node a category's amount should be attributed to.
+     *
+     * @param  array<string, ?string>  $parentMap
+     * @return array{id: string, is_direct: bool}|null
+     */
+    private function displayNodeFor(string $categoryId, array $parentMap, ?string $drillParentId): ?array
+    {
+        $chain = [];
+        $current = $categoryId;
+        $guard = 0;
+
+        while ($current !== null && $guard++ < Category::MAX_DEPTH + 1) {
+            array_unshift($chain, $current);
+            $current = $parentMap[$current] ?? null;
+        }
+
+        if ($drillParentId === null) {
+            return ['id' => $chain[0], 'is_direct' => false];
+        }
+
+        $index = array_search($drillParentId, $chain, true);
+
+        if ($index === false) {
+            return null;
+        }
+
+        if ($index === count($chain) - 1) {
+            return ['id' => $drillParentId, 'is_direct' => true];
+        }
+
+        return ['id' => $chain[$index + 1], 'is_direct' => false];
     }
 
     /**

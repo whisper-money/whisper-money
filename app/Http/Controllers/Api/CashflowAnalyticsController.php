@@ -7,6 +7,7 @@ use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\CategoryTree;
 use App\Services\ExchangeRateService;
 use App\Services\PeriodComparator;
 use Carbon\Carbon;
@@ -16,7 +17,10 @@ use Illuminate\Support\Collection;
 
 class CashflowAnalyticsController extends Controller
 {
-    public function __construct(private ExchangeRateService $exchangeRateService) {}
+    public function __construct(
+        private ExchangeRateService $exchangeRateService,
+        private CategoryTree $tree,
+    ) {}
 
     public function summary(Request $request): JsonResponse
     {
@@ -290,7 +294,7 @@ class CashflowAnalyticsController extends Controller
                 'amount' => $item['amount'],
             ]);
 
-        $categorized = collect($this->rollUpByTree(
+        $categorized = collect($this->tree->rollUp(
             $regularCategories->concat($transferCategories)->values()->all(),
             $userId,
             $drillParentId,
@@ -410,7 +414,7 @@ class CashflowAnalyticsController extends Controller
                 'amount' => $item['amount'],
             ]);
 
-        $categorized = collect($this->rollUpByTree($categorized->values()->all(), $userId, $drillParentId));
+        $categorized = collect($this->tree->rollUp($categorized->values()->all(), $userId, $drillParentId));
 
         $uncategorized = $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {
@@ -501,124 +505,5 @@ class CashflowAnalyticsController extends Controller
     private function categoryNetAmountMatchesSide(int $amount, CategoryType $type): bool
     {
         return $type === CategoryType::Income ? $amount > 0 : $amount < 0;
-    }
-
-    /**
-     * Roll category amounts up the tree.
-     *
-     * With no drill target, every amount folds into its top-level ancestor.
-     * When drilling into a parent, the parent's children become the nodes (each
-     * rolled up over its own subtree) plus a "Parent" node for transactions
-     * sitting on the parent itself. Items outside the drilled subtree drop out.
-     *
-     * @param  array<int, array{category_id: ?string, category: Category|null, amount: int}>  $categorized
-     * @return array<int, array{category_id: ?string, category: Category|null, amount: int, has_children: bool, is_direct: bool}>
-     */
-    private function rollUpByTree(array $categorized, string $userId, ?string $drillParentId): array
-    {
-        $categories = Category::query()
-            ->where('user_id', $userId)
-            ->forDisplay()
-            ->get()
-            ->keyBy('id');
-
-        $parentMap = $categories->mapWithKeys(fn (Category $category): array => [$category->id => $category->parent_id])->all();
-        $childCounts = [];
-        foreach ($parentMap as $parentId) {
-            if ($parentId !== null) {
-                $childCounts[$parentId] = ($childCounts[$parentId] ?? 0) + 1;
-            }
-        }
-
-        $nodes = [];
-        foreach ($categorized as $item) {
-            $categoryId = $item['category_id'];
-
-            if ($categoryId === null || ! array_key_exists($categoryId, $parentMap)) {
-                // Uncategorized only belongs in the top-level view.
-                if ($drillParentId === null) {
-                    $key = 'uncategorized';
-                    $nodes[$key] ??= ['category_id' => null, 'category' => $item['category'], 'amount' => 0, 'has_children' => false, 'is_direct' => false];
-                    $nodes[$key]['amount'] += $item['amount'];
-                }
-
-                continue;
-            }
-
-            $target = $this->displayNodeFor($categoryId, $parentMap, $drillParentId);
-
-            if ($target === null) {
-                continue;
-            }
-
-            $displayCategory = $categories->get($target['id']);
-
-            if ($displayCategory === null) {
-                continue;
-            }
-
-            if ($target['is_direct']) {
-                $key = $target['id'].':direct';
-                $category = (new Category)->forceFill([
-                    'id' => $displayCategory->id,
-                    'name' => __('Parent'),
-                    'icon' => $displayCategory->icon,
-                    'color' => $displayCategory->color,
-                    'type' => $displayCategory->type,
-                    'cashflow_direction' => $displayCategory->cashflow_direction,
-                    'parent_id' => $displayCategory->parent_id,
-                ]);
-                $nodes[$key] ??= ['category_id' => $displayCategory->id, 'category' => $category, 'amount' => 0, 'has_children' => false, 'is_direct' => true];
-                $nodes[$key]['amount'] += $item['amount'];
-
-                continue;
-            }
-
-            $key = $target['id'];
-            $nodes[$key] ??= [
-                'category_id' => $displayCategory->id,
-                'category' => $displayCategory,
-                'amount' => 0,
-                'has_children' => ($childCounts[$displayCategory->id] ?? 0) > 0,
-                'is_direct' => false,
-            ];
-            $nodes[$key]['amount'] += $item['amount'];
-        }
-
-        return array_values($nodes);
-    }
-
-    /**
-     * Resolve which node a category's amount should be attributed to.
-     *
-     * @param  array<string, ?string>  $parentMap
-     * @return array{id: string, is_direct: bool}|null
-     */
-    private function displayNodeFor(string $categoryId, array $parentMap, ?string $drillParentId): ?array
-    {
-        $chain = [];
-        $current = $categoryId;
-        $guard = 0;
-
-        while ($current !== null && $guard++ < Category::MAX_DEPTH + 1) {
-            array_unshift($chain, $current);
-            $current = $parentMap[$current] ?? null;
-        }
-
-        if ($drillParentId === null) {
-            return ['id' => $chain[0], 'is_direct' => false];
-        }
-
-        $index = array_search($drillParentId, $chain, true);
-
-        if ($index === false) {
-            return null;
-        }
-
-        if ($index === count($chain) - 1) {
-            return ['id' => $drillParentId, 'is_direct' => true];
-        }
-
-        return ['id' => $chain[$index + 1], 'is_direct' => false];
     }
 }

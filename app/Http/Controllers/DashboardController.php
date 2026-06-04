@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\CategoryType;
 use App\Models\Account;
-use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\AccountMetricsService;
 use App\Services\CategoryTree;
@@ -71,9 +70,12 @@ class DashboardController extends Controller
 
                 return [
                     'category' => $item['category'],
+                    'category_id' => $item['category_id'],
                     'amount' => $item['amount'],
                     'previous_amount' => $previousAmount,
                     'total_amount' => $totalAmount,
+                    'has_children' => $item['has_children'],
+                    'is_direct' => $item['is_direct'],
                 ];
             })
             ->values()
@@ -99,14 +101,10 @@ class DashboardController extends Controller
     /**
      * Spending per top-level category: child category amounts roll up into
      * their root ancestor so the dashboard only lists parents.
-     *
-     * @return Collection<int, array{category_id: string, amount: int, category: Category}>
      */
     private function getCategorySpending(string $userId, Carbon $from, Carbon $to): Collection
     {
-        $rootMap = $this->tree->rootAncestorMap($userId);
-
-        $rolledUp = Transaction::query()
+        $perCategory = Transaction::query()
             ->where('transactions.user_id', $userId)
             ->whereBetween('transactions.transaction_date', [$from, $to])
             ->join('categories', function ($join) {
@@ -117,21 +115,16 @@ class DashboardController extends Controller
             ->select('transactions.category_id', DB::raw('sum(transactions.amount) as total_amount'))
             ->groupBy('transactions.category_id')
             ->get()
-            ->groupBy(fn ($item): string => $rootMap[$item->category_id] ?? $item->category_id)
-            ->map(fn (Collection $items, string $rootId): array => [
-                'category_id' => $rootId,
-                'amount' => (int) -$items->sum('total_amount'),
+            ->map(fn ($item): array => [
+                'category_id' => $item->category_id,
+                'category' => null,
+                'amount' => (int) -$item->total_amount,
             ])
-            ->filter(fn (array $item): bool => $item['amount'] > 0);
+            ->values()
+            ->all();
 
-        $categories = Category::query()
-            ->whereIn('id', $rolledUp->keys())
-            ->get()
-            ->keyBy('id');
-
-        return $rolledUp
-            ->map(fn (array $item): array => [...$item, 'category' => $categories->get($item['category_id'])])
-            ->filter(fn (array $item): bool => $item['category'] !== null)
+        return collect($this->tree->rollUp($perCategory, $userId, null))
+            ->filter(fn (array $item): bool => $item['amount'] > 0)
             ->values();
     }
 

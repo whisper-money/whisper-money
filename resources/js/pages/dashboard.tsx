@@ -29,10 +29,13 @@ interface DashboardProps extends SharedData {
     showEncryptionPrompt: boolean;
     netWorthEvolution?: NetWorthEvolutionData;
     topCategories?: Array<{
-        category: Category;
+        category: Category | null;
+        category_id?: string | null;
         amount: number;
         previous_amount: number;
         total_amount: number;
+        has_children?: boolean;
+        is_direct?: boolean;
     }>;
     cashflowSummary?: {
         current: CashflowSummary;
