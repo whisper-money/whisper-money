@@ -67,8 +67,6 @@ interface UseCashflowDataOptions {
     from: Date;
     to: Date;
     periodType: CashflowPeriodType;
-    /** When set, the Sankey diagram drills into this parent category. */
-    sankeyParent?: string | null;
 }
 
 const emptyBreakdown: BreakdownData = {
@@ -90,7 +88,6 @@ export function useCashflowData({
     from,
     to,
     periodType,
-    sankeyParent = null,
 }: UseCashflowDataOptions): CashflowData & { refetch: () => void } {
     const [data, setData] = useState<Omit<CashflowData, 'isLoading'>>({
         summary: { current: emptySummary, previous: emptySummary },
@@ -117,9 +114,6 @@ export function useCashflowData({
                 to: toStr,
             });
             const periodQuery = `?${periodParams.toString()}`;
-            const sankeyQuery = sankeyParent
-                ? `${periodQuery}&parent=${sankeyParent}`
-                : periodQuery;
             const trendQuery =
                 periodType === 'month' ? `?months=12&to=${toStr}` : periodQuery;
 
@@ -128,7 +122,7 @@ export function useCashflowData({
                     fetch(`/api/cashflow/summary${periodQuery}`).then((r) =>
                         r.json(),
                     ),
-                    fetch(`/api/cashflow/sankey${sankeyQuery}`).then((r) =>
+                    fetch(`/api/cashflow/sankey${periodQuery}`).then((r) =>
                         r.json(),
                     ),
                     fetch(`/api/cashflow/trend${trendQuery}`).then((r) =>
@@ -154,7 +148,7 @@ export function useCashflowData({
         } finally {
             setIsLoading(false);
         }
-    }, [from, periodType, to, sankeyParent]);
+    }, [from, periodType, to]);
 
     useEffect(() => {
         fetchData();
