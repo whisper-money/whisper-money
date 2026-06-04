@@ -137,6 +137,64 @@ describe('SankeyChart', () => {
         expect(label).toHaveClass('truncate');
     });
 
+    it('collapses any other expanded category so only one stays open', async () => {
+        const multiParent: SankeyData = {
+            ...data,
+            expense_categories: [
+                {
+                    category: category('food', 'Food'),
+                    category_id: 'food',
+                    amount: 310,
+                    has_children: true,
+                },
+                {
+                    category: category('rent', 'Rent'),
+                    category_id: 'rent',
+                    amount: 500,
+                    has_children: true,
+                },
+            ],
+        };
+
+        const rentChildren: SankeyData = {
+            income_categories: [],
+            expense_categories: [
+                {
+                    category: category('mortgage', 'Mortgage'),
+                    category_id: 'mortgage',
+                    amount: 500,
+                },
+            ],
+            total_income: 0,
+            total_expense: 500,
+        };
+
+        global.fetch = vi.fn().mockImplementation((url: string) => {
+            const json = url.includes('parent=rent')
+                ? rentChildren
+                : foodChildren;
+
+            return Promise.resolve({ json: async () => json });
+        }) as unknown as typeof fetch;
+
+        render(<SankeyChart data={multiParent} period={period} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand Food' }));
+
+        await waitFor(() => {
+            expect(screen.getByText('Groceries')).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Expand Rent' }));
+
+        await waitFor(() => {
+            expect(screen.getByText('Mortgage')).toBeInTheDocument();
+        });
+
+        // Food's subcategories are gone now that Rent is open.
+        expect(screen.queryByText('Groceries')).not.toBeInTheDocument();
+    });
+
     it('collapses an expanded category when toggled again', async () => {
         render(<SankeyChart data={data} period={period} />);
 

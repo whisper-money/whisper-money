@@ -187,15 +187,11 @@ export function SankeyChart({
 
     const toggleExpand = (categoryId: string) => {
         setExpandedIds((previous) => {
-            const next = new Set(previous);
-
-            if (next.has(categoryId)) {
-                next.delete(categoryId);
-            } else {
-                next.add(categoryId);
+            if (previous.has(categoryId)) {
+                return new Set<string>();
             }
 
-            return next;
+            return new Set([categoryId]);
         });
     };
 
@@ -276,344 +272,383 @@ export function SankeyChart({
         };
     }, [expandedIds, childrenById, period, periodKey]);
 
-    const { nodes, links, isEmpty, otherGroups } = useMemo(() => {
-        const {
-            income_categories,
-            expense_categories,
-            total_income,
-            total_expense,
-        } = data;
+    const { nodes, links, isEmpty, otherGroups, viewBoxTop, viewBoxHeight } =
+        useMemo(() => {
+            const {
+                income_categories,
+                expense_categories,
+                total_income,
+                total_expense,
+            } = data;
 
-        if (total_income === 0 && total_expense === 0) {
-            return {
-                nodes: [] as NodeData[],
-                links: [] as LinkData[],
-                isEmpty: true,
-                otherGroups: {} as Record<string, GroupedCategory>,
-            };
-        }
-
-        const otherGroupsMap: Record<string, GroupedCategory> = {};
-        const availableHeight = height - 40; // padding
-        const maxTotal = Math.max(total_income, total_expense);
-
-        // Income parent nodes (left column)
-        const groupedIncome = groupSmallCategories(
-            income_categories,
-            total_income,
-            groupingThreshold,
-        );
-
-        let incomeY = 20;
-        const incomeNodes: NodeData[] = groupedIncome.main.map((item) => {
-            const nodeHeight = Math.max(
-                MIN_NODE_HEIGHT,
-                (item.amount / maxTotal) * availableHeight * 0.5,
-            );
-            const node: NodeData = {
-                id: `income-${item.category_id}`,
-                label: item.category.name,
-                value: item.amount,
-                color: item.category.color || 'var(--color-chart-2)',
-                y: incomeY,
-                height: nodeHeight,
-                column: 'income',
-                columnFraction: 0,
-                category: item.category,
-                hasChildren: item.has_children,
-                expandable: !!item.has_children,
-            };
-            incomeY += nodeHeight + NODE_PADDING;
-            return node;
-        });
-
-        if (groupedIncome.other) {
-            const nodeHeight = Math.max(
-                MIN_NODE_HEIGHT,
-                (groupedIncome.other.total / maxTotal) * availableHeight * 0.5,
-            );
-            incomeNodes.push({
-                id: 'income-other',
-                label: __('Other'),
-                value: groupedIncome.other.total,
-                color: 'var(--color-muted)',
-                y: incomeY,
-                height: nodeHeight,
-                column: 'income',
-                columnFraction: 0,
-            });
-            otherGroupsMap['income-other'] = groupedIncome.other;
-            incomeY += nodeHeight + NODE_PADDING;
-        }
-
-        // Center node (total cashflow)
-        const centerHeight = Math.max(
-            MIN_NODE_HEIGHT * 1.5,
-            (Math.max(total_income, total_expense) / maxTotal) *
-                availableHeight *
-                0.6,
-        );
-        const centerY = (height - centerHeight) / 2;
-        const centerNode: NodeData = {
-            id: 'center',
-            label: __('Cashflow'),
-            value: total_income - total_expense,
-            color: 'var(--color-chart-1)',
-            y: centerY,
-            height: centerHeight,
-            column: 'center',
-            columnFraction: 0,
-        };
-
-        // Expense parent nodes (right column)
-        const groupedExpense = groupSmallCategories(
-            expense_categories,
-            total_expense,
-            groupingThreshold,
-        );
-
-        let expenseY = 20;
-        const expenseNodes: NodeData[] = groupedExpense.main.map((item) => {
-            const nodeHeight = Math.max(
-                MIN_NODE_HEIGHT,
-                (item.amount / maxTotal) * availableHeight * 0.5,
-            );
-            const node: NodeData = {
-                id: `expense-${item.category_id}`,
-                label: item.category.name,
-                value: item.amount,
-                color: item.category.color || 'var(--color-chart-3)',
-                y: expenseY,
-                height: nodeHeight,
-                column: 'expense',
-                columnFraction: 0,
-                category: item.category,
-                hasChildren: item.has_children,
-                expandable: !!item.has_children,
-            };
-            expenseY += nodeHeight + NODE_PADDING;
-            return node;
-        });
-
-        if (groupedExpense.other) {
-            const nodeHeight = Math.max(
-                MIN_NODE_HEIGHT,
-                (groupedExpense.other.total / maxTotal) * availableHeight * 0.5,
-            );
-            expenseNodes.push({
-                id: 'expense-other',
-                label: __('Other'),
-                value: groupedExpense.other.total,
-                color: 'var(--color-muted)',
-                y: expenseY,
-                height: nodeHeight,
-                column: 'expense',
-                columnFraction: 0,
-            });
-            otherGroupsMap['expense-other'] = groupedExpense.other;
-            expenseY += nodeHeight + NODE_PADDING;
-        }
-
-        // Resolve which expanded parents actually have loaded children.
-        const sortByAmount = (categories: SankeyCategory[]): SankeyCategory[] =>
-            [...categories].sort((a, b) => b.amount - a.amount);
-
-        const incomeChildren: Record<string, SankeyCategory[]> = {};
-        incomeNodes.forEach((node) => {
-            if (node.category && expandedIds.has(node.category.id)) {
-                const kids = childrenById[node.category.id]?.income_categories;
-
-                if (kids && kids.length > 0) {
-                    incomeChildren[node.id] = sortByAmount(kids);
-                }
+            if (total_income === 0 && total_expense === 0) {
+                return {
+                    nodes: [] as NodeData[],
+                    links: [] as LinkData[],
+                    isEmpty: true,
+                    otherGroups: {} as Record<string, GroupedCategory>,
+                    viewBoxTop: 0,
+                    viewBoxHeight: height,
+                };
             }
-        });
 
-        const expenseChildren: Record<string, SankeyCategory[]> = {};
-        expenseNodes.forEach((node) => {
-            if (node.category && expandedIds.has(node.category.id)) {
-                const kids = childrenById[node.category.id]?.expense_categories;
+            const otherGroupsMap: Record<string, GroupedCategory> = {};
+            const availableHeight = height - 40; // padding
+            const maxTotal = Math.max(total_income, total_expense);
 
-                if (kids && kids.length > 0) {
-                    expenseChildren[node.id] = sortByAmount(kids);
-                }
-            }
-        });
+            // Income parent nodes (left column)
+            const groupedIncome = groupSmallCategories(
+                income_categories,
+                total_income,
+                groupingThreshold,
+            );
 
-        const hasIncomeChildColumn = Object.keys(incomeChildren).length > 0;
-        const hasExpenseChildColumn = Object.keys(expenseChildren).length > 0;
-
-        // Lay out the active columns left-to-right.
-        const columns: ColumnKey[] = [];
-        if (hasIncomeChildColumn) {
-            columns.push('incomeChild');
-        }
-        columns.push('income', 'center', 'expense');
-        if (hasExpenseChildColumn) {
-            columns.push('expenseChild');
-        }
-
-        const pad = columns.length <= 3 ? 0.25 : 0.12;
-        const fractionFor = (index: number): number =>
-            columns.length <= 1
-                ? 0.5
-                : pad + (index / (columns.length - 1)) * (1 - 2 * pad);
-        const fractionByColumn = {} as Record<ColumnKey, number>;
-        columns.forEach((column, index) => {
-            fractionByColumn[column] = fractionFor(index);
-        });
-
-        incomeNodes.forEach((node) => {
-            node.columnFraction = fractionByColumn.income;
-        });
-        expenseNodes.forEach((node) => {
-            node.columnFraction = fractionByColumn.expense;
-        });
-        centerNode.columnFraction = fractionByColumn.center;
-
-        const linkList: LinkData[] = [];
-
-        // Income parents -> center
-        let incomeLinkY = centerY;
-        incomeNodes.forEach((incomeNode) => {
-            const linkHeight =
-                total_income > 0
-                    ? (incomeNode.value / total_income) * centerHeight
-                    : 0;
-            linkList.push({
-                source: incomeNode.id,
-                target: 'center',
-                value: incomeNode.value,
-                sourceY: incomeNode.y + incomeNode.height / 2,
-                targetY: incomeLinkY + linkHeight / 2,
-                sourceHeight: incomeNode.height,
-                targetHeight: linkHeight,
-                kind: 'income',
-            });
-            incomeLinkY += linkHeight;
-        });
-
-        // Center -> expense parents
-        let expenseLinkY = centerY;
-        expenseNodes.forEach((expenseNode) => {
-            const linkHeight =
-                total_expense > 0
-                    ? (expenseNode.value / total_expense) * centerHeight
-                    : 0;
-            linkList.push({
-                source: 'center',
-                target: expenseNode.id,
-                value: expenseNode.value,
-                sourceY: expenseLinkY + linkHeight / 2,
-                targetY: expenseNode.y + expenseNode.height / 2,
-                sourceHeight: linkHeight,
-                targetHeight: expenseNode.height,
-                kind: 'expense',
-            });
-            expenseLinkY += linkHeight;
-        });
-
-        // Child nodes stack within their parent's vertical band so the parent
-        // visibly splits into its subcategories.
-        const childNodes: NodeData[] = [];
-        const buildChildren = (
-            parents: NodeData[],
-            childrenByParent: Record<string, SankeyCategory[]>,
-            childColumn: ColumnKey,
-            kind: 'income' | 'expense',
-        ) => {
-            parents.forEach((parent) => {
-                const kids = childrenByParent[parent.id];
-
-                if (!kids) {
-                    return;
-                }
-
-                const childFraction = fractionByColumn[childColumn];
-                const kidsSum = kids.reduce((sum, kid) => sum + kid.amount, 0);
-
-                if (kidsSum <= 0) {
-                    return;
-                }
-
-                // Size each child like a top-level node (same minimum height
-                // and gap), then center the stack on the parent so the links
-                // fan out from the parent's proportional slices.
-                const childHeights = kids.map((kid) =>
-                    Math.max(
-                        MIN_NODE_HEIGHT,
-                        (kid.amount / maxTotal) * availableHeight * 0.5,
-                    ),
+            let incomeY = 20;
+            const incomeNodes: NodeData[] = groupedIncome.main.map((item) => {
+                const nodeHeight = Math.max(
+                    MIN_NODE_HEIGHT,
+                    (item.amount / maxTotal) * availableHeight * 0.5,
                 );
-                const stackHeight =
-                    childHeights.reduce((sum, h) => sum + h, 0) +
-                    NODE_PADDING * (kids.length - 1);
-                let childCursor =
-                    parent.y + parent.height / 2 - stackHeight / 2;
-                let parentCursor = parent.y;
+                const node: NodeData = {
+                    id: `income-${item.category_id}`,
+                    label: item.category.name,
+                    value: item.amount,
+                    color: item.category.color || 'var(--color-chart-2)',
+                    y: incomeY,
+                    height: nodeHeight,
+                    column: 'income',
+                    columnFraction: 0,
+                    category: item.category,
+                    hasChildren: item.has_children,
+                    expandable: !!item.has_children,
+                };
+                incomeY += nodeHeight + NODE_PADDING;
+                return node;
+            });
 
-                kids.forEach((kid, index) => {
-                    const childHeight = childHeights[index];
-                    const parentSlice = (kid.amount / kidsSum) * parent.height;
-                    const node: NodeData = {
-                        id: `${childColumn}-${parent.id}-${index}`,
-                        label: kid.category.name,
-                        value: kid.amount,
-                        color:
-                            kid.category.color ||
-                            (kind === 'income'
-                                ? 'var(--color-chart-2)'
-                                : 'var(--color-chart-3)'),
-                        y: childCursor,
-                        height: childHeight,
-                        column: childColumn,
-                        columnFraction: childFraction,
-                        category: kid.category,
-                        hasChildren: kid.has_children,
-                        expandable: false,
-                    };
-                    childNodes.push(node);
+            if (groupedIncome.other) {
+                const nodeHeight = Math.max(
+                    MIN_NODE_HEIGHT,
+                    (groupedIncome.other.total / maxTotal) *
+                        availableHeight *
+                        0.5,
+                );
+                incomeNodes.push({
+                    id: 'income-other',
+                    label: __('Other'),
+                    value: groupedIncome.other.total,
+                    color: 'var(--color-muted)',
+                    y: incomeY,
+                    height: nodeHeight,
+                    column: 'income',
+                    columnFraction: 0,
+                });
+                otherGroupsMap['income-other'] = groupedIncome.other;
+                incomeY += nodeHeight + NODE_PADDING;
+            }
 
-                    if (kind === 'income') {
-                        linkList.push({
-                            source: node.id,
-                            target: parent.id,
-                            value: kid.amount,
-                            sourceY: node.y + childHeight / 2,
-                            targetY: parentCursor + parentSlice / 2,
-                            sourceHeight: childHeight,
-                            targetHeight: parentSlice,
-                            kind: 'income',
-                        });
-                    } else {
-                        linkList.push({
-                            source: parent.id,
-                            target: node.id,
-                            value: kid.amount,
-                            sourceY: parentCursor + parentSlice / 2,
-                            targetY: node.y + childHeight / 2,
-                            sourceHeight: parentSlice,
-                            targetHeight: childHeight,
-                            kind: 'expense',
-                        });
+            // Center node (total cashflow)
+            const centerHeight = Math.max(
+                MIN_NODE_HEIGHT * 1.5,
+                (Math.max(total_income, total_expense) / maxTotal) *
+                    availableHeight *
+                    0.6,
+            );
+            const centerY = (height - centerHeight) / 2;
+            const centerNode: NodeData = {
+                id: 'center',
+                label: __('Cashflow'),
+                value: total_income - total_expense,
+                color: 'var(--color-chart-1)',
+                y: centerY,
+                height: centerHeight,
+                column: 'center',
+                columnFraction: 0,
+            };
+
+            // Expense parent nodes (right column)
+            const groupedExpense = groupSmallCategories(
+                expense_categories,
+                total_expense,
+                groupingThreshold,
+            );
+
+            let expenseY = 20;
+            const expenseNodes: NodeData[] = groupedExpense.main.map((item) => {
+                const nodeHeight = Math.max(
+                    MIN_NODE_HEIGHT,
+                    (item.amount / maxTotal) * availableHeight * 0.5,
+                );
+                const node: NodeData = {
+                    id: `expense-${item.category_id}`,
+                    label: item.category.name,
+                    value: item.amount,
+                    color: item.category.color || 'var(--color-chart-3)',
+                    y: expenseY,
+                    height: nodeHeight,
+                    column: 'expense',
+                    columnFraction: 0,
+                    category: item.category,
+                    hasChildren: item.has_children,
+                    expandable: !!item.has_children,
+                };
+                expenseY += nodeHeight + NODE_PADDING;
+                return node;
+            });
+
+            if (groupedExpense.other) {
+                const nodeHeight = Math.max(
+                    MIN_NODE_HEIGHT,
+                    (groupedExpense.other.total / maxTotal) *
+                        availableHeight *
+                        0.5,
+                );
+                expenseNodes.push({
+                    id: 'expense-other',
+                    label: __('Other'),
+                    value: groupedExpense.other.total,
+                    color: 'var(--color-muted)',
+                    y: expenseY,
+                    height: nodeHeight,
+                    column: 'expense',
+                    columnFraction: 0,
+                });
+                otherGroupsMap['expense-other'] = groupedExpense.other;
+                expenseY += nodeHeight + NODE_PADDING;
+            }
+
+            // Resolve which expanded parents actually have loaded children.
+            const sortByAmount = (
+                categories: SankeyCategory[],
+            ): SankeyCategory[] =>
+                [...categories].sort((a, b) => b.amount - a.amount);
+
+            const incomeChildren: Record<string, SankeyCategory[]> = {};
+            incomeNodes.forEach((node) => {
+                if (node.category && expandedIds.has(node.category.id)) {
+                    const kids =
+                        childrenById[node.category.id]?.income_categories;
+
+                    if (kids && kids.length > 0) {
+                        incomeChildren[node.id] = sortByAmount(kids);
+                    }
+                }
+            });
+
+            const expenseChildren: Record<string, SankeyCategory[]> = {};
+            expenseNodes.forEach((node) => {
+                if (node.category && expandedIds.has(node.category.id)) {
+                    const kids =
+                        childrenById[node.category.id]?.expense_categories;
+
+                    if (kids && kids.length > 0) {
+                        expenseChildren[node.id] = sortByAmount(kids);
+                    }
+                }
+            });
+
+            const hasIncomeChildColumn = Object.keys(incomeChildren).length > 0;
+            const hasExpenseChildColumn =
+                Object.keys(expenseChildren).length > 0;
+
+            // Lay out the active columns left-to-right.
+            const columns: ColumnKey[] = [];
+            if (hasIncomeChildColumn) {
+                columns.push('incomeChild');
+            }
+            columns.push('income', 'center', 'expense');
+            if (hasExpenseChildColumn) {
+                columns.push('expenseChild');
+            }
+
+            const pad = columns.length <= 3 ? 0.25 : 0.12;
+            const fractionFor = (index: number): number =>
+                columns.length <= 1
+                    ? 0.5
+                    : pad + (index / (columns.length - 1)) * (1 - 2 * pad);
+            const fractionByColumn = {} as Record<ColumnKey, number>;
+            columns.forEach((column, index) => {
+                fractionByColumn[column] = fractionFor(index);
+            });
+
+            incomeNodes.forEach((node) => {
+                node.columnFraction = fractionByColumn.income;
+            });
+            expenseNodes.forEach((node) => {
+                node.columnFraction = fractionByColumn.expense;
+            });
+            centerNode.columnFraction = fractionByColumn.center;
+
+            const linkList: LinkData[] = [];
+
+            // Income parents -> center
+            let incomeLinkY = centerY;
+            incomeNodes.forEach((incomeNode) => {
+                const linkHeight =
+                    total_income > 0
+                        ? (incomeNode.value / total_income) * centerHeight
+                        : 0;
+                linkList.push({
+                    source: incomeNode.id,
+                    target: 'center',
+                    value: incomeNode.value,
+                    sourceY: incomeNode.y + incomeNode.height / 2,
+                    targetY: incomeLinkY + linkHeight / 2,
+                    sourceHeight: incomeNode.height,
+                    targetHeight: linkHeight,
+                    kind: 'income',
+                });
+                incomeLinkY += linkHeight;
+            });
+
+            // Center -> expense parents
+            let expenseLinkY = centerY;
+            expenseNodes.forEach((expenseNode) => {
+                const linkHeight =
+                    total_expense > 0
+                        ? (expenseNode.value / total_expense) * centerHeight
+                        : 0;
+                linkList.push({
+                    source: 'center',
+                    target: expenseNode.id,
+                    value: expenseNode.value,
+                    sourceY: expenseLinkY + linkHeight / 2,
+                    targetY: expenseNode.y + expenseNode.height / 2,
+                    sourceHeight: linkHeight,
+                    targetHeight: expenseNode.height,
+                    kind: 'expense',
+                });
+                expenseLinkY += linkHeight;
+            });
+
+            // Child nodes stack within their parent's vertical band so the parent
+            // visibly splits into its subcategories.
+            const childNodes: NodeData[] = [];
+            const buildChildren = (
+                parents: NodeData[],
+                childrenByParent: Record<string, SankeyCategory[]>,
+                childColumn: ColumnKey,
+                kind: 'income' | 'expense',
+            ) => {
+                parents.forEach((parent) => {
+                    const kids = childrenByParent[parent.id];
+
+                    if (!kids) {
+                        return;
                     }
 
-                    childCursor += childHeight + NODE_PADDING;
-                    parentCursor += parentSlice;
+                    const childFraction = fractionByColumn[childColumn];
+                    const kidsSum = kids.reduce(
+                        (sum, kid) => sum + kid.amount,
+                        0,
+                    );
+
+                    if (kidsSum <= 0) {
+                        return;
+                    }
+
+                    // Size each child like a top-level node (same minimum height
+                    // and gap), then center the stack on the parent so the links
+                    // fan out from the parent's proportional slices.
+                    const childHeights = kids.map((kid) =>
+                        Math.max(
+                            MIN_NODE_HEIGHT,
+                            (kid.amount / maxTotal) * availableHeight * 0.5,
+                        ),
+                    );
+                    const stackHeight =
+                        childHeights.reduce((sum, h) => sum + h, 0) +
+                        NODE_PADDING * (kids.length - 1);
+                    let childCursor =
+                        parent.y + parent.height / 2 - stackHeight / 2;
+                    let parentCursor = parent.y;
+
+                    kids.forEach((kid, index) => {
+                        const childHeight = childHeights[index];
+                        const parentSlice =
+                            (kid.amount / kidsSum) * parent.height;
+                        const node: NodeData = {
+                            id: `${childColumn}-${parent.id}-${index}`,
+                            label: kid.category.name,
+                            value: kid.amount,
+                            color:
+                                kid.category.color ||
+                                (kind === 'income'
+                                    ? 'var(--color-chart-2)'
+                                    : 'var(--color-chart-3)'),
+                            y: childCursor,
+                            height: childHeight,
+                            column: childColumn,
+                            columnFraction: childFraction,
+                            category: kid.category,
+                            hasChildren: kid.has_children,
+                            expandable: false,
+                        };
+                        childNodes.push(node);
+
+                        if (kind === 'income') {
+                            linkList.push({
+                                source: node.id,
+                                target: parent.id,
+                                value: kid.amount,
+                                sourceY: node.y + childHeight / 2,
+                                targetY: parentCursor + parentSlice / 2,
+                                sourceHeight: childHeight,
+                                targetHeight: parentSlice,
+                                kind: 'income',
+                            });
+                        } else {
+                            linkList.push({
+                                source: parent.id,
+                                target: node.id,
+                                value: kid.amount,
+                                sourceY: parentCursor + parentSlice / 2,
+                                targetY: node.y + childHeight / 2,
+                                sourceHeight: parentSlice,
+                                targetHeight: childHeight,
+                                kind: 'expense',
+                            });
+                        }
+
+                        childCursor += childHeight + NODE_PADDING;
+                        parentCursor += parentSlice;
+                    });
                 });
-            });
-        };
+            };
 
-        buildChildren(incomeNodes, incomeChildren, 'incomeChild', 'income');
-        buildChildren(expenseNodes, expenseChildren, 'expenseChild', 'expense');
+            buildChildren(incomeNodes, incomeChildren, 'incomeChild', 'income');
+            buildChildren(
+                expenseNodes,
+                expenseChildren,
+                'expenseChild',
+                'expense',
+            );
 
-        return {
-            nodes: [...incomeNodes, centerNode, ...expenseNodes, ...childNodes],
-            links: linkList,
-            isEmpty: false,
-            otherGroups: otherGroupsMap,
-        };
-    }, [data, height, groupingThreshold, expandedIds, childrenById]);
+            // Expanded child stacks can be taller than their parent band and reach
+            // above the top or below the bottom of the base canvas. Grow the
+            // viewBox to fit so nothing gets clipped.
+            const allNodes = [
+                ...incomeNodes,
+                centerNode,
+                ...expenseNodes,
+                ...childNodes,
+            ];
+            const contentTop = Math.min(...allNodes.map((node) => node.y));
+            const contentBottom = Math.max(
+                ...allNodes.map((node) => node.y + node.height),
+            );
+            const viewBoxTop = Math.min(0, contentTop - 20);
+            const viewBoxBottom = Math.max(height, contentBottom + 20);
+
+            return {
+                nodes: allNodes,
+                links: linkList,
+                isEmpty: false,
+                otherGroups: otherGroupsMap,
+                viewBoxTop,
+                viewBoxHeight: viewBoxBottom - viewBoxTop,
+            };
+        }, [data, height, groupingThreshold, expandedIds, childrenById]);
 
     if (isEmpty) {
         return (
@@ -642,7 +677,7 @@ export function SankeyChart({
             className={cn('w-full overflow-x-auto', className)}
         >
             <svg
-                viewBox={`0 0 ${width} ${height}`}
+                viewBox={`0 ${viewBoxTop} ${width} ${viewBoxHeight}`}
                 className="mx-auto block"
                 style={{ width: renderedWidth, minWidth: MIN_RENDERED_WIDTH }}
                 preserveAspectRatio="xMidYMid meet"
