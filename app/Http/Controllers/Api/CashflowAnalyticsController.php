@@ -508,7 +508,7 @@ class CashflowAnalyticsController extends Controller
      *
      * With no drill target, every amount folds into its top-level ancestor.
      * When drilling into a parent, the parent's children become the nodes (each
-     * rolled up over its own subtree) plus a "(direct)" node for transactions
+     * rolled up over its own subtree) plus a "Parent" node for transactions
      * sitting on the parent itself. Items outside the drilled subtree drop out.
      *
      * @param  array<int, array{category_id: ?string, category: Category|null, amount: int}>  $categorized
@@ -561,7 +561,7 @@ class CashflowAnalyticsController extends Controller
                 $key = $target['id'].':direct';
                 $category = (new Category)->forceFill([
                     'id' => $displayCategory->id,
-                    'name' => $displayCategory->name.' ('.__('direct').')',
+                    'name' => __('Parent'),
                     'icon' => $displayCategory->icon,
                     'color' => $displayCategory->color,
                     'type' => $displayCategory->type,

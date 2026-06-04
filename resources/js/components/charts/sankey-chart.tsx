@@ -19,6 +19,7 @@ import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import { format } from 'date-fns';
+import { ChevronsRight } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface SankeyChartProps {
@@ -28,9 +29,14 @@ interface SankeyChartProps {
     currency?: string;
     groupingThreshold?: number;
     period?: { from: Date; to: Date };
-    /** Drill into a parent category node instead of navigating to it. */
-    onDrill?: (categoryId: string, label: string) => void;
 }
+
+type ColumnKey =
+    | 'incomeChild'
+    | 'income'
+    | 'center'
+    | 'expense'
+    | 'expenseChild';
 
 interface NodeData {
     id: string;
@@ -39,9 +45,11 @@ interface NodeData {
     color: string;
     y: number;
     height: number;
-    column: 0 | 1 | 2;
+    column: ColumnKey;
+    columnFraction: number;
     category?: Category;
     hasChildren?: boolean;
+    expandable?: boolean;
 }
 
 interface LinkData {
@@ -52,14 +60,18 @@ interface LinkData {
     targetY: number;
     sourceHeight: number;
     targetHeight: number;
+    kind: 'income' | 'expense';
 }
 
-const COLUMN_POSITIONS = [0.25, 0.5, 0.75];
 const NODE_WIDTH = 8;
 const NODE_PADDING = 6;
-const MIN_NODE_HEIGHT = 20;
+const MIN_NODE_HEIGHT = 28;
 const MIN_RENDERED_WIDTH = 400;
 const MAX_RENDERED_WIDTH = 800;
+const LABEL_BLOCK_HEIGHT = 24;
+const LABEL_GAP = 6;
+const LABEL_PAD = 4;
+const LABEL_CENTER_WIDTH = 90;
 
 interface OtherCategoriesBreakdownProps {
     categories: SankeyCategory[];
@@ -152,18 +164,39 @@ export function SankeyChart({
     currency = 'USD',
     groupingThreshold = 0.03,
     period,
-    onDrill,
 }: SankeyChartProps) {
     const [hoveredNode, setHoveredNode] = useState<string | null>(null);
     const [hoveredLink, setHoveredLink] = useState<string | null>(null);
     const [renderedWidth, setRenderedWidth] = useState(MAX_RENDERED_WIDTH);
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [childrenById, setChildrenById] = useState<
+        Record<string, SankeyData>
+    >({});
     const containerRef = useRef<HTMLDivElement>(null);
     const locale = useLocale();
     const { isPrivacyModeEnabled } = usePrivacyMode();
 
+    const periodKey = period
+        ? `${period.from.getTime()}-${period.to.getTime()}`
+        : '';
+
     const maskIfPrivate = (value: number) => {
         const formatted = formatCurrency(value, currency, locale, 0, 0);
         return isPrivacyModeEnabled ? formatted.replace(/\d/g, '*') : formatted;
+    };
+
+    const toggleExpand = (categoryId: string) => {
+        setExpandedIds((previous) => {
+            const next = new Set(previous);
+
+            if (next.has(categoryId)) {
+                next.delete(categoryId);
+            } else {
+                next.add(categoryId);
+            }
+
+            return next;
+        });
     };
 
     useEffect(() => {
@@ -198,6 +231,51 @@ export function SankeyChart({
         return () => observer.disconnect();
     }, []);
 
+    // Changing the period invalidates any expanded subcategories.
+    useEffect(() => {
+        setExpandedIds(new Set());
+        setChildrenById({});
+    }, [periodKey]);
+
+    // Lazily fetch the children of each newly expanded category.
+    useEffect(() => {
+        if (!period) {
+            return;
+        }
+
+        const missing = [...expandedIds].filter((id) => !(id in childrenById));
+
+        if (missing.length === 0) {
+            return;
+        }
+
+        const from = format(period.from, 'yyyy-MM-dd');
+        const to = format(period.to, 'yyyy-MM-dd');
+        let cancelled = false;
+
+        missing.forEach(async (id) => {
+            try {
+                const response = await fetch(
+                    `/api/cashflow/sankey?from=${from}&to=${to}&parent=${id}`,
+                );
+                const json: SankeyData = await response.json();
+
+                if (!cancelled) {
+                    setChildrenById((previous) => ({
+                        ...previous,
+                        [id]: json,
+                    }));
+                }
+            } catch (error) {
+                console.error('Failed to fetch subcategories:', error);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [expandedIds, childrenById, period, periodKey]);
+
     const { nodes, links, isEmpty, otherGroups } = useMemo(() => {
         const {
             income_categories,
@@ -208,31 +286,26 @@ export function SankeyChart({
 
         if (total_income === 0 && total_expense === 0) {
             return {
-                nodes: [],
-                links: [],
+                nodes: [] as NodeData[],
+                links: [] as LinkData[],
                 isEmpty: true,
-                otherGroups: {},
+                otherGroups: {} as Record<string, GroupedCategory>,
             };
         }
 
-        const nodeMap: Record<string, NodeData> = {};
-        const linkList: LinkData[] = [];
         const otherGroupsMap: Record<string, GroupedCategory> = {};
-
-        // Calculate available height for nodes
         const availableHeight = height - 40; // padding
         const maxTotal = Math.max(total_income, total_expense);
 
-        // Group income categories
+        // Income parent nodes (left column)
         const groupedIncome = groupSmallCategories(
             income_categories,
             total_income,
             groupingThreshold,
         );
 
-        // Create income nodes (left column)
         let incomeY = 20;
-        const incomeNodes = groupedIncome.main.map((item) => {
+        const incomeNodes: NodeData[] = groupedIncome.main.map((item) => {
             const nodeHeight = Math.max(
                 MIN_NODE_HEIGHT,
                 (item.amount / maxTotal) * availableHeight * 0.5,
@@ -244,35 +317,36 @@ export function SankeyChart({
                 color: item.category.color || 'var(--color-chart-2)',
                 y: incomeY,
                 height: nodeHeight,
-                column: 0,
+                column: 'income',
+                columnFraction: 0,
                 category: item.category,
                 hasChildren: item.has_children,
+                expandable: !!item.has_children,
             };
             incomeY += nodeHeight + NODE_PADDING;
             return node;
         });
 
-        // Add "Other" income node if needed
         if (groupedIncome.other) {
             const nodeHeight = Math.max(
                 MIN_NODE_HEIGHT,
                 (groupedIncome.other.total / maxTotal) * availableHeight * 0.5,
             );
-            const otherNode: NodeData = {
+            incomeNodes.push({
                 id: 'income-other',
                 label: __('Other'),
                 value: groupedIncome.other.total,
                 color: 'var(--color-muted)',
                 y: incomeY,
                 height: nodeHeight,
-                column: 0,
-            };
-            incomeNodes.push(otherNode);
+                column: 'income',
+                columnFraction: 0,
+            });
             otherGroupsMap['income-other'] = groupedIncome.other;
             incomeY += nodeHeight + NODE_PADDING;
         }
 
-        // Create center node (total cashflow)
+        // Center node (total cashflow)
         const centerHeight = Math.max(
             MIN_NODE_HEIGHT * 1.5,
             (Math.max(total_income, total_expense) / maxTotal) *
@@ -287,19 +361,19 @@ export function SankeyChart({
             color: 'var(--color-chart-1)',
             y: centerY,
             height: centerHeight,
-            column: 1,
+            column: 'center',
+            columnFraction: 0,
         };
 
-        // Group expense categories
+        // Expense parent nodes (right column)
         const groupedExpense = groupSmallCategories(
             expense_categories,
             total_expense,
             groupingThreshold,
         );
 
-        // Create expense nodes (right column)
         let expenseY = 20;
-        const expenseNodes = groupedExpense.main.map((item) => {
+        const expenseNodes: NodeData[] = groupedExpense.main.map((item) => {
             const nodeHeight = Math.max(
                 MIN_NODE_HEIGHT,
                 (item.amount / maxTotal) * availableHeight * 0.5,
@@ -311,43 +385,101 @@ export function SankeyChart({
                 color: item.category.color || 'var(--color-chart-3)',
                 y: expenseY,
                 height: nodeHeight,
-                column: 2,
+                column: 'expense',
+                columnFraction: 0,
                 category: item.category,
                 hasChildren: item.has_children,
+                expandable: !!item.has_children,
             };
             expenseY += nodeHeight + NODE_PADDING;
             return node;
         });
 
-        // Add "Other" expense node if needed
         if (groupedExpense.other) {
             const nodeHeight = Math.max(
                 MIN_NODE_HEIGHT,
                 (groupedExpense.other.total / maxTotal) * availableHeight * 0.5,
             );
-            const otherNode: NodeData = {
+            expenseNodes.push({
                 id: 'expense-other',
                 label: __('Other'),
                 value: groupedExpense.other.total,
                 color: 'var(--color-muted)',
                 y: expenseY,
                 height: nodeHeight,
-                column: 2,
-            };
-            expenseNodes.push(otherNode);
+                column: 'expense',
+                columnFraction: 0,
+            });
             otherGroupsMap['expense-other'] = groupedExpense.other;
             expenseY += nodeHeight + NODE_PADDING;
         }
 
-        // Add all nodes to map
-        incomeNodes.forEach((n) => (nodeMap[n.id] = n));
-        nodeMap[centerNode.id] = centerNode;
-        expenseNodes.forEach((n) => (nodeMap[n.id] = n));
+        // Resolve which expanded parents actually have loaded children.
+        const sortByAmount = (categories: SankeyCategory[]): SankeyCategory[] =>
+            [...categories].sort((a, b) => b.amount - a.amount);
 
-        // Create links from income to center
+        const incomeChildren: Record<string, SankeyCategory[]> = {};
+        incomeNodes.forEach((node) => {
+            if (node.category && expandedIds.has(node.category.id)) {
+                const kids = childrenById[node.category.id]?.income_categories;
+
+                if (kids && kids.length > 0) {
+                    incomeChildren[node.id] = sortByAmount(kids);
+                }
+            }
+        });
+
+        const expenseChildren: Record<string, SankeyCategory[]> = {};
+        expenseNodes.forEach((node) => {
+            if (node.category && expandedIds.has(node.category.id)) {
+                const kids = childrenById[node.category.id]?.expense_categories;
+
+                if (kids && kids.length > 0) {
+                    expenseChildren[node.id] = sortByAmount(kids);
+                }
+            }
+        });
+
+        const hasIncomeChildColumn = Object.keys(incomeChildren).length > 0;
+        const hasExpenseChildColumn = Object.keys(expenseChildren).length > 0;
+
+        // Lay out the active columns left-to-right.
+        const columns: ColumnKey[] = [];
+        if (hasIncomeChildColumn) {
+            columns.push('incomeChild');
+        }
+        columns.push('income', 'center', 'expense');
+        if (hasExpenseChildColumn) {
+            columns.push('expenseChild');
+        }
+
+        const pad = columns.length <= 3 ? 0.25 : 0.12;
+        const fractionFor = (index: number): number =>
+            columns.length <= 1
+                ? 0.5
+                : pad + (index / (columns.length - 1)) * (1 - 2 * pad);
+        const fractionByColumn = {} as Record<ColumnKey, number>;
+        columns.forEach((column, index) => {
+            fractionByColumn[column] = fractionFor(index);
+        });
+
+        incomeNodes.forEach((node) => {
+            node.columnFraction = fractionByColumn.income;
+        });
+        expenseNodes.forEach((node) => {
+            node.columnFraction = fractionByColumn.expense;
+        });
+        centerNode.columnFraction = fractionByColumn.center;
+
+        const linkList: LinkData[] = [];
+
+        // Income parents -> center
         let incomeLinkY = centerY;
         incomeNodes.forEach((incomeNode) => {
-            const linkHeight = (incomeNode.value / total_income) * centerHeight;
+            const linkHeight =
+                total_income > 0
+                    ? (incomeNode.value / total_income) * centerHeight
+                    : 0;
             linkList.push({
                 source: incomeNode.id,
                 target: 'center',
@@ -356,15 +488,18 @@ export function SankeyChart({
                 targetY: incomeLinkY + linkHeight / 2,
                 sourceHeight: incomeNode.height,
                 targetHeight: linkHeight,
+                kind: 'income',
             });
             incomeLinkY += linkHeight;
         });
 
-        // Create links from center to expenses
+        // Center -> expense parents
         let expenseLinkY = centerY;
         expenseNodes.forEach((expenseNode) => {
             const linkHeight =
-                (expenseNode.value / total_expense) * centerHeight;
+                total_expense > 0
+                    ? (expenseNode.value / total_expense) * centerHeight
+                    : 0;
             linkList.push({
                 source: 'center',
                 target: expenseNode.id,
@@ -373,17 +508,112 @@ export function SankeyChart({
                 targetY: expenseNode.y + expenseNode.height / 2,
                 sourceHeight: linkHeight,
                 targetHeight: expenseNode.height,
+                kind: 'expense',
             });
             expenseLinkY += linkHeight;
         });
 
+        // Child nodes stack within their parent's vertical band so the parent
+        // visibly splits into its subcategories.
+        const childNodes: NodeData[] = [];
+        const buildChildren = (
+            parents: NodeData[],
+            childrenByParent: Record<string, SankeyCategory[]>,
+            childColumn: ColumnKey,
+            kind: 'income' | 'expense',
+        ) => {
+            parents.forEach((parent) => {
+                const kids = childrenByParent[parent.id];
+
+                if (!kids) {
+                    return;
+                }
+
+                const childFraction = fractionByColumn[childColumn];
+                const kidsSum = kids.reduce((sum, kid) => sum + kid.amount, 0);
+
+                if (kidsSum <= 0) {
+                    return;
+                }
+
+                // Size each child like a top-level node (same minimum height
+                // and gap), then center the stack on the parent so the links
+                // fan out from the parent's proportional slices.
+                const childHeights = kids.map((kid) =>
+                    Math.max(
+                        MIN_NODE_HEIGHT,
+                        (kid.amount / maxTotal) * availableHeight * 0.5,
+                    ),
+                );
+                const stackHeight =
+                    childHeights.reduce((sum, h) => sum + h, 0) +
+                    NODE_PADDING * (kids.length - 1);
+                let childCursor =
+                    parent.y + parent.height / 2 - stackHeight / 2;
+                let parentCursor = parent.y;
+
+                kids.forEach((kid, index) => {
+                    const childHeight = childHeights[index];
+                    const parentSlice = (kid.amount / kidsSum) * parent.height;
+                    const node: NodeData = {
+                        id: `${childColumn}-${parent.id}-${index}`,
+                        label: kid.category.name,
+                        value: kid.amount,
+                        color:
+                            kid.category.color ||
+                            (kind === 'income'
+                                ? 'var(--color-chart-2)'
+                                : 'var(--color-chart-3)'),
+                        y: childCursor,
+                        height: childHeight,
+                        column: childColumn,
+                        columnFraction: childFraction,
+                        category: kid.category,
+                        hasChildren: kid.has_children,
+                        expandable: false,
+                    };
+                    childNodes.push(node);
+
+                    if (kind === 'income') {
+                        linkList.push({
+                            source: node.id,
+                            target: parent.id,
+                            value: kid.amount,
+                            sourceY: node.y + childHeight / 2,
+                            targetY: parentCursor + parentSlice / 2,
+                            sourceHeight: childHeight,
+                            targetHeight: parentSlice,
+                            kind: 'income',
+                        });
+                    } else {
+                        linkList.push({
+                            source: parent.id,
+                            target: node.id,
+                            value: kid.amount,
+                            sourceY: parentCursor + parentSlice / 2,
+                            targetY: node.y + childHeight / 2,
+                            sourceHeight: parentSlice,
+                            targetHeight: childHeight,
+                            kind: 'expense',
+                        });
+                    }
+
+                    childCursor += childHeight + NODE_PADDING;
+                    parentCursor += parentSlice;
+                });
+            });
+        };
+
+        buildChildren(incomeNodes, incomeChildren, 'incomeChild', 'income');
+        buildChildren(expenseNodes, expenseChildren, 'expenseChild', 'expense');
+
         return {
-            nodes: Object.values(nodeMap),
+            nodes: [...incomeNodes, centerNode, ...expenseNodes, ...childNodes],
             links: linkList,
             isEmpty: false,
             otherGroups: otherGroupsMap,
         };
-    }, [data, height, groupingThreshold]);
+    }, [data, height, groupingThreshold, expandedIds, childrenById]);
 
     if (isEmpty) {
         return (
@@ -400,6 +630,11 @@ export function SankeyChart({
     }
 
     const width = renderedWidth;
+
+    const isLeftAligned = (column: ColumnKey): boolean =>
+        column === 'incomeChild' || column === 'income';
+    const isRightAligned = (column: ColumnKey): boolean =>
+        column === 'expense' || column === 'expenseChild';
 
     return (
         <div
@@ -424,11 +659,9 @@ export function SankeyChart({
                         if (!sourceNode || !targetNode) return null;
 
                         const sourceX =
-                            COLUMN_POSITIONS[sourceNode.column] * width +
-                            NODE_WIDTH / 2;
+                            sourceNode.columnFraction * width + NODE_WIDTH / 2;
                         const targetX =
-                            COLUMN_POSITIONS[targetNode.column] * width -
-                            NODE_WIDTH / 2;
+                            targetNode.columnFraction * width - NODE_WIDTH / 2;
 
                         const linkId = `${link.source}-${link.target}`;
                         const isHovered =
@@ -454,7 +687,7 @@ export function SankeyChart({
                                 key={linkId}
                                 d={path}
                                 fill={
-                                    sourceNode.column === 0
+                                    link.kind === 'income'
                                         ? 'var(--color-chart-2)'
                                         : 'var(--color-chart-3)'
                                 }
@@ -470,9 +703,7 @@ export function SankeyChart({
                 {/* Nodes */}
                 <g className="nodes">
                     {nodes.map((node) => {
-                        const x =
-                            COLUMN_POSITIONS[node.column] * width -
-                            NODE_WIDTH / 2;
+                        const x = node.columnFraction * width - NODE_WIDTH / 2;
                         const isHovered = hoveredNode === node.id;
                         const isOtherNode = node.id.endsWith('-other');
                         const otherGroup = isOtherNode
@@ -494,18 +725,21 @@ export function SankeyChart({
                                       },
                                   }).url
                                 : null;
-                        const canDrill =
+                        const canExpand =
                             !isOtherNode &&
-                            !!node.hasChildren &&
+                            !!node.expandable &&
                             !!node.category &&
-                            !!onDrill;
+                            !!period;
+                        const isExpanded =
+                            !!node.category &&
+                            expandedIds.has(node.category.id);
                         const isNavigable =
-                            !isOtherNode && !canDrill && categoryUrl !== null;
-                        const isInteractive = canDrill || isNavigable;
+                            !isOtherNode && !canExpand && categoryUrl !== null;
+                        const isInteractive = canExpand || isNavigable;
 
                         const activate = () => {
-                            if (canDrill && node.category) {
-                                onDrill?.(node.category.id, node.label);
+                            if (canExpand && node.category) {
+                                toggleExpand(node.category.id);
                                 return;
                             }
 
@@ -513,6 +747,31 @@ export function SankeyChart({
                                 router.visit(categoryUrl);
                             }
                         };
+
+                        // The label/amount block is rendered as real HTML in a
+                        // foreignObject so flexbox handles spacing, vertical
+                        // centering, and ellipsis truncation reliably.
+                        const rightAligned = isRightAligned(node.column);
+                        const leftAligned = isLeftAligned(node.column);
+                        const labelX = rightAligned
+                            ? x + NODE_WIDTH + LABEL_GAP
+                            : leftAligned
+                              ? LABEL_PAD
+                              : x + NODE_WIDTH / 2 - LABEL_CENTER_WIDTH / 2;
+                        const labelWidth = rightAligned
+                            ? Math.max(0, width - labelX - LABEL_PAD)
+                            : leftAligned
+                              ? Math.max(0, x - LABEL_GAP - LABEL_PAD)
+                              : LABEL_CENTER_WIDTH;
+                        const labelY =
+                            node.y + node.height / 2 - LABEL_BLOCK_HEIGHT / 2;
+                        const iconRotationClass = isExpanded
+                            ? node.column === 'income'
+                                ? ''
+                                : 'rotate-180'
+                            : node.column === 'income'
+                              ? 'rotate-180'
+                              : '';
 
                         const nodeContent = (
                             <g
@@ -538,7 +797,7 @@ export function SankeyChart({
                                     }
                                 }}
                                 role={
-                                    canDrill
+                                    canExpand
                                         ? 'button'
                                         : isNavigable
                                           ? 'link'
@@ -546,8 +805,10 @@ export function SankeyChart({
                                 }
                                 tabIndex={isInteractive ? 0 : undefined}
                                 aria-label={
-                                    canDrill
-                                        ? `Drill into ${node.label}`
+                                    canExpand
+                                        ? isExpanded
+                                            ? `Collapse ${node.label}`
+                                            : `Expand ${node.label}`
                                         : isNavigable
                                           ? `View ${node.label} transactions`
                                           : undefined
@@ -588,56 +849,60 @@ export function SankeyChart({
                                     className="transition-all duration-200"
                                 />
 
-                                {/* Label */}
-                                <text
-                                    x={
-                                        node.column === 0
-                                            ? x - 6
-                                            : node.column === 2
-                                              ? x + NODE_WIDTH + 6
-                                              : x + NODE_WIDTH / 2
-                                    }
-                                    y={node.y + node.height / 2 - 6}
-                                    textAnchor={
-                                        node.column === 0
-                                            ? 'end'
-                                            : node.column === 2
-                                              ? 'start'
-                                              : 'middle'
-                                    }
-                                    dominantBaseline="middle"
-                                    className="fill-foreground text-[11px] font-medium"
+                                {/* Label + amount */}
+                                <foreignObject
+                                    x={labelX}
+                                    y={labelY}
+                                    width={labelWidth}
+                                    height={LABEL_BLOCK_HEIGHT}
+                                    className="overflow-visible"
                                 >
-                                    {node.label}
-                                    {isOtherNode && (
-                                        <tspan className="fill-muted-foreground">
-                                            {' '}
-                                            ⋯
-                                        </tspan>
-                                    )}
-                                </text>
-                                {/* Amount */}
-                                <text
-                                    x={
-                                        node.column === 0
-                                            ? x - 6
-                                            : node.column === 2
-                                              ? x + NODE_WIDTH + 6
-                                              : x + NODE_WIDTH / 2
-                                    }
-                                    y={node.y + node.height / 2 + 6}
-                                    textAnchor={
-                                        node.column === 0
-                                            ? 'end'
-                                            : node.column === 2
-                                              ? 'start'
-                                              : 'middle'
-                                    }
-                                    dominantBaseline="middle"
-                                    className="fill-muted-foreground text-[11px]"
-                                >
-                                    {maskIfPrivate(node.value)}
-                                </text>
+                                    <div
+                                        className={cn(
+                                            'flex h-full flex-col justify-center gap-0.5 leading-tight',
+                                            rightAligned &&
+                                                'items-start text-left',
+                                            leftAligned &&
+                                                'items-end text-right',
+                                            !rightAligned &&
+                                                !leftAligned &&
+                                                'items-center text-center',
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                'flex max-w-full items-center gap-2',
+                                                node.column === 'income' &&
+                                                    'flex-row-reverse',
+                                            )}
+                                        >
+                                            <span
+                                                title={node.label}
+                                                className="min-w-0 truncate text-[11px] font-medium text-foreground"
+                                            >
+                                                {node.label}
+                                                {isOtherNode && (
+                                                    <span className="text-muted-foreground">
+                                                        {' '}
+                                                        ⋯
+                                                    </span>
+                                                )}
+                                            </span>
+                                            {canExpand && (
+                                                <ChevronsRight
+                                                    aria-hidden="true"
+                                                    className={cn(
+                                                        'size-3 shrink-0 text-muted-foreground',
+                                                        iconRotationClass,
+                                                    )}
+                                                />
+                                            )}
+                                        </div>
+                                        <span className="text-[11px] text-muted-foreground">
+                                            {maskIfPrivate(node.value)}
+                                        </span>
+                                    </div>
+                                </foreignObject>
                             </g>
                         );
 
@@ -657,7 +922,9 @@ export function SankeyChart({
                                     </PopoverTrigger>
                                     <PopoverContent
                                         align={
-                                            node.column === 0 ? 'start' : 'end'
+                                            node.id.startsWith('income-')
+                                                ? 'start'
+                                                : 'end'
                                         }
                                         side="top"
                                         className="p-4"
