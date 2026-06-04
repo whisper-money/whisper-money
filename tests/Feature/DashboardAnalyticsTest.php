@@ -369,6 +369,63 @@ test('top categories rolls child spending up into the top-level parent', functio
     expect($data[0]['category']['id'])->toBe($food->id);
     expect($data[0]['amount'])->toBe(6000);
     expect($data[0]['total_amount'])->toBe(6000);
+    expect($data[0]['has_children'])->toBeTrue();
+});
+
+test('top categories flags parents without children as not expandable', function () {
+    $rent = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Rent']);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $rent->id,
+        'amount' => -1000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/dashboard/top-categories?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+    ]));
+
+    $response->assertOk();
+    expect($response->json('0.has_children'))->toBeFalse();
+});
+
+test('drilling into a top category splits it into children plus a direct node', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
+    $groceries = Category::factory()->childOf($food)->create(['user_id' => $this->user->id, 'name' => 'Groceries']);
+
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $food->id,
+        'amount' => -1000,
+        'transaction_date' => now(),
+    ]);
+    Transaction::factory()->create([
+        'user_id' => $this->user->id,
+        'category_id' => $groceries->id,
+        'amount' => -2000,
+        'transaction_date' => now(),
+    ]);
+
+    $response = $this->getJson('/api/dashboard/top-categories?'.http_build_query([
+        'from' => now()->startOfMonth()->toDateString(),
+        'to' => now()->endOfMonth()->toDateString(),
+        'parent' => $food->id,
+    ]));
+
+    $response->assertOk();
+    $data = collect($response->json());
+
+    expect($data)->toHaveCount(2);
+
+    $childNode = $data->firstWhere('is_direct', false);
+    expect($childNode['category_id'])->toBe($groceries->id)
+        ->and($childNode['amount'])->toBe(2000);
+
+    $directNode = $data->firstWhere('is_direct', true);
+    expect($directNode['category_id'])->toBe($food->id)
+        ->and($directNode['amount'])->toBe(1000);
 });
 
 test('net worth evolution returns monthly data points with per-account balances', function () {
