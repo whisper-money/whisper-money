@@ -591,9 +591,9 @@ jobs:
           # The Coolify box rebuilds the image from git on deploy, so its API
           # (port 8000) can be unreachable for several minutes while a prior
           # build runs. We just need the webhook to land once: retry on
-          # connection-level failures with a capped backoff over a wide window.
-          max_attempts=10
-          max_delay=60
+          # connection-level failures, waiting 10 min before the second
+          # attempt and 20 min before the third so a long rebuild can finish.
+          max_attempts=3
           attempt=1
 
           # Separator we control, so curl's --write-out fields can never be
@@ -638,8 +638,7 @@ jobs:
             echo "Deployment request failed (http=${http_code:-none} curl_exit=${curl_code:-$curl_exit}: ${errormsg:-none})"
 
             if [ $attempt -lt $max_attempts ]; then
-              delay=$((15 * attempt))
-              [ $delay -gt $max_delay ] && delay=$max_delay
+              delay=$((600 * attempt))
               echo "Retrying in ${delay}s..."
               sleep $delay
             fi
