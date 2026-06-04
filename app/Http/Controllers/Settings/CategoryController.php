@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Enums\CategoryDeletionStrategy;
-use App\Features\CategoryTree as CategoryTreeFeature;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\DeleteCategoryRequest;
 use App\Http\Requests\Settings\StoreCategoryRequest;
@@ -16,7 +15,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class CategoryController extends Controller
 {
@@ -36,7 +34,6 @@ class CategoryController extends Controller
 
         return Inertia::render('settings/categories', [
             'categories' => $categories,
-            'categoryTreeEnabled' => Feature::for(auth()->user())->active(CategoryTreeFeature::class),
         ]);
     }
 

@@ -5,7 +5,6 @@ import { getDescendantIds } from '@/lib/category-tree';
 import { type Category } from '@/types/category';
 import { UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 
 interface ParentCategoryFieldProps {
@@ -24,10 +23,6 @@ export function ParentCategoryField({
     excludeId,
     error,
 }: ParentCategoryFieldProps) {
-    const enabled =
-        usePage<{ categoryTreeEnabled?: boolean }>().props
-            .categoryTreeEnabled ?? false;
-
     const byId = useMemo(
         () => new Map(categories.map((c) => [c.id, c])),
         [categories],
@@ -58,10 +53,6 @@ export function ParentCategoryField({
             (category) => !excluded.has(category.id) && depthOf(category) < 2,
         );
     }, [categories, excludeId, byId]);
-
-    if (!enabled) {
-        return null;
-    }
 
     return (
         <div className="space-y-2">
