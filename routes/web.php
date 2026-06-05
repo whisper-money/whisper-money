@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\DashboardController;
@@ -78,6 +79,10 @@ Route::get('user-leads/{lead}/verify', [UserLeadController::class, 'verify'])
     ->middleware('signed')
     ->name('user-leads.verify');
 Route::get('waitlist/thank-you/{lead}', [UserLeadController::class, 'thankYou'])->name('waitlist.thank-you');
+
+Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify.public');
 
 Route::get('privacy', function () {
     return Inertia::render('privacy');
