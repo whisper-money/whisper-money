@@ -14,7 +14,7 @@ import {
 } from '@/lib/balance-import-config-storage';
 import { getCsrfToken } from '@/lib/csrf';
 import {
-    autoDetectDateFormat,
+    detectDateFormat,
     parseAmount,
     parseDate,
     parseFile,
@@ -265,15 +265,17 @@ export function ImportBalancesDrawer({
 
             let detectedFormat = DateFormat.YearMonthDay;
             let formatDetected = false;
+            let formatAmbiguous = false;
             if (autoMapping.balance_date) {
-                const detected = autoDetectDateFormat(
+                const detected = detectDateFormat(
                     data,
                     autoMapping.balance_date,
                     locale,
                 );
                 if (detected) {
-                    detectedFormat = detected;
-                    formatDetected = true;
+                    detectedFormat = detected.format;
+                    formatAmbiguous = detected.ambiguous;
+                    formatDetected = !detected.ambiguous;
                 }
             }
 
@@ -300,7 +302,10 @@ export function ImportBalancesDrawer({
                     if (isValidMapping(savedConfig.columnMapping)) {
                         finalMapping = savedConfig.columnMapping;
                         finalDateFormat = savedConfig.dateFormat;
-                        formatDetected = true;
+                        // Keep the saved format as the default, but still show
+                        // the selector when the dates are ambiguous so a
+                        // previously-saved wrong format can be corrected.
+                        formatDetected = !formatAmbiguous;
                     }
                 }
             }

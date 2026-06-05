@@ -62,12 +62,18 @@ export async function parseFile(file: File): Promise<{
                     return;
                 }
 
-                const workbook = XLSX.read(data, { type: 'binary' });
+                // raw: true keeps text-based cells (CSV) as their original
+                // strings instead of letting the parser guess and coerce
+                // date-like values into Excel serial numbers. parseDate then
+                // applies the user-selected format. Native spreadsheet dates
+                // (.xls/.xlsx) still arrive as numbers and use the serial path.
+                const workbook = XLSX.read(data, { type: 'binary', raw: true });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
 
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, {
                     header: 1,
+                    raw: true,
                 }) as unknown[][];
 
                 if (jsonData.length === 0) {
@@ -211,11 +217,16 @@ export function getLocaleDateFormat(locale?: string): DateFormat | null {
     return DateFormat.DayMonthYear;
 }
 
-export function autoDetectDateFormat(
+export interface DateFormatDetection {
+    format: DateFormat;
+    ambiguous: boolean;
+}
+
+export function detectDateFormat(
     data: ParsedRow[],
     dateColumnName: string,
     locale?: string,
-): DateFormat | null {
+): DateFormatDetection | null {
     if (!data || data.length === 0 || !dateColumnName) {
         return null;
     }
@@ -248,29 +259,33 @@ export function autoDetectDateFormat(
 
     const maxScore = Math.max(...Object.values(scores));
 
-    if (maxScore === 0) {
+    if (maxScore === 0 || maxScore < sampleSize * 0.8) {
         return null;
     }
 
-    if (maxScore >= sampleSize * 0.8) {
-        const tiedFormats = formats.filter(
-            (format) => scores[format] === maxScore,
-        );
+    const tiedFormats = formats.filter((format) => scores[format] === maxScore);
 
-        if (tiedFormats.length === 1) {
-            return tiedFormats[0];
-        }
-
-        // Use the user's locale to break ties between ambiguous formats
-        const localePreferred = getLocaleDateFormat(locale);
-        if (localePreferred && tiedFormats.includes(localePreferred)) {
-            return localePreferred;
-        }
-
-        return tiedFormats[0];
+    if (tiedFormats.length === 1) {
+        return { format: tiedFormats[0], ambiguous: false };
     }
 
-    return null;
+    // Multiple formats parse the sample equally well (e.g. 02/06/2026 is valid
+    // as both DD/MM and MM/DD). Pick the locale-preferred format as the default
+    // but flag it as ambiguous so the caller can let the user confirm.
+    const localePreferred = getLocaleDateFormat(locale);
+    if (localePreferred && tiedFormats.includes(localePreferred)) {
+        return { format: localePreferred, ambiguous: true };
+    }
+
+    return { format: tiedFormats[0], ambiguous: true };
+}
+
+export function autoDetectDateFormat(
+    data: ParsedRow[],
+    dateColumnName: string,
+    locale?: string,
+): DateFormat | null {
+    return detectDateFormat(data, dateColumnName, locale)?.format ?? null;
 }
 
 export function autoDetectColumns(headers: string[]): ColumnMapping {
