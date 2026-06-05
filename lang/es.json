@@ -1560,6 +1560,8 @@
     "Update the balance record.": "Actualiza el registro de balance.",
     "Update the category and notes for this transaction.": "Actualiza la categoría y notas de esta transacción.",
     "Update the category information.": "Actualiza la información de la categoría.",
+    "Update the current balance of the affected manual accounts to reflect this change.": "Actualiza el saldo actual de las cuentas manuales afectadas para reflejar este cambio.",
+    "Update the current balance of the manual account to reflect this change.": "Actualiza el saldo actual de la cuenta manual para reflejar este cambio.",
     "Update the label information.": "Actualiza la información de la etiqueta.",
     "Update the owed amount record.": "Actualiza el registro de monto adeudado.",
     "Update the rule to automatically categorize transactions and add labels.": "Actualiza la regla para categorizar automáticamente transacciones y agregar etiquetas.",

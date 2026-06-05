@@ -238,6 +238,136 @@ test('users cannot delete other users transactions', function () {
     ]);
 });
 
+test('deleting a manual account expense increases the current balance when requested', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => now()->toDateString(),
+        'balance' => 100000,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -2500,
+    ]);
+
+    actingAs($user)
+        ->deleteJson(route('transactions.destroy', $transaction), ['update_balance' => true])
+        ->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 102500,
+    ]);
+});
+
+test('deleting a manual account income decreases the current balance when requested', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => now()->toDateString(),
+        'balance' => 100000,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => 3000,
+    ]);
+
+    actingAs($user)
+        ->deleteJson(route('transactions.destroy', $transaction), ['update_balance' => true])
+        ->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 97000,
+    ]);
+});
+
+test('deleting a transaction creates a current balance from the latest known balance', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => now()->subDays(5)->toDateString(),
+        'balance' => 50000,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -1500,
+    ]);
+
+    actingAs($user)
+        ->deleteJson(route('transactions.destroy', $transaction), ['update_balance' => true])
+        ->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 51500,
+    ]);
+});
+
+test('deleting a transaction does not change the balance when not requested', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => now()->toDateString(),
+        'balance' => 100000,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -2500,
+    ]);
+
+    actingAs($user)
+        ->deleteJson(route('transactions.destroy', $transaction))
+        ->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 100000,
+    ]);
+});
+
+test('deleting a connected account transaction never changes the balance', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->connected()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => now()->toDateString(),
+        'balance' => 100000,
+    ]);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'amount' => -2500,
+    ]);
+
+    actingAs($user)
+        ->deleteJson(route('transactions.destroy', $transaction), ['update_balance' => true])
+        ->assertSuccessful();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => now()->toDateString(),
+        'balance' => 100000,
+    ]);
+});
+
 test('transactions index page passes user categories', function () {
     $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->create();

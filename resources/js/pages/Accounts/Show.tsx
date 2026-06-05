@@ -403,6 +403,9 @@ export default function AccountShow({
                         showActionsMenu={false}
                         maxHeight={600}
                         hideColumns={['bank', 'account']}
+                        onBalanceUpdated={() =>
+                            setChartRefreshKey((key) => key + 1)
+                        }
                     />
                 )}
             </div>

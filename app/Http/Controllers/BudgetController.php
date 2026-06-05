@@ -92,7 +92,7 @@ class BudgetController extends Controller
             ->where('user_id', $user->id)
             ->with('bank:id,name,logo')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 
         $banks = Bank::query()
             ->availableForUser($user)

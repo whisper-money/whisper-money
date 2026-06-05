@@ -50,6 +50,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -240,6 +241,7 @@ export interface TransactionListProps {
     headerActions?: ReactNode;
     maxHeight?: number;
     hideColumns?: string[];
+    onBalanceUpdated?: () => void;
 }
 
 export function TransactionList({
@@ -256,6 +258,7 @@ export function TransactionList({
     headerActions,
     maxHeight,
     hideColumns = [],
+    onBalanceUpdated,
 }: TransactionListProps) {
     const { isKeySet } = useEncryptionKey();
     const locale = useLocale();
@@ -308,6 +311,7 @@ export function TransactionList({
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
+    const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -766,6 +770,16 @@ export function TransactionList({
         searchInIndexedDB();
     }, [filters.searchText, isKeySet, accountId]);
 
+    const manualAccountIds = useMemo(
+        () =>
+            new Set(
+                accounts
+                    .filter((account) => account.banking_connection_id === null)
+                    .map((account) => account.id),
+            ),
+        [accounts],
+    );
+
     const filteredTransactions = useMemo(() => {
         return transactions.filter((transaction) => {
             if (filters.searchText && isKeySet) {
@@ -1116,8 +1130,16 @@ export function TransactionList({
         }
 
         setIsDeleting(true);
+        const balanceWasUpdated =
+            updateBalanceOnDelete &&
+            manualAccountIds.has(deleteTransaction.account_id);
         try {
-            await transactionSyncService.delete(deleteTransaction.id);
+            await transactionSyncService.delete(deleteTransaction.id, {
+                updateBalance: balanceWasUpdated,
+            });
+            if (balanceWasUpdated) {
+                onBalanceUpdated?.();
+            }
             setTransactions((previous) =>
                 previous.filter(
                     (transaction) => transaction.id !== deleteTransaction.id,
@@ -1245,8 +1267,20 @@ export function TransactionList({
         }
 
         setIsBulkDeleting(true);
+        const balanceMayHaveUpdated =
+            updateBalanceOnDelete &&
+            transactions.some(
+                (transaction) =>
+                    selectedIds.includes(transaction.id) &&
+                    manualAccountIds.has(transaction.account_id),
+            );
         try {
-            await transactionSyncService.deleteMany(selectedIds);
+            await transactionSyncService.deleteMany(selectedIds, {
+                updateBalance: updateBalanceOnDelete,
+            });
+            if (balanceMayHaveUpdated) {
+                onBalanceUpdated?.();
+            }
             setTransactions((previous) =>
                 previous.filter(
                     (transaction) => !selectedIds.includes(transaction.id),
@@ -1461,6 +1495,7 @@ export function TransactionList({
                     if (!open) {
                         setDeleteTransaction(null);
                         setIsBulkDeleteMode(false);
+                        setUpdateBalanceOnDelete(true);
                     }
                 }}
             >
@@ -1477,6 +1512,33 @@ export function TransactionList({
                                 : 'Are you sure you want to delete this transaction? This action cannot be undone.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    {(isBulkDeleteMode
+                        ? transactions.some(
+                              (transaction) =>
+                                  Object.keys(rowSelection).includes(
+                                      transaction.id,
+                                  ) &&
+                                  manualAccountIds.has(transaction.account_id),
+                          )
+                        : deleteTransaction !== null &&
+                          manualAccountIds.has(
+                              deleteTransaction.account_id,
+                          )) && (
+                        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
+                            <Checkbox
+                                checked={updateBalanceOnDelete}
+                                onCheckedChange={(checked) =>
+                                    setUpdateBalanceOnDelete(checked === true)
+                                }
+                                className="mt-0.5"
+                            />
+                            <span className="text-muted-foreground">
+                                {__(
+                                    'Update the current balance of the manual account to reflect this change.',
+                                )}
+                            </span>
+                        </label>
+                    )}
                     <AlertDialogFooter>
                         <AlertDialogCancel
                             disabled={isDeleting || isBulkDeleting}

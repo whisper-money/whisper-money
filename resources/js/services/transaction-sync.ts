@@ -176,8 +176,13 @@ class TransactionSyncService {
         return response.data.count || 0;
     }
 
-    async delete(id: string): Promise<void> {
-        await axios.delete(`/transactions/${id}`);
+    async delete(
+        id: string,
+        options?: { updateBalance?: boolean },
+    ): Promise<void> {
+        await axios.delete(`/transactions/${id}`, {
+            data: options?.updateBalance ? { update_balance: true } : undefined,
+        });
         await db.transactions.delete(id);
     }
 
@@ -189,9 +194,12 @@ class TransactionSyncService {
         }
     }
 
-    async deleteMany(ids: string[]): Promise<void> {
+    async deleteMany(
+        ids: string[],
+        options?: { updateBalance?: boolean },
+    ): Promise<void> {
         for (const id of ids) {
-            await this.delete(id);
+            await this.delete(id, options);
         }
     }
 

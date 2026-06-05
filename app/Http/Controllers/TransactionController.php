@@ -12,6 +12,7 @@ use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
+use App\Services\ManualBalanceAdjuster;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -79,7 +80,7 @@ class TransactionController extends Controller
             ->where('user_id', $user->id)
             ->with('bank:id,name,logo')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 
         $banks = Bank::query()
             ->availableForUser($user)
@@ -121,7 +122,7 @@ class TransactionController extends Controller
             ->where('user_id', $user->id)
             ->with('bank:id,name,logo')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
 
         $banks = Bank::query()
             ->availableForUser($user)
@@ -213,9 +214,13 @@ class TransactionController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, Transaction $transaction): JsonResponse
+    public function destroy(Request $request, Transaction $transaction, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
     {
         $this->authorize('delete', $transaction);
+
+        if ($request->boolean('update_balance')) {
+            $balanceAdjuster->reverseDeletedTransaction($transaction);
+        }
 
         $transaction->delete();
 
