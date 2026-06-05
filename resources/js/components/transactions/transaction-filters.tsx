@@ -1,10 +1,12 @@
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { ChevronsUpDown, Tag, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
+import { SavedFilters } from '@/components/transactions/saved-filters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,6 +31,7 @@ import {
     toggleCategorySelection,
 } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
+import { type SharedData } from '@/types';
 import { type Account } from '@/types/account';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { getLabelColorClasses, type Label } from '@/types/label';
@@ -44,6 +47,7 @@ interface TransactionFiltersProps {
     isKeySet: boolean;
     actions?: ReactNode;
     hideAccountFilter?: boolean;
+    enableSavedFilters?: boolean;
 }
 
 export function TransactionFilters({
@@ -54,7 +58,9 @@ export function TransactionFilters({
     accounts,
     actions,
     hideAccountFilter = false,
+    enableSavedFilters = false,
 }: TransactionFiltersProps) {
+    const { features } = usePage<SharedData>().props;
     const [isOpen, setIsOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
     const [categorySearch, setCategorySearch] = useState('');
@@ -231,13 +237,13 @@ export function TransactionFilters({
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex flex-col gap-3">
                 <div className="flex w-full flex-row items-center gap-2">
                     <Input
                         placeholder={__('Search description or notes...')}
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
-                        className="min-w-0 flex-1 md:min-w-[350px]"
+                        className="hidden min-w-0 flex-1 md:block md:min-w-[350px]"
                     />
 
                     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -264,6 +270,19 @@ export function TransactionFilters({
                                     <h4 className="font-medium">
                                         {__('Filters')}
                                     </h4>
+                                </div>
+
+                                <div className="space-y-2 md:hidden">
+                                    <FormLabel>{__('Search')}</FormLabel>
+                                    <Input
+                                        placeholder={__(
+                                            'Search description or notes...',
+                                        )}
+                                        value={searchText}
+                                        onChange={(e) =>
+                                            setSearchText(e.target.value)
+                                        }
+                                    />
                                 </div>
 
                                 <div className="space-y-2">
@@ -684,6 +703,13 @@ export function TransactionFilters({
                             </div>
                         </PopoverContent>
                     </Popover>
+
+                    {enableSavedFilters && features.transactionAnalysis && (
+                        <SavedFilters
+                            filters={filters}
+                            onLoad={onFiltersChange}
+                        />
+                    )}
 
                     {activeFilterCount > 0 && (
                         <Button
