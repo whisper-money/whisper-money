@@ -208,17 +208,18 @@ export function ImportTransactionsDrawer({
 
             let detectedFormat = DateFormat.YearMonthDay;
             let formatDetected = false;
+            let formatAmbiguous = false;
             if (autoMapping.transaction_date) {
-                const { autoDetectDateFormat } =
-                    await import('@/lib/file-parser');
-                const detected = autoDetectDateFormat(
+                const { detectDateFormat } = await import('@/lib/file-parser');
+                const detected = detectDateFormat(
                     data,
                     autoMapping.transaction_date,
                     locale,
                 );
                 if (detected) {
-                    detectedFormat = detected;
-                    formatDetected = true;
+                    detectedFormat = detected.format;
+                    formatAmbiguous = detected.ambiguous;
+                    formatDetected = !detected.ambiguous;
                 }
             }
 
@@ -248,7 +249,10 @@ export function ImportTransactionsDrawer({
                     if (isValidMapping(savedConfig.columnMapping)) {
                         finalMapping = savedConfig.columnMapping;
                         finalDateFormat = savedConfig.dateFormat;
-                        formatDetected = true;
+                        // Keep the saved format as the default, but still show
+                        // the selector when the dates are ambiguous so a
+                        // previously-saved wrong format can be corrected.
+                        formatDetected = !formatAmbiguous;
                     }
                 }
             }

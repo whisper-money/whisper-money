@@ -7,8 +7,11 @@ import {
     calculateBalancesFromTransactions,
     collectBalancesToImport,
     convertRowsToTransactions,
+    detectDateFormat,
     getLatestTransactionDate,
     getLocaleDateFormat,
+    parseDate,
+    parseFile,
 } from './file-parser';
 
 describe('getLocaleDateFormat', () => {
@@ -316,6 +319,48 @@ describe('autoDetectDateFormat', () => {
     });
 });
 
+describe('detectDateFormat', () => {
+    it('returns null for empty data', () => {
+        expect(detectDateFormat([], 'date')).toBeNull();
+    });
+
+    it('flags unambiguous detection as not ambiguous', () => {
+        const data = [
+            { date: '15/01/2024' },
+            { date: '20/02/2024' },
+            { date: '25/03/2024' },
+        ];
+        expect(detectDateFormat(data, 'date')).toEqual({
+            format: DateFormat.DayMonthYear,
+            ambiguous: false,
+        });
+    });
+
+    it('flags locale-resolved ties as ambiguous (en-US)', () => {
+        const data = [
+            { date: '05/03/2024' },
+            { date: '06/04/2024' },
+            { date: '07/05/2024' },
+        ];
+        expect(detectDateFormat(data, 'date', 'en-US')).toEqual({
+            format: DateFormat.MonthDayYear,
+            ambiguous: true,
+        });
+    });
+
+    it('flags locale-resolved ties as ambiguous (es)', () => {
+        const data = [
+            { date: '02/06/2026' },
+            { date: '05/03/2024' },
+            { date: '07/05/2024' },
+        ];
+        expect(detectDateFormat(data, 'date', 'es')).toEqual({
+            format: DateFormat.DayMonthYear,
+            ambiguous: true,
+        });
+    });
+});
+
 describe('getLatestTransactionDate', () => {
     const mapping: ColumnMapping = {
         transaction_date: 'date',
@@ -461,5 +506,35 @@ describe('collectBalancesToImport', () => {
         const balances = collectBalancesToImport(transactions);
 
         expect(balances.size).toBe(0);
+    });
+});
+
+describe('parseFile', () => {
+    it('keeps CSV date cells as their original strings instead of coercing them to date serials', async () => {
+        const csv = [
+            'Fecha,Concepto,Importe',
+            '02/06/2026,Internet,-104576',
+            '03/06/2026,Groceries,-2500',
+        ].join('\n');
+        const file = new File([csv], 'transactions.csv', { type: 'text/csv' });
+
+        const { data } = await parseFile(file);
+
+        expect(data[0].Fecha).toBe('02/06/2026');
+        expect(typeof data[0].Fecha).toBe('string');
+
+        // Because the raw string is preserved, the chosen format still drives
+        // parsing: DD-MM-YYYY -> June, MM-DD-YYYY -> February.
+        const asDmy = parseDate(
+            data[0].Fecha as string,
+            DateFormat.DayMonthYear,
+        );
+        const asMdy = parseDate(
+            data[0].Fecha as string,
+            DateFormat.MonthDayYear,
+        );
+
+        expect(asDmy?.getMonth()).toBe(5);
+        expect(asMdy?.getMonth()).toBe(1);
     });
 });
