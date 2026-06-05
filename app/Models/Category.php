@@ -33,22 +33,6 @@ class Category extends Model
      */
     public const int MAX_DEPTH = 3;
 
-    /**
-     * Columns sent to the frontend. Always returns the full Category shape so
-     * every selector receives the same object regardless of what it needs.
-     *
-     * @var list<string>
-     */
-    private const array FRONTEND_COLUMNS = [
-        'id',
-        'name',
-        'icon',
-        'color',
-        'type',
-        'cashflow_direction',
-        'parent_id',
-    ];
-
     protected $fillable = [
         'name',
         'icon',
@@ -57,6 +41,17 @@ class Category extends Model
         'cashflow_direction',
         'user_id',
         'parent_id',
+    ];
+
+    /** @var list<string> */
+    protected $hidden = [
+        'user_id',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        'active_unique_marker',
+        'parent_unique_marker',
+        'pivot',
     ];
 
     protected function casts(): array
@@ -111,13 +106,14 @@ class Category extends Model
 
     /**
      * Scope for fetching categories to send to the frontend: the full, ordered
-     * Category shape used by every category selector.
+     * Category shape used by every category selector. The serialized shape is
+     * controlled by $hidden so every consumer receives the same object.
      *
      * @param  Builder<Category>  $query
      * @return Builder<Category>
      */
     public function scopeForDisplay(Builder $query): Builder
     {
-        return $query->orderBy('name')->select(self::FRONTEND_COLUMNS);
+        return $query->orderBy('name');
     }
 }

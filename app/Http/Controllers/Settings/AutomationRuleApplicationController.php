@@ -46,7 +46,7 @@ class AutomationRuleApplicationController extends Controller
 
         $transactions = Transaction::query()
             ->whereIn('id', $pageIds)
-            ->with(['account:id,name,bank_id', 'account.bank:id,name', 'category:id,name,icon,color', 'labels:id,name,color'])
+            ->with(['account.bank', 'category', 'labels'])
             ->orderByDesc('transaction_date')
             ->orderByDesc('created_at')
             ->get();

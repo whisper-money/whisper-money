@@ -922,3 +922,29 @@ test('guests are redirected from categorize page', function () {
 
     $response->assertRedirect(route('register'));
 });
+
+test('transactions index hides internal columns and keeps the standard field set', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+    Transaction::factory()->create([
+        'user_id' => $user->id,
+        'account_id' => $account->id,
+        'raw_data' => ['foo' => 'bar'],
+        'dedup_fingerprint' => 'fingerprint',
+        'external_transaction_id' => 'ext-1',
+        'original_description' => 'ORIGINAL',
+    ]);
+
+    $response = actingAs($user)->get(route('transactions.index'));
+
+    $tx = $response->viewData('page')['props']['transactions']['data'][0];
+
+    expect(array_keys($tx))->toContain(
+        'id', 'user_id', 'account_id', 'category_id', 'description', 'description_iv',
+        'transaction_date', 'amount', 'currency_code', 'notes', 'notes_iv',
+        'source', 'creditor_name', 'debtor_name', 'created_at', 'updated_at', 'account', 'labels',
+    );
+    expect($tx)->not->toHaveKeys([
+        'raw_data', 'dedup_fingerprint', 'external_transaction_id', 'original_description', 'deleted_at',
+    ]);
+});

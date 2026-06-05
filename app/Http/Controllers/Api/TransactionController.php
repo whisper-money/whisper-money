@@ -17,7 +17,7 @@ class TransactionController extends Controller
     {
         $query = $request->user()
             ->transactions()
-            ->with('labels:id,name,color');
+            ->with('labels');
 
         if ($request->query('encrypted') === 'true') {
             $query->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'));

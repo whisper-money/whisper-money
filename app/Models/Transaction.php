@@ -54,6 +54,20 @@ class Transaction extends Model
         'debtor_name',
     ];
 
+    /**
+     * Internal columns that must never reach the frontend (raw bank payloads,
+     * dedup metadata and the pre-formatting description).
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'original_description',
+        'external_transaction_id',
+        'dedup_fingerprint',
+        'raw_data',
+        'deleted_at',
+    ];
+
     protected function casts(): array
     {
         return [

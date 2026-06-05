@@ -28,6 +28,11 @@ class Budget extends Model
         'rollover_type',
     ];
 
+    /** @var list<string> */
+    protected $hidden = [
+        'period_duration',
+    ];
+
     protected function casts(): array
     {
         return [

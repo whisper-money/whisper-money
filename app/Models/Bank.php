@@ -22,6 +22,13 @@ class Bank extends Model
         'user_id',
     ];
 
+    /** @var list<string> */
+    protected $hidden = [
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
     /**
      * Scope to banks visible to the given user: public banks plus their own.
      *

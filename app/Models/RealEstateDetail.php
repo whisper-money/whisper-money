@@ -34,12 +34,19 @@ class RealEstateDetail extends Model
         'revaluation_percentage',
     ];
 
+    /** @var list<string> */
+    protected $hidden = [
+        'account_id',
+        'created_at',
+        'updated_at',
+    ];
+
     protected function casts(): array
     {
         return [
             'property_type' => PropertyType::class,
             'purchase_price' => 'integer',
-            'purchase_date' => 'date',
+            'purchase_date' => 'date:Y-m-d',
             'area_value' => 'decimal:2',
             'revaluation_percentage' => 'decimal:2',
         ];

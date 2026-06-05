@@ -21,11 +21,11 @@ class OnboardingController extends Controller
         $banks = Bank::query()
             ->availableForUser($user)
             ->orderBy('name')
-            ->get(['id', 'name', 'logo']);
+            ->get();
 
         $accounts = $user->accounts()
-            ->with('bank:id,name,logo')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code', 'bank_id', 'banking_connection_id']);
+            ->with('bank')
+            ->get();
 
         $categories = Category::query()
             ->where('user_id', $user->id)
@@ -35,10 +35,10 @@ class OnboardingController extends Controller
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
             ->whereNull('category_id')
-            ->with(['account.bank:id,name,logo', 'labels:id,name,color'])
+            ->with(['account.bank', 'labels'])
             ->orderBy('transaction_date', 'desc')
             ->orderBy('id', 'desc')
-            ->get(['id', 'account_id', 'category_id', 'description', 'description_iv', 'transaction_date', 'amount', 'currency_code', 'notes', 'notes_iv']);
+            ->get();
 
         return Inertia::render('onboarding/index', [
             'banks' => $banks,

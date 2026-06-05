@@ -18,9 +18,12 @@ class AccountController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        // The decryption-migration flow needs bank_id, which Account hides by
+        // default; opt it back in explicitly here.
         $accounts = $request->user()
             ->accounts()
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+            ->get()
+            ->makeVisible('bank_id');
 
         return response()->json($accounts);
     }

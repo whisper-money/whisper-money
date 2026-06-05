@@ -199,3 +199,15 @@ test('creating a label with the same name as a deleted label creates a new one',
 
     $this->assertSoftDeleted('labels', ['id' => $originalId]);
 });
+
+test('labels index returns the standard label field set', function () {
+    $user = User::factory()->create();
+    Label::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->withoutVite()->get(route('labels.index'));
+
+    $props = $response->viewData('page')['props'];
+
+    expect(array_keys($props['labels'][0]))
+        ->toEqualCanonicalizing(['id', 'user_id', 'name', 'color', 'created_at', 'updated_at', 'deleted_at']);
+});

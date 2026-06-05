@@ -162,6 +162,19 @@ it('returns all matching banks without truncating search results', function () {
         ->toHaveCount(25);
 });
 
+it('serializes banks with a standard field set and no timestamps', function () {
+    actingAs($this->user);
+
+    Bank::factory()->create(['name' => 'ING', 'user_id' => null]);
+
+    $response = $this->getJson(route('banks.index'));
+
+    $response->assertSuccessful();
+
+    expect(array_keys($response->json('data.0')))
+        ->toEqualCanonicalizing(['id', 'name', 'logo', 'user_id']);
+});
+
 it('includes matching user banks in search results', function () {
     actingAs($this->user);
 

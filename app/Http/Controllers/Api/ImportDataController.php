@@ -16,17 +16,17 @@ class ImportDataController extends Controller
 
         return response()->json([
             'accounts' => $user->accounts()
-                ->with('bank:id,name,logo')
+                ->with('bank')
                 ->orderBy('name')
-                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']),
+                ->get(),
             'categories' => $user->categories()
                 ->forDisplay()
                 ->get(),
             'banks' => $user->banks()
                 ->orderBy('name')
-                ->get(['id', 'name', 'logo']),
+                ->get(),
             'automationRules' => $user->automationRules()
-                ->with(['category:id,name,icon,color', 'labels:id,name,color'])
+                ->with(['category', 'labels'])
                 ->orderBy('priority')
                 ->get(),
         ]);

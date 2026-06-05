@@ -406,3 +406,17 @@ test('creating a budget rejects categories owned by another user', function () {
     $response->assertSessionHasErrors('category_ids.0');
     expect(Budget::where('user_id', $user->id)->count())->toBe(0);
 });
+
+test('budget index hides period_duration and category pivot', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $budget = Budget::factory()->create(['user_id' => $user->id]);
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    $budget->categories()->attach($category->id);
+
+    $response = $this->actingAs($user)->get(route('budgets.index'));
+
+    $budgetData = $response->viewData('page')['props']['budgets'][0];
+
+    expect($budgetData)->not->toHaveKey('period_duration');
+    expect($budgetData['categories'][0])->not->toHaveKey('pivot');
+});

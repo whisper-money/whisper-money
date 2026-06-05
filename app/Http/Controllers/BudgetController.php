@@ -90,19 +90,19 @@ class BudgetController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
-            ->with('bank:id,name,logo')
+            ->with('bank')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
+            ->get();
 
         $banks = Bank::query()
             ->availableForUser($user)
             ->orderBy('name')
-            ->get(['id', 'name', 'logo']);
+            ->get();
 
         $labels = Label::query()
             ->where('user_id', $user->id)
             ->orderBy('name')
-            ->get(['id', 'name', 'color']);
+            ->get();
 
         return Inertia::render('budgets/show', [
             'budget' => $budget,
