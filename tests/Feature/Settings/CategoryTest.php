@@ -663,3 +663,15 @@ test('category names are unique per user', function () {
         'type' => 'expense',
     ]);
 });
+
+test('categories index returns the standard category field set without internal columns', function () {
+    $user = User::factory()->create();
+    Category::factory()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->withoutVite()->get(route('categories.index'));
+
+    $props = $response->viewData('page')['props'];
+
+    expect(array_keys($props['categories'][0]))
+        ->toEqualCanonicalizing(['id', 'name', 'icon', 'color', 'type', 'cashflow_direction', 'parent_id']);
+});
