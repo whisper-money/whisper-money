@@ -51,6 +51,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -457,6 +458,7 @@ export default function Transactions({
     const [deleteTransaction, setDeleteTransaction] =
         useState<DecryptedTransaction | null>(null);
     const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
+    const [updateBalanceOnDelete, setUpdateBalanceOnDelete] = useState(true);
     const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -874,7 +876,11 @@ export default function Transactions({
 
         setIsDeleting(true);
         try {
-            await transactionSyncService.delete(deleteTransaction.id);
+            await transactionSyncService.delete(deleteTransaction.id, {
+                updateBalance:
+                    updateBalanceOnDelete &&
+                    manualAccountIds.has(deleteTransaction.account_id),
+            });
             setAllTransactions((previous) =>
                 previous.filter(
                     (transaction) => transaction.id !== deleteTransaction.id,
@@ -963,6 +969,28 @@ export default function Transactions({
 
     const selectedCount = useMemo(() => selectedIds.length, [selectedIds]);
 
+    const manualAccountIds = useMemo(
+        () =>
+            new Set(
+                accounts
+                    .filter((account) => account.banking_connection_id === null)
+                    .map((account) => account.id),
+            ),
+        [accounts],
+    );
+
+    const bulkDeleteTouchesManualAccount = useMemo(
+        () =>
+            isSelectingAll
+                ? manualAccountIds.size > 0
+                : allTransactions.some(
+                      (transaction) =>
+                          selectedIds.includes(transaction.id) &&
+                          manualAccountIds.has(transaction.account_id),
+                  ),
+        [isSelectingAll, manualAccountIds, allTransactions, selectedIds],
+    );
+
     const bulkDeleteConfirmationText = useMemo(
         () => getBulkDeleteConfirmationText(selectedCount),
         [selectedCount],
@@ -990,7 +1018,9 @@ export default function Transactions({
 
         setIsBulkDeleting(true);
         try {
-            await transactionSyncService.deleteMany(selectedIds);
+            await transactionSyncService.deleteMany(selectedIds, {
+                updateBalance: updateBalanceOnDelete,
+            });
             setAllTransactions((previous) =>
                 previous.filter(
                     (transaction) => !selectedIds.includes(transaction.id),
@@ -1280,6 +1310,7 @@ export default function Transactions({
                 onOpenChange={(open) => {
                     if (!open) {
                         setDeleteTransaction(null);
+                        setUpdateBalanceOnDelete(true);
                     }
                 }}
             >
@@ -1294,6 +1325,25 @@ export default function Transactions({
                             )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    {deleteTransaction !== null &&
+                        manualAccountIds.has(deleteTransaction.account_id) && (
+                            <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
+                                <Checkbox
+                                    checked={updateBalanceOnDelete}
+                                    onCheckedChange={(checked) =>
+                                        setUpdateBalanceOnDelete(
+                                            checked === true,
+                                        )
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <span className="text-muted-foreground">
+                                    {__(
+                                        'Update the current balance of the manual account to reflect this change.',
+                                    )}
+                                </span>
+                            </label>
+                        )}
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>
                             {__('Cancel')}
@@ -1316,6 +1366,7 @@ export default function Transactions({
                         setDeleteTransaction(null);
                         setIsBulkDeleteMode(false);
                         setBulkDeleteConfirmation('');
+                        setUpdateBalanceOnDelete(true);
                     }
                 }}
             >
@@ -1340,6 +1391,22 @@ export default function Transactions({
                         disabled={isBulkDeleting}
                         autoFocus
                     />
+                    {bulkDeleteTouchesManualAccount && (
+                        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
+                            <Checkbox
+                                checked={updateBalanceOnDelete}
+                                onCheckedChange={(checked) =>
+                                    setUpdateBalanceOnDelete(checked === true)
+                                }
+                                className="mt-0.5"
+                            />
+                            <span className="text-muted-foreground">
+                                {__(
+                                    'Update the current balance of the affected manual accounts to reflect this change.',
+                                )}
+                            </span>
+                        </label>
+                    )}
                     <DialogFooter>
                         <Button
                             variant="outline"

@@ -124,7 +124,7 @@ class HandleInertiaRequests extends Middleware
             'accounts' => fn () => $user ? $user->accounts()
                 ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code'])
+                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id'])
                 ->map(function ($account) {
                     $data = $account->only([
                         'id',
@@ -134,6 +134,7 @@ class HandleInertiaRequests extends Middleware
                         'bank_id',
                         'type',
                         'currency_code',
+                        'banking_connection_id',
                         'bank',
                     ]);
 
