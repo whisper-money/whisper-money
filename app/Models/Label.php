@@ -21,6 +21,16 @@ class Label extends Model
         'user_id',
     ];
 
+    /**
+     * Hide the pivot from serialization so a Label looks identical whether it
+     * is loaded standalone or through a belongsToMany relation.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'pivot',
+    ];
+
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {

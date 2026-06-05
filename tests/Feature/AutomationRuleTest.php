@@ -428,3 +428,28 @@ test('updating labels touches automation rule updated_at timestamp', function ()
     $rule->refresh();
     expect($rule->updated_at->isAfter($originalUpdatedAt))->toBeTrue();
 });
+
+test('automation rules serialize full nested category and labels', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    $label = Label::factory()->create(['user_id' => $user->id]);
+    $rule = AutomationRule::factory()->create([
+        'user_id' => $user->id,
+        'action_category_id' => $category->id,
+    ]);
+    $rule->labels()->attach($label->id);
+
+    $response = $this->actingAs($user)->get(route('automation-rules.index'));
+
+    $serialized = $response->viewData('page')['props']['automationRules'][0];
+
+    expect(array_keys($serialized))->toContain(
+        'id', 'user_id', 'title', 'priority', 'rules_json',
+        'action_category_id', 'action_note', 'action_note_iv',
+        'category', 'labels', 'created_at', 'updated_at', 'deleted_at',
+    );
+    expect(array_keys($serialized['category']))
+        ->toEqualCanonicalizing(['id', 'name', 'icon', 'color', 'type', 'cashflow_direction', 'parent_id']);
+    expect(array_keys($serialized['labels'][0]))
+        ->toEqualCanonicalizing(['id', 'user_id', 'name', 'color', 'created_at', 'updated_at', 'deleted_at']);
+});

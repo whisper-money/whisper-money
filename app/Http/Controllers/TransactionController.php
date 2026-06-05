@@ -94,7 +94,7 @@ class TransactionController extends Controller
 
         $automationRules = AutomationRule::query()
             ->where('user_id', $user->id)
-            ->with(['category:id,name,icon,color', 'labels:id,name,color'])
+            ->with(['category', 'labels'])
             ->orderBy('priority')
             ->get();
 

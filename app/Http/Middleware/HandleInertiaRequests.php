@@ -156,7 +156,7 @@ class HandleInertiaRequests extends Middleware
                 }
 
                 return $user->automationRules()
-                    ->with(['category:id,name,icon,color', 'labels:id,name,color'])
+                    ->with(['category', 'labels'])
                     ->orderBy('priority')
                     ->get();
             },
