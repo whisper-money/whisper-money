@@ -162,7 +162,7 @@ class HandleInertiaRequests extends Middleware
             },
             'labels' => fn () => $user ? $user->labels()
                 ->orderBy('name')
-                ->get(['id', 'name', 'color']) : [],
+                ->get() : [],
             'hasEncryptedAccounts' => $hasEncryptedAccounts,
             'hasEncryptionSetup' => $user?->encryption_salt !== null,
             'hasEncryptedTransactions' => $hasEncryptedTransactions,

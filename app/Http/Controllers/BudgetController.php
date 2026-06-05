@@ -102,7 +102,7 @@ class BudgetController extends Controller
         $labels = Label::query()
             ->where('user_id', $user->id)
             ->orderBy('name')
-            ->get(['id', 'name', 'color']);
+            ->get();
 
         return Inertia::render('budgets/show', [
             'budget' => $budget,

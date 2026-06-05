@@ -24,7 +24,7 @@ class LabelController extends Controller
         $labels = auth()->user()
             ->labels()
             ->orderBy('name')
-            ->get(['id', 'name', 'color']);
+            ->get();
 
         return Inertia::render('settings/labels', [
             'labels' => $labels,

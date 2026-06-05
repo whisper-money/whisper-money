@@ -90,7 +90,7 @@ class TransactionController extends Controller
         $labels = Label::query()
             ->where('user_id', $user->id)
             ->orderBy('name')
-            ->get(['id', 'name', 'color']);
+            ->get();
 
         $automationRules = AutomationRule::query()
             ->where('user_id', $user->id)
@@ -132,7 +132,7 @@ class TransactionController extends Controller
         $labels = Label::query()
             ->where('user_id', $user->id)
             ->orderBy('name')
-            ->get(['id', 'name', 'color']);
+            ->get();
 
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
