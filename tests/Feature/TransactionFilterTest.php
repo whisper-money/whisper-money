@@ -215,6 +215,41 @@ test('filter by label', function () {
     );
 });
 
+test('category and label filters combine with OR', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id]);
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+
+    $txWithCategory = Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => $category->id,
+    ]);
+
+    $txWithLabel = Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+    ]);
+    $txWithLabel->labels()->attach($label->id);
+
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'category_id' => null,
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'category_ids' => $category->id,
+        'label_ids' => $label->id,
+    ]));
+
+    $ids = collect($response->viewData('page')['props']['transactions']['data'])->pluck('id');
+
+    expect($ids)->toHaveCount(2)
+        ->and($ids)->toContain($txWithCategory->id)
+        ->and($ids)->toContain($txWithLabel->id);
+});
+
 test('search matches description', function () {
     Transaction::factory()->plaintext()->create([
         'user_id' => $this->user->id,
