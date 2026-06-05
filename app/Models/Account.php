@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AccountType;
 use Database\Factories\AccountFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +35,21 @@ class Account extends Model
         'linked_at',
     ];
 
+    /** @var list<string> */
+    protected $hidden = [
+        'user_id',
+        'bank_id',
+        'iban',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    /** @var list<string> */
+    protected $appends = [
+        'linked_loan_account_id',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -41,6 +57,18 @@ class Account extends Model
             'encrypted' => 'boolean',
             'linked_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The linked loan account id, surfaced from the real estate detail. Guarded
+     * on relationLoaded so serialization never triggers a lazy load, avoiding
+     * N+1 queries when accounts are listed without the relation.
+     */
+    protected function linkedLoanAccountId(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->relationLoaded('realEstateDetail')
+            ? $this->realEstateDetail?->linked_loan_account_id
+            : null);
     }
 
     /** @return BelongsTo<User, $this> */

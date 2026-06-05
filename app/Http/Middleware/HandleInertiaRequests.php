@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Features\CalculateBalancesOnImport;
 use App\Models\BankingConnection;
@@ -122,28 +121,10 @@ class HandleInertiaRequests extends Middleware
                     'reconnect_url' => route('open-banking.reconnect', $connection),
                 ]) : [],
             'accounts' => fn () => $user ? $user->accounts()
-                ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
+                ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id'])
-                ->map(function ($account) {
-                    $data = $account->only([
-                        'id',
-                        'name',
-                        'name_iv',
-                        'encrypted',
-                        'bank_id',
-                        'type',
-                        'currency_code',
-                        'banking_connection_id',
-                        'bank',
-                    ]);
-
-                    if ($account->type === AccountType::RealEstate) {
-                        $data['linked_loan_account_id'] = $account->realEstateDetail?->linked_loan_account_id;
-                    }
-
-                    return $data;
-                }) : [],
+                ->get()
+                ->makeHidden('realEstateDetail') : [],
             'categories' => fn () => $user ? $user->categories()
                 ->forDisplay()
                 ->get() : [],

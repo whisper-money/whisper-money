@@ -533,3 +533,21 @@ test('non-real-estate account balance evolution has no mortgage data', function 
 
     expect($data['data'][0])->not->toHaveKey('mortgage_balance');
 });
+
+test('accounts index serializes the standard account field set without sensitive columns', function () {
+    Account::factory()->create([
+        'user_id' => $this->user->id,
+        'iban' => 'ES9121000418450200051332',
+    ]);
+
+    $response = $this->get(route('accounts.list'));
+
+    $account = $response->viewData('page')['props']['accounts'][0];
+
+    expect(array_keys($account))->toEqualCanonicalizing([
+        'id', 'name', 'name_iv', 'encrypted', 'type', 'currency_code',
+        'banking_connection_id', 'external_account_id', 'linked_at',
+        'bank', 'linked_loan_account_id',
+    ]);
+    expect($account)->not->toHaveKeys(['user_id', 'bank_id', 'iban', 'created_at', 'updated_at', 'deleted_at']);
+});
