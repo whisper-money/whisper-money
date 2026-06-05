@@ -3,9 +3,11 @@ import InputError from '@/components/input-error';
 import AuthenticatedRedirectDialog from '@/components/landing/authenticated-redirect-dialog';
 import InstallAppButton from '@/components/landing/install-app-button';
 import Header from '@/components/partials/header';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { tailwindColorClasses } from '@/components/user-info';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
 import { cn } from '@/lib/utils';
 import { store as storeUserLead } from '@/routes/user-leads';
@@ -15,6 +17,7 @@ import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Facehash } from 'facehash';
 import {
     ArrowDownLeftIcon,
     ArrowLeftRightIcon,
@@ -1913,6 +1916,87 @@ export default function Welcome({
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
 
+    const testimonials = [
+        {
+            name: 'Brian Bansuela',
+            gravatar: '9314f776a17ae977871076ac71f2ff60',
+            text: __(
+                'I just started syncing my accounts and it already feels like a great app. The interface is lovely and it looks like a really solid tool. Great work!',
+            ),
+        },
+        {
+            name: 'David Carrión',
+            gravatar: '2a0a1e872f2f883da214b65e1c2e2156',
+            text: __(
+                "I have a lot of faith in this project — it's really well built and your MVP is fantastic. Thanks for everything!",
+            ),
+        },
+        {
+            name: 'Jorge Navarrete',
+            gravatar: 'd20d4e05a100d5b20b45c84f3c566a25',
+            text: __(
+                "I'm exploring the web app and the design and UX are excellent. Thanks, team!",
+            ),
+        },
+        {
+            name: 'Marcus Oliveira',
+            gravatar: '3c4342baddf0beb8b0bd9fe89168e282',
+            text: __(
+                'Thank you for developing Whisper Money. The focus on privacy and centralizing finances is an excellent proposition.',
+            ),
+        },
+        {
+            name: 'Carla Álvarez',
+            gravatar: '9901ee5e849cf9a0caea00e897cb8123',
+            text: __(
+                'I found Whisper Money and instantly knew I needed it. I was stuck doing everything in a spreadsheet — a chore I kept putting off. This makes it effortless.',
+            ),
+        },
+        {
+            name: 'Yaritza Rey',
+            gravatar: 'a519f143865c358b013f3f6dcdbc387a',
+            text: __(
+                'Thank you so much for creating such a clean, simple app.',
+            ),
+        },
+        {
+            name: 'Will Harris',
+            gravatar: 'c6fbc4911d6143fe723a42f46230275e',
+            text: __('Great project!'),
+        },
+        {
+            name: 'Haru',
+            gravatar: '3e52d6b2cbefb0fa2a572a588b3f7953',
+            text: __('I love this project!'),
+        },
+        {
+            name: 'Tom',
+            gravatar: 'd721bb1875ac11132d4d33295867cbd9',
+            text: __(
+                "I'm genuinely happy using an open-source project with a real commitment to privacy — that's exactly what I want from a finance app.",
+            ),
+        },
+        {
+            name: 'Elena',
+            gravatar: '9867fc6636afc02ae519820e657e4485',
+            text: __(
+                "I can't wait to discover everything the app can do. Thank you — it must have taken a tremendous effort. Congratulations!",
+            ),
+        },
+        {
+            name: 'Víctor Falcón (co-owner)',
+            gravatar: '50901af884c50a8f12804b0cf3aeb98a',
+            text: __(
+                'I built the app I needed to make better decisions. Understanding how I spend and where my income comes from has brought me real financial peace of mind.',
+            ),
+        },
+    ];
+    const half = Math.ceil(testimonials.length / 2);
+    const testimonialRows = [
+        testimonials.slice(0, half),
+        testimonials.slice(half),
+    ];
+
     const hasMonthlyAndYearly =
         planEntries.some(([, p]) => p.billing_period === 'month') &&
         planEntries.some(([, p]) => p.billing_period === 'year');
@@ -2431,88 +2515,76 @@ export default function Welcome({
                                 </p>
                             </div>
 
-                            <div className="relative w-full">
-                                <div className="group flex flex-row [gap:var(--gap)] overflow-hidden p-2 [--duration:25s] [--gap:1rem]">
-                                    {[0, 1].map((copy) => (
-                                        <div
-                                            key={copy}
-                                            className="animate-marquee flex shrink-0 flex-row justify-around [gap:var(--gap)] group-hover:[animation-play-state:paused]"
-                                        >
-                                            {[
-                                                {
-                                                    name: __('Sarah M.'),
-                                                    handle: '@sarahm_finance',
-                                                    text: __(
-                                                        "Finally, a finance app that respects my privacy. Knowing my data isn't being shared gives me peace of mind.",
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('Michael R.'),
-                                                    handle: '@mike_tech',
-                                                    text: __(
-                                                        "The budgeting features are intuitive and the dark mode is gorgeous. Best finance app I've used.",
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('Emma L.'),
-                                                    handle: '@emmalou',
-                                                    text: __(
-                                                        'Love that my financial data stays private. No more worrying about who has access to my spending habits!',
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('David K.'),
-                                                    handle: '@davidk_dev',
-                                                    text: __(
-                                                        'As a developer, I appreciate the security architecture. This is how finance apps should be built.',
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('Jessica P.'),
-                                                    handle: '@jessicap',
-                                                    text: __(
-                                                        'The automation rules save me so much time. And knowing my data is private? Priceless.',
-                                                    ),
-                                                },
-                                                {
-                                                    name: __('Alex T.'),
-                                                    handle: '@alext_money',
-                                                    text: __(
-                                                        'Clean interface, powerful features, and zero compromise on privacy. What more could you want?',
-                                                    ),
-                                                },
-                                            ].map((testimonial) => (
-                                                <div
-                                                    key={`${copy}-${testimonial.handle}`}
-                                                    className="flex w-[300px] shrink-0 flex-col rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-start shadow-sm sm:w-[360px] dark:border-[#3E3E3A] dark:bg-[#161615]"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex size-10 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                                            {testimonial.name.charAt(
-                                                                0,
-                                                            )}
+                            <div className="relative flex w-full flex-col gap-4">
+                                {testimonialRows.map((row, rowIndex) => (
+                                    <div
+                                        key={rowIndex}
+                                        className={cn(
+                                            'group flex flex-row [gap:var(--gap)] overflow-hidden p-2 [--gap:1rem]',
+                                            rowIndex === 0
+                                                ? '[--duration:34s]'
+                                                : '[--duration:27s]',
+                                        )}
+                                    >
+                                        {[0, 1].map((copy) => (
+                                            <div
+                                                key={copy}
+                                                aria-hidden={copy === 1}
+                                                className={cn(
+                                                    'animate-marquee flex shrink-0 flex-row [gap:var(--gap)] group-hover:[animation-play-state:paused]',
+                                                    rowIndex === 1 &&
+                                                        '[animation-delay:-13s]',
+                                                )}
+                                            >
+                                                {row.map((testimonial) => (
+                                                    <div
+                                                        key={`${rowIndex}-${copy}-${testimonial.name}`}
+                                                        className="flex w-[300px] shrink-0 flex-col rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] p-6 text-start shadow-sm sm:w-[360px] dark:border-[#3E3E3A] dark:bg-[#161615]"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <Avatar className="size-10">
+                                                                <AvatarImage
+                                                                    src={`https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`}
+                                                                    alt={
+                                                                        testimonial.name
+                                                                    }
+                                                                    loading="lazy"
+                                                                    className="object-cover"
+                                                                />
+                                                                <AvatarFallback>
+                                                                    <Facehash
+                                                                        name={
+                                                                            testimonial.name
+                                                                        }
+                                                                        size={
+                                                                            40
+                                                                        }
+                                                                        colorClasses={
+                                                                            tailwindColorClasses
+                                                                        }
+                                                                        intensity3d="dramatic"
+                                                                        className="rounded-full"
+                                                                        enableBlink
+                                                                    />
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex flex-col items-start">
+                                                                <h3 className="text-sm leading-none font-semibold">
+                                                                    {
+                                                                        testimonial.name
+                                                                    }
+                                                                </h3>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex flex-col items-start">
-                                                            <h3 className="text-sm leading-none font-semibold">
-                                                                {
-                                                                    testimonial.name
-                                                                }
-                                                            </h3>
-                                                            <p className="mt-1 text-xs text-[#706f6c] dark:text-[#A1A09A]">
-                                                                {
-                                                                    testimonial.handle
-                                                                }
-                                                            </p>
-                                                        </div>
+                                                        <p className="mt-4 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
+                                                            {testimonial.text}
+                                                        </p>
                                                     </div>
-                                                    <p className="mt-4 text-sm leading-relaxed text-[#706f6c] dark:text-[#A1A09A]">
-                                                        {testimonial.text}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))}
-                                </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
 
                                 <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-1/6 bg-linear-to-r from-[#FDFDFC] sm:block dark:from-[#0a0a0a]"></div>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/6 bg-linear-to-l from-[#FDFDFC] sm:block dark:from-[#0a0a0a]"></div>
