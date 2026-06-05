@@ -85,7 +85,7 @@ class TransactionController extends Controller
         $banks = Bank::query()
             ->availableForUser($user)
             ->orderBy('name')
-            ->get(['id', 'name', 'logo']);
+            ->get();
 
         $labels = Label::query()
             ->where('user_id', $user->id)
@@ -127,7 +127,7 @@ class TransactionController extends Controller
         $banks = Bank::query()
             ->availableForUser($user)
             ->orderBy('name')
-            ->get(['id', 'name', 'logo']);
+            ->get();
 
         $labels = Label::query()
             ->where('user_id', $user->id)

@@ -149,7 +149,7 @@ class HandleInertiaRequests extends Middleware
                 ->get() : [],
             'banks' => fn () => $user ? $user->banks()
                 ->orderBy('name')
-                ->get(['id', 'name', 'logo']) : [],
+                ->get() : [],
             'automationRules' => function () use ($user) {
                 if (! $user) {
                     return [];

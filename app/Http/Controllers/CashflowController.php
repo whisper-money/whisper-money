@@ -29,7 +29,7 @@ class CashflowController extends Controller
         $banks = Bank::query()
             ->availableForUser($user)
             ->orderBy('name')
-            ->get(['id', 'name', 'logo']);
+            ->get();
 
         $periodType = $request->query('period_type');
         $validPeriodType = is_string($periodType) && in_array($periodType, ['month', 'quarter', 'year'], true)

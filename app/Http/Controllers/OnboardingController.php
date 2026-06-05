@@ -21,7 +21,7 @@ class OnboardingController extends Controller
         $banks = Bank::query()
             ->availableForUser($user)
             ->orderBy('name')
-            ->get(['id', 'name', 'logo']);
+            ->get();
 
         $accounts = $user->accounts()
             ->with('bank:id,name,logo')
