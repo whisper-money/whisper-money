@@ -51,6 +51,7 @@ class Category extends Model
         'deleted_at',
         'active_unique_marker',
         'parent_unique_marker',
+        'pivot',
     ];
 
     protected function casts(): array
