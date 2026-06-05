@@ -32,6 +32,7 @@ class BankingConnection extends Model
         'user_id',
         'provider',
         'authorization_id',
+        'state_token',
         'session_id',
         'aspsp_name',
         'aspsp_country',
@@ -53,6 +54,7 @@ class BankingConnection extends Model
         'api_secret',
         'pending_accounts_data',
         'authorization_id',
+        'state_token',
         'session_id',
     ];
 

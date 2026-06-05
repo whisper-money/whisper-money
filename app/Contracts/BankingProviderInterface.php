@@ -14,9 +14,12 @@ interface BankingProviderInterface
     /**
      * Start a user authorization flow.
      *
+     * The $state value is echoed back by the provider on the callback and is used to
+     * correlate the callback to its connection without relying on a logged-in session.
+     *
      * @return array{url: string, authorization_id: string}
      */
-    public function startAuthorization(string $aspspName, string $countryCode, string $redirectUrl): array;
+    public function startAuthorization(string $aspspName, string $countryCode, string $redirectUrl, string $state): array;
 
     /**
      * Exchange a callback code for a session with accounts.

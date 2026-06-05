@@ -15,7 +15,9 @@ use App\Services\AccountUserCurrencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AuthorizationController extends Controller
 {
@@ -36,16 +38,19 @@ class AuthorizationController extends Controller
         $validated = $request->validated();
 
         $redirectUrl = config('services.enablebanking.redirect_url');
+        $stateToken = Str::random(40);
 
         $result = $provider->startAuthorization(
             $validated['aspsp_name'],
             $validated['country'],
             $redirectUrl,
+            $stateToken,
         );
 
         $connection = $user->bankingConnections()->create([
             'provider' => 'enablebanking',
             'authorization_id' => $result['authorization_id'],
+            'state_token' => $stateToken,
             'aspsp_name' => $validated['aspsp_name'],
             'aspsp_country' => $validated['country'],
             'aspsp_logo' => $validated['logo'] ?? null,
@@ -120,15 +125,18 @@ class AuthorizationController extends Controller
         }
 
         $redirectUrl = config('services.enablebanking.redirect_url');
+        $stateToken = Str::random(40);
 
         $result = $provider->startAuthorization(
             $connection->aspsp_name,
             $connection->aspsp_country,
             $redirectUrl,
+            $stateToken,
         );
 
         $connection->update([
             'authorization_id' => $result['authorization_id'],
+            'state_token' => $stateToken,
             'status' => BankingConnectionStatus::Pending,
             'error_message' => null,
         ]);
@@ -138,10 +146,22 @@ class AuthorizationController extends Controller
 
     /**
      * Handle the callback from bank authorization.
+     *
+     * This route is intentionally unauthenticated. iOS PWAs hand the bank redirect
+     * back to the system browser (Safari), where the app session does not exist, so
+     * the connection is resolved from the signed state token EnableBanking echoes
+     * back rather than from the logged-in session.
      */
     public function callback(Request $request, BankingProviderInterface $provider, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse
     {
-        $user = auth()->user();
+        $connection = $this->resolveConnectionFromState($request);
+        $user = $connection?->user ?? auth()->user();
+
+        if (! $user) {
+            return redirect()->route('login')
+                ->with('error', __('Please log back in to finish connecting your bank account.'));
+        }
+
         $errorRedirectRoute = $user->isOnboarded() ? 'settings.connections.index' : 'onboarding';
         $errorRedirectParams = $user->isOnboarded() ? [] : ['step' => 'create-account'];
 
@@ -156,7 +176,7 @@ class AuthorizationController extends Controller
                 'description' => $errorDescription,
             ]);
 
-            $pendingConnection = $user->bankingConnections()
+            $pendingConnection = $connection ?? $user->bankingConnections()
                 ->where('status', BankingConnectionStatus::Pending)
                 ->latest()
                 ->first();
@@ -166,21 +186,20 @@ class AuthorizationController extends Controller
                     $pendingConnection->update([
                         'status' => BankingConnectionStatus::Error,
                         'error_message' => $errorMessage,
+                        'state_token' => null,
                     ]);
                 } else {
                     $pendingConnection->delete();
                 }
             }
 
-            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', $errorMessage);
+            return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', $errorMessage);
         }
 
         $code = $request->query('code');
 
         if (! $code) {
-            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', 'No authorization code received.');
+            return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', 'No authorization code received.');
         }
 
         try {
@@ -188,15 +207,13 @@ class AuthorizationController extends Controller
         } catch (\Throwable $e) {
             Log::error('EnableBanking session creation failed', ['error' => $e->getMessage()]);
 
-            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', 'Failed to connect to your bank. Please try again.');
+            return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', 'Failed to connect to your bank. Please try again.');
         }
 
-        $connection = $this->findPendingConnectionForSession($user, $sessionData);
+        $connection ??= $this->findPendingConnectionForSession($user, $sessionData);
 
         if (! $connection) {
-            return redirect()->route($errorRedirectRoute, $errorRedirectParams)
-                ->with('error', 'No pending connection found.');
+            return $this->finishRedirect($errorRedirectRoute, $errorRedirectParams, 'error', 'No pending connection found.');
         }
 
         $isReconnect = $connection->accounts()->exists();
@@ -207,14 +224,14 @@ class AuthorizationController extends Controller
                 'status' => BankingConnectionStatus::Active,
                 'valid_until' => $sessionData['access']['valid_until'] ?? null,
                 'error_message' => null,
+                'state_token' => null,
             ]);
 
             $this->refreshAccountIds($connection, $sessionData['accounts']);
 
             SyncBankingConnectionJob::dispatch($connection);
 
-            return redirect()->route('settings.connections.index')
-                ->with('success', __('Bank account reconnected successfully.'));
+            return $this->finishRedirect('settings.connections.index', [], 'success', __('Bank account reconnected successfully.'));
         }
 
         $connection->update([
@@ -222,17 +239,60 @@ class AuthorizationController extends Controller
             'status' => BankingConnectionStatus::AwaitingMapping,
             'valid_until' => $sessionData['access']['valid_until'] ?? null,
             'pending_accounts_data' => $sessionData['accounts'],
+            'state_token' => null,
         ]);
 
         if (! $user->isOnboarded()) {
             $this->createAccountsFromPending($user, $connection, $accountUserCurrencyService);
             SyncBankingConnectionJob::dispatch($connection);
 
-            return redirect()->route('onboarding', ['step' => 'create-account'])
-                ->with('success', 'Bank account connected successfully.');
+            return $this->finishRedirect('onboarding', ['step' => 'create-account'], 'success', 'Bank account connected successfully.');
         }
 
-        return redirect()->route('open-banking.map-accounts', $connection);
+        return $this->finishRedirect('open-banking.map-accounts', ['connection' => $connection]);
+    }
+
+    /**
+     * Resolve the connection a callback belongs to from the state token EnableBanking
+     * echoes back. This works without a logged-in session.
+     */
+    private function resolveConnectionFromState(Request $request): ?BankingConnection
+    {
+        $stateToken = $request->query('state');
+
+        if (! is_string($stateToken) || $stateToken === '') {
+            return null;
+        }
+
+        return BankingConnection::query()
+            ->where('state_token', $stateToken)
+            ->first();
+    }
+
+    /**
+     * Redirect after a callback, accounting for the unauthenticated PWA case.
+     *
+     * When the callback runs without a session (Safari), the destination routes are
+     * behind auth middleware, so send the user to login while preserving the intended
+     * destination. The connection has already been finalized server-side.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    private function finishRedirect(string $route, array $params, ?string $flashKey = null, ?string $flashMessage = null): RedirectResponse
+    {
+        if (Auth::check()) {
+            $redirect = redirect()->route($route, $params);
+        } else {
+            session()->put('url.intended', route($route, $params));
+            $redirect = redirect()->route('login')
+                ->with('status', __('Please log back in to finish connecting your bank account.'));
+        }
+
+        if ($flashKey !== null && $flashMessage !== null) {
+            $redirect->with($flashKey, $flashMessage);
+        }
+
+        return $redirect;
     }
 
     /**

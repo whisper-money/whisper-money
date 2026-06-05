@@ -127,6 +127,11 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
     Route::post('transactions/{transaction}/re-evaluate-rules', [ReEvaluateTransactionRulesController::class, 'single'])->name('transactions.re-evaluate-rules.single');
 });
 
+// The bank authorization callback is intentionally unauthenticated: iOS PWAs hand the
+// redirect back to Safari where the app session does not exist. The connection is
+// resolved from the signed state token EnableBanking echoes back instead.
+Route::get('open-banking/callback', [AuthorizationController::class, 'callback'])->name('open-banking.callback');
+
 // Open-banking routes are accessible without the onboarded/subscribed middleware
 // so that users can connect their bank during the onboarding flow.
 Route::middleware(['auth', 'verified'])->prefix('open-banking')->group(function () {
@@ -134,7 +139,6 @@ Route::middleware(['auth', 'verified'])->prefix('open-banking')->group(function 
     Route::post('authorize', [AuthorizationController::class, 'store'])->name('open-banking.authorize');
     Route::post('connections/{connection}/reauthorize', [AuthorizationController::class, 'reauthorize'])->name('open-banking.reauthorize');
     Route::get('connections/{connection}/reconnect', [AuthorizationController::class, 'reconnect'])->name('open-banking.reconnect');
-    Route::get('callback', [AuthorizationController::class, 'callback'])->name('open-banking.callback');
     Route::get('connections/{connection}/map-accounts', [AccountMappingController::class, 'show'])->name('open-banking.map-accounts');
     Route::post('connections/{connection}/map-accounts', [AccountMappingController::class, 'store'])->name('open-banking.map-accounts.store');
     Route::post('indexa-capital/connect', [IndexaCapitalController::class, 'store'])->name('open-banking.indexa-capital.connect');
