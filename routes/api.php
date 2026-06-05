@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\Api\ImportDataController;
+use App\Http\Controllers\Api\SavedFilterController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\Sync\TransactionSyncController;
@@ -56,4 +57,10 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::get('trend', [CashflowAnalyticsController::class, 'trend']);
         Route::get('breakdown', [CashflowAnalyticsController::class, 'breakdown']);
     });
+
+    // Saved transaction filters
+    Route::get('saved-filters', [SavedFilterController::class, 'index'])->name('api.saved-filters.index');
+    Route::post('saved-filters', [SavedFilterController::class, 'store'])->name('api.saved-filters.store');
+    Route::patch('saved-filters/{savedFilter}', [SavedFilterController::class, 'update'])->name('api.saved-filters.update');
+    Route::delete('saved-filters/{savedFilter}', [SavedFilterController::class, 'destroy'])->name('api.saved-filters.destroy');
 });

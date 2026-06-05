@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\BankingConnectionStatus;
 use App\Features\CalculateBalancesOnImport;
+use App\Features\TransactionAnalysis;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
@@ -167,6 +168,9 @@ class HandleInertiaRequests extends Middleware
             'cashflow' => true,
             'calculateBalancesOnImport' => $user
                 ? Feature::for($user)->active(CalculateBalancesOnImport::class)
+                : false,
+            'transactionAnalysis' => $user
+                ? Feature::for($user)->active(TransactionAnalysis::class)
                 : false,
         ];
     }
