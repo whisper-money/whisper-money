@@ -50,7 +50,7 @@ class TransactionController extends Controller
 
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
-            ->with(['account.bank:id,name,logo', 'category:id,name,icon,color', 'labels:id,name,color'])
+            ->with(['account.bank', 'category', 'labels'])
             ->applyFilters($filters)
             ->orderBy($sortColumn, $sortDirection)
             ->orderBy('id', 'desc')
@@ -78,9 +78,9 @@ class TransactionController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
-            ->with('bank:id,name,logo')
+            ->with('bank')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
+            ->get();
 
         $banks = Bank::query()
             ->availableForUser($user)
@@ -120,9 +120,9 @@ class TransactionController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
-            ->with('bank:id,name,logo')
+            ->with('bank')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code', 'banking_connection_id']);
+            ->get();
 
         $banks = Bank::query()
             ->availableForUser($user)
@@ -137,10 +137,10 @@ class TransactionController extends Controller
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
             ->whereNull('category_id')
-            ->with(['account.bank:id,name,logo', 'labels:id,name,color'])
+            ->with(['account.bank', 'labels'])
             ->orderBy('transaction_date', 'desc')
             ->orderBy('id', 'desc')
-            ->get(['id', 'account_id', 'category_id', 'description', 'description_iv', 'transaction_date', 'amount', 'currency_code', 'notes', 'notes_iv', 'creditor_name', 'debtor_name']);
+            ->get();
 
         return Inertia::render('transactions/categorize', [
             'categories' => $categories,
@@ -174,7 +174,7 @@ class TransactionController extends Controller
         }
 
         return response()->json([
-            'data' => $transaction->load('labels:id,name,color'),
+            'data' => $transaction->load('labels'),
         ], 201);
     }
 
@@ -210,7 +210,7 @@ class TransactionController extends Controller
         }
 
         return response()->json([
-            'data' => $transaction->fresh()->load('labels:id,name,color'),
+            'data' => $transaction->fresh()->load('labels'),
         ]);
     }
 

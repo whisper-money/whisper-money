@@ -22,9 +22,9 @@ class CashflowController extends Controller
 
         $accounts = Account::query()
             ->where('user_id', $user->id)
-            ->with('bank:id,name,logo')
+            ->with('bank')
             ->orderBy('name')
-            ->get(['id', 'name', 'name_iv', 'encrypted', 'bank_id', 'type', 'currency_code']);
+            ->get();
 
         $banks = Bank::query()
             ->availableForUser($user)
