@@ -25,7 +25,7 @@ class ReEvaluateTransactionRulesController extends Controller
 
         $service->applyRules($transaction);
 
-        $transaction->refresh()->load('labels:id,name,color', 'category:id,name,icon,color');
+        $transaction->refresh()->load('labels', 'category');
 
         return response()->json([
             'data' => $transaction,
