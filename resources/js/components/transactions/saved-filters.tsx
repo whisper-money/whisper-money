@@ -222,7 +222,7 @@ export function SavedFilters({ filters, onLoad }: SavedFiltersProps) {
                         </Button>
                     )}
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuLabel>{__('Saved filters')}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
 
