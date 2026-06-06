@@ -80,6 +80,30 @@ it('does not return transactions belonging to other users', function () {
         );
 });
 
+it('lands directly on the connections step when ?step=create-account is requested', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $response = $this->actingAs($user)->get('/onboarding?step=create-account');
+
+    $response->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('onboarding/index')
+            ->where('initialStep', 'create-account')
+        );
+});
+
+it('ignores an unknown step and falls back to the default flow', function () {
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $response = $this->actingAs($user)->get('/onboarding?step=not-a-real-step');
+
+    $response->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('onboarding/index')
+            ->where('initialStep', null)
+        );
+});
+
 it('returns banks and accounts props on onboarding index', function () {
     $user = User::factory()->create(['onboarded_at' => null]);
     $globalBank = Bank::factory()->create(['user_id' => null]);

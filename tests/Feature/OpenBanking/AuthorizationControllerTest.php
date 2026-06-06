@@ -245,6 +245,46 @@ test('callback with valid code stores pending accounts and redirects to mapping'
     Queue::assertNothingPushed();
 });
 
+test('callback during onboarding redirects a logged-in user directly to the connections step', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-onboarding',
+            'accounts' => [
+                [
+                    'uid' => 'ext-account-1',
+                    'currency' => 'EUR',
+                    'name' => 'My Checking Account',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+            ],
+            'aspsp' => ['name' => 'Test Bank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $response->assertRedirect(route('onboarding', ['step' => 'create-account']));
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+});
+
 // Reauthorize tests
 
 test('reauthorize returns 403 when user does not own the connection', function () {

@@ -14,6 +14,25 @@ use Inertia\Response;
 
 class OnboardingController extends Controller
 {
+    /**
+     * Steps a deep link may land on directly via ?step=.
+     *
+     * @var list<string>
+     */
+    private const VALID_STEPS = [
+        'welcome',
+        'account-types',
+        'create-account',
+        'import-transactions',
+        'import-balances',
+        'category-types',
+        'customize-categories',
+        'smart-rules',
+        'syncing',
+        'categorize-transactions',
+        'complete',
+    ];
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -40,11 +59,17 @@ class OnboardingController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
+        $step = $request->query('step');
+        $initialStep = is_string($step) && in_array($step, self::VALID_STEPS, true)
+            ? $step
+            : null;
+
         return Inertia::render('onboarding/index', [
             'banks' => $banks,
             'accounts' => $accounts,
             'categories' => $categories,
             'transactions' => $transactions,
+            'initialStep' => $initialStep,
         ]);
     }
 

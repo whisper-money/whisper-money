@@ -20,7 +20,7 @@ import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type Transaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { Head } from '@inertiajs/react';
+import { Head, usePoll } from '@inertiajs/react';
 import { useEffect, useMemo, useRef } from 'react';
 
 interface ExistingAccount {
@@ -44,6 +44,7 @@ interface OnboardingProps {
     accounts: ExistingAccount[];
     categories: Category[];
     transactions: Transaction[];
+    initialStep?: OnboardingStep | null;
 }
 
 const VALID_STEPS: OnboardingStep[] = [
@@ -65,19 +66,24 @@ export default function Onboarding({
     accounts,
     categories,
     transactions,
+    initialStep: initialStepProp,
 }: OnboardingProps) {
     const { sync } = useSyncContext();
     const hasSyncedRef = useRef(false);
 
-    // Read ?step= from URL to allow deep-linking into a specific step
+    // Prefer the server-validated step; fall back to ?step= from the URL so
+    // client-side deep links keep working.
     const initialStep = useMemo((): OnboardingStep | undefined => {
+        if (initialStepProp && VALID_STEPS.includes(initialStepProp)) {
+            return initialStepProp;
+        }
         if (typeof window === 'undefined') {
             return undefined;
         }
         const params = new URLSearchParams(window.location.search);
         const step = params.get('step') as OnboardingStep | null;
         return step && VALID_STEPS.includes(step) ? step : undefined;
-    }, []);
+    }, [initialStepProp]);
 
     // Sync banks on mount to ensure IndexedDB has the latest data
     useEffect(() => {
@@ -109,6 +115,23 @@ export default function Onboarding({
         initialStep,
         hasConnectedAccount,
     });
+
+    // While on the connections step, poll for connections finalized elsewhere
+    // (e.g. an iOS PWA hands the bank redirect to Safari, which completes the
+    // connection server-side in a different browser without a session here).
+    const { start, stop } = usePoll(
+        4000,
+        { only: ['accounts'] },
+        { autoStart: false },
+    );
+
+    useEffect(() => {
+        if (currentStep === 'create-account') {
+            start();
+        } else {
+            stop();
+        }
+    }, [currentStep, start, stop]);
 
     const handleAccountCreated = async (account: CreatedAccount) => {
         // Connected accounts already exist server-side (in existingAccounts prop);
