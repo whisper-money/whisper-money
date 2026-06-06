@@ -164,14 +164,23 @@ class HandleInertiaRequests extends Middleware
     {
         $user = request()->user();
 
+        if (! $user) {
+            return [
+                'cashflow' => true,
+                'calculateBalancesOnImport' => false,
+                'transactionAnalysis' => false,
+            ];
+        }
+
+        $features = Feature::for($user)->values([
+            CalculateBalancesOnImport::class,
+            TransactionAnalysis::class,
+        ]);
+
         return [
             'cashflow' => true,
-            'calculateBalancesOnImport' => $user
-                ? Feature::for($user)->active(CalculateBalancesOnImport::class)
-                : false,
-            'transactionAnalysis' => $user
-                ? Feature::for($user)->active(TransactionAnalysis::class)
-                : false,
+            'calculateBalancesOnImport' => $features[CalculateBalancesOnImport::class] !== false,
+            'transactionAnalysis' => $features[TransactionAnalysis::class] !== false,
         ];
     }
 
