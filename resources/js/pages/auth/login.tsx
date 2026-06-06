@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { clearKey } from '@/lib/key-storage';
@@ -95,9 +96,8 @@ export default function Login({
                                         </TextLink>
                                     )}
                                 </div>
-                                <Input
+                                <PasswordInput
                                     id="password"
-                                    type="password"
                                     name="password"
                                     required
                                     tabIndex={2}
