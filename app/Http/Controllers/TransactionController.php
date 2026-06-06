@@ -48,14 +48,28 @@ class TransactionController extends Controller
             'search' => $validated['search'] ?? null,
         ], fn ($value) => $value !== null);
 
-        $transactions = Transaction::query()
+        $query = Transaction::query()
             ->where('user_id', $user->id)
             ->with(['account.bank', 'category', 'labels'])
-            ->applyFilters($filters)
-            ->orderBy($sortColumn, $sortDirection)
+            ->applyFilters($filters);
+
+        $nullableSortColumns = ['creditor_name', 'debtor_name'];
+
+        if (in_array($sortColumn, $nullableSortColumns, true)) {
+            $sortAlias = $sortColumn.'_sort';
+            $query->select('transactions.*')
+                ->selectRaw("COALESCE({$sortColumn}, '') as {$sortAlias}")
+                ->orderBy($sortAlias, $sortDirection);
+        } else {
+            $query->orderBy($sortColumn, $sortDirection);
+        }
+
+        $transactions = $query
             ->orderBy('id', 'desc')
             ->cursorPaginate($perPage)
             ->withQueryString();
+
+        $transactions->getCollection()->each(fn (Transaction $transaction) => $transaction->makeHidden(['creditor_name_sort', 'debtor_name_sort']));
 
         $appliedFilters = [
             'date_from' => $validated['date_from'] ?? null,

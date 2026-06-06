@@ -614,3 +614,47 @@ test('filter by multiple categories including uncategorized', function () {
         ->has('transactions.data', 2)
     );
 });
+
+test('paginates across pages when sorting by a nullable column with null values', function () {
+    Transaction::factory()->plaintext()->count(12)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => null,
+    ]);
+
+    Transaction::factory()->plaintext()->count(5)->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => 'ACME',
+    ]);
+
+    $firstPage = actingAs($this->user)->get(route('transactions.index', [
+        'sort' => 'creditor_name',
+        'per_page' => 10,
+    ]));
+
+    $firstPage->assertSuccessful();
+
+    $nextPageUrl = $firstPage->getOriginalContent()->getData()['page']['props']['transactions']['next_page_url'];
+
+    expect($nextPageUrl)->not->toBeNull();
+
+    actingAs($this->user)->get($nextPageUrl)->assertSuccessful();
+});
+
+test('does not expose the sort alias attribute when sorting by a nullable column', function () {
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $this->user->id,
+        'account_id' => $this->account->id,
+        'creditor_name' => null,
+    ]);
+
+    $response = actingAs($this->user)->get(route('transactions.index', [
+        'sort' => 'creditor_name',
+    ]));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('transactions.data', 1)
+        ->missing('transactions.data.0.creditor_name_sort')
+    );
+});
