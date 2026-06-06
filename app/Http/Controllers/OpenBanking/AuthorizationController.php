@@ -18,6 +18,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class AuthorizationController extends Controller
 {
@@ -152,7 +154,7 @@ class AuthorizationController extends Controller
      * the connection is resolved from the signed state token EnableBanking echoes
      * back rather than from the logged-in session.
      */
-    public function callback(Request $request, BankingProviderInterface $provider, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse
+    public function callback(Request $request, BankingProviderInterface $provider, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse|Response
     {
         $connection = $this->resolveConnectionFromState($request);
         $user = $connection?->user ?? auth()->user();
@@ -270,23 +272,25 @@ class AuthorizationController extends Controller
     }
 
     /**
-     * Redirect after a callback, accounting for the unauthenticated PWA case.
+     * Finish a callback, accounting for the unauthenticated PWA case.
      *
      * When the callback runs without a session (Safari), the destination routes are
-     * behind auth middleware, so send the user to login while preserving the intended
-     * destination. The connection has already been finalized server-side.
+     * behind auth middleware and the user is not logged in on this browser. The
+     * connection has already been finalized server-side, so render a standalone page
+     * telling the user to return to the app rather than bouncing them to login.
      *
      * @param  array<string, mixed>  $params
      */
-    private function finishRedirect(string $route, array $params, ?string $flashKey = null, ?string $flashMessage = null): RedirectResponse
+    private function finishRedirect(string $route, array $params, ?string $flashKey = null, ?string $flashMessage = null): RedirectResponse|Response
     {
-        if (Auth::check()) {
-            $redirect = redirect()->route($route, $params);
-        } else {
-            session()->put('url.intended', route($route, $params));
-            $redirect = redirect()->route('login')
-                ->with('status', __('Please log back in to finish connecting your bank account.'));
+        if (! Auth::check()) {
+            return Inertia::render('open-banking/connection-complete', [
+                'status' => $flashKey === 'error' ? 'error' : 'success',
+                'message' => $flashMessage ?? __('Your bank account is connected.'),
+            ]);
         }
+
+        $redirect = redirect()->route($route, $params);
 
         if ($flashKey !== null && $flashMessage !== null) {
             $redirect->with($flashKey, $flashMessage);

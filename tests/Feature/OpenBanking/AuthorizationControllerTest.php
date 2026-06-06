@@ -815,8 +815,11 @@ test('callback finalizes the connection from the state token without an authenti
     // No actingAs(): the PWA handed the redirect to Safari, which has no session.
     $response = $this->get('/open-banking/callback?code=test-code&state=state-token-abc');
 
-    $response->assertRedirect(route('login'));
-    $response->assertSessionHas('url.intended', route('open-banking.map-accounts', $connection));
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('open-banking/connection-complete')
+        ->where('status', 'success')
+    );
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
@@ -872,4 +875,24 @@ test('callback without a session or a resolvable state redirects to login', func
     $response = $this->get('/open-banking/callback?code=test-code&state=unknown-token');
 
     $response->assertRedirect(route('login'));
+});
+
+test('callback renders the completion page on error without an authenticated session', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'state_token' => 'state-token-error',
+    ]);
+
+    // No actingAs(): the error came back to Safari, which has no session.
+    $response = $this->get('/open-banking/callback?error=access_denied&error_description=Denied&state=state-token-error');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('open-banking/connection-complete')
+        ->where('status', 'error')
+        ->where('message', 'Denied')
+    );
+
+    expect($connection->fresh()->trashed())->toBeTrue();
 });
