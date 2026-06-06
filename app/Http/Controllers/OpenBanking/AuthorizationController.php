@@ -157,7 +157,7 @@ class AuthorizationController extends Controller
     public function callback(Request $request, BankingProviderInterface $provider, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse|Response
     {
         $connection = $this->resolveConnectionFromState($request);
-        $user = $connection?->user ?? auth()->user();
+        $user = $connection ? $connection->user : auth()->user();
 
         if (! $user) {
             return redirect()->route('login')
