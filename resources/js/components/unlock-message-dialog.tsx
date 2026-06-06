@@ -10,8 +10,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
     Select,
     SelectContent,
@@ -124,9 +124,8 @@ export default function UnlockMessageDialog({
                             <Label htmlFor="unlock-password">
                                 {__('Encryption Password')}
                             </Label>
-                            <Input
+                            <PasswordInput
                                 id="unlock-password"
-                                type="password"
                                 required
                                 autoFocus
                                 value={password}
