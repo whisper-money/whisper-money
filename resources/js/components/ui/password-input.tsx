@@ -16,7 +16,10 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
                 <Input
                     ref={ref}
                     type={visible ? 'text' : 'password'}
-                    className={cn('pr-10', className)}
+                    className={cn(
+                        'pr-10 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden',
+                        className,
+                    )}
                     {...props}
                 />
                 <button
