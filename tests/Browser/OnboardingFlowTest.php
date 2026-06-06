@@ -267,6 +267,57 @@ it('returns to the accounts step when bank authorization fails during onboarding
     expect($connection->trashed())->toBeTrue();
 });
 
+it('deep links straight to the connections step via ?step=create-account', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit('/onboarding?step=create-account');
+
+    $page->wait(1)
+        // Lands on the connections step, skipping the welcome step entirely.
+        ->assertSee('Create an Account')
+        ->assertSee('Manual')
+        ->assertDontSee('Welcome to')
+        ->assertNoJavascriptErrors();
+});
+
+it('polls and shows a connection finalized in another browser', function () {
+    $user = User::factory()->create([
+        'onboarded_at' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    // User sits on the connections step with no accounts yet.
+    $page = visit('/onboarding?step=create-account');
+    $page->wait(1)
+        ->assertSee('Create an Account')
+        ->assertDontSee('Polled Bank');
+
+    // The bank flow is finalized elsewhere (iOS PWA -> Safari): an account is
+    // created server-side without this browser doing anything.
+    $bank = Bank::factory()->create(['name' => 'Polled Bank']);
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+    ]);
+    Account::factory()->create([
+        'user_id' => $user->id,
+        'bank_id' => $bank->id,
+        'banking_connection_id' => $connection->id,
+        'type' => 'checking',
+        'currency_code' => 'EUR',
+    ]);
+
+    // The 4s poll picks it up and the connection appears without a manual refresh.
+    $page->wait(6)
+        ->assertSee('Your Accounts')
+        ->assertSee('Polled Bank')
+        ->assertNoJavascriptErrors();
+});
+
 // =============================================================================
 // More Accounts Flow Tests
 // =============================================================================

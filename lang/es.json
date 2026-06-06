@@ -1,4 +1,8 @@
 {
+    "Bank account connected": "Cuenta bancaria conectada",
+    "Connection unsuccessful": "Conexión fallida",
+    "You can close this window and go back to the app to continue.": "Puedes cerrar esta ventana y volver a la app para continuar.",
+    "Your bank account is connected.": "Tu cuenta bancaria está conectada.",
     "A filter with that name already exists": "Ya existe un filtro con ese nombre",
     "Delete saved filter": "Eliminar filtro guardado",
     "Failed to delete the saved filter": "No se pudo eliminar el filtro guardado",

@@ -39,7 +39,7 @@ class EnableBankingProvider implements BankingProviderInterface
             ->all();
     }
 
-    public function startAuthorization(string $aspspName, string $countryCode, string $redirectUrl): array
+    public function startAuthorization(string $aspspName, string $countryCode, string $redirectUrl, string $state): array
     {
         $response = $this->client()->post('/auth', [
             'access' => [
@@ -51,7 +51,7 @@ class EnableBankingProvider implements BankingProviderInterface
                 'name' => $aspspName,
                 'country' => $countryCode,
             ],
-            'state' => csrf_token(),
+            'state' => $state,
             'redirect_url' => $redirectUrl,
             'psu_type' => 'personal',
         ]);

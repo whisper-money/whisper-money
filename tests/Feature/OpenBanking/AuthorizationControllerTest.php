@@ -245,6 +245,46 @@ test('callback with valid code stores pending accounts and redirects to mapping'
     Queue::assertNothingPushed();
 });
 
+test('callback during onboarding redirects a logged-in user directly to the connections step', function () {
+    Queue::fake();
+
+    $user = User::factory()->notOnboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'aspsp_country' => 'ES',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-onboarding',
+            'accounts' => [
+                [
+                    'uid' => 'ext-account-1',
+                    'currency' => 'EUR',
+                    'name' => 'My Checking Account',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+            ],
+            'aspsp' => ['name' => 'Test Bank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($user)->get('/open-banking/callback?code=test-code');
+
+    $response->assertRedirect(route('onboarding', ['step' => 'create-account']));
+
+    $this->assertDatabaseHas('accounts', [
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+    ]);
+});
+
 // Reauthorize tests
 
 test('reauthorize returns 403 when user does not own the connection', function () {
@@ -297,7 +337,7 @@ test('reauthorize starts new authorization and sets connection to pending for er
 
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('startAuthorization')
-        ->with('CaixaBank', 'ES', config('services.enablebanking.redirect_url'))
+        ->with('CaixaBank', 'ES', config('services.enablebanking.redirect_url'), Mockery::type('string'))
         ->once()
         ->andReturn([
             'url' => 'https://bank.example.com/reauthorize',
@@ -359,7 +399,7 @@ test('reconnect link redirects expired connections to bank authorization', funct
 
     $mockProvider = Mockery::mock(BankingProviderInterface::class);
     $mockProvider->shouldReceive('startAuthorization')
-        ->with('Santander', 'ES', config('services.enablebanking.redirect_url'))
+        ->with('Santander', 'ES', config('services.enablebanking.redirect_url'), Mockery::type('string'))
         ->once()
         ->andReturn([
             'url' => 'https://bank.example.com/reauthorize',
@@ -746,4 +786,153 @@ test('callback stores iban in pending accounts data', function () {
     $connection->refresh();
     expect($connection->pending_accounts_data)->toHaveCount(1);
     expect($connection->pending_accounts_data[0]['account_id']['iban'])->toBe('ES9999999999999999999999');
+});
+
+// Authless callback via state token (iOS PWA returns to Safari without a session)
+
+test('start authorization persists a state token and sends it to the provider', function () {
+    $user = User::factory()->onboarded()->create();
+
+    $capturedState = null;
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('startAuthorization')
+        ->once()
+        ->withArgs(function (string $name, string $country, string $url, string $state) use (&$capturedState): bool {
+            $capturedState = $state;
+
+            return $name === 'Test Bank' && $country === 'ES' && $state !== '';
+        })
+        ->andReturn([
+            'url' => 'https://bank.example.com/authorize',
+            'authorization_id' => 'auth-state-1',
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $this->actingAs($user)->postJson('/open-banking/authorize', [
+        'aspsp_name' => 'Test Bank',
+        'country' => 'ES',
+    ])->assertOk();
+
+    $connection = $user->bankingConnections()->first();
+    expect($connection->state_token)->not->toBeEmpty();
+    expect($connection->state_token)->toBe($capturedState);
+});
+
+test('callback finalizes the connection from the state token without an authenticated session', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'state_token' => 'state-token-abc',
+    ]);
+
+    $accounts = [
+        [
+            'uid' => 'ext-account-1',
+            'currency' => 'EUR',
+            'name' => 'My Checking Account',
+            'account_id' => ['iban' => 'ES1234567890123456789012'],
+        ],
+    ];
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-authless',
+            'accounts' => $accounts,
+            'aspsp' => ['name' => 'CaixaBank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    // No actingAs(): the PWA handed the redirect to Safari, which has no session.
+    $response = $this->get('/open-banking/callback?code=test-code&state=state-token-abc');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('open-banking/connection-complete')
+        ->where('status', 'success')
+    );
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->session_id)->toBe('session-authless');
+    expect($connection->state_token)->toBeNull();
+});
+
+test('callback resolves the connection owner from the state token regardless of who is authenticated', function () {
+    Queue::fake();
+
+    $owner = User::factory()->onboarded()->create();
+    $other = User::factory()->onboarded()->create();
+
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $owner->id,
+        'aspsp_name' => 'CaixaBank',
+        'aspsp_country' => 'ES',
+        'state_token' => 'state-token-owner',
+    ]);
+
+    $mockProvider = Mockery::mock(BankingProviderInterface::class);
+    $mockProvider->shouldReceive('createSession')
+        ->with('test-code')
+        ->once()
+        ->andReturn([
+            'session_id' => 'session-owner',
+            'accounts' => [
+                [
+                    'uid' => 'ext-account-1',
+                    'currency' => 'EUR',
+                    'name' => 'Owner Account',
+                    'account_id' => ['iban' => 'ES1234567890123456789012'],
+                ],
+            ],
+            'aspsp' => ['name' => 'CaixaBank', 'country' => 'ES'],
+            'access' => ['valid_until' => now()->addDays(90)->toIso8601String()],
+        ]);
+
+    $this->app->instance(BankingProviderInterface::class, $mockProvider);
+
+    $response = $this->actingAs($other)->get('/open-banking/callback?code=test-code&state=state-token-owner');
+
+    $response->assertRedirect(route('open-banking.map-accounts', $connection));
+
+    $connection->refresh();
+    expect($connection->user_id)->toBe($owner->id);
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping);
+    expect($connection->session_id)->toBe('session-owner');
+    expect($connection->state_token)->toBeNull();
+});
+
+test('callback without a session or a resolvable state redirects to login', function () {
+    $response = $this->get('/open-banking/callback?code=test-code&state=unknown-token');
+
+    $response->assertRedirect(route('login'));
+});
+
+test('callback renders the completion page on error without an authenticated session', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->pending()->create([
+        'user_id' => $user->id,
+        'state_token' => 'state-token-error',
+    ]);
+
+    // No actingAs(): the error came back to Safari, which has no session.
+    $response = $this->get('/open-banking/callback?error=access_denied&error_description=Denied&state=state-token-error');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('open-banking/connection-complete')
+        ->where('status', 'error')
+        ->where('message', 'Denied')
+    );
+
+    expect($connection->fresh()->trashed())->toBeTrue();
 });
