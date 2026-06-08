@@ -54,6 +54,7 @@ interface CategorySlice {
     name: string;
     color: string;
     amount: number;
+    children: CategorySlice[];
 }
 
 interface TagSlice {
@@ -97,6 +98,29 @@ const CHART_PALETTE = [
     'var(--color-chart-7)',
     'var(--color-chart-8)',
 ];
+
+/**
+ * Reorders a sequential palette so neighbouring entries alternate between its
+ * dark and light ends. Monochrome schemes (blue, pink, neutral) run from
+ * darkest to lightest, so picking adjacent shades leaves consecutive slices
+ * nearly indistinguishable; zipping the two halves maximises the contrast
+ * between one slice and the next.
+ */
+function alternateContrast(palette: string[]): string[] {
+    const half = Math.ceil(palette.length / 2);
+    const result: string[] = [];
+
+    for (let index = 0; index < half; index++) {
+        result.push(palette[index]);
+        if (index + half < palette.length) {
+            result.push(palette[index + half]);
+        }
+    }
+
+    return result;
+}
+
+const CHART_COLORS = alternateContrast(CHART_PALETTE);
 
 function buildQueryString(filters: SerializedFilters): string {
     const params = new URLSearchParams();
@@ -650,8 +674,8 @@ function CategoryBreakdown({
                                             `slice-${index}`
                                         }
                                         fill={
-                                            CHART_PALETTE[
-                                                index % CHART_PALETTE.length
+                                            CHART_COLORS[
+                                                index % CHART_COLORS.length
                                             ]
                                         }
                                     />
@@ -661,37 +685,84 @@ function CategoryBreakdown({
                     </ResponsiveContainer>
                 </ChartContainer>
 
-                <ul className="flex w-full flex-col gap-2">
-                    {slices.map((slice, index) => (
-                        <li
-                            key={slice.category_id ?? `row-${index}`}
-                            className="flex items-center gap-3 text-sm"
-                        >
-                            <span
-                                className="h-3 w-3 shrink-0 rounded-full"
-                                style={{
-                                    backgroundColor:
-                                        CHART_PALETTE[
-                                            index % CHART_PALETTE.length
-                                        ],
-                                }}
-                            />
-                            <span className="flex-1 truncate">
-                                {slice.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                {total > 0
-                                    ? Math.round((slice.amount / total) * 100)
-                                    : 0}
-                                %
-                            </span>
-                            <AmountDisplay
-                                amountInCents={slice.amount}
-                                currencyCode={currency}
-                                className="font-mono tabular-nums"
-                            />
-                        </li>
-                    ))}
+                <ul className="flex w-full flex-col gap-3">
+                    {slices.map((slice, index) => {
+                        const color = CHART_COLORS[index % CHART_COLORS.length];
+
+                        return (
+                            <li
+                                key={slice.category_id ?? `row-${index}`}
+                                className="flex flex-col gap-1.5"
+                            >
+                                <div className="flex items-center gap-3 text-sm">
+                                    <span
+                                        className="h-3 w-3 shrink-0 rounded-full"
+                                        style={{ backgroundColor: color }}
+                                    />
+                                    <span className="flex-1 truncate font-medium">
+                                        {slice.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {total > 0
+                                            ? Math.round(
+                                                  (slice.amount / total) * 100,
+                                              )
+                                            : 0}
+                                        %
+                                    </span>
+                                    <AmountDisplay
+                                        amountInCents={slice.amount}
+                                        currencyCode={currency}
+                                        className="font-mono tabular-nums"
+                                    />
+                                </div>
+
+                                {slice.children.length > 0 && (
+                                    <ul className="flex flex-col gap-1 pl-6">
+                                        {slice.children.map(
+                                            (child, childIndex) => (
+                                                <li
+                                                    key={
+                                                        child.category_id ??
+                                                        `sub-${index}-${childIndex}`
+                                                    }
+                                                    className="flex items-center gap-2.5 text-xs text-muted-foreground"
+                                                >
+                                                    <span
+                                                        className="h-2 w-2 shrink-0 rounded-full opacity-60"
+                                                        style={{
+                                                            backgroundColor:
+                                                                color,
+                                                        }}
+                                                    />
+                                                    <span className="flex-1 truncate">
+                                                        {child.name}
+                                                    </span>
+                                                    <span>
+                                                        {slice.amount > 0
+                                                            ? Math.round(
+                                                                  (child.amount /
+                                                                      slice.amount) *
+                                                                      100,
+                                                              )
+                                                            : 0}
+                                                        %
+                                                    </span>
+                                                    <AmountDisplay
+                                                        amountInCents={
+                                                            child.amount
+                                                        }
+                                                        currencyCode={currency}
+                                                        className="font-mono tabular-nums"
+                                                    />
+                                                </li>
+                                            ),
+                                        )}
+                                    </ul>
+                                )}
+                            </li>
+                        );
+                    })}
                 </ul>
             </div>
         </section>
