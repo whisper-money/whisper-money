@@ -26,6 +26,43 @@ test('lists only the current user saved filters ordered by name', function () {
     expect($response->json('data.1.name'))->toBe('Zurich trip');
 });
 
+test('updates the analysis day override on a saved filter', function () {
+    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => 21])
+        ->assertOk()
+        ->assertJsonPath('data.analysis_days', 21);
+
+    expect($savedFilter->fresh()->analysis_days)->toBe(21);
+});
+
+test('clears the analysis day override when sent null', function () {
+    $savedFilter = SavedFilter::factory()->create([
+        'user_id' => $this->user->id,
+        'analysis_days' => 14,
+    ]);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => null])
+        ->assertOk()
+        ->assertJsonPath('data.analysis_days', null);
+
+    expect($savedFilter->fresh()->analysis_days)->toBeNull();
+});
+
+test('cannot update the analysis days of another user saved filter', function () {
+    $savedFilter = SavedFilter::factory()->create(['name' => 'Not mine']);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => 5])
+        ->assertForbidden();
+});
+
+test('rejects an invalid analysis day override', function () {
+    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => 0])
+        ->assertJsonValidationErrors('analysis_days');
+});
+
 test('stores a saved filter for the current user', function () {
     $payload = [
         'name' => 'Trip to Japan',

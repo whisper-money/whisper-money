@@ -17,12 +17,14 @@ class SavedFilter extends Model
         'user_id',
         'name',
         'filters',
+        'analysis_days',
     ];
 
     protected function casts(): array
     {
         return [
             'filters' => 'array',
+            'analysis_days' => 'integer',
         ];
     }
 
