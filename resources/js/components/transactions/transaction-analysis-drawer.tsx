@@ -1,4 +1,5 @@
 import { AmountDisplay } from '@/components/ui/amount-display';
+import { Button } from '@/components/ui/button';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import {
     Drawer,
@@ -7,15 +8,25 @@ import {
     DrawerHeader,
     DrawerTitle,
 } from '@/components/ui/drawer';
+import { Input } from '@/components/ui/input';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
 import { useLocale } from '@/hooks/use-locale';
 import {
+    filtersFingerprint,
     serializeFilters,
     type SerializedFilters,
 } from '@/lib/transaction-filter-serialization';
 import { cn } from '@/lib/utils';
 import { type TransactionFilters } from '@/types/transaction';
+import { type UUID } from '@/types/uuid';
 import { __ } from '@/utils/i18n';
-import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
+import { Settings2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Bar,
     Cell,
@@ -103,6 +114,108 @@ function buildQueryString(filters: SerializedFilters): string {
     return params.toString();
 }
 
+interface SavedFilterSummary {
+    id: UUID;
+    filters: SerializedFilters;
+    analysis_days: number | null;
+}
+
+const DAY_OVERRIDE_STORAGE_PREFIX = 'wm.analysis-days.';
+
+function readStoredDays(key: string): number | null {
+    const raw = localStorage.getItem(key);
+    if (raw === null) {
+        return null;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/**
+ * Resolves the number of days used to average daily spending for a filter set.
+ *
+ * The date span between the first and last transaction is the default, but a
+ * user can override it (e.g. tickets bought months ahead skew the span). The
+ * override is remembered per filter fingerprint in the browser, and also
+ * synced to the backend when the current filters match a saved filter.
+ */
+function useAnalysisDays(
+    open: boolean,
+    filters: TransactionFilters,
+    autoDays: number,
+) {
+    const fingerprint = useMemo(
+        () => filtersFingerprint(serializeFilters(filters)),
+        [filters],
+    );
+    const storageKey = `${DAY_OVERRIDE_STORAGE_PREFIX}${fingerprint}`;
+
+    const [override, setOverride] = useState<number | null>(null);
+    const [savedFilterId, setSavedFilterId] = useState<UUID | null>(null);
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        const local = readStoredDays(storageKey);
+        let active = true;
+
+        axios
+            .get<{ data: SavedFilterSummary[] }>('/api/saved-filters')
+            .then((response) => {
+                if (!active) {
+                    return;
+                }
+                const match =
+                    response.data.data.find(
+                        (saved) =>
+                            filtersFingerprint(saved.filters) === fingerprint,
+                    ) ?? null;
+                setSavedFilterId(match?.id ?? null);
+                setOverride(match?.analysis_days ?? local);
+            })
+            .catch(() => {
+                if (!active) {
+                    return;
+                }
+                setSavedFilterId(null);
+                setOverride(local);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [open, fingerprint, storageKey]);
+
+    const applyDays = useCallback(
+        (value: number | null) => {
+            setOverride(value);
+
+            if (value === null) {
+                localStorage.removeItem(storageKey);
+            } else {
+                localStorage.setItem(storageKey, String(value));
+            }
+
+            if (savedFilterId) {
+                void axios.patch(
+                    `/api/saved-filters/${savedFilterId}/analysis-days`,
+                    { analysis_days: value },
+                );
+            }
+        },
+        [storageKey, savedFilterId],
+    );
+
+    return {
+        effectiveDays: override ?? autoDays,
+        isOverridden: override !== null,
+        isSaved: savedFilterId !== null,
+        applyDays,
+    };
+}
+
 export function TransactionAnalysisDrawer({
     open,
     onOpenChange,
@@ -147,6 +260,15 @@ export function TransactionAnalysisDrawer({
     const currency = data?.currency ?? '';
     const hasTransactions = (data?.summary.count ?? 0) > 0;
 
+    const { effectiveDays, isOverridden, isSaved, applyDays } = useAnalysisDays(
+        open,
+        filters,
+        data?.summary.days ?? 0,
+    );
+    const expense = data?.summary.expense ?? 0;
+    const averagePerDay =
+        effectiveDays > 0 ? Math.round(expense / effectiveDays) : expense;
+
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]">
@@ -179,6 +301,11 @@ export function TransactionAnalysisDrawer({
                             <SummaryCards
                                 summary={data.summary}
                                 currency={currency}
+                                days={effectiveDays}
+                                averagePerDay={averagePerDay}
+                                isOverridden={isOverridden}
+                                isSaved={isSaved}
+                                onApplyDays={applyDays}
                             />
 
                             <OverTimeChart
@@ -212,19 +339,24 @@ export function TransactionAnalysisDrawer({
 function SummaryCards({
     summary,
     currency,
+    days,
+    averagePerDay,
+    isOverridden,
+    isSaved,
+    onApplyDays,
 }: {
     summary: AnalysisSummary;
     currency: string;
+    days: number;
+    averagePerDay: number;
+    isOverridden: boolean;
+    isSaved: boolean;
+    onApplyDays: (value: number | null) => void;
 }) {
     const cards = [
         { label: __('Income'), amount: summary.income, tone: 'income' },
         { label: __('Expenses'), amount: summary.expense, tone: 'expense' },
         { label: __('Net'), amount: summary.net, tone: 'net' },
-        {
-            label: __('Avg / day'),
-            amount: summary.average_expense_per_day,
-            tone: 'expense',
-        },
     ] as const;
 
     return (
@@ -245,11 +377,123 @@ function SummaryCards({
                     />
                 </div>
             ))}
+
+            <div className="rounded-lg border bg-card p-4">
+                <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                        {__('Avg / day')}
+                    </p>
+                    <DayEditorPopover
+                        days={days}
+                        isOverridden={isOverridden}
+                        isSaved={isSaved}
+                        onApply={onApplyDays}
+                    />
+                </div>
+                <AmountDisplay
+                    amountInCents={averagePerDay}
+                    currencyCode={currency}
+                    className="mt-1 text-lg font-semibold text-red-600 tabular-nums"
+                />
+            </div>
+
             <p className="col-span-2 text-xs text-muted-foreground sm:col-span-4">
-                {summary.count} {__('transactions')} · {summary.days}{' '}
-                {__('days')}
+                {summary.count} {__('transactions')} · {days} {__('days')}
+                {isOverridden && ` (${__('adjusted')})`}
             </p>
         </div>
+    );
+}
+
+function DayEditorPopover({
+    days,
+    isOverridden,
+    isSaved,
+    onApply,
+}: {
+    days: number;
+    isOverridden: boolean;
+    isSaved: boolean;
+    onApply: (value: number | null) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [value, setValue] = useState(String(days));
+
+    useEffect(() => {
+        if (open) {
+            setValue(String(days));
+        }
+    }, [open, days]);
+
+    const save = () => {
+        const parsed = Number.parseInt(value, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+            onApply(parsed);
+            setOpen(false);
+        }
+    };
+
+    const reset = () => {
+        onApply(null);
+        setOpen(false);
+    };
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
+                    aria-label={__('Adjust number of days')}
+                >
+                    <Settings2 className="h-3.5 w-3.5" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="end">
+                <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                        <p className="text-sm font-medium">
+                            {__('Days for daily average')}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            {__(
+                                'Override the date span when it does not match the real duration.',
+                            )}
+                        </p>
+                    </div>
+                    <Input
+                        type="number"
+                        min={1}
+                        value={value}
+                        onChange={(event) => setValue(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                                save();
+                            }
+                        }}
+                    />
+                    {isSaved && (
+                        <p className="text-xs text-muted-foreground">
+                            {__('Saved with this filter.')}
+                        </p>
+                    )}
+                    <div className="flex justify-between gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={reset}
+                            disabled={!isOverridden}
+                        >
+                            {__('Reset to auto')}
+                        </Button>
+                        <Button size="sm" onClick={save}>
+                            {__('Apply')}
+                        </Button>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
     );
 }
 
