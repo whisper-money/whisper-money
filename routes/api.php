@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CashflowAnalyticsController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\Api\ImportDataController;
 use App\Http\Controllers\Api\SavedFilterController;
+use App\Http\Controllers\Api\TransactionAnalysisController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\EncryptionController;
 use App\Http\Controllers\Sync\TransactionSyncController;
@@ -26,6 +27,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     // Transactions
     Route::get('transactions', [TransactionController::class, 'index'])->name('api.transactions.index');
+    Route::get('transactions/analysis', [TransactionAnalysisController::class, 'summary'])->name('api.transactions.analysis');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('api.transactions.bulk-update');
 
     // Accounts
@@ -62,5 +64,6 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('saved-filters', [SavedFilterController::class, 'index'])->name('api.saved-filters.index');
     Route::post('saved-filters', [SavedFilterController::class, 'store'])->name('api.saved-filters.store');
     Route::patch('saved-filters/{savedFilter}', [SavedFilterController::class, 'update'])->name('api.saved-filters.update');
+    Route::patch('saved-filters/{savedFilter}/analysis-days', [SavedFilterController::class, 'updateAnalysisDays'])->name('api.saved-filters.analysis-days');
     Route::delete('saved-filters/{savedFilter}', [SavedFilterController::class, 'destroy'])->name('api.saved-filters.destroy');
 });

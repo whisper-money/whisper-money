@@ -1184,6 +1184,7 @@ export default function Transactions({
                                     onImportComplete={() =>
                                         refreshTransactions()
                                     }
+                                    filters={filters}
                                 />
 
                                 <DataTableViewOptions table={table} />
