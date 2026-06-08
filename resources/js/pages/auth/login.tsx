@@ -54,7 +54,6 @@ export default function Login({
 
             <Form
                 {...store.form()}
-                resetOnSuccess={['password']}
                 onSuccess={clearKey}
                 className="flex flex-col gap-6"
             >
