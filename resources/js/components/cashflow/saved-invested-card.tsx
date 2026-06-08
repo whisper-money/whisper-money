@@ -167,10 +167,11 @@ export function SavedInvestedCard({
                     <AmountDisplay
                         amountInCents={allocated}
                         currencyCode={currency}
-                        size="2xl"
+                        size="4xl"
                         weight="bold"
                         minimumFractionDigits={0}
                         maximumFractionDigits={0}
+                        className={rateColor}
                         highlightPositive
                     />
                     <span

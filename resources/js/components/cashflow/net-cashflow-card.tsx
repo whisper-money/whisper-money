@@ -103,10 +103,15 @@ export function NetCashflowCard({
                         <AmountDisplay
                             amountInCents={current.net}
                             currencyCode={currency}
-                            size="2xl"
+                            size="4xl"
                             weight="bold"
                             minimumFractionDigits={0}
                             maximumFractionDigits={0}
+                            className={
+                                current.net >= 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-red-600 dark:text-red-400'
+                            }
                             highlightPositive
                         />
                     </div>
