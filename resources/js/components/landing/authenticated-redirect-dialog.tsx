@@ -60,6 +60,11 @@ export default function AuthenticatedRedirectDialog({
         setIsOpen(false);
     }
 
+    function redirectNow(): void {
+        setProgress(100);
+        router.visit(dashboard());
+    }
+
     return (
         <Dialog open={isOpen}>
             <DialogContent showCloseButton={false}>
@@ -84,13 +89,16 @@ export default function AuthenticatedRedirectDialog({
                         style={{ width: `${progress}%` }}
                     />
                 </div>
-                <DialogFooter>
+                <DialogFooter className="sm:justify-between">
                     <Button
                         type="button"
                         variant="secondary"
                         onClick={cancelRedirect}
                     >
                         {__('Cancel')}
+                    </Button>
+                    <Button type="button" onClick={redirectNow}>
+                        {__('Go now')}
                     </Button>
                 </DialogFooter>
             </DialogContent>
