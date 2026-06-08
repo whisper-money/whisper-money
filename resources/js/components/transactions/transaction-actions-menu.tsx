@@ -2,6 +2,13 @@ import { categorize } from '@/actions/App/Http/Controllers/TransactionController
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -14,18 +21,31 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useReEvaluateAllTransactions } from '@/hooks/use-re-evaluate-all-transactions';
+import { hasActiveFilters } from '@/lib/transaction-filter-serialization';
 
+import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
-import { type DecryptedTransaction } from '@/types/transaction';
+import {
+    type DecryptedTransaction,
+    type TransactionFilters,
+} from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { Link } from '@inertiajs/react';
-import { ChevronDown, Plus, Upload, WandSparkles } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import {
+    BarChart3,
+    ChevronDown,
+    Plus,
+    Upload,
+    WandSparkles,
+} from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ImportTransactionsDrawer } from './import-transactions-drawer';
+import { TransactionAnalysisDrawer } from './transaction-analysis-drawer';
 
 interface TransactionActionsMenuProps {
     categories: Category[];
@@ -36,6 +56,7 @@ interface TransactionActionsMenuProps {
     transactions: DecryptedTransaction[];
     onReEvaluateComplete?: () => void;
     onImportComplete?: () => void;
+    filters: TransactionFilters;
 }
 
 export function TransactionActionsMenu({
@@ -47,11 +68,28 @@ export function TransactionActionsMenu({
     transactions,
     onReEvaluateComplete,
     onImportComplete,
+    filters,
 }: TransactionActionsMenuProps) {
     const { isKeySet } = useEncryptionKey();
+    const { features } = usePage<SharedData>().props;
+    const isMobile = useIsMobile();
     const [importDrawerOpen, setImportDrawerOpen] = useState(false);
+    const [analysisDrawerOpen, setAnalysisDrawerOpen] = useState(false);
+    const [analysisHintOpen, setAnalysisHintOpen] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
     const { reEvaluateAll } = useReEvaluateAllTransactions();
+
+    const canAnalyze = hasActiveFilters(filters);
+
+    const handleAnalysisClick = () => {
+        if (!canAnalyze) {
+            if (isMobile) {
+                setAnalysisHintOpen(true);
+            }
+            return;
+        }
+        setAnalysisDrawerOpen(true);
+    };
 
     const handleAddTransaction = () => {
         if (!isKeySet) {
@@ -90,6 +128,50 @@ export function TransactionActionsMenu({
     return (
         <>
             <ButtonGroup>
+                {features.transactionAnalysis &&
+                    (isMobile ? (
+                        <Button
+                            variant="outline"
+                            className={
+                                !canAnalyze
+                                    ? 'cursor-not-allowed opacity-50'
+                                    : ''
+                            }
+                            aria-disabled={!canAnalyze}
+                            onClick={handleAnalysisClick}
+                        >
+                            <BarChart3 className="h-5 w-5" />
+                            {__('Analysis')}
+                        </Button>
+                    ) : (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className={
+                                            !canAnalyze
+                                                ? 'cursor-not-allowed opacity-50'
+                                                : ''
+                                        }
+                                        aria-disabled={!canAnalyze}
+                                        onClick={handleAnalysisClick}
+                                    >
+                                        <BarChart3 className="h-5 w-5" />
+                                        {__('Analysis')}
+                                    </Button>
+                                </TooltipTrigger>
+                                {!canAnalyze && (
+                                    <TooltipContent>
+                                        {__(
+                                            'Apply a filter to enable this button',
+                                        )}
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        </TooltipProvider>
+                    ))}
+
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -200,6 +282,25 @@ export function TransactionActionsMenu({
                 automationRules={automationRules}
                 onImportComplete={onImportComplete}
             />
+
+            {features.transactionAnalysis && (
+                <TransactionAnalysisDrawer
+                    open={analysisDrawerOpen}
+                    onOpenChange={setAnalysisDrawerOpen}
+                    filters={filters}
+                />
+            )}
+
+            <Dialog open={analysisHintOpen} onOpenChange={setAnalysisHintOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{__('Analysis')}</DialogTitle>
+                        <DialogDescription>
+                            {__('Apply a filter to enable this button')}
+                        </DialogDescription>
+                    </DialogHeader>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
