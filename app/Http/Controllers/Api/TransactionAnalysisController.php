@@ -123,35 +123,34 @@ class TransactionAnalysisController extends Controller
             ->values()
             ->all();
 
-        $breakdown = collect($this->tree->spendingBreakdown($grouped, $userId))
-            ->map(fn (array $node): array => [
-                'category_id' => $node['category_id'],
-                'name' => $node['category']->name,
-                'color' => $node['category']->color,
-                'amount' => $node['amount'],
-                'children' => array_map(fn (array $child): array => [
-                    'category_id' => $child['category_id'],
-                    'name' => $child['category']->name,
-                    'color' => $child['category']->color,
-                    'amount' => $child['amount'],
-                ], $node['children']),
-            ]);
+        $rows = array_map(fn (array $node): array => [
+            'category_id' => $node['category_id'],
+            'name' => $node['category']->name,
+            'color' => $node['category']->color,
+            'amount' => $node['amount'],
+            'children' => array_map(fn (array $child): array => [
+                'category_id' => $child['category_id'],
+                'name' => $child['category']->name,
+                'color' => $child['category']->color,
+                'amount' => $child['amount'],
+            ], $node['children']),
+        ], $this->tree->spendingBreakdown($grouped, $userId));
 
         $uncategorized = abs($expenses
             ->filter(fn (Transaction $transaction): bool => $transaction->category_id === null)
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency)));
 
         if ($uncategorized > 0) {
-            $breakdown->push([
+            $rows[] = [
                 'category_id' => null,
                 'name' => __('Uncategorized'),
                 'color' => 'gray',
                 'amount' => $uncategorized,
                 'children' => [],
-            ]);
+            ];
         }
 
-        return $breakdown
+        return collect($rows)
             ->filter(fn (array $node): bool => $node['amount'] > 0)
             ->sortByDesc('amount')
             ->values();
