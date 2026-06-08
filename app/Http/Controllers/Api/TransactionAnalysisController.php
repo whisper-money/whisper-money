@@ -103,8 +103,9 @@ class TransactionAnalysisController extends Controller
     }
 
     /**
-     * Expenses grouped by their top-level category, rolled up through the
-     * category tree so parents absorb their children's spending.
+     * Expenses grouped by their top-level category, with the sub-categories
+     * that carry spending nested beneath each parent so the split is visible
+     * instead of folded into the parent total.
      */
     private function categoryBreakdown(Collection $transactions, string $currency, string $userId): Collection
     {
@@ -115,24 +116,25 @@ class TransactionAnalysisController extends Controller
         $grouped = $expenses
             ->filter(fn (Transaction $transaction): bool => $transaction->category_id !== null)
             ->groupBy('category_id')
-            ->map(function (Collection $group) use ($currency): array {
-                $first = $group->first();
-
-                return [
-                    'category_id' => $first->category_id,
-                    'category' => $first->category,
-                    'amount' => abs($group->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency))),
-                ];
-            })
+            ->map(fn (Collection $group): array => [
+                'category_id' => $group->first()->category_id,
+                'amount' => abs($group->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency))),
+            ])
             ->values()
             ->all();
 
-        $breakdown = collect($this->tree->rollUp($grouped, $userId, null))
+        $breakdown = collect($this->tree->spendingBreakdown($grouped, $userId))
             ->map(fn (array $node): array => [
                 'category_id' => $node['category_id'],
                 'name' => $node['category']->name,
                 'color' => $node['category']->color,
                 'amount' => $node['amount'],
+                'children' => array_map(fn (array $child): array => [
+                    'category_id' => $child['category_id'],
+                    'name' => $child['category']->name,
+                    'color' => $child['category']->color,
+                    'amount' => $child['amount'],
+                ], $node['children']),
             ]);
 
         $uncategorized = abs($expenses
@@ -145,6 +147,7 @@ class TransactionAnalysisController extends Controller
                 'name' => __('Uncategorized'),
                 'color' => 'gray',
                 'amount' => $uncategorized,
+                'children' => [],
             ]);
         }
 

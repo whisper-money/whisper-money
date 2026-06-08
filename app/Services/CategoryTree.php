@@ -220,12 +220,100 @@ class CategoryTree
     }
 
     /**
-     * Resolve which node a category's amount should be attributed to.
+     * Build a two-level spending breakdown: each top-level category with its
+     * rolled-up total, and the immediate sub-categories that carry spending
+     * nested beneath it. Grand-children fold into their level-2 ancestor;
+     * spend sitting directly on a parent that is also split across
+     * sub-categories surfaces as a "Direct" child so the children always sum
+     * to the parent total. Uncategorized items are left for the caller.
+     *
+     * @param  array<int, array{category_id: ?string, amount: int}>  $categorized
+     * @return array<int, array{category_id: string, category: Category, amount: int, children: array<int, array{category_id: string, category: Category, amount: int}>}>
+     */
+    public function spendingBreakdown(array $categorized, string $userId): array
+    {
+        $categories = Category::query()
+            ->where('user_id', $userId)
+            ->forDisplay()
+            ->get()
+            ->keyBy('id');
+
+        $parentMap = $categories->mapWithKeys(fn (Category $category): array => [$category->id => $category->parent_id])->all();
+
+        $roots = [];
+        foreach ($categorized as $item) {
+            $categoryId = $item['category_id'];
+
+            if ($categoryId === null || ! array_key_exists($categoryId, $parentMap)) {
+                continue;
+            }
+
+            $chain = $this->chainFromRoot($categoryId, $parentMap);
+            $rootId = $chain[0];
+
+            $roots[$rootId] ??= [
+                'category_id' => $rootId,
+                'category' => $categories->get($rootId),
+                'amount' => 0,
+                'direct' => 0,
+                'children' => [],
+            ];
+            $roots[$rootId]['amount'] += $item['amount'];
+
+            if (count($chain) === 1) {
+                $roots[$rootId]['direct'] += $item['amount'];
+
+                continue;
+            }
+
+            $childId = $chain[1];
+            $roots[$rootId]['children'][$childId] ??= [
+                'category_id' => $childId,
+                'category' => $categories->get($childId),
+                'amount' => 0,
+            ];
+            $roots[$rootId]['children'][$childId]['amount'] += $item['amount'];
+        }
+
+        return collect($roots)
+            ->map(function (array $root): array {
+                $children = collect($root['children'])->values();
+
+                if ($root['direct'] > 0 && $children->isNotEmpty()) {
+                    $parent = $root['category'];
+                    $children->push([
+                        'category_id' => $root['category_id'],
+                        'category' => (new Category)->forceFill([
+                            'id' => $parent->id,
+                            'name' => __('Direct'),
+                            'icon' => $parent->icon,
+                            'color' => $parent->color,
+                            'type' => $parent->type,
+                            'cashflow_direction' => $parent->cashflow_direction,
+                            'parent_id' => $parent->id,
+                        ]),
+                        'amount' => $root['direct'],
+                    ]);
+                }
+
+                return [
+                    'category_id' => $root['category_id'],
+                    'category' => $root['category'],
+                    'amount' => $root['amount'],
+                    'children' => $children->sortByDesc('amount')->values()->all(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * The category ids from the top-level ancestor down to the category itself.
      *
      * @param  array<string, ?string>  $parentMap
-     * @return array{id: string, is_direct: bool}|null
+     * @return array<int, string>
      */
-    private function displayNodeFor(string $categoryId, array $parentMap, ?string $drillParentId): ?array
+    private function chainFromRoot(string $categoryId, array $parentMap): array
     {
         $chain = [];
         $current = $categoryId;
@@ -235,6 +323,19 @@ class CategoryTree
             array_unshift($chain, $current);
             $current = $parentMap[$current] ?? null;
         }
+
+        return $chain;
+    }
+
+    /**
+     * Resolve which node a category's amount should be attributed to.
+     *
+     * @param  array<string, ?string>  $parentMap
+     * @return array{id: string, is_direct: bool}|null
+     */
+    private function displayNodeFor(string $categoryId, array $parentMap, ?string $drillParentId): ?array
+    {
+        $chain = $this->chainFromRoot($categoryId, $parentMap);
 
         if ($drillParentId === null) {
             return ['id' => $chain[0], 'is_direct' => false];

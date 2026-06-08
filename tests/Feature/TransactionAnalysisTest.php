@@ -84,8 +84,57 @@ test('category breakdown groups expenses by top-level category', function () {
 
     $response->assertOk();
     expect($response->json('distinct_category_count'))->toBe(2);
-    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Hotel', 'amount' => 50000]);
-    expect($response->json('by_category.1'))->toMatchArray(['name' => 'Meals', 'amount' => 20000]);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Hotel', 'amount' => 50000, 'children' => []]);
+    expect($response->json('by_category.1'))->toMatchArray(['name' => 'Meals', 'amount' => 20000, 'children' => []]);
+});
+
+test('category breakdown nests sub-categories under their parent total', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
+    $groceries = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Groceries', 'parent_id' => $food->id]);
+    $restaurants = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Restaurants', 'parent_id' => $food->id]);
+
+    makeTransaction(['amount' => -30000, 'category_id' => $groceries->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -10000, 'category_id' => $restaurants->id, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis');
+
+    $response->assertOk();
+    expect($response->json('distinct_category_count'))->toBe(1);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Food', 'amount' => 40000]);
+    expect($response->json('by_category.0.children.0'))->toMatchArray(['name' => 'Groceries', 'amount' => 30000]);
+    expect($response->json('by_category.0.children.1'))->toMatchArray(['name' => 'Restaurants', 'amount' => 10000]);
+});
+
+test('spend booked directly on a split parent surfaces as a Direct child', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
+    $groceries = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Groceries', 'parent_id' => $food->id]);
+
+    makeTransaction(['amount' => -30000, 'category_id' => $groceries->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -5000, 'category_id' => $food->id, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis');
+
+    $response->assertOk();
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Food', 'amount' => 35000]);
+
+    $children = collect($response->json('by_category.0.children'));
+    expect($children)->toHaveCount(2);
+    expect($children->firstWhere('name', 'Groceries')['amount'])->toBe(30000);
+    expect($children->firstWhere('name', 'Direct')['amount'])->toBe(5000);
+});
+
+test('grand-children fold into their level-two sub-category', function () {
+    $food = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Food']);
+    $groceries = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Groceries', 'parent_id' => $food->id]);
+    $organic = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Organic', 'parent_id' => $groceries->id]);
+
+    makeTransaction(['amount' => -12000, 'category_id' => $organic->id, 'transaction_date' => '2026-01-10']);
+
+    $response = $this->getJson('/api/transactions/analysis');
+
+    $response->assertOk();
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Food', 'amount' => 12000]);
+    expect($response->json('by_category.0.children.0'))->toMatchArray(['name' => 'Groceries', 'amount' => 12000]);
 });
 
 test('tag breakdown sums expenses per label', function () {
