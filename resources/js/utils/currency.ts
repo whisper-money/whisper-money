@@ -23,6 +23,7 @@ export function getCurrencySymbol(currencyCode: string): string {
         EUR: '€',
         GBP: '£',
         JPY: '¥',
+        NZD: 'NZ$',
         DOP: 'RD$',
     };
     return symbols[currencyCode] || currencyCode;

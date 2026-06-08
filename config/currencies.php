@@ -45,6 +45,12 @@ return [
             'allows_account' => true,
         ],
         [
+            'code' => 'NZD',
+            'name' => 'New Zealand Dollar',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
+        [
             'code' => 'CNY',
             'name' => 'Chinese Yuan',
             'allows_primary' => true,
