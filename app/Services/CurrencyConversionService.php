@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 
 class CurrencyConversionService
 {
@@ -14,6 +15,16 @@ class CurrencyConversionService
     private const FALLBACK_URL = 'https://currency-api.pages.dev/v1/';
 
     private const HISTORICAL_LOOKBACK_DAYS = 7;
+
+    private const HTTP_CONNECT_TIMEOUT_SECONDS = 3;
+
+    private const HTTP_TIMEOUT_SECONDS = 5;
+
+    private const CACHE_TTL_HISTORICAL_SECONDS = 60 * 60 * 24 * 30;
+
+    private const CACHE_TTL_LATEST_SECONDS = 60 * 60 * 6;
+
+    private const CACHE_TTL_UNAVAILABLE_SECONDS = 60 * 10;
 
     /** @var array<string, array<string, float>> Keyed by "{currency}:{date}" */
     private array $rateCache = [];
@@ -67,7 +78,15 @@ class CurrencyConversionService
             return $this->rateCache[$cacheKey];
         }
 
-        $rates = $this->fetchRates($currency, $date);
+        $persistentKey = "currency-rates:{$cacheKey}";
+
+        $rates = Cache::get($persistentKey);
+
+        if ($rates === null) {
+            $rates = $this->fetchRates($currency, $date);
+            Cache::put($persistentKey, $rates, $this->cacheTtlFor($date, $rates));
+        }
+
         $this->rateCache[$cacheKey] = $rates;
 
         return $rates;
@@ -76,40 +95,83 @@ class CurrencyConversionService
     /**
      * Fetch rates from CDN with fallback.
      *
+     * A missing release (404) walks back to earlier historical dates, but an
+     * unreachable source (connection refused or timeout) aborts the walk: the
+     * same timeout would repeat for every candidate date and risk exhausting
+     * the request's execution time. Failures degrade to an empty rate map
+     * rather than throwing, so a slow CDN never crashes the calling endpoint.
+     *
      * @return array<string, float>
      */
     private function fetchRates(string $currency, string $date): array
     {
-        $lastException = null;
+        $sourceUnreachable = false;
 
         foreach ($this->candidateDates($date) as $candidateDate) {
             foreach ($this->rateUrls($currency, $candidateDate) as $url) {
                 try {
-                    $response = Http::timeout(10)->get($url);
+                    $response = Http::connectTimeout(self::HTTP_CONNECT_TIMEOUT_SECONDS)
+                        ->timeout(self::HTTP_TIMEOUT_SECONDS)
+                        ->get($url);
+                } catch (ConnectionException $e) {
+                    $sourceUnreachable = true;
 
-                    if ($response->notFound()) {
-                        continue;
-                    }
+                    Log::warning('Currency rate source unreachable', [
+                        'currency' => $currency,
+                        'date' => $candidateDate,
+                        'url' => $url,
+                        'error' => $e->getMessage(),
+                    ]);
 
-                    $response->throw();
-
-                    return $response->json($currency) ?? [];
-                } catch (\Throwable $e) {
-                    $lastException = $e;
+                    continue;
                 }
+
+                if ($response->notFound()) {
+                    continue;
+                }
+
+                if ($response->successful()) {
+                    return $response->json($currency) ?? [];
+                }
+
+                Log::warning('Currency rate source returned an error', [
+                    'currency' => $currency,
+                    'date' => $candidateDate,
+                    'status' => $response->status(),
+                ]);
+            }
+
+            if ($sourceUnreachable) {
+                break;
             }
         }
 
-        if ($lastException !== null) {
-            throw new RuntimeException("Failed to fetch currency rates for {$currency} on {$date}: {$lastException->getMessage()}", 0, $lastException);
-        }
-
-        Log::warning('Currency rates unavailable, all sources returned 404', [
+        Log::warning('Currency rates unavailable', [
             'currency' => $currency,
             'date' => $date,
         ]);
 
         return [];
+    }
+
+    /**
+     * Resolve the cache lifetime for a fetched rate map.
+     *
+     * Historical releases are immutable, so cache them long. The "latest"
+     * release changes daily. An empty result means the sources were missing or
+     * unreachable; cache it briefly so a transient outage recovers quickly.
+     *
+     * @param  array<string, float>  $rates
+     */
+    private function cacheTtlFor(string $date, array $rates): int
+    {
+        if ($rates === []) {
+            return self::CACHE_TTL_UNAVAILABLE_SECONDS;
+        }
+
+        return $date === 'latest'
+            ? self::CACHE_TTL_LATEST_SECONDS
+            : self::CACHE_TTL_HISTORICAL_SECONDS;
     }
 
     /**
