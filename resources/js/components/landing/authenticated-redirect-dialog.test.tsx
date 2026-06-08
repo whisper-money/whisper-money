@@ -63,6 +63,14 @@ describe('AuthenticatedRedirectDialog', () => {
         ).toBe('50');
     });
 
+    it('redirects immediately when clicking go now', () => {
+        render(<AuthenticatedRedirectDialog open />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Go now' }));
+
+        expect(mocks.routerVisit).toHaveBeenCalledWith(dashboard());
+    });
+
     it('cancels the redirect and closes the modal', () => {
         render(<AuthenticatedRedirectDialog open />);
 
