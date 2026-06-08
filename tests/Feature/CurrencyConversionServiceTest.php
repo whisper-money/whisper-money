@@ -1,7 +1,13 @@
 <?php
 
 use App\Services\CurrencyConversionService;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+
+beforeEach(function () {
+    Cache::flush();
+});
 
 test('converts crypto to fiat using CDN rates', function () {
     Http::fake([
@@ -63,15 +69,49 @@ test('uses fallback URL when primary fails', function () {
     expect($result)->toBe(1.0 / 0.00002);
 });
 
-test('throws when both primary and fallback fail', function () {
+test('degrades to zero when both primary and fallback fail', function () {
     Http::fake([
         'cdn.jsdelivr.net/*' => Http::response('Server Error', 500),
         'currency-api.pages.dev/*' => Http::response('Server Error', 500),
     ]);
 
     $service = new CurrencyConversionService;
-    $service->convert('BTC', 'EUR', 1.0, '2026-01-15');
-})->throws(RuntimeException::class);
+    $result = $service->convert('BTC', 'EUR', 1.0, '2026-01-15');
+
+    expect($result)->toBe(0.0);
+});
+
+test('degrades to zero and stops walking dates when the source times out', function () {
+    $attempts = 0;
+
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+
+        throw new ConnectionException('cURL error 28: Operation timed out');
+    });
+
+    $service = new CurrencyConversionService;
+    $result = $service->convert('BTC', 'EUR', 1.0, '2026-01-15');
+
+    expect($result)->toBe(0.0);
+
+    // Only the first candidate date is attempted (primary + fallback); a timing
+    // out source must not be retried across every historical lookback date.
+    expect($attempts)->toBe(2);
+});
+
+test('caches rates across service instances so repeat lookups skip HTTP', function () {
+    Http::fake([
+        'cdn.jsdelivr.net/*currencies/eur*' => Http::response([
+            'eur' => ['btc' => 0.000015],
+        ]),
+    ]);
+
+    (new CurrencyConversionService)->convert('BTC', 'EUR', 1.0, '2026-01-15');
+    (new CurrencyConversionService)->convert('BTC', 'EUR', 1.0, '2026-01-15');
+
+    Http::assertSentCount(1);
+});
 
 test('returns zero when base currency is unknown and all sources return 404', function () {
     Http::fake([
