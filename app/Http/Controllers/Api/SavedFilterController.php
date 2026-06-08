@@ -16,7 +16,7 @@ class SavedFilterController extends Controller
         $savedFilters = SavedFilter::query()
             ->where('user_id', $request->user()->id)
             ->orderBy('name')
-            ->get(['id', 'name', 'filters', 'analysis_days']);
+            ->get();
 
         return response()->json(['data' => $savedFilters]);
     }
@@ -30,7 +30,7 @@ class SavedFilterController extends Controller
         ]);
 
         return response()->json([
-            'data' => $savedFilter->only(['id', 'name', 'filters']),
+            'data' => $savedFilter,
         ], 201);
     }
 
@@ -41,7 +41,7 @@ class SavedFilterController extends Controller
         $savedFilter->update(['filters' => $request->validated('filters')]);
 
         return response()->json([
-            'data' => $savedFilter->only(['id', 'name', 'filters']),
+            'data' => $savedFilter,
         ]);
     }
 
@@ -65,7 +65,7 @@ class SavedFilterController extends Controller
         $savedFilter->update(['analysis_days' => $validated['analysis_days'] ?? null]);
 
         return response()->json([
-            'data' => $savedFilter->only(['id', 'name', 'filters', 'analysis_days']),
+            'data' => $savedFilter,
         ]);
     }
 }

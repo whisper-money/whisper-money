@@ -20,6 +20,13 @@ class SavedFilter extends Model
         'analysis_days',
     ];
 
+    /** @var list<string> */
+    protected $hidden = [
+        'user_id',
+        'created_at',
+        'updated_at',
+    ];
+
     protected function casts(): array
     {
         return [

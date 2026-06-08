@@ -113,7 +113,8 @@ class TransactionAnalysisController extends Controller
         );
 
         $grouped = $expenses
-            ->groupBy(fn (Transaction $transaction): string => $transaction->category_id ?? 'uncategorized')
+            ->filter(fn (Transaction $transaction): bool => $transaction->category_id !== null)
+            ->groupBy('category_id')
             ->map(function (Collection $group) use ($currency): array {
                 $first = $group->first();
 
@@ -126,13 +127,28 @@ class TransactionAnalysisController extends Controller
             ->values()
             ->all();
 
-        return collect($this->tree->rollUp($grouped, $userId, null))
+        $breakdown = collect($this->tree->rollUp($grouped, $userId, null))
             ->map(fn (array $node): array => [
                 'category_id' => $node['category_id'],
-                'name' => $node['category']?->name ?? __('Uncategorized'),
-                'color' => $node['category']?->color ?? 'gray',
+                'name' => $node['category']->name,
+                'color' => $node['category']->color,
                 'amount' => $node['amount'],
-            ])
+            ]);
+
+        $uncategorized = abs($expenses
+            ->filter(fn (Transaction $transaction): bool => $transaction->category_id === null)
+            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency)));
+
+        if ($uncategorized > 0) {
+            $breakdown->push([
+                'category_id' => null,
+                'name' => __('Uncategorized'),
+                'color' => 'gray',
+                'amount' => $uncategorized,
+            ]);
+        }
+
+        return $breakdown
             ->filter(fn (array $node): bool => $node['amount'] > 0)
             ->sortByDesc('amount')
             ->values();
