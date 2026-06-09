@@ -343,10 +343,11 @@ async function scenarioSessionLost(page, settings) {
     await replayCallback(page, captured);
 
     // They must see the standalone "connected — go back to your app" confirmation
-    // rather than being bounced to the login screen.
+    // rather than being bounced to the login screen. This screen renders late in the
+    // flow, so hold on it long enough to be clearly visible in the recording.
     await page.getByText('Bank account connected').waitFor({ timeout: 15000 });
     await page.getByText('go back to the app').waitFor({ timeout: 5000 });
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(6000);
 
     const { connection } = artisanJson([
         'e2e:banking-fixture',
