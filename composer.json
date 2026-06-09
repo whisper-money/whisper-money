@@ -74,6 +74,10 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "e2e:banking": [
+            "Composer\\Config::disableProcessTimeout",
+            "node tests/Browser/live/connect-bank.mjs"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

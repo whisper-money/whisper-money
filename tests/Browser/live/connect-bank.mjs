@@ -25,13 +25,37 @@
 // See tests/Browser/live/README.md for details.
 
 import { execFileSync } from 'node:child_process';
+import { mkdirSync, rmSync } from 'node:fs';
 import process from 'node:process';
 import { chromium } from 'playwright';
 
-const BASE_URL = (process.env.APP_BASE_URL ?? 'http://127.0.0.1:8921').replace(
-    /\/$/,
-    '',
-);
+const VIDEO_DIR = 'tests/Browser/live/videos';
+
+// `composer run dev` serves on a random port, so auto-detect the running
+// `artisan serve --port=N` unless APP_BASE_URL is given explicitly.
+function detectBaseUrl() {
+    if (process.env.APP_BASE_URL) {
+        return process.env.APP_BASE_URL.replace(/\/$/, '');
+    }
+    try {
+        const port = execFileSync(
+            'bash',
+            [
+                '-c',
+                "ps ax -o command | grep -oE 'artisan serve --port=[0-9]+' | grep -oE '[0-9]+$' | head -1",
+            ],
+            { encoding: 'utf8' },
+        ).trim();
+        if (port) {
+            return `http://127.0.0.1:${port}`;
+        }
+    } catch {
+        // fall through to the default
+    }
+    return 'http://127.0.0.1:8921';
+}
+
+const BASE_URL = detectBaseUrl();
 const HEADLESS = process.env.HEADLESS !== '0';
 const OTP = '012345';
 const SABADELL_USER = 'user1';
@@ -281,45 +305,66 @@ async function scenarioReconnect(page, settings) {
     );
 }
 
+// Force English so the Enable Banking / bank sandbox pages render with the labels
+// the selectors expect (they otherwise follow the browser locale).
+const CONTEXT_OPTIONS = {
+    ignoreHTTPSErrors: true,
+    locale: 'en-US',
+    extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
+};
+
 async function main() {
     log(`Seeding fixtures (base url: ${BASE_URL})`);
     const fixtures = artisanJson(['e2e:banking-fixture', 'seed']);
 
+    rmSync(VIDEO_DIR, { recursive: true, force: true });
+    mkdirSync(VIDEO_DIR, { recursive: true });
+
     const browser = await chromium.launch({ headless: HEADLESS });
-    // Force English so the Enable Banking / bank sandbox pages render with the labels
-    // the selectors below expect (they otherwise follow the browser locale).
-    const context = await browser.newContext({
-        ignoreHTTPSErrors: true,
-        locale: 'en-US',
-        extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
-    });
-    const page = await context.newPage();
 
     const results = [];
+    // Each scenario gets its own recording context, so it produces one video and
+    // starts from a clean session.
     const run = async (name, fn) => {
+        const context = await browser.newContext({
+            ...CONTEXT_OPTIONS,
+            recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 800 } },
+        });
+        const page = await context.newPage();
+        const video = page.video();
+        let ok = true;
+        let error = null;
+
         try {
-            await fn();
-            results.push({ name, ok: true });
-        } catch (error) {
-            const shot = `tests/Browser/live/failure-${name}.png`;
+            await fn(page);
+        } catch (e) {
+            ok = false;
+            error = e.message;
             await page
-                .screenshot({ path: shot, fullPage: true })
+                .screenshot({
+                    path: `${VIDEO_DIR}/failure-${name}.png`,
+                    fullPage: true,
+                })
                 .catch(() => {});
-            results.push({ name, ok: false, error: error.message });
-            log(
-                `✗ ${error.message.split('\n')[0]} (at ${page.url()}, screenshot: ${shot})`,
-            );
+            log(`✗ ${e.message.split('\n')[0]} (at ${page.url()})`);
+        } finally {
+            await context.close();
         }
+
+        const videoPath = `${VIDEO_DIR}/${name}.webm`;
+        await video?.saveAs(videoPath).catch(() => {});
+        await video?.delete().catch(() => {});
+        results.push({ name, ok, error, video: videoPath });
     };
 
     try {
-        await run('settings-connect', () =>
+        await run('settings-connect', (page) =>
             scenarioSettingsConnect(page, fixtures.settings),
         );
-        await run('onboarding-connect', () =>
+        await run('onboarding-connect', (page) =>
             scenarioOnboardingConnect(page, fixtures.onboarding),
         );
-        await run('reconnect-expired', () =>
+        await run('reconnect-expired', (page) =>
             scenarioReconnect(page, fixtures.settings),
         );
     } finally {
@@ -329,7 +374,7 @@ async function main() {
     process.stdout.write('\nLive Enable Banking e2e results:\n');
     for (const result of results) {
         process.stdout.write(
-            `  ${result.ok ? 'PASS' : 'FAIL'}  ${result.name}${result.ok ? '' : ' — ' + result.error}\n`,
+            `  ${result.ok ? 'PASS' : 'FAIL'}  ${result.name}  → ${result.video}${result.ok ? '' : ' — ' + result.error}\n`,
         );
     }
 

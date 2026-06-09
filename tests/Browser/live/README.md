@@ -34,16 +34,31 @@ For CI regression coverage of the same three flows with the provider faked, see
 ## Run
 
 ```bash
-# default base url http://127.0.0.1:8921
+# one-liner (auto-detects the running dev server port)
+composer e2e:banking
+
+# or directly
 node tests/Browser/live/connect-bank.mjs
 
-# point at a different port / watch it run in a headed browser
-APP_BASE_URL=http://127.0.0.1:8921 HEADLESS=0 node tests/Browser/live/connect-bank.mjs
+# watch it run in a headed browser / override the base url
+HEADLESS=0 node tests/Browser/live/connect-bank.mjs
+APP_BASE_URL=http://127.0.0.1:8921 node tests/Browser/live/connect-bank.mjs
 ```
 
 The script seeds its own users via `php artisan e2e:banking-fixture seed`
 (local/testing only), reports `PASS`/`FAIL` per scenario, and exits non-zero on failure.
-On failure it writes `tests/Browser/live/failure-<scenario>.png`.
+
+### Videos & screenshots
+
+Each scenario is recorded to its own video so you can watch how it went:
+
+- `tests/Browser/live/videos/settings-connect.webm`
+- `tests/Browser/live/videos/onboarding-connect.webm`
+- `tests/Browser/live/videos/reconnect-expired.webm`
+
+The `videos/` directory is cleared at the start of every run. On failure, a
+full-page screenshot is also written to `videos/failure-<scenario>.png`. These
+artifacts are git-ignored.
 
 ## Notes
 
