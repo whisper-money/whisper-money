@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AnalysisMode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreSavedFilterRequest;
 use App\Http\Requests\Api\UpdateSavedFilterRequest;
 use App\Models\SavedFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SavedFilterController extends Controller
 {
@@ -63,6 +65,21 @@ class SavedFilterController extends Controller
         ]);
 
         $savedFilter->update(['analysis_days' => $validated['analysis_days'] ?? null]);
+
+        return response()->json([
+            'data' => $savedFilter,
+        ]);
+    }
+
+    public function updateAnalysisMode(Request $request, SavedFilter $savedFilter): JsonResponse
+    {
+        abort_unless($savedFilter->user_id === $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'analysis_mode' => ['nullable', Rule::enum(AnalysisMode::class)],
+        ]);
+
+        $savedFilter->update(['analysis_mode' => $validated['analysis_mode'] ?? null]);
 
         return response()->json([
             'data' => $savedFilter,

@@ -3,6 +3,7 @@
 use App\Enums\CategoryType;
 use App\Features\TransactionAnalysis;
 use App\Models\Account;
+use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
@@ -180,4 +181,86 @@ test('over time switches to monthly buckets for long spans', function () {
     $response->assertOk();
     expect($response->json('over_time.bucket'))->toBe('month');
     expect($response->json('over_time.points'))->toHaveCount(6); // Jan..Jun
+});
+
+test('over time carries a cumulative net alongside the cumulative expense', function () {
+    makeTransaction(['amount' => 5000, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -2000, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis');
+
+    $response->assertOk();
+    $points = $response->json('over_time.points');
+    expect($points[0])->toMatchArray(['cumulative_expense' => 0, 'cumulative_net' => 5000]);
+    expect($points[1])->toMatchArray(['cumulative_expense' => 2000, 'cumulative_net' => 3000]);
+});
+
+test('largest expenses lists the biggest spends richest-first, capped at ten', function () {
+    foreach (range(1, 12) as $index) {
+        makeTransaction(['amount' => -$index * 1000, 'description' => "Expense {$index}", 'transaction_date' => '2026-01-10']);
+    }
+    // Income must never appear among the largest expenses.
+    makeTransaction(['amount' => 999999, 'transaction_date' => '2026-01-10']);
+
+    $response = $this->getJson('/api/transactions/analysis');
+
+    $response->assertOk();
+    $largest = $response->json('largest_expenses');
+    expect($largest)->toHaveCount(10);
+    expect($largest[0])->toMatchArray(['description' => 'Expense 12', 'amount' => 12000]);
+    expect($largest[9])->toMatchArray(['description' => 'Expense 3', 'amount' => 3000]);
+});
+
+test('largest expenses carry the category, account and labels for display', function () {
+    $bank = Bank::factory()->create(['name' => 'Acme Bank']);
+    $account = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'USD', 'bank_id' => $bank->id]);
+    $category = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Hotel']);
+    $label = Label::factory()->create(['user_id' => $this->user->id, 'name' => 'Trip']);
+
+    $transaction = makeTransaction([
+        'amount' => -50000,
+        'account_id' => $account->id,
+        'category_id' => $category->id,
+        'description' => 'Grand Hotel',
+        'transaction_date' => '2026-01-10',
+    ]);
+    $transaction->labels()->attach($label);
+
+    $row = $this->getJson('/api/transactions/analysis')->assertOk()->json('largest_expenses.0');
+
+    expect($row)->toMatchArray([
+        'description' => 'Grand Hotel',
+        'amount' => 50000,
+        'category' => ['name' => 'Hotel', 'color' => $category->color, 'icon' => $category->icon],
+        'account' => ['name' => $account->name, 'bank' => ['name' => 'Acme Bank', 'logo' => $bank->logo]],
+    ]);
+    expect($row['labels'])->toHaveCount(1);
+    expect($row['labels'][0])->toMatchArray(['name' => 'Trip']);
+});
+
+test('payee breakdown sums named creditors and ignores blank ones', function () {
+    makeTransaction(['amount' => -3000, 'creditor_name' => 'Hotel Paradiso', 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -2000, 'creditor_name' => 'Hotel Paradiso', 'transaction_date' => '2026-01-11']);
+    makeTransaction(['amount' => -1000, 'creditor_name' => 'Cafe Roma', 'transaction_date' => '2026-01-12']);
+    makeTransaction(['amount' => -9000, 'creditor_name' => null, 'transaction_date' => '2026-01-13']);
+
+    $response = $this->getJson('/api/transactions/analysis');
+
+    $response->assertOk();
+    expect($response->json('distinct_payee_count'))->toBe(2);
+    expect($response->json('by_payee.0'))->toMatchArray(['name' => 'Hotel Paradiso', 'amount' => 5000]);
+    expect($response->json('by_payee.1'))->toMatchArray(['name' => 'Cafe Roma', 'amount' => 1000]);
+});
+
+test('account breakdown sums expenses per funding account', function () {
+    $other = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'USD', 'name' => 'Travel card']);
+
+    makeTransaction(['amount' => -4000, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -6000, 'account_id' => $other->id, 'transaction_date' => '2026-01-11']);
+
+    $response = $this->getJson('/api/transactions/analysis');
+
+    $response->assertOk();
+    expect($response->json('distinct_account_count'))->toBe(2);
+    expect($response->json('by_account.0'))->toMatchArray(['name' => 'Travel card', 'amount' => 6000]);
 });

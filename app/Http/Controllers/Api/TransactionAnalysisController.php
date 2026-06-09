@@ -21,6 +21,12 @@ class TransactionAnalysisController extends Controller
      */
     private const DAILY_BUCKET_MAX_DAYS = 62;
 
+    /**
+     * The drawer lists the five biggest expenses with an option to reveal the
+     * rest, so ten covers both states without shipping the whole set.
+     */
+    private const LARGEST_EXPENSES_LIMIT = 10;
+
     public function __construct(
         private ExchangeRateService $exchangeRateService,
         private CategoryTree $tree,
@@ -50,7 +56,7 @@ class TransactionAnalysisController extends Controller
 
         $transactions = Transaction::query()
             ->where('user_id', $user->id)
-            ->with(['account', 'category', 'labels'])
+            ->with(['account.bank', 'category', 'labels'])
             ->applyFilters($filters)
             ->get();
 
@@ -58,6 +64,8 @@ class TransactionAnalysisController extends Controller
 
         $byCategory = $this->categoryBreakdown($transactions, $currency, $user->id);
         $byTag = $this->tagBreakdown($transactions, $currency);
+        $byPayee = $this->payeeBreakdown($transactions, $currency);
+        $byAccount = $this->accountBreakdown($transactions, $currency);
 
         return response()
             ->json([
@@ -67,6 +75,11 @@ class TransactionAnalysisController extends Controller
                 'distinct_category_count' => $byCategory->count(),
                 'by_tag' => $byTag->values(),
                 'distinct_label_count' => $byTag->count(),
+                'by_payee' => $byPayee->values(),
+                'distinct_payee_count' => $byPayee->count(),
+                'by_account' => $byAccount->values(),
+                'distinct_account_count' => $byAccount->count(),
+                'largest_expenses' => $this->largestExpenses($transactions, $currency),
                 'over_time' => $this->overTime($transactions, $currency),
             ])
             ->header('Cache-Control', 'no-store, private');
@@ -184,10 +197,118 @@ class TransactionAnalysisController extends Controller
     }
 
     /**
+     * Expenses grouped by the party paid (the creditor on the transaction).
+     * Transactions without a named creditor are skipped, since an unnamed
+     * bucket carries no meaning for the user.
+     */
+    private function payeeBreakdown(Collection $transactions, string $currency): Collection
+    {
+        $totals = [];
+
+        foreach ($transactions as $transaction) {
+            $amount = $this->convertTransactionAmount($transaction, $currency);
+
+            if ($amount >= 0) {
+                continue;
+            }
+
+            $name = trim((string) $transaction->creditor_name);
+
+            if ($name === '') {
+                continue;
+            }
+
+            $totals[$name] ??= ['name' => $name, 'amount' => 0];
+            $totals[$name]['amount'] += abs($amount);
+        }
+
+        return collect($totals)
+            ->sortByDesc('amount')
+            ->values();
+    }
+
+    /**
+     * Expenses grouped by the account that funded them, so a set spanning
+     * several cards shows where the spending was charged.
+     */
+    private function accountBreakdown(Collection $transactions, string $currency): Collection
+    {
+        $totals = [];
+
+        foreach ($transactions as $transaction) {
+            $amount = $this->convertTransactionAmount($transaction, $currency);
+
+            if ($amount >= 0) {
+                continue;
+            }
+
+            $account = $transaction->account;
+            $key = $account?->id ?? 'none';
+
+            $totals[$key] ??= [
+                'id' => $account?->id,
+                'name' => $account?->name ?? __('No account'),
+                'bank' => $account?->bank ? ['name' => $account->bank->name, 'logo' => $account->bank->logo] : null,
+                'amount' => 0,
+            ];
+            $totals[$key]['amount'] += abs($amount);
+        }
+
+        return collect($totals)
+            ->sortByDesc('amount')
+            ->values();
+    }
+
+    /**
+     * The biggest individual expenses, richest-first, each carrying the same
+     * display fields the transaction table shows so the drawer can render a
+     * familiar row. Capped at the limit the drawer can reveal.
+     *
+     * @return array<int, array{id: string, date: string, description: ?string, amount: int, category: ?array{name: string, color: ?string, icon: ?string}, account: ?array{name: string, bank: ?array{name: string, logo: ?string}}, labels: array<int, array{id: string, name: string, color: ?string}>}>
+     */
+    private function largestExpenses(Collection $transactions, string $currency): array
+    {
+        return $transactions
+            ->map(fn (Transaction $transaction): array => [$transaction, $this->convertTransactionAmount($transaction, $currency)])
+            ->filter(fn (array $pair): bool => $pair[1] < 0)
+            ->sortBy(fn (array $pair): int => $pair[1])
+            ->take(self::LARGEST_EXPENSES_LIMIT)
+            ->map(function (array $pair): array {
+                /** @var Transaction $transaction */
+                [$transaction, $amount] = $pair;
+
+                return [
+                    'id' => $transaction->id,
+                    'date' => $transaction->transaction_date->toDateString(),
+                    'description' => $transaction->description,
+                    'amount' => abs($amount),
+                    'category' => $transaction->category ? [
+                        'name' => $transaction->category->name,
+                        'color' => $transaction->category->color,
+                        'icon' => $transaction->category->icon,
+                    ] : null,
+                    'account' => $transaction->account ? [
+                        'name' => $transaction->account->name,
+                        'bank' => $transaction->account->bank ? [
+                            'name' => $transaction->account->bank->name,
+                            'logo' => $transaction->account->bank->logo,
+                        ] : null,
+                    ] : null,
+                    'labels' => $transaction->labels
+                        ->map(fn ($label): array => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Income and expense bucketed over the filtered span, plus a running
      * expense total so the pace of spending is visible.
      *
-     * @return array{bucket: string, points: array<int, array{date: string, label: string, income: int, expense: int, cumulative_expense: int}>}
+     * @return array{bucket: string, points: array<int, array{date: string, label: string, income: int, expense: int, cumulative_expense: int, cumulative_net: int}>}
      */
     private function overTime(Collection $transactions, string $currency): array
     {
@@ -216,7 +337,8 @@ class TransactionAnalysisController extends Controller
         }
 
         $points = [];
-        $cumulative = 0;
+        $cumulativeExpense = 0;
+        $cumulativeNet = 0;
         $cursor = $daily ? $start->copy()->startOfDay() : $start->copy()->startOfMonth();
         $last = $daily ? $end->copy()->startOfDay() : $end->copy()->startOfMonth();
 
@@ -224,14 +346,16 @@ class TransactionAnalysisController extends Controller
             $key = $cursor->format($keyFormat);
             $income = $buckets[$key]['income'] ?? 0;
             $expense = $buckets[$key]['expense'] ?? 0;
-            $cumulative += $expense;
+            $cumulativeExpense += $expense;
+            $cumulativeNet += $income - $expense;
 
             $points[] = [
                 'date' => $key,
                 'label' => $daily ? $cursor->format('M j') : $cursor->format('M Y'),
                 'income' => $income,
                 'expense' => $expense,
-                'cumulative_expense' => $cumulative,
+                'cumulative_expense' => $cumulativeExpense,
+                'cumulative_net' => $cumulativeNet,
             ];
 
             $daily ? $cursor->addDay() : $cursor->addMonth();
