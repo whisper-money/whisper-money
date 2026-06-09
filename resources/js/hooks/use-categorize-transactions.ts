@@ -1,7 +1,4 @@
 import type { AutomateCategorizationCandidate } from '@/components/automation-rules/automate-categorization-dialog';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { decrypt, importKey } from '@/lib/crypto';
-import { getStoredKey } from '@/lib/key-storage';
 import { captureEvent } from '@/lib/posthog';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
@@ -80,8 +77,6 @@ export function useCategorizeTransactions({
     banks,
     transactions: initialTransactions,
 }: UseCategorizeTransactionsOptions) {
-    const { isKeySet } = useEncryptionKey();
-
     const [uncategorizedTransactions, setUncategorizedTransactions] = useState<
         DecryptedTransaction[]
     >([]);
@@ -97,7 +92,6 @@ export function useCategorizeTransactions({
     const [automateDialogOpen, setAutomateDialogOpen] = useState(false);
     const [automateCandidate, setAutomateCandidate] =
         useState<AutomateCategorizationCandidate | null>(null);
-    const [, setEncryptionKey] = useState<CryptoKey | null>(null);
     const [categorizedCount, setCategorizedCount] = useState(0);
     const commandInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,115 +106,42 @@ export function useCategorizeTransactions({
     }, [isLoading, animationState, currentIndex]);
 
     useEffect(() => {
-        async function decryptTransactions() {
-            setIsLoading(true);
-            try {
-                const accountsMap = new Map(
-                    accounts.map((account) => [account.id, account]),
-                );
-                const banksMap = new Map(banks.map((bank) => [bank.id, bank]));
+        setIsLoading(true);
+        try {
+            const accountsMap = new Map(
+                accounts.map((account) => [account.id, account]),
+            );
+            const banksMap = new Map(banks.map((bank) => [bank.id, bank]));
 
-                const keyString = getStoredKey();
-                let key: CryptoKey | null = null;
+            const processed = initialTransactions.map((transaction) => {
+                const account = accountsMap.get(transaction.account_id);
+                const bank = account?.bank?.id
+                    ? banksMap.get(account.bank.id)
+                    : undefined;
 
-                if (keyString && isKeySet) {
-                    try {
-                        key = await importKey(keyString);
-                        setEncryptionKey(key);
-                    } catch (error) {
-                        console.error(
-                            'Failed to import encryption key:',
-                            error,
-                        );
-                    }
-                }
+                return {
+                    ...transaction,
+                    decryptedDescription: transaction.description,
+                    decryptedNotes: transaction.notes || null,
+                    account,
+                    category: null,
+                    bank,
+                } as DecryptedTransaction;
+            });
 
-                const decrypted = await Promise.all(
-                    initialTransactions.map(async (transaction) => {
-                        try {
-                            let decryptedDescription = '';
-                            let decryptedNotes: string | null = null;
+            processed.sort((a, b) => {
+                const dateA = parseISO(a.transaction_date).getTime();
+                const dateB = parseISO(b.transaction_date).getTime();
+                return dateB - dateA;
+            });
 
-                            if (!transaction.description_iv) {
-                                decryptedDescription = transaction.description;
-                                decryptedNotes = transaction.notes || null;
-                            } else if (key) {
-                                try {
-                                    decryptedDescription = await decrypt(
-                                        transaction.description,
-                                        key,
-                                        transaction.description_iv,
-                                    );
-
-                                    if (
-                                        transaction.notes &&
-                                        transaction.notes_iv
-                                    ) {
-                                        decryptedNotes = await decrypt(
-                                            transaction.notes,
-                                            key,
-                                            transaction.notes_iv,
-                                        );
-                                    }
-                                } catch (error) {
-                                    console.error(
-                                        'Failed to decrypt transaction:',
-                                        transaction.id,
-                                        error,
-                                    );
-                                }
-                            }
-
-                            const account = accountsMap.get(
-                                transaction.account_id,
-                            );
-                            const bank = account?.bank?.id
-                                ? banksMap.get(account.bank.id)
-                                : undefined;
-
-                            return {
-                                ...transaction,
-                                decryptedDescription,
-                                decryptedNotes,
-                                account,
-                                category: null,
-                                bank,
-                            } as DecryptedTransaction;
-                        } catch (error) {
-                            console.error(
-                                'Failed to process transaction:',
-                                transaction.id,
-                                error,
-                            );
-                            return null;
-                        }
-                    }),
-                );
-
-                const validTransactions = decrypted.filter(
-                    (transaction): transaction is DecryptedTransaction =>
-                        transaction !== null,
-                );
-
-                validTransactions.sort((a, b) => {
-                    const dateA = parseISO(a.transaction_date).getTime();
-                    const dateB = parseISO(b.transaction_date).getTime();
-                    return dateB - dateA;
-                });
-
-                setUncategorizedTransactions(validTransactions);
-            } catch (error) {
-                console.error(
-                    'Failed to load uncategorized transactions:',
-                    error,
-                );
-            } finally {
-                setIsLoading(false);
-            }
+            setUncategorizedTransactions(processed);
+        } catch (error) {
+            console.error('Failed to load uncategorized transactions:', error);
+        } finally {
+            setIsLoading(false);
         }
-
-        decryptTransactions();
-    }, [initialTransactions, accounts, banks, isKeySet]);
+    }, [initialTransactions, accounts, banks]);
 
     const currentTransaction = uncategorizedTransactions[currentIndex];
     const remainingCount = uncategorizedTransactions.length - currentIndex;

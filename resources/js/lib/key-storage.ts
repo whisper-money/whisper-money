@@ -29,9 +29,3 @@ export function clearKey(): void {
     sessionStorage.removeItem(ENCRYPTION_KEY_NAME);
     localStorage.removeItem(ENCRYPTION_KEY_NAME);
 }
-
-export function isKeyPersistent(): boolean {
-    if (!isBrowser()) return false;
-
-    return localStorage.getItem(ENCRYPTION_KEY_NAME) !== null;
-}

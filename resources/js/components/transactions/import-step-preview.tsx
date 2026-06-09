@@ -1,4 +1,4 @@
-import { EncryptedTransactionDescription } from '@/components/transactions/encrypted-transaction-description';
+import { TransactionDescription } from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useLocale } from '@/hooks/use-locale';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type ParsedTransaction } from '@/types/import';
@@ -47,7 +46,6 @@ export function ImportStepPreview({
     onSelectAll,
     isImporting,
 }: ImportStepPreviewProps) {
-    const { isKeySet } = useEncryptionKey();
     const locale = useLocale();
     const [existingTransactions, setExistingTransactions] = useState<
         Transaction[]
@@ -55,7 +53,7 @@ export function ImportStepPreview({
     const [isExistingOpen, setIsExistingOpen] = useState(false);
 
     useEffect(() => {
-        if (accountId && isKeySet) {
+        if (accountId) {
             transactionSyncService.getByAccountId(accountId).then((txns) => {
                 const sorted = txns.sort(
                     (a, b) =>
@@ -65,7 +63,7 @@ export function ImportStepPreview({
                 setExistingTransactions(sorted.slice(0, 10));
             });
         }
-    }, [accountId, isKeySet]);
+    }, [accountId]);
 
     const stats = useMemo(() => {
         const selectableTransactions = transactions.filter(
@@ -304,15 +302,8 @@ export function ImportStepPreview({
                                                 )}
                                             </TableCell>
                                             <TableCell className="max-w-[200px] truncate">
-                                                <EncryptedTransactionDescription
-                                                    encryptedText={
-                                                        tx.description
-                                                    }
-                                                    iv={tx.description_iv}
-                                                    length={{
-                                                        min: 10,
-                                                        max: 40,
-                                                    }}
+                                                <TransactionDescription
+                                                    text={tx.description}
                                                 />
                                             </TableCell>
                                             <TableCell className="text-right font-mono">

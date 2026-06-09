@@ -1172,7 +1172,6 @@ export default function Transactions({
                         categories={categories}
                         labels={labels}
                         accounts={accounts}
-                        isKeySet={true}
                         enableSavedFilters={true}
                         actions={
                             <div className="flex w-full items-center justify-between gap-2">
