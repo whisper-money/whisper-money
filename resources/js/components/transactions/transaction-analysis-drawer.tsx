@@ -416,15 +416,7 @@ export function TransactionAnalysisDrawer({
             <DrawerContent className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]">
                 <div className="mx-auto w-full max-w-5xl overflow-y-auto p-6">
                     <DrawerHeader className="px-0">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="flex flex-col gap-1.5">
-                                <DrawerTitle>{__('Analysis')}</DrawerTitle>
-                                <DrawerDescription>
-                                    {__(
-                                        'A breakdown of the transactions matching your current filters.',
-                                    )}
-                                </DrawerDescription>
-                            </div>
+                        <div className="flex min-h-9 justify-end">
                             {hasTransactions && (
                                 <ModeToggle
                                     override={modeOverride}
@@ -433,6 +425,16 @@ export function TransactionAnalysisDrawer({
                                     onApply={applyMode}
                                 />
                             )}
+                        </div>
+                        <div className="flex flex-col items-center gap-2 text-center">
+                            <DrawerTitle className="text-2xl">
+                                {__('Analysis')}
+                            </DrawerTitle>
+                            <DrawerDescription className="text-base">
+                                {__(
+                                    'A breakdown of the transactions matching your current filters.',
+                                )}
+                            </DrawerDescription>
                         </div>
                     </DrawerHeader>
 
