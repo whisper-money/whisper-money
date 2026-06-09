@@ -193,7 +193,12 @@ async function scenarioSettingsConnect(page, settings) {
     // Onboarded user lands on account mapping; accept the defaults and sync.
     await page.waitForTimeout(1500);
     await page.getByRole('button', { name: 'Save & Sync' }).click();
-    await page.waitForTimeout(3000);
+    // Lands back on the connections list; wait for the connection to render.
+    await page
+        .getByText('Banco de Sabadell')
+        .first()
+        .waitFor({ timeout: 15000 });
+    await page.waitForTimeout(2500);
 
     const mapped = artisanJson([
         'e2e:banking-fixture',
@@ -254,6 +259,12 @@ async function scenarioOnboardingConnect(page, onboarding) {
     await driveBbva(page);
     await replayCallback(page, captured);
 
+    // The onboarding step hydrates its account list from the client store after
+    // navigation; wait for it to render so we assert the UI (not just the DB) and the
+    // recording ends on the real result rather than a mid-load frame.
+    await page.getByText('Your Accounts').waitFor({ timeout: 15000 });
+    await page.waitForTimeout(2500);
+
     const { connection } = artisanJson([
         'e2e:banking-fixture',
         'inspect',
@@ -282,6 +293,13 @@ async function scenarioReconnect(page, settings) {
     await driveSabadell(page);
     await replayCallback(page, captured);
 
+    // Back on the connections list with the connection live again.
+    await page
+        .getByText('Banco de Sabadell')
+        .first()
+        .waitFor({ timeout: 15000 });
+    await page.waitForTimeout(2500);
+
     const { connection } = artisanJson([
         'e2e:banking-fixture',
         'inspect',
@@ -305,6 +323,46 @@ async function scenarioReconnect(page, settings) {
     );
 }
 
+async function scenarioSessionLost(page, settings) {
+    log('Settings → connect, but the app session is lost on return');
+    const captured = trackCallback(page);
+    await login(page, settings.email, settings.password);
+    await page.goto(`${BASE_URL}/settings/connections`, {
+        waitUntil: 'domcontentloaded',
+    });
+    await page.getByRole('button', { name: 'Connect Bank' }).click();
+    await page.waitForTimeout(600);
+    // Sabadell is already connected for this user from an earlier scenario; use BBVA.
+    await selectBankInModal(page, 'BBVA');
+    await driveBbva(page);
+
+    // Simulate the app session being lost while the user was away at the bank (e.g. an
+    // iOS PWA hands the redirect to Safari, where there is no session). The callback is
+    // therefore unauthenticated on return.
+    await page.context().clearCookies();
+    await replayCallback(page, captured);
+
+    // They must see the standalone "connected — go back to your app" confirmation
+    // rather than being bounced to the login screen.
+    await page.getByText('Bank account connected').waitFor({ timeout: 15000 });
+    await page.getByText('go back to the app').waitFor({ timeout: 5000 });
+    await page.waitForTimeout(2500);
+
+    const { connection } = artisanJson([
+        'e2e:banking-fixture',
+        'inspect',
+        settings.email,
+    ]);
+    assert(connection, 'session-lost connection exists');
+    assert(
+        connection.session_id === true,
+        'connection was finalized despite the lost session',
+    );
+    log(
+        `✓ confirmation screen shown · connection finalized (status ${connection.status})`,
+    );
+}
+
 // Force English so the Enable Banking / bank sandbox pages render with the labels
 // the selectors expect (they otherwise follow the browser locale).
 const CONTEXT_OPTIONS = {
@@ -312,6 +370,84 @@ const CONTEXT_OPTIONS = {
     locale: 'en-US',
     extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
 };
+
+// Injected into every page so the recordings show where the cursor is and when it
+// clicks (Playwright drives a real but invisible mouse). Runs on each document,
+// including the external bank pages.
+function installMouseHelper() {
+    if (window.__mouseHelperInstalled) {
+        return;
+    }
+    window.__mouseHelperInstalled = true;
+    const attach = () => {
+        const dot = document.createElement('div');
+        dot.style.cssText =
+            'pointer-events:none;position:fixed;top:0;left:0;z-index:2147483647;' +
+            'width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;' +
+            'background:rgba(220,38,38,.35);border:2px solid rgba(220,38,38,.9);' +
+            'transition:transform .08s ease,background .15s ease;';
+        document.body.appendChild(dot);
+        document.addEventListener(
+            'mousemove',
+            (e) => {
+                dot.style.left = e.clientX + 'px';
+                dot.style.top = e.clientY + 'px';
+            },
+            true,
+        );
+        document.addEventListener(
+            'mousedown',
+            () => {
+                dot.style.transform = 'scale(.6)';
+                dot.style.background = 'rgba(220,38,38,.7)';
+            },
+            true,
+        );
+        document.addEventListener(
+            'mouseup',
+            () => {
+                dot.style.transform = 'scale(1)';
+                dot.style.background = 'rgba(220,38,38,.35)';
+            },
+            true,
+        );
+    };
+    if (document.body) {
+        attach();
+    } else {
+        document.addEventListener('DOMContentLoaded', attach);
+    }
+}
+
+// Convert the webm Playwright produces to mp4 (plays in QuickTime / Preview / most
+// players). Falls back to the webm if ffmpeg isn't installed.
+function toMp4(webmPath) {
+    const mp4Path = webmPath.replace(/\.webm$/, '.mp4');
+    try {
+        execFileSync(
+            'ffmpeg',
+            [
+                '-y',
+                '-loglevel',
+                'error',
+                '-i',
+                webmPath,
+                '-c:v',
+                'libx264',
+                '-pix_fmt',
+                'yuv420p',
+                '-movflags',
+                '+faststart',
+                mp4Path,
+            ],
+            { stdio: 'ignore' },
+        );
+        rmSync(webmPath, { force: true });
+        return mp4Path;
+    } catch {
+        return webmPath;
+    }
+}
 
 async function main() {
     log(`Seeding fixtures (base url: ${BASE_URL})`);
@@ -330,6 +466,7 @@ async function main() {
             ...CONTEXT_OPTIONS,
             recordVideo: { dir: VIDEO_DIR, size: { width: 1280, height: 800 } },
         });
+        await context.addInitScript(installMouseHelper);
         const page = await context.newPage();
         const video = page.video();
         let ok = true;
@@ -337,6 +474,10 @@ async function main() {
 
         try {
             await fn(page);
+            // A guaranteed clear still of the final screen, independent of video timing.
+            await page
+                .screenshot({ path: `${VIDEO_DIR}/${name}.png` })
+                .catch(() => {});
         } catch (e) {
             ok = false;
             error = e.message;
@@ -351,10 +492,10 @@ async function main() {
             await context.close();
         }
 
-        const videoPath = `${VIDEO_DIR}/${name}.webm`;
-        await video?.saveAs(videoPath).catch(() => {});
+        const webmPath = `${VIDEO_DIR}/${name}.webm`;
+        await video?.saveAs(webmPath).catch(() => {});
         await video?.delete().catch(() => {});
-        results.push({ name, ok, error, video: videoPath });
+        results.push({ name, ok, error, video: toMp4(webmPath) });
     };
 
     try {
@@ -366,6 +507,9 @@ async function main() {
         );
         await run('reconnect-expired', (page) =>
             scenarioReconnect(page, fixtures.settings),
+        );
+        await run('session-lost-return', (page) =>
+            scenarioSessionLost(page, fixtures.settings),
         );
     } finally {
         await browser.close();

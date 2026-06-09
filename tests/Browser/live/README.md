@@ -1,11 +1,14 @@
 # Live Enable Banking e2e check
 
 `connect-bank.mjs` drives the **real Enable Banking sandbox** end-to-end against the
-running dev server, covering the three flows we must never regress:
+running dev server, covering the flows we must never regress:
 
 1. **Settings → connect** a bank (Banco de Sabadell), map accounts, and sync transactions.
 2. **Onboarding → connect** a bank (BBVA) with auto-created accounts.
 3. **Settings → reconnect** an expired connection.
+4. **Session lost on return** — connect, then drop the app session before the bank
+   redirect lands, and confirm the user still sees the "connected — go back to your
+   app" screen (the iOS-PWA / Safari case) instead of being bounced to login.
 
 It uses the sandbox test credentials (`user1` / `1234`, OTP `012345`).
 
@@ -50,15 +53,19 @@ The script seeds its own users via `php artisan e2e:banking-fixture seed`
 
 ### Videos & screenshots
 
-Each scenario is recorded to its own video so you can watch how it went:
+Everything is written to `tests/Browser/live/videos/` (cleared at the start of each run,
+git-ignored):
 
-- `tests/Browser/live/videos/settings-connect.webm`
-- `tests/Browser/live/videos/onboarding-connect.webm`
-- `tests/Browser/live/videos/reconnect-expired.webm`
+- `<scenario>.mp4` — a recording of the whole flow. A visible cursor follows the mouse
+  and pulses red on every click so you can track what's happening. Encoded as mp4
+  (H.264) so it plays in QuickTime / Preview / browsers. Needs `ffmpeg`; without it the
+  raw `.webm` is kept instead.
+- `<scenario>.png` — a still of the final screen (guaranteed clear, independent of video
+  timing).
+- `failure-<scenario>.png` — a full-page screenshot, written only when a scenario fails.
 
-The `videos/` directory is cleared at the start of every run. On failure, a
-full-page screenshot is also written to `videos/failure-<scenario>.png`. These
-artifacts are git-ignored.
+Scenarios: `settings-connect`, `onboarding-connect`, `reconnect-expired`,
+`session-lost-return`.
 
 ## Notes
 

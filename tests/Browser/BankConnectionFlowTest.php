@@ -107,6 +107,34 @@ it('connects a bank from settings and maps accounts', function () {
     $page->assertNoJavascriptErrors();
 });
 
+it('shows the connected confirmation when the session is lost on return', function () {
+    $user = User::factory()->create([
+        'email_verified_at' => now(),
+        'onboarded_at' => now(),
+    ]);
+
+    // A pending connection mid-authorization, identified by its state token.
+    $connection = BankingConnection::factory()->pending()->for($user)->create([
+        'provider' => 'enablebanking',
+        'aspsp_name' => 'Banco de Sabadell',
+        'aspsp_country' => 'ES',
+        'state_token' => 'session-lost-token',
+    ]);
+
+    // Hit the callback WITHOUT acting as the user — this is the iOS-PWA case where the
+    // bank redirect lands in a browser that has no app session.
+    $page = visit('/open-banking/callback?code=fake&state=session-lost-token');
+
+    $page->assertSee('Bank account connected')
+        ->assertSee('go back to the app')
+        ->assertNoJavascriptErrors();
+
+    // The connection is still finalized server-side (resolved from the state token).
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::AwaitingMapping)
+        ->and($connection->session_id)->not->toBeNull();
+});
+
 it('reconnects an expired connection from settings', function () {
     $user = User::factory()->create([
         'email_verified_at' => now(),
