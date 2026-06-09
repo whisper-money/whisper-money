@@ -605,9 +605,11 @@ function SummaryCards({
                         tone={net >= 0 ? 'income' : 'expense'}
                     />
                     <div className="rounded-lg bg-muted/50 p-4">
-                        <p className="text-xs text-muted-foreground">
-                            {__('Margin')}
-                        </p>
+                        <div className="flex h-6 items-center">
+                            <p className="text-xs text-muted-foreground">
+                                {__('Margin')}
+                            </p>
+                        </div>
                         <p
                             className={cn(
                                 'mt-1 text-lg font-semibold tabular-nums',
@@ -627,7 +629,7 @@ function SummaryCards({
                         tone="expense"
                     />
                     <div className="rounded-lg bg-muted/50 p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex h-6 items-center justify-between">
                             <p className="text-xs text-muted-foreground">
                                 {__('Avg / day')}
                             </p>
@@ -670,7 +672,9 @@ function SummaryCard({
 }) {
     return (
         <div className="rounded-lg bg-muted/50 p-4">
-            <p className="text-xs text-muted-foreground">{label}</p>
+            <div className="flex h-6 items-center">
+                <p className="text-xs text-muted-foreground">{label}</p>
+            </div>
             <AmountDisplay
                 amountInCents={amount}
                 currencyCode={currency}
