@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Features\TransactionAnalysis;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexTransactionRequest;
+use App\Models\Label;
 use App\Models\Transaction;
 use App\Services\CategoryTree;
 use App\Services\ExchangeRateService;
@@ -243,15 +244,14 @@ class TransactionAnalysisController extends Controller
             }
 
             $account = $transaction->account;
-            $key = $account?->id ?? 'none';
 
-            $totals[$key] ??= [
-                'id' => $account?->id,
-                'name' => $account?->name ?? __('No account'),
-                'bank' => $account?->bank ? ['name' => $account->bank->name, 'logo' => $account->bank->logo] : null,
+            $totals[$account->id] ??= [
+                'id' => $account->id,
+                'name' => $account->name,
+                'bank' => $account->bank ? ['name' => $account->bank->name, 'logo' => $account->bank->logo] : null,
                 'amount' => 0,
             ];
-            $totals[$key]['amount'] += abs($amount);
+            $totals[$account->id]['amount'] += abs($amount);
         }
 
         return collect($totals)
@@ -264,42 +264,36 @@ class TransactionAnalysisController extends Controller
      * display fields the transaction table shows so the drawer can render a
      * familiar row. Capped at the limit the drawer can reveal.
      *
-     * @return array<int, array{id: string, date: string, description: ?string, amount: int, category: ?array{name: string, color: ?string, icon: ?string}, account: ?array{name: string, bank: ?array{name: string, logo: ?string}}, labels: array<int, array{id: string, name: string, color: ?string}>}>
+     * @return array<int, array{id: string, date: string, description: ?string, amount: int, category: ?array{name: string, color: ?string, icon: ?string}, account: array{name: string, bank: ?array{name: string, logo: ?string}}, labels: array<int, array{id: string, name: string, color: ?string}>}>
      */
     private function largestExpenses(Collection $transactions, string $currency): array
     {
         return $transactions
-            ->map(fn (Transaction $transaction): array => [$transaction, $this->convertTransactionAmount($transaction, $currency)])
-            ->filter(fn (array $pair): bool => $pair[1] < 0)
-            ->sortBy(fn (array $pair): int => $pair[1])
+            ->filter(fn (Transaction $transaction): bool => $this->convertTransactionAmount($transaction, $currency) < 0)
+            ->sortBy(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency))
             ->take(self::LARGEST_EXPENSES_LIMIT)
-            ->map(function (array $pair): array {
-                /** @var Transaction $transaction */
-                [$transaction, $amount] = $pair;
-
-                return [
-                    'id' => $transaction->id,
-                    'date' => $transaction->transaction_date->toDateString(),
-                    'description' => $transaction->description,
-                    'amount' => abs($amount),
-                    'category' => $transaction->category ? [
-                        'name' => $transaction->category->name,
-                        'color' => $transaction->category->color,
-                        'icon' => $transaction->category->icon,
+            ->map(fn (Transaction $transaction): array => [
+                'id' => $transaction->id,
+                'date' => $transaction->transaction_date->toDateString(),
+                'description' => $transaction->description,
+                'amount' => abs($this->convertTransactionAmount($transaction, $currency)),
+                'category' => $transaction->category ? [
+                    'name' => $transaction->category->name,
+                    'color' => $transaction->category->color,
+                    'icon' => $transaction->category->icon,
+                ] : null,
+                'account' => [
+                    'name' => $transaction->account->name,
+                    'bank' => $transaction->account->bank ? [
+                        'name' => $transaction->account->bank->name,
+                        'logo' => $transaction->account->bank->logo,
                     ] : null,
-                    'account' => $transaction->account ? [
-                        'name' => $transaction->account->name,
-                        'bank' => $transaction->account->bank ? [
-                            'name' => $transaction->account->bank->name,
-                            'logo' => $transaction->account->bank->logo,
-                        ] : null,
-                    ] : null,
-                    'labels' => $transaction->labels
-                        ->map(fn ($label): array => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])
-                        ->values()
-                        ->all(),
-                ];
-            })
+                ],
+                'labels' => $transaction->labels
+                    ->map(fn (Label $label): array => ['id' => $label->id, 'name' => $label->name, 'color' => $label->color])
+                    ->values()
+                    ->all(),
+            ])
             ->values()
             ->all();
     }
