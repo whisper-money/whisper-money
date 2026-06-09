@@ -415,8 +415,8 @@ export function TransactionAnalysisDrawer({
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]">
                 <div className="mx-auto w-full max-w-5xl overflow-y-auto p-6">
-                    <DrawerHeader className="px-0">
-                        <div className="flex min-h-9 justify-end">
+                    <DrawerHeader className="px-0 gap-0">
+                        <div className="flex min-h-9 -mt-8 justify-end">
                             {hasTransactions && (
                                 <ModeToggle
                                     override={modeOverride}
@@ -426,11 +426,11 @@ export function TransactionAnalysisDrawer({
                                 />
                             )}
                         </div>
-                        <div className="flex flex-col items-center gap-2 text-center">
-                            <DrawerTitle className="text-2xl">
+                        <div className="flex flex-col items-center my-4 gap-2 text-center">
+                            <DrawerTitle className="text-xl">
                                 {__('Analysis')}
                             </DrawerTitle>
-                            <DrawerDescription className="text-base">
+                            <DrawerDescription className="text-sm text-pretty">
                                 {__(
                                     'A breakdown of the transactions matching your current filters.',
                                 )}
