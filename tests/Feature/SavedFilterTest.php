@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AnalysisMode;
 use App\Models\SavedFilter;
 use App\Models\User;
 
@@ -61,6 +62,43 @@ test('rejects an invalid analysis day override', function () {
 
     $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-days", ['analysis_days' => 0])
         ->assertJsonValidationErrors('analysis_days');
+});
+
+test('updates the analysis view mode on a saved filter', function () {
+    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => 'income'])
+        ->assertOk()
+        ->assertJsonPath('data.analysis_mode', 'income');
+
+    expect($savedFilter->fresh()->analysis_mode)->toBe(AnalysisMode::Income);
+});
+
+test('clears the analysis view mode when sent null', function () {
+    $savedFilter = SavedFilter::factory()->create([
+        'user_id' => $this->user->id,
+        'analysis_mode' => 'expense',
+    ]);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => null])
+        ->assertOk()
+        ->assertJsonPath('data.analysis_mode', null);
+
+    expect($savedFilter->fresh()->analysis_mode)->toBeNull();
+});
+
+test('cannot update the analysis mode of another user saved filter', function () {
+    $savedFilter = SavedFilter::factory()->create(['name' => 'Not mine']);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => 'income'])
+        ->assertForbidden();
+});
+
+test('rejects an unknown analysis view mode', function () {
+    $savedFilter = SavedFilter::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patchJson("/api/saved-filters/{$savedFilter->id}/analysis-mode", ['analysis_mode' => 'sideways'])
+        ->assertJsonValidationErrors('analysis_mode');
 });
 
 test('stores a saved filter for the current user', function () {

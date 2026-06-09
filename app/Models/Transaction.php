@@ -96,6 +96,7 @@ class Transaction extends Model
         return $this->belongsTo(Category::class);
     }
 
+    /** @return BelongsToMany<Label, $this, LabelTransaction, 'pivot'> */
     public function labels(): BelongsToMany
     {
         return $this->belongsToMany(Label::class)

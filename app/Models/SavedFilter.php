@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AnalysisMode;
 use Database\Factories\SavedFilterFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +19,7 @@ class SavedFilter extends Model
         'name',
         'filters',
         'analysis_days',
+        'analysis_mode',
     ];
 
     /** @var list<string> */
@@ -32,6 +34,7 @@ class SavedFilter extends Model
         return [
             'filters' => 'array',
             'analysis_days' => 'integer',
+            'analysis_mode' => AnalysisMode::class,
         ];
     }
 

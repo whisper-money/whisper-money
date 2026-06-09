@@ -1,5 +1,9 @@
+import { AccountName } from '@/components/accounts/account-name';
+import { BankLogo } from '@/components/bank-logo';
+import { LabelBadges } from '@/components/shared/label-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import {
     Drawer,
@@ -21,12 +25,33 @@ import {
     type SerializedFilters,
 } from '@/lib/transaction-filter-serialization';
 import { cn } from '@/lib/utils';
+import {
+    getCategoryColorClasses,
+    type CategoryColor,
+    type CategoryIcon,
+} from '@/types/category';
+import { type Label } from '@/types/label';
 import { type TransactionFilters } from '@/types/transaction';
 import { type UUID } from '@/types/uuid';
+import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
-import { Settings2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { parseISO } from 'date-fns';
+import * as Icons from 'lucide-react';
+import {
+    Check,
+    HelpCircle,
+    Settings2,
+    SlidersHorizontal,
+    type LucideIcon,
+} from 'lucide-react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+    type ReactNode,
+} from 'react';
 import {
     Bar,
     Cell,
@@ -39,6 +64,21 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+
+type AnalysisMode = 'expense' | 'income';
+
+/**
+ * Income only changes the analysis into its income-and-expense shape once it
+ * is a meaningful share of the spending; a stray refund should not flip a trip
+ * into a profit-and-loss view.
+ */
+const INCOME_MODE_THRESHOLD = 0.15;
+
+function detectMode(income: number, expense: number): AnalysisMode {
+    return income > 0 && income >= expense * INCOME_MODE_THRESHOLD
+        ? 'income'
+        : 'expense';
+}
 
 interface AnalysisSummary {
     income: number;
@@ -64,12 +104,42 @@ interface TagSlice {
     amount: number;
 }
 
+interface PayeeSlice {
+    name: string;
+    amount: number;
+}
+
+interface AccountSlice {
+    id: string | null;
+    name: string;
+    bank: { name: string; logo: string | null } | null;
+    amount: number;
+}
+
+interface LargestExpense {
+    id: string;
+    date: string;
+    description: string | null;
+    amount: number;
+    category: {
+        name: string;
+        color: string | null;
+        icon: string | null;
+    } | null;
+    account: {
+        name: string;
+        bank: { name: string; logo: string | null } | null;
+    } | null;
+    labels: { id: string; name: string; color: string }[];
+}
+
 interface OverTimePoint {
     date: string;
     label: string;
     income: number;
     expense: number;
     cumulative_expense: number;
+    cumulative_net: number;
 }
 
 interface AnalysisData {
@@ -79,6 +149,11 @@ interface AnalysisData {
     distinct_category_count: number;
     by_tag: TagSlice[];
     distinct_label_count: number;
+    by_payee: PayeeSlice[];
+    distinct_payee_count: number;
+    by_account: AccountSlice[];
+    distinct_account_count: number;
+    largest_expenses: LargestExpense[];
     over_time: { bucket: 'day' | 'month'; points: OverTimePoint[] };
 }
 
@@ -142,9 +217,11 @@ interface SavedFilterSummary {
     id: UUID;
     filters: SerializedFilters;
     analysis_days: number | null;
+    analysis_mode: AnalysisMode | null;
 }
 
 const DAY_OVERRIDE_STORAGE_PREFIX = 'wm.analysis-days.';
+const MODE_OVERRIDE_STORAGE_PREFIX = 'wm.analysis-mode.';
 
 function readStoredDays(key: string): number | null {
     const raw = localStorage.getItem(key);
@@ -155,26 +232,35 @@ function readStoredDays(key: string): number | null {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function readStoredMode(key: string): AnalysisMode | null {
+    const raw = localStorage.getItem(key);
+    return raw === 'expense' || raw === 'income' ? raw : null;
+}
+
 /**
- * Resolves the number of days used to average daily spending for a filter set.
+ * Resolves the day span and view mode used for a filter set.
  *
- * The date span between the first and last transaction is the default, but a
- * user can override it (e.g. tickets bought months ahead skew the span). The
- * override is remembered per filter fingerprint in the browser, and also
- * synced to the backend when the current filters match a saved filter.
+ * Both follow the same rule: an automatic value (the transaction span; the
+ * income-share detection) unless the user overrides it. Overrides are
+ * remembered per filter fingerprint in the browser and, when the current
+ * filters match a saved filter, synced to the backend. A single lookup of the
+ * saved filters backs both, so the drawer hits the API once per open.
  */
-function useAnalysisDays(
+function useAnalysisPreferences(
     open: boolean,
     filters: TransactionFilters,
     autoDays: number,
+    autoMode: AnalysisMode,
 ) {
     const fingerprint = useMemo(
         () => filtersFingerprint(serializeFilters(filters)),
         [filters],
     );
-    const storageKey = `${DAY_OVERRIDE_STORAGE_PREFIX}${fingerprint}`;
+    const dayKey = `${DAY_OVERRIDE_STORAGE_PREFIX}${fingerprint}`;
+    const modeKey = `${MODE_OVERRIDE_STORAGE_PREFIX}${fingerprint}`;
 
-    const [override, setOverride] = useState<number | null>(null);
+    const [dayOverride, setDayOverride] = useState<number | null>(null);
+    const [modeOverride, setModeOverride] = useState<AnalysisMode | null>(null);
     const [savedFilterId, setSavedFilterId] = useState<UUID | null>(null);
 
     useEffect(() => {
@@ -182,7 +268,8 @@ function useAnalysisDays(
             return;
         }
 
-        const local = readStoredDays(storageKey);
+        const localDays = readStoredDays(dayKey);
+        const localMode = readStoredMode(modeKey);
         let active = true;
 
         axios
@@ -197,29 +284,31 @@ function useAnalysisDays(
                             filtersFingerprint(saved.filters) === fingerprint,
                     ) ?? null;
                 setSavedFilterId(match?.id ?? null);
-                setOverride(match?.analysis_days ?? local);
+                setDayOverride(match?.analysis_days ?? localDays);
+                setModeOverride(match?.analysis_mode ?? localMode);
             })
             .catch(() => {
                 if (!active) {
                     return;
                 }
                 setSavedFilterId(null);
-                setOverride(local);
+                setDayOverride(localDays);
+                setModeOverride(localMode);
             });
 
         return () => {
             active = false;
         };
-    }, [open, fingerprint, storageKey]);
+    }, [open, fingerprint, dayKey, modeKey]);
 
     const applyDays = useCallback(
         (value: number | null) => {
-            setOverride(value);
+            setDayOverride(value);
 
             if (value === null) {
-                localStorage.removeItem(storageKey);
+                localStorage.removeItem(dayKey);
             } else {
-                localStorage.setItem(storageKey, String(value));
+                localStorage.setItem(dayKey, String(value));
             }
 
             if (savedFilterId) {
@@ -229,14 +318,37 @@ function useAnalysisDays(
                 );
             }
         },
-        [storageKey, savedFilterId],
+        [dayKey, savedFilterId],
+    );
+
+    const applyMode = useCallback(
+        (value: AnalysisMode | null) => {
+            setModeOverride(value);
+
+            if (value === null) {
+                localStorage.removeItem(modeKey);
+            } else {
+                localStorage.setItem(modeKey, value);
+            }
+
+            if (savedFilterId) {
+                void axios.patch(
+                    `/api/saved-filters/${savedFilterId}/analysis-mode`,
+                    { analysis_mode: value },
+                );
+            }
+        },
+        [modeKey, savedFilterId],
     );
 
     return {
-        effectiveDays: override ?? autoDays,
-        isOverridden: override !== null,
+        effectiveDays: dayOverride ?? autoDays,
+        isDaysOverridden: dayOverride !== null,
+        effectiveMode: modeOverride ?? autoMode,
+        modeOverride,
         isSaved: savedFilterId !== null,
         applyDays,
+        applyMode,
     };
 }
 
@@ -283,13 +395,26 @@ export function TransactionAnalysisDrawer({
 
     const currency = data?.currency ?? '';
     const hasTransactions = (data?.summary.count ?? 0) > 0;
+    const income = data?.summary.income ?? 0;
+    const expense = data?.summary.expense ?? 0;
+    const net = data?.summary.net ?? 0;
+    const autoMode = detectMode(income, expense);
 
-    const { effectiveDays, isOverridden, isSaved, applyDays } = useAnalysisDays(
+    const {
+        effectiveDays,
+        isDaysOverridden,
+        effectiveMode,
+        modeOverride,
+        isSaved,
+        applyDays,
+        applyMode,
+    } = useAnalysisPreferences(
         open,
         filters,
         data?.summary.days ?? 0,
+        autoMode,
     );
-    const expense = data?.summary.expense ?? 0;
+
     const averagePerDay =
         effectiveDays > 0 ? Math.round(expense / effectiveDays) : expense;
 
@@ -297,13 +422,27 @@ export function TransactionAnalysisDrawer({
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]">
                 <div className="mx-auto w-full max-w-5xl overflow-y-auto p-6">
-                    <DrawerHeader className="px-0">
-                        <DrawerTitle>{__('Analysis')}</DrawerTitle>
-                        <DrawerDescription>
-                            {__(
-                                'A breakdown of the transactions matching your current filters.',
+                    <DrawerHeader className="gap-0 px-0">
+                        <div className="-mt-8 flex min-h-9 justify-end">
+                            {hasTransactions && (
+                                <ModeToggle
+                                    override={modeOverride}
+                                    effectiveMode={effectiveMode}
+                                    isSaved={isSaved}
+                                    onApply={applyMode}
+                                />
                             )}
-                        </DrawerDescription>
+                        </div>
+                        <div className="my-4 flex flex-col items-center gap-2 text-center">
+                            <DrawerTitle className="text-xl">
+                                {__('Analysis')}
+                            </DrawerTitle>
+                            <DrawerDescription className="text-sm text-pretty">
+                                {__(
+                                    'A breakdown of the transactions matching your current filters.',
+                                )}
+                            </DrawerDescription>
+                        </div>
                     </DrawerHeader>
 
                     {isLoading && <AnalysisSkeleton />}
@@ -321,13 +460,17 @@ export function TransactionAnalysisDrawer({
                     )}
 
                     {!isLoading && !error && data && hasTransactions && (
-                        <div className="flex flex-col gap-8">
+                        <div className="flex flex-col gap-6">
                             <SummaryCards
-                                summary={data.summary}
+                                mode={effectiveMode}
+                                income={income}
+                                expense={expense}
+                                net={net}
+                                count={data.summary.count}
                                 currency={currency}
                                 days={effectiveDays}
                                 averagePerDay={averagePerDay}
-                                isOverridden={isOverridden}
+                                isDaysOverridden={isDaysOverridden}
                                 isSaved={isSaved}
                                 onApplyDays={applyDays}
                             />
@@ -336,11 +479,34 @@ export function TransactionAnalysisDrawer({
                                 points={data.over_time.points}
                                 currency={currency}
                                 locale={locale}
+                                mode={effectiveMode}
+                            />
+
+                            <LargestTransactions
+                                items={data.largest_expenses ?? []}
+                                currency={currency}
+                                locale={locale}
+                                filters={filters}
                             />
 
                             {data.distinct_category_count > 1 && (
                                 <CategoryBreakdown
                                     slices={data.by_category}
+                                    currency={currency}
+                                />
+                            )}
+
+                            {data.distinct_payee_count > 1 && (
+                                <PayeeBreakdown
+                                    slices={data.by_payee}
+                                    currency={currency}
+                                    locale={locale}
+                                />
+                            )}
+
+                            {data.distinct_account_count > 1 && (
+                                <AccountBreakdown
+                                    slices={data.by_account}
                                     currency={currency}
                                 />
                             )}
@@ -360,72 +526,234 @@ export function TransactionAnalysisDrawer({
     );
 }
 
+/**
+ * Wraps a widget in the same glowing-edge card the dashboard uses, so the
+ * drawer reads as a set of distinct panels rather than one long scroll.
+ */
+function Panel({
+    title,
+    children,
+    contentClassName,
+}: {
+    title?: string;
+    children: ReactNode;
+    contentClassName?: string;
+}) {
+    return (
+        <Card className="w-full">
+            {title && (
+                <CardHeader>
+                    <CardTitle>{title}</CardTitle>
+                </CardHeader>
+            )}
+            <CardContent
+                className={cn('flex flex-col gap-3', contentClassName)}
+            >
+                {children}
+            </CardContent>
+        </Card>
+    );
+}
+
 function SummaryCards({
-    summary,
+    mode,
+    income,
+    expense,
+    net,
+    count,
     currency,
     days,
     averagePerDay,
-    isOverridden,
+    isDaysOverridden,
     isSaved,
     onApplyDays,
 }: {
-    summary: AnalysisSummary;
+    mode: AnalysisMode;
+    income: number;
+    expense: number;
+    net: number;
+    count: number;
     currency: string;
     days: number;
     averagePerDay: number;
-    isOverridden: boolean;
+    isDaysOverridden: boolean;
     isSaved: boolean;
     onApplyDays: (value: number | null) => void;
 }) {
-    const cards = [
-        { label: __('Income'), amount: summary.income, tone: 'income' },
-        { label: __('Expenses'), amount: summary.expense, tone: 'expense' },
-        { label: __('Net'), amount: summary.net, tone: 'net' },
-    ] as const;
+    const margin = income > 0 ? Math.round((net / income) * 100) : 0;
 
     return (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {cards.map((card) => (
-                <div key={card.label} className="rounded-lg border bg-card p-4">
-                    <p className="text-xs text-muted-foreground">
-                        {card.label}
-                    </p>
-                    <AmountDisplay
-                        amountInCents={card.amount}
-                        currencyCode={currency}
-                        className={cn(
-                            'mt-1 text-lg font-semibold tabular-nums',
-                            card.tone === 'income' && 'text-emerald-600',
-                            card.tone === 'expense' && 'text-red-600',
-                        )}
+        <Panel>
+            {mode === 'income' ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <SummaryCard
+                        label={__('Income')}
+                        amount={income}
+                        currency={currency}
+                        tone="income"
                     />
-                </div>
-            ))}
-
-            <div className="rounded-lg border bg-card p-4">
-                <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                        {__('Avg / day')}
-                    </p>
-                    <DayEditorPopover
-                        days={days}
-                        isOverridden={isOverridden}
-                        isSaved={isSaved}
-                        onApply={onApplyDays}
+                    <SummaryCard
+                        label={__('Expenses')}
+                        amount={expense}
+                        currency={currency}
+                        tone="expense"
                     />
+                    <SummaryCard
+                        label={__('Net result')}
+                        amount={net}
+                        currency={currency}
+                        tone={net >= 0 ? 'income' : 'expense'}
+                    />
+                    <div className="rounded-lg bg-muted/50 p-4">
+                        <p className="text-xs text-muted-foreground">
+                            {__('Margin')}
+                        </p>
+                        <p
+                            className={cn(
+                                'mt-1 text-lg font-semibold tabular-nums',
+                                net >= 0 ? 'text-emerald-600' : 'text-red-600',
+                            )}
+                        >
+                            {margin}%
+                        </p>
+                    </div>
                 </div>
-                <AmountDisplay
-                    amountInCents={averagePerDay}
-                    currencyCode={currency}
-                    className="mt-1 text-lg font-semibold text-red-600 tabular-nums"
-                />
-            </div>
+            ) : (
+                <div className="grid grid-cols-2 gap-3">
+                    <SummaryCard
+                        label={__('Total spent')}
+                        amount={expense}
+                        currency={currency}
+                        tone="expense"
+                    />
+                    <div className="rounded-lg bg-muted/50 p-4">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">
+                                {__('Avg / day')}
+                            </p>
+                            <DayEditorPopover
+                                days={days}
+                                isOverridden={isDaysOverridden}
+                                isSaved={isSaved}
+                                onApply={onApplyDays}
+                            />
+                        </div>
+                        <AmountDisplay
+                            amountInCents={averagePerDay}
+                            currencyCode={currency}
+                            className="mt-1 text-lg font-semibold text-red-600 tabular-nums"
+                        />
+                    </div>
+                </div>
+            )}
 
-            <p className="col-span-2 text-xs text-muted-foreground sm:col-span-4">
-                {summary.count} {__('transactions')} · {days} {__('days')}
-                {isOverridden && ` (${__('adjusted')})`}
+            <p className="text-xs text-muted-foreground">
+                {count} {__('transactions')} · {days} {__('days')}
+                {isDaysOverridden &&
+                    mode === 'expense' &&
+                    ` (${__('adjusted')})`}
             </p>
+        </Panel>
+    );
+}
+
+function SummaryCard({
+    label,
+    amount,
+    currency,
+    tone,
+}: {
+    label: string;
+    amount: number;
+    currency: string;
+    tone: 'income' | 'expense';
+}) {
+    return (
+        <div className="rounded-lg bg-muted/50 p-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <AmountDisplay
+                amountInCents={amount}
+                currencyCode={currency}
+                className={cn(
+                    'mt-1 text-lg font-semibold tabular-nums',
+                    tone === 'income' && 'text-emerald-600',
+                    tone === 'expense' && 'text-red-600',
+                )}
+            />
         </div>
+    );
+}
+
+function ModeToggle({
+    override,
+    effectiveMode,
+    isSaved,
+    onApply,
+}: {
+    override: AnalysisMode | null;
+    effectiveMode: AnalysisMode;
+    isSaved: boolean;
+    onApply: (value: AnalysisMode | null) => void;
+}) {
+    const [open, setOpen] = useState(false);
+
+    const options: { value: AnalysisMode | null; label: string }[] = [
+        { value: null, label: __('Automatic') },
+        { value: 'expense', label: __('Expenses only') },
+        { value: 'income', label: __('Income & expenses') },
+    ];
+
+    const triggerLabel =
+        override === null
+            ? effectiveMode === 'income'
+                ? __('Income & expenses')
+                : __('Expenses only')
+            : override === 'income'
+              ? __('Income & expenses')
+              : __('Expenses only');
+
+    const choose = (value: AnalysisMode | null) => {
+        onApply(value);
+        setOpen(false);
+    };
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                    <SlidersHorizontal className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{triggerLabel}</span>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60" align="end">
+                <div className="flex flex-col gap-1">
+                    <p className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                        {__('Analysis view')}
+                    </p>
+                    {options.map((option) => {
+                        const selected = override === option.value;
+
+                        return (
+                            <Button
+                                key={option.label}
+                                variant="ghost"
+                                size="sm"
+                                className="justify-between"
+                                onClick={() => choose(option.value)}
+                            >
+                                {option.label}
+                                {selected && <Check className="h-3.5 w-3.5" />}
+                            </Button>
+                        );
+                    })}
+                    {isSaved && (
+                        <p className="px-2 pt-1 text-xs text-muted-foreground">
+                            {__('Saved with this filter.')}
+                        </p>
+                    )}
+                </div>
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -525,16 +853,23 @@ function OverTimeChart({
     points,
     currency,
     locale,
+    mode,
 }: {
     points: OverTimePoint[];
     currency: string;
     locale: string;
+    mode: AnalysisMode;
 }) {
+    const cumulativeKey =
+        mode === 'income' ? 'cumulative_net' : 'cumulative_expense';
+    const cumulativeLabel =
+        mode === 'income' ? __('Cumulative net') : __('Cumulative spend');
+
     const config: ChartConfig = {
         income: { label: __('Income'), color: 'var(--color-chart-2)' },
         expense: { label: __('Expenses'), color: 'var(--color-chart-5)' },
-        cumulative_expense: {
-            label: __('Cumulative spend'),
+        [cumulativeKey]: {
+            label: cumulativeLabel,
             color: 'var(--color-chart-1)',
         },
     };
@@ -546,8 +881,7 @@ function OverTimeChart({
         }).format(value / 100);
 
     return (
-        <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">{__('Spending over time')}</h3>
+        <Panel title={__('Spending over time')}>
             <ChartContainer config={config} className="h-64 w-full">
                 <ComposedChart data={points}>
                     <XAxis
@@ -564,14 +898,23 @@ function OverTimeChart({
                         tickFormatter={compact}
                     />
                     <Tooltip
-                        content={<OverTimeTooltip currency={currency} />}
+                        content={
+                            <OverTimeTooltip
+                                currency={currency}
+                                cumulativeKey={cumulativeKey}
+                                cumulativeLabel={cumulativeLabel}
+                                mode={mode}
+                            />
+                        }
                         cursor={{ fill: 'var(--color-muted)', opacity: 0.3 }}
                     />
-                    <Bar
-                        dataKey="income"
-                        fill="var(--color-chart-2)"
-                        radius={[3, 3, 0, 0]}
-                    />
+                    {mode === 'income' && (
+                        <Bar
+                            dataKey="income"
+                            fill="var(--color-chart-2)"
+                            radius={[3, 3, 0, 0]}
+                        />
+                    )}
                     <Bar
                         dataKey="expense"
                         fill="var(--color-chart-5)"
@@ -579,14 +922,14 @@ function OverTimeChart({
                     />
                     <Line
                         type="monotone"
-                        dataKey="cumulative_expense"
+                        dataKey={cumulativeKey}
                         stroke="var(--color-chart-1)"
                         strokeWidth={2}
                         dot={false}
                     />
                 </ComposedChart>
             </ChartContainer>
-        </section>
+        </Panel>
     );
 }
 
@@ -601,10 +944,16 @@ function OverTimeTooltip({
     active,
     payload,
     currency,
+    cumulativeKey,
+    cumulativeLabel,
+    mode,
 }: {
     active?: boolean;
     payload?: TooltipPayloadItem[];
     currency: string;
+    cumulativeKey: 'cumulative_expense' | 'cumulative_net';
+    cumulativeLabel: string;
+    mode: AnalysisMode;
 }) {
     if (!active || !payload?.length) {
         return null;
@@ -613,11 +962,13 @@ function OverTimeTooltip({
     const point = payload[0]?.payload;
     const rows: {
         label: string;
-        key: 'income' | 'expense' | 'cumulative_expense';
+        key: 'income' | 'expense' | 'cumulative_expense' | 'cumulative_net';
     }[] = [
-        { label: __('Income'), key: 'income' },
+        ...(mode === 'income'
+            ? ([{ label: __('Income'), key: 'income' }] as const)
+            : []),
         { label: __('Expenses'), key: 'expense' },
-        { label: __('Cumulative spend'), key: 'cumulative_expense' },
+        { label: cumulativeLabel, key: cumulativeKey },
     ];
 
     return (
@@ -640,6 +991,192 @@ function OverTimeTooltip({
     );
 }
 
+/**
+ * A sentinel that keeps an absent category/account from colliding with a real
+ * one named with an empty string when counting distinct values.
+ */
+const MISSING = ' ';
+
+function LargestTransactions({
+    items,
+    currency,
+    locale,
+    filters,
+}: {
+    items: LargestExpense[];
+    currency: string;
+    locale: string;
+    filters: TransactionFilters;
+}) {
+    const [expanded, setExpanded] = useState(false);
+
+    if (items.length === 0) {
+        return null;
+    }
+
+    const visible = expanded ? items : items.slice(0, 5);
+
+    // Drop a column whose value is identical across every row (so the filter
+    // has already pinned it, or the set just happens to share it) — it carries
+    // no information. Labels are filter-driven: filtering to a single label
+    // makes that column redundant even when rows carry extra labels.
+    const showCategory =
+        new Set(items.map((item) => item.category?.name ?? MISSING)).size > 1;
+    const showAccount =
+        new Set(items.map((item) => item.account?.name ?? MISSING)).size > 1;
+    const showLabels =
+        filters.labelIds.length !== 1 &&
+        items.some((item) => item.labels.length > 0);
+
+    return (
+        <Panel title={__('Largest expenses')}>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="text-left text-xs text-muted-foreground">
+                            <th className="py-1.5 pr-3 font-medium">
+                                {__('Date')}
+                            </th>
+                            {showCategory && (
+                                <th className="py-1.5 pr-3 font-medium">
+                                    {__('Category')}
+                                </th>
+                            )}
+                            {showAccount && (
+                                <th className="py-1.5 pr-3 font-medium">
+                                    {__('Account')}
+                                </th>
+                            )}
+                            <th className="py-1.5 pr-3 font-medium">
+                                {__('Description')}
+                            </th>
+                            {showLabels && (
+                                <th className="py-1.5 pr-3 font-medium">
+                                    {__('Labels')}
+                                </th>
+                            )}
+                            <th className="py-1.5 text-right font-medium">
+                                {__('Amount')}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {visible.map((item) => (
+                            <tr
+                                key={item.id}
+                                className="border-t border-border/60"
+                            >
+                                <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">
+                                    {formatDate(
+                                        parseISO(item.date),
+                                        'MMM d, yy',
+                                        locale,
+                                    )}
+                                </td>
+                                {showCategory && (
+                                    <td className="py-2 pr-3">
+                                        <CategoryChip
+                                            category={item.category}
+                                        />
+                                    </td>
+                                )}
+                                {showAccount && (
+                                    <td className="py-2 pr-3">
+                                        {item.account ? (
+                                            <div className="flex items-center gap-2">
+                                                <BankLogo
+                                                    src={
+                                                        item.account.bank?.logo
+                                                    }
+                                                    name={
+                                                        item.account.bank?.name
+                                                    }
+                                                    className="h-4 w-4"
+                                                />
+                                                <AccountName
+                                                    account={{
+                                                        name: item.account.name,
+                                                        name_iv: null,
+                                                        encrypted: false,
+                                                    }}
+                                                    className="truncate"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <span className="text-muted-foreground">
+                                                —
+                                            </span>
+                                        )}
+                                    </td>
+                                )}
+                                <td className="max-w-[200px] truncate py-2 pr-3">
+                                    {item.description || (
+                                        <span className="text-muted-foreground">
+                                            —
+                                        </span>
+                                    )}
+                                </td>
+                                {showLabels && (
+                                    <td className="py-2 pr-3">
+                                        <LabelBadges
+                                            labels={
+                                                item.labels as unknown as Label[]
+                                            }
+                                            max={2}
+                                        />
+                                    </td>
+                                )}
+                                <td className="py-2 text-right">
+                                    <AmountDisplay
+                                        amountInCents={-item.amount}
+                                        currencyCode={currency}
+                                        className="font-mono text-red-600 tabular-nums"
+                                    />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            {items.length > 5 && (
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="self-start text-muted-foreground"
+                    onClick={() => setExpanded((previous) => !previous)}
+                >
+                    {expanded ? __('Show less') : __('Show more')}
+                </Button>
+            )}
+        </Panel>
+    );
+}
+
+function CategoryChip({ category }: { category: LargestExpense['category'] }) {
+    if (!category) {
+        return <span className="text-muted-foreground">—</span>;
+    }
+
+    const classes = getCategoryColorClasses(
+        (category.color ?? 'gray') as CategoryColor,
+    );
+    const Icon = (Icons[(category.icon ?? 'HelpCircle') as CategoryIcon] ??
+        HelpCircle) as LucideIcon;
+
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs whitespace-nowrap',
+                classes.bg,
+                classes.text,
+            )}
+        >
+            <Icon className="size-3" />
+            {category.name}
+        </span>
+    );
+}
+
 function CategoryBreakdown({
     slices,
     currency,
@@ -651,10 +1188,7 @@ function CategoryBreakdown({
     const config: ChartConfig = { amount: { label: __('Spent') } };
 
     return (
-        <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">
-                {__('Spending by category')}
-            </h3>
+        <Panel title={__('Spending by category')}>
             <div className="flex flex-col items-center gap-6 sm:flex-row">
                 <ChartContainer config={config} className="h-52 w-52 shrink-0">
                     <ResponsiveContainer>
@@ -765,21 +1299,25 @@ function CategoryBreakdown({
                     })}
                 </ul>
             </div>
-        </section>
+        </Panel>
     );
 }
 
-function TagBreakdown({
-    slices,
+function HorizontalBarBreakdown({
+    title,
+    data,
     currency,
     locale,
+    color,
 }: {
-    slices: TagSlice[];
+    title: string;
+    data: { name: string; amount: number }[];
     currency: string;
     locale: string;
+    color: string;
 }) {
     const config: ChartConfig = {
-        amount: { label: __('Spent'), color: 'var(--color-chart-1)' },
+        amount: { label: __('Spent'), color },
     };
 
     const compact = (value: number) =>
@@ -789,17 +1327,16 @@ function TagBreakdown({
         }).format(value / 100);
 
     return (
-        <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">{__('Spending by tag')}</h3>
+        <Panel title={title}>
             <ChartContainer
                 config={config}
                 className="w-full"
-                style={{ height: `${Math.max(slices.length * 44, 88)}px` }}
+                style={{ height: `${Math.max(data.length * 44, 88)}px` }}
             >
                 <ResponsiveContainer>
                     <ComposedChart
                         layout="vertical"
-                        data={slices}
+                        data={data}
                         margin={{ left: 8, right: 16 }}
                     >
                         <XAxis type="number" hide tickFormatter={compact} />
@@ -815,27 +1352,111 @@ function TagBreakdown({
                                 fill: 'var(--color-muted)',
                                 opacity: 0.3,
                             }}
-                            content={<TagTooltip currency={currency} />}
+                            content={<NamedAmountTooltip currency={currency} />}
                         />
                         <Bar
                             dataKey="amount"
-                            fill="var(--color-chart-1)"
+                            fill={color}
                             radius={[0, 3, 3, 0]}
                         />
                     </ComposedChart>
                 </ResponsiveContainer>
             </ChartContainer>
-        </section>
+        </Panel>
     );
 }
 
-function TagTooltip({
+function TagBreakdown({
+    slices,
+    currency,
+    locale,
+}: {
+    slices: TagSlice[];
+    currency: string;
+    locale: string;
+}) {
+    return (
+        <HorizontalBarBreakdown
+            title={__('Spending by tag')}
+            data={slices}
+            currency={currency}
+            locale={locale}
+            color="var(--color-chart-1)"
+        />
+    );
+}
+
+function PayeeBreakdown({
+    slices,
+    currency,
+    locale,
+}: {
+    slices: PayeeSlice[];
+    currency: string;
+    locale: string;
+}) {
+    return (
+        <HorizontalBarBreakdown
+            title={__('Spending by payee')}
+            data={slices.slice(0, 8)}
+            currency={currency}
+            locale={locale}
+            color="var(--color-chart-3)"
+        />
+    );
+}
+
+function AccountBreakdown({
+    slices,
+    currency,
+}: {
+    slices: AccountSlice[];
+    currency: string;
+}) {
+    const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
+
+    return (
+        <Panel title={__('Spending by account')}>
+            <ul className="flex flex-col gap-3">
+                {slices.map((slice, index) => (
+                    <li
+                        key={slice.id ?? `account-${index}`}
+                        className="flex items-center gap-3 text-sm"
+                    >
+                        <BankLogo
+                            src={slice.bank?.logo}
+                            name={slice.bank?.name}
+                            className="h-5 w-5"
+                            fallback="icon"
+                        />
+                        <span className="flex-1 truncate font-medium">
+                            {slice.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                            {total > 0
+                                ? Math.round((slice.amount / total) * 100)
+                                : 0}
+                            %
+                        </span>
+                        <AmountDisplay
+                            amountInCents={slice.amount}
+                            currencyCode={currency}
+                            className="font-mono tabular-nums"
+                        />
+                    </li>
+                ))}
+            </ul>
+        </Panel>
+    );
+}
+
+function NamedAmountTooltip({
     active,
     payload,
     currency,
 }: {
     active?: boolean;
-    payload?: { payload?: TagSlice }[];
+    payload?: { payload?: { name: string; amount: number } }[];
     currency: string;
 }) {
     if (!active || !payload?.length) {
