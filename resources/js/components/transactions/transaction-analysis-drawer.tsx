@@ -3,6 +3,7 @@ import { BankLogo } from '@/components/bank-logo';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import {
     Drawer,
@@ -44,7 +45,13 @@ import {
     SlidersHorizontal,
     type LucideIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+    type ReactNode,
+} from 'react';
 import {
     Bar,
     Cell,
@@ -415,8 +422,8 @@ export function TransactionAnalysisDrawer({
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="h-[90vh] data-[vaul-drawer-direction=bottom]:max-h-[90vh]">
                 <div className="mx-auto w-full max-w-5xl overflow-y-auto p-6">
-                    <DrawerHeader className="px-0 gap-0">
-                        <div className="flex min-h-9 -mt-8 justify-end">
+                    <DrawerHeader className="gap-0 px-0">
+                        <div className="-mt-8 flex min-h-9 justify-end">
                             {hasTransactions && (
                                 <ModeToggle
                                     override={modeOverride}
@@ -426,7 +433,7 @@ export function TransactionAnalysisDrawer({
                                 />
                             )}
                         </div>
-                        <div className="flex flex-col items-center my-4 gap-2 text-center">
+                        <div className="my-4 flex flex-col items-center gap-2 text-center">
                             <DrawerTitle className="text-xl">
                                 {__('Analysis')}
                             </DrawerTitle>
@@ -453,7 +460,7 @@ export function TransactionAnalysisDrawer({
                     )}
 
                     {!isLoading && !error && data && hasTransactions && (
-                        <div className="flex flex-col gap-8">
+                        <div className="flex flex-col gap-6">
                             <SummaryCards
                                 mode={effectiveMode}
                                 income={income}
@@ -519,6 +526,35 @@ export function TransactionAnalysisDrawer({
     );
 }
 
+/**
+ * Wraps a widget in the same glowing-edge card the dashboard uses, so the
+ * drawer reads as a set of distinct panels rather than one long scroll.
+ */
+function Panel({
+    title,
+    children,
+    contentClassName,
+}: {
+    title?: string;
+    children: ReactNode;
+    contentClassName?: string;
+}) {
+    return (
+        <Card className="w-full">
+            {title && (
+                <CardHeader>
+                    <CardTitle>{title}</CardTitle>
+                </CardHeader>
+            )}
+            <CardContent
+                className={cn('flex flex-col gap-3', contentClassName)}
+            >
+                {children}
+            </CardContent>
+        </Card>
+    );
+}
+
 function SummaryCards({
     mode,
     income,
@@ -547,7 +583,7 @@ function SummaryCards({
     const margin = income > 0 ? Math.round((net / income) * 100) : 0;
 
     return (
-        <div className="flex flex-col gap-3">
+        <Panel>
             {mode === 'income' ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <SummaryCard
@@ -568,7 +604,7 @@ function SummaryCards({
                         currency={currency}
                         tone={net >= 0 ? 'income' : 'expense'}
                     />
-                    <div className="rounded-lg border bg-card p-4">
+                    <div className="rounded-lg bg-muted/50 p-4">
                         <p className="text-xs text-muted-foreground">
                             {__('Margin')}
                         </p>
@@ -590,7 +626,7 @@ function SummaryCards({
                         currency={currency}
                         tone="expense"
                     />
-                    <div className="rounded-lg border bg-card p-4">
+                    <div className="rounded-lg bg-muted/50 p-4">
                         <div className="flex items-center justify-between">
                             <p className="text-xs text-muted-foreground">
                                 {__('Avg / day')}
@@ -617,7 +653,7 @@ function SummaryCards({
                     mode === 'expense' &&
                     ` (${__('adjusted')})`}
             </p>
-        </div>
+        </Panel>
     );
 }
 
@@ -633,7 +669,7 @@ function SummaryCard({
     tone: 'income' | 'expense';
 }) {
     return (
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-lg bg-muted/50 p-4">
             <p className="text-xs text-muted-foreground">{label}</p>
             <AmountDisplay
                 amountInCents={amount}
@@ -845,8 +881,7 @@ function OverTimeChart({
         }).format(value / 100);
 
     return (
-        <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">{__('Spending over time')}</h3>
+        <Panel title={__('Spending over time')}>
             <ChartContainer config={config} className="h-64 w-full">
                 <ComposedChart data={points}>
                     <XAxis
@@ -894,7 +929,7 @@ function OverTimeChart({
                     />
                 </ComposedChart>
             </ChartContainer>
-        </section>
+        </Panel>
     );
 }
 
@@ -994,8 +1029,7 @@ function LargestTransactions({
         items.some((item) => item.labels.length > 0);
 
     return (
-        <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">{__('Largest expenses')}</h3>
+        <Panel title={__('Largest expenses')}>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
@@ -1114,7 +1148,7 @@ function LargestTransactions({
                     {expanded ? __('Show less') : __('Show more')}
                 </Button>
             )}
-        </section>
+        </Panel>
     );
 }
 
@@ -1154,10 +1188,7 @@ function CategoryBreakdown({
     const config: ChartConfig = { amount: { label: __('Spent') } };
 
     return (
-        <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">
-                {__('Spending by category')}
-            </h3>
+        <Panel title={__('Spending by category')}>
             <div className="flex flex-col items-center gap-6 sm:flex-row">
                 <ChartContainer config={config} className="h-52 w-52 shrink-0">
                     <ResponsiveContainer>
@@ -1268,7 +1299,7 @@ function CategoryBreakdown({
                     })}
                 </ul>
             </div>
-        </section>
+        </Panel>
     );
 }
 
@@ -1296,8 +1327,7 @@ function HorizontalBarBreakdown({
         }).format(value / 100);
 
     return (
-        <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">{title}</h3>
+        <Panel title={title}>
             <ChartContainer
                 config={config}
                 className="w-full"
@@ -1332,7 +1362,7 @@ function HorizontalBarBreakdown({
                     </ComposedChart>
                 </ResponsiveContainer>
             </ChartContainer>
-        </section>
+        </Panel>
     );
 }
 
@@ -1386,8 +1416,7 @@ function AccountBreakdown({
     const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
 
     return (
-        <section className="flex flex-col gap-3">
-            <h3 className="text-sm font-medium">{__('Spending by account')}</h3>
+        <Panel title={__('Spending by account')}>
             <ul className="flex flex-col gap-3">
                 {slices.map((slice, index) => (
                     <li
@@ -1417,7 +1446,7 @@ function AccountBreakdown({
                     </li>
                 ))}
             </ul>
-        </section>
+        </Panel>
     );
 }
 
