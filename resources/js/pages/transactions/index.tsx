@@ -1167,7 +1167,7 @@ export default function Transactions({
                         isKeySet={true}
                         enableSavedFilters={true}
                         actions={
-                            <div className="flex w-full flex-wrap justify-between gap-2 sm:justify-end">
+                            <div className="flex w-full items-center justify-between gap-2">
                                 <TransactionActionsMenu
                                     categories={categories}
                                     accounts={accounts}

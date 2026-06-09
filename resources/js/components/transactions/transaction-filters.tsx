@@ -239,13 +239,6 @@ export function TransactionFilters({
         <div className="space-y-4">
             <div className="flex flex-col gap-3">
                 <div className="flex w-full flex-row items-center gap-2">
-                    <Input
-                        placeholder={__('Search description or notes...')}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        className="hidden min-w-0 flex-1 md:block md:min-w-[350px]"
-                    />
-
                     <Popover open={isOpen} onOpenChange={setIsOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline">
@@ -704,24 +697,33 @@ export function TransactionFilters({
                         </PopoverContent>
                     </Popover>
 
-                    {enableSavedFilters && features.transactionAnalysis && (
-                        <SavedFilters
-                            filters={filters}
-                            onLoad={onFiltersChange}
-                        />
-                    )}
+                    <Input
+                        placeholder={__('Search description or notes...')}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        className="hidden min-w-0 flex-1 md:block md:min-w-[350px]"
+                    />
 
-                    {activeFilterCount > 0 && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearFilters}
-                            className="h-9"
-                        >
-                            <X className="mr-1 h-4 w-4" />
-                            {__('Clear')}
-                        </Button>
-                    )}
+                    <div className="ml-auto flex items-center gap-2">
+                        {enableSavedFilters && features.transactionAnalysis && (
+                            <SavedFilters
+                                filters={filters}
+                                onLoad={onFiltersChange}
+                            />
+                        )}
+
+                        {activeFilterCount > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={clearFilters}
+                                className="h-9"
+                            >
+                                <X className="mr-1 h-4 w-4" />
+                                {__('Clear')}
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {actions ? <div className="w-full">{actions}</div> : null}

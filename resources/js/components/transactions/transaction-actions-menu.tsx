@@ -132,16 +132,17 @@ export function TransactionActionsMenu({
                     (isMobile ? (
                         <Button
                             variant="outline"
+                            size="icon"
                             className={
                                 !canAnalyze
                                     ? 'cursor-not-allowed opacity-50'
                                     : ''
                             }
                             aria-disabled={!canAnalyze}
+                            aria-label={__('Analysis')}
                             onClick={handleAnalysisClick}
                         >
                             <BarChart3 className="h-5 w-5" />
-                            {__('Analysis')}
                         </Button>
                     ) : (
                         <TooltipProvider>
@@ -224,7 +225,9 @@ export function TransactionActionsMenu({
                                 aria-label={__('Add transaction')}
                             >
                                 <Plus className="h-5 w-5" />
-                                {__('Transaction')}
+                                <span className="hidden sm:inline">
+                                    {__('Transaction')}
+                                </span>
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
