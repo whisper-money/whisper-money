@@ -32,3 +32,4 @@ yarn-error.log
 .claude/settings.local.json
 .php-version
 .pint.cache
+/.playwright-mcp
