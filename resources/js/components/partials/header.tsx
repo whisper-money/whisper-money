@@ -3,7 +3,7 @@ import { dashboard, login } from '@/routes';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
 import { Link, usePage } from '@inertiajs/react';
-import { BirdIcon, Github, StarIcon } from 'lucide-react';
+import { BirdIcon, Github, LogIn, StarIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import DiscordIcon from '../icons/DiscordIcon';
 import { Button } from '../ui/button';
@@ -46,9 +46,11 @@ export default function Header({
         <>
             {/* Mobile pill header */}
             <header className="fixed top-4 right-4 left-4 z-50 flex items-center justify-between rounded-full border border-border/50 bg-background/70 px-4 py-3.5 shadow-lg shadow-black/10 backdrop-blur-xl sm:hidden dark:border-border/30 dark:shadow-black/30">
-                <div className="flex items-center gap-2.5 font-mono">
-                    <BirdIcon className="size-4 text-[#1b1b18] dark:text-[#EDEDEC]" />
-                    <span className="text-sm font-medium">Whisper Money</span>
+                <div className="flex shrink-0 items-center gap-2.5 font-mono">
+                    <BirdIcon className="size-5 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                    <span className="text-sm font-medium whitespace-nowrap">
+                        Whisper Money
+                    </span>
                 </div>
                 <nav className="flex items-center gap-2">
                     {!hideExternalButtons && (
@@ -118,13 +120,16 @@ export default function Header({
                     ) : (
                         !hideAuthButtons && (
                             <>
-                                <Link href={login({ query: { force: 1 } })}>
+                                <Link
+                                    href={login({ query: { force: 1 } })}
+                                    aria-label={__('Log in')}
+                                >
                                     <Button
                                         variant={'ghost'}
-                                        size="sm"
+                                        size="icon-sm"
                                         className="cursor-pointer rounded-full"
                                     >
-                                        {__('Log in')}
+                                        <LogIn className="size-4" />
                                     </Button>
                                 </Link>
                                 {canRegister && (
