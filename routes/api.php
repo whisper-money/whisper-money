@@ -14,8 +14,7 @@ use App\Http\Controllers\Sync\TransactionSyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'auth'])->group(function () {
-    // Encryption
-    Route::post('encryption/setup', [EncryptionController::class, 'setup']);
+    // Encryption (legacy decrypt-migration support only)
     Route::get('encryption/message', [EncryptionController::class, 'getMessage']);
 
     // Import Data (for import drawers)
