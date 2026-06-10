@@ -75,7 +75,7 @@ test('summary totals income, expense, net and count from the filtered set', func
 });
 
 test('category breakdown groups expenses by top-level category', function () {
-    $hotel = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Hotel']);
+    $hotel = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Hotel', 'color' => 'blue', 'icon' => 'Building']);
     $meals = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Meals']);
 
     makeTransaction(['amount' => -50000, 'category_id' => $hotel->id, 'transaction_date' => '2026-01-10']);
@@ -85,7 +85,7 @@ test('category breakdown groups expenses by top-level category', function () {
 
     $response->assertOk();
     expect($response->json('distinct_category_count'))->toBe(2);
-    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Hotel', 'amount' => 50000, 'children' => []]);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Hotel', 'amount' => 50000, 'color' => 'blue', 'icon' => 'Building', 'children' => []]);
     expect($response->json('by_category.1'))->toMatchArray(['name' => 'Meals', 'amount' => 20000, 'children' => []]);
 });
 

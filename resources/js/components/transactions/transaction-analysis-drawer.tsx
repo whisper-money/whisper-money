@@ -1,5 +1,9 @@
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
+import {
+    CategoryBreakdownRow,
+    type CategoryBreakdownAdapter,
+} from '@/components/shared/category-breakdown-list';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
@@ -18,6 +22,8 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { useChartColors } from '@/hooks/use-chart-color-scheme';
+import { useExpandableCategories } from '@/hooks/use-expandable-categories';
 import { useLocale } from '@/hooks/use-locale';
 import {
     filtersFingerprint,
@@ -54,11 +60,8 @@ import {
 } from 'react';
 import {
     Bar,
-    Cell,
     ComposedChart,
     Line,
-    Pie,
-    PieChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -93,6 +96,7 @@ interface CategorySlice {
     category_id: string | null;
     name: string;
     color: string;
+    icon: string | null;
     amount: number;
     children: CategorySlice[];
 }
@@ -162,40 +166,6 @@ interface TransactionAnalysisDrawerProps {
     onOpenChange: (open: boolean) => void;
     filters: TransactionFilters;
 }
-
-const CHART_PALETTE = [
-    'var(--color-chart-1)',
-    'var(--color-chart-2)',
-    'var(--color-chart-3)',
-    'var(--color-chart-4)',
-    'var(--color-chart-5)',
-    'var(--color-chart-6)',
-    'var(--color-chart-7)',
-    'var(--color-chart-8)',
-];
-
-/**
- * Reorders a sequential palette so neighbouring entries alternate between its
- * dark and light ends. Monochrome schemes (blue, pink, neutral) run from
- * darkest to lightest, so picking adjacent shades leaves consecutive slices
- * nearly indistinguishable; zipping the two halves maximises the contrast
- * between one slice and the next.
- */
-function alternateContrast(palette: string[]): string[] {
-    const half = Math.ceil(palette.length / 2);
-    const result: string[] = [];
-
-    for (let index = 0; index < half; index++) {
-        result.push(palette[index]);
-        if (index + half < palette.length) {
-            result.push(palette[index + half]);
-        }
-    }
-
-    return result;
-}
-
-const CHART_COLORS = alternateContrast(CHART_PALETTE);
 
 function buildQueryString(filters: SerializedFilters): string {
     const params = new URLSearchParams();
@@ -515,7 +485,6 @@ export function TransactionAnalysisDrawer({
                                 <TagBreakdown
                                     slices={data.by_tag}
                                     currency={currency}
-                                    locale={locale}
                                 />
                             )}
                         </div>
@@ -1078,7 +1047,7 @@ function LargestTransactions({
                                     )}
                                 </td>
                                 {showCategory && (
-                                    <td className="py-2 pr-3">
+                                    <td className="max-w-[160px] py-2 pr-3">
                                         <CategoryChip
                                             category={item.category}
                                         />
@@ -1113,7 +1082,7 @@ function LargestTransactions({
                                         )}
                                     </td>
                                 )}
-                                <td className="max-w-[200px] truncate py-2 pr-3">
+                                <td className="max-w-[160px] truncate py-2 pr-3">
                                     {item.description || (
                                         <span className="text-muted-foreground">
                                             —
@@ -1130,7 +1099,7 @@ function LargestTransactions({
                                         />
                                     </td>
                                 )}
-                                <td className="py-2 text-right">
+                                <td className="py-2 text-right whitespace-nowrap">
                                     <AmountDisplay
                                         amountInCents={-item.amount}
                                         currencyCode={currency}
@@ -1170,14 +1139,36 @@ function CategoryChip({ category }: { category: LargestExpense['category'] }) {
     return (
         <span
             className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs whitespace-nowrap',
+                'inline-flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs',
                 classes.bg,
                 classes.text,
             )}
         >
-            <Icon className="size-3" />
-            {category.name}
+            <Icon className="size-3 shrink-0" />
+            <span className="truncate">{category.name}</span>
         </span>
+    );
+}
+
+/**
+ * Builds the icon-in-a-coloured-circle marker the dashboard uses for a
+ * category, reused for every category row in the drawer's breakdowns.
+ */
+function categoryLeading(color: string | null, icon: string | null): ReactNode {
+    const classes = getCategoryColorClasses((color ?? 'gray') as CategoryColor);
+    const Icon = (Icons[(icon ?? 'HelpCircle') as CategoryIcon] ??
+        HelpCircle) as LucideIcon;
+
+    return (
+        <div
+            className={cn(
+                'flex size-6 shrink-0 items-center justify-center rounded-full',
+                classes.bg,
+                classes.text,
+            )}
+        >
+            <Icon className="size-4" />
+        </div>
     );
 }
 
@@ -1188,120 +1179,50 @@ function CategoryBreakdown({
     slices: CategorySlice[];
     currency: string;
 }) {
+    const { categoryBarColor } = useChartColors();
     const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
-    const config: ChartConfig = { amount: { label: __('Spent') } };
+
+    const childrenById = useMemo(() => {
+        const map: Record<string, CategorySlice[]> = {};
+        for (const slice of slices) {
+            if (slice.category_id) {
+                map[slice.category_id] = slice.children ?? [];
+            }
+        }
+        return map;
+    }, [slices]);
+
+    const expandable = useExpandableCategories<CategorySlice>(
+        async (categoryId) => childrenById[categoryId] ?? [],
+        slices,
+    );
+
+    const adapter: CategoryBreakdownAdapter<CategorySlice> = {
+        getId: (item) => item.category_id ?? '',
+        getKey: (item, index) => item.category_id ?? `category-${index}`,
+        getName: (item) => item.name,
+        getAmount: (item) => item.amount,
+        getPercentage: (item) => (total > 0 ? (item.amount / total) * 100 : 0),
+        getBarColor: (item, index) =>
+            categoryBarColor((item.color ?? 'gray') as CategoryColor, index),
+        renderLeading: (item) => categoryLeading(item.color, item.icon),
+        canExpand: (item) => (item.children?.length ?? 0) > 0,
+    };
 
     return (
         <Panel title={__('Spending by category')}>
-            <div className="flex flex-col items-center gap-6 sm:flex-row">
-                <ChartContainer config={config} className="h-52 w-52 shrink-0">
-                    <ResponsiveContainer>
-                        <PieChart>
-                            <Pie
-                                data={slices}
-                                dataKey="amount"
-                                nameKey="name"
-                                innerRadius={55}
-                                outerRadius={85}
-                                paddingAngle={2}
-                            >
-                                {slices.map((slice, index) => (
-                                    <Cell
-                                        key={
-                                            slice.category_id ??
-                                            `slice-${index}`
-                                        }
-                                        fill={
-                                            CHART_COLORS[
-                                                index % CHART_COLORS.length
-                                            ]
-                                        }
-                                    />
-                                ))}
-                            </Pie>
-                        </PieChart>
-                    </ResponsiveContainer>
-                </ChartContainer>
-
-                <ul className="flex w-full flex-col gap-3">
-                    {slices.map((slice, index) => {
-                        const color = CHART_COLORS[index % CHART_COLORS.length];
-
-                        return (
-                            <li
-                                key={slice.category_id ?? `row-${index}`}
-                                className="flex flex-col gap-1.5"
-                            >
-                                <div className="flex items-center gap-3 text-sm">
-                                    <span
-                                        className="h-3 w-3 shrink-0 rounded-full"
-                                        style={{ backgroundColor: color }}
-                                    />
-                                    <span className="flex-1 truncate font-medium">
-                                        {slice.name}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {total > 0
-                                            ? Math.round(
-                                                  (slice.amount / total) * 100,
-                                              )
-                                            : 0}
-                                        %
-                                    </span>
-                                    <AmountDisplay
-                                        amountInCents={slice.amount}
-                                        currencyCode={currency}
-                                        className="font-mono tabular-nums"
-                                    />
-                                </div>
-
-                                {slice.children.length > 0 && (
-                                    <ul className="flex flex-col gap-1 pl-6">
-                                        {slice.children.map(
-                                            (child, childIndex) => (
-                                                <li
-                                                    key={
-                                                        child.category_id ??
-                                                        `sub-${index}-${childIndex}`
-                                                    }
-                                                    className="flex items-center gap-2.5 text-xs text-muted-foreground"
-                                                >
-                                                    <span
-                                                        className="h-2 w-2 shrink-0 rounded-full opacity-60"
-                                                        style={{
-                                                            backgroundColor:
-                                                                color,
-                                                        }}
-                                                    />
-                                                    <span className="flex-1 truncate">
-                                                        {child.name}
-                                                    </span>
-                                                    <span>
-                                                        {slice.amount > 0
-                                                            ? Math.round(
-                                                                  (child.amount /
-                                                                      slice.amount) *
-                                                                      100,
-                                                              )
-                                                            : 0}
-                                                        %
-                                                    </span>
-                                                    <AmountDisplay
-                                                        amountInCents={
-                                                            child.amount
-                                                        }
-                                                        currencyCode={currency}
-                                                        className="font-mono tabular-nums"
-                                                    />
-                                                </li>
-                                            ),
-                                        )}
-                                    </ul>
-                                )}
-                            </li>
-                        );
-                    })}
-                </ul>
+            <div className="flex flex-col gap-3">
+                {slices.map((slice, index) => (
+                    <CategoryBreakdownRow
+                        key={slice.category_id ?? `category-${index}`}
+                        item={slice}
+                        index={index}
+                        currencyCode={currency}
+                        adapter={adapter}
+                        expandable={expandable}
+                        expandColumn
+                    />
+                ))}
             </div>
         </Panel>
     );
@@ -1373,20 +1294,48 @@ function HorizontalBarBreakdown({
 function TagBreakdown({
     slices,
     currency,
-    locale,
 }: {
     slices: TagSlice[];
     currency: string;
-    locale: string;
 }) {
+    const { categoryBarColor } = useChartColors();
+    const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
+
+    const adapter: CategoryBreakdownAdapter<TagSlice> = {
+        getId: (item) => item.id,
+        getKey: (item, index) => item.id ?? `tag-${index}`,
+        getName: (item) => item.name,
+        getAmount: (item) => item.amount,
+        getPercentage: (item) => (total > 0 ? (item.amount / total) * 100 : 0),
+        getBarColor: (item, index) =>
+            categoryBarColor((item.color ?? 'gray') as CategoryColor, index),
+        renderLeading: (item, index) => (
+            <span
+                className="size-3 shrink-0 rounded-full"
+                style={{
+                    backgroundColor: categoryBarColor(
+                        (item.color ?? 'gray') as CategoryColor,
+                        index,
+                    ),
+                }}
+            />
+        ),
+    };
+
     return (
-        <HorizontalBarBreakdown
-            title={__('Spending by tag')}
-            data={slices}
-            currency={currency}
-            locale={locale}
-            color="var(--color-chart-1)"
-        />
+        <Panel title={__('Spending by tag')}>
+            <div className="flex flex-col gap-3">
+                {slices.map((slice, index) => (
+                    <CategoryBreakdownRow
+                        key={slice.id ?? `tag-${index}`}
+                        item={slice}
+                        index={index}
+                        currencyCode={currency}
+                        adapter={adapter}
+                    />
+                ))}
+            </div>
+        </Panel>
     );
 }
 
@@ -1410,6 +1359,17 @@ function PayeeBreakdown({
     );
 }
 
+const ACCOUNT_BAR_COLORS = [
+    'var(--color-chart-1)',
+    'var(--color-chart-2)',
+    'var(--color-chart-3)',
+    'var(--color-chart-4)',
+    'var(--color-chart-5)',
+    'var(--color-chart-6)',
+    'var(--color-chart-7)',
+    'var(--color-chart-8)',
+];
+
 function AccountBreakdown({
     slices,
     currency,
@@ -1419,37 +1379,37 @@ function AccountBreakdown({
 }) {
     const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
 
+    const adapter: CategoryBreakdownAdapter<AccountSlice> = {
+        getId: (item) => item.id ?? '',
+        getKey: (item, index) => item.id ?? `account-${index}`,
+        getName: (item) => item.name,
+        getAmount: (item) => item.amount,
+        getPercentage: (item) => (total > 0 ? (item.amount / total) * 100 : 0),
+        getBarColor: (_item, index) =>
+            ACCOUNT_BAR_COLORS[index % ACCOUNT_BAR_COLORS.length],
+        renderLeading: (item) => (
+            <BankLogo
+                src={item.bank?.logo}
+                name={item.bank?.name}
+                className="size-6 shrink-0"
+                fallback="icon"
+            />
+        ),
+    };
+
     return (
         <Panel title={__('Spending by account')}>
-            <ul className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
                 {slices.map((slice, index) => (
-                    <li
+                    <CategoryBreakdownRow
                         key={slice.id ?? `account-${index}`}
-                        className="flex items-center gap-3 text-sm"
-                    >
-                        <BankLogo
-                            src={slice.bank?.logo}
-                            name={slice.bank?.name}
-                            className="h-5 w-5"
-                            fallback="icon"
-                        />
-                        <span className="flex-1 truncate font-medium">
-                            {slice.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                            {total > 0
-                                ? Math.round((slice.amount / total) * 100)
-                                : 0}
-                            %
-                        </span>
-                        <AmountDisplay
-                            amountInCents={slice.amount}
-                            currencyCode={currency}
-                            className="font-mono tabular-nums"
-                        />
-                    </li>
+                        item={slice}
+                        index={index}
+                        currencyCode={currency}
+                        adapter={adapter}
+                    />
                 ))}
-            </ul>
+            </div>
         </Panel>
     );
 }

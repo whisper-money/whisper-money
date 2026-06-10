@@ -141,11 +141,13 @@ class TransactionAnalysisController extends Controller
             'category_id' => $node['category_id'],
             'name' => $node['category']->name,
             'color' => $node['category']->color,
+            'icon' => $node['category']->icon,
             'amount' => $node['amount'],
             'children' => array_map(fn (array $child): array => [
                 'category_id' => $child['category_id'],
                 'name' => $child['category']->name,
                 'color' => $child['category']->color,
+                'icon' => $child['category']->icon,
                 'amount' => $child['amount'],
             ], $node['children']),
         ], $this->tree->spendingBreakdown($grouped, $userId));
@@ -159,6 +161,7 @@ class TransactionAnalysisController extends Controller
                 'category_id' => null,
                 'name' => __('Uncategorized'),
                 'color' => 'gray',
+                'icon' => 'HelpCircle',
                 'amount' => $uncategorized,
                 'children' => [],
             ];
