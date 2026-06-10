@@ -11,8 +11,10 @@ use App\Listeners\ApplyAutomationRules;
 use App\Listeners\AssignTransactionToBudget;
 use App\Listeners\PostStripeEventToDiscord;
 use App\Listeners\UnassignTransactionFromBudget;
+use App\Listeners\UpdateLastLoggedInAt;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Discord\DiscordWebhook;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
@@ -54,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(TransactionUpdated::class, AssignTransactionToBudget::class);
         Event::listen(TransactionDeleted::class, UnassignTransactionFromBudget::class);
         Event::listen(WebhookReceived::class, PostStripeEventToDiscord::class);
+        Event::listen(Login::class, UpdateLastLoggedInAt::class);
 
         RateLimiter::for('emails', function (object $job): Limit {
             return Limit::perSecond(30);

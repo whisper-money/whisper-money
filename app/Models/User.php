@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DripEmailType;
 use App\Notifications\VerifyEmailNotification;
+use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -22,6 +23,10 @@ use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Pennant\Concerns\HasFeatures;
 
+/**
+ * @property ?Carbon $last_logged_in_at
+ * @property ?Carbon $last_active_at
+ */
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -69,6 +74,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'two_factor_confirmed_at' => 'datetime',
             'onboarded_at' => 'datetime',
             'paywall_seen_at' => 'datetime',
+            'last_logged_in_at' => 'datetime',
+            'last_active_at' => 'datetime',
         ];
     }
 
