@@ -69,6 +69,8 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'two_factor_confirmed_at' => 'datetime',
             'onboarded_at' => 'datetime',
             'paywall_seen_at' => 'datetime',
+            'last_logged_in_at' => 'datetime',
+            'last_active_at' => 'datetime',
         ];
     }
 
