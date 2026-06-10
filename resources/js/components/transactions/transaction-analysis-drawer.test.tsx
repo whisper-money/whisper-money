@@ -6,6 +6,7 @@ import {
     waitFor,
     within,
 } from '@testing-library/react';
+import type React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TransactionAnalysisDrawer } from './transaction-analysis-drawer';
 
@@ -27,6 +28,13 @@ vi.mock('@/components/ui/amount-display', () => ({
     AmountDisplay: ({ amountInCents }: { amountInCents: number }) => (
         <span data-testid="amount">{amountInCents}</span>
     ),
+}));
+
+vi.mock('@inertiajs/react', () => ({
+    Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
+        <a href={href}>{children}</a>
+    ),
+    usePage: () => ({ props: { chartColorScheme: 'colorful' } }),
 }));
 
 const filters: TransactionFilters = {
@@ -397,5 +405,108 @@ describe('TransactionAnalysisDrawer largest expenses columns', () => {
         expect(screen.getByText('Category')).toBeInTheDocument();
         expect(screen.getByText('Account')).toBeInTheDocument();
         expect(screen.getByText('Labels')).toBeInTheDocument();
+    });
+});
+
+describe('TransactionAnalysisDrawer breakdowns', () => {
+    const breakdownResponse = {
+        ...analysisResponse,
+        by_category: [
+            {
+                category_id: 'c1',
+                name: 'Food',
+                color: 'amber',
+                icon: 'Utensils',
+                amount: 40000,
+                children: [
+                    {
+                        category_id: 'c2',
+                        name: 'Groceries',
+                        color: 'amber',
+                        icon: 'ShoppingBag',
+                        amount: 30000,
+                    },
+                ],
+            },
+            {
+                category_id: 'c3',
+                name: 'Hotel',
+                color: 'blue',
+                icon: 'Building',
+                amount: 20000,
+                children: [],
+            },
+        ],
+        distinct_category_count: 2,
+        by_tag: [
+            { id: 't1', name: 'Miami', color: 'blue', amount: 10000 },
+            { id: 't2', name: 'Snacks', color: 'amber', amount: 3000 },
+        ],
+        distinct_label_count: 2,
+        by_account: [
+            {
+                id: 'a1',
+                name: 'Visa',
+                bank: { name: 'Acme', logo: null },
+                amount: 5000,
+            },
+            { id: 'a2', name: 'Amex', bank: null, amount: 3000 },
+        ],
+        distinct_account_count: 2,
+    };
+
+    it('renders a category bar list and expands children on demand', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(breakdownResponse);
+
+        render(
+            <TransactionAnalysisDrawer
+                open
+                onOpenChange={vi.fn()}
+                filters={filters}
+            />,
+        );
+
+        await waitFor(() =>
+            expect(
+                screen.getByText('Spending by category'),
+            ).toBeInTheDocument(),
+        );
+        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Hotel')).toBeInTheDocument();
+
+        // The nested category is hidden until its parent is expanded.
+        expect(screen.queryByText('Groceries')).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Show subcategories' }),
+        );
+
+        await waitFor(() =>
+            expect(screen.getByText('Groceries')).toBeInTheDocument(),
+        );
+    });
+
+    it('renders the tag and account bar lists', async () => {
+        axiosGet.mockResolvedValue({ data: { data: [] } });
+        mockAnalysisFetch(breakdownResponse);
+
+        render(
+            <TransactionAnalysisDrawer
+                open
+                onOpenChange={vi.fn()}
+                filters={filters}
+            />,
+        );
+
+        await waitFor(() =>
+            expect(screen.getByText('Spending by tag')).toBeInTheDocument(),
+        );
+        expect(screen.getByText('Miami')).toBeInTheDocument();
+        expect(screen.getByText('Snacks')).toBeInTheDocument();
+
+        expect(screen.getByText('Spending by account')).toBeInTheDocument();
+        expect(screen.getByText('Visa')).toBeInTheDocument();
+        expect(screen.getByText('Amex')).toBeInTheDocument();
     });
 });
