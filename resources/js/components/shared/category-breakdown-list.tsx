@@ -134,12 +134,12 @@ export function CategoryBreakdownRow<T>({
                 {href ? (
                     <Link
                         href={href}
-                        className="group block grow rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                        className="group block min-w-0 grow rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                     >
                         {header}
                     </Link>
                 ) : (
-                    <div className="grow px-1.5 py-1">{header}</div>
+                    <div className="min-w-0 grow px-1.5 py-1">{header}</div>
                 )}
             </div>
             <Progress
