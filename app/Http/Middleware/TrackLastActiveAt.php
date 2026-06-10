@@ -21,17 +21,20 @@ class TrackLastActiveAt
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $response = $next($request);
+
         $user = $request->user();
 
         if ($user instanceof User) {
-            $now = $user->freshTimestamp();
+            $lastActiveAt = $user->last_active_at;
 
-            if ($user->last_active_at === null
-                || $user->last_active_at->lte($now->copy()->subSeconds(self::THROTTLE_SECONDS))) {
-                $user->forceFill(['last_active_at' => $now])->saveQuietly();
+            if ($lastActiveAt === null
+                || $lastActiveAt->lte(now()->subSeconds(self::THROTTLE_SECONDS))) {
+                $user->last_active_at = now();
+                $user->saveQuietly();
             }
         }
 
-        return $next($request);
+        return $response;
     }
 }
