@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountBalanceController;
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\CashflowAnalyticsController;
+use App\Http\Controllers\Api\CategoryMonthlyBreakdownController;
 use App\Http\Controllers\Api\DashboardAnalyticsController;
 use App\Http\Controllers\Api\ImportDataController;
 use App\Http\Controllers\Api\SavedFilterController;
@@ -29,6 +30,9 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('transactions', [TransactionController::class, 'index'])->name('api.transactions.index');
     Route::get('transactions/analysis', [TransactionAnalysisController::class, 'summary'])->name('api.transactions.analysis');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('api.transactions.bulk-update');
+
+    // Category analysis
+    Route::get('categories/{category}/monthly-breakdown', CategoryMonthlyBreakdownController::class)->name('api.categories.monthly-breakdown');
 
     // Accounts
     Route::get('accounts', [AccountController::class, 'index'])->name('api.accounts.index');

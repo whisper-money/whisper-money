@@ -1,4 +1,5 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
+import { CategoryAnalysisButton } from '@/components/categories/category-analysis-button';
 import {
     CategoryBreakdownRow,
     type CategoryBreakdownAdapter,
@@ -165,7 +166,17 @@ export function TopCategoriesCard({
     return (
         <Card className="w-full">
             <CardHeader className="gap-2">
-                <CardTitle>{__('Top spending categories')}</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                    <CardTitle>{__('Top spending categories')}</CardTitle>
+                    <CategoryAnalysisButton
+                        widgetKey="dashboard-top-categories"
+                        firstCategoryId={
+                            categories[0]?.category?.id ??
+                            categories[0]?.category_id ??
+                            null
+                        }
+                    />
+                </div>
                 <CardDescription>{__('on the last 30 days')}</CardDescription>
             </CardHeader>
             <CardContent>

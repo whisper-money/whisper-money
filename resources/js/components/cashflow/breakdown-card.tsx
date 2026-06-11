@@ -1,4 +1,5 @@
 import { index as transactionsIndex } from '@/actions/App/Http/Controllers/TransactionController';
+import { CategoryAnalysisButton } from '@/components/categories/category-analysis-button';
 import {
     CategoryBreakdownRow,
     type CategoryBreakdownAdapter,
@@ -177,7 +178,13 @@ export function BreakdownCard({
         <Card>
             <CardHeader className="gap-1 pb-4">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{title}</CardTitle>
+                    <div className="flex items-center gap-1">
+                        <CardTitle className="text-base">{title}</CardTitle>
+                        <CategoryAnalysisButton
+                            widgetKey={`cashflow-${type}`}
+                            firstCategoryId={data.data[0]?.category_id ?? null}
+                        />
+                    </div>
                     <AmountDisplay
                         amountInCents={data.total}
                         currencyCode={currency}
