@@ -222,7 +222,7 @@ class CategoryMonthlyBreakdownController extends Controller
         $series = [];
 
         foreach (array_slice($ranked, 0, self::TOP_CHILDREN) as $childId) {
-            $series[] = ['key' => $childId, 'label' => $children->get($childId)?->name ?? __('Unknown')];
+            $series[] = ['key' => $childId, 'label' => $children->get($childId)->name];
         }
 
         if (count($ranked) > self::TOP_CHILDREN) {
