@@ -90,15 +90,56 @@ class CategoryMonthlyBreakdownController extends Controller
         }
 
         $series = $this->buildSeries($category, $children, $childTotals, $directTotal, $hasChildren);
+        $months = $this->buildMonths($start, $buckets, $series);
 
         return response()
             ->json([
                 'currency' => $currency,
                 'category' => ['id' => $category->id, 'name' => $category->name],
                 'series' => $series,
-                'months' => $this->buildMonths($start, $buckets, $series),
+                'months' => $months,
+                'summary' => $this->summarize($months),
             ])
             ->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * Headline figures for the window: the average spent per month and the
+     * trend, measured as the change between the average of the most recent half
+     * and the average of the earlier half. The trend is null when the earlier
+     * half is empty, since there is no baseline to compare against.
+     *
+     * @param  array<int, array<string, int|string>>  $months
+     * @return array{average_per_month: int, trend_percentage: float|null}
+     */
+    private function summarize(array $months): array
+    {
+        $totals = array_map(function (array $point): int {
+            $total = 0;
+
+            foreach ($point as $key => $value) {
+                if ($key !== 'key') {
+                    $total += (int) $value;
+                }
+            }
+
+            return $total;
+        }, $months);
+
+        $count = count($totals);
+        $half = intdiv($count, 2);
+        $earlier = array_slice($totals, 0, $half);
+        $recent = array_slice($totals, $count - $half);
+
+        $earlierAverage = $earlier === [] ? 0 : array_sum($earlier) / count($earlier);
+        $recentAverage = $recent === [] ? 0 : array_sum($recent) / count($recent);
+
+        return [
+            'average_per_month' => $count > 0 ? (int) round(array_sum($totals) / $count) : 0,
+            'trend_percentage' => $earlierAverage != 0
+                ? round((($recentAverage - $earlierAverage) / abs($earlierAverage)) * 100, 1)
+                : null,
+        ];
     }
 
     /**

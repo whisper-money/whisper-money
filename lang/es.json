@@ -1,5 +1,9 @@
 {
     "Analyze": "Analizar",
+    "Monthly average": "Media mensual",
+    "Trend": "Tendencia",
+    "Not enough history": "Historial insuficiente",
+    "vs. previous 6 months": "vs. 6 meses anteriores",
     "Category analysis": "Análisis de categoría",
     "How much you spent on this category each month over the last 12 months.": "Cuánto gastaste en esta categoría cada mes durante los últimos 12 meses.",
     "Pick a category to see its monthly spending.": "Elige una categoría para ver su gasto mensual.",

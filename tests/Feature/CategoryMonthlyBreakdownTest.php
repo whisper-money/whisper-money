@@ -157,6 +157,31 @@ test('income categories keep inflows positive and net expenses against them', fu
     expect($response->json('months.11.'.$category->id))->toBe(400000);
 });
 
+test('summary reports the monthly average and the half-over-half trend', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+
+    // Earlier half (2025-07..2025-12): one month of 6000 -> average 1000.
+    makeBreakdownTransaction(['amount' => -6000, 'category_id' => $category->id, 'transaction_date' => '2025-09-15']);
+    // Recent half (2026-01..2026-06): one month of 9000 -> average 1500.
+    makeBreakdownTransaction(['amount' => -9000, 'category_id' => $category->id, 'transaction_date' => '2026-02-15']);
+
+    $response = monthlyBreakdown($category)->assertOk();
+
+    expect($response->json('summary.average_per_month'))->toBe(1250);
+    expect($response->json('summary.trend_percentage'))->toEqual(50);
+});
+
+test('summary trend is null when the earlier half has no spending', function () {
+    $category = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+
+    makeBreakdownTransaction(['amount' => -6000, 'category_id' => $category->id, 'transaction_date' => '2026-06-10']);
+
+    $response = monthlyBreakdown($category)->assertOk();
+
+    expect($response->json('summary.average_per_month'))->toBe(500);
+    expect($response->json('summary.trend_percentage'))->toBeNull();
+});
+
 test('foreign-currency transactions are converted to the user currency', function () {
     ExchangeRate::factory()->create([
         'base_currency' => 'usd',

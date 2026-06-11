@@ -1,4 +1,6 @@
 import { CategoryCombobox } from '@/components/shared/category-combobox';
+import { AmountDisplay } from '@/components/ui/amount-display';
+import { Card, CardContent } from '@/components/ui/card';
 import { ChartConfig } from '@/components/ui/chart';
 import {
     Drawer,
@@ -9,12 +11,14 @@ import {
 } from '@/components/ui/drawer';
 import { StackedBarChart } from '@/components/ui/stacked-bar-chart';
 import { useLocale } from '@/hooks/use-locale';
+import { cn } from '@/lib/utils';
 import { SharedData } from '@/types';
 import { type Category } from '@/types/category';
 import { formatCurrency } from '@/utils/currency';
 import { formatMonthFromYearMonth } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import { usePage } from '@inertiajs/react';
+import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export const CATEGORY_ANALYSIS_STORAGE_PREFIX = 'wm.category-analysis.';
@@ -29,11 +33,17 @@ interface MonthPoint {
     [seriesKey: string]: number | string;
 }
 
+interface BreakdownSummary {
+    average_per_month: number;
+    trend_percentage: number | null;
+}
+
 interface BreakdownData {
     currency: string;
     category: { id: string; name: string };
     series: BreakdownSeries[];
     months: MonthPoint[];
+    summary: BreakdownSummary;
 }
 
 interface CategoryAnalysisDrawerProps {
@@ -201,7 +211,6 @@ export function CategoryAnalysisDrawer({
                         categories={categories}
                         showUncategorized={false}
                         placeholder={__('Select a category')}
-                        triggerClassName="max-w-sm"
                     />
 
                     {isLoading && (
@@ -227,19 +236,94 @@ export function CategoryAnalysisDrawer({
                     )}
 
                     {!isLoading && !error && hasData && (
-                        <StackedBarChart
-                            data={data.months}
-                            dataKeys={dataKeys}
-                            config={config}
-                            xAxisKey="key"
-                            xAxisFormatter={xAxisFormatter}
-                            valueFormatter={valueFormatter}
-                            displayCurrency={currency}
-                            className="h-[320px] w-full"
-                        />
+                        <div className="flex flex-col gap-6">
+                            <SummaryCards
+                                summary={data.summary}
+                                currency={currency}
+                            />
+
+                            <Card className="py-4">
+                                <CardContent>
+                                    <StackedBarChart
+                                        data={data.months}
+                                        dataKeys={dataKeys}
+                                        config={config}
+                                        xAxisKey="key"
+                                        xAxisFormatter={xAxisFormatter}
+                                        valueFormatter={valueFormatter}
+                                        displayCurrency={currency}
+                                        className="h-[320px] w-full"
+                                    />
+                                </CardContent>
+                            </Card>
+                        </div>
                     )}
                 </div>
             </DrawerContent>
         </Drawer>
+    );
+}
+
+function SummaryCards({
+    summary,
+    currency,
+}: {
+    summary: BreakdownSummary;
+    currency: string;
+}) {
+    const trend = summary.trend_percentage;
+    const TrendIcon =
+        trend === null || trend === 0
+            ? Minus
+            : trend > 0
+              ? TrendingUp
+              : TrendingDown;
+
+    return (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Card className="gap-0 py-4">
+                <CardContent className="flex flex-col gap-1">
+                    <p className="text-xs text-muted-foreground">
+                        {__('Monthly average')}
+                    </p>
+                    <AmountDisplay
+                        amountInCents={summary.average_per_month}
+                        currencyCode={currency}
+                        className="text-lg font-semibold tabular-nums"
+                    />
+                </CardContent>
+            </Card>
+
+            <Card className="gap-0 py-4">
+                <CardContent className="flex flex-col gap-1">
+                    <p className="text-xs text-muted-foreground">
+                        {__('Trend')}
+                    </p>
+                    {trend === null ? (
+                        <p className="text-lg font-semibold text-muted-foreground">
+                            {__('Not enough history')}
+                        </p>
+                    ) : (
+                        <div className="flex items-center gap-1.5">
+                            <TrendIcon
+                                className={cn(
+                                    'size-4',
+                                    trend > 0 && 'text-amber-500',
+                                    trend < 0 && 'text-emerald-500',
+                                    trend === 0 && 'text-muted-foreground',
+                                )}
+                            />
+                            <span className="text-lg font-semibold tabular-nums">
+                                {trend > 0 ? '+' : ''}
+                                {trend}%
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                                {__('vs. previous 6 months')}
+                            </span>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }
