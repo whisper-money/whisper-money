@@ -15,6 +15,7 @@
         "inertiajs/inertia-laravel": "^2.0",
         "intervention/image": "^3.0",
         "jwadhams/json-logic-php": "^1.5",
+        "laravel/ai": "^0.7.2",
         "laravel/cashier": "^16.1",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^13.0",
