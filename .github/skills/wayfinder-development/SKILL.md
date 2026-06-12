@@ -8,13 +8,6 @@ metadata:
 
 # Wayfinder Development
 
-## When to Apply
-
-Activate whenever referencing backend routes in frontend components:
-- Importing from `@/actions/` or `@/routes/`
-- Calling Laravel routes from TypeScript/JavaScript
-- Creating links or navigation to backend endpoints
-
 ## Documentation
 
 Use `search-docs` for detailed Wayfinder patterns and documentation.

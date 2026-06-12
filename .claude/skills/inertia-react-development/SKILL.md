@@ -15,7 +15,7 @@ Activate this skill when:
 - Creating or modifying React page components for Inertia
 - Working with forms in React (using `<Form>` or `useForm`)
 - Implementing client-side navigation with `<Link>` or `router`
-- Using v2 features: deferred props, prefetching, or polling
+- Using v2 features: deferred props, prefetching, WhenVisible, InfiniteScroll, once props, flash data, or polling
 - Building React-specific features with the Inertia protocol
 
 ## Documentation
@@ -295,14 +295,21 @@ export default function UsersIndex({ users }) {
 
 ### Polling
 
-Use the `usePoll` hook to automatically refresh data at intervals. It handles cleanup on unmount and throttles polling when the tab is inactive.
+Automatically refresh data at intervals:
 
-<!-- Basic Polling -->
+<!-- Polling Example -->
 ```react
-import { usePoll } from '@inertiajs/react'
+import { router } from '@inertiajs/react'
+import { useEffect } from 'react'
 
 export default function Dashboard({ stats }) {
-    usePoll(5000)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload({ only: ['stats'] })
+        }, 5000) // Poll every 5 seconds
+
+        return () => clearInterval(interval)
+    }, [])
 
     return (
         <div>
@@ -313,64 +320,37 @@ export default function Dashboard({ stats }) {
 }
 ```
 
-<!-- Polling With Request Options and Manual Control -->
-```react
-import { usePoll } from '@inertiajs/react'
+### WhenVisible
 
-export default function Dashboard({ stats }) {
-    const { start, stop } = usePoll(5000, {
-        only: ['stats'],
-        onStart() {
-            console.log('Polling request started')
-        },
-        onFinish() {
-            console.log('Polling request finished')
-        },
-    }, {
-        autoStart: false,
-        keepAlive: true,
-    })
+Lazy-load a prop when an element scrolls into view. Useful for deferring expensive data that sits below the fold:
 
-    return (
-        <div>
-            <h1>Dashboard</h1>
-            <div>Active Users: {stats.activeUsers}</div>
-            <button onClick={start}>Start Polling</button>
-            <button onClick={stop}>Stop Polling</button>
-        </div>
-    )
-}
-```
-
-- `autoStart` (default `true`) — set to `false` to start polling manually via the returned `start()` function
-- `keepAlive` (default `false`) — set to `true` to prevent throttling when the browser tab is inactive
-
-### WhenVisible (Infinite Scroll)
-
-Load more data when user scrolls to a specific element:
-
-<!-- Infinite Scroll with WhenVisible -->
+<!-- WhenVisible Example -->
 ```react
 import { WhenVisible } from '@inertiajs/react'
 
-export default function UsersList({ users }) {
+export default function Dashboard({ stats }) {
     return (
         <div>
-            {users.data.map(user => (
-                <div key={user.id}>{user.name}</div>
-            ))}
+            <h1>Dashboard</h1>
 
-            {users.next_page_url && (
-                <WhenVisible
-                    data="users"
-                    params={{ page: users.current_page + 1 }}
-                    fallback={<div>Loading more...</div>}
-                />
-            )}
+            {/* stats prop is loaded only when this section scrolls into view */}
+            <WhenVisible data="stats" buffer={200} fallback={<div className="animate-pulse">Loading stats...</div>}>
+                {({ fetching }) => (
+                    <div>
+                        <p>Total Users: {stats.total_users}</p>
+                        <p>Revenue: {stats.revenue}</p>
+                        {fetching && <span>Refreshing...</span>}
+                    </div>
+                )}
+            </WhenVisible>
         </div>
     )
 }
 ```
+
+## Server-Side Patterns
+
+Server-side patterns (Inertia::render, props, middleware) are covered in inertia-laravel guidelines.
 
 ## Common Pitfalls
 
