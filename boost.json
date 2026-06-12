@@ -13,11 +13,12 @@
     ],
     "sail": false,
     "skills": [
+        "cashier-stripe-development",
         "pennant-development",
         "wayfinder-development",
         "pest-testing",
         "inertia-react-development",
         "tailwindcss-development",
-        "developing-with-fortify"
+        "fortify-development"
     ]
 }
