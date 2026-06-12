@@ -8,6 +8,11 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
@@ -68,7 +73,6 @@ export function TransactionActionsMenu({
     const isMobile = useIsMobile();
     const [importDrawerOpen, setImportDrawerOpen] = useState(false);
     const [analysisDrawerOpen, setAnalysisDrawerOpen] = useState(false);
-    const [analysisHintOpen, setAnalysisHintOpen] = useState(false);
     const [isReEvaluating, setIsReEvaluating] = useState(false);
     const { reEvaluateAll } = useReEvaluateAllTransactions();
 
@@ -76,9 +80,6 @@ export function TransactionActionsMenu({
 
     const handleAnalysisClick = () => {
         if (!canAnalyze) {
-            if (isMobile) {
-                setAnalysisHintOpen(true);
-            }
             return;
         }
         setAnalysisDrawerOpen(true);
@@ -123,35 +124,34 @@ export function TransactionActionsMenu({
             <ButtonGroup>
                 {features.transactionAnalysis &&
                     (isMobile ? (
-                        <TooltipProvider>
-                            <Tooltip
-                                open={!canAnalyze && analysisHintOpen}
-                                onOpenChange={setAnalysisHintOpen}
+                        canAnalyze ? (
+                            <Button
+                                variant="outline"
+                                onClick={handleAnalysisClick}
                             >
-                                <TooltipTrigger asChild>
+                                <BarChart3 className="h-5 w-5" />
+                                {__('Analysis')}
+                            </Button>
+                        ) : (
+                            <Popover>
+                                <PopoverTrigger asChild>
                                     <Button
                                         variant="outline"
-                                        className={
-                                            !canAnalyze
-                                                ? 'cursor-not-allowed opacity-50'
-                                                : ''
-                                        }
-                                        aria-disabled={!canAnalyze}
-                                        onClick={handleAnalysisClick}
+                                        className="cursor-help opacity-50"
+                                        aria-disabled
                                     >
                                         <BarChart3 className="h-5 w-5" />
                                         {__('Analysis')}
                                     </Button>
-                                </TooltipTrigger>
-                                {!canAnalyze && (
-                                    <TooltipContent>
-                                        {__(
-                                            'Apply a filter to enable this button',
-                                        )}
-                                    </TooltipContent>
-                                )}
-                            </Tooltip>
-                        </TooltipProvider>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    align="start"
+                                    className="text-sm"
+                                >
+                                    {__('Apply a filter to enable this button')}
+                                </PopoverContent>
+                            </Popover>
+                        )
                     ) : (
                         <TooltipProvider>
                             <Tooltip>
