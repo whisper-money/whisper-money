@@ -275,62 +275,79 @@ function ConditionRow({
 
     const inputType = fieldConfig?.type === 'number' ? 'number' : 'text';
 
+    const showAmountHint = showValueInput && inputType === 'number';
+
     return (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select value={condition.field} onValueChange={handleFieldChange}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {Object.entries(FIELD_CONFIG).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                            {__(config.label)}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+        <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Select
+                    value={condition.field}
+                    onValueChange={handleFieldChange}
+                >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {Object.entries(FIELD_CONFIG).map(([key, config]) => (
+                            <SelectItem key={key} value={key}>
+                                {__(config.label)}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
 
-            <Select
-                value={condition.operator}
-                onValueChange={handleOperatorChange}
-            >
-                <SelectTrigger className="w-full sm:w-[140px]">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {availableOperators.map((op) => (
-                        <SelectItem key={op} value={op}>
-                            {__(OPERATOR_LABELS[op])}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                <Select
+                    value={condition.operator}
+                    onValueChange={handleOperatorChange}
+                >
+                    <SelectTrigger className="w-full sm:w-[140px]">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {availableOperators.map((op) => (
+                            <SelectItem key={op} value={op}>
+                                {__(OPERATOR_LABELS[op])}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
 
-            {showValueInput && (
-                <Input
-                    type={inputType}
-                    value={condition.value}
-                    onChange={(e) =>
-                        onChange({ ...condition, value: e.target.value })
-                    }
-                    placeholder={__('Value')}
-                    className="w-full sm:flex-1"
-                    step={inputType === 'number' ? 'any' : undefined}
-                />
+                {showValueInput && (
+                    <Input
+                        type={inputType}
+                        value={condition.value}
+                        onChange={(e) =>
+                            onChange({ ...condition, value: e.target.value })
+                        }
+                        placeholder={__('Value')}
+                        className="w-full sm:flex-1"
+                        step={inputType === 'number' ? 'any' : undefined}
+                    />
+                )}
+
+                {!showValueInput && (
+                    <div className="hidden sm:flex sm:flex-1" />
+                )}
+
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onRemove}
+                    disabled={!canRemove}
+                    className={`self-end sm:self-auto${!canRemove ? 'opacity-30' : ''}`}
+                >
+                    <X className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {showAmountHint && (
+                <p className="text-xs pl-2 py-2 text-muted-foreground">
+                    {__(
+                        'Use a negative value for expenses (e.g. -21.99) and a positive value for income.',
+                    )}
+                </p>
             )}
-
-            {!showValueInput && <div className="hidden sm:flex sm:flex-1" />}
-
-            <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onRemove}
-                disabled={!canRemove}
-                className={`self-end sm:self-auto${!canRemove ? 'opacity-30' : ''}`}
-            >
-                <X className="h-4 w-4" />
-            </Button>
         </div>
     );
 }
