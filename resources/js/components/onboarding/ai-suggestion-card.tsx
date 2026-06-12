@@ -2,6 +2,7 @@ import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -24,7 +25,7 @@ import { type Category } from '@/types/category';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
-import { Check, Loader2, Sparkles, TextSearch } from 'lucide-react';
+import { ChevronDown, Loader2, Sparkles, TextSearch } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AiSuggestion {
@@ -79,12 +80,23 @@ export function AiSuggestionCard({
     categories,
     onChange,
 }: AiSuggestionCardProps) {
+    const [expanded, setExpanded] = useState(false);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [previewData, setPreviewData] = useState<PreviewResponse | null>(
         null,
     );
     const [fetchedToken, setFetchedToken] = useState<string | null>(null);
+
+    const operatorLabel =
+        suggestion.match_operator === 'equals' ? __('is') : __('contains');
+
+    const selectedCategory = categories.find((c) => c.id === draft.categoryId);
+    const categoryLabel =
+        selectedCategory?.name ??
+        (suggestion.new_category_name
+            ? __('New: :name', { name: suggestion.new_category_name })
+            : '—');
 
     const openPreview = async () => {
         setOpen(true);
@@ -112,76 +124,104 @@ export function AiSuggestionCard({
     };
 
     return (
-        <div className="rounded-xl border bg-card p-4">
-            <div className="min-w-0 flex-1 space-y-3">
-                <Label className="text-xs text-muted-foreground">
-                    {__('If the transaction')}
-                </Label>
+        <div className="overflow-hidden rounded-xl border bg-card">
+            {/* Collapsed header: select + summary + expand toggle */}
+            <div className="flex items-center gap-3 p-3">
+                <Checkbox
+                    checked={draft.include}
+                    onCheckedChange={(checked) =>
+                        onChange({ ...draft, include: checked === true })
+                    }
+                    aria-label={__('Include this rule')}
+                    className="shrink-0"
+                />
+                <button
+                    type="button"
+                    onClick={() => setExpanded((value) => !value)}
+                    aria-expanded={expanded}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                >
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                        <span className="text-muted-foreground">
+                            {operatorLabel}{' '}
+                        </span>
+                        <span className="font-medium">“{draft.token}”</span>
+                        <span className="text-muted-foreground"> → </span>
+                        <span>{categoryLabel}</span>
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                        {__(':count matches', { count: suggestion.group_size })}
+                    </span>
+                    <ChevronDown
+                        className={`size-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
+                    />
+                </button>
+            </div>
 
-                {/* Match: field + operator + token */}
-                <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
-                    <Input
-                        value={__(
-                            FIELD_LABELS[suggestion.match_field] ??
-                                'Description',
-                        )}
-                        className="h-9 w-full"
-                        disabled
-                    />
-                    <Input
-                        value={
-                            suggestion.match_operator === 'equals'
-                                ? __('is')
-                                : __('contains')
-                        }
-                        className="h-9 w-full"
-                        disabled
-                    />
-                    <Input
-                        value={draft.token}
-                        onChange={(event) =>
-                            onChange({
-                                ...draft,
-                                token: event.target.value,
-                            })
-                        }
-                        className="h-9 w-full"
-                        aria-label={__('Match text')}
-                    />
-                </div>
-
-                {/* Category */}
-                <div className="flex flex-col gap-1">
-                    <Label className="pb-1 text-xs text-muted-foreground">
-                        {__('Categorize as')}
+            {/* Expanded body: edit field/operator/token, category, preview */}
+            {expanded && (
+                <div className="space-y-3 border-t p-4">
+                    <Label className="text-xs text-muted-foreground">
+                        {__('If the transaction')}
                     </Label>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <CategoryCombobox
-                            value={draft.categoryId}
-                            onValueChange={(value) =>
-                                onChange({ ...draft, categoryId: value })
-                            }
-                            categories={categories}
-                        />
-                        {!draft.categoryId && suggestion.new_category_name && (
-                            <Badge className="gap-1 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
-                                <Sparkles className="size-3" />
-                                {__('New: :name', {
-                                    name: suggestion.new_category_name,
-                                })}
-                            </Badge>
-                        )}
-                    </div>
-                </div>
 
-                <div className="flex gap-2">
-                    {/* Preview button (carries the match count) */}
+                    <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
+                        <Input
+                            value={__(
+                                FIELD_LABELS[suggestion.match_field] ??
+                                    'Description',
+                            )}
+                            className="h-9 w-full"
+                            disabled
+                        />
+                        <Input
+                            value={operatorLabel}
+                            className="h-9 w-full"
+                            disabled
+                        />
+                        <Input
+                            value={draft.token}
+                            onChange={(event) =>
+                                onChange({
+                                    ...draft,
+                                    token: event.target.value,
+                                })
+                            }
+                            className="h-9 w-full"
+                            aria-label={__('Match text')}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                        <Label className="pb-1 text-xs text-muted-foreground">
+                            {__('Categorize as')}
+                        </Label>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CategoryCombobox
+                                value={draft.categoryId}
+                                onValueChange={(value) =>
+                                    onChange({ ...draft, categoryId: value })
+                                }
+                                categories={categories}
+                            />
+                            {!draft.categoryId &&
+                                suggestion.new_category_name && (
+                                    <Badge className="gap-1 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                                        <Sparkles className="size-3" />
+                                        {__('New: :name', {
+                                            name: suggestion.new_category_name,
+                                        })}
+                                    </Badge>
+                                )}
+                        </div>
+                    </div>
+
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={openPreview}
-                        className="min-w-0 flex-1 basis-0 justify-center gap-2"
+                        className="gap-2"
                     >
                         <TextSearch className="size-4 shrink-0" />
                         <span className="truncate">
@@ -190,26 +230,8 @@ export function AiSuggestionCard({
                             })}
                         </span>
                     </Button>
-
-                    {/* Enable/disable rule button */}
-                    <Button
-                        type="button"
-                        variant={draft.include ? 'outline' : 'ghost'}
-                        size="sm"
-                        onClick={() =>
-                            onChange({ ...draft, include: !draft.include })
-                        }
-                        className="min-w-0 flex-1 basis-0 justify-center gap-2"
-                    >
-                        {draft.include && <Check className="size-4 shrink-0" />}
-                        <span className="truncate">
-                            {draft.include
-                                ? __('Create rule')
-                                : __('Ignore rule')}
-                        </span>
-                    </Button>
                 </div>
-            </div>
+            )}
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-h-[85vh] gap-0 overflow-hidden p-0 sm:max-w-2xl">

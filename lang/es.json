@@ -2062,5 +2062,6 @@
     "Preview :count matching transactions": "Ver :count transacciones coincidentes",
     "If the transaction": "Si la transacción",
     "Create rule": "Crear regla",
-    "Ignore rule": "Ignorar regla"
+    "Ignore rule": "Ignorar regla",
+    ":count matches": ":count coincidencias"
 }

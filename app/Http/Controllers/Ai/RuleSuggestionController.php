@@ -158,6 +158,7 @@ class RuleSuggestionController extends Controller
             'eligible' => $this->availability->isEligible($user),
             'transaction_count' => $this->availability->transactionCount($user),
             'min_transactions' => $this->availability->minTransactions(),
+            'auto_select_confidence' => (float) config('ai_suggestions.auto_select_confidence'),
             'throttled' => $throttledUntil !== null,
             'throttled_until' => $throttledUntil?->toIso8601String(),
             'run' => $run === null ? null : [

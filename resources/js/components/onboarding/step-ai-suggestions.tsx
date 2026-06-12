@@ -21,6 +21,7 @@ interface SuggestionState {
     eligible: boolean;
     transaction_count: number;
     min_transactions: number;
+    auto_select_confidence: number;
     throttled: boolean;
     throttled_until: string | null;
     run: { id: string; status: string; suggestions_count: number } | null;
@@ -59,7 +60,11 @@ export function StepAiSuggestions({
             for (const suggestion of data.suggestions) {
                 if (!next[suggestion.id]) {
                     next[suggestion.id] = {
-                        include: true,
+                        // Auto-select only confident suggestions; weaker ones
+                        // are shown but left for the user to opt into.
+                        include:
+                            suggestion.confidence >=
+                            data.auto_select_confidence,
                         token: suggestion.match_token,
                         categoryId: suggestion.proposed_category?.id ?? null,
                     };
@@ -332,7 +337,9 @@ export function StepAiSuggestions({
                         suggestion={suggestion}
                         draft={
                             drafts[suggestion.id] ?? {
-                                include: true,
+                                include:
+                                    suggestion.confidence >=
+                                    state.auto_select_confidence,
                                 token: suggestion.match_token,
                                 categoryId:
                                     suggestion.proposed_category?.id ?? null,

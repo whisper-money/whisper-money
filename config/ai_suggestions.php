@@ -41,9 +41,16 @@ return [
     | this fraction of the user's uncategorized transactions (a token so
     | broad it would mis-categorise en masse).
     |
+    | "confidence_floor" is the minimum confidence for a suggestion to be SHOWN
+    | at all. "auto_select_confidence" is the higher bar at or above which a
+    | shown suggestion is pre-selected for the user; suggestions between the two
+    | are shown but left unchecked so the user opts in deliberately.
+    |
     */
 
-    'confidence_floor' => (float) env('AI_SUGGESTIONS_CONFIDENCE_FLOOR', 0.6),
+    'confidence_floor' => (float) env('AI_SUGGESTIONS_CONFIDENCE_FLOOR', 0.3),
+
+    'auto_select_confidence' => (float) env('AI_SUGGESTIONS_AUTO_SELECT', 0.6),
 
     'overbroad_fraction' => (float) env('AI_SUGGESTIONS_OVERBROAD_FRACTION', 0.4),
 
