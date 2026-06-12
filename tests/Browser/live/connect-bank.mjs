@@ -148,16 +148,25 @@ async function driveSabadell(page) {
 async function driveBbva(page) {
     await page.getByRole('button', { name: EB_CONTINUE }).click();
     await page.waitForTimeout(5000);
-    // The BBVA mockup ships hidden "Company"-tab inputs alongside the visible
-    // "Particular" ones, and the password is a type=password field (no textbox
-    // role). Indexing getByRole('textbox') therefore put the password into the
-    // visible user field and left the real password empty. Target the visible
-    // inputs by type so each value lands in the right box.
-    await page.locator('input[type="text"]:visible').first().fill(BBVA_USER);
+    // The BBVA mockup has a country-selector text input before the user field and
+    // a type=password field (no textbox role), so indexing getByRole('textbox')
+    // landed values in the wrong boxes. Target the user field by its accessible
+    // name and the password by input type.
+    await page.getByRole('textbox', { name: 'User' }).first().fill(BBVA_USER);
     await page.locator('input[type="password"]:visible').first().fill(BBVA_PASS);
     await page.getByRole('button', { name: 'Submit' }).first().click();
     await page.waitForTimeout(6000);
-    await page.getByRole('textbox', { name: 'SMS Code' }).fill(OTP);
+    // The SCA ("extra security measure") step's code field isn't reliably named
+    // "SMS Code", so fill the visible code input on that page.
+    await page
+        .getByRole('textbox', { name: 'SMS Code' })
+        .or(
+            page.locator(
+                'input[type="text"]:visible, input[type="tel"]:visible, input[type="number"]:visible',
+            ),
+        )
+        .first()
+        .fill(OTP);
     await page.waitForTimeout(300);
     await page.getByRole('button', { name: 'Confirm' }).click();
     await page.waitForTimeout(10000);
