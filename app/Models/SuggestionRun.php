@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property SuggestionRunStatus $status
+ */
 class SuggestionRun extends Model
 {
     /** @use HasFactory<SuggestionRunFactory> */
