@@ -2,7 +2,6 @@ import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -25,7 +24,7 @@ import { type Category } from '@/types/category';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
-import { Loader2, Receipt, Sparkles } from 'lucide-react';
+import { Check, Loader2, Sparkles, TextSearch } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AiSuggestion {
@@ -114,82 +113,100 @@ export function AiSuggestionCard({
 
     return (
         <div className="rounded-xl border bg-card p-4">
-            <div className="flex items-start gap-3">
-                <Checkbox
-                    checked={draft.include}
-                    onCheckedChange={(checked) =>
-                        onChange({ ...draft, include: checked === true })
-                    }
-                    className="mt-1 shrink-0"
-                    aria-label={__('Include this rule')}
-                />
+            <div className="min-w-0 flex-1 space-y-3">
+                <Label className="text-xs text-muted-foreground">
+                    {__('If the transaction')}
+                </Label>
 
-                <div className="min-w-0 flex-1 space-y-3">
-                    {/* Match: field + operator + token */}
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                        <div className="flex items-center gap-2">
-                            <Badge variant="secondary">
-                                {__(
-                                    FIELD_LABELS[suggestion.match_field] ??
-                                        'Description',
-                                )}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                                {suggestion.match_operator === 'equals'
-                                    ? __('is')
-                                    : __('contains')}
-                            </span>
-                        </div>
-                        <Input
-                            value={draft.token}
-                            onChange={(event) =>
-                                onChange({
-                                    ...draft,
-                                    token: event.target.value,
-                                })
+                {/* Match: field + operator + token */}
+                <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
+                    <Input
+                        value={__(
+                            FIELD_LABELS[suggestion.match_field] ??
+                                'Description',
+                        )}
+                        className="h-9 w-full"
+                        disabled
+                    />
+                    <Input
+                        value={
+                            suggestion.match_operator === 'equals'
+                                ? __('is')
+                                : __('contains')
+                        }
+                        className="h-9 w-full"
+                        disabled
+                    />
+                    <Input
+                        value={draft.token}
+                        onChange={(event) =>
+                            onChange({
+                                ...draft,
+                                token: event.target.value,
+                            })
+                        }
+                        className="h-9 w-full"
+                        aria-label={__('Match text')}
+                    />
+                </div>
+
+                {/* Category */}
+                <div className="flex flex-col gap-1">
+                    <Label className="pb-1 text-xs text-muted-foreground">
+                        {__('Categorize as')}
+                    </Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <CategoryCombobox
+                            value={draft.categoryId}
+                            onValueChange={(value) =>
+                                onChange({ ...draft, categoryId: value })
                             }
-                            className="h-9 w-full sm:w-48"
-                            aria-label={__('Match text')}
+                            categories={categories}
                         />
+                        {!draft.categoryId && suggestion.new_category_name && (
+                            <Badge className="gap-1 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                                <Sparkles className="size-3" />
+                                {__('New: :name', {
+                                    name: suggestion.new_category_name,
+                                })}
+                            </Badge>
+                        )}
                     </div>
+                </div>
 
-                    {/* Category */}
-                    <div className="flex flex-col gap-1">
-                        <Label className="text-xs text-muted-foreground">
-                            {__('Categorize as')}
-                        </Label>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <CategoryCombobox
-                                value={draft.categoryId}
-                                onValueChange={(value) =>
-                                    onChange({ ...draft, categoryId: value })
-                                }
-                                categories={categories}
-                            />
-                            {!draft.categoryId &&
-                                suggestion.new_category_name && (
-                                    <Badge className="gap-1 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
-                                        <Sparkles className="size-3" />
-                                        {__('New: :name', {
-                                            name: suggestion.new_category_name,
-                                        })}
-                                    </Badge>
-                                )}
-                        </div>
-                    </div>
-
+                <div className="flex gap-2">
                     {/* Preview button (carries the match count) */}
                     <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={openPreview}
-                        className="w-full gap-2 sm:w-auto"
+                        className="min-w-0 flex-1 basis-0 justify-center gap-2"
                     >
-                        <Receipt className="size-4" />
-                        {__('Preview :count matching transactions', {
-                            count: suggestion.group_size,
-                        })}
+                        <TextSearch className="size-4 shrink-0" />
+                        <span className="truncate">
+                            {__('Preview :count matching transactions', {
+                                count: suggestion.group_size,
+                            })}
+                        </span>
+                    </Button>
+
+                    {/* Enable/disable rule button */}
+                    <Button
+                        type="button"
+                        variant={draft.include ? 'outline' : 'ghost'}
+                        size="sm"
+                        onClick={() =>
+                            onChange({ ...draft, include: !draft.include })
+                        }
+                        className="min-w-0 flex-1 basis-0 justify-center gap-2"
+                    >
+                        {draft.include && <Check className="size-4 shrink-0" />}
+                        <span className="truncate">
+                            {draft.include
+                                ? __('Create rule')
+                                : __('Ignore rule')}
+                        </span>
                     </Button>
                 </div>
             </div>

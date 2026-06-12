@@ -2059,5 +2059,8 @@
     "Loading…": "Cargando…",
     ":count of :total uncategorized transactions match": ":count de :total transacciones sin categorizar coinciden",
     "Matching transactions": "Transacciones coincidentes",
-    "Preview :count matching transactions": "Ver :count transacciones coincidentes"
+    "Preview :count matching transactions": "Ver :count transacciones coincidentes",
+    "If the transaction": "Si la transacción",
+    "Create rule": "Crear regla",
+    "Ignore rule": "Ignorar regla"
 }
