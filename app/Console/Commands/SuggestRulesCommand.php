@@ -151,8 +151,11 @@ class SuggestRulesCommand extends Command
                 $suggestion->match_field,
                 $suggestion->match_operator,
                 $suggestion->match_token,
-                $suggestion->proposedCategory?->name
-                    ?? ($suggestion->new_category_name ? "NEW: {$suggestion->new_category_name}" : '—'),
+                $suggestion->proposed_category_id !== null
+                    ? $suggestion->proposedCategory->name
+                    : ($suggestion->new_category_name !== null
+                        ? "NEW: {$suggestion->new_category_name}"
+                        : '—'),
                 $suggestion->confidence,
                 $suggestion->group_size,
             ])->all(),
