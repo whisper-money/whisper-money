@@ -1645,6 +1645,7 @@
     "Uruguayan Peso": "Peso uruguayo",
     "Usage Information:": "Información de Uso:",
     "Use Defaults": "Usar Valores Predeterminados",
+    "Use a negative value for expenses (e.g. -21.99) and a positive value for income.": "Usa un valor negativo para gastos (ej. -21,99) y un valor positivo para ingresos.",
     "Use a strong password (minimum 12 characters). This password will encrypt your data.": "Usa una contraseña fuerte (mínimo 12 caracteres). Esta contraseña encriptará tus datos.",
     "Use a strong password (minimum 12 characters). This\\n                            password will encrypt your data.": "Usa una contraseña segura (mínimo 12 caracteres). Esta contraseña cifrará tus datos.",
     "Use a view-only key.": "Usa una clave de solo lectura.",

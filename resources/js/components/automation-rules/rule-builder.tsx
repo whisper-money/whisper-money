@@ -307,16 +307,25 @@ function ConditionRow({
             </Select>
 
             {showValueInput && (
-                <Input
-                    type={inputType}
-                    value={condition.value}
-                    onChange={(e) =>
-                        onChange({ ...condition, value: e.target.value })
-                    }
-                    placeholder={__('Value')}
-                    className="w-full sm:flex-1"
-                    step={inputType === 'number' ? 'any' : undefined}
-                />
+                <div className="flex w-full flex-col gap-1 sm:flex-1">
+                    <Input
+                        type={inputType}
+                        value={condition.value}
+                        onChange={(e) =>
+                            onChange({ ...condition, value: e.target.value })
+                        }
+                        placeholder={__('Value')}
+                        className="w-full"
+                        step={inputType === 'number' ? 'any' : undefined}
+                    />
+                    {inputType === 'number' && (
+                        <p className="text-xs text-muted-foreground">
+                            {__(
+                                'Use a negative value for expenses (e.g. -21.99) and a positive value for income.',
+                            )}
+                        </p>
+                    )}
+                </div>
             )}
 
             {!showValueInput && <div className="hidden sm:flex sm:flex-1" />}
