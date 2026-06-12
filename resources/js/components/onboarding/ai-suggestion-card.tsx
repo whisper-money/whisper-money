@@ -221,7 +221,7 @@ export function AiSuggestionCard({
                         variant="ghost"
                         size="sm"
                         onClick={openPreview}
-                        className="gap-2"
+                        className="w-full justify-center gap-2"
                     >
                         <TextSearch className="size-4 shrink-0" />
                         <span className="truncate">
