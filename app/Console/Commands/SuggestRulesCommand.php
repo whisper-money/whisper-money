@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\SuggestionRunStatus;
+use App\Models\RuleSuggestion;
 use App\Models\User;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use App\Services\Ai\GenerateRuleSuggestions;
@@ -146,7 +147,7 @@ class SuggestRulesCommand extends Command
 
         $this->table(
             ['Field', 'Op', 'Token', 'Category', 'Confidence', 'Matches'],
-            $run->suggestions->map(fn ($suggestion): array => [
+            $run->suggestions->map(fn (RuleSuggestion $suggestion): array => [
                 $suggestion->match_field,
                 $suggestion->match_operator,
                 $suggestion->match_token,
