@@ -2,13 +2,6 @@ import { categorize } from '@/actions/App/Http/Controllers/TransactionController
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -84,7 +77,7 @@ export function TransactionActionsMenu({
     const handleAnalysisClick = () => {
         if (!canAnalyze) {
             if (isMobile) {
-                setAnalysisHintOpen(true);
+                setAnalysisHintOpen((open) => !open);
             }
             return;
         }
@@ -130,20 +123,35 @@ export function TransactionActionsMenu({
             <ButtonGroup>
                 {features.transactionAnalysis &&
                     (isMobile ? (
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className={
-                                !canAnalyze
-                                    ? 'cursor-not-allowed opacity-50'
-                                    : ''
-                            }
-                            aria-disabled={!canAnalyze}
-                            aria-label={__('Analysis')}
-                            onClick={handleAnalysisClick}
-                        >
-                            <BarChart3 className="h-5 w-5" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip
+                                open={!canAnalyze && analysisHintOpen}
+                                onOpenChange={setAnalysisHintOpen}
+                            >
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className={
+                                            !canAnalyze
+                                                ? 'cursor-not-allowed opacity-50'
+                                                : ''
+                                        }
+                                        aria-disabled={!canAnalyze}
+                                        onClick={handleAnalysisClick}
+                                    >
+                                        <BarChart3 className="h-5 w-5" />
+                                        {__('Analysis')}
+                                    </Button>
+                                </TooltipTrigger>
+                                {!canAnalyze && (
+                                    <TooltipContent>
+                                        {__(
+                                            'Apply a filter to enable this button',
+                                        )}
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        </TooltipProvider>
                     ) : (
                         <TooltipProvider>
                             <Tooltip>
@@ -211,32 +219,36 @@ export function TransactionActionsMenu({
                     </Tooltip>
                 </TooltipProvider>
 
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className={
-                                    !isKeySet
-                                        ? 'cursor-not-allowed opacity-50'
-                                        : ''
-                                }
-                                onClick={handleAddTransaction}
-                                aria-label={__('Add transaction')}
-                            >
-                                <Plus className="h-5 w-5" />
-                                <span className="hidden sm:inline">
-                                    {__('Transaction')}
-                                </span>
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            {!isKeySet
-                                ? __('Unlock encryption to add transactions')
-                                : __('Create a new transaction')}
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+                {!isMobile && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className={
+                                        !isKeySet
+                                            ? 'cursor-not-allowed opacity-50'
+                                            : ''
+                                    }
+                                    onClick={handleAddTransaction}
+                                    aria-label={__('Add transaction')}
+                                >
+                                    <Plus className="h-5 w-5" />
+                                    <span className="hidden sm:inline">
+                                        {__('Transaction')}
+                                    </span>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                {!isKeySet
+                                    ? __(
+                                          'Unlock encryption to add transactions',
+                                      )
+                                    : __('Create a new transaction')}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
 
                 <DropdownMenu>
                     <TooltipProvider>
@@ -258,6 +270,15 @@ export function TransactionActionsMenu({
                         </Tooltip>
                     </TooltipProvider>
                     <DropdownMenuContent align="end">
+                        {isMobile && (
+                            <DropdownMenuItem
+                                onClick={handleAddTransaction}
+                                disabled={!isKeySet}
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                {__('Add transaction')}
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                             onClick={handleOpenImportDrawer}
                             disabled={!isKeySet}
@@ -293,17 +314,6 @@ export function TransactionActionsMenu({
                     filters={filters}
                 />
             )}
-
-            <Dialog open={analysisHintOpen} onOpenChange={setAnalysisHintOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{__('Analysis')}</DialogTitle>
-                        <DialogDescription>
-                            {__('Apply a filter to enable this button')}
-                        </DialogDescription>
-                    </DialogHeader>
-                </DialogContent>
-            </Dialog>
         </>
     );
 }
