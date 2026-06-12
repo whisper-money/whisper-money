@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'model' => env('AI_SUGGESTIONS_MODEL', 'gemini-2.0-flash'),
+    'model' => env('AI_SUGGESTIONS_MODEL', 'gemini-flash-latest'),
 
     /*
     |--------------------------------------------------------------------------
