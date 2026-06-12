@@ -135,6 +135,43 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(AutomationRule::class);
     }
 
+    /** @return HasMany<AiConsent, $this> */
+    public function aiConsents(): HasMany
+    {
+        return $this->hasMany(AiConsent::class);
+    }
+
+    /**
+     * Whether the user has an active, current-version AI consent.
+     */
+    public function hasActiveAiConsent(string $scope = AiConsent::SCOPE_FINANCE): bool
+    {
+        return $this->aiConsents()->active($scope)->exists();
+    }
+
+    /**
+     * Record an AI consent for the current consent version (idempotent).
+     */
+    public function recordAiConsent(string $scope = AiConsent::SCOPE_FINANCE): AiConsent
+    {
+        return $this->aiConsents()->firstOrCreate(
+            [
+                'scope' => $scope,
+                'version' => (string) config('ai_suggestions.consent_version'),
+                'revoked_at' => null,
+            ],
+            ['accepted_at' => now()],
+        );
+    }
+
+    /**
+     * Revoke any active AI consents for the given scope.
+     */
+    public function revokeAiConsent(string $scope = AiConsent::SCOPE_FINANCE): void
+    {
+        $this->aiConsents()->active($scope)->update(['revoked_at' => now()]);
+    }
+
     /** @return HasMany<Label, $this> */
     public function labels(): HasMany
     {
