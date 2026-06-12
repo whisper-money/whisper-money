@@ -11,6 +11,7 @@ import { store as storeConsent } from '@/routes/ai/consent';
 import { accept, generate, show } from '@/routes/ai/rule-suggestions';
 import { type Category } from '@/types/category';
 import { __ } from '@/utils/i18n';
+import { router } from '@inertiajs/react';
 import axios from 'axios';
 import { PartyPopper, Sparkles, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -185,8 +186,18 @@ export function StepAiSuggestions({
             const { data } = await axios.post<AcceptResponse>(accept().url, {
                 suggestions: payload,
             });
-            setSummary(data.summary);
-        } finally {
+
+            // The rules were created via axios, so refresh the Inertia props the
+            // later onboarding steps rely on (newly created rules + categories,
+            // and the transactions that just got categorized) before advancing.
+            router.reload({
+                only: ['automationRules', 'categories', 'transactions'],
+                onFinish: () => {
+                    setSummary(data.summary);
+                    setSubmitting(false);
+                },
+            });
+        } catch {
             setSubmitting(false);
         }
     };
