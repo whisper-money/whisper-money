@@ -27,9 +27,9 @@ return [
     |
     */
 
-    'min_group_count' => (int) env('AI_SUGGESTIONS_MIN_GROUP_COUNT', 3),
+    'min_group_count' => (int) env('AI_SUGGESTIONS_MIN_GROUP_COUNT', 2),
 
-    'max_groups_sent' => (int) env('AI_SUGGESTIONS_MAX_GROUPS', 15),
+    'max_groups_sent' => (int) env('AI_SUGGESTIONS_MAX_GROUPS', 40),
 
     /*
     |--------------------------------------------------------------------------
@@ -43,7 +43,7 @@ return [
     |
     */
 
-    'confidence_floor' => (float) env('AI_SUGGESTIONS_CONFIDENCE_FLOOR', 0.7),
+    'confidence_floor' => (float) env('AI_SUGGESTIONS_CONFIDENCE_FLOOR', 0.6),
 
     'overbroad_fraction' => (float) env('AI_SUGGESTIONS_OVERBROAD_FRACTION', 0.4),
 

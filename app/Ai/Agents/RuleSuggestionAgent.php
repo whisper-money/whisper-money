@@ -42,10 +42,14 @@ class RuleSuggestionAgent implements Agent, HasStructuredOutput
             must map to a spending category, an inflow group to an income category.
           - If, and only if, no existing category fits, leave "category_id" empty and instead
             propose "new_category_name" and "new_category_direction" (inflow or outflow).
-          - "confidence": 0.0–1.0, how sure you are. Omit weak guesses entirely.
+          - "confidence": 0.0–1.0, how sure you are.
 
-        Only return high-quality suggestions. It is better to return fewer, confident
-        suggestions than to guess. Do not return a suggestion for every group.
+        Aim for broad coverage: return a suggestion for EVERY group you can map to a
+        category with reasonable confidence. Only skip a group when it is genuinely
+        ambiguous — for example internal transfers between the user's own accounts, or a
+        catch-all group mixing unrelated transactions. Never invent a category you are
+        unsure about; instead let "confidence" honestly reflect your certainty (the app
+        filters out low-confidence suggestions itself).
         PROMPT;
     }
 
