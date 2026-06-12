@@ -2057,5 +2057,7 @@
     "New: :name": "Nueva: :name",
     "Preview matching transactions": "Ver transacciones coincidentes",
     "Loading…": "Cargando…",
-    ":count of :total uncategorized transactions match": ":count de :total transacciones sin categorizar coinciden"
+    ":count of :total uncategorized transactions match": ":count de :total transacciones sin categorizar coinciden",
+    "Matching transactions": "Transacciones coincidentes",
+    "Preview :count matching transactions": "Ver :count transacciones coincidentes"
 }

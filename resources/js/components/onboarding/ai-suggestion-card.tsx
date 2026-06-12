@@ -1,14 +1,31 @@
 import { CategoryCombobox } from '@/components/shared/category-combobox';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { preview } from '@/routes/ai/rule-suggestions';
 import { type Category } from '@/types/category';
+import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
-import { ChevronDown, Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Receipt, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AiSuggestion {
@@ -63,21 +80,18 @@ export function AiSuggestionCard({
     categories,
     onChange,
 }: AiSuggestionCardProps) {
-    const [expanded, setExpanded] = useState(false);
+    const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [previewData, setPreviewData] = useState<PreviewResponse | null>(
         null,
     );
+    const [fetchedToken, setFetchedToken] = useState<string | null>(null);
 
-    const loadPreview = async () => {
-        if (expanded) {
-            setExpanded(false);
-            return;
-        }
+    const openPreview = async () => {
+        setOpen(true);
 
-        setExpanded(true);
-
-        if (previewData) {
+        // Refetch when the token changed since the last load.
+        if (previewData && fetchedToken === draft.token) {
             return;
         }
 
@@ -92,6 +106,7 @@ export function AiSuggestionCard({
                 `${preview().url}?${query.toString()}`,
             );
             setPreviewData(data);
+            setFetchedToken(draft.token);
         } finally {
             setLoading(false);
         }
@@ -105,47 +120,45 @@ export function AiSuggestionCard({
                     onCheckedChange={(checked) =>
                         onChange({ ...draft, include: checked === true })
                     }
-                    className="mt-1"
+                    className="mt-1 shrink-0"
                     aria-label={__('Include this rule')}
                 />
 
-                <div className="flex-1 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary">
-                            {__(
-                                FIELD_LABELS[suggestion.match_field] ??
-                                    'Description',
-                            )}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                            {suggestion.match_operator === 'equals'
-                                ? __('is')
-                                : __('contains')}
-                        </span>
+                <div className="min-w-0 flex-1 space-y-3">
+                    {/* Match: field + operator + token */}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                        <div className="flex items-center gap-2">
+                            <Badge variant="secondary">
+                                {__(
+                                    FIELD_LABELS[suggestion.match_field] ??
+                                        'Description',
+                                )}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                                {suggestion.match_operator === 'equals'
+                                    ? __('is')
+                                    : __('contains')}
+                            </span>
+                        </div>
                         <Input
                             value={draft.token}
-                            onChange={(event) => {
-                                setPreviewData(null);
+                            onChange={(event) =>
                                 onChange({
                                     ...draft,
                                     token: event.target.value,
-                                });
-                            }}
-                            className="h-8 w-40"
+                                })
+                            }
+                            className="h-9 w-full sm:w-48"
                             aria-label={__('Match text')}
                         />
-                        <Badge variant="outline">
-                            {__(':count transactions', {
-                                count: suggestion.group_size,
-                            })}
-                        </Badge>
                     </div>
 
+                    {/* Category */}
                     <div className="flex flex-col gap-1">
                         <Label className="text-xs text-muted-foreground">
                             {__('Categorize as')}
                         </Label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <CategoryCombobox
                                 value={draft.categoryId}
                                 onValueChange={(value) =>
@@ -165,47 +178,73 @@ export function AiSuggestionCard({
                         </div>
                     </div>
 
-                    <button
+                    {/* Preview button (carries the match count) */}
+                    <Button
                         type="button"
-                        onClick={loadPreview}
-                        className="flex items-center gap-1 text-xs font-medium text-violet-600 hover:underline dark:text-violet-400"
+                        variant="outline"
+                        size="sm"
+                        onClick={openPreview}
+                        className="w-full gap-2 sm:w-auto"
                     >
-                        <ChevronDown
-                            className={`size-3 transition-transform ${expanded ? 'rotate-180' : ''}`}
-                        />
-                        {__('Preview matching transactions')}
-                    </button>
+                        <Receipt className="size-4" />
+                        {__('Preview :count matching transactions', {
+                            count: suggestion.group_size,
+                        })}
+                    </Button>
+                </div>
+            </div>
 
-                    {expanded && (
-                        <div className="rounded-lg bg-muted/50 p-3">
-                            {loading ? (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="size-4 animate-spin" />
-                                    {__('Loading…')}
-                                </div>
-                            ) : previewData ? (
-                                <div className="space-y-2">
-                                    <p className="text-xs text-muted-foreground">
-                                        {__(
-                                            ':count of :total uncategorized transactions match',
-                                            {
-                                                count: previewData.match_count,
-                                                total: previewData.total_uncategorized,
-                                            },
-                                        )}
-                                    </p>
-                                    <ul className="space-y-1">
-                                        {previewData.transactions
-                                            .slice(0, 5)
-                                            .map((transaction) => (
-                                                <li
-                                                    key={transaction.id}
-                                                    className="flex items-center justify-between gap-2 text-sm"
-                                                >
-                                                    <span className="truncate text-foreground">
-                                                        {transaction.description ??
-                                                            '—'}
-                                                    </span>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent className="max-h-[85vh] gap-0 overflow-hidden p-0 sm:max-w-2xl">
+                    <DialogHeader className="space-y-1 p-6 pb-4">
+                        <DialogTitle>{__('Matching transactions')}</DialogTitle>
+                        <DialogDescription>
+                            {previewData
+                                ? __(
+                                      ':count of :total uncategorized transactions match',
+                                      {
+                                          count: previewData.match_count,
+                                          total: previewData.total_uncategorized,
+                                      },
+                                  )
+                                : __('Loading…')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="max-h-[60vh] overflow-y-auto border-t">
+                        {loading ? (
+                            <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+                                <Loader2 className="size-4 animate-spin" />
+                                {__('Loading…')}
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader className="sticky top-0 bg-background">
+                                    <TableRow>
+                                        <TableHead>{__('Date')}</TableHead>
+                                        <TableHead>
+                                            {__('Description')}
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            {__('Amount')}
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {previewData?.transactions.map(
+                                        (transaction) => (
+                                            <TableRow key={transaction.id}>
+                                                <TableCell className="whitespace-nowrap text-muted-foreground">
+                                                    {formatDate(
+                                                        transaction.transaction_date,
+                                                        'd MMM yyyy',
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="max-w-[18rem] truncate">
+                                                    {transaction.description ??
+                                                        '—'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
                                                     <AmountDisplay
                                                         amountInCents={
                                                             transaction.amount
@@ -214,15 +253,16 @@ export function AiSuggestionCard({
                                                             transaction.currency_code
                                                         }
                                                     />
-                                                </li>
-                                            ))}
-                                    </ul>
-                                </div>
-                            ) : null}
-                        </div>
-                    )}
-                </div>
-            </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ),
+                                    )}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

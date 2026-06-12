@@ -68,7 +68,7 @@ class RuleSuggestionController extends Controller
         $operator = (string) $request->validated('match_operator');
         $token = (string) $request->validated('match_token');
 
-        $matches = $matcher->matching($user, $field, $operator, $token, 25);
+        $matches = $matcher->matching($user, $field, $operator, $token, 100);
 
         return response()->json([
             'match_count' => $matcher->countMatching($user, $field, $operator, $token),
