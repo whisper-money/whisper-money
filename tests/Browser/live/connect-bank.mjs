@@ -148,9 +148,13 @@ async function driveSabadell(page) {
 async function driveBbva(page) {
     await page.getByRole('button', { name: EB_CONTINUE }).click();
     await page.waitForTimeout(5000);
-    const textboxes = await page.getByRole('textbox').all();
-    await textboxes[0].fill(BBVA_USER);
-    await textboxes[1].fill(BBVA_PASS);
+    // The BBVA mockup ships hidden "Company"-tab inputs alongside the visible
+    // "Particular" ones, and the password is a type=password field (no textbox
+    // role). Indexing getByRole('textbox') therefore put the password into the
+    // visible user field and left the real password empty. Target the visible
+    // inputs by type so each value lands in the right box.
+    await page.locator('input[type="text"]:visible').first().fill(BBVA_USER);
+    await page.locator('input[type="password"]:visible').first().fill(BBVA_PASS);
     await page.getByRole('button', { name: 'Submit' }).first().click();
     await page.waitForTimeout(6000);
     await page.getByRole('textbox', { name: 'SMS Code' }).fill(OTP);
