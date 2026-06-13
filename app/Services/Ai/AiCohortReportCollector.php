@@ -8,15 +8,15 @@ use Carbon\CarbonImmutable;
 
 class AiCohortReportCollector
 {
-    public const ELIGIBILITY_WINDOW_DAYS = 7;
+    private const ELIGIBILITY_WINDOW_DAYS = 7;
 
-    public const RETENTION_DAYS = 14;
+    private const RETENTION_DAYS = 14;
 
-    public const TRIAL_DAYS = 14;
+    private const TRIAL_DAYS = 14;
 
-    public const PAID_DAYS = 30;
+    private const PAID_DAYS = 30;
 
-    public const DEFAULT_WEEKS = 16;
+    private const DEFAULT_WEEKS = 16;
 
     private const SURGE_MULTIPLIER = 2.5;
 
@@ -122,7 +122,7 @@ class AiCohortReportCollector
         $threshold = (int) config('ai_suggestions.eligibility_min_transactions', 50);
         $excluded = (array) config('ai_suggestions.report.excluded_emails', []);
 
-        $users = User::query()
+        $rows = User::query()
             ->when($excluded !== [], fn ($query) => $query->whereNotIn('email', $excluded))
             ->where('users.created_at', '>=', $windowStart)
             ->whereHas('transactions', function ($query): void {
@@ -130,28 +130,28 @@ class AiCohortReportCollector
                     'transactions.created_at <= DATE_ADD(users.created_at, INTERVAL '.self::ELIGIBILITY_WINDOW_DAYS.' DAY)',
                 );
             }, '>=', $threshold)
-            ->select('users.id')
             ->selectRaw('YEARWEEK(users.created_at, 3) as yearweek')
             ->selectRaw('(users.last_active_at IS NOT NULL AND users.last_active_at >= DATE_ADD(users.created_at, INTERVAL '.self::RETENTION_DAYS.' DAY)) as retained')
             ->selectRaw('EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = users.id AND s.created_at <= DATE_ADD(users.created_at, INTERVAL '.self::TRIAL_DAYS.' DAY)) as has_trial')
             ->selectRaw("EXISTS(SELECT 1 FROM subscriptions s WHERE s.user_id = users.id AND s.stripe_status = 'active' AND s.created_at <= DATE_ADD(users.created_at, INTERVAL ".self::PAID_DAYS.' DAY)) as has_paid')
             ->selectRaw('EXISTS(SELECT 1 FROM ai_consents c WHERE c.user_id = users.id AND c.accepted_at IS NOT NULL) as ai_accepted')
+            ->toBase()
             ->get();
 
         $aggregates = [];
 
-        foreach ($users as $user) {
-            $key = (int) $user->yearweek;
+        foreach ($rows as $row) {
+            $key = (int) $row->yearweek;
 
             if (! isset($aggregates[$key])) {
                 $aggregates[$key] = ['eligible' => 0, 'retained' => 0, 'trial' => 0, 'paid' => 0, 'aiAccepted' => 0];
             }
 
             $aggregates[$key]['eligible']++;
-            $aggregates[$key]['retained'] += (int) $user->retained;
-            $aggregates[$key]['trial'] += (int) $user->has_trial;
-            $aggregates[$key]['paid'] += (int) $user->has_paid;
-            $aggregates[$key]['aiAccepted'] += (int) $user->ai_accepted;
+            $aggregates[$key]['retained'] += (int) $row->retained;
+            $aggregates[$key]['trial'] += (int) $row->has_trial;
+            $aggregates[$key]['paid'] += (int) $row->has_paid;
+            $aggregates[$key]['aiAccepted'] += (int) $row->ai_accepted;
         }
 
         return $aggregates;
