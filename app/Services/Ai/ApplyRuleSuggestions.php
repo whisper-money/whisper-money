@@ -139,7 +139,7 @@ class ApplyRuleSuggestions
                 : ['in' => [$condition['token'], $variable]];
         }, $conditions);
 
-        return count($clauses) === 1 ? $clauses[0] : ['or' => array_values($clauses)];
+        return count($clauses) === 1 ? $clauses[0] : ['or' => $clauses];
     }
 
     /**

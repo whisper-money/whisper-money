@@ -111,8 +111,8 @@ class UncategorizedTransactionMatcher implements TransactionMatcher
     {
         $valid = array_values(array_filter(
             $conditions,
-            fn (array $condition): bool => in_array($condition['field'] ?? null, self::ALLOWED_FIELDS, true)
-                && trim((string) ($condition['token'] ?? '')) !== '',
+            fn (array $condition): bool => in_array($condition['field'], self::ALLOWED_FIELDS, true)
+                && trim($condition['token']) !== '',
         ));
 
         if ($valid === []) {
@@ -122,9 +122,9 @@ class UncategorizedTransactionMatcher implements TransactionMatcher
         return $this->baseQuery($user)->where(function (Builder $builder) use ($valid): void {
             foreach ($valid as $condition) {
                 $field = $condition['field'];
-                $token = mb_strtolower(trim((string) $condition['token']));
+                $token = mb_strtolower(trim($condition['token']));
 
-                if (($condition['operator'] ?? 'contains') === 'equals') {
+                if ($condition['operator'] === 'equals') {
                     $builder->orWhereRaw("LOWER({$field}) = ?", [$token]);
 
                     continue;

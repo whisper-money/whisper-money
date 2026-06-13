@@ -20,7 +20,6 @@
  * pipeline code (aggregator/guard/config), never from editing this file.
  */
 
-use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\Ai\RuleSuggestionAggregator;
