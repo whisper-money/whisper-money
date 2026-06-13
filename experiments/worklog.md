@@ -77,6 +77,30 @@ categorize for `victoor89@gmail.com`.
   truth; prompt/batch experiments are judged by real_tx regardless.
 - Segment-1 baseline: reachable_tx=1027, real_tx≈925.
 
+### Run 6: send all groups (min_group_count=1, max_groups_sent=500) — reachable 1329 (KEEP)
+- What changed: config min_group_count 2->1, max_groups_sent 150->500.
+- Result: reachable_tx 1027->1329 (100%), groups_sent 441. real_tx=1124 (84.6%,
+  one clean sample; 2 of 3 sample runs failed operationally — 12 batches/run is
+  slow + fragile, one failed batch lost the whole run). Tests green.
+- Insight: singletons (one-off merchants) ARE realizable — adding them lifted
+  real coverage 925->1124. But high batch counts need resilience.
+
+### Run 7: resilient batched generation — real_tx 1122 reliable (KEEP)
+- What changed: LaravelAiRuleSuggestionGenerator retries each batch once,
+  tolerates partial-batch failures (keeps successful batches), only rethrows if
+  every batch fails. Added 3 generator tests.
+- Result: reachable_tx 1329 (unchanged). real_tx=1122 reproducible (was 1124).
+  Full AI suite 27/27, pint clean.
+- Insight: the run-6 fragility was operational, not a model limit. With
+  resilience the min1/cap500 config reliably lands ~1122 (84%).
+
+### STOPPED by user after run 7.
+
+## Final Result
+- real_tx 416 -> 1122 of 1329 (31% -> 84%) for victoor89@gmail.com.
+- All changes language-agnostic (pan-EU safe): frequency clustering, batching,
+  caps, resilience. No hardcoded wordlists in product code.
+
 ## Key Insights
 - `max_groups_sent=40` is the first hard cap: reachable=515 of a possible 830
   at count≥2. Lifting it is the cheapest ceiling win.
@@ -85,5 +109,12 @@ categorize for `victoor89@gmail.com`.
 - Real model is conservative (skips groups). Prompt/batching may matter as much
   as thresholds, but must be judged by real_tx.
 
-## Next Ideas
-- See autoresearch.md Idea Backlog.
+## Next Ideas (not yet tried)
+- Decide the production default: aggressive min1/cap500 (max coverage, ~12
+  Gemini calls/run, one-off rules) vs balanced min2/cap~200 (reachable≈1049,
+  ~5 calls, recurring merchants only). Quantify real_tx for the balanced config.
+- Prompt experiment (real_tx-judged): close the 1122->1329 gap by insisting on
+  exhaustive mapping + multilingual merchant-token extraction.
+- group_batch_size tuning (speed vs enumeration quality).
+- Run batches concurrently to cut wall-clock of the many-batch config.
+- noise_token_fraction sweep (0.015 looked marginally best deterministically).
