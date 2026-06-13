@@ -8,4 +8,4 @@ Ground truth (live Gemini) at baseline: real_tx ≈ 416 (median of 437/410/400).
 
 | # | commit | oracle_tx | reachable_tx | groups_sent | real_tx | status | description |
 |---|--------|-----------|--------------|-------------|---------|--------|-------------|
-| 1 | 54cd8c7 | 830 | 515 | 40 | 416 | keep | baseline + frozen oracle benchmark scaffold |
+| 1 | 592afa7 | 830 | 515 | 40 | 416 | keep | baseline + frozen oracle benchmark scaffold |
