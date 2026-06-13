@@ -5,6 +5,7 @@ namespace App\Services\Ai;
 use App\Ai\Agents\RuleSuggestionAgent;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
 use Laravel\Ai\Enums\Lab;
+use Throwable;
 
 class LaravelAiRuleSuggestionGenerator implements RuleSuggestionGenerator
 {
@@ -15,16 +16,49 @@ class LaravelAiRuleSuggestionGenerator implements RuleSuggestionGenerator
         }
 
         $batchSize = max(1, (int) config('ai_suggestions.group_batch_size'));
+        $batches = array_chunk($groups, $batchSize);
 
         $suggestions = [];
+        $failures = 0;
+        $lastError = null;
 
-        foreach (array_chunk($groups, $batchSize) as $batch) {
-            foreach ($this->generateBatch($batch, $categoryOptions) as $suggestion) {
-                $suggestions[] = $suggestion;
+        foreach ($batches as $batch) {
+            try {
+                foreach ($this->generateBatchWithRetry($batch, $categoryOptions) as $suggestion) {
+                    $suggestions[] = $suggestion;
+                }
+            } catch (Throwable $exception) {
+                // A single batch failing must not discard the suggestions from
+                // the batches that did succeed (a run can span many batches).
+                $failures++;
+                $lastError = $exception;
+                report($exception);
             }
         }
 
+        // Only surface an error when every batch failed — otherwise a transient
+        // hiccup would masquerade as "no suggestions" and silently swallow it.
+        if ($lastError !== null && $failures === count($batches)) {
+            throw $lastError;
+        }
+
         return $suggestions;
+    }
+
+    /**
+     * Send one batch, retrying once on a transient failure before giving up.
+     *
+     * @param  list<array<string, mixed>>  $groups
+     * @param  list<array<string, mixed>>  $categoryOptions
+     * @return list<array<string, mixed>>
+     */
+    private function generateBatchWithRetry(array $groups, array $categoryOptions): array
+    {
+        try {
+            return $this->generateBatch($groups, $categoryOptions);
+        } catch (Throwable) {
+            return $this->generateBatch($groups, $categoryOptions);
+        }
     }
 
     /**
