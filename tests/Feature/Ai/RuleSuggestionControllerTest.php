@@ -16,6 +16,7 @@ beforeEach(function () {
     config()->set('ai_suggestions.eligibility_min_transactions', 50);
     config()->set('ai_suggestions.confidence_floor', 0.7);
     config()->set('ai_suggestions.overbroad_fraction', 0.4);
+    config()->set('ai_suggestions.min_match_count', 1);
 
     $this->user = User::factory()->notOnboarded()->create();
     $this->account = Account::factory()->for($this->user)->create();
@@ -121,6 +122,59 @@ it('groups pending suggestions that share a category into one card', function ()
         ->and($response->json('suggestions.0.values'))->toHaveCount(2)
         ->and($response->json('suggestions.0.group_size'))->toBe(50)
         ->and($response->json('suggestions.0.proposed_category.id'))->toBe($groceries->id);
+});
+
+it('hides suggestions matching fewer transactions than the configured minimum', function () {
+    config()->set('ai_suggestions.min_match_count', 10);
+
+    $groceries = Category::factory()->for($this->user)->create(['name' => 'Groceries', 'type' => 'expense']);
+    $shopping = Category::factory()->for($this->user)->create(['name' => 'Shopping', 'type' => 'expense']);
+    $this->user->recordAiConsent();
+    seedTransactions($this->user, $this->account); // 6 MERCADONA + 44 UNIQUE MERCHANT
+
+    $run = SuggestionRun::factory()->for($this->user)->create(['status' => SuggestionRunStatus::Completed]);
+    RuleSuggestion::factory()->for($run, 'run')->create([
+        'match_field' => 'creditor_name', 'match_operator' => 'equals', 'match_token' => 'mercadona',
+        'proposed_category_id' => $groceries->id, 'group_size' => 6,
+    ]);
+    RuleSuggestion::factory()->for($run, 'run')->create([
+        'match_field' => 'description', 'match_operator' => 'contains', 'match_token' => 'unique merchant',
+        'proposed_category_id' => $shopping->id, 'group_size' => 44,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('ai.rule-suggestions.show'))
+        ->assertOk();
+
+    // The MERCADONA card matches only 6 transactions (< 10) and is dropped.
+    expect($response->json('suggestions'))->toHaveCount(1)
+        ->and($response->json('suggestions.0.group_size'))->toBe(44)
+        ->and($response->json('suggestions.0.proposed_category.id'))->toBe($shopping->id);
+});
+
+it('shows every suggestion when the minimum match count is one', function () {
+    config()->set('ai_suggestions.min_match_count', 1);
+
+    $groceries = Category::factory()->for($this->user)->create(['name' => 'Groceries', 'type' => 'expense']);
+    $shopping = Category::factory()->for($this->user)->create(['name' => 'Shopping', 'type' => 'expense']);
+    $this->user->recordAiConsent();
+    seedTransactions($this->user, $this->account);
+
+    $run = SuggestionRun::factory()->for($this->user)->create(['status' => SuggestionRunStatus::Completed]);
+    RuleSuggestion::factory()->for($run, 'run')->create([
+        'match_field' => 'creditor_name', 'match_operator' => 'equals', 'match_token' => 'mercadona',
+        'proposed_category_id' => $groceries->id, 'group_size' => 6,
+    ]);
+    RuleSuggestion::factory()->for($run, 'run')->create([
+        'match_field' => 'description', 'match_operator' => 'contains', 'match_token' => 'unique merchant',
+        'proposed_category_id' => $shopping->id, 'group_size' => 44,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('ai.rule-suggestions.show'))
+        ->assertOk();
+
+    expect($response->json('suggestions'))->toHaveCount(2);
 });
 
 it('reuses the latest run while throttled instead of generating again', function () {

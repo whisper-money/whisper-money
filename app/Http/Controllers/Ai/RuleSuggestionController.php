@@ -202,6 +202,7 @@ class RuleSuggestionController extends Controller
     private function serializeSuggestions(SuggestionRun $run): array
     {
         $user = $run->user;
+        $minMatchCount = (int) config('ai_suggestions.min_match_count');
 
         return $run->suggestions()
             ->with('proposedCategory')
@@ -236,6 +237,7 @@ class RuleSuggestionController extends Controller
                     'values' => $values,
                 ];
             })
+            ->filter(fn (array $suggestion): bool => $suggestion['group_size'] >= $minMatchCount)
             ->sortByDesc('group_size')
             ->values()
             ->all();

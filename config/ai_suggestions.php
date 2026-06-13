@@ -72,6 +72,16 @@ return [
     'overbroad_fraction' => (float) env('AI_SUGGESTIONS_OVERBROAD_FRACTION', 0.4),
 
     /*
+    | "min_match_count" hides a suggestion card unless the rule it represents
+    | would match at least this many of the user's uncategorized transactions.
+    | Unlike "min_group_count" (which filters raw groups before the model runs),
+    | this is applied to the final OR-rule's real match count at display time, so
+    | low-impact rules are never shown. Set to 1 to keep every suggestion visible.
+    */
+
+    'min_match_count' => (int) env('AI_SUGGESTIONS_MIN_MATCH_COUNT', 10),
+
+    /*
     |--------------------------------------------------------------------------
     | Eligibility & throttle
     |--------------------------------------------------------------------------
