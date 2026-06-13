@@ -54,6 +54,11 @@ Milestone ground truth: `php artisan tinker experiments/calibrate_real.php`.
 - Do not touch the user's DB rows further (already reset).
 
 ## Constraints
+- LANGUAGE-AGNOSTIC: the user base is pan-European (ES/DE/FR/IT/…), so NO product
+  change may hardcode Spanish (or any single-language) wordlists. Clustering /
+  noise removal must be statistical (e.g. per-user token frequency) or delegated
+  to the multilingual model. The Spanish stoplist in `experiments/bench.php` is a
+  measurement-only artifact for this one Spanish user — never ship its approach.
 - Every kept change must keep the AI test suite green
   (`php artisan test --compact tests/Feature/Ai`).
 - Keep PHP style (`vendor/bin/pint --dirty`).
@@ -71,10 +76,16 @@ Milestone ground truth: `php artisan tinker experiments/calibrate_real.php`.
   (prompt/batching).
 
 ## Idea Backlog (rough priority)
-1. max_groups_sent 40 → ~150 (covers all count≥2 groups; reachable 515→830).
-2. Better description normalization: strip Spanish bank noise so variants of the
-   same merchant collapse → more count≥2 groups, cleaner tokens.
-3. min_group_count 2 → 1 (adds 499 singleton groups; ceiling toward 1300).
-4. Tune overbroad_fraction / confidence_floor.
-5. Prompt: insist on covering EVERY group + merchant-token extraction (real_tx).
-6. Batch the Gemini call to send all groups without payload blowup (real_tx).
+1. [DONE r2] max_groups_sent 40 → 150 (covers all count≥2 groups).
+2. [DONE r3] Batch the Gemini call so a big payload doesn't make the model
+   under-enumerate (real_tx).
+3. LANGUAGE-AGNOSTIC clustering: strip noise tokens by per-user document
+   frequency (words shared across many of THIS user's groups are noise in any
+   language), not by a hardcoded wordlist. Merges merchant variants → more
+   count≥2 groups, cleaner tokens. Replaces the old "strip Spanish noise" idea.
+4. min_group_count 2 → 1 (adds 499 singleton groups; ceiling toward 1300).
+5. Tune overbroad_fraction / confidence_floor.
+6. Prompt: insist on covering EVERY group + multilingual merchant-token
+   extraction (real_tx).
+7. Use AI over all transaction descriptions (CSV-style) to discover groups —
+   user idea; explore as an alternative to PHP pre-aggregation.

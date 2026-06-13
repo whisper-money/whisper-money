@@ -26,6 +26,57 @@ categorize for `victoor89@gmail.com`.
   and the realization gap (prompt/batching) are open levers.
 - Next: raise max_groups_sent toward 150 (cover all count≥2 groups).
 
+### Run 2: max_groups_sent 40 -> 150 — oracle_tx=1229 (KEEP)
+- Timestamp: 2026-06-13
+- What changed: config/ai_suggestions.php default max_groups_sent 40 -> 150.
+- Result: oracle_tx 830->1229 (+48%), reachable 515->828, groups_sent 150,
+  coverage 92.48%. Tests 24/24 green. Real_tx (3 runs): 711 / 214 / 774,
+  median 711 (baseline 416).
+- Insight: ceiling lift works AND the median real run nearly doubles. BUT the
+  live model is now UNSTABLE on the big single payload — one run returned only
+  9 suggestions (real_tx 214 < baseline). gemini-flash under-enumerates a large
+  structured-output request. The realization axis is now the bottleneck.
+- Next: BATCH the Gemini call (chunk groups into reliable-size requests, merge
+  raw suggestions). Should stabilize + realize the high ceiling. Judge by
+  real_tx (oracle unaffected — same groups/guard).
+
+### Run 3: batch Gemini calls (group_batch_size=40) — real_tx 416->903 (KEEP)
+- Timestamp: 2026-06-13
+- What changed: LaravelAiRuleSuggestionGenerator now array_chunks groups into
+  group_batch_size(40) per-request batches and merges suggestions. New config
+  key ai_suggestions.group_batch_size.
+- Result: oracle_tx unchanged (1229 — bench bypasses generator). real_tx (3
+  runs): 970/903/885, median 903; raw suggestions ~125 stable (was 9..50);
+  validated ~88. Tests 24/24 green, pint clean.
+- Insight: the 150-group instability was purely a single-payload enumeration
+  failure. Smaller batches make the multilingual model reliably enumerate every
+  group. Real coverage 416->903 (+117%), now 68% of all tx and 74% of the oracle
+  ceiling (was 50%). Decision metric here is real_tx (primary oracle unmoved).
+- Next: language-agnostic clustering (per-user token document-frequency noise
+  removal) to merge merchant variants — must NOT hardcode Spanish (pan-EU users).
+
+### Run 4: language-agnostic frequency-based grouping — reachable 828->1027 (KEEP)
+- Timestamp: 2026-06-13
+- What changed: RuleSuggestionAggregator keys descriptions on distinctive
+  (low document-frequency) tokens; drops words in >noise_token_fraction(2%) of
+  tx (language-agnostic, no wordlist); fallback keeps all if all common. New
+  config ai_suggestions.noise_token_fraction.
+- Result: reachable_tx 828->1027 (singletons 499->291), validated 72->115,
+  oracle_tx ~flat (1229->1222, saturated). real_tx (3 runs) 950/900/925 median
+  925 — FLAT vs batching's 903 (mean 919 vs 925). Tests 24/24, pint clean.
+- Insight: clustering raises the realizable ceiling (+199 reachable) but the
+  live model already covered most via good tokens, so real_tx barely moved THIS
+  step. The headroom matters for the next levers. oracle_tx is now saturated
+  near the 1329 total and is a poor primary.
+- Decision: KEEP (language-agnostic per user steer, cleaner groups, +200
+  reachable headroom, no real regression).
+
+### Segment switch (run 5): primary metric -> reachable_tx
+- oracle_tx saturated (~1222/1329); switched the deterministic loop primary to
+  reachable_tx (sensitive to clustering). real_tx stays the milestone ground
+  truth; prompt/batch experiments are judged by real_tx regardless.
+- Segment-1 baseline: reachable_tx=1027, real_tx≈925.
+
 ## Key Insights
 - `max_groups_sent=40` is the first hard cap: reachable=515 of a possible 830
   at count≥2. Lifting it is the cheapest ceiling win.

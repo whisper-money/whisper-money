@@ -24,12 +24,28 @@ return [
     | contain before it is worth suggesting a rule for (filters one-offs).
     | "max_groups_sent" caps how many groups are sent to the model per run,
     | keeping the payload — and the cost — bounded.
+    | "group_batch_size" splits those groups into smaller per-request batches:
+    | a large single payload makes the model under-enumerate (it silently skips
+    | groups), so we send reliable-size chunks and merge the suggestions.
     |
     */
 
-    'min_group_count' => (int) env('AI_SUGGESTIONS_MIN_GROUP_COUNT', 2),
+    'min_group_count' => (int) env('AI_SUGGESTIONS_MIN_GROUP_COUNT', 1),
 
-    'max_groups_sent' => (int) env('AI_SUGGESTIONS_MAX_GROUPS', 40),
+    'max_groups_sent' => (int) env('AI_SUGGESTIONS_MAX_GROUPS', 500),
+
+    'group_batch_size' => (int) env('AI_SUGGESTIONS_GROUP_BATCH_SIZE', 40),
+
+    /*
+    | "noise_token_fraction" makes description grouping language-agnostic: a word
+    | appearing in more than this fraction of the user's uncategorized
+    | transactions is treated as structural noise ("pago", "carte", "zahlung", a
+    | city, …) and dropped from the grouping key, so variants of the same
+    | merchant collapse into one group regardless of language. If every word in a
+    | description is common, the full set is kept as a fallback.
+    */
+
+    'noise_token_fraction' => (float) env('AI_SUGGESTIONS_NOISE_FRACTION', 0.02),
 
     /*
     |--------------------------------------------------------------------------
