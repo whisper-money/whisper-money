@@ -126,6 +126,11 @@ class BankingConnection extends Model
         return $this->provider === 'enablebanking';
     }
 
+    public function isWise(): bool
+    {
+        return $this->provider === 'wise';
+    }
+
     public function hasPendingAccounts(): bool
     {
         return ! empty($this->pending_accounts_data);
