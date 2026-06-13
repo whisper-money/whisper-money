@@ -108,4 +108,26 @@ return [
 
     'consent_version' => (string) env('AI_SUGGESTIONS_CONSENT_VERSION', '1'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cohort Report
+    |--------------------------------------------------------------------------
+    |
+    | Settings for the weekly AI-suggestions cohort report (the
+    | `stats:ai-cohort-report` command). `weeks` is how many weekly cohorts to
+    | include; `excluded_emails` is a comma-separated list of staff/test
+    | accounts (e.g. the user who plants the release-anchor consent) that must
+    | be kept out of the cohort metrics.
+    |
+    */
+
+    'report' => [
+        'weeks' => (int) env('AI_SUGGESTIONS_REPORT_WEEKS', 16),
+
+        'excluded_emails' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('AI_SUGGESTIONS_REPORT_EXCLUDED_EMAILS', '')),
+        ))),
+    ],
+
 ];

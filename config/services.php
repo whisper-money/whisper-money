@@ -45,6 +45,7 @@ return [
 
     'discord' => [
         'webhook_url' => env('DISCORD_WEBHOOK_URL'),
+        'ai_cohort_webhook_url' => env('DISCORD_AI_COHORT_WEBHOOK_URL'),
     ],
 
 ];
