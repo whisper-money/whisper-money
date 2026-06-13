@@ -35,7 +35,7 @@ return [
 
     'max_groups_sent' => (int) env('AI_SUGGESTIONS_MAX_GROUPS', 500),
 
-    'group_batch_size' => (int) env('AI_SUGGESTIONS_GROUP_BATCH_SIZE', 40),
+    'group_batch_size' => (int) env('AI_SUGGESTIONS_GROUP_BATCH_SIZE', 50),
 
     /*
     | "noise_token_fraction" makes description grouping language-agnostic: a word
