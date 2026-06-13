@@ -1984,6 +1984,13 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Albert G.',
+            gravatar: 'bb92a036f4feb9d12d0a70dd2d9a5c5f',
+            text: __(
+                'The app is intuitive, functional, and a real help for managing my finances day to day. What stands out most is how much the free version offers — it really shows your commitment to your users. I’ll keep recommending it!',
+            ),
+        },
+        {
             name: 'Víctor Falcón (co-owner)',
             gravatar: '50901af884c50a8f12804b0cf3aeb98a',
             text: __(
