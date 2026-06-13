@@ -9,16 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { store as storeConsent } from '@/routes/ai/consent';
 import { accept, generate, show } from '@/routes/ai/rule-suggestions';
+import { type SharedData } from '@/types';
 import { type Category } from '@/types/category';
+import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { Loader2, PartyPopper, Sparkles, Wand2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface SuggestionState {
     available: boolean;
     consented: boolean;
+    requires_upgrade: boolean;
     eligible: boolean;
     transaction_count: number;
     min_transactions: number;
@@ -273,6 +276,7 @@ export function StepAiSuggestions({
                         'With your permission, we’ll send merchant names from your transactions to our AI provider to suggest categorization rules. We never send your full financial picture, and you review every rule before it’s created.',
                     )}
                 />
+                {state.requires_upgrade && <UpgradeNotice />}
                 <div className="flex flex-col items-center gap-3">
                     <StepButton
                         text={__('Suggest my rules with AI')}
@@ -406,6 +410,48 @@ export function StepAiSuggestions({
                     {__('Skip for now')}
                 </Button>
             </div>
+        </div>
+    );
+}
+
+/**
+ * Warns free users (who haven't linked a bank yet) that turning on AI
+ * suggestions commits them to picking a paid plan at the end of onboarding,
+ * mirroring the notice shown when choosing a connected account.
+ */
+function UpgradeNotice() {
+    const { pricing, locale } = usePage<SharedData>().props;
+
+    const cheapestMonthlyPrice = useMemo(() => {
+        const plans = Object.values(pricing.plans);
+        if (plans.length === 0) {
+            return null;
+        }
+        return Math.min(
+            ...plans.map((plan) =>
+                plan.billing_period === 'year' ? plan.price / 12 : plan.price,
+            ),
+        );
+    }, [pricing.plans]);
+
+    return (
+        <div className="w-full max-w-md rounded-lg border border-emerald-100 bg-emerald-50 p-3 dark:border-emerald-900/50 dark:bg-emerald-900/20">
+            <p className="text-center text-sm text-emerald-700 dark:text-emerald-300">
+                {__(
+                    "AI suggestions are a Standard Plan feature. You'll choose a plan at the end of the onboarding.",
+                )}
+            </p>
+            {cheapestMonthlyPrice !== null && (
+                <p className="mt-1 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    {__('From')}{' '}
+                    {formatCurrency(
+                        cheapestMonthlyPrice * 100,
+                        pricing.currency,
+                        locale,
+                    )}
+                    {__('/month')}
+                </p>
+            )}
         </div>
     );
 }

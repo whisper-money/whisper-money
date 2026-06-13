@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ai;
 
+use App\Enums\PlanFeature;
 use App\Enums\RuleSuggestionStatus;
 use App\Enums\SuggestionRunStatus;
 use App\Http\Controllers\Controller;
@@ -164,6 +165,7 @@ class RuleSuggestionController extends Controller
         return [
             'available' => true,
             'consented' => $user->hasActiveAiConsent(),
+            'requires_upgrade' => $this->requiresUpgrade($user),
             'eligible' => $this->availability->isEligible($user),
             'transaction_count' => $this->availability->transactionCount($user),
             'min_transactions' => $this->availability->minTransactions(),
@@ -179,6 +181,21 @@ class RuleSuggestionController extends Controller
                 ? $this->serializeSuggestions($run)
                 : [],
         ];
+    }
+
+    /**
+     * Whether enabling AI suggestions would force the user onto a paid plan.
+     *
+     * Connected accounts already require a paid plan, so a user who has linked
+     * a bank gains AI suggestions at no extra cost — we only warn the rest.
+     */
+    private function requiresUpgrade(User $user): bool
+    {
+        if ($user->canUseFeature(PlanFeature::AiSuggestions)) {
+            return false;
+        }
+
+        return ! $user->bankingConnections()->exists();
     }
 
     /**

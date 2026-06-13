@@ -360,7 +360,11 @@ function PricingSection({
     return (
         <div className="flex flex-col gap-4">
             {selectedPlanData && (
-                <FeaturesSection features={selectedPlanData.features} />
+                <FeaturesSection
+                    features={selectedPlanData.features.filter(
+                        (feature) => feature !== 'Connect bank accounts',
+                    )}
+                />
             )}
 
             <div className="flex gap-3">

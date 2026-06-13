@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DripEmailType;
+use App\Enums\PlanFeature;
 use App\Notifications\VerifyEmailNotification;
 use Carbon\Carbon;
 use Database\Factories\UserFactory;
@@ -214,6 +215,18 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         }
 
         return $this->subscribed('default');
+    }
+
+    /**
+     * Whether the user can access the given feature on their current plan.
+     */
+    public function canUseFeature(PlanFeature $feature): bool
+    {
+        if (! $feature->requiresProPlan()) {
+            return true;
+        }
+
+        return $this->hasProPlan();
     }
 
     public function hasPastDueSubscription(): bool

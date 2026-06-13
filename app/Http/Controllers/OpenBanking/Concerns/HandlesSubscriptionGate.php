@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\OpenBanking\Concerns;
 
+use App\Enums\PlanFeature;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -18,7 +19,7 @@ trait HandlesSubscriptionGate
             return false;
         }
 
-        return ! $user->hasProPlan();
+        return ! $user->canUseFeature(PlanFeature::ConnectedAccounts);
     }
 
     private function subscribeJsonResponse(): JsonResponse

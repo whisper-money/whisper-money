@@ -36,6 +36,7 @@ import {
     ShoppingBasketIcon,
     WineIcon,
     WrenchIcon,
+    XIcon,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -1653,7 +1654,19 @@ function BudgetEditPreview() {
     );
 }
 
-function FreePlanCard({ planFeatures }: { planFeatures: string[] }) {
+/**
+ * Features reserved for paid plans. On the free plan card these are shown
+ * dimmed with an X to set expectations before sign-up.
+ */
+const PRO_ONLY_FEATURES = [
+    'Connect bank accounts',
+    'AI Suggestions',
+    'Priority support',
+];
+
+function FreePlanCard({ features }: { features: string[] }) {
+    const excluded = new Set(PRO_ONLY_FEATURES);
+
     return (
         <div className="flex flex-col overflow-hidden rounded-2xl border border-[#e3e3e0] bg-[#FDFDFC] dark:border-[#3E3E3A] dark:bg-[#161615]">
             <div className="flex flex-1 flex-col p-6 pt-2 sm:pt-12">
@@ -1676,13 +1689,31 @@ function FreePlanCard({ planFeatures }: { planFeatures: string[] }) {
 
                 <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
 
+                <p className="mt-1 text-xs text-[#706f6c] opacity-0 dark:text-[#A1A09A]">
+                    {__('Create the account now, update at any moment')}
+                </p>
+
                 <ul className="flex-1 space-y-2.5">
-                    {planFeatures.map((feature) => (
-                        <li key={feature} className="flex items-center gap-2.5">
-                            <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
-                            <span className="text-sm">{__(feature)}</span>
-                        </li>
-                    ))}
+                    {features.map((feature) => {
+                        const isExcluded = excluded.has(feature);
+
+                        return (
+                            <li
+                                key={feature}
+                                className={cn(
+                                    'flex items-center gap-2.5',
+                                    isExcluded && 'opacity-40',
+                                )}
+                            >
+                                {isExcluded ? (
+                                    <XIcon className="size-4 shrink-0 text-[#706f6c] dark:text-[#A1A09A]" />
+                                ) : (
+                                    <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                                )}
+                                <span className="text-sm">{__(feature)}</span>
+                            </li>
+                        );
+                    })}
                 </ul>
 
                 <Link href="/register" className="mt-8">
@@ -1785,17 +1816,12 @@ function LandingPlanCard({
                 <div className="my-5 h-px bg-[#e3e3e0] dark:bg-[#3E3E3A]" />
 
                 <ul className="flex-1 space-y-2.5">
-                    {[__('Connect bank accounts'), ...plan.features].map(
-                        (feature) => (
-                            <li
-                                key={feature}
-                                className="flex items-center gap-2.5"
-                            >
-                                <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
-                                <span className="text-sm">{__(feature)}</span>
-                            </li>
-                        ),
-                    )}
+                    {plan.features.map((feature) => (
+                        <li key={feature} className="flex items-center gap-2.5">
+                            <CheckIcon className="size-4 shrink-0 text-[#1b1b18] dark:text-[#EDEDEC]" />
+                            <span className="text-sm">{__(feature)}</span>
+                        </li>
+                    ))}
                 </ul>
 
                 <Link href="/register" className="mt-8">
@@ -2689,9 +2715,9 @@ export default function Welcome({
                                         )}
                                     >
                                         <FreePlanCard
-                                            planFeatures={planEntries[0][1].features.filter(
-                                                (f) => f !== 'Priority support',
-                                            )}
+                                            features={[
+                                                ...planEntries[0][1].features,
+                                            ]}
                                         />
                                         {displayedPlanEntries.map(
                                             ([key, plan]) => (
