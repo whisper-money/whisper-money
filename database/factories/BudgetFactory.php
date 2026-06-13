@@ -54,6 +54,13 @@ class BudgetFactory extends Factory
         ]);
     }
 
+    public function catchAll(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_catch_all' => true,
+        ]);
+    }
+
     /**
      * Attach one or more categories to the budget after creation.
      *
