@@ -13,7 +13,7 @@ import { type Category } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
-import { PartyPopper, Sparkles, Wand2 } from 'lucide-react';
+import { Loader2, PartyPopper, Sparkles, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface SuggestionState {
@@ -249,11 +249,15 @@ export function StepAiSuggestions({
                         'We’re finding the rules that will categorize most of your transactions automatically.',
                     )}
                 />
+                <GeneratingMessages />
                 <div className="w-full max-w-2xl space-y-3">
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
+                    <SuggestionCardSkeleton />
+                    <SuggestionCardSkeleton />
+                    <SuggestionCardSkeleton />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                    {__('This can take up to two minutes.')}
+                </p>
             </Centered>
         );
     }
@@ -410,6 +414,64 @@ function Centered({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex animate-in flex-col items-center gap-6 pb-4 duration-500 fade-in slide-in-from-bottom-4">
             {children}
+        </div>
+    );
+}
+
+const GENERATING_MESSAGE_INTERVAL_MS = 3500;
+
+/**
+ * Cycles through reassuring status messages while a run is in flight. The
+ * backend exposes no real progress, so the messages step forward on a timer and
+ * hold on the last one rather than looping back to the start (which would read
+ * as the process restarting).
+ */
+function GeneratingMessages() {
+    const messages = [
+        __('Analysing your transactions…'),
+        __('Finding related groups…'),
+        __('Finding the right categories…'),
+        __('Grouping everything together…'),
+        __('Polishing your suggestions…'),
+    ];
+    const [index, setIndex] = useState(0);
+
+    useEffect(() => {
+        const id = setInterval(() => {
+            setIndex((current) => Math.min(current + 1, messages.length - 1));
+        }, GENERATING_MESSAGE_INTERVAL_MS);
+        return () => clearInterval(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    return (
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Loader2 className="size-4 shrink-0 animate-spin text-violet-500" />
+            <span
+                key={index}
+                className="animate-in duration-300 fade-in"
+                aria-live="polite"
+            >
+                {messages[index]}
+            </span>
+        </div>
+    );
+}
+
+/**
+ * Mirrors the collapsed {@link AiSuggestionCard} layout so the loading state
+ * resembles the final UI: checkbox, summary line, match count, expand chevron.
+ */
+function SuggestionCardSkeleton() {
+    return (
+        <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+            <Skeleton className="size-4 shrink-0 rounded" />
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Skeleton className="h-4 w-32 max-w-[45%]" />
+                <Skeleton className="h-4 w-20 max-w-[30%]" />
+            </div>
+            <Skeleton className="h-3 w-14 shrink-0" />
+            <Skeleton className="size-4 shrink-0 rounded" />
         </div>
     );
 }
