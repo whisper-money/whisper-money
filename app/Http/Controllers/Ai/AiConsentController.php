@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\Ai;
 
-use App\Features\AiRuleSuggestions;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Laravel\Pennant\Feature;
 
 class AiConsentController extends Controller
 {
@@ -15,10 +13,7 @@ class AiConsentController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $user = $request->user();
-        abort_unless(Feature::for($user)->active(AiRuleSuggestions::class), 403);
-
-        $user->recordAiConsent();
+        $request->user()->recordAiConsent();
 
         return response()->json(['consented' => true]);
     }

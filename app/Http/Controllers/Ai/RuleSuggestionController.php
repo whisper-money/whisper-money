@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Ai;
 
 use App\Enums\RuleSuggestionStatus;
 use App\Enums\SuggestionRunStatus;
-use App\Features\AiRuleSuggestions;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ai\AcceptRuleSuggestionsRequest;
 use App\Http\Requests\Ai\PreviewRuleSuggestionRequest;
@@ -19,7 +18,6 @@ use App\Services\Ai\RuleSuggestionAvailability;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Laravel\Pennant\Feature;
 
 class RuleSuggestionController extends Controller
 {
@@ -34,7 +32,6 @@ class RuleSuggestionController extends Controller
     public function show(Request $request): JsonResponse
     {
         $user = $request->user();
-        $this->ensureFeature($user);
 
         return response()->json($this->state($user));
     }
@@ -45,7 +42,6 @@ class RuleSuggestionController extends Controller
     public function generate(Request $request): JsonResponse
     {
         $user = $request->user();
-        $this->ensureFeature($user);
         abort_unless($user->hasActiveAiConsent(), 403);
 
         if (! $this->availability->isEligible($user)) {
@@ -67,7 +63,6 @@ class RuleSuggestionController extends Controller
     public function preview(PreviewRuleSuggestionRequest $request): JsonResponse
     {
         $user = $request->user();
-        $this->ensureFeature($user);
 
         $conditions = $this->conditions($request->validated('conditions'));
 
@@ -96,7 +91,6 @@ class RuleSuggestionController extends Controller
     public function accept(AcceptRuleSuggestionsRequest $request, ApplyRuleSuggestions $applier): JsonResponse
     {
         $user = $request->user();
-        $this->ensureFeature($user);
         abort_unless($user->hasActiveAiConsent(), 403);
 
         $run = $this->availability->latestSuccessfulRun($user);
@@ -157,11 +151,6 @@ class RuleSuggestionController extends Controller
             'summary' => $summary,
             'applied_to_existing' => $applyToExisting,
         ]);
-    }
-
-    private function ensureFeature(User $user): void
-    {
-        abort_unless(Feature::for($user)->active(AiRuleSuggestions::class), 403);
     }
 
     /**

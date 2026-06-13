@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\SuggestionRunStatus;
-use App\Features\AiRuleSuggestions;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Category;
@@ -10,7 +9,6 @@ use App\Models\SuggestionRun;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\Contracts\RuleSuggestionGenerator;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     config()->set('ai_suggestions.eligibility_min_transactions', 50);
@@ -20,7 +18,6 @@ beforeEach(function () {
 
     $this->user = User::factory()->notOnboarded()->create();
     $this->account = Account::factory()->for($this->user)->create();
-    Feature::for($this->user)->activate(AiRuleSuggestions::class);
 });
 
 function seedTransactions(User $user, Account $account, int $mercadona = 6, int $filler = 44): void
@@ -58,14 +55,6 @@ function fakeGeneratorReturning(string $categoryId): void
         }
     });
 }
-
-it('blocks generation when the feature flag is off', function () {
-    Feature::for($this->user)->deactivate(AiRuleSuggestions::class);
-
-    $this->actingAs($this->user)
-        ->postJson(route('ai.rule-suggestions.generate'))
-        ->assertForbidden();
-});
 
 it('blocks generation without consent', function () {
     $this->actingAs($this->user)
