@@ -1,0 +1,2 @@
+{"type":"config","name":"ai-rule-suggestion-coverage","metricName":"oracle_tx","metricUnit":"tx","bestDirection":"higher"}
+{"run":1,"commit":"54cd8c7","metric":830,"metrics":{"reachable_tx":515,"groups_sent":40,"validated_count":29,"coverage_pct":62.45,"real_tx":416},"status":"keep","description":"baseline + frozen oracle benchmark scaffold","timestamp":1781346014,"segment":0}
