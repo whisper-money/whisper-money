@@ -24,4 +24,19 @@ interface TransactionMatcher
      * @return Collection<int, Transaction>
      */
     public function matching(User $user, string $field, string $operator, string $token, ?int $limit = null): Collection;
+
+    /**
+     * Count uncategorized transactions matching ANY of the given conditions (OR).
+     *
+     * @param  list<array{field: string, operator: string, token: string}>  $conditions
+     */
+    public function countMatchingAny(User $user, array $conditions): int;
+
+    /**
+     * The uncategorized transactions matching ANY of the given conditions (OR).
+     *
+     * @param  list<array{field: string, operator: string, token: string}>  $conditions
+     * @return Collection<int, Transaction>
+     */
+    public function matchingAny(User $user, array $conditions, ?int $limit = null): Collection;
 }

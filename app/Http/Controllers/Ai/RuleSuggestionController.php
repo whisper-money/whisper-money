@@ -18,11 +18,15 @@ use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\Ai\RuleSuggestionAvailability;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Laravel\Pennant\Feature;
 
 class RuleSuggestionController extends Controller
 {
-    public function __construct(private readonly RuleSuggestionAvailability $availability) {}
+    public function __construct(
+        private readonly RuleSuggestionAvailability $availability,
+        private readonly TransactionMatcher $matcher,
+    ) {}
 
     /**
      * Return the current suggestion state (used for polling + review).
@@ -57,22 +61,21 @@ class RuleSuggestionController extends Controller
     }
 
     /**
-     * Live preview of the transactions a candidate token would match.
+     * Live preview of the transactions a group of candidate conditions would
+     * match (OR'd together), recomputed whenever the user edits a value.
      */
-    public function preview(PreviewRuleSuggestionRequest $request, TransactionMatcher $matcher): JsonResponse
+    public function preview(PreviewRuleSuggestionRequest $request): JsonResponse
     {
         $user = $request->user();
         $this->ensureFeature($user);
 
-        $field = (string) $request->validated('match_field');
-        $operator = (string) $request->validated('match_operator');
-        $token = (string) $request->validated('match_token');
+        $conditions = $this->conditions($request->validated('conditions'));
 
-        $matches = $matcher->matching($user, $field, $operator, $token, 100);
+        $matches = $this->matcher->matchingAny($user, $conditions, 100);
 
         return response()->json([
-            'match_count' => $matcher->countMatching($user, $field, $operator, $token),
-            'total_uncategorized' => $matcher->total($user),
+            'match_count' => $this->matcher->countMatchingAny($user, $conditions),
+            'total_uncategorized' => $this->matcher->total($user),
             'transactions' => $matches->map(fn (Transaction $transaction): array => [
                 'id' => $transaction->id,
                 'description' => $transaction->description,
@@ -86,8 +89,9 @@ class RuleSuggestionController extends Controller
     }
 
     /**
-     * Accept (and optionally tweak) suggestions: create the rules and, during
-     * onboarding, apply them to existing uncategorized transactions right away.
+     * Accept (and optionally tweak) suggestion groups: create one OR rule per
+     * group and, during onboarding, apply them to existing uncategorized
+     * transactions right away.
      */
     public function accept(AcceptRuleSuggestionsRequest $request, ApplyRuleSuggestions $applier): JsonResponse
     {
@@ -98,36 +102,52 @@ class RuleSuggestionController extends Controller
         $run = $this->availability->latestSuccessfulRun($user);
         abort_if($run === null, 404);
 
-        $payload = collect($request->validated('suggestions'));
+        $groups = collect($request->validated('suggestions'));
 
+        $referencedIds = $groups->flatMap(fn (array $group): array => $group['ids'])->unique()->all();
+
+        /** @var Collection<string, RuleSuggestion> $pending */
         $pending = $run->suggestions()
-            ->whereIn('id', $payload->pluck('id'))
+            ->whereIn('id', $referencedIds)
             ->where('status', RuleSuggestionStatus::Pending)
             ->get()
             ->keyBy('id');
 
-        $accepted = $payload
-            ->filter(fn (array $data): bool => $pending->has($data['id']))
-            ->map(function (array $data) use ($pending): RuleSuggestion {
-                $suggestion = $pending->get($data['id']);
-                $existingCategory = $data['proposed_category_id'] ?? null;
+        $descriptors = $groups
+            ->map(function (array $group) use ($pending): ?array {
+                $rows = collect($group['ids'])
+                    ->map(fn (string $id): ?RuleSuggestion => $pending->get($id))
+                    ->filter();
 
-                $suggestion->forceFill([
-                    'match_field' => $data['match_field'],
-                    'match_operator' => $data['match_operator'],
-                    'match_token' => mb_strtolower(trim((string) $data['match_token'])),
+                if ($rows->isEmpty()) {
+                    return null;
+                }
+
+                $existingCategory = $group['proposed_category_id'] ?? null;
+
+                return [
+                    'conditions' => collect($group['values'])->map(fn (array $value): array => [
+                        'field' => (string) $value['match_field'],
+                        'operator' => (string) $value['match_operator'],
+                        'token' => mb_strtolower(trim((string) $value['match_token'])),
+                    ])->all(),
                     'proposed_category_id' => $existingCategory,
-                    'new_category_name' => $existingCategory ? null : ($data['new_category_name'] ?? null),
-                    'new_category_direction' => $existingCategory ? null : ($data['new_category_direction'] ?? null),
-                ])->save();
-
-                return $suggestion;
+                    'new_category_name' => $existingCategory ? null : ($group['new_category_name'] ?? null),
+                    'new_category_direction' => $existingCategory ? null : ($group['new_category_direction'] ?? null),
+                    'confidence' => (float) $rows->max('confidence'),
+                ];
             })
-            ->values();
+            ->filter()
+            ->values()
+            ->all();
 
         $applyToExisting = ! $user->isOnboarded();
 
-        $summary = $applier->apply($user, $accepted, $applyToExisting);
+        $summary = $applier->apply($user, $descriptors, $applyToExisting);
+
+        $run->suggestions()
+            ->whereIn('id', $pending->keys()->all())
+            ->update(['status' => RuleSuggestionStatus::Accepted]);
 
         $run->suggestions()
             ->where('status', RuleSuggestionStatus::Pending)
@@ -173,31 +193,67 @@ class RuleSuggestionController extends Controller
     }
 
     /**
+     * Pending suggestions, grouped by their target category into one card each:
+     * the matched values are OR'd, so merchants heading to the same category are
+     * reviewed (and later created) as a single rule.
+     *
      * @return list<array<string, mixed>>
      */
     private function serializeSuggestions(SuggestionRun $run): array
     {
+        $user = $run->user;
+
         return $run->suggestions()
             ->with('proposedCategory')
             ->where('status', RuleSuggestionStatus::Pending)
             ->orderByDesc('confidence')
             ->orderByDesc('group_size')
             ->get()
-            ->map(fn (RuleSuggestion $suggestion): array => [
-                'id' => $suggestion->id,
-                'match_field' => $suggestion->match_field,
-                'match_operator' => $suggestion->match_operator,
-                'match_token' => $suggestion->match_token,
-                'confidence' => (float) $suggestion->confidence,
-                'group_size' => $suggestion->group_size,
-                'sample_descriptions' => $suggestion->sample_descriptions ?? [],
-                'proposed_category' => $suggestion->proposedCategory === null ? null : [
-                    'id' => $suggestion->proposedCategory->id,
-                    'name' => $suggestion->proposedCategory->name,
-                ],
-                'new_category_name' => $suggestion->new_category_name,
-                'new_category_direction' => $suggestion->new_category_direction,
-            ])
+            ->groupBy(fn (RuleSuggestion $suggestion): string => $suggestion->categoryGroupKey())
+            ->map(function ($items, string $key) use ($user): array {
+                /** @var Collection<int, RuleSuggestion> $items */
+                $first = $items->first();
+
+                $values = $items->map(fn (RuleSuggestion $suggestion): array => [
+                    'id' => $suggestion->id,
+                    'match_field' => $suggestion->match_field,
+                    'match_operator' => $suggestion->match_operator,
+                    'match_token' => $suggestion->match_token,
+                    'group_size' => $suggestion->group_size,
+                ])->values()->all();
+
+                return [
+                    'id' => $key,
+                    'confidence' => (float) $items->max('confidence'),
+                    'group_size' => $this->matcher->countMatchingAny($user, $this->conditions($values)),
+                    'sample_descriptions' => $items->flatMap(fn (RuleSuggestion $suggestion): array => $suggestion->sample_descriptions ?? [])->unique()->take(3)->values()->all(),
+                    'proposed_category' => $first->proposedCategory === null ? null : [
+                        'id' => $first->proposedCategory->id,
+                        'name' => $first->proposedCategory->name,
+                    ],
+                    'new_category_name' => $first->new_category_name,
+                    'new_category_direction' => $first->new_category_direction,
+                    'values' => $values,
+                ];
+            })
+            ->sortByDesc('group_size')
+            ->values()
             ->all();
+    }
+
+    /**
+     * Normalize match-value arrays (as sent by the client or stored on a row)
+     * into the matcher's condition shape.
+     *
+     * @param  list<array<string, mixed>>  $values
+     * @return list<array{field: string, operator: string, token: string}>
+     */
+    private function conditions(array $values): array
+    {
+        return array_map(fn (array $value): array => [
+            'field' => (string) $value['match_field'],
+            'operator' => (string) $value['match_operator'],
+            'token' => (string) $value['match_token'],
+        ], $values);
     }
 }

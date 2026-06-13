@@ -66,8 +66,12 @@ export function StepAiSuggestions({
                         include:
                             suggestion.confidence >=
                             data.auto_select_confidence,
-                        token: suggestion.match_token,
                         categoryId: suggestion.proposed_category?.id ?? null,
+                        values: suggestion.values.map((value) => ({
+                            field: value.match_field,
+                            operator: value.match_operator,
+                            token: value.match_token,
+                        })),
                     };
                 }
             }
@@ -152,7 +156,13 @@ export function StepAiSuggestions({
             return;
         }
 
-        const chosen = state.suggestions.filter((s) => drafts[s.id]?.include);
+        const chosen = state.suggestions.filter((s) => {
+            const draft = drafts[s.id];
+            return (
+                draft?.include &&
+                draft.values.some((value) => value.token.trim() !== '')
+            );
+        });
 
         if (chosen.length === 0) {
             onCompleteRef.current();
@@ -169,10 +179,14 @@ export function StepAiSuggestions({
                         : null;
 
                 return {
-                    id: suggestion.id,
-                    match_field: suggestion.match_field,
-                    match_operator: suggestion.match_operator,
-                    match_token: draft.token,
+                    ids: suggestion.values.map((value) => value.id),
+                    values: draft.values
+                        .filter((value) => value.token.trim() !== '')
+                        .map((value) => ({
+                            match_field: value.field,
+                            match_operator: value.operator,
+                            match_token: value.token.trim(),
+                        })),
                     proposed_category_id: categoryId,
                     new_category_name: categoryId
                         ? null
@@ -351,9 +365,13 @@ export function StepAiSuggestions({
                                 include:
                                     suggestion.confidence >=
                                     state.auto_select_confidence,
-                                token: suggestion.match_token,
                                 categoryId:
                                     suggestion.proposed_category?.id ?? null,
+                                values: suggestion.values.map((value) => ({
+                                    field: value.match_field,
+                                    operator: value.match_operator,
+                                    token: value.match_token,
+                                })),
                             }
                         }
                         categories={categories}

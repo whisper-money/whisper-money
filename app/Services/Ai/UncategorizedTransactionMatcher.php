@@ -45,6 +45,30 @@ class UncategorizedTransactionMatcher implements TransactionMatcher
         return $query->get();
     }
 
+    public function countMatchingAny(User $user, array $conditions): int
+    {
+        $query = $this->anyQuery($user, $conditions);
+
+        return $query === null ? 0 : $query->count();
+    }
+
+    public function matchingAny(User $user, array $conditions, ?int $limit = null): Collection
+    {
+        $query = $this->anyQuery($user, $conditions);
+
+        if ($query === null) {
+            return new Collection;
+        }
+
+        $query->orderByDesc('transaction_date')->orderByDesc('id');
+
+        if ($limit !== null) {
+            $query->limit($limit);
+        }
+
+        return $query->get();
+    }
+
     /**
      * @return Builder<Transaction>
      */
@@ -73,6 +97,42 @@ class UncategorizedTransactionMatcher implements TransactionMatcher
         }
 
         return $query->whereRaw("LOWER({$field}) LIKE ?", ['%'.$this->escapeLike($token).'%']);
+    }
+
+    /**
+     * Build a single query matching ANY of the conditions (OR). Invalid
+     * conditions (unknown field or blank token) are skipped; returns null when
+     * none remain.
+     *
+     * @param  list<array{field: string, operator: string, token: string}>  $conditions
+     * @return Builder<Transaction>|null
+     */
+    private function anyQuery(User $user, array $conditions): ?Builder
+    {
+        $valid = array_values(array_filter(
+            $conditions,
+            fn (array $condition): bool => in_array($condition['field'] ?? null, self::ALLOWED_FIELDS, true)
+                && trim((string) ($condition['token'] ?? '')) !== '',
+        ));
+
+        if ($valid === []) {
+            return null;
+        }
+
+        return $this->baseQuery($user)->where(function (Builder $builder) use ($valid): void {
+            foreach ($valid as $condition) {
+                $field = $condition['field'];
+                $token = mb_strtolower(trim((string) $condition['token']));
+
+                if (($condition['operator'] ?? 'contains') === 'equals') {
+                    $builder->orWhereRaw("LOWER({$field}) = ?", [$token]);
+
+                    continue;
+                }
+
+                $builder->orWhereRaw("LOWER({$field}) LIKE ?", ['%'.$this->escapeLike($token).'%']);
+            }
+        });
     }
 
     private function escapeLike(string $value): string

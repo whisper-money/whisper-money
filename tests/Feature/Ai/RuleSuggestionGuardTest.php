@@ -69,6 +69,14 @@ it('rejects low-confidence, over-broad, absent-token and disallowed-field sugges
     expect($result)->toBeEmpty();
 });
 
+it('rejects a token that only matches a single transaction', function () {
+    $result = $this->guard->validate($this->user, [
+        ['group_key' => 'one-off', 'match_field' => 'description', 'match_operator' => 'contains', 'match_token' => 'mercadona compra 0', 'category_id' => $this->groceries->id, 'confidence' => 0.95],
+    ], $this->categoryOptions);
+
+    expect($result)->toBeEmpty();
+});
+
 it('rejects a suggestion whose category direction conflicts with the group', function () {
     $result = $this->guard->validate($this->user, [
         ['group_key' => 'netflix', 'match_field' => 'description', 'match_operator' => 'contains', 'match_token' => 'netflix', 'category_id' => $this->salary->id, 'confidence' => 0.95],

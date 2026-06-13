@@ -5,6 +5,7 @@ use App\Features\AiRuleSuggestions;
 use App\Models\Account;
 use App\Models\AutomationRule;
 use App\Models\Category;
+use App\Models\RuleSuggestion;
 use App\Models\SuggestionRun;
 use App\Models\Transaction;
 use App\Models\User;
@@ -92,9 +93,34 @@ it('generates, persists and returns suggestions for an eligible user', function 
         ->assertOk()
         ->assertJsonPath('run.status', SuggestionRunStatus::Completed->value)
         ->assertJsonPath('run.suggestions_count', 1)
-        ->assertJsonPath('suggestions.0.match_token', 'mercadona');
+        ->assertJsonPath('suggestions.0.values.0.match_token', 'mercadona');
 
     expect($response->json('suggestions.0.proposed_category.id'))->toBe($groceries->id);
+});
+
+it('groups pending suggestions that share a category into one card', function () {
+    $groceries = Category::factory()->for($this->user)->create(['name' => 'Groceries', 'type' => 'expense']);
+    $this->user->recordAiConsent();
+    seedTransactions($this->user, $this->account); // 6 MERCADONA + 44 UNIQUE MERCHANT
+
+    $run = SuggestionRun::factory()->for($this->user)->create(['status' => SuggestionRunStatus::Completed]);
+    RuleSuggestion::factory()->for($run, 'run')->create([
+        'match_field' => 'creditor_name', 'match_operator' => 'equals', 'match_token' => 'mercadona',
+        'proposed_category_id' => $groceries->id, 'group_size' => 6,
+    ]);
+    RuleSuggestion::factory()->for($run, 'run')->create([
+        'match_field' => 'description', 'match_operator' => 'contains', 'match_token' => 'unique merchant',
+        'proposed_category_id' => $groceries->id, 'group_size' => 44,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->getJson(route('ai.rule-suggestions.show'))
+        ->assertOk();
+
+    expect($response->json('suggestions'))->toHaveCount(1)
+        ->and($response->json('suggestions.0.values'))->toHaveCount(2)
+        ->and($response->json('suggestions.0.group_size'))->toBe(50)
+        ->and($response->json('suggestions.0.proposed_category.id'))->toBe($groceries->id);
 });
 
 it('reuses the latest run while throttled instead of generating again', function () {
@@ -110,16 +136,19 @@ it('reuses the latest run while throttled instead of generating again', function
     expect($this->user->suggestionRuns()->count())->toBe(1);
 });
 
-it('previews the transactions a token would match', function () {
+it('previews the transactions a group of conditions would match', function () {
     $this->user->recordAiConsent();
     seedTransactions($this->user, $this->account);
 
     $this->actingAs($this->user)
-        ->getJson(route('ai.rule-suggestions.preview', [
-            'match_field' => 'creditor_name', 'match_operator' => 'equals', 'match_token' => 'mercadona',
-        ]))
+        ->postJson(route('ai.rule-suggestions.preview'), [
+            'conditions' => [
+                ['match_field' => 'creditor_name', 'match_operator' => 'equals', 'match_token' => 'mercadona'],
+                ['match_field' => 'description', 'match_operator' => 'contains', 'match_token' => 'unique merchant 43'],
+            ],
+        ])
         ->assertOk()
-        ->assertJson(['match_count' => 6, 'total_uncategorized' => 50]);
+        ->assertJson(['match_count' => 7, 'total_uncategorized' => 50]);
 });
 
 it('accepts suggestions and applies them immediately during onboarding', function () {
@@ -129,15 +158,17 @@ it('accepts suggestions and applies them immediately during onboarding', functio
     fakeGeneratorReturning($groceries->id);
 
     $generated = $this->actingAs($this->user)->postJson(route('ai.rule-suggestions.generate'))->json();
-    $suggestionId = $generated['suggestions'][0]['id'];
+    $ids = collect($generated['suggestions'][0]['values'])->pluck('id')->all();
 
     $this->actingAs($this->user)
         ->postJson(route('ai.rule-suggestions.accept'), [
             'suggestions' => [[
-                'id' => $suggestionId,
-                'match_field' => 'creditor_name',
-                'match_operator' => 'equals',
-                'match_token' => 'mercadona',
+                'ids' => $ids,
+                'values' => [[
+                    'match_field' => 'creditor_name',
+                    'match_operator' => 'equals',
+                    'match_token' => 'mercadona',
+                ]],
                 'proposed_category_id' => $groceries->id,
             ]],
         ])

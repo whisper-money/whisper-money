@@ -20,9 +20,10 @@ class PreviewRuleSuggestionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'match_field' => ['required', 'string', Rule::in(UncategorizedTransactionMatcher::ALLOWED_FIELDS)],
-            'match_operator' => ['required', 'string', Rule::in(['contains', 'equals'])],
-            'match_token' => ['required', 'string', 'min:1', 'max:255'],
+            'conditions' => ['required', 'array', 'min:1'],
+            'conditions.*.match_field' => ['required', 'string', Rule::in(UncategorizedTransactionMatcher::ALLOWED_FIELDS)],
+            'conditions.*.match_operator' => ['required', 'string', Rule::in(['contains', 'equals'])],
+            'conditions.*.match_token' => ['required', 'string', 'min:1', 'max:255'],
         ];
     }
 }

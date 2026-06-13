@@ -24,10 +24,12 @@ class AcceptRuleSuggestionsRequest extends FormRequest
     {
         return [
             'suggestions' => ['required', 'array', 'min:1'],
-            'suggestions.*.id' => ['required', 'uuid'],
-            'suggestions.*.match_field' => ['required', 'string', Rule::in(UncategorizedTransactionMatcher::ALLOWED_FIELDS)],
-            'suggestions.*.match_operator' => ['required', 'string', Rule::in(['contains', 'equals'])],
-            'suggestions.*.match_token' => ['required', 'string', 'min:1', 'max:255'],
+            'suggestions.*.ids' => ['required', 'array', 'min:1'],
+            'suggestions.*.ids.*' => ['uuid'],
+            'suggestions.*.values' => ['required', 'array', 'min:1'],
+            'suggestions.*.values.*.match_field' => ['required', 'string', Rule::in(UncategorizedTransactionMatcher::ALLOWED_FIELDS)],
+            'suggestions.*.values.*.match_operator' => ['required', 'string', Rule::in(['contains', 'equals'])],
+            'suggestions.*.values.*.match_token' => ['required', 'string', 'min:1', 'max:255'],
             'suggestions.*.proposed_category_id' => ['nullable', 'string', $this->userOwned('categories')],
             'suggestions.*.new_category_name' => ['nullable', 'string', 'max:255'],
             'suggestions.*.new_category_direction' => ['nullable', 'string', Rule::in(['inflow', 'outflow'])],
@@ -35,14 +37,14 @@ class AcceptRuleSuggestionsRequest extends FormRequest
     }
 
     /**
-     * Each accepted suggestion must resolve to a category target.
+     * Each accepted group must resolve to a category target.
      */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
-            foreach ((array) $this->input('suggestions', []) as $index => $suggestion) {
-                $hasExisting = filled($suggestion['proposed_category_id'] ?? null);
-                $hasNew = filled($suggestion['new_category_name'] ?? null);
+            foreach ((array) $this->input('suggestions', []) as $index => $group) {
+                $hasExisting = filled($group['proposed_category_id'] ?? null);
+                $hasNew = filled($group['new_category_name'] ?? null);
 
                 if (! $hasExisting && ! $hasNew) {
                     $validator->errors()->add(

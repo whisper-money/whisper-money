@@ -4,24 +4,23 @@ namespace App\Services\Ai;
 
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
-use App\Enums\RuleSuggestionStatus;
 use App\Models\AutomationRule;
 use App\Models\Category;
-use App\Models\RuleSuggestion;
 use App\Models\User;
 use App\Services\Ai\Contracts\TransactionMatcher;
 use App\Services\AutomationRuleService;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Turns accepted suggestions into real automation rules and (during onboarding)
- * applies them immediately to the user's uncategorized transactions.
+ * Turns accepted suggestion groups into real automation rules and (during
+ * onboarding) applies them immediately to the user's uncategorized transactions.
  *
- * Rules are created highest-confidence first so that, when two rules could
- * match the same transaction, the more confident one wins — each rule is only
- * applied to transactions that are still uncategorized at the moment it runs.
+ * Each group becomes ONE rule whose conditions are OR'd together, so several
+ * merchants heading to the same category live in a single, reviewable rule.
+ * Rules are created narrowest-first (fewest matches, then highest confidence):
+ * because evaluation stops at the first matching rule by ascending priority, a
+ * specific rule is reached before a broader one and can't be overridden by it.
  */
 class ApplyRuleSuggestions
 {
@@ -31,49 +30,54 @@ class ApplyRuleSuggestions
     ) {}
 
     /**
-     * @param  Collection<int, RuleSuggestion>  $suggestions
+     * @param  list<array{
+     *     conditions: list<array{field: string, operator: string, token: string}>,
+     *     proposed_category_id: ?string,
+     *     new_category_name: ?string,
+     *     new_category_direction: ?string,
+     *     confidence: float,
+     * }>  $groups
      * @return array{rules_created: int, transactions_categorized: int}
      */
-    public function apply(User $user, Collection $suggestions, bool $applyToExisting): array
+    public function apply(User $user, array $groups, bool $applyToExisting): array
     {
-        if ($suggestions->isEmpty()) {
+        $groups = array_values(array_filter($groups, fn (array $group): bool => $group['conditions'] !== []));
+
+        if ($groups === []) {
             return ['rules_created' => 0, 'transactions_categorized' => 0];
         }
+
+        // Narrower rules (fewer matches) first, then higher confidence, so the
+        // more specific rule gets the lower priority and wins the overlap.
+        $groups = array_map(function (array $group) use ($user): array {
+            $group['match_count'] = $this->matcher->countMatchingAny($user, $group['conditions']);
+
+            return $group;
+        }, $groups);
+
+        usort($groups, fn (array $a, array $b): int => [$a['match_count'], -$a['confidence']] <=> [$b['match_count'], -$b['confidence']]);
 
         $priority = (int) AutomationRule::query()->where('user_id', $user->id)->max('priority');
         $rulesCreated = 0;
         $categorized = 0;
 
-        $ordered = $suggestions
-            ->sortByDesc(fn (RuleSuggestion $suggestion): array => [(float) $suggestion->confidence, (int) $suggestion->group_size])
-            ->values();
+        foreach ($groups as $group) {
+            $rule = DB::transaction(function () use ($user, $group, &$priority): AutomationRule {
+                $categoryId = $this->resolveCategoryId($user, $group);
 
-        foreach ($ordered as $suggestion) {
-            $rule = DB::transaction(function () use ($user, $suggestion, &$priority) {
-                $categoryId = $this->resolveCategoryId($user, $suggestion);
-
-                $rule = AutomationRule::create([
+                return AutomationRule::create([
                     'user_id' => $user->id,
-                    'title' => $this->title($suggestion, $categoryId),
+                    'title' => $this->title($group, $categoryId),
                     'priority' => ++$priority,
-                    'rules_json' => $this->rulesJson($suggestion),
+                    'rules_json' => $this->rulesJson($group['conditions']),
                     'action_category_id' => $categoryId,
                 ]);
-
-                $suggestion->forceFill(['status' => RuleSuggestionStatus::Accepted])->save();
-
-                return $rule;
             });
 
             $rulesCreated++;
 
             if ($applyToExisting) {
-                $matches = $this->matcher->matching(
-                    $user,
-                    $suggestion->match_field,
-                    $suggestion->match_operator,
-                    $suggestion->match_token,
-                );
+                $matches = $this->matcher->matchingAny($user, $group['conditions']);
 
                 if ($matches->isNotEmpty()) {
                     $categorized += $this->automationRules->applyRuleActionsToTransactions($matches, $rule);
@@ -86,15 +90,17 @@ class ApplyRuleSuggestions
 
     /**
      * Resolve the rule's target category, creating a proposed new category when
-     * the suggestion calls for one.
+     * the group calls for one.
+     *
+     * @param  array<string, mixed>  $group
      */
-    private function resolveCategoryId(User $user, RuleSuggestion $suggestion): string
+    private function resolveCategoryId(User $user, array $group): string
     {
-        if ($suggestion->proposed_category_id !== null) {
-            return $suggestion->proposed_category_id;
+        if (! empty($group['proposed_category_id'])) {
+            return (string) $group['proposed_category_id'];
         }
 
-        $direction = $suggestion->new_category_direction === CategoryCashflowDirection::Inflow->value
+        $direction = ($group['new_category_direction'] ?? null) === CategoryCashflowDirection::Inflow->value
             ? CategoryCashflowDirection::Inflow
             : CategoryCashflowDirection::Outflow;
 
@@ -102,7 +108,7 @@ class ApplyRuleSuggestions
             [
                 'user_id' => $user->id,
                 'parent_id' => null,
-                'name' => $suggestion->new_category_name,
+                'name' => $group['new_category_name'],
             ],
             [
                 'type' => $direction === CategoryCashflowDirection::Inflow
@@ -112,28 +118,44 @@ class ApplyRuleSuggestions
             ],
         );
 
-        $suggestion->forceFill(['proposed_category_id' => $category->id])->save();
-
         return $category->id;
     }
 
     /**
+     * Build the OR'd JSON-Logic rule for the group's conditions. A single
+     * condition stays flat; multiple are wrapped in an `or` (matching the shape
+     * the settings rule editor produces and parses back).
+     *
+     * @param  list<array{field: string, operator: string, token: string}>  $conditions
      * @return array<string, mixed>
      */
-    private function rulesJson(RuleSuggestion $suggestion): array
+    private function rulesJson(array $conditions): array
     {
-        $variable = ['var' => $suggestion->match_field];
+        $clauses = array_map(function (array $condition): array {
+            $variable = ['var' => $condition['field']];
 
-        return $suggestion->match_operator === 'equals'
-            ? ['==' => [$variable, $suggestion->match_token]]
-            : ['in' => [$suggestion->match_token, $variable]];
+            return $condition['operator'] === 'equals'
+                ? ['==' => [$variable, $condition['token']]]
+                : ['in' => [$condition['token'], $variable]];
+        }, $conditions);
+
+        return count($clauses) === 1 ? $clauses[0] : ['or' => array_values($clauses)];
     }
 
-    private function title(RuleSuggestion $suggestion, string $categoryId): string
+    /**
+     * @param  array<string, mixed>  $group
+     */
+    private function title(array $group, string $categoryId): string
     {
         $categoryName = Category::query()->whereKey($categoryId)->value('name') ?? '';
-        $token = Str::title($suggestion->match_token);
 
-        return trim($token.' → '.$categoryName);
+        $tokens = array_map(fn (array $condition): string => Str::title($condition['token']), $group['conditions']);
+        $label = implode(', ', array_slice($tokens, 0, 3));
+
+        if (count($tokens) > 3) {
+            $label .= '…';
+        }
+
+        return trim($label.' → '.$categoryName);
     }
 }

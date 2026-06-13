@@ -2061,6 +2061,10 @@
     "Matching transactions": "Transacciones coincidentes",
     "Preview :count matching transactions": "Ver :count transacciones coincidentes",
     "If the transaction": "Si la transacción",
+    "If the transaction matches any of": "Si la transacción coincide con alguno de",
+    "Add value": "Añadir valor",
+    "Remove value": "Eliminar valor",
+    "or": "o",
     "Create rule": "Crear regla",
     "Ignore rule": "Ignorar regla",
     ":count matches": ":count coincidencias"

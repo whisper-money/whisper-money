@@ -59,4 +59,17 @@ class RuleSuggestion extends Model
     {
         return $this->proposed_category_id === null && $this->new_category_name !== null;
     }
+
+    /**
+     * Stable key identifying the category this suggestion targets, so suggestions
+     * heading to the same category can be grouped into a single OR rule.
+     */
+    public function categoryGroupKey(): string
+    {
+        if ($this->proposed_category_id !== null) {
+            return 'cat:'.$this->proposed_category_id;
+        }
+
+        return 'new:'.((string) $this->new_category_direction).':'.mb_strtolower(trim((string) $this->new_category_name));
+    }
 }

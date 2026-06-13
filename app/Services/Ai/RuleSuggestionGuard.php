@@ -37,6 +37,7 @@ class RuleSuggestionGuard
 
         $floor = (float) config('ai_suggestions.confidence_floor');
         $overbroad = (float) config('ai_suggestions.overbroad_fraction');
+        $minMatches = max(1, (int) config('ai_suggestions.min_group_count'));
 
         /** @var Collection<string, array<string, mixed>> $categoriesById */
         $categoriesById = collect($categoryOptions)->keyBy('id');
@@ -44,7 +45,7 @@ class RuleSuggestionGuard
         $validated = [];
 
         foreach ($rawSuggestions as $raw) {
-            $candidate = $this->validateOne($user, $raw, $categoriesById, $total, $floor, $overbroad);
+            $candidate = $this->validateOne($user, $raw, $categoriesById, $total, $floor, $overbroad, $minMatches);
 
             if ($candidate === null) {
                 continue;
@@ -66,7 +67,7 @@ class RuleSuggestionGuard
      * @param  Collection<string, array<string, mixed>>  $categoriesById
      * @return array<string, mixed>|null
      */
-    private function validateOne(User $user, array $raw, Collection $categoriesById, int $total, float $floor, float $overbroad): ?array
+    private function validateOne(User $user, array $raw, Collection $categoriesById, int $total, float $floor, float $overbroad, int $minMatches): ?array
     {
         $field = is_string($raw['match_field'] ?? null) ? $raw['match_field'] : '';
         $operator = ($raw['match_operator'] ?? '') === 'equals' ? 'equals' : 'contains';
@@ -87,8 +88,9 @@ class RuleSuggestionGuard
 
         $matchCount = $this->matcher->countMatching($user, $field, $operator, $token);
 
-        // Token must literally match something, and must not be over-broad.
-        if ($matchCount < 1 || ($matchCount / $total) > $overbroad) {
+        // Token must match enough transactions to be worth a rule (single-match
+        // one-offs are dropped), and must not be so broad it mis-categorises en masse.
+        if ($matchCount < $minMatches || ($matchCount / $total) > $overbroad) {
             return null;
         }
 

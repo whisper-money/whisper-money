@@ -25,26 +25,44 @@ import { type Category } from '@/types/category';
 import { formatDate } from '@/utils/date';
 import { __ } from '@/utils/i18n';
 import axios from 'axios';
-import { ChevronDown, Loader2, Sparkles, TextSearch } from 'lucide-react';
-import { useState } from 'react';
+import {
+    ChevronDown,
+    Loader2,
+    Plus,
+    Sparkles,
+    TextSearch,
+    X,
+} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-export interface AiSuggestion {
+export interface AiSuggestionValue {
     id: string;
     match_field: string;
     match_operator: string;
     match_token: string;
+}
+
+export interface AiSuggestion {
+    id: string;
     confidence: number;
     group_size: number;
     sample_descriptions: string[];
     proposed_category: { id: string; name: string } | null;
     new_category_name: string | null;
     new_category_direction: string | null;
+    values: AiSuggestionValue[];
+}
+
+export interface ValueDraft {
+    field: string;
+    operator: string;
+    token: string;
 }
 
 export interface SuggestionDraft {
     include: boolean;
-    token: string;
     categoryId: string | null;
+    values: ValueDraft[];
 }
 
 interface PreviewTransaction {
@@ -74,6 +92,20 @@ const FIELD_LABELS: Record<string, string> = {
     debtor_name: 'Sender',
 };
 
+function operatorLabel(operator: string): string {
+    return operator === 'equals' ? __('is') : __('contains');
+}
+
+function conditionsFor(values: ValueDraft[]) {
+    return values
+        .filter((value) => value.token.trim() !== '')
+        .map((value) => ({
+            match_field: value.field,
+            match_operator: value.operator,
+            match_token: value.token.trim(),
+        }));
+}
+
 export function AiSuggestionCard({
     suggestion,
     draft,
@@ -86,10 +118,52 @@ export function AiSuggestionCard({
     const [previewData, setPreviewData] = useState<PreviewResponse | null>(
         null,
     );
-    const [fetchedToken, setFetchedToken] = useState<string | null>(null);
 
-    const operatorLabel =
-        suggestion.match_operator === 'equals' ? __('is') : __('contains');
+    const conditions = useMemo(
+        () => conditionsFor(draft.values),
+        [draft.values],
+    );
+    const conditionsKey = useMemo(
+        () => JSON.stringify(conditions),
+        [conditions],
+    );
+
+    // The server already counted the original values; only refetch once the
+    // user has edited them, so an untouched card costs no request.
+    const initialKey = useRef(conditionsKey).current;
+
+    useEffect(() => {
+        if (conditionsKey === initialKey) {
+            return;
+        }
+
+        if (conditions.length === 0) {
+            setPreviewData((current) => ({
+                match_count: 0,
+                total_uncategorized: current?.total_uncategorized ?? 0,
+                transactions: [],
+            }));
+            return;
+        }
+
+        const handle = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const { data } = await axios.post<PreviewResponse>(
+                    preview().url,
+                    { conditions },
+                );
+                setPreviewData(data);
+            } finally {
+                setLoading(false);
+            }
+        }, 400);
+
+        return () => clearTimeout(handle);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [conditionsKey]);
+
+    const matchCount = previewData?.match_count ?? suggestion.group_size;
 
     const selectedCategory = categories.find((c) => c.id === draft.categoryId);
     const categoryLabel =
@@ -98,26 +172,50 @@ export function AiSuggestionCard({
             ? __('New: :name', { name: suggestion.new_category_name })
             : '—');
 
+    const valuesSummary = draft.values
+        .filter((value) => value.token.trim() !== '')
+        .map((value) => `“${value.token}”`)
+        .join(` ${__('or')} `);
+
+    const updateValue = (index: number, patch: Partial<ValueDraft>) => {
+        onChange({
+            ...draft,
+            values: draft.values.map((value, i) =>
+                i === index ? { ...value, ...patch } : value,
+            ),
+        });
+    };
+
+    const removeValue = (index: number) => {
+        onChange({
+            ...draft,
+            values: draft.values.filter((_, i) => i !== index),
+        });
+    };
+
+    const addValue = () => {
+        onChange({
+            ...draft,
+            values: [
+                ...draft.values,
+                { field: 'description', operator: 'contains', token: '' },
+            ],
+        });
+    };
+
     const openPreview = async () => {
         setOpen(true);
 
-        // Refetch when the token changed since the last load.
-        if (previewData && fetchedToken === draft.token) {
+        if (previewData || conditions.length === 0) {
             return;
         }
 
         setLoading(true);
         try {
-            const query = new URLSearchParams({
-                match_field: suggestion.match_field,
-                match_operator: suggestion.match_operator,
-                match_token: draft.token,
+            const { data } = await axios.post<PreviewResponse>(preview().url, {
+                conditions,
             });
-            const { data } = await axios.get<PreviewResponse>(
-                `${preview().url}?${query.toString()}`,
-            );
             setPreviewData(data);
-            setFetchedToken(draft.token);
         } finally {
             setLoading(false);
         }
@@ -142,15 +240,12 @@ export function AiSuggestionCard({
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                 >
                     <span className="min-w-0 flex-1 truncate text-sm">
-                        <span className="text-muted-foreground">
-                            {operatorLabel}{' '}
-                        </span>
-                        <span className="font-medium">“{draft.token}”</span>
+                        <span className="font-medium">{valuesSummary}</span>
                         <span className="text-muted-foreground"> → </span>
                         <span>{categoryLabel}</span>
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
-                        {__(':count matches', { count: suggestion.group_size })}
+                        {__(':count matches', { count: matchCount })}
                     </span>
                     <ChevronDown
                         className={`size-4 shrink-0 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
@@ -158,39 +253,67 @@ export function AiSuggestionCard({
                 </button>
             </div>
 
-            {/* Expanded body: edit field/operator/token, category, preview */}
+            {/* Expanded body: edit values, category, preview */}
             {expanded && (
                 <div className="space-y-3 border-t p-4">
                     <Label className="text-xs text-muted-foreground">
-                        {__('If the transaction')}
+                        {__('If the transaction matches any of')}
                     </Label>
 
-                    <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
-                        <Input
-                            value={__(
-                                FIELD_LABELS[suggestion.match_field] ??
-                                    'Description',
-                            )}
-                            className="h-9 w-full"
-                            disabled
-                        />
-                        <Input
-                            value={operatorLabel}
-                            className="h-9 w-full"
-                            disabled
-                        />
-                        <Input
-                            value={draft.token}
-                            onChange={(event) =>
-                                onChange({
-                                    ...draft,
-                                    token: event.target.value,
-                                })
-                            }
-                            className="h-9 w-full"
-                            aria-label={__('Match text')}
-                        />
+                    <div className="flex flex-col gap-2 pt-1">
+                        {draft.values.map((value, index) => (
+                            <div
+                                key={index}
+                                className="flex flex-col gap-2 sm:flex-row sm:items-center"
+                            >
+                                <Input
+                                    value={__(
+                                        FIELD_LABELS[value.field] ??
+                                            'Description',
+                                    )}
+                                    className="h-9 w-full"
+                                    disabled
+                                />
+                                <Input
+                                    value={operatorLabel(value.operator)}
+                                    className="h-9 w-full"
+                                    disabled
+                                />
+                                <Input
+                                    value={value.token}
+                                    onChange={(event) =>
+                                        updateValue(index, {
+                                            token: event.target.value,
+                                        })
+                                    }
+                                    className="h-9 w-full"
+                                    aria-label={__('Match text')}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeValue(index)}
+                                    disabled={draft.values.length === 1}
+                                    aria-label={__('Remove value')}
+                                    className="size-9 shrink-0"
+                                >
+                                    <X className="size-4" />
+                                </Button>
+                            </div>
+                        ))}
                     </div>
+
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={addValue}
+                        className="gap-2"
+                    >
+                        <Plus className="size-4 shrink-0" />
+                        {__('Add value')}
+                    </Button>
 
                     <div className="flex flex-col gap-1">
                         <Label className="pb-1 text-xs text-muted-foreground">
@@ -226,7 +349,7 @@ export function AiSuggestionCard({
                         <TextSearch className="size-4 shrink-0" />
                         <span className="truncate">
                             {__('Preview :count matching transactions', {
-                                count: suggestion.group_size,
+                                count: matchCount,
                             })}
                         </span>
                     </Button>

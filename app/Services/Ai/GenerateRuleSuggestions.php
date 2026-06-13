@@ -20,6 +20,7 @@ class GenerateRuleSuggestions
         private readonly RuleSuggestionAggregator $aggregator,
         private readonly RuleSuggestionGenerator $generator,
         private readonly RuleSuggestionGuard $guard,
+        private readonly RuleSuggestionConsolidator $consolidator,
     ) {}
 
     public function run(SuggestionRun $run): SuggestionRun
@@ -37,7 +38,9 @@ class GenerateRuleSuggestions
 
             $categories = $this->aggregator->categoryOptions($run->user);
             $raw = $this->generator->generate($groups, $categories);
-            $validated = $this->guard->validate($run->user, $raw, $categories);
+            $validated = $this->consolidator->consolidate(
+                $this->guard->validate($run->user, $raw, $categories),
+            );
 
             if ($validated === []) {
                 return $this->finishEmpty($run);

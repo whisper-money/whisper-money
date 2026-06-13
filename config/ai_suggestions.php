@@ -21,7 +21,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | "min_group_count" is the minimum number of transactions a group must
-    | contain before it is worth suggesting a rule for (filters one-offs).
+    | contain before it is worth suggesting a rule for (filters one-offs); a
+    | single-transaction match is never worth a rule.
     | "max_groups_sent" caps how many groups are sent to the model per run,
     | keeping the payload — and the cost — bounded.
     | "group_batch_size" splits those groups into smaller per-request batches:
@@ -30,7 +31,7 @@ return [
     |
     */
 
-    'min_group_count' => (int) env('AI_SUGGESTIONS_MIN_GROUP_COUNT', 1),
+    'min_group_count' => (int) env('AI_SUGGESTIONS_MIN_GROUP_COUNT', 2),
 
     'max_groups_sent' => (int) env('AI_SUGGESTIONS_MAX_GROUPS', 500),
 

@@ -117,7 +117,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('ai/rule-suggestions')->name('ai.rule-suggestions.')->group(function () {
         Route::get('/', [RuleSuggestionController::class, 'show'])->name('show');
         Route::post('generate', [RuleSuggestionController::class, 'generate'])->name('generate');
-        Route::get('preview', [RuleSuggestionController::class, 'preview'])->name('preview');
+        Route::post('preview', [RuleSuggestionController::class, 'preview'])->name('preview');
         Route::post('accept', [RuleSuggestionController::class, 'accept'])->name('accept');
     });
 });
