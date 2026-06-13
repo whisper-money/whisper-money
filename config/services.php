@@ -47,4 +47,8 @@ return [
         'webhook_url' => env('DISCORD_WEBHOOK_URL'),
     ],
 
+    'logbird' => [
+        'api_token' => env('LOGBIRD_API_TOKEN'),
+    ],
+
 ];

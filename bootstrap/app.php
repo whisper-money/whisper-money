@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\BlockDemoAccountActions;
+use App\Http\Middleware\CheckApiToken;
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureUserIsSubscribed;
 use App\Http\Middleware\HandleAppearance;
@@ -52,6 +53,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'subscribed' => EnsureUserIsSubscribed::class,
             'onboarded' => EnsureOnboardingComplete::class,
             'block-demo' => BlockDemoAccountActions::class,
+            'api-token' => CheckApiToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
