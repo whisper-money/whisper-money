@@ -84,6 +84,21 @@ export function useOnboardingState(options: UseOnboardingStateOptions = {}) {
         }
     }, [hasConnectedAccount]);
 
+    // Keep the ?step= query param in sync with the current step so a manual
+    // refresh returns the user to the step they were on. Use replaceState to
+    // avoid polluting browser history and preserve Inertia's stored page state.
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('step') === currentStep) {
+            return;
+        }
+        url.searchParams.set('step', currentStep);
+        window.history.replaceState(window.history.state, '', url.toString());
+    }, [currentStep]);
+
     // Calculate step index for progress indicator
     // Sub-steps (import-transactions, import-balances) use the same index as 'create-account'
     const stepIndex = useMemo(() => {
