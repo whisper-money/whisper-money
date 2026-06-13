@@ -29,6 +29,7 @@ class OnboardingController extends Controller
         'customize-categories',
         'smart-rules',
         'syncing',
+        'ai-suggestions',
         'categorize-transactions',
         'complete',
     ];

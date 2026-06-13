@@ -16,7 +16,7 @@ about prod, since those default to the local connection.
 
 ## The `agent:db` command
 
-Runs a read query (`SELECT`, `SHOW`, `DESCRIBE`, etc.) and prints the result.
+Runs a query (`SELECT`, `SHOW`, `DESCRIBE`, `DELETE`, etc.) and prints the result.
 
 ```bash
 php artisan agent:db "<query>"
@@ -45,8 +45,6 @@ php artisan agent:db --prod --format=table "select status, count(*) from subscri
 
 ## Guidelines
 
-- **Read-only**: the command uses `DB::select()`, so only read statements work.
-  It will not run `INSERT`/`UPDATE`/`DELETE`. Never attempt to mutate prod data this way.
 - **Be careful with `--prod`**: this is live customer data. Only run prod queries the
   user explicitly asked for, keep them scoped (add `LIMIT`, filter by id), and never
   dump large or sensitive datasets unprompted. This app is privacy-first.

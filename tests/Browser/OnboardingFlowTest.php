@@ -550,6 +550,11 @@ it('completes entire onboarding flow with account creation, transaction import, 
         ->click('Continue')
         ->wait(3); // syncing step reloads transactions — allow time for axios + router.reload
 
+    // AI Suggestions - decline the consent prompt to continue without generating
+    $page->assertSee('Let AI organize your money')
+        ->click('No thanks')
+        ->wait(2);
+
     // Categorize Transactions - 5 CSV transactions are loaded after the syncing step reloads
     $page->assertSee('Categorize Your Transactions')
         ->click("Let's start")

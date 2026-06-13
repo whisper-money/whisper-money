@@ -12,6 +12,10 @@ use App\Listeners\AssignTransactionToBudget;
 use App\Listeners\PostStripeEventToDiscord;
 use App\Listeners\UnassignTransactionFromBudget;
 use App\Listeners\UpdateLastLoggedInAt;
+use App\Services\Ai\Contracts\RuleSuggestionGenerator;
+use App\Services\Ai\Contracts\TransactionMatcher;
+use App\Services\Ai\LaravelAiRuleSuggestionGenerator;
+use App\Services\Ai\UncategorizedTransactionMatcher;
 use App\Services\Banking\EnableBankingProvider;
 use App\Services\Discord\DiscordWebhook;
 use Illuminate\Auth\Events\Login;
@@ -44,6 +48,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DiscordWebhook::class, function () {
             return new DiscordWebhook(config('services.discord.webhook_url'));
         });
+
+        $this->app->bind(TransactionMatcher::class, UncategorizedTransactionMatcher::class);
+        $this->app->bind(RuleSuggestionGenerator::class, LaravelAiRuleSuggestionGenerator::class);
     }
 
     /**

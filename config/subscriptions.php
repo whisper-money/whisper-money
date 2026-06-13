@@ -54,6 +54,8 @@ return [
             'billing_period' => 'month',
             'trial_days' => (int) env('STRIPE_PRO_MONTHLY_TRIAL_DAYS', 15),
             'features' => [
+                'Connect bank accounts',
+                'AI Suggestions',
                 'Unlimited accounts',
                 'Unlimited transactions',
                 'Your data stays yours',
@@ -71,6 +73,8 @@ return [
             'billing_period' => 'year',
             'trial_days' => (int) env('STRIPE_PRO_YEARLY_TRIAL_DAYS', 15),
             'features' => [
+                'Connect bank accounts',
+                'AI Suggestions',
                 'Unlimited accounts',
                 'Unlimited transactions',
                 'Your data stays yours',

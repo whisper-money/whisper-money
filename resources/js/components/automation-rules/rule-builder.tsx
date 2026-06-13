@@ -342,7 +342,7 @@ function ConditionRow({
             </div>
 
             {showAmountHint && (
-                <p className="text-xs pl-2 py-2 text-muted-foreground">
+                <p className="py-2 pl-2 text-xs text-muted-foreground">
                     {__(
                         'Use a negative value for expenses (e.g. -21.99) and a positive value for income.',
                     )}

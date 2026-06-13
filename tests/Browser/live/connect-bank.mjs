@@ -148,14 +148,16 @@ async function driveSabadell(page) {
 async function driveBbva(page) {
     await page.getByRole('button', { name: EB_CONTINUE }).click();
     await page.waitForTimeout(5000);
-    const textboxes = await page.getByRole('textbox').all();
-    await textboxes[0].fill(BBVA_USER);
-    await textboxes[1].fill(BBVA_PASS);
-    await page.getByRole('button', { name: 'Submit' }).first().click();
+    // The BBVA mockup has no labels/placeholders and its language varies between
+    // runs ("Submit"/"Enviar"), so target the stable input/button ids.
+    await page.locator('#username').fill(BBVA_USER);
+    await page.locator('#password').fill(BBVA_PASS);
+    await page.locator('#mybutton').click();
     await page.waitForTimeout(6000);
-    await page.getByRole('textbox', { name: 'SMS Code' }).fill(OTP);
+    // SCA ("extra security measure") one-time-code step.
+    await page.locator('#clave-acceso').fill(OTP);
     await page.waitForTimeout(300);
-    await page.getByRole('button', { name: 'Confirm' }).click();
+    await page.locator('#submit').click();
     await page.waitForTimeout(10000);
 }
 

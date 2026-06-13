@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Ai\AiConsentController;
+use App\Http\Controllers\Ai\RuleSuggestionController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
@@ -108,6 +110,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('transactions', [TransactionController::class, 'store'])->name('transactions.store');
     Route::patch('transactions/bulk', [TransactionController::class, 'bulkUpdate'])->name('transactions.bulk-update');
     Route::patch('transactions/{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
+
+    // AI rule suggestions — accessible during onboarding (auto-apply) and after.
+    Route::post('ai/consent', [AiConsentController::class, 'store'])->name('ai.consent.store');
+    Route::delete('ai/consent', [AiConsentController::class, 'destroy'])->name('ai.consent.destroy');
+    Route::prefix('ai/rule-suggestions')->name('ai.rule-suggestions.')->group(function () {
+        Route::get('/', [RuleSuggestionController::class, 'show'])->name('show');
+        Route::post('generate', [RuleSuggestionController::class, 'generate'])->name('generate');
+        Route::post('preview', [RuleSuggestionController::class, 'preview'])->name('preview');
+        Route::post('accept', [RuleSuggestionController::class, 'accept'])->name('accept');
+    });
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
