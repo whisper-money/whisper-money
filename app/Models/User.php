@@ -256,6 +256,28 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     }
 
     /**
+     * Whether the user is still being billed: on a trial or holding an
+     * active subscription that has not been cancelled (grace period excluded,
+     * as it will not renew). Such users must cancel before deleting their account.
+     */
+    public function hasActiveSubscriptionOrTrial(): bool
+    {
+        if (! config('subscriptions.enabled')) {
+            return false;
+        }
+
+        if ($this->onGenericTrial()) {
+            return true;
+        }
+
+        $subscription = $this->subscription('default');
+
+        return $subscription !== null
+            && $subscription->valid()
+            && ! $subscription->onGracePeriod();
+    }
+
+    /**
      * The tax rates that should apply to the customer's subscriptions.
      *
      * @return array<int, string>

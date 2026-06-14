@@ -14,13 +14,18 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
+import { billing } from '@/routes/settings';
 import { type SharedData } from '@/types';
 import { __ } from '@/utils/i18n';
-import { Form, usePage } from '@inertiajs/react';
+import { Form, Link, usePage } from '@inertiajs/react';
 import { InfoIcon } from 'lucide-react';
 import { useRef } from 'react';
 
-export default function DeleteUser() {
+export default function DeleteUser({
+    hasActiveSubscriptionOrTrial,
+}: {
+    hasActiveSubscriptionOrTrial: boolean;
+}) {
     const { auth } = usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -39,6 +44,35 @@ export default function DeleteUser() {
                     <InfoIcon className="h-4 w-4" />
                     <AlertDescription>
                         {__('The demo account cannot be deleted.')}
+                    </AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
+
+    if (hasActiveSubscriptionOrTrial) {
+        return (
+            <div className="space-y-6">
+                <HeadingSmall
+                    title={__('Delete account')}
+                    description={__(
+                        'Mark your account as deleted and disable access',
+                    )}
+                />
+
+                <Alert>
+                    <InfoIcon className="h-4 w-4" />
+                    <AlertDescription className="flex flex-col items-start gap-3">
+                        <span>
+                            {__(
+                                'Please cancel your subscription before deleting your account.',
+                            )}
+                        </span>
+                        <Button variant="secondary" asChild>
+                            <Link href={billing.url()}>
+                                {__('Manage billing')}
+                            </Link>
+                        </Button>
                     </AlertDescription>
                 </Alert>
             </div>
