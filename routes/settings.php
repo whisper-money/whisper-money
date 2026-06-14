@@ -16,6 +16,7 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TimezoneController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Controllers\SubscriptionController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -87,8 +88,10 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/billing', [SubscriptionController::class, 'billing'])->name('settings.billing');
     Route::get('settings/billing/portal', [SubscriptionController::class, 'billingPortal'])->name('settings.billing.portal');
 
-    Route::get('settings/delete-account', function () {
-        return Inertia::render('settings/delete-account');
+    Route::get('settings/delete-account', function (Request $request) {
+        return Inertia::render('settings/delete-account', [
+            'hasActiveSubscriptionOrTrial' => $request->user()->hasActiveSubscriptionOrTrial(),
+        ]);
     })->name('delete-account.edit');
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])

@@ -65,11 +65,17 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        if ($user->hasActiveSubscriptionOrTrial()) {
+            return back()->withErrors([
+                'subscription' => __('Please cancel your subscription before deleting your account.'),
+            ]);
+        }
+
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);
-
-        $user = $request->user();
 
         Auth::logout();
 

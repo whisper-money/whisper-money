@@ -183,3 +183,82 @@ test('correct password must be provided to delete account', function () {
 
     expect($user->fresh())->not->toBeNull();
 });
+
+test('user with an active subscription cannot delete their account', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_active_delete_test',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_delete_test',
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('delete-account.edit'))
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ]);
+
+    $response
+        ->assertSessionHasErrors('subscription')
+        ->assertRedirect(route('delete-account.edit'));
+
+    expect(User::query()->find($user->id))->not->toBeNull();
+});
+
+test('user on a trial cannot delete their account', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_trialing_delete_test',
+        'stripe_status' => 'trialing',
+        'stripe_price' => 'price_delete_test',
+        'trial_ends_at' => now()->addDays(7),
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('delete-account.edit'))
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ]);
+
+    $response
+        ->assertSessionHasErrors('subscription')
+        ->assertRedirect(route('delete-account.edit'));
+
+    expect(User::query()->find($user->id))->not->toBeNull();
+});
+
+test('user with a cancelled subscription on grace period can delete their account', function () {
+    config(['subscriptions.enabled' => true]);
+
+    $user = User::factory()->create();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_grace_delete_test',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_delete_test',
+        'ends_at' => now()->addDays(7),
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->delete(route('profile.destroy'), [
+            'password' => 'password',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('home'));
+
+    expect(User::query()->find($user->id))->toBeNull();
+});
