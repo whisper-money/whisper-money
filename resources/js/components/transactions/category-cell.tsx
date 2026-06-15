@@ -117,41 +117,54 @@ export function CategoryCell({
             </div>
         ) : undefined;
 
-    const select = (
-        <span className="flex w-full min-w-0">
-            <CategorySelect
-                value={
-                    transaction.category_id
-                        ? String(transaction.category_id)
-                        : 'null'
-                }
-                onValueChange={handleCategoryChange}
-                categories={categories}
-                disabled={isUpdating}
-                placeholder={__('Uncategorized')}
-                triggerClassName={cn(
-                    'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
-                    className || '',
-                )}
-                showUncategorized={true}
-                withoutChevronIcon={withoutChevronIcon}
-                header={aiHeader}
-                glowIcon={isAiCategorized}
-            />
+    const aiIcon = (
+        <span className="inline-flex" aria-label={__('Categorized by AI')}>
+            <AiSparkleIcon className="h-3.5 w-3.5" />
         </span>
     );
 
-    // Desktop keeps the hover tooltip; mobile relies on the in-dropdown header.
-    if (!isAiCategorized || isMobile) {
-        return select;
-    }
-
     return (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>{select}</TooltipTrigger>
-                <TooltipContent>{aiNote}</TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+        <div className="flex w-full items-center gap-1">
+            <div className="min-w-0 flex-1">
+                <CategorySelect
+                    value={
+                        transaction.category_id
+                            ? String(transaction.category_id)
+                            : 'null'
+                    }
+                    onValueChange={handleCategoryChange}
+                    categories={categories}
+                    disabled={isUpdating}
+                    placeholder={__('Uncategorized')}
+                    triggerClassName={cn(
+                        'h-auto w-full border-0 bg-transparent p-0 shadow-none focus:ring-0',
+                        className || '',
+                    )}
+                    showUncategorized={true}
+                    withoutChevronIcon={withoutChevronIcon}
+                    header={aiHeader}
+                />
+            </div>
+
+            {/* Trailing icon in a fixed-width slot pinned to the column's right
+                edge — always reserved (empty when not AI) so the icon lines up
+                horizontally on every row. Desktop shows confidence on hover;
+                mobile relies on the dropdown header. */}
+            <span className="flex w-3.5 shrink-0 items-center justify-center">
+                {isAiCategorized &&
+                    (isMobile ? (
+                        aiIcon
+                    ) : (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    {aiIcon}
+                                </TooltipTrigger>
+                                <TooltipContent>{aiNote}</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    ))}
+            </span>
+        </div>
     );
 }

@@ -64,8 +64,6 @@ interface CategoryComboboxProps {
     emptyOptionLabel?: string;
     /** Optional content rendered at the very top of the open dropdown. */
     header?: ReactNode;
-    /** Render an aurora glow around the selected category's icon. */
-    glowIcon?: boolean;
     'data-testid'?: string;
 }
 
@@ -80,7 +78,6 @@ export function CategoryCombobox({
     withoutChevronIcon = false,
     emptyOptionLabel,
     header,
-    glowIcon = false,
     'data-testid': dataTestId,
 }: CategoryComboboxProps) {
     const noneLabel = emptyOptionLabel ?? __('Uncategorized');
@@ -162,20 +159,9 @@ export function CategoryCombobox({
                     data-testid={dataTestId}
                 >
                     {selectedCategory ? (
-                        <div
-                            className={cn(
-                                'flex items-center gap-2',
-                                // overflow-visible on glowing rows so the icon's
-                                // aurora halo isn't clipped; truncation is kept
-                                // by the name span's own min-w-0 + truncate.
-                                glowIcon ? 'overflow-visible' : 'overflow-x-hidden',
-                            )}
-                        >
-                            <CategoryIcon
-                                category={selectedCategory}
-                                glow={glowIcon}
-                            />
-                            <span className="min-w-0 truncate">
+                        <div className="flex items-center gap-2 overflow-x-hidden">
+                            <CategoryIcon category={selectedCategory} />
+                            <span className="truncate">
                                 {selectedCategory.name}
                             </span>
                         </div>
@@ -276,41 +262,23 @@ export function CategoryCombobox({
 
 export const CategoryIcon = memo(function CategoryIcon({
     category,
-    glow = false,
 }: {
     category: Category;
-    /** Render a soft multi-color aurora halo around the icon (AI-categorized). */
-    glow?: boolean;
 }) {
     const colorClasses = getCategoryColorClasses(category.color);
     const iconName = category.icon;
 
-    const circle = (
+    return (
         <div
             className={cn(
                 'flex aspect-square items-center justify-center rounded-full p-1',
                 colorClasses.bg,
-                glow && 'relative',
             )}
         >
             <DynamicIcon
                 name={iconName}
                 className={cn(`size-4 sm:size-3.5`, colorClasses.text)}
             />
-        </div>
-    );
-
-    if (!glow) {
-        return circle;
-    }
-
-    return (
-        <div className="relative flex shrink-0">
-            <span
-                aria-hidden
-                className="absolute -inset-1 rounded-full bg-[conic-gradient(from_180deg,#4796E3,#9177C7,#D56F82,#F0A35E,#4796E3)] opacity-70 blur-[5px]"
-            />
-            {circle}
         </div>
     );
 });
