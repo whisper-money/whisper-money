@@ -153,9 +153,9 @@ class PostStripeEventToDiscord implements ShouldQueue
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    private function invoiceEmbed(string $type, array $payload): array
+    private function invoiceEmbed(string $type, array $payload): ?array
     {
         $object = $payload['data']['object'] ?? [];
 
@@ -163,6 +163,10 @@ class PostStripeEventToDiscord implements ShouldQueue
             'invoice.payment_failed' => ['title' => '⚠️ Payment failed', 'color' => self::COLOR_RED, 'amount' => $object['amount_due'] ?? 0],
             default => ['title' => '💰 Payment succeeded', 'color' => self::COLOR_GREEN, 'amount' => $object['amount_paid'] ?? 0],
         };
+
+        if ((int) $meta['amount'] === 0) {
+            return null;
+        }
 
         $email = $this->stringOrNull($object['customer_email'] ?? null);
 

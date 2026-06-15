@@ -79,6 +79,18 @@ test('posts the formatted amount for a succeeded payment', function () {
         ->contains(fn ($field) => $field['value'] === '€19.99'));
 });
 
+test('skips a zero-amount payment so only the subscription message is posted', function () {
+    Http::fake();
+
+    handleStripeWebhook([
+        'id' => 'evt_zero',
+        'type' => 'invoice.payment_succeeded',
+        'data' => ['object' => ['amount_paid' => 0, 'currency' => 'eur', 'customer_email' => 'a@b.com', 'subscription' => 'sub_123']],
+    ]);
+
+    Http::assertNothingSent();
+});
+
 test('uses amount_due for a failed payment', function () {
     Http::fake();
 
