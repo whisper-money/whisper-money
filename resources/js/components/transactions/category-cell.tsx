@@ -99,28 +99,11 @@ export function CategoryCell({
             : null;
 
     return (
-        <div className="flex w-full items-center gap-1">
-            <CategorySelect
-                value={
-                    transaction.category_id
-                        ? String(transaction.category_id)
-                        : 'null'
-                }
-                onValueChange={handleCategoryChange}
-                categories={categories}
-                disabled={isUpdating}
-                placeholder={__('Uncategorized')}
-                triggerClassName={cn(
-                    'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
-                    className || '',
-                )}
-                showUncategorized={true}
-                withoutChevronIcon={withoutChevronIcon}
-            />
-
-            {/* Fixed-width slot, always reserved so the icon column lines up
-                across rows whether or not a transaction is AI-categorized. */}
-            <span className="ml-auto flex w-4 shrink-0 items-center justify-center">
+        <div className="flex items-center gap-1.5">
+            {/* Fixed-width leading slot, always reserved (empty when the
+                transaction isn't AI-categorized) so the icon sits at a constant
+                position and every row's category lines up. */}
+            <span className="flex w-3.5 shrink-0 items-center justify-center">
                 {isAiCategorized && (
                     <TooltipProvider>
                         <Tooltip>
@@ -144,6 +127,24 @@ export function CategoryCell({
                     </TooltipProvider>
                 )}
             </span>
+
+            <CategorySelect
+                value={
+                    transaction.category_id
+                        ? String(transaction.category_id)
+                        : 'null'
+                }
+                onValueChange={handleCategoryChange}
+                categories={categories}
+                disabled={isUpdating}
+                placeholder={__('Uncategorized')}
+                triggerClassName={cn(
+                    'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
+                    className || '',
+                )}
+                showUncategorized={true}
+                withoutChevronIcon={withoutChevronIcon}
+            />
         </div>
     );
 }
