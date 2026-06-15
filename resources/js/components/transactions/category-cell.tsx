@@ -100,15 +100,9 @@ export function CategoryCell({
             ? Math.round(transaction.ai_confidence * 100)
             : null;
 
-    // AI-categorized rows get a soft Gemini-style gradient glow on the dropdown
-    // instead of a separate icon. The box model (padding/negative margin) is
-    // identical on every row so categories stay aligned whether glowing or not.
-    const aiGlow =
-        'bg-gradient-to-r from-[#4796E3]/5 via-[#9177C7]/5 to-[#D56F82]/5 ring-1 ring-[#9177C7]/10 shadow-[0_0_10px_-2px_rgba(145,119,199,0.55)] dark:from-[#4796E3]/10 dark:via-[#9177C7]/10 dark:to-[#D56F82]/10 dark:ring-[#9177C7]/20';
-
     const aiNote =
         confidencePercent != null
-            ? __('Categorized by AI · :confidence% confident', {
+            ? __('Categorized by AI with :confidence% confident', {
                   confidence: confidencePercent,
               })
             : __('Categorized by AI');
@@ -136,13 +130,13 @@ export function CategoryCell({
                 disabled={isUpdating}
                 placeholder={__('Uncategorized')}
                 triggerClassName={cn(
-                    'h-auto w-auto rounded-md border-0 bg-transparent px-1 py-0.5 -mx-1 -my-0.5 shadow-none focus:ring-0',
+                    'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
                     className || '',
-                    isAiCategorized && aiGlow,
                 )}
                 showUncategorized={true}
                 withoutChevronIcon={withoutChevronIcon}
                 header={aiHeader}
+                glowIcon={isAiCategorized}
             />
         </span>
     );
