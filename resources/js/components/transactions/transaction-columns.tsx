@@ -92,12 +92,13 @@ export function createTransactionColumns({
             accessorKey: 'transaction_date',
             meta: {
                 label: __('Date'),
-                cellClassName: 'max-w-[95px] whitespace-normal',
+                cellClassName: 'max-w-[90px] whitespace-normal pr-1',
             },
             header: ({ column }) => {
                 return (
                     <Button
                         variant="ghost"
+                        className="px-0"
                         onClick={() =>
                             column.toggleSorting(column.getIsSorted() === 'asc')
                         }
@@ -136,7 +137,7 @@ export function createTransactionColumns({
             meta: {
                 label: __('Category'),
                 cellClassName:
-                    'max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
+                    'pl-0 max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
             },
             header: () => __('Category'),
             cell: ({ row }) => {
