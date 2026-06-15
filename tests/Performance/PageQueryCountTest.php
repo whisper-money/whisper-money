@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountType;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Transaction;
@@ -44,7 +45,11 @@ test('accounts index page does not exceed query threshold', function () {
 });
 
 test('account show page does not exceed query threshold', function () {
-    $account = $this->user->accounts()->first();
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'currency_code' => $this->user->currency_code,
+        'type' => AccountType::Checking,
+    ]);
 
     assertMaxQueries(18, function () use ($account) {
         $this->get(route('accounts.show', $account))->assertOk();
