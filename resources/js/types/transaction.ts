@@ -24,6 +24,7 @@ export interface Transaction {
     source: TransactionSource;
     category_source?: CategorySource | null;
     ai_confidence?: number | null;
+    ai_categorized?: boolean;
     label_ids?: UUID[];
     created_at: string;
     updated_at: string;

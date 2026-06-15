@@ -47,12 +47,13 @@ class TransactionController extends Controller
             'label_ids' => $validated['label_ids'] ?? null,
             'creditor_name' => $validated['creditor_name'] ?? null,
             'debtor_name' => $validated['debtor_name'] ?? null,
+            'category_source' => $validated['category_source'] ?? null,
             'search' => $validated['search'] ?? null,
         ], fn ($value) => $value !== null);
 
         $query = Transaction::query()
             ->where('user_id', $user->id)
-            ->with(['account.bank', 'category', 'labels'])
+            ->with(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin'])
             ->applyFilters($filters);
 
         $nullableSortColumns = ['creditor_name', 'debtor_name'];
@@ -71,7 +72,10 @@ class TransactionController extends Controller
             ->cursorPaginate($perPage)
             ->withQueryString();
 
-        $transactions->getCollection()->each(fn (Transaction $transaction) => $transaction->makeHidden(['creditor_name_sort', 'debtor_name_sort']));
+        $transactions->getCollection()->each(function (Transaction $transaction): void {
+            $transaction->makeHidden(['creditor_name_sort', 'debtor_name_sort'])
+                ->append('ai_categorized');
+        });
 
         $appliedFilters = [
             'date_from' => $validated['date_from'] ?? null,
@@ -83,6 +87,7 @@ class TransactionController extends Controller
             'label_ids' => $validated['label_ids'] ?? [],
             'creditor_name' => $validated['creditor_name'] ?? '',
             'debtor_name' => $validated['debtor_name'] ?? '',
+            'category_source' => $validated['category_source'] ?? null,
             'search' => $validated['search'] ?? '',
             'sort' => $sortParam,
         ];

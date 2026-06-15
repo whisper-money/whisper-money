@@ -71,6 +71,7 @@ export function CategoryCell({
                 category: updatedCategory,
                 category_source: categoryId ? 'manual' : null,
                 ai_confidence: null,
+                ai_categorized: false,
                 account,
                 bank,
             };
@@ -91,14 +92,14 @@ export function CategoryCell({
         }
     }
 
-    const isAiCategorized = transaction.category_source === 'ai';
+    const isAiCategorized = transaction.ai_categorized === true;
     const confidencePercent =
         transaction.ai_confidence != null
             ? Math.round(transaction.ai_confidence * 100)
             : null;
 
     return (
-        <div className="flex items-center gap-1">
+        <div className="flex w-full items-center gap-1">
             <CategorySelect
                 value={
                     transaction.category_id
@@ -117,28 +118,32 @@ export function CategoryCell({
                 withoutChevronIcon={withoutChevronIcon}
             />
 
-            {isAiCategorized && (
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <span
-                                className="inline-flex shrink-0"
-                                aria-label={__('Categorized by AI')}
-                            >
-                                <AiSparkleIcon className="h-3.5 w-3.5" />
-                            </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            {confidencePercent != null
-                                ? __(
-                                      'Categorized by AI · :confidence% confident',
-                                      { confidence: confidencePercent },
-                                  )
-                                : __('Categorized by AI')}
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            )}
+            {/* Fixed-width slot, always reserved so the icon column lines up
+                across rows whether or not a transaction is AI-categorized. */}
+            <span className="ml-auto flex w-4 shrink-0 items-center justify-center">
+                {isAiCategorized && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span
+                                    className="inline-flex"
+                                    aria-label={__('Categorized by AI')}
+                                >
+                                    <AiSparkleIcon className="h-3.5 w-3.5" />
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                {confidencePercent != null
+                                    ? __(
+                                          'Categorized by AI · :confidence% confident',
+                                          { confidence: confidencePercent },
+                                      )
+                                    : __('Categorized by AI')}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
+            </span>
         </div>
     );
 }

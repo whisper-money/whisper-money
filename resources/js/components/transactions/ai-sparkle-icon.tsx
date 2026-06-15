@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Sparkle } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 /**
  * The Gemini-style multi-color sparkle used to mark an AI-guessed category.
@@ -24,7 +24,7 @@ export function AiSparkleIcon({ className }: { className?: string }) {
                     </linearGradient>
                 </defs>
             </svg>
-            <Sparkle
+            <Sparkles
                 className={cn('h-4 w-4', className)}
                 stroke="url(#ai-sparkle-gradient)"
                 fill="url(#ai-sparkle-gradient)"

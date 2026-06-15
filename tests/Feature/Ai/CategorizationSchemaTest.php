@@ -63,3 +63,47 @@ it('records a category correction with casted fields', function () {
         ->and($correction->confidence)->toBeFloat()->toEqual(0.612)
         ->and($correction->transaction)->not->toBeNull();
 });
+
+it('reports ai_categorized for a direct AI label', function () {
+    $transaction = Transaction::factory()->plaintext()->create([
+        'category_source' => CategorySource::Ai,
+    ]);
+
+    expect($transaction->ai_categorized)->toBeTrue();
+});
+
+it('reports ai_categorized when categorized by an AI-origin rule', function () {
+    $user = User::factory()->create();
+    $rule = AutomationRule::factory()->ai()->for($user)->create();
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_source' => CategorySource::Rule,
+        'categorized_by_rule_id' => $rule->id,
+    ]);
+    $transaction->load('categorizedByRule');
+
+    expect($transaction->ai_categorized)->toBeTrue();
+});
+
+it('does not report ai_categorized for a user-owned rule', function () {
+    $user = User::factory()->create();
+    $rule = AutomationRule::factory()->for($user)->create();
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_source' => CategorySource::Rule,
+        'categorized_by_rule_id' => $rule->id,
+    ]);
+    $transaction->load('categorizedByRule');
+
+    expect($transaction->ai_categorized)->toBeFalse();
+});
+
+it('does not report ai_categorized for a manual category', function () {
+    $transaction = Transaction::factory()->plaintext()->create([
+        'category_source' => CategorySource::Manual,
+    ]);
+
+    expect($transaction->ai_categorized)->toBeFalse();
+});

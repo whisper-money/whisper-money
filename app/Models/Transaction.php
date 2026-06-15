@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CategorySource;
+use App\Enums\RuleOrigin;
 use App\Enums\TransactionSource;
 use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
@@ -11,6 +12,7 @@ use App\Services\CategoryTree;
 use Carbon\Carbon;
 use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -107,6 +109,29 @@ class Transaction extends Model
     public function categorizedByRule(): BelongsTo
     {
         return $this->belongsTo(AutomationRule::class, 'categorized_by_rule_id');
+    }
+
+    /**
+     * Whether AI assigned this transaction's category — either directly or via an
+     * AI-owned rule. Not appended by default; surfaces opt in (e.g. the index
+     * controller eager-loads `categorizedByRule:id,origin` and appends this) so
+     * the rule-origin check never triggers a lazy load.
+     *
+     * @return Attribute<bool, never>
+     */
+    protected function aiCategorized(): Attribute
+    {
+        return Attribute::make(get: function (): bool {
+            if ($this->category_source === CategorySource::Ai) {
+                return true;
+            }
+
+            if (! $this->relationLoaded('categorizedByRule')) {
+                return false;
+            }
+
+            return $this->categorizedByRule?->origin === RuleOrigin::Ai;
+        });
     }
 
     /** @return BelongsToMany<Label, $this, LabelTransaction, 'pivot'> */
