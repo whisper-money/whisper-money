@@ -1,4 +1,7 @@
 {
+    "hooks": {
+        "after:bump": "node scripts/enrich-changelog.js && git add CHANGELOG.md"
+    },
     "git": {
         "commitMessage": "chore: release v${version}",
         "tagName": "v${version}",
