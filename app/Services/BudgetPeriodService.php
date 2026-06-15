@@ -17,20 +17,30 @@ class BudgetPeriodService
 
         [$periodStart, $periodEnd] = $this->calculatePeriodDates($budget, $startDate);
 
+        $periodStart = $periodStart->startOfDay();
+        $periodEnd = $periodEnd->startOfDay();
+
         // If no allocated amount provided, use the last period's amount or 0
         if ($allocatedAmount === null) {
             $lastPeriod = $budget->periods()->orderBy('end_date', 'desc')->first();
             $allocatedAmount = $lastPeriod !== null ? $lastPeriod->allocated_amount : 0;
         }
 
-        return BudgetPeriod::create([
-            'budget_id' => $budget->id,
-            'start_date' => $periodStart,
-            'end_date' => $periodEnd,
-            'allocated_amount' => $allocatedAmount,
-            'carried_over_amount' => 0,
-            'processing_historical' => $processHistorical,
-        ]);
+        // Idempotent on the (budget_id, start_date) unique key: the scheduled
+        // command can recompute the same next start date across overlapping or
+        // repeated runs, so return the existing period instead of colliding.
+        return BudgetPeriod::firstOrCreate(
+            [
+                'budget_id' => $budget->id,
+                'start_date' => $periodStart,
+            ],
+            [
+                'end_date' => $periodEnd,
+                'allocated_amount' => $allocatedAmount,
+                'carried_over_amount' => 0,
+                'processing_historical' => $processHistorical,
+            ],
+        );
     }
 
     public function generatePreviousPeriod(Budget $budget, BudgetPeriod $period, ?int $allocatedAmount = null, bool $processHistorical = false): BudgetPeriod
