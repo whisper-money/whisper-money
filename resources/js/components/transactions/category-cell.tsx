@@ -1,3 +1,4 @@
+import { AiSparkleIcon } from '@/components/transactions/ai-sparkle-icon';
 import { CategorySelect } from '@/components/transactions/category-select';
 import {
     Tooltip,
@@ -5,6 +6,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
@@ -39,6 +41,7 @@ export function CategoryCell({
     withoutChevronIcon,
 }: CategoryCellProps) {
     const [isUpdating, setIsUpdating] = useState(false);
+    const isMobile = useIsMobile();
 
     async function handleCategoryChange(value: string) {
         const categoryId = value === 'null' ? null : value;
@@ -101,7 +104,24 @@ export function CategoryCell({
     // instead of a separate icon. The box model (padding/negative margin) is
     // identical on every row so categories stay aligned whether glowing or not.
     const aiGlow =
-        'bg-gradient-to-r from-[#4796E3]/10 via-[#9177C7]/10 to-[#D56F82]/10 ring-1 ring-[#9177C7]/30 shadow-[0_0_12px_-2px_rgba(145,119,199,0.55)] dark:from-[#4796E3]/20 dark:via-[#9177C7]/20 dark:to-[#D56F82]/20 dark:ring-[#9177C7]/40';
+        'bg-gradient-to-r from-[#4796E3]/5 via-[#9177C7]/5 to-[#D56F82]/5 ring-1 ring-[#9177C7]/10 shadow-[0_0_10px_-2px_rgba(145,119,199,0.55)] dark:from-[#4796E3]/10 dark:via-[#9177C7]/10 dark:to-[#D56F82]/10 dark:ring-[#9177C7]/20';
+
+    const aiNote =
+        confidencePercent != null
+            ? __('Categorized by AI · :confidence% confident', {
+                  confidence: confidencePercent,
+              })
+            : __('Categorized by AI');
+
+    // On mobile there is no hover, so the confidence is shown as a row at the
+    // top of the open dropdown instead of in a tooltip.
+    const aiHeader =
+        isAiCategorized && isMobile ? (
+            <div className="flex items-center gap-2 border-b px-3 py-2 text-xs text-muted-foreground">
+                <AiSparkleIcon className="h-3.5 w-3.5 shrink-0" />
+                <span>{aiNote}</span>
+            </div>
+        ) : undefined;
 
     const select = (
         <span className="flex w-full min-w-0">
@@ -122,11 +142,13 @@ export function CategoryCell({
                 )}
                 showUncategorized={true}
                 withoutChevronIcon={withoutChevronIcon}
+                header={aiHeader}
             />
         </span>
     );
 
-    if (!isAiCategorized) {
+    // Desktop keeps the hover tooltip; mobile relies on the in-dropdown header.
+    if (!isAiCategorized || isMobile) {
         return select;
     }
 
@@ -134,13 +156,7 @@ export function CategoryCell({
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>{select}</TooltipTrigger>
-                <TooltipContent>
-                    {confidencePercent != null
-                        ? __('Categorized by AI · :confidence% confident', {
-                              confidence: confidencePercent,
-                          })
-                        : __('Categorized by AI')}
-                </TooltipContent>
+                <TooltipContent>{aiNote}</TooltipContent>
             </Tooltip>
         </TooltipProvider>
     );

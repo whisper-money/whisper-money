@@ -26,7 +26,14 @@ import {
     HelpCircle,
     type LucideIcon,
 } from 'lucide-react';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    memo,
+    type ReactNode,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 
 const iconCache = new Map<string, LucideIcon>();
 
@@ -55,6 +62,8 @@ interface CategoryComboboxProps {
     withoutChevronIcon?: boolean;
     /** Label for the empty / "no category" option (defaults to Uncategorized). */
     emptyOptionLabel?: string;
+    /** Optional content rendered at the very top of the open dropdown. */
+    header?: ReactNode;
     'data-testid'?: string;
 }
 
@@ -68,6 +77,7 @@ export function CategoryCombobox({
     showUncategorized = true,
     withoutChevronIcon = false,
     emptyOptionLabel,
+    header,
     'data-testid': dataTestId,
 }: CategoryComboboxProps) {
     const noneLabel = emptyOptionLabel ?? __('Uncategorized');
@@ -175,6 +185,7 @@ export function CategoryCombobox({
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0" align="start">
+                {header}
                 <Command shouldFilter={false}>
                     <CommandInput
                         placeholder={__('Search categories...')}
