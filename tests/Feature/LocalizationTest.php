@@ -1,12 +1,32 @@
 <?php
 
+use PHPUnit\Framework\Assert;
+
 /**
  * Localization completeness tests.
  *
- * These tests ensure every translatable string used in the application
- * has a corresponding Spanish translation, preventing untranslated content
- * from reaching production.
+ * Spanish is the reference locale and is strictly enforced: any English
+ * string without a Spanish translation fails the suite, preventing
+ * untranslated content from reaching production.
+ *
+ * French is an optional, community-maintained locale. Its gaps only emit a
+ * warning — an incomplete French translation never blocks CI, but the run
+ * still surfaces exactly which keys are missing so they can be filled in.
  */
+
+/**
+ * Locales whose translation gaps must fail the suite.
+ *
+ * @var array<string>
+ */
+const ENFORCED_LOCALES = ['es'];
+
+/**
+ * Locales whose translation gaps only emit a warning.
+ *
+ * @var array<string>
+ */
+const OPTIONAL_LOCALES = ['fr'];
 
 /**
  * Recursively flattens a nested PHP translation array using dot notation.
@@ -69,68 +89,144 @@ function extractI18nKeysFromSource(): array
     return array_unique($keys);
 }
 
-describe('Spanish PHP translation files', function () {
-    it('has every key from the English PHP files translated', function () {
-        $englishDir = lang_path('en');
-        $missingByFile = [];
+/**
+ * Computes the PHP translation keys present in lang/en but missing from the
+ * given locale, grouped by filename. A wholly absent file is reported as the
+ * sentinel "__missing_file__".
+ *
+ * @return array<string, array<string>>
+ */
+function missingPhpTranslationKeys(string $locale): array
+{
+    $englishDir = lang_path('en');
+    $missingByFile = [];
 
-        /** @var SplFileInfo $file */
-        foreach (new FilesystemIterator($englishDir, FilesystemIterator::SKIP_DOTS) as $file) {
-            if ($file->getExtension() !== 'php') {
-                continue;
-            }
-
-            $filename = $file->getFilename();
-            $spanishPath = lang_path("es/{$filename}");
-
-            if (! file_exists($spanishPath)) {
-                $missingByFile[$filename] = ['__missing_file__'];
-
-                continue;
-            }
-
-            $englishKeys = flattenTranslations(require $file->getPathname());
-            $spanishKeys = flattenTranslations(require $spanishPath);
-            $missingKeys = array_keys(array_diff_key($englishKeys, $spanishKeys));
-
-            if ($missingKeys !== []) {
-                $missingByFile[$filename] = $missingKeys;
-            }
+    /** @var SplFileInfo $file */
+    foreach (new FilesystemIterator($englishDir, FilesystemIterator::SKIP_DOTS) as $file) {
+        if ($file->getExtension() !== 'php') {
+            continue;
         }
 
-        $report = implode("\n", array_map(
-            fn (string $f, array $keys) => "lang/es/{$f}:\n  - ".implode("\n  - ", $keys),
-            array_keys($missingByFile),
-            $missingByFile,
-        ));
+        $filename = $file->getFilename();
+        $localePath = lang_path("{$locale}/{$filename}");
+
+        if (! file_exists($localePath)) {
+            $missingByFile[$filename] = ['__missing_file__'];
+
+            continue;
+        }
+
+        $englishKeys = flattenTranslations(require $file->getPathname());
+        $localeKeys = flattenTranslations(require $localePath);
+        $missingKeys = array_keys(array_diff_key($englishKeys, $localeKeys));
+
+        if ($missingKeys !== []) {
+            $missingByFile[$filename] = $missingKeys;
+        }
+    }
+
+    return $missingByFile;
+}
+
+/**
+ * Renders a human-readable report of missing PHP translation keys.
+ *
+ * @param  array<string, array<string>>  $missingByFile
+ */
+function formatPhpTranslationReport(string $locale, array $missingByFile): string
+{
+    return implode("\n", array_map(
+        fn (string $f, array $keys) => "lang/{$locale}/{$f}:\n  - ".implode("\n  - ", $keys),
+        array_keys($missingByFile),
+        $missingByFile,
+    ));
+}
+
+/**
+ * Computes the __() source keys missing from the given locale's JSON file.
+ * A missing or malformed file is reported via a sentinel entry.
+ *
+ * @return array<string>
+ */
+function missingJsonTranslationKeys(string $locale): array
+{
+    $jsonPath = lang_path("{$locale}.json");
+
+    if (! file_exists($jsonPath)) {
+        return ['__missing_file__'];
+    }
+
+    $json = json_decode(file_get_contents($jsonPath), associative: true);
+
+    if (! is_array($json)) {
+        return ['__invalid_json__'];
+    }
+
+    $sourceKeys = extractI18nKeysFromSource();
+    $missingKeys = array_values(array_filter(
+        $sourceKeys,
+        fn (string $key) => ! array_key_exists($key, $json)
+    ));
+
+    sort($missingKeys);
+
+    return $missingKeys;
+}
+
+describe('enforced PHP translations', function () {
+    it('has every English PHP key translated', function (string $locale) {
+        $missingByFile = missingPhpTranslationKeys($locale);
 
         expect($missingByFile)->toBeEmpty(
-            "Spanish PHP translation files have missing keys:\n{$report}"
+            "{$locale} PHP translation files have missing keys:\n".formatPhpTranslationReport($locale, $missingByFile)
         );
-    });
+    })->with(ENFORCED_LOCALES);
 });
 
-describe('Spanish JSON translations', function () {
-    it('has every __() key from TypeScript source files translated in es.json', function () {
-        $spanishJsonPath = lang_path('es.json');
+describe('enforced JSON translations', function () {
+    it('has every __() source key translated', function (string $locale) {
+        expect(lang_path("{$locale}.json"))->toBeFile("Missing lang/{$locale}.json translation file");
 
-        expect($spanishJsonPath)->toBeFile('Missing lang/es.json translation file');
+        $missingKeys = missingJsonTranslationKeys($locale);
 
-        $spanishJson = json_decode(file_get_contents($spanishJsonPath), associative: true);
+        expect($missingKeys)->toBeEmpty(
+            count($missingKeys)." key(s) used in source via __() are missing from lang/{$locale}.json:\n  - ".implode("\n  - ", $missingKeys)
+        );
+    })->with(ENFORCED_LOCALES);
+});
 
-        expect($spanishJson)->toBeArray('lang/es.json must contain a valid JSON object');
+describe('optional PHP translations', function () {
+    it('warns about untranslated PHP keys', function (string $locale) {
+        $missingByFile = missingPhpTranslationKeys($locale);
 
-        $sourceKeys = extractI18nKeysFromSource();
-        $missingKeys = array_values(array_filter(
-            $sourceKeys,
-            fn (string $key) => ! array_key_exists($key, $spanishJson)
-        ));
-
-        sort($missingKeys);
-
-        expect($missingKeys)
-            ->toBeEmpty(
-                count($missingKeys)." key(s) used in source via __() are missing from lang/es.json:\n  - ".implode("\n  - ", $missingKeys)
+        if ($missingByFile !== []) {
+            // Optional locale: surface the gap as an incomplete test so it stays
+            // visible in the run summary without failing CI (no failOnIncomplete
+            // is configured).
+            Assert::markTestIncomplete(
+                "Optional locale '{$locale}' has missing PHP translation keys (not blocking):\n"
+                .formatPhpTranslationReport($locale, $missingByFile)
             );
-    });
+        }
+
+        expect($missingByFile)->toBeEmpty();
+    })->with(OPTIONAL_LOCALES);
+});
+
+describe('optional JSON translations', function () {
+    it('warns about __() source keys missing from the locale JSON', function (string $locale) {
+        $missingKeys = missingJsonTranslationKeys($locale);
+
+        if ($missingKeys !== []) {
+            // Optional locale: surface the gap as an incomplete test so it stays
+            // visible in the run summary without failing CI (no failOnIncomplete
+            // is configured).
+            Assert::markTestIncomplete(
+                count($missingKeys)." key(s) used in source via __() are missing from lang/{$locale}.json (not blocking):\n  - "
+                .implode("\n  - ", $missingKeys)
+            );
+        }
+
+        expect($missingKeys)->toBeEmpty();
+    })->with(OPTIONAL_LOCALES);
 });

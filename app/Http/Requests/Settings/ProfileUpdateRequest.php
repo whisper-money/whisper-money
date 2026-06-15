@@ -31,7 +31,7 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
             'currency_code' => ['required', 'string', 'max:3', Rule::in($currencyOptions->primaryCodes())],
-            'locale' => ['nullable', 'string', Rule::in(['en', 'es'])],
+            'locale' => ['nullable', 'string', Rule::in(['en', 'es', 'fr'])],
         ];
     }
 }

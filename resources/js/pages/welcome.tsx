@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { store as storeUserLead } from '@/routes/user-leads';
 import { type SharedData } from '@/types';
 import { type CategoryColor, getCategoryColorClasses } from '@/types/category';
+import { LANGUAGE_OPTIONS } from '@/types/language';
 import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
@@ -2067,7 +2068,11 @@ export default function Welcome({
         const urlParams = new URLSearchParams(window.location.search);
         const langParam = urlParams.get('lang');
 
-        if (langParam && ['en', 'es'].includes(langParam)) {
+        const supportedLocales: readonly string[] = LANGUAGE_OPTIONS.map(
+            (option) => option.code,
+        );
+
+        if (langParam && supportedLocales.includes(langParam)) {
             // Store the preference in localStorage
             localStorage.setItem('whisper_landing_locale', langParam);
         } else {
@@ -2077,7 +2082,7 @@ export default function Welcome({
             if (
                 storedLocale &&
                 storedLocale !== locale &&
-                ['en', 'es'].includes(storedLocale)
+                supportedLocales.includes(storedLocale)
             ) {
                 // Redirect to stored preference
                 window.location.href = `/?lang=${storedLocale}`;
@@ -2858,12 +2863,17 @@ export default function Welcome({
                             >
                                 {__('Terms of Service')}
                             </Link>
-                            <a
-                                href={`/?lang=${locale === 'es' ? 'en' : 'es'}`}
-                                className="cursor-pointer hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                            >
-                                {locale === 'es' ? 'English' : 'Español'}
-                            </a>
+                            {LANGUAGE_OPTIONS.filter(
+                                (option) => option.code !== locale,
+                            ).map((option) => (
+                                <a
+                                    key={option.code}
+                                    href={`/?lang=${option.code}`}
+                                    className="cursor-pointer hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
+                                >
+                                    {option.label}
+                                </a>
+                            ))}
                         </div>
                     </div>
                 </footer>

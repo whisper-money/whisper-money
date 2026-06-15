@@ -29,7 +29,7 @@ class SetLocale
     protected function determineLocale(Request $request): string
     {
         // Priority 1: Check for lang query parameter (user override on welcome page)
-        if ($request->has('lang') && in_array($request->get('lang'), ['en', 'es'])) {
+        if ($request->has('lang') && in_array($request->get('lang'), ['en', 'es', 'fr'])) {
             $locale = $request->get('lang');
             // Store in session so subsequent requests remember this choice
             $request->session()->put('locale', $locale);
@@ -46,7 +46,7 @@ class SetLocale
         if ($request->user()) {
             $detected = $this->detectLocaleFromHeader($request);
 
-            if (in_array($request->session()->get('locale'), ['en', 'es'])) {
+            if (in_array($request->session()->get('locale'), ['en', 'es', 'fr'])) {
                 $detected = $request->session()->get('locale');
             }
 
@@ -79,6 +79,11 @@ class SetLocale
         // Check if Spanish is preferred
         if (preg_match('/^es(-|,|;)/i', $acceptLanguage) || $acceptLanguage === 'es') {
             return 'es';
+        }
+
+        // Check if French is preferred
+        if (preg_match('/^fr(-|,|;)/i', $acceptLanguage) || $acceptLanguage === 'fr') {
+            return 'fr';
         }
 
         return 'en';
