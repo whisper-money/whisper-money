@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CategorySource;
 use App\Enums\TransactionSource;
 use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
@@ -38,6 +39,9 @@ class Transaction extends Model
         'user_id',
         'account_id',
         'category_id',
+        'category_source',
+        'ai_confidence',
+        'categorized_by_rule_id',
         'description',
         'description_iv',
         'original_description',
@@ -65,6 +69,7 @@ class Transaction extends Model
         'external_transaction_id',
         'dedup_fingerprint',
         'raw_data',
+        'categorized_by_rule_id',
         'deleted_at',
     ];
 
@@ -74,6 +79,8 @@ class Transaction extends Model
             'transaction_date' => 'date:Y-m-d',
             'amount' => 'integer',
             'source' => TransactionSource::class,
+            'category_source' => CategorySource::class,
+            'ai_confidence' => 'float',
             'raw_data' => 'array',
         ];
     }
@@ -94,6 +101,12 @@ class Transaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** @return BelongsTo<AutomationRule, $this> */
+    public function categorizedByRule(): BelongsTo
+    {
+        return $this->belongsTo(AutomationRule::class, 'categorized_by_rule_id');
     }
 
     /** @return BelongsToMany<Label, $this, LabelTransaction, 'pivot'> */

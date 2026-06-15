@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\RuleOrigin;
 use Database\Factories\AutomationRuleFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +21,7 @@ class AutomationRule extends Model
         'user_id',
         'title',
         'priority',
+        'origin',
         'rules_json',
         'action_category_id',
         'action_note',
@@ -30,7 +33,17 @@ class AutomationRule extends Model
         return [
             'rules_json' => 'array',
             'priority' => 'integer',
+            'origin' => RuleOrigin::class,
         ];
+    }
+
+    /**
+     * @param  Builder<AutomationRule>  $query
+     * @return Builder<AutomationRule>
+     */
+    public function scopeOrigin(Builder $query, RuleOrigin $origin): Builder
+    {
+        return $query->where('origin', $origin);
     }
 
     /** @return BelongsTo<User, $this> */
