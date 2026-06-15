@@ -17,6 +17,8 @@ use Illuminate\Support\Collection;
 
 class CashflowAnalyticsController extends Controller
 {
+    private const MAX_TREND_MONTHS = 24;
+
     public function __construct(
         private ExchangeRateService $exchangeRateService,
         private CategoryTree $tree,
@@ -70,7 +72,7 @@ class CashflowAnalyticsController extends Controller
     public function trend(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'months' => 'nullable|integer|min:1|max:24',
+            'months' => 'nullable|integer|min:1|max:'.self::MAX_TREND_MONTHS,
             'from' => 'nullable|date',
             'to' => 'nullable|date',
         ]);
@@ -86,6 +88,15 @@ class CashflowAnalyticsController extends Controller
                 ? Carbon::parse($validated['to'])->endOfMonth()
                 : Carbon::now()->endOfMonth();
             $start = $end->copy()->subMonthsNoOverflow($months - 1)->startOfMonth();
+        }
+
+        // Bound the window to the most recent MAX_TREND_MONTHS months so an
+        // unbounded from/to range cannot make the month loop below iterate
+        // indefinitely and exhaust the request timeout.
+        $earliestStart = $end->copy()->subMonthsNoOverflow(self::MAX_TREND_MONTHS - 1)->startOfMonth();
+
+        if ($start->lt($earliestStart)) {
+            $start = $earliestStart;
         }
 
         $monthlyTotals = $this->getMonthlyTrendTotals($user->id, $user->currency_code, $start, $end);
