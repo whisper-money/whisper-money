@@ -1,4 +1,11 @@
+import { AiSparkleIcon } from '@/components/transactions/ai-sparkle-icon';
 import { CategorySelect } from '@/components/transactions/category-select';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type Account, type Bank } from '@/types/account';
@@ -62,6 +69,8 @@ export function CategoryCell({
                 ...transaction,
                 category_id: categoryId,
                 category: updatedCategory,
+                category_source: categoryId ? 'manual' : null,
+                ai_confidence: null,
                 account,
                 bank,
             };
@@ -82,23 +91,54 @@ export function CategoryCell({
         }
     }
 
+    const isAiCategorized = transaction.category_source === 'ai';
+    const confidencePercent =
+        transaction.ai_confidence != null
+            ? Math.round(transaction.ai_confidence * 100)
+            : null;
+
     return (
-        <CategorySelect
-            value={
-                transaction.category_id
-                    ? String(transaction.category_id)
-                    : 'null'
-            }
-            onValueChange={handleCategoryChange}
-            categories={categories}
-            disabled={isUpdating}
-            placeholder={__('Uncategorized')}
-            triggerClassName={cn(
-                'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
-                className || '',
+        <div className="flex items-center gap-1">
+            <CategorySelect
+                value={
+                    transaction.category_id
+                        ? String(transaction.category_id)
+                        : 'null'
+                }
+                onValueChange={handleCategoryChange}
+                categories={categories}
+                disabled={isUpdating}
+                placeholder={__('Uncategorized')}
+                triggerClassName={cn(
+                    'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
+                    className || '',
+                )}
+                showUncategorized={true}
+                withoutChevronIcon={withoutChevronIcon}
+            />
+
+            {isAiCategorized && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <span
+                                className="inline-flex shrink-0"
+                                aria-label={__('Categorized by AI')}
+                            >
+                                <AiSparkleIcon className="h-3.5 w-3.5" />
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            {confidencePercent != null
+                                ? __(
+                                      'Categorized by AI · :confidence% confident',
+                                      { confidence: confidencePercent },
+                                  )
+                                : __('Categorized by AI')}
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             )}
-            showUncategorized={true}
-            withoutChevronIcon={withoutChevronIcon}
-        />
+        </div>
     );
 }

@@ -41,6 +41,7 @@ class IndexTransactionRequest extends FormRequest
             'label_ids.*' => ['string', 'uuid'],
             'creditor_name' => ['nullable', 'string', 'max:255'],
             'debtor_name' => ['nullable', 'string', 'max:255'],
+            'category_source' => ['nullable', 'string', 'in:manual,rule,ai,bank'],
             'search' => ['nullable', 'string', 'max:200'],
             'sort' => ['nullable', 'string', 'in:transaction_date,-transaction_date,amount,-amount,description,-description,creditor_name,-creditor_name,debtor_name,-debtor_name'],
             'cursor' => ['nullable', 'string'],

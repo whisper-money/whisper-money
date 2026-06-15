@@ -191,6 +191,10 @@ class Transaction extends Model
             $query->whereIn('account_id', $filters['account_ids']);
         }
 
+        if (! empty($filters['category_source'])) {
+            $query->where('category_source', $filters['category_source']);
+        }
+
         if (! empty($filters['creditor_name'])) {
             $term = '%'.$filters['creditor_name'].'%';
             $query->where('creditor_name', 'LIKE', $term);
