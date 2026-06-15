@@ -89,6 +89,50 @@ class AiRuleLearner
         ]);
     }
 
+    /**
+     * Self-heal after a user corrects a transaction this ai-owned rule labeled:
+     * drop the merchant condition(s) matching the transaction so the rule stops
+     * forcing the wrong category on future transactions from that merchant. The
+     * rule is deleted when no condition remains.
+     */
+    public function forget(AutomationRule $rule, Transaction $transaction): void
+    {
+        $tokens = [];
+
+        foreach (['creditor_name', 'debtor_name'] as $field) {
+            $value = $this->normalize((string) ($transaction->{$field} ?? ''));
+
+            if ($value !== '') {
+                $tokens[$value] = true;
+            }
+        }
+
+        if ($tokens === []) {
+            return;
+        }
+
+        $clauses = $this->clauses($rule->rules_json);
+        $remaining = array_values(array_filter($clauses, function (array $clause) use ($tokens): bool {
+            $token = $clause['=='][1] ?? null;
+
+            return ! (is_string($token) && isset($tokens[$token]));
+        }));
+
+        if (count($remaining) === count($clauses)) {
+            return;
+        }
+
+        if ($remaining === []) {
+            $rule->delete();
+
+            return;
+        }
+
+        $rule->rules_json = count($remaining) === 1 ? $remaining[0] : ['or' => $remaining];
+        $rule->title = $this->title((string) $rule->action_category_id, $this->tokens($remaining));
+        $rule->save();
+    }
+
     private function appendCondition(AutomationRule $rule, string $field, string $token): void
     {
         $clause = ['==' => [['var' => $field], $token]];

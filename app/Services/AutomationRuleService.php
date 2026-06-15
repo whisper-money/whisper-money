@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\CategorySource;
 use App\Models\AutomationRule;
 use App\Models\LabelTransaction;
 use App\Models\Transaction;
@@ -84,6 +85,8 @@ class AutomationRuleService
                     ->whereIn('id', $categoryTransactionIds)
                     ->update([
                         'category_id' => $rule->action_category_id,
+                        'category_source' => CategorySource::Rule->value,
+                        'categorized_by_rule_id' => $rule->id,
                         'updated_at' => now(),
                     ]);
 
@@ -276,6 +279,8 @@ class AutomationRuleService
         if ($rule->action_category_id !== null
             && $transaction->category_id !== $rule->action_category_id) {
             $transaction->category_id = $rule->action_category_id;
+            $transaction->category_source = CategorySource::Rule;
+            $transaction->categorized_by_rule_id = $rule->id;
             $changed = true;
         }
 
