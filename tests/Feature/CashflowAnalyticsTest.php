@@ -703,6 +703,16 @@ test('cashflow trend can use explicit period bounds', function () {
     expect($data['2025-05']['income'])->toBe(48000);
 });
 
+test('cashflow trend caps the window for unbounded date ranges', function () {
+    $response = $this->getJson('/api/cashflow/trend?'.http_build_query([
+        'from' => '0001-01-01',
+        'to' => '9999-12-31',
+    ]));
+
+    $response->assertOk();
+    expect(count($response->json('data')))->toBe(24);
+});
+
 test('cashflow trend defaults to 12 months', function () {
     $response = $this->getJson('/api/cashflow/trend');
 
