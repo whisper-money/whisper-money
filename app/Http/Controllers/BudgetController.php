@@ -125,6 +125,7 @@ class BudgetController extends Controller
                 'period_type' => $request->period_type,
                 'period_start_day' => $request->period_start_day,
                 'rollover_type' => $request->rollover_type,
+                'is_catch_all' => $request->boolean('is_catch_all'),
             ]);
 
             $budget->categories()->sync($request->category_ids ?? []);

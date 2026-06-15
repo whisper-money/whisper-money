@@ -24,6 +24,7 @@ export interface Budget {
     period_type: BudgetPeriodType;
     period_start_day: number | null;
     rollover_type: RolloverType;
+    is_catch_all: boolean;
     created_at: string;
     updated_at: string;
     deleted_at: string | null;

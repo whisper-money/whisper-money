@@ -1,6 +1,7 @@
 import { store } from '@/actions/App/Http/Controllers/BudgetController';
 import { AmountInput } from '@/components/ui/amount-input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -63,6 +64,7 @@ export function CreateBudgetDialog({
     const [allocatedAmount, setAllocatedAmount] = useState<number>(0);
     const [rolloverType, setRolloverType] =
         useState<RolloverType>('carry_over');
+    const [isCatchAll, setIsCatchAll] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -75,7 +77,11 @@ export function CreateBudgetDialog({
 
         const newErrors: Record<string, string> = {};
 
-        if (selectedCategoryIds.length === 0 && selectedLabelIds.length === 0) {
+        if (
+            !isCatchAll &&
+            selectedCategoryIds.length === 0 &&
+            selectedLabelIds.length === 0
+        ) {
             newErrors.selection = __(
                 'You must select at least one category or label.',
             );
@@ -94,10 +100,11 @@ export function CreateBudgetDialog({
                 name,
                 period_type: periodType,
                 period_start_day: periodType === 'yearly' ? 1 : periodStartDay,
-                category_ids: selectedCategoryIds,
-                label_ids: selectedLabelIds,
+                category_ids: isCatchAll ? [] : selectedCategoryIds,
+                label_ids: isCatchAll ? [] : selectedLabelIds,
                 rollover_type: rolloverType,
                 allocated_amount: allocatedAmount,
+                is_catch_all: isCatchAll,
             },
             {
                 onSuccess: () => {
@@ -109,6 +116,7 @@ export function CreateBudgetDialog({
                     setSelectedLabelIds([]);
                     setAllocatedAmount(0);
                     setRolloverType('carry_over');
+                    setIsCatchAll(false);
                     setErrors({});
                 },
                 onError: (errors) => {
@@ -220,85 +228,134 @@ export function CreateBudgetDialog({
                         )}
 
                         <div className="space-y-4">
-                            {errors.selection && (
+                            <div className="flex items-start gap-3 rounded-md border p-2">
+                                <Checkbox
+                                    id="is-catch-all"
+                                    checked={isCatchAll}
+                                    onCheckedChange={(checked) =>
+                                        setIsCatchAll(checked === true)
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <div className="-mt-1 space-y-1">
+                                    <UILabel
+                                        htmlFor="is-catch-all"
+                                        className="cursor-pointer font-normal"
+                                    >
+                                        {__('Catch-all budget')}
+                                    </UILabel>
+                                    <p className="text-sm text-muted-foreground">
+                                        {__(
+                                            'Automatically track every expense that no other budget covers. You can only have one.',
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {errors.is_catch_all && (
                                 <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                                    {errors.selection}
+                                    {errors.is_catch_all}
                                 </div>
                             )}
 
-                            <div className="space-y-2">
-                                <UILabel htmlFor="categories">
-                                    {__('Categories')}
-                                </UILabel>
-                                <MultiSelect
-                                    id="categories"
-                                    options={flattenCategoryTree(
-                                        buildCategoryTree(allCategories),
-                                    ).map((category) => {
-                                        const colorClasses =
-                                            getCategoryColorClasses(
-                                                category.color,
-                                            );
-                                        const IconComponent = Icons[
-                                            category.icon as keyof typeof Icons
-                                        ] as Icons.LucideIcon | undefined;
-
-                                        return {
-                                            value: category.id,
-                                            label: category.name,
-                                            depth: category.depth,
-                                            parentValue: category.parent_id,
-                                            icon: IconComponent ? (
-                                                <IconComponent className="h-3 w-3 opacity-80" />
-                                            ) : undefined,
-                                            badgeClassName: cn(
-                                                colorClasses.bg,
-                                                colorClasses.text,
-                                            ),
-                                        };
-                                    })}
-                                    selected={selectedCategoryIds}
-                                    onChange={setSelectedCategoryIds}
-                                    placeholder={__('Select categories')}
-                                    searchPlaceholder={__('Search categories…')}
-                                    emptyText={__('No categories found.')}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <UILabel htmlFor="labels">
-                                    {__('Labels')}
-                                </UILabel>
-                                <MultiSelect
-                                    id="labels"
-                                    options={allLabels.map((label) => {
-                                        const colorClasses =
-                                            getLabelColorClasses(label.color);
-
-                                        return {
-                                            value: label.id,
-                                            label: label.name,
-                                            icon: (
-                                                <Tag className="h-3 w-3 opacity-80" />
-                                            ),
-                                            badgeClassName: cn(
-                                                colorClasses.bg,
-                                                colorClasses.text,
-                                            ),
-                                        };
-                                    })}
-                                    selected={selectedLabelIds}
-                                    onChange={setSelectedLabelIds}
-                                    placeholder={__('Select labels')}
-                                    searchPlaceholder={__('Search labels…')}
-                                    emptyText={__('No labels found.')}
-                                />
-                                <p className="text-sm text-muted-foreground">
-                                    {__(
-                                        'Select at least one category or label to track.',
+                            {!isCatchAll && (
+                                <>
+                                    {errors.selection && (
+                                        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                                            {errors.selection}
+                                        </div>
                                     )}
-                                </p>
-                            </div>
+
+                                    <div className="space-y-2">
+                                        <UILabel htmlFor="categories">
+                                            {__('Categories')}
+                                        </UILabel>
+                                        <MultiSelect
+                                            id="categories"
+                                            options={flattenCategoryTree(
+                                                buildCategoryTree(
+                                                    allCategories,
+                                                ),
+                                            ).map((category) => {
+                                                const colorClasses =
+                                                    getCategoryColorClasses(
+                                                        category.color,
+                                                    );
+                                                const IconComponent = Icons[
+                                                    category.icon as keyof typeof Icons
+                                                ] as
+                                                    | Icons.LucideIcon
+                                                    | undefined;
+
+                                                return {
+                                                    value: category.id,
+                                                    label: category.name,
+                                                    depth: category.depth,
+                                                    parentValue:
+                                                        category.parent_id,
+                                                    icon: IconComponent ? (
+                                                        <IconComponent className="h-3 w-3 opacity-80" />
+                                                    ) : undefined,
+                                                    badgeClassName: cn(
+                                                        colorClasses.bg,
+                                                        colorClasses.text,
+                                                    ),
+                                                };
+                                            })}
+                                            selected={selectedCategoryIds}
+                                            onChange={setSelectedCategoryIds}
+                                            placeholder={__(
+                                                'Select categories',
+                                            )}
+                                            searchPlaceholder={__(
+                                                'Search categories…',
+                                            )}
+                                            emptyText={__(
+                                                'No categories found.',
+                                            )}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <UILabel htmlFor="labels">
+                                            {__('Labels')}
+                                        </UILabel>
+                                        <MultiSelect
+                                            id="labels"
+                                            options={allLabels.map((label) => {
+                                                const colorClasses =
+                                                    getLabelColorClasses(
+                                                        label.color,
+                                                    );
+
+                                                return {
+                                                    value: label.id,
+                                                    label: label.name,
+                                                    icon: (
+                                                        <Tag className="h-3 w-3 opacity-80" />
+                                                    ),
+                                                    badgeClassName: cn(
+                                                        colorClasses.bg,
+                                                        colorClasses.text,
+                                                    ),
+                                                };
+                                            })}
+                                            selected={selectedLabelIds}
+                                            onChange={setSelectedLabelIds}
+                                            placeholder={__('Select labels')}
+                                            searchPlaceholder={__(
+                                                'Search labels…',
+                                            )}
+                                            emptyText={__('No labels found.')}
+                                        />
+                                        <p className="text-sm text-muted-foreground">
+                                            {__(
+                                                'Select at least one category or label to track.',
+                                            )}
+                                        </p>
+                                    </div>
+                                </>
+                            )}
 
                             <div className="space-y-2">
                                 <UILabel htmlFor="allocated-amount">
@@ -367,7 +424,8 @@ export function CreateBudgetDialog({
                             disabled={
                                 isSubmitting ||
                                 !name ||
-                                (selectedCategoryIds.length === 0 &&
+                                (!isCatchAll &&
+                                    selectedCategoryIds.length === 0 &&
                                     selectedLabelIds.length === 0) ||
                                 allocatedAmount <= 0
                             }

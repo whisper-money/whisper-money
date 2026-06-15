@@ -389,6 +389,49 @@ test('creating a budget requires at least one category or label', function () {
     expect(Budget::where('user_id', $user->id)->count())->toBe(0);
 });
 
+test('user can create a catch-all budget without categories or labels', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $response = $this->actingAs($user)->post('/budgets', [
+        'name' => 'Everything Else',
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+        'category_ids' => [],
+        'label_ids' => [],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 50000,
+        'is_catch_all' => true,
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHasNoErrors();
+
+    $budget = Budget::where('user_id', $user->id)->first();
+    expect($budget)->not->toBeNull()
+        ->and($budget->is_catch_all)->toBeTrue()
+        ->and($budget->categories)->toBeEmpty()
+        ->and($budget->labels)->toBeEmpty();
+});
+
+test('user cannot create a second catch-all budget', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    Budget::factory()->catchAll()->create(['user_id' => $user->id]);
+
+    $response = $this->actingAs($user)->post('/budgets', [
+        'name' => 'Another Catch-all',
+        'period_type' => 'monthly',
+        'period_start_day' => 1,
+        'category_ids' => [],
+        'label_ids' => [],
+        'rollover_type' => 'reset',
+        'allocated_amount' => 50000,
+        'is_catch_all' => true,
+    ]);
+
+    $response->assertSessionHasErrors('is_catch_all');
+    expect(Budget::where('user_id', $user->id)->count())->toBe(1);
+});
+
 test('creating a budget rejects categories owned by another user', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $otherUser = User::factory()->create();

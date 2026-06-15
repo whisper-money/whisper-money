@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\CategoryType;
+use App\Models\Budget;
 use App\Models\BudgetPeriod;
 use App\Models\BudgetTransaction;
 use App\Models\Transaction;
@@ -68,6 +70,11 @@ class BudgetTransactionService
             }
         }
 
+        $matchingPeriodIds = array_merge(
+            $matchingPeriodIds,
+            $this->catchAllPeriodIds($transaction, $userId, $categoryMatchIds),
+        );
+
         // Apply changes atomically so concurrent workers cannot leave the
         // transaction half-assigned and the unique index guards duplicates.
         DB::transaction(function () use ($transaction, $matchingPeriodIds) {
@@ -132,18 +139,34 @@ class BudgetTransactionService
             ->whereBetween('transaction_date', [$period->start_date, $period->end_date])
             ->withoutTrashed();
 
-        // Filter by any tracked category OR label
-        $query->where(function ($q) use ($categoryIds, $labelIds) {
-            if ($categoryIds->isNotEmpty()) {
-                $q->whereIn('category_id', $categoryIds);
-            }
+        if ($budget->is_catch_all) {
+            // A catch-all budget absorbs every expense whose category is not
+            // already tracked by one of the user's other budgets.
+            $claimedCategoryIds = $this->tree->expand(
+                $budget->user_id,
+                $this->claimedCategoryIds($budget->user_id),
+            );
 
-            if ($labelIds->isNotEmpty()) {
-                $q->orWhereHas('labels', function ($labelQuery) use ($labelIds) {
-                    $labelQuery->whereIn('labels.id', $labelIds);
-                });
-            }
-        });
+            $query->whereNotNull('category_id')
+                ->when(
+                    $claimedCategoryIds !== [],
+                    fn ($q) => $q->whereNotIn('category_id', $claimedCategoryIds),
+                )
+                ->whereHas('category', fn ($q) => $q->where('type', CategoryType::Expense->value));
+        } else {
+            // Filter by any tracked category OR label
+            $query->where(function ($q) use ($categoryIds, $labelIds) {
+                if ($categoryIds->isNotEmpty()) {
+                    $q->whereIn('category_id', $categoryIds);
+                }
+
+                if ($labelIds->isNotEmpty()) {
+                    $q->orWhereHas('labels', function ($labelQuery) use ($labelIds) {
+                        $labelQuery->whereIn('labels.id', $labelIds);
+                    });
+                }
+            });
+        }
 
         $totalCount = $query->count();
         Log::info("Found {$totalCount} transactions to process in date range");
@@ -168,5 +191,56 @@ class BudgetTransactionService
         });
 
         return $assignedCount;
+    }
+
+    /**
+     * Catch-all budget periods that should absorb this transaction: an expense
+     * whose category (or an ancestor) is not tracked by any non-catch-all budget.
+     *
+     * @param  array<int, string>  $categoryMatchIds  the transaction category and its ancestors
+     * @return array<int, string>
+     */
+    private function catchAllPeriodIds(Transaction $transaction, string $userId, array $categoryMatchIds): array
+    {
+        if ($transaction->category_id === null) {
+            return [];
+        }
+
+        $transaction->loadMissing('category');
+
+        if ($transaction->category?->type !== CategoryType::Expense) {
+            return [];
+        }
+
+        if (array_intersect($categoryMatchIds, $this->claimedCategoryIds($userId)) !== []) {
+            return [];
+        }
+
+        return BudgetPeriod::query()
+            ->whereHas('budget', function ($query) use ($userId) {
+                $query->where('user_id', $userId)->where('is_catch_all', true);
+            })
+            ->where('start_date', '<=', $transaction->transaction_date)
+            ->where('end_date', '>=', $transaction->transaction_date)
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
+     * Category ids directly tracked by the user's non-catch-all budgets.
+     *
+     * @return array<int, string>
+     */
+    private function claimedCategoryIds(string $userId): array
+    {
+        return Budget::query()
+            ->where('user_id', $userId)
+            ->where('is_catch_all', false)
+            ->with('categories:id')
+            ->get()
+            ->flatMap(fn (Budget $budget) => $budget->categories->pluck('id'))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

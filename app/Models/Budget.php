@@ -26,6 +26,7 @@ class Budget extends Model
         'period_type',
         'period_start_day',
         'rollover_type',
+        'is_catch_all',
     ];
 
     /** @var list<string> */
@@ -39,6 +40,7 @@ class Budget extends Model
             'period_type' => BudgetPeriodType::class,
             'rollover_type' => RolloverType::class,
             'period_start_day' => 'integer',
+            'is_catch_all' => 'boolean',
         ];
     }
 
