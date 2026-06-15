@@ -436,7 +436,7 @@ function UpgradeNotice() {
 
     return (
         <div className="w-full max-w-md rounded-lg border border-emerald-100 bg-emerald-50 p-3 dark:border-emerald-900/50 dark:bg-emerald-900/20">
-            <p className="text-center text-balance text-sm text-emerald-700 dark:text-emerald-300">
+            <p className="text-center text-sm text-balance text-emerald-700 dark:text-emerald-300">
                 {__(
                     "AI suggestions are a Standard Plan feature. You'll choose a plan at the end of the onboarding.",
                 )}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CategorySource;
 use App\Http\Requests\BulkUpdateTransactionsRequest;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Http\Requests\StoreTransactionRequest;
@@ -12,6 +13,7 @@ use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
+use App\Services\Ai\CategoryOverrideHandler;
 use App\Services\ManualBalanceAdjuster;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -45,12 +47,13 @@ class TransactionController extends Controller
             'label_ids' => $validated['label_ids'] ?? null,
             'creditor_name' => $validated['creditor_name'] ?? null,
             'debtor_name' => $validated['debtor_name'] ?? null,
+            'category_source' => $validated['category_source'] ?? null,
             'search' => $validated['search'] ?? null,
         ], fn ($value) => $value !== null);
 
         $query = Transaction::query()
             ->where('user_id', $user->id)
-            ->with(['account.bank', 'category', 'labels'])
+            ->with(['account.bank', 'category', 'labels', 'categorizedByRule:id,origin'])
             ->applyFilters($filters);
 
         $nullableSortColumns = ['creditor_name', 'debtor_name'];
@@ -69,7 +72,10 @@ class TransactionController extends Controller
             ->cursorPaginate($perPage)
             ->withQueryString();
 
-        $transactions->getCollection()->each(fn (Transaction $transaction) => $transaction->makeHidden(['creditor_name_sort', 'debtor_name_sort']));
+        $transactions->getCollection()->each(function (Transaction $transaction): void {
+            $transaction->makeHidden(['creditor_name_sort', 'debtor_name_sort'])
+                ->append('ai_categorized');
+        });
 
         $appliedFilters = [
             'date_from' => $validated['date_from'] ?? null,
@@ -81,6 +87,7 @@ class TransactionController extends Controller
             'label_ids' => $validated['label_ids'] ?? [],
             'creditor_name' => $validated['creditor_name'] ?? '',
             'debtor_name' => $validated['debtor_name'] ?? '',
+            'category_source' => $validated['category_source'] ?? null,
             'search' => $validated['search'] ?? '',
             'sort' => $sortParam,
         ];
@@ -201,6 +208,20 @@ class TransactionController extends Controller
         $hasLabelUpdate = $request->has('label_ids');
         unset($data['label_ids']);
 
+        // A user-set category overrides any AI assignment: log the correction,
+        // self-heal the ai rule, and reset the provenance to manual.
+        if ($request->has('category_id')) {
+            $newCategoryId = $data['category_id'] ?? null;
+
+            if ($newCategoryId !== $transaction->category_id) {
+                app(CategoryOverrideHandler::class)->record($transaction, $newCategoryId);
+
+                $data['category_source'] = $newCategoryId === null ? null : CategorySource::Manual->value;
+                $data['ai_confidence'] = null;
+                $data['categorized_by_rule_id'] = null;
+            }
+        }
+
         // Update attributes directly without firing events yet
         if (! empty($data)) {
             $transaction->fill($data);
@@ -269,7 +290,16 @@ class TransactionController extends Controller
 
         $updateData = [];
         if ($request->has('category_id')) {
-            $updateData['category_id'] = $request->input('category_id');
+            $newCategoryId = $request->input('category_id');
+
+            foreach ($transactions as $transaction) {
+                app(CategoryOverrideHandler::class)->record($transaction, $newCategoryId);
+            }
+
+            $updateData['category_id'] = $newCategoryId;
+            $updateData['category_source'] = $newCategoryId === null ? null : CategorySource::Manual->value;
+            $updateData['ai_confidence'] = null;
+            $updateData['categorized_by_rule_id'] = null;
         }
         if ($request->has('notes')) {
             $updateData['notes'] = $request->input('notes');

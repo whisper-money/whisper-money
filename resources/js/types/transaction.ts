@@ -5,6 +5,8 @@ import { UUID } from './uuid';
 
 export type TransactionSource = 'manually_created' | 'imported';
 
+export type CategorySource = 'manual' | 'rule' | 'ai' | 'bank';
+
 export interface Transaction {
     id: UUID;
     user_id: UUID;
@@ -20,6 +22,9 @@ export interface Transaction {
     creditor_name?: string | null;
     debtor_name?: string | null;
     source: TransactionSource;
+    category_source?: CategorySource | null;
+    ai_confidence?: number | null;
+    ai_categorized?: boolean;
     label_ids?: UUID[];
     created_at: string;
     updated_at: string;
@@ -51,4 +56,5 @@ export interface TransactionFilters {
     creditorName: string;
     debtorName: string;
     searchText: string;
+    aiCategorizedOnly: boolean;
 }

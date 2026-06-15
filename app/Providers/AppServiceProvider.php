@@ -9,6 +9,7 @@ use App\Events\TransactionUpdated;
 use App\Http\Responses\RegisterResponse;
 use App\Listeners\ApplyAutomationRules;
 use App\Listeners\AssignTransactionToBudget;
+use App\Listeners\CategorizeTransactionWithAi;
 use App\Listeners\PostStripeEventToDiscord;
 use App\Listeners\UnassignTransactionFromBudget;
 use App\Listeners\UpdateLastLoggedInAt;
@@ -60,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::listen(TransactionCreated::class, ApplyAutomationRules::class);
         Event::listen(TransactionCreated::class, AssignTransactionToBudget::class);
+        Event::listen(TransactionCreated::class, CategorizeTransactionWithAi::class);
         Event::listen(TransactionUpdated::class, AssignTransactionToBudget::class);
         Event::listen(TransactionDeleted::class, UnassignTransactionFromBudget::class);
         Event::listen(WebhookReceived::class, PostStripeEventToDiscord::class);

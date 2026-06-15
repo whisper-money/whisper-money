@@ -6,6 +6,7 @@ import { ChevronsUpDown, Tag, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
+import { AiSparkleIcon } from '@/components/transactions/ai-sparkle-icon';
 import { SavedFilters } from '@/components/transactions/saved-filters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -221,6 +222,7 @@ export function TransactionFilters({
             creditorName: '',
             debtorName: '',
             searchText: '',
+            aiCategorizedOnly: false,
         });
     }
 
@@ -233,6 +235,7 @@ export function TransactionFilters({
         filters.labelIds.length +
         (filters.creditorName ? 1 : 0) +
         (filters.debtorName ? 1 : 0) +
+        (filters.aiCategorizedOnly ? 1 : 0) +
         (hideAccountFilter ? 0 : filters.accountIds.length);
 
     return (
@@ -693,6 +696,32 @@ export function TransactionFilters({
                                         </div>
                                     </div>
                                 )}
+
+                                <div className="space-y-2">
+                                    <FormLabel>
+                                        {__('Categorized by AI')}
+                                    </FormLabel>
+                                    <div className="flex flex-wrap gap-2 pt-2">
+                                        <Badge
+                                            variant={
+                                                filters.aiCategorizedOnly
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
+                                            className="flex cursor-pointer items-center gap-1 px-2 py-1"
+                                            onClick={() =>
+                                                onFiltersChange({
+                                                    ...filters,
+                                                    aiCategorizedOnly:
+                                                        !filters.aiCategorizedOnly,
+                                                })
+                                            }
+                                        >
+                                            <AiSparkleIcon className="h-3.5 w-3.5" />
+                                            {__('Only show AI guesses')}
+                                        </Badge>
+                                    </div>
+                                </div>
                             </div>
                         </PopoverContent>
                     </Popover>

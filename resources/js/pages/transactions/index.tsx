@@ -113,6 +113,7 @@ interface AppliedFilters {
     label_ids: string[];
     creditor_name: string;
     debtor_name: string;
+    category_source: string | null;
     search: string;
     sort: string;
 }
@@ -145,6 +146,7 @@ function serverToClientFilters(applied: AppliedFilters): Filters {
         creditorName: applied.creditor_name,
         debtorName: applied.debtor_name,
         searchText: applied.search,
+        aiCategorizedOnly: applied.category_source === 'ai',
     };
 }
 
@@ -183,6 +185,9 @@ function clientFiltersToQueryParams(
     }
     if (filters.searchText) {
         params.search = filters.searchText;
+    }
+    if (filters.aiCategorizedOnly) {
+        params.category_source = 'ai';
     }
     if (sort !== '-transaction_date') {
         params.sort = sort;
@@ -225,6 +230,9 @@ function clientFiltersToBackendFilters(
     }
     if (filters.searchText) {
         result.search = filters.searchText;
+    }
+    if (filters.aiCategorizedOnly) {
+        result.category_source = 'ai';
     }
 
     return result;

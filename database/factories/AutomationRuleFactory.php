@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\RuleOrigin;
 use App\Models\AutomationRule;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -29,6 +30,17 @@ class AutomationRuleFactory extends Factory
             'action_category_id' => null,
             'action_note' => null,
             'action_note_iv' => null,
+            'origin' => RuleOrigin::User,
         ];
+    }
+
+    /**
+     * A rule created/maintained by AI auto-categorization.
+     */
+    public function ai(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'origin' => RuleOrigin::Ai,
+        ]);
     }
 }

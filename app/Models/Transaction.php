@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\CategorySource;
+use App\Enums\RuleOrigin;
 use App\Enums\TransactionSource;
 use App\Events\TransactionCreated;
 use App\Events\TransactionDeleted;
@@ -10,6 +12,7 @@ use App\Services\CategoryTree;
 use Carbon\Carbon;
 use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +24,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * @property Carbon $transaction_date
  * @property int|float $total_amount
+ * @property ?CategorySource $category_source
+ * @property ?float $ai_confidence
+ * @property ?string $categorized_by_rule_id
  */
 class Transaction extends Model
 {
@@ -38,6 +44,9 @@ class Transaction extends Model
         'user_id',
         'account_id',
         'category_id',
+        'category_source',
+        'ai_confidence',
+        'categorized_by_rule_id',
         'description',
         'description_iv',
         'original_description',
@@ -65,6 +74,7 @@ class Transaction extends Model
         'external_transaction_id',
         'dedup_fingerprint',
         'raw_data',
+        'categorized_by_rule_id',
         'deleted_at',
     ];
 
@@ -74,6 +84,8 @@ class Transaction extends Model
             'transaction_date' => 'date:Y-m-d',
             'amount' => 'integer',
             'source' => TransactionSource::class,
+            'category_source' => CategorySource::class,
+            'ai_confidence' => 'float',
             'raw_data' => 'array',
         ];
     }
@@ -94,6 +106,35 @@ class Transaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** @return BelongsTo<AutomationRule, $this> */
+    public function categorizedByRule(): BelongsTo
+    {
+        return $this->belongsTo(AutomationRule::class, 'categorized_by_rule_id');
+    }
+
+    /**
+     * Whether AI assigned this transaction's category — either directly or via an
+     * AI-owned rule. Not appended by default; surfaces opt in (e.g. the index
+     * controller eager-loads `categorizedByRule:id,origin` and appends this) so
+     * the rule-origin check never triggers a lazy load.
+     *
+     * @return Attribute<bool, never>
+     */
+    protected function aiCategorized(): Attribute
+    {
+        return Attribute::make(get: function (): bool {
+            if ($this->category_source === CategorySource::Ai) {
+                return true;
+            }
+
+            if (! $this->relationLoaded('categorizedByRule')) {
+                return false;
+            }
+
+            return $this->categorizedByRule?->origin === RuleOrigin::Ai;
+        });
     }
 
     /** @return BelongsToMany<Label, $this, LabelTransaction, 'pivot'> */
@@ -176,6 +217,10 @@ class Transaction extends Model
 
         if (! empty($filters['account_ids'])) {
             $query->whereIn('account_id', $filters['account_ids']);
+        }
+
+        if (! empty($filters['category_source'])) {
+            $query->where('category_source', $filters['category_source']);
         }
 
         if (! empty($filters['creditor_name'])) {
