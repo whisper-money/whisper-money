@@ -32,7 +32,10 @@ it('denies a user without active AI consent', function () {
 });
 
 it('denies a user the rollout flag is not active for', function () {
-    $user = User::factory()->create();
+    config()->set('ai_categorization.rollout_after', '2026-06-13 21:00:00');
+
+    // Signed up before the rollout cutoff, so the feature does not resolve on.
+    $user = User::factory()->create(['created_at' => '2026-06-13 20:00:00']);
     $user->recordAiConsent();
 
     expect(app(AiCategorizationGate::class)->allows($user))->toBeFalse();

@@ -3,10 +3,12 @@
 namespace App\Features;
 
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 /**
- * Gates AI auto-categorization of transactions. Rolled out gradually to
- * pro + AI-consented users; off by default until explicitly enabled.
+ * Gates AI auto-categorization of transactions. Rolled out to users who signed
+ * up after `ai_categorization.rollout_after`; combined with the pro plan and
+ * AI consent checks in AiCategorizationGate.
  *
  * @api
  */
@@ -17,6 +19,17 @@ class AiCategorization
      */
     public function resolve(?User $user): bool
     {
-        return false;
+        if ($user === null) {
+            return false;
+        }
+
+        $rolloutAfter = config('ai_categorization.rollout_after');
+
+        if (blank($rolloutAfter)) {
+            return false;
+        }
+
+        return $user->created_at !== null
+            && $user->created_at->gt(Carbon::parse($rolloutAfter));
     }
 }
