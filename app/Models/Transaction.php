@@ -24,6 +24,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * @property Carbon $transaction_date
  * @property int|float $total_amount
+ * @property ?CategorySource $category_source
+ * @property ?float $ai_confidence
+ * @property ?string $categorized_by_rule_id
  */
 class Transaction extends Model
 {

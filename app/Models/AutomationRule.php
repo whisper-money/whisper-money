@@ -12,6 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property array<string, mixed> $rules_json
+ * @property RuleOrigin $origin
+ */
 class AutomationRule extends Model
 {
     /** @use HasFactory<AutomationRuleFactory> */
