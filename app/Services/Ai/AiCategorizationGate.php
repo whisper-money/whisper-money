@@ -29,4 +29,15 @@ class AiCategorizationGate
 
         return Feature::for($user)->active(AiCategorization::class);
     }
+
+    /**
+     * Backfill is an explicit, user-initiated action, so it requires the kill
+     * switch, a pro plan and active consent — but not the gradual rollout flag.
+     */
+    public function allowsBackfill(User $user): bool
+    {
+        return (bool) config('ai_categorization.enabled')
+            && $user->hasProPlan()
+            && $user->hasActiveAiConsent();
+    }
 }
