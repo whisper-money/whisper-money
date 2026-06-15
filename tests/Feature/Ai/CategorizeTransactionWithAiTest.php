@@ -13,7 +13,7 @@ use Laravel\Pennant\Feature;
 
 function eligible(): User
 {
-    $user = User::factory()->create();
+    $user = User::factory()->onboarded()->create();
     $user->recordAiConsent();
     Feature::for($user)->activate(AiCategorization::class);
 
@@ -75,6 +75,21 @@ it('categorizes an eligible uncategorized transaction on creation', function () 
 
 it('does nothing when the user is not eligible', function () {
     $user = User::factory()->create();
+    leaf($user);
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+        'amount' => -4300,
+        'creditor_name' => 'mercadona',
+    ]);
+
+    expect($transaction->refresh()->category_id)->toBeNull();
+});
+
+it('does not categorize transactions created while onboarding', function () {
+    $user = eligible();
+    $user->update(['onboarded_at' => null]);
     leaf($user);
 
     $transaction = Transaction::factory()->plaintext()->create([
