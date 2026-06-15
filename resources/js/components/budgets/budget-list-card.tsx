@@ -144,7 +144,11 @@ export function BudgetListCard({ budget, currencyCode }: Props) {
                         <span className="text-sm text-muted-foreground">
                             {__('Tracking:')}
                         </span>
-                        {trackingNames.length > 0 ? (
+                        {budget.is_catch_all ? (
+                            <Badge variant="secondary">
+                                {__('All untracked expenses')}
+                            </Badge>
+                        ) : trackingNames.length > 0 ? (
                             <>
                                 {trackingNames.slice(0, 2).map((name) => (
                                     <Badge key={name} variant="secondary">

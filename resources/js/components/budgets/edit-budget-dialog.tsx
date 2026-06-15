@@ -3,6 +3,7 @@ import { CategoryBadge } from '@/components/shared/category-combobox';
 import { LabelBadge } from '@/components/shared/label-combobox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AmountInput } from '@/components/ui/amount-input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -134,22 +135,42 @@ export function EditBudgetDialog({
 
                         <div className="space-y-2">
                             <Label>{__('Tracking')}</Label>
-                            <div className="flex flex-wrap items-center gap-1">
-                                {budget.categories?.map((category) => (
-                                    <CategoryBadge
-                                        key={category.id}
-                                        category={category}
-                                    />
-                                ))}
-                                {budget.labels?.map((label) => (
-                                    <LabelBadge key={label.id} label={label} />
-                                ))}
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                                {__(
-                                    'Tracked categories and labels cannot be changed after creation.',
-                                )}
-                            </p>
+                            {budget.is_catch_all ? (
+                                <>
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        <Badge variant="secondary">
+                                            {__('All untracked expenses')}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        {__(
+                                            'This catch-all budget tracks every expense that no other budget covers.',
+                                        )}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        {budget.categories?.map((category) => (
+                                            <CategoryBadge
+                                                key={category.id}
+                                                category={category}
+                                            />
+                                        ))}
+                                        {budget.labels?.map((label) => (
+                                            <LabelBadge
+                                                key={label.id}
+                                                label={label}
+                                            />
+                                        ))}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        {__(
+                                            'Tracked categories and labels cannot be changed after creation.',
+                                        )}
+                                    </p>
+                                </>
+                            )}
                         </div>
 
                         <div className="space-y-2">

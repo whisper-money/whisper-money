@@ -27,6 +27,7 @@ function makeBudget(): Budget {
         categories: [],
         labels: [],
         rollover_type: 'carry_over',
+        is_catch_all: false,
         created_at: '2026-05-26T00:00:00.000000Z',
         updated_at: '2026-05-26T00:00:00.000000Z',
         deleted_at: null,

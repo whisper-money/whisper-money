@@ -8,6 +8,7 @@ import { MobileBackButton } from '@/components/mobile-back-button';
 import { CategoryBadge } from '@/components/shared/category-combobox';
 import { LabelBadge } from '@/components/shared/label-combobox';
 import { TransactionList } from '@/components/transactions/transaction-list';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -104,7 +105,11 @@ export default function BudgetShow({
                             title={budget.name}
                             description={
                                 <div className="flex flex-row flex-wrap items-center gap-1 text-sm">
-                                    {trackingCount > 0 ? (
+                                    {budget.is_catch_all ? (
+                                        <Badge variant="secondary">
+                                            {__('All untracked expenses')}
+                                        </Badge>
+                                    ) : trackingCount > 0 ? (
                                         <>
                                             <span className="opacity-50">
                                                 {__('Tracking')}{' '}
