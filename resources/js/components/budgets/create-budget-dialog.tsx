@@ -228,7 +228,7 @@ export function CreateBudgetDialog({
                         )}
 
                         <div className="space-y-4">
-                            <div className="flex items-start gap-3 rounded-md border p-3">
+                            <div className="flex items-start gap-3 rounded-md border p-2">
                                 <Checkbox
                                     id="is-catch-all"
                                     checked={isCatchAll}
@@ -237,7 +237,7 @@ export function CreateBudgetDialog({
                                     }
                                     className="mt-0.5"
                                 />
-                                <div className="space-y-1">
+                                <div className="-mt-1 space-y-1">
                                     <UILabel
                                         htmlFor="is-catch-all"
                                         className="cursor-pointer font-normal"
