@@ -2,11 +2,14 @@ import type { Category } from './category';
 import type { Label } from './label';
 import { UUID } from './uuid';
 
+export type RuleOrigin = 'user' | 'ai';
+
 export interface AutomationRule {
     id: UUID;
     user_id: UUID;
     title: string;
     priority: number;
+    origin: RuleOrigin;
     rules_json: Record<string, unknown>;
     action_category_id: UUID | null;
     action_note: string | null;

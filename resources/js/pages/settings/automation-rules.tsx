@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react';
 import { index as automationRulesIndex } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { ApplyAutomationRuleDialog } from '@/components/automation-rules/apply-automation-rule-dialog';
 import { AutomationRuleActionBadges } from '@/components/automation-rules/automation-rule-action-badges';
+import { AutomationRuleTitle } from '@/components/automation-rules/automation-rule-title';
 import { CreateAutomationRuleDialog } from '@/components/automation-rules/create-automation-rule-dialog';
 import { DeleteAutomationRuleDialog } from '@/components/automation-rules/delete-automation-rule-dialog';
 import { EditAutomationRuleDialog } from '@/components/automation-rules/edit-automation-rule-dialog';
@@ -230,9 +231,7 @@ export default function AutomationRules() {
             accessorKey: 'title',
             header: __('Title'),
             cell: ({ row }) => {
-                return (
-                    <div className="font-medium">{row.getValue('title')}</div>
-                );
+                return <AutomationRuleTitle rule={row.original} />;
             },
         },
         {

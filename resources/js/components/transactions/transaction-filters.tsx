@@ -6,8 +6,8 @@ import { ChevronsUpDown, Tag, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
-import { AiSparkleIcon } from '@/components/transactions/ai-sparkle-icon';
 import { SavedFilters } from '@/components/transactions/saved-filters';
+import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

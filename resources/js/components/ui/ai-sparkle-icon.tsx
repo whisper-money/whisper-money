@@ -2,7 +2,10 @@ import { cn } from '@/lib/utils';
 import { Sparkles } from 'lucide-react';
 
 /**
- * The Gemini-style multi-color sparkle used to mark an AI-guessed category.
+ * The Gemini-style multi-color sparkle that marks anything powered by AI
+ * (AI-guessed categories, AI-generated rules, AI filters, ...). This is the
+ * single shared icon to reuse wherever a feature involves AI.
+ *
  * The gradient is applied to the SVG via a referenced linearGradient so the
  * stroke and fill render as a true multi-color gradient (not a flat color).
  */
