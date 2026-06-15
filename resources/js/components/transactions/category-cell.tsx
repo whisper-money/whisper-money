@@ -1,5 +1,5 @@
-import { AiSparkleIcon } from '@/components/transactions/ai-sparkle-icon';
 import { CategorySelect } from '@/components/transactions/category-select';
+import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import {
     Tooltip,
     TooltipContent,
