@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\BankingConnectionStatus;
+use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Transaction;
@@ -87,9 +88,13 @@ class OnboardingController extends Controller
 
     public function complete(Request $request): RedirectResponse
     {
-        $request->user()->update([
+        $user = $request->user();
+
+        $user->update([
             'onboarded_at' => now(),
         ]);
+
+        CategorizeOnboardingTransactionsJob::dispatch($user);
 
         return redirect()->route('dashboard');
     }

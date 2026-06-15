@@ -1,10 +1,12 @@
 <?php
 
+use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 
 it('returns categories and transactions props on onboarding index', function () {
     $user = User::factory()->create(['onboarded_at' => null]);
@@ -102,6 +104,23 @@ it('ignores an unknown step and falls back to the default flow', function () {
             ->component('onboarding/index')
             ->where('initialStep', null)
         );
+});
+
+it('marks the user onboarded and queues the AI categorization batch on complete', function () {
+    Queue::fake();
+
+    $user = User::factory()->create(['onboarded_at' => null]);
+
+    $this->actingAs($user)
+        ->post('/onboarding/complete')
+        ->assertRedirect(route('dashboard'));
+
+    expect($user->refresh()->onboarded_at)->not->toBeNull();
+
+    Queue::assertPushed(
+        CategorizeOnboardingTransactionsJob::class,
+        fn (CategorizeOnboardingTransactionsJob $job): bool => $job->user->is($user),
+    );
 });
 
 it('returns banks and accounts props on onboarding index', function () {

@@ -45,7 +45,19 @@ class CategorizeTransactionWithAi implements ShouldQueue
 
         $user = $transaction->user;
 
-        if ($user === null || ! $this->gate->allows($user)) {
+        if ($user === null) {
+            return;
+        }
+
+        // Transactions imported during onboarding are deliberately skipped here:
+        // the bulk of them are covered by the AI automation rules generated at the
+        // end of onboarding, and whatever is left is categorized in a single batch
+        // pass once onboarding completes (CategorizeOnboardingTransactionsJob).
+        if (! $user->isOnboarded()) {
+            return;
+        }
+
+        if (! $this->gate->allows($user)) {
             return;
         }
 
