@@ -1,4 +1,3 @@
-import { AiSparkleIcon } from '@/components/transactions/ai-sparkle-icon';
 import { CategorySelect } from '@/components/transactions/category-select';
 import {
     Tooltip,
@@ -98,36 +97,14 @@ export function CategoryCell({
             ? Math.round(transaction.ai_confidence * 100)
             : null;
 
-    return (
-        <div className="flex items-center gap-1.5">
-            {/* Fixed-width leading slot, always reserved (empty when the
-                transaction isn't AI-categorized) so the icon sits at a constant
-                position and every row's category lines up. */}
-            <span className="flex w-3.5 shrink-0 items-center justify-center">
-                {isAiCategorized && (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span
-                                    className="inline-flex"
-                                    aria-label={__('Categorized by AI')}
-                                >
-                                    <AiSparkleIcon className="h-3.5 w-3.5" />
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                {confidencePercent != null
-                                    ? __(
-                                          'Categorized by AI · :confidence% confident',
-                                          { confidence: confidencePercent },
-                                      )
-                                    : __('Categorized by AI')}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
-            </span>
+    // AI-categorized rows get a soft Gemini-style gradient glow on the dropdown
+    // instead of a separate icon. The box model (padding/negative margin) is
+    // identical on every row so categories stay aligned whether glowing or not.
+    const aiGlow =
+        'bg-gradient-to-r from-[#4796E3]/10 via-[#9177C7]/10 to-[#D56F82]/10 ring-1 ring-[#9177C7]/30 shadow-[0_0_12px_-2px_rgba(145,119,199,0.55)] dark:from-[#4796E3]/20 dark:via-[#9177C7]/20 dark:to-[#D56F82]/20 dark:ring-[#9177C7]/40';
 
+    const select = (
+        <span className="flex w-full min-w-0">
             <CategorySelect
                 value={
                     transaction.category_id
@@ -139,12 +116,32 @@ export function CategoryCell({
                 disabled={isUpdating}
                 placeholder={__('Uncategorized')}
                 triggerClassName={cn(
-                    'h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0',
+                    'h-auto w-auto rounded-md border-0 bg-transparent px-1 py-0.5 -mx-1 -my-0.5 shadow-none focus:ring-0',
                     className || '',
+                    isAiCategorized && aiGlow,
                 )}
                 showUncategorized={true}
                 withoutChevronIcon={withoutChevronIcon}
             />
-        </div>
+        </span>
+    );
+
+    if (!isAiCategorized) {
+        return select;
+    }
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>{select}</TooltipTrigger>
+                <TooltipContent>
+                    {confidencePercent != null
+                        ? __('Categorized by AI · :confidence% confident', {
+                              confidence: confidencePercent,
+                          })
+                        : __('Categorized by AI')}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
     );
 }
