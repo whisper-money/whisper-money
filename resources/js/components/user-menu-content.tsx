@@ -18,6 +18,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     Eye,
     EyeOff,
+    LifeBuoy,
     LogOut,
     Map,
     MessageSquare,
@@ -27,9 +28,10 @@ import {
 
 interface UserMenuContentProps {
     user: User;
+    onOpenSupport: () => void;
 }
 
-export function UserMenuContent({ user }: UserMenuContentProps) {
+export function UserMenuContent({ user, onOpenSupport }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const { isPrivacyModeEnabled, togglePrivacyMode } = usePrivacyMode();
     const { version } = usePage<SharedData>().props;
@@ -128,6 +130,15 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
                         <Map className="mr-2" />
                         {__('Roadmap')}
                     </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={() => {
+                        onOpenSupport();
+                        cleanup();
+                    }}
+                >
+                    <LifeBuoy className="mr-2" />
+                    {__('Support')}
                 </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

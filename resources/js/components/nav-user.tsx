@@ -1,3 +1,4 @@
+import { SupportDialog } from '@/components/support-dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -15,11 +16,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { type SharedData } from '@/types';
 import { usePage } from '@inertiajs/react';
 import { ChevronsUpDown } from 'lucide-react';
+import { useState } from 'react';
 
 export function NavUser({ className }: { className?: string }) {
     const { auth } = usePage<SharedData>().props;
     const { state } = useSidebar();
     const isMobile = useIsMobile();
+    const [supportOpen, setSupportOpen] = useState(false);
 
     return (
         <SidebarMenu className={className}>
@@ -46,9 +49,17 @@ export function NavUser({ className }: { className?: string }) {
                                   : 'bottom'
                         }
                     >
-                        <UserMenuContent user={auth.user} />
+                        <UserMenuContent
+                            user={auth.user}
+                            onOpenSupport={() => setSupportOpen(true)}
+                        />
                     </DropdownMenuContent>
                 </DropdownMenu>
+                <SupportDialog
+                    open={supportOpen}
+                    onOpenChange={setSupportOpen}
+                    user={auth.user}
+                />
             </SidebarMenuItem>
         </SidebarMenu>
     );
