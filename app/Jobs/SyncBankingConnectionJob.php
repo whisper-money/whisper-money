@@ -221,7 +221,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'consecutive_sync_failures' => self::MAX_SCHEDULED_RETRIES + 1,
         ]);
 
-        if ($this->isApiKeyProvider($connection) && $connection->user?->canReceiveEmails()) {
+        if ($connection->usesApiKey() && $connection->user?->canReceiveEmails()) {
             Mail::to($connection->user)->send(new BankingConnectionAuthFailedEmail(
                 $connection->user,
                 $connection,
@@ -269,7 +269,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             $scope->setTag('banking_connection_id', (string) $connection->id);
             $scope->setContext('banking_connection', [
                 'id' => $connection->id,
-                'provider' => $connection->provider,
+                'provider' => $connection->provider->value,
                 'status' => $connection->status->value,
             ]);
 
@@ -509,13 +509,5 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
     {
         return $e instanceof RequestException
             && in_array($e->response->status(), [401, 403]);
-    }
-
-    private function isApiKeyProvider(BankingConnection $connection): bool
-    {
-        return $connection->isIndexaCapital()
-            || $connection->isBinance()
-            || $connection->isBitpanda()
-            || $connection->isCoinbase();
     }
 }

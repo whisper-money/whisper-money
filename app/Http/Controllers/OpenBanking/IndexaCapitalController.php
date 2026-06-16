@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -49,7 +50,7 @@ class IndexaCapitalController extends Controller
         );
 
         $connection = $user->bankingConnections()->create([
-            'provider' => 'indexacapital',
+            'provider' => BankingProvider::IndexaCapital,
             'api_token' => $validated['api_token'],
             'aspsp_name' => 'Indexa Capital',
             'aspsp_country' => 'ES',

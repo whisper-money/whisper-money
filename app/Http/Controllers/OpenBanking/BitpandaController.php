@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -49,7 +50,7 @@ class BitpandaController extends Controller
         );
 
         $connection = $user->bankingConnections()->create([
-            'provider' => 'bitpanda',
+            'provider' => BankingProvider::Bitpanda,
             'api_token' => $validated['api_key'],
             'aspsp_name' => 'Bitpanda',
             'aspsp_country' => $validated['country'],

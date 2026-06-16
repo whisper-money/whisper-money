@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\BankingConnection;
@@ -55,7 +56,7 @@ class SyncBankingConnections extends Command
                             ->orWhere('valid_until', '>', now());
                     });
                 })->orWhere(function ($query) {
-                    $query->where('provider', 'enablebanking')
+                    $query->where('provider', BankingProvider::EnableBanking)
                         ->where('status', BankingConnectionStatus::Active)
                         ->whereNotNull('valid_until')
                         ->where('valid_until', '<=', now());
@@ -92,9 +93,9 @@ class SyncBankingConnections extends Command
 
         $connections->each(function (BankingConnection $connection) use ($sync, $fullSync) {
             if ($sync) {
-                $this->info("Syncing {$connection->provider} connection {$connection->id}...");
+                $this->info("Syncing {$connection->provider->value} connection {$connection->id}...");
                 SyncBankingConnectionJob::dispatchSync($connection, $fullSync);
-                $this->info("Finished syncing {$connection->provider} connection {$connection->id}.");
+                $this->info("Finished syncing {$connection->provider->value} connection {$connection->id}.");
             } else {
                 SyncBankingConnectionJob::dispatch($connection, $fullSync);
             }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
 use App\Http\Requests\OpenBanking\DestroyConnectionRequest;
@@ -94,10 +95,10 @@ class ConnectionController extends Controller
         }
 
         $updateData = match ($connection->provider) {
-            'indexacapital' => ['api_token' => $validated['api_token']],
-            'binance' => ['api_token' => $validated['api_key'], 'api_secret' => $validated['api_secret']],
-            'bitpanda' => ['api_token' => $validated['api_key']],
-            'coinbase' => ['api_token' => $validated['api_key_name'], 'api_secret' => $validated['private_key']],
+            BankingProvider::IndexaCapital => ['api_token' => $validated['api_token']],
+            BankingProvider::Binance => ['api_token' => $validated['api_key'], 'api_secret' => $validated['api_secret']],
+            BankingProvider::Bitpanda => ['api_token' => $validated['api_key']],
+            BankingProvider::Coinbase => ['api_token' => $validated['api_key_name'], 'api_secret' => $validated['private_key']],
             default => [],
         };
 
@@ -120,10 +121,10 @@ class ConnectionController extends Controller
     {
         try {
             match ($connection->provider) {
-                'indexacapital' => (new IndexaCapitalClient($validated['api_token']))->getUser(),
-                'binance' => (new BinanceClient($validated['api_key'], $validated['api_secret']))->getAccount(),
-                'bitpanda' => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
-                'coinbase' => (new CoinbaseClient($validated['api_key_name'], $validated['private_key']))->getAccounts(limit: 1),
+                BankingProvider::IndexaCapital => (new IndexaCapitalClient($validated['api_token']))->getUser(),
+                BankingProvider::Binance => (new BinanceClient($validated['api_key'], $validated['api_secret']))->getAccount(),
+                BankingProvider::Bitpanda => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
+                BankingProvider::Coinbase => (new CoinbaseClient($validated['api_key_name'], $validated['private_key']))->getAccounts(limit: 1),
                 default => throw new \InvalidArgumentException('Unsupported provider for credential update.'),
             };
         } catch (\InvalidArgumentException $e) {
@@ -131,7 +132,7 @@ class ConnectionController extends Controller
         } catch (\Throwable $e) {
             Log::warning('Credential validation failed during update', [
                 'connection_id' => $connection->id,
-                'provider' => $connection->provider,
+                'provider' => $connection->provider->value,
                 'error' => $e->getMessage(),
             ]);
 

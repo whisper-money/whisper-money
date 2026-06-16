@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\OpenBanking\Concerns;
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Models\Bank;
 use App\Models\BankingConnection;
@@ -29,9 +28,7 @@ trait CreatesAccountsFromPending
             $bank->update(['logo' => $connection->aspsp_logo]);
         }
 
-        $accountType = ($connection->isIndexaCapital() || $connection->isBinance() || $connection->isBitpanda() || $connection->isCoinbase())
-            ? AccountType::Investment
-            : AccountType::Checking;
+        $accountType = $connection->provider->defaultAccountType();
 
         foreach ($connection->pending_accounts_data ?? [] as $accountData) {
             $uid = $accountData['uid'] ?? null;
