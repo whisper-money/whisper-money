@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\Budget;
@@ -8,6 +9,9 @@ use App\Models\Category;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Banking\BalanceSyncService;
+use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
+use App\Services\Banking\TransactionSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Stripe\Collection as StripeCollection;
@@ -262,4 +266,25 @@ function createAccountViaUI($page, string $displayName, string $bankName, string
         ->wait(0.3)
         ->click('[data-testid="submit-account"]')
         ->wait(2);
+}
+
+/**
+ * Run the banking sync job through the real syncer factory, binding any
+ * EnableBanking sync-service mocks the test provides so the resolved syncer
+ * uses them instead of the container defaults.
+ */
+function runSync(
+    SyncBankingConnectionJob $job,
+    ?object $transactionSync = null,
+    ?object $balanceSync = null,
+): void {
+    if ($transactionSync !== null) {
+        app()->instance(TransactionSyncService::class, $transactionSync);
+    }
+
+    if ($balanceSync !== null) {
+        app()->instance(BalanceSyncService::class, $balanceSync);
+    }
+
+    $job->handle(app(BankingConnectionSyncerFactory::class));
 }

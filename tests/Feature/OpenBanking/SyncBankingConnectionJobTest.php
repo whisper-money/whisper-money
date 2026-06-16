@@ -42,7 +42,7 @@ it('sets sentry user and banking connection context for sync jobs', function () 
     ]);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle(Mockery::mock(TransactionSyncService::class), Mockery::mock(BalanceSyncService::class));
+    runSync($job);
 
     SentrySdk::getCurrentHub()->configureScope(function (Scope $scope) use ($user, $connection): void {
         $sentryUser = $scope->getUser();
@@ -82,7 +82,7 @@ test('first sync calculates historical balances', function () {
     $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 });
 
 test('subsequent syncs do not calculate historical balances', function () {
@@ -105,7 +105,7 @@ test('subsequent syncs do not calculate historical balances', function () {
     $balanceSync->shouldNotReceive('calculateHistoricalBalances');
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 });
 
 test('linked accounts sync from last transaction date and skip historical balances', function () {
@@ -139,7 +139,7 @@ test('linked accounts sync from last transaction date and skip historical balanc
     $balanceSync->shouldNotReceive('calculateHistoricalBalances');
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 });
 
 test('linked accounts clamp linkedDateFrom to today when last transaction is in future', function () {
@@ -175,7 +175,7 @@ test('linked accounts clamp linkedDateFrom to today when last transaction is in 
     $balanceSync->shouldNotReceive('calculateHistoricalBalances');
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 });
 
 test('mixed linked and new accounts in same connection', function () {
@@ -207,7 +207,7 @@ test('mixed linked and new accounts in same connection', function () {
         ->with(Mockery::on(fn ($acct) => $acct->id === $newAccount->id));
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 });
 
 test('sends email when new transactions are synced on subsequent sync', function () {
@@ -233,7 +233,7 @@ test('sends email when new transactions are synced on subsequent sync', function
     $balanceSync->shouldReceive('sync')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     Queue::assertPushed(SendDailyBankTransactionsSyncedEmailJob::class, function ($job) use ($user) {
         return $job->user->is($user)
@@ -265,7 +265,7 @@ test('does not send email on first sync', function () {
     $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     Queue::assertNotPushed(SendDailyBankTransactionsSyncedEmailJob::class);
 
@@ -311,7 +311,7 @@ test('first sync cutoff excludes transactions imported during onboarding from la
     $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
 
@@ -350,7 +350,7 @@ test('schedules daily bank sync email check when subsequent sync imports zero ne
     $balanceSync->shouldReceive('sync')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     Queue::assertPushed(SendDailyBankTransactionsSyncedEmailJob::class);
 });
@@ -385,7 +385,7 @@ test('aggregates multiple accounts under same bank', function () {
     $balanceSync->shouldReceive('sync')->twice();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     Queue::assertPushed(SendDailyBankTransactionsSyncedEmailJob::class);
 });
@@ -421,7 +421,7 @@ test('lists different banks separately in email', function () {
     $balanceSync->shouldReceive('sync')->twice();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     Queue::assertPushed(SendDailyBankTransactionsSyncedEmailJob::class);
 });
@@ -818,7 +818,7 @@ test('indexa capital sync only syncs balances, not transactions', function () {
     $balanceSync->shouldNotReceive('sync');
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->last_synced_at)->not->toBeNull();
@@ -851,7 +851,7 @@ test('indexa capital connections do not expire', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
@@ -884,7 +884,7 @@ test('indexa capital sync does not send email', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     Mail::assertNothingQueued();
 });
@@ -921,7 +921,7 @@ test('binance first sync gets current balance immediately and dispatches histori
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     expect($account->balances()->count())->toBe(1);
     expect($account->balances()->first()->balance)->toBe(5000000);
@@ -966,7 +966,7 @@ test('binance subsequent sync does not dispatch historical job', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     Mail::assertNothingQueued();
 });
@@ -991,7 +991,7 @@ test('fullSync flag forces first-sync behavior on already-synced connection', fu
     $balanceSync->shouldReceive('calculateHistoricalBalances')->once();
 
     $job = new SyncBankingConnectionJob($connection, fullSync: true);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
 
@@ -1055,7 +1055,7 @@ test('bitpanda sync calls balance sync service and updates last_synced_at', func
     $balanceSync->shouldNotReceive('sync');
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->last_synced_at)->not->toBeNull();
@@ -1088,7 +1088,7 @@ test('bitpanda connections do not expire', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
@@ -1121,7 +1121,7 @@ test('bitpanda sync does not send email', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     Mail::assertNothingQueued();
 });
@@ -1157,7 +1157,7 @@ test('sends auth failed email immediately for indexa capital 401 error', functio
     $job->job = $mockQueueJob;
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         // Expected for auth failures after manually failing the job.
     }
@@ -1201,7 +1201,7 @@ test('auth error sends email and fails job on any attempt', function () {
     $job->job->shouldReceive('fail')->once();
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         // Expected for auth failures after manually failing the job.
     }
@@ -1242,7 +1242,7 @@ test('does not send auth failed email for non-auth errors', function () {
     $job->job->shouldReceive('hasFailed')->andReturn(false);
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (Throwable) {
         // Expected
     }
@@ -1280,7 +1280,7 @@ test('does not send auth failed email for enablebanking connections', function (
     $job->job->shouldReceive('hasFailed')->andReturn(false);
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RuntimeException) {
         // Expected
     }
@@ -1319,7 +1319,7 @@ test('sends auth failed email immediately for binance 403 error', function () {
     $job->job->shouldReceive('fail')->once();
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         // Expected for auth failures after manually failing the job.
     }
@@ -1371,7 +1371,7 @@ test('rate limit error sets backoff window without erroring connection', functio
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
@@ -1402,7 +1402,7 @@ test('daily rate limit backoff lasts until next UTC midnight', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     $expected = now()->utc()->addDay()->startOfDay();
@@ -1432,7 +1432,7 @@ test('rate limit backoff honours Retry-After header', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->rate_limited_until)->not->toBeNull();
@@ -1458,7 +1458,7 @@ test('rate limited connection is skipped without calling provider', function () 
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
@@ -1483,7 +1483,7 @@ test('successful sync clears rate_limited_until', function () {
     $balanceSync->shouldReceive('sync')->andReturnNull();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->rate_limited_until)->toBeNull();
