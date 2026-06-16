@@ -77,7 +77,7 @@ const COINBASE_INSTITUTION: EnableBankingInstitution = {
 const WISE_INSTITUTION: EnableBankingInstitution = {
     name: 'Wise',
     country: 'ALL',
-    logo: null,
+    logo: '/images/banks/logos/wise.png',
     maximum_consent_validity: null,
 };
 
