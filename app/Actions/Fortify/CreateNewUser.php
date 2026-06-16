@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Enums\Locale;
 use App\Models\User;
 use App\Services\LandingAuthOverrideService;
 use Illuminate\Support\Facades\Validator;
@@ -42,7 +43,7 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
-            'locale' => $this->detectLocaleFromRequest(),
+            'locale' => Locale::detectFromHeader(request()->header('Accept-Language'))->value,
             'timezone' => $this->normalizeTimezone($input['timezone'] ?? null),
         ]);
 
@@ -68,20 +69,5 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         return $timezone;
-    }
-
-    /**
-     * Detect locale from Accept-Language header.
-     */
-    protected function detectLocaleFromRequest(): string
-    {
-        $acceptLanguage = request()->header('Accept-Language', '');
-
-        // Check if Spanish is preferred
-        if (preg_match('/^es(-|,|;)/i', $acceptLanguage) || $acceptLanguage === 'es') {
-            return 'es';
-        }
-
-        return 'en';
     }
 }

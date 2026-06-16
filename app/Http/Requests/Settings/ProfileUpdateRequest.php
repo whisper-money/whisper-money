@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Enums\Locale;
 use App\Models\User;
 use App\Services\CurrencyOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -31,7 +32,7 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
             'currency_code' => ['required', 'string', 'max:3', Rule::in($currencyOptions->primaryCodes())],
-            'locale' => ['nullable', 'string', Rule::in(['en', 'es', 'fr'])],
+            'locale' => ['nullable', 'string', Rule::enum(Locale::class)],
         ];
     }
 }
