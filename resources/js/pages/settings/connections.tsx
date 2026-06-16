@@ -122,9 +122,13 @@ export default function ConnectionsPage({ connections }: Props) {
     }
 
     function isApiKeyProvider(connection: BankingConnection): boolean {
-        return ['indexacapital', 'binance', 'bitpanda', 'coinbase'].includes(
-            connection.provider,
-        );
+        return [
+            'indexacapital',
+            'binance',
+            'bitpanda',
+            'coinbase',
+            'wise',
+        ].includes(connection.provider);
     }
 
     function hasAuthError(connection: BankingConnection): boolean {

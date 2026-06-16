@@ -19,6 +19,9 @@ use App\Services\Banking\CoinbaseClient;
 use App\Services\Banking\IndexaCapitalBalanceSyncService;
 use App\Services\Banking\IndexaCapitalClient;
 use App\Services\Banking\TransactionSyncService;
+use App\Services\Banking\WiseBalanceSyncService;
+use App\Services\Banking\WiseClient;
+use App\Services\Banking\WiseTransactionSyncService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -122,6 +125,8 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 $this->syncIndexaCapital($connection, $isFirstSync);
             } elseif ($connection->isBinance()) {
                 $this->syncBinance($connection, $isFirstSync);
+            } elseif ($connection->isWise()) {
+                $metadata = $this->syncWise($connection, $isFirstSync);
             } elseif ($connection->isBitpanda()) {
                 $this->syncBitpanda($connection);
             } elseif ($connection->isCoinbase()) {
@@ -327,6 +332,36 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 $syncService->sync($account, $client, isFirstSync: false);
             }
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function syncWise(BankingConnection $connection, bool $isFirstSync): array
+    {
+        $dateFrom = $isFirstSync
+            ? now()->subYear()->toDateString()
+            : ($connection->last_synced_at?->toDateString() ?? now()->subMonth()->toDateString());
+        $dateTo = now()->toDateString();
+
+        $client = new WiseClient($connection->api_token);
+        $syncService = app(WiseTransactionSyncService::class);
+        $balanceSyncService = app(WiseBalanceSyncService::class);
+
+        $connection->load('accounts');
+
+        $transactionsPerAccount = [];
+
+        foreach ($connection->accounts as $account) {
+            $count = $syncService->sync($account, $client, $dateFrom, $dateTo);
+            $balanceSyncService->sync($account, $client);
+            $transactionsPerAccount[$account->name] = $count;
+        }
+
+        return [
+            'transactions_synced' => array_sum($transactionsPerAccount),
+            'transactions_per_account' => $transactionsPerAccount,
+        ];
     }
 
     private function syncBitpanda(BankingConnection $connection): void

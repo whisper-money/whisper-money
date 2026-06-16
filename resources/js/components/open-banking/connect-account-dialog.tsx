@@ -74,6 +74,13 @@ const COINBASE_INSTITUTION: EnableBankingInstitution = {
     maximum_consent_validity: null,
 };
 
+const WISE_INSTITUTION: EnableBankingInstitution = {
+    name: 'Wise',
+    country: 'ALL',
+    logo: '/images/banks/logos/wise.png',
+    maximum_consent_validity: null,
+};
+
 interface ConnectAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -107,6 +114,7 @@ export function ConnectAccountDialog({
     const [bitpandaApiKey, setBitpandaApiKey] = useState('');
     const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
     const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
+    const [wiseApiToken, setWiseApiToken] = useState('');
 
     const isIndexaCapital = useMemo(
         () => selectedBank?.name === 'Indexa Capital',
@@ -128,6 +136,8 @@ export function ConnectAccountDialog({
         [selectedBank],
     );
 
+    const isWise = useMemo(() => selectedBank?.name === 'Wise', [selectedBank]);
+
     const resetState = useCallback(() => {
         setStep('country');
         setCountry('');
@@ -144,6 +154,7 @@ export function ConnectAccountDialog({
         setBitpandaApiKey('');
         setCoinbaseKeyName('');
         setCoinbasePrivateKey('');
+        setWiseApiToken('');
     }, []);
 
     useEffect(() => {
@@ -197,6 +208,7 @@ export function ConnectAccountDialog({
                 BINANCE_INSTITUTION,
                 BITPANDA_INSTITUTION,
                 COINBASE_INSTITUTION,
+                WISE_INSTITUTION,
             ];
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
@@ -245,7 +257,9 @@ export function ConnectAccountDialog({
                     ? '/open-banking/indexa-capital/connect'
                     : isCoinbase
                       ? '/open-banking/coinbase/connect'
-                      : '/open-banking/authorize';
+                      : isWise
+                        ? '/open-banking/wise/connect'
+                        : '/open-banking/authorize';
 
             const body = isBitpanda
                 ? { api_key: bitpandaApiKey, country: country }
@@ -259,11 +273,13 @@ export function ConnectAccountDialog({
                             private_key: coinbasePrivateKey,
                             country: country,
                         }
-                      : {
-                            aspsp_name: selectedBank.name,
-                            country: country,
-                            logo: selectedBank.logo,
-                        };
+                      : isWise
+                        ? { api_token: wiseApiToken }
+                        : {
+                              aspsp_name: selectedBank.name,
+                              country: country,
+                              logo: selectedBank.logo,
+                          };
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -306,10 +322,16 @@ export function ConnectAccountDialog({
                             )}
                         {step === 'bank' && __('Select your bank.')}
                         {step === 'confirm' &&
+                            isWise &&
+                            __(
+                                'Enter your Wise Personal API token to connect your account.',
+                            )}
+                        {step === 'confirm' &&
                             !isIndexaCapital &&
                             !isBinance &&
                             !isBitpanda &&
                             !isCoinbase &&
+                            !isWise &&
                             __(
                                 'You will be redirected to your bank to authorize access.',
                             )}
@@ -455,9 +477,13 @@ export function ConnectAccountDialog({
                                                   ? __(
                                                         'Connect your Coinbase account using a CDP API key.',
                                                     )
-                                                  : __(
-                                                        'You will be redirected to authorize access to your account data.',
-                                                    )}
+                                                  : isWise
+                                                    ? __(
+                                                          'Connect your Wise account using a Personal API token.',
+                                                      )
+                                                    : __(
+                                                          'You will be redirected to authorize access to your account data.',
+                                                      )}
                                     </p>
                                 </div>
                             </div>
@@ -584,6 +610,40 @@ export function ConnectAccountDialog({
                             </div>
                         )}
 
+                        {isWise && (
+                            <div className="space-y-2">
+                                <Label htmlFor="wise-api-token">
+                                    {__('Personal API Token')}
+                                </Label>
+                                <Input
+                                    id="wise-api-token"
+                                    type="password"
+                                    value={wiseApiToken}
+                                    onChange={(e) =>
+                                        setWiseApiToken(e.target.value)
+                                    }
+                                    className="mt-1"
+                                    placeholder={__(
+                                        'Paste your Wise API token',
+                                    )}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {__('Generate a token in Wise under')}{' '}
+                                    <a
+                                        href="https://wise.com/user/account#/developer"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                    >
+                                        {__(
+                                            'Settings → Developer Tools → API tokens',
+                                        )}
+                                    </a>
+                                    .
+                                </p>
+                            </div>
+                        )}
+
                         {isCoinbase && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -654,7 +714,8 @@ export function ConnectAccountDialog({
                                     (isBitpanda && !bitpandaApiKey) ||
                                     (isCoinbase &&
                                         (!coinbaseKeyName ||
-                                            !coinbasePrivateKey))
+                                            !coinbasePrivateKey)) ||
+                                    (isWise && !wiseApiToken)
                                 }
                             >
                                 {isSubmitting

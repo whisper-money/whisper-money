@@ -132,6 +132,21 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function wise(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => 'wise',
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'test-wise-api-token-'.fake()->uuid(),
+            'api_secret' => null,
+            'aspsp_name' => 'Wise',
+            'aspsp_country' => 'BE',
+            'aspsp_logo' => 'https://whisper.money/storage/banks/logos/wise.png',
+            'valid_until' => null,
+        ]);
+    }
+
     public function error(): static
     {
         return $this->state(fn (array $attributes) => [
