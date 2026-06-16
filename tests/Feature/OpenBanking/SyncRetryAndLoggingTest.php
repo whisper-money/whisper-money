@@ -53,7 +53,7 @@ test('temporary error on non-final attempt does not set error status', function 
     $threw = false;
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         $threw = true;
     }
@@ -96,7 +96,7 @@ test('temporary error on final attempt sets error status and increments consecut
     $job->job->shouldReceive('hasFailed')->andReturn(false);
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         // Expected
     }
@@ -141,7 +141,7 @@ test('transient banking provider error on final attempt uses retry later message
     $threw = false;
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (TransientBankingProviderException) {
         $threw = true;
     }
@@ -185,7 +185,7 @@ test('consecutive sync failures accumulate across dispatch cycles', function () 
     $job->job->shouldReceive('hasFailed')->andReturn(false);
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         // Expected
     }
@@ -214,7 +214,7 @@ test('successful sync resets consecutive failures', function () {
     $balanceSync->shouldReceive('sync')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
@@ -241,7 +241,7 @@ test('connection in error status can be synced', function () {
     $balanceSync->shouldReceive('sync')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     expect($connection->status)->toBe(BankingConnectionStatus::Active);
@@ -277,7 +277,7 @@ test('auth error sets consecutive failures beyond the cap', function () {
     $job->job->shouldReceive('fail')->once();
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         // Expected for auth failures after manually failing the job.
     }
@@ -307,7 +307,7 @@ test('successful sync creates a success log entry', function () {
     $balanceSync->shouldReceive('sync')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
     expect($log)->not->toBeNull();
@@ -348,7 +348,7 @@ test('failed sync creates a failed log entry', function () {
     $job->job->shouldReceive('hasFailed')->andReturn(false);
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         // Expected
     }
@@ -374,7 +374,7 @@ test('skipped sync creates a skipped log entry and emails user for newly expired
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $connection->refresh();
     $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
@@ -399,7 +399,7 @@ test('skipped sync creates a skipped log entry for non-syncable status', functio
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
     expect($log)->not->toBeNull();
@@ -429,7 +429,7 @@ test('rate limit error creates a failed log entry', function () {
     $balanceSync = Mockery::mock(BalanceSyncService::class);
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
     expect($log)->not->toBeNull();
@@ -466,7 +466,7 @@ test('sync log records attempt number', function () {
     $job->job->shouldReceive('hasFailed')->andReturn(false);
 
     try {
-        $job->handle($transactionSync, $balanceSync);
+        runSync($job, $transactionSync, $balanceSync);
     } catch (RequestException) {
         // Expected
     }
@@ -494,7 +494,7 @@ test('connection sync logs relationship works', function () {
     $balanceSync->shouldReceive('sync')->once();
 
     $job = new SyncBankingConnectionJob($connection);
-    $job->handle($transactionSync, $balanceSync);
+    runSync($job, $transactionSync, $balanceSync);
 
     expect($connection->syncLogs()->count())->toBe(1);
     expect($connection->latestSyncLog)->not->toBeNull();

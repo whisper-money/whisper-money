@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Contracts\BankingConnectionSyncer;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
 use App\Exceptions\Banking\TransientBankingProviderException;
@@ -9,19 +10,7 @@ use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankingConnectionExpiredEmail;
 use App\Models\BankingConnection;
 use App\Models\BankingSyncLog;
-use App\Services\Banking\BalanceSyncService;
-use App\Services\Banking\BinanceBalanceSyncService;
-use App\Services\Banking\BinanceClient;
-use App\Services\Banking\BitpandaBalanceSyncService;
-use App\Services\Banking\BitpandaClient;
-use App\Services\Banking\CoinbaseBalanceSyncService;
-use App\Services\Banking\CoinbaseClient;
-use App\Services\Banking\IndexaCapitalBalanceSyncService;
-use App\Services\Banking\IndexaCapitalClient;
-use App\Services\Banking\TransactionSyncService;
-use App\Services\Banking\WiseBalanceSyncService;
-use App\Services\Banking\WiseClient;
-use App\Services\Banking\WiseTransactionSyncService;
+use App\Services\Banking\Sync\BankingConnectionSyncerFactory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -62,7 +51,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         return $this->bankingConnection->id;
     }
 
-    public function handle(TransactionSyncService $transactionSync, BalanceSyncService $balanceSync): void
+    public function handle(BankingConnectionSyncerFactory $syncerFactory): void
     {
         $connection = $this->bankingConnection;
         $startTime = microtime(true);
@@ -79,7 +68,9 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if ($connection->isEnableBanking() && $connection->isExpired()) {
+        $syncer = $syncerFactory->make($connection);
+
+        if ($syncer->expires() && $connection->isExpired()) {
             $shouldNotify = $connection->status !== BankingConnectionStatus::Expired;
 
             $connection->update(['status' => BankingConnectionStatus::Expired]);
@@ -119,42 +110,16 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
 
         try {
             $isFirstSync = ! $connection->last_synced_at || $this->fullSync;
-            $metadata = [];
 
-            if ($connection->isIndexaCapital()) {
-                $this->syncIndexaCapital($connection, $isFirstSync);
-            } elseif ($connection->isBinance()) {
-                $this->syncBinance($connection, $isFirstSync);
-            } elseif ($connection->isWise()) {
-                $metadata = $this->syncWise($connection, $isFirstSync);
-            } elseif ($connection->isBitpanda()) {
-                $this->syncBitpanda($connection);
-            } elseif ($connection->isCoinbase()) {
-                $this->syncCoinbase($connection, $isFirstSync);
-            } else {
-                $metadata = $this->syncEnableBanking($connection, $transactionSync, $balanceSync, $isFirstSync);
+            $metadata = $syncer->sync($connection, $isFirstSync);
 
-                if (! $isFirstSync && $connection->user->canReceiveEmails()) {
-                    SendDailyBankTransactionsSyncedEmailJob::dispatch(
-                        $connection->user,
-                        $syncedAt->toDateString(),
-                    );
-                }
-            }
-
-            $connectionUpdates = [
+            $connection->update([
                 'status' => BankingConnectionStatus::Active,
                 'last_synced_at' => $syncedAt,
                 'error_message' => null,
                 'rate_limited_until' => null,
                 'consecutive_sync_failures' => 0,
-            ];
-
-            if ($connection->isEnableBanking() && $isFirstSync) {
-                $connectionUpdates['bank_transactions_email_cutoff_at'] = now();
-            }
-
-            $connection->update($connectionUpdates);
+            ]);
 
             $this->logSyncAttempt($connection, BankingSyncLogStatus::Success, $startTime, metadata: $metadata ?: null);
         } catch (\Throwable $e) {
@@ -182,7 +147,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             $this->logSyncAttempt($connection, BankingSyncLogStatus::Failed, $startTime, $e);
 
             if ($this->isAuthError($e)) {
-                $this->handlePermanentError($connection, $e);
+                $this->handlePermanentError($connection, $syncer, $e);
 
                 return;
             }
@@ -213,7 +178,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         ]);
     }
 
-    private function handlePermanentError(BankingConnection $connection, \Throwable $e): void
+    private function handlePermanentError(BankingConnection $connection, BankingConnectionSyncer $syncer, \Throwable $e): void
     {
         $connection->update([
             'status' => BankingConnectionStatus::Error,
@@ -221,7 +186,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'consecutive_sync_failures' => self::MAX_SCHEDULED_RETRIES + 1,
         ]);
 
-        if ($connection->usesApiKey() && $connection->user?->canReceiveEmails()) {
+        if ($syncer->notifiesOnAuthFailure() && $connection->user?->canReceiveEmails()) {
             Mail::to($connection->user)->send(new BankingConnectionAuthFailedEmail(
                 $connection->user,
                 $connection,
@@ -303,138 +268,6 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'metadata' => $metadata,
             'created_at' => now(),
         ]);
-    }
-
-    private function syncIndexaCapital(BankingConnection $connection, bool $isFirstSync): void
-    {
-        $client = new IndexaCapitalClient($connection->api_token);
-        $syncService = app(IndexaCapitalBalanceSyncService::class);
-
-        $connection->load('accounts');
-
-        foreach ($connection->accounts as $account) {
-            $syncService->sync($account, $client, $isFirstSync);
-        }
-    }
-
-    private function syncBinance(BankingConnection $connection, bool $isFirstSync): void
-    {
-        $client = new BinanceClient($connection->api_token, $connection->api_secret);
-        $syncService = app(BinanceBalanceSyncService::class);
-
-        $connection->load('accounts');
-
-        foreach ($connection->accounts as $account) {
-            if ($isFirstSync) {
-                $syncService->syncCurrentBalance($account, $client);
-                SyncBinanceHistoricalBalancesJob::dispatch($account)->delay(now()->addSeconds(30));
-            } else {
-                $syncService->sync($account, $client, isFirstSync: false);
-            }
-        }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function syncWise(BankingConnection $connection, bool $isFirstSync): array
-    {
-        $dateFrom = $isFirstSync
-            ? now()->subYear()->toDateString()
-            : ($connection->last_synced_at?->toDateString() ?? now()->subMonth()->toDateString());
-        $dateTo = now()->toDateString();
-
-        $client = new WiseClient($connection->api_token);
-        $syncService = app(WiseTransactionSyncService::class);
-        $balanceSyncService = app(WiseBalanceSyncService::class);
-
-        $connection->load('accounts');
-
-        $transactionsPerAccount = [];
-
-        foreach ($connection->accounts as $account) {
-            $count = $syncService->sync($account, $client, $dateFrom, $dateTo);
-            $balanceSyncService->sync($account, $client);
-            $transactionsPerAccount[$account->name] = $count;
-        }
-
-        return [
-            'transactions_synced' => array_sum($transactionsPerAccount),
-            'transactions_per_account' => $transactionsPerAccount,
-        ];
-    }
-
-    private function syncBitpanda(BankingConnection $connection): void
-    {
-        $client = new BitpandaClient($connection->api_token);
-        $syncService = app(BitpandaBalanceSyncService::class);
-
-        $connection->load('accounts');
-
-        foreach ($connection->accounts as $account) {
-            $syncService->sync($account, $client);
-        }
-    }
-
-    private function syncCoinbase(BankingConnection $connection, bool $isFirstSync): void
-    {
-        $client = new CoinbaseClient($connection->api_token, $connection->api_secret);
-        $syncService = app(CoinbaseBalanceSyncService::class);
-
-        $connection->load('accounts');
-
-        foreach ($connection->accounts as $account) {
-            $syncService->sync($account, $client, $isFirstSync, backfillMissingHistory: true);
-        }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function syncEnableBanking(BankingConnection $connection, TransactionSyncService $transactionSync, BalanceSyncService $balanceSync, bool $isFirstSync): array
-    {
-        $dateFrom = $isFirstSync
-            ? now()->subYear()->toDateString()
-            : ($connection->last_synced_at?->toDateString() ?? now()->subMonth()->toDateString());
-        $dateTo = now()->toDateString();
-        $strategy = $isFirstSync ? 'longest' : null;
-
-        $transactionsPerBank = [];
-
-        $connection->load('accounts.bank');
-
-        foreach ($connection->accounts as $account) {
-            if ($account->isLinked()) {
-                $lastTransaction = $account->transactions()
-                    ->latest('transaction_date')
-                    ->first();
-
-                $linkedDateFrom = $lastTransaction
-                    ? $lastTransaction->transaction_date->toDateString()
-                    : $dateFrom;
-
-                if ($linkedDateFrom > $dateTo) {
-                    $linkedDateFrom = $dateTo;
-                }
-
-                $created = $transactionSync->sync($account, $linkedDateFrom, $dateTo, $strategy, saveDailyBalances: false);
-                $balanceSync->sync($account);
-            } else {
-                $created = $transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
-                $balanceSync->sync($account);
-
-                if ($isFirstSync) {
-                    $balanceSync->calculateHistoricalBalances($account);
-                }
-            }
-
-            if ($created > 0) {
-                $bankName = $account->bank->name ?? __('Unknown Bank');
-                $transactionsPerBank[$bankName] = ($transactionsPerBank[$bankName] ?? 0) + $created;
-            }
-        }
-
-        return ['transactions_synced' => array_sum($transactionsPerBank), 'transactions_per_bank' => $transactionsPerBank];
     }
 
     private function friendlyErrorMessage(\Throwable $e): string
