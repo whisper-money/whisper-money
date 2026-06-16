@@ -28,7 +28,7 @@ class WiseClient
     /**
      * Get the multi-currency borderless account for a profile.
      *
-     * @return array{id: int, profileId: int, balances: array}
+     * @return array{id?: int, profileId?: int, balances?: array}
      */
     public function getBorderlessAccount(int $profileId): array
     {
@@ -47,7 +47,7 @@ class WiseClient
      * Fetch paginated monetary activities for a profile.
      * Use `since`/`until` (ISO 8601) for date range and `cursor` for pagination.
      *
-     * @return array{activities: array, cursor: string|null}
+     * @return array{activities?: array, cursor?: string|null}
      */
     public function getActivities(int $profileId, string $since, string $until, ?string $cursor = null): array
     {

@@ -136,10 +136,7 @@ export function ConnectAccountDialog({
         [selectedBank],
     );
 
-    const isWise = useMemo(
-        () => selectedBank?.name === 'Wise',
-        [selectedBank],
-    );
+    const isWise = useMemo(() => selectedBank?.name === 'Wise', [selectedBank]);
 
     const resetState = useCallback(() => {
         setStep('country');
@@ -631,16 +628,16 @@ export function ConnectAccountDialog({
                                     )}
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    {__(
-                                        'Generate a token in Wise under',
-                                    )}{' '}
+                                    {__('Generate a token in Wise under')}{' '}
                                     <a
                                         href="https://wise.com/user/account#/developer"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="underline"
                                     >
-                                        {__('Settings → Developer Tools → API tokens')}
+                                        {__(
+                                            'Settings → Developer Tools → API tokens',
+                                        )}
                                     </a>
                                     .
                                 </p>
