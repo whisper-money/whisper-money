@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Contracts\BankingProviderInterface;
+use App\Enums\BankingProvider;
 use App\Models\Account;
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -32,7 +33,7 @@ class BackfillAccountIbans extends Command
             ->whereNull('iban')
             ->whereNotNull('external_account_id')
             ->whereNotNull('banking_connection_id')
-            ->whereHas('bankingConnection', fn ($q) => $q->where('provider', 'enablebanking'));
+            ->whereHas('bankingConnection', fn ($q) => $q->where('provider', BankingProvider::EnableBanking));
 
         if ($connectionId) {
             $query->where('banking_connection_id', $connectionId);

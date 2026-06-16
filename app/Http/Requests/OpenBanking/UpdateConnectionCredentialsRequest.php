@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OpenBanking;
 
+use App\Enums\BankingProvider;
 use App\Models\BankingConnection;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -27,17 +28,17 @@ class UpdateConnectionCredentialsRequest extends FormRequest
         }
 
         return match ($connection->provider) {
-            'indexacapital' => [
+            BankingProvider::IndexaCapital => [
                 'api_token' => ['required', 'string', 'min:10'],
             ],
-            'binance' => [
+            BankingProvider::Binance => [
                 'api_key' => ['required', 'string', 'min:10'],
                 'api_secret' => ['required', 'string', 'min:10'],
             ],
-            'bitpanda' => [
+            BankingProvider::Bitpanda => [
                 'api_key' => ['required', 'string', 'min:10'],
             ],
-            'coinbase' => [
+            BankingProvider::Coinbase => [
                 'api_key_name' => ['required', 'string', 'regex:/^(organizations\/[a-z0-9-]+\/apiKeys\/[a-z0-9-]+|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i'],
                 'private_key' => ['required', 'string', 'min:40'],
             ],

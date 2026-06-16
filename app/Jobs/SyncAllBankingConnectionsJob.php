@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Models\BankingConnection;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,7 +36,7 @@ class SyncAllBankingConnectionsJob implements ShouldQueue
                             ->orWhere('valid_until', '>', now());
                     });
                 })->orWhere(function ($query) {
-                    $query->where('provider', 'enablebanking')
+                    $query->where('provider', BankingProvider::EnableBanking)
                         ->where('status', BankingConnectionStatus::Active)
                         ->whereNotNull('valid_until')
                         ->where('valid_until', '<=', now());

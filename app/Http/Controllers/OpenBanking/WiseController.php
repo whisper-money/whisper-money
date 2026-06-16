@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -58,7 +59,7 @@ class WiseController extends Controller
         );
 
         $connection = $user->bankingConnections()->create([
-            'provider' => 'wise',
+            'provider' => BankingProvider::Wise,
             'api_token' => $request->api_token,
             'api_secret' => null,
             'aspsp_name' => 'Wise',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Contracts\BankingProviderInterface;
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -50,7 +51,7 @@ class AuthorizationController extends Controller
         );
 
         $connection = $user->bankingConnections()->create([
-            'provider' => 'enablebanking',
+            'provider' => BankingProvider::EnableBanking,
             'authorization_id' => $result['authorization_id'],
             'state_token' => $stateToken,
             'aspsp_name' => $validated['aspsp_name'],

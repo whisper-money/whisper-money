@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Locale;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -29,12 +30,13 @@ class SetLocale
     protected function determineLocale(Request $request): string
     {
         // Priority 1: Check for lang query parameter (user override on welcome page)
-        if ($request->has('lang') && in_array($request->get('lang'), ['en', 'es', 'fr'])) {
-            $locale = $request->get('lang');
-            // Store in session so subsequent requests remember this choice
-            $request->session()->put('locale', $locale);
+        $lang = $request->get('lang');
 
-            return $locale;
+        if (is_string($lang) && Locale::tryFrom($lang) !== null) {
+            // Store in session so subsequent requests remember this choice
+            $request->session()->put('locale', $lang);
+
+            return $lang;
         }
 
         // Priority 2: Check authenticated user's locale preference
@@ -44,11 +46,11 @@ class SetLocale
 
         // Priority 2b: Authenticated user without locale — detect and persist
         if ($request->user()) {
-            $detected = $this->detectLocaleFromHeader($request);
+            $sessionLocale = $request->session()->get('locale');
 
-            if (in_array($request->session()->get('locale'), ['en', 'es', 'fr'])) {
-                $detected = $request->session()->get('locale');
-            }
+            $detected = is_string($sessionLocale) && Locale::tryFrom($sessionLocale) !== null
+                ? $sessionLocale
+                : Locale::detectFromHeader($request->header('Accept-Language'))->value;
 
             $request->user()->update(['locale' => $detected]);
 
@@ -61,31 +63,11 @@ class SetLocale
         }
 
         // Priority 4: Detect from Accept-Language header
-        $detected = $this->detectLocaleFromHeader($request);
+        $detected = Locale::detectFromHeader($request->header('Accept-Language'))->value;
 
         // Store in session for subsequent requests
         $request->session()->put('locale', $detected);
 
         return $detected;
-    }
-
-    /**
-     * Detect locale from Accept-Language header.
-     */
-    protected function detectLocaleFromHeader(Request $request): string
-    {
-        $acceptLanguage = $request->header('Accept-Language', '');
-
-        // Check if Spanish is preferred
-        if (preg_match('/^es(-|,|;)/i', $acceptLanguage) || $acceptLanguage === 'es') {
-            return 'es';
-        }
-
-        // Check if French is preferred
-        if (preg_match('/^fr(-|,|;)/i', $acceptLanguage) || $acceptLanguage === 'fr') {
-            return 'fr';
-        }
-
-        return 'en';
     }
 }

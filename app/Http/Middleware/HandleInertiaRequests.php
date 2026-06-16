@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Features\CalculateBalancesOnImport;
 use App\Features\TransactionAnalysis;
 use App\Models\BankingConnection;
@@ -103,7 +104,7 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'features' => $this->resolveFeatureFlags(),
             'expiredBankingConnections' => fn () => $user ? $user->bankingConnections()
-                ->where('provider', 'enablebanking')
+                ->where('provider', BankingProvider::EnableBanking)
                 ->where(function ($query) {
                     $query->where('status', BankingConnectionStatus::Expired)
                         ->orWhere(function ($query) {
@@ -117,7 +118,7 @@ class HandleInertiaRequests extends Middleware
                 ->map(fn (BankingConnection $connection): array => [
                     'id' => $connection->id,
                     'aspsp_name' => $connection->aspsp_name,
-                    'provider' => $connection->provider,
+                    'provider' => $connection->provider->value,
                     'valid_until' => $connection->valid_until?->toIso8601String(),
                     'reconnect_url' => route('open-banking.reconnect', $connection),
                 ]) : [],

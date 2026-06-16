@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Mail\EnableBankingConnectionsCancelledEmail;
 use App\Models\BankingConnection;
 use Illuminate\Console\Command;
@@ -22,7 +23,7 @@ class CancelFreeEnableBankingConnectionsCommand extends Command
         $connections = BankingConnection::query()
             ->with(['user', 'accounts'])
             ->whereHas('user')
-            ->where('provider', 'enablebanking')
+            ->where('provider', BankingProvider::EnableBanking)
             ->where('status', '!=', BankingConnectionStatus::Revoked)
             ->where('created_at', '<=', $cutoff)
             ->get();

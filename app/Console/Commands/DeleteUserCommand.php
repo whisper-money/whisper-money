@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
+use App\Enums\BankingProvider;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Laravel\Cashier\Subscription;
@@ -53,7 +54,7 @@ class DeleteUserCommand extends Command
         $subscription = $this->activeSubscription($user);
         $enableBankingConnections = $user->bankingConnections()
             ->with('accounts')
-            ->where('provider', 'enablebanking')
+            ->where('provider', BankingProvider::EnableBanking)
             ->get();
 
         if ($subscription && ! $this->confirm("User '{$user->email}' has an active Stripe subscription. Cancel it before deleting the user?")) {

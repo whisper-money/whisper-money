@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use Carbon\Carbon;
 use Database\Factories\BankingConnectionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property bool $has_pending_accounts
+ * @property BankingProvider $provider
  * @property BankingConnectionStatus $status
  * @property Carbon|null $valid_until
  * @property Carbon|null $last_synced_at
@@ -61,6 +63,7 @@ class BankingConnection extends Model
     protected function casts(): array
     {
         return [
+            'provider' => BankingProvider::class,
             'status' => BankingConnectionStatus::class,
             'valid_until' => 'datetime',
             'last_synced_at' => 'datetime',
@@ -103,32 +106,37 @@ class BankingConnection extends Model
 
     public function isIndexaCapital(): bool
     {
-        return $this->provider === 'indexacapital';
+        return $this->provider === BankingProvider::IndexaCapital;
     }
 
     public function isBinance(): bool
     {
-        return $this->provider === 'binance';
+        return $this->provider === BankingProvider::Binance;
     }
 
     public function isBitpanda(): bool
     {
-        return $this->provider === 'bitpanda';
+        return $this->provider === BankingProvider::Bitpanda;
     }
 
     public function isCoinbase(): bool
     {
-        return $this->provider === 'coinbase';
+        return $this->provider === BankingProvider::Coinbase;
     }
 
     public function isEnableBanking(): bool
     {
-        return $this->provider === 'enablebanking';
+        return $this->provider === BankingProvider::EnableBanking;
+    }
+
+    public function usesApiKey(): bool
+    {
+        return $this->provider->usesApiKey();
     }
 
     public function isWise(): bool
     {
-        return $this->provider === 'wise';
+        return $this->provider === BankingProvider::Wise;
     }
 
     public function hasPendingAccounts(): bool

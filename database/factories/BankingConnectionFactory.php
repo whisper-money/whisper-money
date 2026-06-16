@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,7 +22,7 @@ class BankingConnectionFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'provider' => 'enablebanking',
+            'provider' => BankingProvider::EnableBanking,
             'authorization_id' => fake()->uuid(),
             'session_id' => fake()->uuid(),
             'aspsp_name' => fake()->company(),
@@ -76,7 +77,7 @@ class BankingConnectionFactory extends Factory
     public function indexaCapital(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'indexacapital',
+            'provider' => BankingProvider::IndexaCapital,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'test-indexa-token-'.fake()->uuid(),
@@ -90,7 +91,7 @@ class BankingConnectionFactory extends Factory
     public function binance(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'binance',
+            'provider' => BankingProvider::Binance,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'test-binance-api-key-'.fake()->uuid(),
@@ -105,7 +106,7 @@ class BankingConnectionFactory extends Factory
     public function bitpanda(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'bitpanda',
+            'provider' => BankingProvider::Bitpanda,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'test-bitpanda-api-key-'.fake()->uuid(),
@@ -120,7 +121,7 @@ class BankingConnectionFactory extends Factory
     public function coinbase(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'coinbase',
+            'provider' => BankingProvider::Coinbase,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'organizations/org-'.fake()->uuid().'/apiKeys/key-'.fake()->uuid(),
@@ -135,7 +136,7 @@ class BankingConnectionFactory extends Factory
     public function wise(): static
     {
         return $this->state(fn (array $attributes) => [
-            'provider' => 'wise',
+            'provider' => BankingProvider::Wise,
             'authorization_id' => null,
             'session_id' => null,
             'api_token' => 'test-wise-api-token-'.fake()->uuid(),

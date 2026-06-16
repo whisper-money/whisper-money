@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingConnectionStatus;
+use App\Enums\BankingProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -49,7 +50,7 @@ class BinanceController extends Controller
         );
 
         $connection = $user->bankingConnections()->create([
-            'provider' => 'binance',
+            'provider' => BankingProvider::Binance,
             'api_token' => $validated['api_key'],
             'api_secret' => $validated['api_secret'],
             'aspsp_name' => 'Binance',

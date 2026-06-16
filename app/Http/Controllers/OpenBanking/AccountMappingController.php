@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\OpenBanking;
 
-use App\Enums\AccountType;
 use App\Enums\BankingConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
@@ -77,9 +76,7 @@ class AccountMappingController extends Controller
         $pendingAccounts = collect($connection->pending_accounts_data)
             ->keyBy('uid');
 
-        $accountType = ($connection->isIndexaCapital() || $connection->isBinance() || $connection->isBitpanda() || $connection->isCoinbase())
-            ? AccountType::Investment
-            : AccountType::Checking;
+        $accountType = $connection->provider->defaultAccountType();
 
         foreach ($mappings as $mapping) {
             $uid = $mapping['bank_account_uid'];
