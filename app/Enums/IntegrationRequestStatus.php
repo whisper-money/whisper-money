@@ -7,6 +7,7 @@ enum IntegrationRequestStatus: string
     case Pending = 'pending';
     case Approved = 'approved';
     case Rejected = 'rejected';
+    case NotDoable = 'not_doable';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum IntegrationRequestStatus: string
             self::Pending => 'Pending',
             self::Approved => 'Approved',
             self::Rejected => 'Rejected',
+            self::NotDoable => 'Not doable',
         };
     }
 }

@@ -46,11 +46,12 @@ class ReviewIntegrationRequestsCommand extends Command
 
         $approved = 0;
         $rejected = 0;
+        $notDoable = 0;
 
         foreach ($pending as $request) {
             $decision = $this->choice(
                 "Review \"{$request->name}\" ({$request->url})",
-                ['approve', 'reject', 'skip'],
+                ['approve', 'reject', 'not doable', 'skip'],
                 'skip',
             );
 
@@ -60,11 +61,23 @@ class ReviewIntegrationRequestsCommand extends Command
             } elseif ($decision === 'reject') {
                 $request->update(['status' => IntegrationRequestStatus::Rejected]);
                 $rejected++;
+            } elseif ($decision === 'not doable') {
+                $comment = $this->ask('Why is this integration not doable? (shown to users)');
+
+                while (blank($comment)) {
+                    $comment = $this->ask('A comment is required to mark an integration as not doable');
+                }
+
+                $request->update([
+                    'status' => IntegrationRequestStatus::NotDoable,
+                    'comment' => $comment,
+                ]);
+                $notDoable++;
             }
         }
 
-        $skipped = $pending->count() - $approved - $rejected;
-        $this->info("Done. Approved: {$approved}, rejected: {$rejected}, skipped: {$skipped}.");
+        $skipped = $pending->count() - $approved - $rejected - $notDoable;
+        $this->info("Done. Approved: {$approved}, rejected: {$rejected}, not doable: {$notDoable}, skipped: {$skipped}.");
 
         return self::SUCCESS;
     }

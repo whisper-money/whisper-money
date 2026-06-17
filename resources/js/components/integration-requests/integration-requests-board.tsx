@@ -18,7 +18,8 @@ export interface IntegrationRequestItem {
     id: string;
     name: string;
     url: string;
-    status: 'pending' | 'approved' | 'rejected';
+    status: 'pending' | 'approved' | 'rejected' | 'not_doable';
+    comment: string | null;
     votes_count: number;
     has_voted: boolean;
     created_at: string;
@@ -110,7 +111,11 @@ export function IntegrationRequestsBoard({
     };
 
     const handleVote = async (item: IntegrationRequestItem) => {
-        if (busy || (!item.has_voted && actionsRemaining <= 0)) {
+        if (
+            busy ||
+            item.status === 'not_doable' ||
+            (!item.has_voted && actionsRemaining <= 0)
+        ) {
             return;
         }
 
@@ -219,37 +224,50 @@ export function IntegrationRequestsBoard({
             ) : (
                 <ul className="space-y-2">
                     {requests.map((item) => (
-                        <li
-                            key={item.id}
-                            className="flex items-center justify-between gap-3 rounded-lg border p-3"
-                        >
-                            <div className="flex min-w-0 items-center gap-2">
-                                <a
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="truncate font-medium hover:underline"
+                        <li key={item.id} className="rounded-lg border p-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <a
+                                        href={item.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="truncate font-medium hover:underline"
+                                    >
+                                        {item.name}
+                                    </a>
+                                    {item.status === 'pending' && (
+                                        <Badge variant="secondary">
+                                            {__('Pending review')}
+                                        </Badge>
+                                    )}
+                                    {item.status === 'not_doable' && (
+                                        <Badge variant="outline">
+                                            {__('Not doable')}
+                                        </Badge>
+                                    )}
+                                </div>
+                                <Button
+                                    variant={
+                                        item.has_voted ? 'default' : 'outline'
+                                    }
+                                    size="sm"
+                                    disabled={
+                                        busy ||
+                                        item.status === 'not_doable' ||
+                                        (!item.has_voted && outOfActions)
+                                    }
+                                    onClick={() => handleVote(item)}
+                                    aria-pressed={item.has_voted}
                                 >
-                                    {item.name}
-                                </a>
-                                {item.status === 'pending' && (
-                                    <Badge variant="secondary">
-                                        {__('Pending review')}
-                                    </Badge>
-                                )}
+                                    <ChevronUp className="h-4 w-4" />
+                                    {item.votes_count}
+                                </Button>
                             </div>
-                            <Button
-                                variant={item.has_voted ? 'default' : 'outline'}
-                                size="sm"
-                                disabled={
-                                    busy || (!item.has_voted && outOfActions)
-                                }
-                                onClick={() => handleVote(item)}
-                                aria-pressed={item.has_voted}
-                            >
-                                <ChevronUp className="h-4 w-4" />
-                                {item.votes_count}
-                            </Button>
+                            {item.comment && (
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    {item.comment}
+                                </p>
+                            )}
                         </li>
                     ))}
                 </ul>

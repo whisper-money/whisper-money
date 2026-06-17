@@ -185,7 +185,7 @@ test('the review command approves a pending request', function () {
         ->expectsChoice(
             "Review \"{$request->name}\" ({$request->url})",
             'approve',
-            ['approve', 'reject', 'skip'],
+            ['approve', 'reject', 'not doable', 'skip'],
         )
         ->assertSuccessful();
 
@@ -199,7 +199,7 @@ test('the review command rejects a pending request', function () {
         ->expectsChoice(
             "Review \"{$request->name}\" ({$request->url})",
             'reject',
-            ['approve', 'reject', 'skip'],
+            ['approve', 'reject', 'not doable', 'skip'],
         )
         ->assertSuccessful();
 
@@ -210,4 +210,70 @@ test('the review command reports when there is nothing to review', function () {
     $this->artisan('integration-requests:review')
         ->expectsOutput('No pending integration requests.')
         ->assertSuccessful();
+});
+
+test('not doable requests are visible to everyone with their comment', function () {
+    IntegrationRequest::factory()->notDoable()->create([
+        'name' => 'Impossible Bank',
+        'comment' => 'They have no public API.',
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/integration-requests/data')
+        ->assertOk()
+        ->assertJsonCount(1, 'requests')
+        ->assertJsonPath('requests.0.status', 'not_doable')
+        ->assertJsonPath('requests.0.comment', 'They have no public API.');
+});
+
+test('not doable requests are listed after the rest', function () {
+    IntegrationRequest::factory()->notDoable()->create(['name' => 'Not doable']);
+    $approved = IntegrationRequest::factory()->approved()->create(['name' => 'Approved']);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/integration-requests/data')
+        ->assertOk()
+        ->assertJsonPath('requests.0.id', $approved->id)
+        ->assertJsonPath('requests.1.name', 'Not doable');
+});
+
+test('rejected requests never appear in the list', function () {
+    IntegrationRequest::factory()->rejected()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/integration-requests/data')
+        ->assertOk()
+        ->assertJsonCount(0, 'requests');
+});
+
+test('nobody can vote on a not doable request', function () {
+    $request = IntegrationRequest::factory()->notDoable()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->postJson("/integration-requests/{$request->id}/vote")
+        ->assertNotFound();
+
+    $owner = User::factory()->create();
+    $ownRequest = IntegrationRequest::factory()->notDoable()->create(['user_id' => $owner->id]);
+
+    $this->actingAs($owner)
+        ->postJson("/integration-requests/{$ownRequest->id}/vote")
+        ->assertNotFound();
+});
+
+test('the review command marks a request as not doable with a comment', function () {
+    $request = IntegrationRequest::factory()->create(['name' => 'Hard Bank']);
+
+    $this->artisan('integration-requests:review')
+        ->expectsChoice(
+            "Review \"{$request->name}\" ({$request->url})",
+            'not doable',
+            ['approve', 'reject', 'not doable', 'skip'],
+        )
+        ->expectsQuestion('Why is this integration not doable? (shown to users)', 'No public API available.')
+        ->assertSuccessful();
+
+    $request->refresh();
+    expect($request->status)->toBe(IntegrationRequestStatus::NotDoable);
+    expect($request->comment)->toBe('No public API available.');
 });
