@@ -129,12 +129,7 @@ export function EditTransactionDialog({
             const initialAccount = availableAccounts.find(
                 (account) => account.id === initialAccountId,
             );
-            setAccountId(
-                initialAccount?.id ??
-                    (availableAccounts.length > 0
-                        ? availableAccounts[0].id
-                        : ''),
-            );
+            setAccountId(initialAccount?.id ?? '');
             setCategoryId('null');
             setSelectedLabelIds([]);
             setNotes('');
