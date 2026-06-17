@@ -108,6 +108,29 @@ test('a user cannot exceed the monthly action limit', function () {
         ->assertStatus(422);
 });
 
+test('the admin bypasses the monthly limit and their requests are auto-approved', function () {
+    config(['mail.admin_email' => 'admin@whisper.test']);
+    $admin = User::factory()->create(['email' => 'admin@whisper.test']);
+    IntegrationRequest::factory()->count(5)->create(['user_id' => $admin->id]);
+
+    $this->actingAs($admin)
+        ->postJson('/integration-requests', ['name' => 'Revolut', 'url' => 'https://revolut.com'])
+        ->assertCreated()
+        ->assertJsonPath('actionsRemaining', 3);
+
+    $this->assertDatabaseHas('integration_requests', [
+        'user_id' => $admin->id,
+        'name' => 'Revolut',
+        'status' => IntegrationRequestStatus::Approved->value,
+    ]);
+
+    $other = IntegrationRequest::factory()->approved()->create();
+
+    $this->actingAs($admin)
+        ->postJson("/integration-requests/{$other->id}/vote")
+        ->assertOk();
+});
+
 test('removing a vote is allowed even at the monthly limit', function () {
     $user = User::factory()->create();
     $request = IntegrationRequest::factory()->approved()->create();

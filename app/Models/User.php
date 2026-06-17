@@ -304,6 +304,11 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->email === config('app.demo.email');
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->email === config('mail.admin_email');
+    }
+
     public function preferredLocale(): string
     {
         return $this->locale ?? 'en';
