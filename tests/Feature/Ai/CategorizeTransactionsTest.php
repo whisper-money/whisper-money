@@ -67,12 +67,14 @@ it('auto-applies the category when confidence clears the label bar', function ()
     expect($transaction->category_id)->toBe($category->id)
         ->and($transaction->category_source)->toBe(CategorySource::Ai)
         ->and($transaction->ai_confidence)->toEqual(0.95)
+        ->and($transaction->ai_suggested_category_id)->toBe($category->id)
+        ->and($transaction->ai_suggested_category_at)->not->toBeNull()
         ->and($outcomes)->toHaveCount(1)
         ->and($outcomes[0]->applied)->toBeTrue()
         ->and($outcomes[0]->merchantUnambiguous)->toBeTrue();
 });
 
-it('leaves the transaction blank when confidence is below the label bar', function () {
+it('leaves the transaction blank but records the suggestion when confidence is below the label bar', function () {
     $user = User::factory()->create();
     $category = groceries($user);
     $transaction = uncategorized($user);
@@ -94,6 +96,9 @@ it('leaves the transaction blank when confidence is below the label bar', functi
 
     expect($transaction->category_id)->toBeNull()
         ->and($transaction->category_source)->toBeNull()
+        ->and($transaction->ai_suggested_category_id)->toBe($category->id)
+        ->and($transaction->ai_confidence)->toEqual(0.5)
+        ->and($transaction->ai_suggested_category_at)->not->toBeNull()
         ->and($outcomes)->toHaveCount(1)
         ->and($outcomes[0]->applied)->toBeFalse();
 });

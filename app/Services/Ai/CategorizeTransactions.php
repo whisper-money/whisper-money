@@ -62,9 +62,7 @@ class CategorizeTransactions
             $confidence = (float) ($result['confidence'] ?? 0.0);
             $applied = $confidence >= $labelBar;
 
-            if ($applied) {
-                $this->applyLabel($transaction, $categoryId, $confidence);
-            }
+            $this->recordOutcome($transaction, $categoryId, $confidence, $applied);
 
             $outcomes[] = new CategorizationOutcome(
                 transaction: $transaction,
@@ -78,11 +76,23 @@ class CategorizeTransactions
         return $outcomes;
     }
 
-    private function applyLabel(Transaction $transaction, string $categoryId, float $confidence): void
+    /**
+     * Persist the model's suggestion on the transaction whether or not it clears
+     * the label bar. Below the bar the transaction stays uncategorized but the
+     * suggestion is kept (for confidence-bar tuning and a future confirm UI);
+     * at or above it the category is also auto-applied.
+     */
+    private function recordOutcome(Transaction $transaction, string $categoryId, float $confidence, bool $applied): void
     {
-        $transaction->category_id = $categoryId;
-        $transaction->category_source = CategorySource::Ai;
+        $transaction->ai_suggested_category_id = $categoryId;
         $transaction->ai_confidence = $confidence;
+        $transaction->ai_suggested_category_at = now();
+
+        if ($applied) {
+            $transaction->category_id = $categoryId;
+            $transaction->category_source = CategorySource::Ai;
+        }
+
         $transaction->save();
     }
 
