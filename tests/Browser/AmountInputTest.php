@@ -47,6 +47,7 @@ it('can create a transaction with amount input', function () {
     $category = Category::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create([
         'user_id' => $user->id,
+        'name' => 'Test Checking',
         'currency_code' => 'USD',
         'type' => 'checking',
     ]);
@@ -64,6 +65,11 @@ it('can create a transaction with amount input', function () {
         ->fill('#description', 'Test Transaction')
         ->wait(0.5)
         ->fill('#amount', '123.45')
+        ->wait(0.5)
+        ->click('[data-testid="account-select"]')
+        ->wait(2)
+        ->waitForText('Test Checking', 5)
+        ->click('[role="option"]:has-text("Test Checking")')
         ->wait(0.5)
         ->click('[data-testid="category-select"]')
         ->wait(1)
@@ -89,6 +95,7 @@ it('formats amount when pressing enter', function () {
     $category = Category::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create([
         'user_id' => $user->id,
+        'name' => 'Test Checking',
         'currency_code' => 'USD',
         'type' => 'checking',
     ]);
@@ -103,6 +110,11 @@ it('formats amount when pressing enter', function () {
         ->wait(1)
         ->fill('#description', 'Test Transaction Enter')
         ->fill('#amount', '99.99')
+        ->wait(0.5)
+        ->click('[data-testid="account-select"]')
+        ->wait(2)
+        ->waitForText('Test Checking', 5)
+        ->click('[role="option"]:has-text("Test Checking")')
         ->wait(0.5)
         ->click('[data-testid="category-select"]')
         ->wait(0.5)
@@ -127,6 +139,7 @@ it('accepts negative amounts', function () {
     $category = Category::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->create([
         'user_id' => $user->id,
+        'name' => 'Test Checking',
         'currency_code' => 'USD',
         'type' => 'checking',
     ]);
@@ -141,6 +154,11 @@ it('accepts negative amounts', function () {
         ->wait(1)
         ->fill('#description', 'Test Negative Amount')
         ->fill('#amount', '-50.00')
+        ->click('[data-testid="account-select"]')
+        ->wait(2)
+        ->waitForText('Test Checking', 5)
+        ->click('[role="option"]:has-text("Test Checking")')
+        ->wait(0.5)
         ->click('[data-testid="category-select"]')
         ->wait(0.5)
         ->click($category->name)

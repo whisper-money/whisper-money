@@ -52,6 +52,32 @@ vi.mock('sonner', () => ({
     },
 }));
 
+vi.mock('@/components/ui/select', () => ({
+    Select: ({
+        value,
+        children,
+    }: {
+        value?: string;
+        children: React.ReactNode;
+    }) => (
+        <div data-testid="account-value" data-value={value ?? ''}>
+            {children}
+        </div>
+    ),
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+    ),
+    SelectContent: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+    ),
+    SelectItem: ({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+    ),
+    SelectValue: ({ placeholder }: { placeholder?: string }) => (
+        <span>{placeholder}</span>
+    ),
+}));
+
 vi.mock('@/components/ui/dialog', () => ({
     Dialog: ({
         children,
@@ -79,6 +105,11 @@ vi.mock('@/components/ui/dialog', () => ({
 
 describe('EditTransactionDialog', () => {
     beforeEach(() => {
+        globalThis.ResizeObserver = class {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        };
         Object.defineProperty(globalThis, 'localStorage', {
             value: {
                 getItem: vi.fn(() => null),
@@ -127,5 +158,61 @@ describe('EditTransactionDialog', () => {
         expect(screen.getByDisplayValue('Amazon EU')).toBeDisabled();
         expect(screen.getByText('Debtor')).toBeInTheDocument();
         expect(screen.getByDisplayValue('Victor Falcon')).toBeDisabled();
+    });
+
+    const checkingAccount = {
+        id: 'account-1',
+        name: 'Checking',
+        name_iv: null,
+        encrypted: false,
+        bank: null,
+        type: 'checking' as const,
+        currency_code: 'EUR',
+        banking_connection_id: null,
+        external_account_id: null,
+        linked_at: null,
+    };
+
+    it('does not auto-select an account when no initialAccountId is given', () => {
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+            />,
+        );
+
+        expect(screen.getByTestId('account-value')).toHaveAttribute(
+            'data-value',
+            '',
+        );
+    });
+
+    it('auto-selects the account matching initialAccountId (account page)', () => {
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+                initialAccountId="account-1"
+            />,
+        );
+
+        expect(screen.getByTestId('account-value')).toHaveAttribute(
+            'data-value',
+            'account-1',
+        );
     });
 });
