@@ -148,6 +148,18 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         return $this->hasMany(SuggestionRun::class);
     }
 
+    /** @return HasMany<IntegrationRequest, $this> */
+    public function integrationRequests(): HasMany
+    {
+        return $this->hasMany(IntegrationRequest::class);
+    }
+
+    /** @return HasMany<IntegrationRequestVote, $this> */
+    public function integrationRequestVotes(): HasMany
+    {
+        return $this->hasMany(IntegrationRequestVote::class);
+    }
+
     /**
      * Whether the user has an active, current-version AI consent.
      */

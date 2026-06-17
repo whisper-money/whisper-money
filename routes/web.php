@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IntegrationRequestController;
 use App\Http\Controllers\LoanDetailController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OpenBanking\AccountMappingController;
@@ -121,10 +122,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('preview', [RuleSuggestionController::class, 'preview'])->name('preview');
         Route::post('accept', [RuleSuggestionController::class, 'accept'])->name('accept');
     });
+
+    // Integration requests — community board to propose and vote on bank integrations.
+    Route::get('integration-requests/data', [IntegrationRequestController::class, 'data'])->name('integration-requests.data');
+    Route::post('integration-requests', [IntegrationRequestController::class, 'store'])->name('integration-requests.store');
+    Route::post('integration-requests/{integrationRequest}/vote', [IntegrationRequestController::class, 'vote'])->name('integration-requests.vote');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    // Renders the dashboard with the integration-requests drawer opened on top.
+    Route::get('integration-requests', [IntegrationRequestController::class, 'index'])->name('integration-requests.index');
     Route::get('cashflow', CashflowController::class)->name('cashflow');
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
