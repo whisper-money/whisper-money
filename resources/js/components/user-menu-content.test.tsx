@@ -84,7 +84,13 @@ const user: User = {
 
 describe('UserMenuContent', () => {
     it('shows community above feedback in the user dropdown', () => {
-        render(<UserMenuContent user={user} onOpenSupport={vi.fn()} />);
+        render(
+            <UserMenuContent
+                user={user}
+                onOpenSupport={vi.fn()}
+                onOpenIntegrationRequests={vi.fn()}
+            />,
+        );
 
         const community = screen.getByRole('link', { name: /community/i });
         const feedback = screen.getByRole('link', { name: /feedback/i });
@@ -100,7 +106,13 @@ describe('UserMenuContent', () => {
     it('triggers the support callback when the support item is clicked', () => {
         const onOpenSupport = vi.fn();
 
-        render(<UserMenuContent user={user} onOpenSupport={onOpenSupport} />);
+        render(
+            <UserMenuContent
+                user={user}
+                onOpenSupport={onOpenSupport}
+                onOpenIntegrationRequests={vi.fn()}
+            />,
+        );
 
         fireEvent.click(screen.getByText('Support'));
 
