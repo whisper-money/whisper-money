@@ -3,6 +3,7 @@ import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-car
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
 import HeadingSmall from '@/components/heading-small';
+import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
@@ -41,6 +42,7 @@ interface DashboardProps extends SharedData {
         current: CashflowSummary;
         previous: CashflowSummary;
     };
+    openIntegrationRequests?: boolean;
 }
 
 export default function Dashboard() {
@@ -49,6 +51,9 @@ export default function Dashboard() {
     const { isKeySet, encryptedMessageData, fetchEncryptedMessage } =
         useEncryptionKey();
     const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+    const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(
+        !!props.openIntegrationRequests,
+    );
 
     const netWorthEvolution = useMemo(
         () =>
@@ -163,6 +168,16 @@ export default function Dashboard() {
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={__('Dashboard')} />
+
+            <IntegrationRequestsDrawer
+                open={integrationDrawerOpen}
+                onOpenChange={(open) => {
+                    setIntegrationDrawerOpen(open);
+                    if (!open) {
+                        router.visit(dashboard().url, { preserveScroll: true });
+                    }
+                }}
+            />
 
             {encryptedMessageData && (
                 <UnlockMessageDialog
