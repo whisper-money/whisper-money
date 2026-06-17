@@ -38,7 +38,7 @@ class ReviewIntegrationRequestsCommand extends Command
             $pending->map(fn (IntegrationRequest $request): array => [
                 $request->name,
                 $request->url,
-                $request->user?->email ?? '—',
+                $request->user->email,
                 $request->votes_count,
                 $request->created_at?->format('Y-m-d') ?? '—',
             ])->all(),
