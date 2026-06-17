@@ -34,4 +34,12 @@ class IntegrationRequestFactory extends Factory
     {
         return $this->state(['status' => IntegrationRequestStatus::Rejected]);
     }
+
+    public function notDoable(): static
+    {
+        return $this->state([
+            'status' => IntegrationRequestStatus::NotDoable,
+            'comment' => fake()->sentence(),
+        ]);
+    }
 }

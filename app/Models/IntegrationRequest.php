@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property string $url
  * @property IntegrationRequestStatus $status
+ * @property ?string $comment
  * @property string $user_id
  */
 class IntegrationRequest extends Model
@@ -26,6 +27,7 @@ class IntegrationRequest extends Model
         'name',
         'url',
         'status',
+        'comment',
         'user_id',
     ];
 

@@ -54,8 +54,11 @@ class IntegrationRequestController extends Controller
     {
         $user = $request->user();
 
-        if ($integrationRequest->status !== IntegrationRequestStatus::Approved
-            && $integrationRequest->user_id !== $user->id) {
+        $canVote = $integrationRequest->status === IntegrationRequestStatus::Approved
+            || ($integrationRequest->status === IntegrationRequestStatus::Pending
+                && $integrationRequest->user_id === $user->id);
+
+        if (! $canVote) {
             abort(404);
         }
 
@@ -85,7 +88,7 @@ class IntegrationRequestController extends Controller
     {
         return IntegrationRequest::query()
             ->where(function ($query) use ($user) {
-                $query->where('status', IntegrationRequestStatus::Approved)
+                $query->whereIn('status', [IntegrationRequestStatus::Approved, IntegrationRequestStatus::NotDoable])
                     ->orWhere(function ($inner) use ($user) {
                         $inner->where('status', IntegrationRequestStatus::Pending)
                             ->where('user_id', $user->id);
@@ -93,6 +96,8 @@ class IntegrationRequestController extends Controller
             })
             ->withCount('votes')
             ->withExists(['votes as has_voted' => fn ($query) => $query->where('user_id', $user->id)])
+            // Not-doable requests sink to the bottom regardless of their votes.
+            ->orderByRaw('CASE WHEN status = ? THEN 1 ELSE 0 END', [IntegrationRequestStatus::NotDoable->value])
             ->orderByDesc('votes_count')
             ->orderByDesc('created_at')
             ->get();
