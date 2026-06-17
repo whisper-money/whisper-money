@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property ?CategorySource $category_source
  * @property ?float $ai_confidence
  * @property ?string $categorized_by_rule_id
+ * @property ?string $ai_suggested_category_id
+ * @property ?Carbon $ai_suggested_category_at
  */
 class Transaction extends Model
 {
@@ -47,6 +49,8 @@ class Transaction extends Model
         'category_source',
         'ai_confidence',
         'categorized_by_rule_id',
+        'ai_suggested_category_id',
+        'ai_suggested_category_at',
         'description',
         'description_iv',
         'original_description',
@@ -86,6 +90,7 @@ class Transaction extends Model
             'source' => TransactionSource::class,
             'category_source' => CategorySource::class,
             'ai_confidence' => 'float',
+            'ai_suggested_category_at' => 'datetime',
             'raw_data' => 'array',
         ];
     }
@@ -112,6 +117,12 @@ class Transaction extends Model
     public function categorizedByRule(): BelongsTo
     {
         return $this->belongsTo(AutomationRule::class, 'categorized_by_rule_id');
+    }
+
+    /** @return BelongsTo<Category, $this> */
+    public function suggestedCategory(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'ai_suggested_category_id');
     }
 
     /**
