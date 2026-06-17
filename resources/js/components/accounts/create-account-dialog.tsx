@@ -1,5 +1,6 @@
 import { store } from '@/actions/App/Http/Controllers/Settings/AccountController';
 import { store as storeBank } from '@/actions/App/Http/Controllers/Settings/BankController';
+import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import { ConnectAccountDialog } from '@/components/open-banking/connect-account-dialog';
 import { UpgradeConnectionDialog } from '@/components/open-banking/upgrade-connection-dialog';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ export function CreateAccountDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+    const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(false);
     const formDataRef = useRef<AccountFormData>({
         displayName: '',
         bankId: null,
@@ -336,6 +338,11 @@ export function CreateAccountDialog({
             <UpgradeConnectionDialog
                 open={upgradeDialogOpen}
                 onOpenChange={setUpgradeDialogOpen}
+            />
+
+            <IntegrationRequestsDrawer
+                open={integrationDrawerOpen}
+                onOpenChange={setIntegrationDrawerOpen}
             />
         </>
     );

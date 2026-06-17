@@ -1,3 +1,4 @@
+import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
 import { SupportDialog } from '@/components/support-dialog';
 import {
     DropdownMenu,
@@ -23,6 +24,8 @@ export function NavUser({ className }: { className?: string }) {
     const { state } = useSidebar();
     const isMobile = useIsMobile();
     const [supportOpen, setSupportOpen] = useState(false);
+    const [integrationRequestsOpen, setIntegrationRequestsOpen] =
+        useState(false);
 
     return (
         <SidebarMenu className={className}>
@@ -52,6 +55,9 @@ export function NavUser({ className }: { className?: string }) {
                         <UserMenuContent
                             user={auth.user}
                             onOpenSupport={() => setSupportOpen(true)}
+                            onOpenIntegrationRequests={() =>
+                                setIntegrationRequestsOpen(true)
+                            }
                         />
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -59,6 +65,10 @@ export function NavUser({ className }: { className?: string }) {
                     open={supportOpen}
                     onOpenChange={setSupportOpen}
                     user={auth.user}
+                />
+                <IntegrationRequestsDrawer
+                    open={integrationRequestsOpen}
+                    onOpenChange={setIntegrationRequestsOpen}
                 />
             </SidebarMenuItem>
         </SidebarMenu>

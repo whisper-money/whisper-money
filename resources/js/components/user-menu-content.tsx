@@ -18,6 +18,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     Eye,
     EyeOff,
+    Landmark,
     LifeBuoy,
     LogOut,
     Map,
@@ -29,9 +30,14 @@ import {
 interface UserMenuContentProps {
     user: User;
     onOpenSupport: () => void;
+    onOpenIntegrationRequests: () => void;
 }
 
-export function UserMenuContent({ user, onOpenSupport }: UserMenuContentProps) {
+export function UserMenuContent({
+    user,
+    onOpenSupport,
+    onOpenIntegrationRequests,
+}: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
     const { isPrivacyModeEnabled, togglePrivacyMode } = usePrivacyMode();
     const { version } = usePage<SharedData>().props;
@@ -130,6 +136,15 @@ export function UserMenuContent({ user, onOpenSupport }: UserMenuContentProps) {
                         <Map className="mr-2" />
                         {__('Roadmap')}
                     </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    onClick={() => {
+                        onOpenIntegrationRequests();
+                        cleanup();
+                    }}
+                >
+                    <Landmark className="mr-2" />
+                    {__('Request integration')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                     onClick={() => {
