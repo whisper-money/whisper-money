@@ -40,7 +40,11 @@ class IntegrationRequestController extends Controller
             return $this->limitReachedResponse();
         }
 
-        $integrationRequest = $user->integrationRequests()->create($request->only(['name', 'url']));
+        $integrationRequest = $user->integrationRequests()->create([
+            ...$request->only(['name', 'url']),
+            // The admin curates the board, so their proposals skip moderation.
+            'status' => $user->isAdmin() ? IntegrationRequestStatus::Approved : IntegrationRequestStatus::Pending,
+        ]);
         $integrationRequest->votes()->create(['user_id' => $user->id]);
 
         return $this->payload($user, 201);
@@ -96,6 +100,12 @@ class IntegrationRequestController extends Controller
 
     private function actionsRemaining(User $user): int
     {
+        // The admin has no monthly cap; report a full quota so neither the
+        // backend checks nor the frontend buttons ever gate them.
+        if ($user->isAdmin()) {
+            return self::MONTHLY_ACTION_LIMIT;
+        }
+
         $start = now()->startOfMonth();
 
         $used = $user->integrationRequests()->where('created_at', '>=', $start)->count()
