@@ -174,7 +174,6 @@ test('expired session marks the connection expired and emails the user instead o
     $transactionSync->shouldReceive('sync')->andThrow(
         new ExpiredBankingSessionException(
             'EnableBanking session expired while fetching account transactions.',
-            provider: 'enablebanking',
         )
     );
 

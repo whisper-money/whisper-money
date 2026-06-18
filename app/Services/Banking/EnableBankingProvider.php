@@ -107,7 +107,6 @@ class EnableBankingProvider implements BankingProviderInterface
             if ($this->isExpiredSession($e)) {
                 throw new ExpiredBankingSessionException(
                     'EnableBanking session expired while fetching account transactions.',
-                    provider: 'enablebanking',
                     previous: $e,
                 );
             }
@@ -152,7 +151,6 @@ class EnableBankingProvider implements BankingProviderInterface
             if ($this->isExpiredSession($e)) {
                 throw new ExpiredBankingSessionException(
                     'EnableBanking session expired while fetching account balances.',
-                    provider: 'enablebanking',
                     previous: $e,
                 );
             }

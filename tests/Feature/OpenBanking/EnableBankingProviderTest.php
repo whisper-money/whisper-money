@@ -73,7 +73,6 @@ test('getTransactions wraps an expired session 401 as a non-reportable expired s
         $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
     } catch (ExpiredBankingSessionException $e) {
         expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->provider)->toBe('enablebanking')
             ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
 
         return;
@@ -98,7 +97,6 @@ test('getBalances wraps an expired session 401 as a non-reportable expired sessi
         $provider->getBalances('ext-123');
     } catch (ExpiredBankingSessionException $e) {
         expect($e)->toBeInstanceOf(ShouldntReport::class)
-            ->and($e->provider)->toBe('enablebanking')
             ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
 
         return;
