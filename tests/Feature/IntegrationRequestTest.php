@@ -4,11 +4,19 @@ use App\Enums\IntegrationRequestStatus;
 use App\Models\IntegrationRequest;
 use App\Models\User;
 
+// With subscriptions enabled, a freshly created user is on the free plan
+// (three monthly actions). Subscribed users get the pro quota of nine.
+beforeEach(function () {
+    config(['subscriptions.enabled' => true]);
+});
+
 test('guests cannot access the integration requests page', function () {
     $this->get('/integration-requests')->assertRedirect();
 });
 
 test('the integration requests url renders the dashboard with the drawer open', function () {
+    // The dashboard route is paywalled; keep this user out of the paywall.
+    config(['subscriptions.enabled' => false]);
     $user = User::factory()->onboarded()->create();
 
     $this->actingAs($user)
@@ -70,27 +78,81 @@ test('requesting an integration requires a name and a valid url', function () {
         ->assertJsonValidationErrors(['name', 'url']);
 });
 
-test('a user can vote and then remove the vote', function () {
+test('a user can vote multiple times on the same request', function () {
     $user = User::factory()->create();
     $request = IntegrationRequest::factory()->approved()->create();
 
     $this->actingAs($user)
         ->postJson("/integration-requests/{$request->id}/vote")
-        ->assertOk();
-
-    $this->assertDatabaseHas('integration_request_votes', [
-        'integration_request_id' => $request->id,
-        'user_id' => $user->id,
-    ]);
+        ->assertOk()
+        ->assertJsonPath('requests.0.votes_count', 1)
+        ->assertJsonPath('actionsRemaining', 2);
 
     $this->actingAs($user)
         ->postJson("/integration-requests/{$request->id}/vote")
-        ->assertOk();
+        ->assertOk()
+        ->assertJsonPath('requests.0.votes_count', 2)
+        ->assertJsonPath('actionsRemaining', 1);
+
+    expect($request->votes()->where('user_id', $user->id)->count())->toBe(2);
+});
+
+test('a user can remove a vote cast this month and recover the action', function () {
+    $user = User::factory()->create();
+    $request = IntegrationRequest::factory()->approved()->create();
+
+    $this->actingAs($user)
+        ->postJson("/integration-requests/{$request->id}/vote")
+        ->assertOk()
+        ->assertJsonPath('actionsRemaining', 2);
+
+    $this->actingAs($user)
+        ->deleteJson("/integration-requests/{$request->id}/vote")
+        ->assertOk()
+        ->assertJsonPath('requests.0.votes_count', 0)
+        ->assertJsonPath('requests.0.can_unvote', false)
+        ->assertJsonPath('actionsRemaining', 3);
 
     $this->assertDatabaseMissing('integration_request_votes', [
         'integration_request_id' => $request->id,
         'user_id' => $user->id,
     ]);
+});
+
+test('a vote cast in a previous month cannot be removed', function () {
+    $user = User::factory()->create();
+    $request = IntegrationRequest::factory()->approved()->create();
+
+    $vote = $request->votes()->create(['user_id' => $user->id]);
+    $vote->forceFill(['created_at' => now()->subMonth()])->saveQuietly();
+
+    $this->actingAs($user)
+        ->getJson('/integration-requests/data')
+        ->assertJsonPath('requests.0.can_unvote', false);
+
+    $this->actingAs($user)
+        ->deleteJson("/integration-requests/{$request->id}/vote")
+        ->assertOk()
+        ->assertJsonPath('requests.0.votes_count', 1);
+
+    $this->assertDatabaseHas('integration_request_votes', [
+        'id' => $vote->id,
+    ]);
+});
+
+test('pro users get nine monthly actions', function () {
+    $user = User::factory()->create();
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_pro123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_pro123',
+    ]);
+
+    $this->actingAs($user)
+        ->getJson('/integration-requests/data')
+        ->assertOk()
+        ->assertJsonPath('actionsRemaining', 9);
 });
 
 test('a user cannot exceed the monthly action limit', function () {
@@ -131,21 +193,21 @@ test('the admin bypasses the monthly limit and their requests are auto-approved'
         ->assertOk();
 });
 
-test('removing a vote is allowed even at the monthly limit', function () {
+test('repeated voting stops once the monthly limit is reached', function () {
     $user = User::factory()->create();
     $request = IntegrationRequest::factory()->approved()->create();
 
-    IntegrationRequest::factory()->count(2)->create(['user_id' => $user->id]);
-    $request->votes()->create(['user_id' => $user->id]);
+    foreach (range(1, 3) as $ignored) {
+        $this->actingAs($user)
+            ->postJson("/integration-requests/{$request->id}/vote")
+            ->assertOk();
+    }
 
     $this->actingAs($user)
         ->postJson("/integration-requests/{$request->id}/vote")
-        ->assertOk();
+        ->assertStatus(422);
 
-    $this->assertDatabaseMissing('integration_request_votes', [
-        'integration_request_id' => $request->id,
-        'user_id' => $user->id,
-    ]);
+    expect($request->votes()->count())->toBe(3);
 });
 
 test('pending requests are only visible to their creator', function () {

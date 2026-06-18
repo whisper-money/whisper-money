@@ -127,6 +127,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('integration-requests/data', [IntegrationRequestController::class, 'data'])->name('integration-requests.data');
     Route::post('integration-requests', [IntegrationRequestController::class, 'store'])->name('integration-requests.store');
     Route::post('integration-requests/{integrationRequest}/vote', [IntegrationRequestController::class, 'vote'])->name('integration-requests.vote');
+    Route::delete('integration-requests/{integrationRequest}/vote', [IntegrationRequestController::class, 'removeVote'])->name('integration-requests.vote.destroy');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {

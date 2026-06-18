@@ -14,6 +14,7 @@ const item: IntegrationRequestItem = {
         '> No ofrece una [API pública](https://degiro.es/api) para conexiones.',
     votes_count: 3,
     has_voted: false,
+    can_unvote: false,
     created_at: '2026-01-01T00:00:00.000000Z',
 };
 
