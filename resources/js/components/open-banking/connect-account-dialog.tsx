@@ -18,6 +18,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { getCsrfToken } from '@/lib/csrf';
 import type {
     BankingConnection,
@@ -82,6 +87,25 @@ const WISE_INSTITUTION: EnableBankingInstitution = {
     maximum_consent_validity: null,
 };
 
+/**
+ * Names of EnableBanking ASPSPs the user already has a connection to.
+ *
+ * Pending connections are excluded: they are throwaway, mid-flow attempts, so a
+ * stale one must not block re-adding the bank. Any other status (active, error,
+ * expired, …) counts as already connected and should be re-used via reconnect.
+ */
+export function alreadyConnectedBankNames(
+    connections: BankingConnection[],
+): Set<string> {
+    return new Set(
+        connections
+            .filter(
+                (c) => c.provider === 'enablebanking' && c.status !== 'pending',
+            )
+            .map((c) => c.aspsp_name),
+    );
+}
+
 interface ConnectAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -139,6 +163,11 @@ export function ConnectAccountDialog({
     );
 
     const isWise = useMemo(() => selectedBank?.name === 'Wise', [selectedBank]);
+
+    const connectedBankNames = useMemo(
+        () => alreadyConnectedBankNames(connections),
+        [connections],
+    );
 
     const resetState = useCallback(() => {
         setStep('country');
@@ -198,11 +227,6 @@ export function ConnectAccountDialog({
 
             const data = await response.json();
 
-            const connectedEnableBankingNames = new Set(
-                connections
-                    .filter((c) => c.provider === 'enablebanking')
-                    .map((c) => c.aspsp_name),
-            );
             const hasProvider = (provider: string) =>
                 connections.some((c) => c.provider === provider);
 
@@ -230,7 +254,7 @@ export function ConnectAccountDialog({
                     if (institution.name === 'Indexa Capital') {
                         return !hasProvider('indexacapital');
                     }
-                    return !connectedEnableBankingNames.has(institution.name);
+                    return true;
                 })
                 .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -419,27 +443,58 @@ export function ConnectAccountDialog({
                             />
 
                             <div className="max-h-[300px] space-y-1 overflow-y-auto">
-                                {filteredInstitutions.map((institution) => (
-                                    <button
-                                        key={institution.name}
-                                        type="button"
-                                        className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
-                                            selectedBank?.name ===
-                                            institution.name
-                                                ? 'bg-accent'
-                                                : ''
-                                        }`}
-                                        onClick={() =>
-                                            setSelectedBank(institution)
-                                        }
-                                    >
-                                        <BankLogo
-                                            src={institution.logo}
-                                            className="h-6 w-6"
-                                        />
-                                        <span>{institution.name}</span>
-                                    </button>
-                                ))}
+                                {filteredInstitutions.map((institution) => {
+                                    const isConnected = connectedBankNames.has(
+                                        institution.name,
+                                    );
+
+                                    const item = (
+                                        <button
+                                            key={institution.name}
+                                            type="button"
+                                            aria-disabled={isConnected}
+                                            className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                                                isConnected
+                                                    ? 'cursor-not-allowed opacity-50'
+                                                    : 'hover:bg-accent'
+                                            } ${
+                                                selectedBank?.name ===
+                                                institution.name
+                                                    ? 'bg-accent'
+                                                    : ''
+                                            }`}
+                                            onClick={() => {
+                                                if (isConnected) {
+                                                    return;
+                                                }
+                                                setSelectedBank(institution);
+                                            }}
+                                        >
+                                            <BankLogo
+                                                src={institution.logo}
+                                                className="h-6 w-6"
+                                            />
+                                            <span>{institution.name}</span>
+                                        </button>
+                                    );
+
+                                    if (!isConnected) {
+                                        return item;
+                                    }
+
+                                    return (
+                                        <Tooltip key={institution.name}>
+                                            <TooltipTrigger asChild>
+                                                {item}
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                {__(
+                                                    'You already have a connection with this bank. Reconnect it.',
+                                                )}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    );
+                                })}
                                 {filteredInstitutions.length === 0 && (
                                     <p className="py-4 text-center text-sm text-muted-foreground">
                                         {__('No banks found.')}

@@ -109,6 +109,25 @@ test('authenticated users receive expired banking connection reconnect links', f
     );
 });
 
+test('authenticated users receive their banking connections in shared props', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Bankinter',
+        'status' => BankingConnectionStatus::Active,
+    ]);
+
+    $response = actingAs($user)->withoutVite()->get(route('dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('bankingConnections', 1)
+        ->where('bankingConnections.0.id', $connection->id)
+        ->where('bankingConnections.0.aspsp_name', 'Bankinter')
+        ->where('bankingConnections.0.provider', $connection->provider->value)
+        ->where('bankingConnections.0.status', 'active')
+    );
+});
+
 test('shared currency options split profile and account currencies', function () {
     $response = $this->withoutVite()->get(route('home'));
 

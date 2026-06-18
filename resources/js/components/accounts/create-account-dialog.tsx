@@ -16,6 +16,7 @@ import {
 import { getCsrfToken } from '@/lib/csrf';
 import { SharedData } from '@/types';
 import { Account } from '@/types/account';
+import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { Link2, PenLine } from 'lucide-react';
@@ -35,11 +36,16 @@ export function CreateAccountDialog({
         auth,
         subscriptionsEnabled,
         accounts: sharedAccounts,
+        bankingConnections: sharedConnections,
     } = usePage<SharedData>().props;
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const sharedAccountsList = useMemo(
         () => (sharedAccounts as Account[]) || [],
         [sharedAccounts],
+    );
+    const connections = useMemo(
+        () => (sharedConnections as BankingConnection[]) || [],
+        [sharedConnections],
     );
     const availableLoanAccounts = useMemo(
         () => sharedAccountsList.filter((a) => a.type === 'loan'),
@@ -333,6 +339,7 @@ export function CreateAccountDialog({
             <ConnectAccountDialog
                 open={connectDialogOpen}
                 onOpenChange={setConnectDialogOpen}
+                connections={connections}
             />
 
             <UpgradeConnectionDialog
