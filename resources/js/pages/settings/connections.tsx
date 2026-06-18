@@ -34,6 +34,7 @@ import {
     RefreshCw,
     RotateCcw,
     Unplug,
+    Wallet,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -157,6 +158,13 @@ export default function ConnectionsPage({ connections }: Props) {
         );
     }
 
+    function canManageAccounts(connection: BankingConnection): boolean {
+        return (
+            connection.provider === 'enablebanking' &&
+            ['active', 'expired', 'error'].includes(connection.status)
+        );
+    }
+
     function formatDate(dateString: string | null): string {
         if (!dateString) return __('Never');
         return new Date(dateString).toLocaleDateString(undefined, {
@@ -276,6 +284,22 @@ export default function ConnectionsPage({ connections }: Props) {
                                                         >
                                                             <ArrowRight className="mr-2 h-4 w-4" />
                                                             {__('Map Accounts')}
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {canManageAccounts(
+                                                        connection,
+                                                    ) && (
+                                                        <DropdownMenuItem
+                                                            onClick={() =>
+                                                                router.visit(
+                                                                    `/open-banking/connections/${connection.id}/accounts`,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Wallet className="mr-2 h-4 w-4" />
+                                                            {__(
+                                                                'Manage Accounts',
+                                                            )}
                                                         </DropdownMenuItem>
                                                     )}
                                                     {hasAuthError(
