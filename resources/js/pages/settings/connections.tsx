@@ -34,6 +34,7 @@ import {
     RefreshCw,
     RotateCcw,
     Unplug,
+    Wallet,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -43,7 +44,8 @@ interface Props {
 }
 
 export default function ConnectionsPage({ connections }: Props) {
-    const { auth, flash, subscriptionsEnabled } = usePage<SharedData>().props;
+    const { auth, flash, subscriptionsEnabled, features } =
+        usePage<SharedData>().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
     const isFreePlan = subscriptionsEnabled && !auth?.hasProPlan;
     const [connectDialogOpen, setConnectDialogOpen] = useState(false);
@@ -154,6 +156,13 @@ export default function ConnectionsPage({ connections }: Props) {
             connection.provider === 'enablebanking' &&
             (connection.status === 'expired' ||
                 isEnableBankingAuthError(connection))
+        );
+    }
+
+    function canManageAccounts(connection: BankingConnection): boolean {
+        return (
+            connection.provider === 'enablebanking' &&
+            ['active', 'expired', 'error'].includes(connection.status)
         );
     }
 
@@ -278,6 +287,23 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             {__('Map Accounts')}
                                                         </DropdownMenuItem>
                                                     )}
+                                                    {features.manageBankAccounts &&
+                                                        canManageAccounts(
+                                                            connection,
+                                                        ) && (
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    router.visit(
+                                                                        `/open-banking/connections/${connection.id}/accounts`,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Wallet className="mr-2 h-4 w-4" />
+                                                                {__(
+                                                                    'Manage Accounts',
+                                                                )}
+                                                            </DropdownMenuItem>
+                                                        )}
                                                     {hasAuthError(
                                                         connection,
                                                     ) && (

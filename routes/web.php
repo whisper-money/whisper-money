@@ -15,6 +15,7 @@ use App\Http\Controllers\OpenBanking\AuthorizationController;
 use App\Http\Controllers\OpenBanking\BinanceController;
 use App\Http\Controllers\OpenBanking\BitpandaController;
 use App\Http\Controllers\OpenBanking\CoinbaseController;
+use App\Http\Controllers\OpenBanking\ConnectionAccountController;
 use App\Http\Controllers\OpenBanking\IndexaCapitalController;
 use App\Http\Controllers\OpenBanking\InstitutionController;
 use App\Http\Controllers\OpenBanking\WiseController;
@@ -163,6 +164,9 @@ Route::middleware(['auth', 'verified'])->prefix('open-banking')->group(function 
     Route::get('connections/{connection}/reconnect', [AuthorizationController::class, 'reconnect'])->name('open-banking.reconnect');
     Route::get('connections/{connection}/map-accounts', [AccountMappingController::class, 'show'])->name('open-banking.map-accounts');
     Route::post('connections/{connection}/map-accounts', [AccountMappingController::class, 'store'])->name('open-banking.map-accounts.store');
+    Route::get('connections/{connection}/accounts', [ConnectionAccountController::class, 'index'])->name('open-banking.connection-accounts.index');
+    Route::post('connections/{connection}/accounts/map', [ConnectionAccountController::class, 'map'])->name('open-banking.connection-accounts.map');
+    Route::post('connections/{connection}/accounts/{account}/unlink', [ConnectionAccountController::class, 'unlink'])->name('open-banking.connection-accounts.unlink');
     Route::post('indexa-capital/connect', [IndexaCapitalController::class, 'store'])->name('open-banking.indexa-capital.connect');
     Route::post('binance/connect', [BinanceController::class, 'store'])->name('open-banking.binance.connect');
     Route::post('bitpanda/connect', [BitpandaController::class, 'store'])->name('open-banking.bitpanda.connect');

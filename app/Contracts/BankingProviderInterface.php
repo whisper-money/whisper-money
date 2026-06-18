@@ -45,7 +45,7 @@ interface BankingProviderInterface
     /**
      * Get session details and status.
      *
-     * @return array{status: string, access: array, accounts: array}
+     * @return array{status: string, access: array, accounts: array, accounts_data?: array}
      */
     public function getSession(string $sessionId): array;
 

@@ -25,6 +25,12 @@ vi.mock('@inertiajs/react', () => ({
             },
             flash: {},
             subscriptionsEnabled: false,
+            features: {
+                cashflow: true,
+                calculateBalancesOnImport: false,
+                transactionAnalysis: false,
+                manageBankAccounts: true,
+            },
         },
     }),
     usePoll: () => ({

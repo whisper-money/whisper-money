@@ -30,6 +30,13 @@ export interface PendingBankAccount {
     };
 }
 
+export interface DiscoveredBankAccount {
+    uid: string;
+    name: string | null;
+    currency: string | null;
+    iban: string | null;
+}
+
 export interface EnableBankingInstitution {
     name: string;
     country: string;
