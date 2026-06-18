@@ -55,7 +55,11 @@ class ConnectionAccountController extends Controller
         );
 
         $currentHolder = $connection->accounts()->where('external_account_id', $uid)->first();
-        $iban = $currentHolder?->iban ?? ($validated['iban'] ?? null);
+
+        $iban = $validated['iban'] ?? null;
+        if ($currentHolder) {
+            $iban = $currentHolder->iban;
+        }
 
         $target = $validated['action'] === 'link'
             ? $connection->user->accounts()->find($validated['existing_account_id'])
@@ -159,7 +163,7 @@ class ConnectionAccountController extends Controller
 
         $knownUids = $connection->accounts()->pluck('external_account_id')->filter()->all();
 
-        $uids = collect($session['accounts'] ?? $session['accounts_data'] ?? [])
+        $uids = collect($session['accounts_data'] ?? $session['accounts'])
             ->map(fn ($account) => is_array($account) ? ($account['uid'] ?? null) : $account)
             ->filter()
             ->reject(fn (string $uid) => in_array($uid, $knownUids, true))
@@ -176,7 +180,7 @@ class ConnectionAccountController extends Controller
             return [
                 'uid' => $uid,
                 'name' => $details['name'] ?? $details['account_id']['iban'] ?? null,
-                'currency' => $details['currency'] ?? null,
+                'currency' => $details['currency'],
                 'iban' => $details['account_id']['iban'] ?? null,
             ];
         })->filter()->values()->all();
