@@ -1,5 +1,6 @@
 import {
     data,
+    removeVote,
     store,
     vote,
 } from '@/actions/App/Http/Controllers/IntegrationRequestController';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { getCsrfToken } from '@/lib/csrf';
 import { __ } from '@/utils/i18n';
-import { ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -24,6 +25,7 @@ export interface IntegrationRequestItem {
     comment: string | null;
     votes_count: number;
     has_voted: boolean;
+    can_unvote: boolean;
     created_at: string;
 }
 
@@ -39,7 +41,7 @@ interface Props {
 
 async function sendJson(
     url: string,
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'DELETE',
     body?: Record<string, string>,
 ): Promise<Response> {
     return fetch(url, {
@@ -113,11 +115,7 @@ export function IntegrationRequestsBoard({
     };
 
     const handleVote = async (item: IntegrationRequestItem) => {
-        if (
-            busy ||
-            item.status === 'not_doable' ||
-            (!item.has_voted && actionsRemaining <= 0)
-        ) {
+        if (busy || item.status === 'not_doable' || actionsRemaining <= 0) {
             return;
         }
 
@@ -126,6 +124,29 @@ export function IntegrationRequestsBoard({
 
         try {
             const response = await sendJson(vote(item.id).url, 'POST');
+
+            if (response.ok) {
+                apply(await response.json());
+                return;
+            }
+
+            const body = await response.json();
+            setError(body.message ?? __('Something went wrong.'));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleRemoveVote = async (item: IntegrationRequestItem) => {
+        if (busy || !item.can_unvote) {
+            return;
+        }
+
+        setError(null);
+        setBusy(true);
+
+        try {
+            const response = await sendJson(removeVote(item.id).url, 'DELETE');
 
             if (response.ok) {
                 apply(await response.json());
@@ -251,22 +272,38 @@ export function IntegrationRequestsBoard({
                                         </Badge>
                                     )}
                                 </div>
-                                <Button
-                                    variant={
-                                        item.has_voted ? 'default' : 'outline'
-                                    }
-                                    size="sm"
-                                    disabled={
-                                        busy ||
-                                        item.status === 'not_doable' ||
-                                        (!item.has_voted && outOfActions)
-                                    }
-                                    onClick={() => handleVote(item)}
-                                    aria-pressed={item.has_voted}
-                                >
-                                    <ChevronUp className="h-4 w-4" />
-                                    {item.votes_count}
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                    {item.can_unvote && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            disabled={busy}
+                                            onClick={() =>
+                                                handleRemoveVote(item)
+                                            }
+                                            aria-label={__('Remove one vote')}
+                                        >
+                                            <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant={
+                                            item.has_voted
+                                                ? 'default'
+                                                : 'outline'
+                                        }
+                                        size="sm"
+                                        disabled={
+                                            busy ||
+                                            item.status === 'not_doable' ||
+                                            outOfActions
+                                        }
+                                        onClick={() => handleVote(item)}
+                                    >
+                                        <ChevronUp className="h-4 w-4" />
+                                        {item.votes_count}
+                                    </Button>
+                                </div>
                             </div>
                             {item.comment && (
                                 <div className="mt-2 space-y-2 text-sm text-muted-foreground [&_a]:font-medium [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:italic [&_li]:ml-4 [&_li]:list-disc [&_strong]:font-semibold">
