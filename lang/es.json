@@ -9,6 +9,8 @@
     "No new accounts available to add.": "No hay cuentas nuevas para añadir.",
     "Change destination": "Cambiar destino",
     "Stop syncing": "Dejar de sincronizar",
+    "Stop syncing this account?": "¿Dejar de sincronizar esta cuenta?",
+    "This account will stop syncing with your bank and become a manual account. Your existing transactions are kept, but new ones from the bank will no longer be imported. You can start syncing it again later.": "Esta cuenta dejará de sincronizarse con tu banco y pasará a ser una cuenta manual. Tus transacciones actuales se conservan, pero las nuevas del banco ya no se importarán. Podrás volver a sincronizarla más adelante.",
     "Move syncing to…": "Mover la sincronización a…",
     "Link to existing": "Vincular a una existente",
     "Account synced. Transactions will be updated shortly.": "Cuenta sincronizada. Las transacciones se actualizarán en breve.",

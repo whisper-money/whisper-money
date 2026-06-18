@@ -33,4 +33,13 @@ enum AccountType: string
     {
         return in_array($this, [self::Investment, self::Retirement, self::RealEstate], true);
     }
+
+    /**
+     * Whether a bank connection can sync transactions into this account type.
+     * Excludes balance/value-tracking types (loan, investment, retirement, real estate).
+     */
+    public function canSyncBankTransactions(): bool
+    {
+        return in_array($this, [self::Checking, self::CreditCard, self::Savings, self::Others], true);
+    }
 }

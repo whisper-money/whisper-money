@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\BankingProviderInterface;
+use App\Enums\AccountType;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Account;
 use App\Models\BankingConnection;
@@ -16,8 +17,21 @@ beforeEach(function () {
     ]);
 });
 
-test('index renders the manage page with synced and available accounts', function () {
+/**
+ * The manage-accounts surface is gated behind the ManageBankAccounts feature,
+ * which is only active for the admin user. Mark the created user as the admin so
+ * the gate lets the request through.
+ */
+function adminUser(): User
+{
     $user = User::factory()->onboarded()->create();
+    config(['mail.admin_email' => $user->email]);
+
+    return $user;
+}
+
+test('index renders the manage page with synced and available accounts', function () {
+    $user = adminUser();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
 
     Account::factory()->for($user)->create([
@@ -42,7 +56,7 @@ test('index renders the manage page with synced and available accounts', functio
 });
 
 test('refresh discovers bank accounts that are not yet synced', function () {
-    $user = User::factory()->onboarded()->create();
+    $user = adminUser();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
 
     Account::factory()->for($user)->create([
@@ -80,7 +94,7 @@ test('refresh discovers bank accounts that are not yet synced', function () {
 test('map create adds a new synced account and dispatches a sync', function () {
     Queue::fake();
 
-    $user = User::factory()->onboarded()->create();
+    $user = adminUser();
     $connection = BankingConnection::factory()->create([
         'user_id' => $user->id,
         'aspsp_name' => 'Test Bank',
@@ -111,7 +125,7 @@ test('map create adds a new synced account and dispatches a sync', function () {
 test('map link moves syncing to another account and unlinks the previous one', function () {
     Queue::fake();
 
-    $user = User::factory()->onboarded()->create();
+    $user = adminUser();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
 
     $source = Account::factory()->for($user)->create([
@@ -123,6 +137,7 @@ test('map link moves syncing to another account and unlinks the previous one', f
     $target = Account::factory()->for($user)->create([
         'banking_connection_id' => null,
         'currency_code' => 'EUR',
+        'type' => AccountType::Checking->value,
     ]);
 
     $this->actingAs($user)
@@ -145,7 +160,7 @@ test('map link moves syncing to another account and unlinks the previous one', f
 });
 
 test('unlink stops syncing but keeps the account and its transactions', function () {
-    $user = User::factory()->onboarded()->create();
+    $user = adminUser();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
 
     $account = Account::factory()->for($user)->create([
@@ -167,7 +182,7 @@ test('unlink stops syncing but keeps the account and its transactions', function
 });
 
 test('index is forbidden for another user\'s connection', function () {
-    $user = User::factory()->onboarded()->create();
+    $user = adminUser();
     $connection = BankingConnection::factory()->create([
         'user_id' => User::factory()->onboarded()->create()->id,
     ]);
@@ -178,7 +193,7 @@ test('index is forbidden for another user\'s connection', function () {
 });
 
 test('unlink rejects an account that does not belong to the connection', function () {
-    $user = User::factory()->onboarded()->create();
+    $user = adminUser();
     $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
     $account = Account::factory()->for($user)->create([
         'banking_connection_id' => null,
@@ -187,4 +202,32 @@ test('unlink rejects an account that does not belong to the connection', functio
     $this->actingAs($user)
         ->post(route('open-banking.connection-accounts.unlink', [$connection, $account]))
         ->assertNotFound();
+});
+
+test('manage accounts is forbidden when the feature is disabled', function () {
+    $user = User::factory()->onboarded()->create();
+    config(['mail.admin_email' => 'someone-else@example.com']);
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user)
+        ->get(route('open-banking.connection-accounts.index', $connection))
+        ->assertForbidden();
+});
+
+test('map link rejects a non-transactional target account', function () {
+    $user = adminUser();
+    $connection = BankingConnection::factory()->create(['user_id' => $user->id]);
+    $loan = Account::factory()->for($user)->create([
+        'banking_connection_id' => null,
+        'currency_code' => 'EUR',
+        'type' => AccountType::Loan->value,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('open-banking.connection-accounts.map', $connection), [
+            'bank_account_uid' => 'uid-x',
+            'action' => 'link',
+            'existing_account_id' => $loan->id,
+        ])
+        ->assertStatus(422);
 });

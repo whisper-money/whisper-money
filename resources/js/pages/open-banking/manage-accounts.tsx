@@ -1,5 +1,15 @@
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -26,6 +36,7 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import type { SharedData } from '@/types';
 import type { Account } from '@/types/account';
+import { filterTransactionalAccounts } from '@/types/account';
 import type { BankingConnection, DiscoveredBankAccount } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router, usePage } from '@inertiajs/react';
@@ -78,10 +89,12 @@ export default function ManageAccountsPage({
     const mapUrl = `/open-banking/connections/${connection.id}/accounts/map`;
 
     function compatibleAccounts(currency: string | null): Account[] {
-        return availableAccounts.filter((a) => a.currency_code === currency);
+        return filterTransactionalAccounts(
+            availableAccounts.filter((a) => a.currency_code === currency),
+        );
     }
 
-    function postAction(url: string, data: Record<string, unknown>) {
+    function postAction(url: string, data: Record<string, string | null>) {
         router.post(url, data, { preserveState: true, preserveScroll: true });
     }
 
@@ -255,6 +268,7 @@ function SyncedAccountCard({
     onStopSyncing: (account: Account) => void;
 }) {
     const [changing, setChanging] = useState(false);
+    const [confirmingStop, setConfirmingStop] = useState(false);
     const otherTargets = targets.filter((t) => t.id !== account.id);
 
     return (
@@ -293,7 +307,7 @@ function SyncedAccountCard({
                                 </DropdownMenuItem>
                             )}
                         <DropdownMenuItem
-                            onSelect={() => onStopSyncing(account)}
+                            onSelect={() => setConfirmingStop(true)}
                             className="text-destructive"
                         >
                             <Unplug className="mr-2 h-4 w-4" />
@@ -302,6 +316,28 @@ function SyncedAccountCard({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </CardHeader>
+            <AlertDialog open={confirmingStop} onOpenChange={setConfirmingStop}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {__('Stop syncing this account?')}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {__(
+                                'This account will stop syncing with your bank and become a manual account. Your existing transactions are kept, but new ones from the bank will no longer be imported. You can start syncing it again later.',
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>{__('Cancel')}</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => onStopSyncing(account)}
+                        >
+                            {__('Stop syncing')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             {changing && (
                 <CardContent>
                     <Select
