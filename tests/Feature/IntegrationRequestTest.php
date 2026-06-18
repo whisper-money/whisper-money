@@ -323,6 +323,20 @@ test('nobody can vote on a not doable request', function () {
         ->assertNotFound();
 });
 
+test('a vote on a request later marked not doable cannot be removed', function () {
+    $user = User::factory()->create();
+    $request = IntegrationRequest::factory()->approved()->create();
+    $request->votes()->create(['user_id' => $user->id]);
+
+    $request->update(['status' => IntegrationRequestStatus::NotDoable]);
+
+    $this->actingAs($user)
+        ->deleteJson("/integration-requests/{$request->id}/vote")
+        ->assertNotFound();
+
+    expect($request->votes()->count())->toBe(1);
+});
+
 test('the review command marks a request as not doable with a comment', function () {
     $request = IntegrationRequest::factory()->create(['name' => 'Hard Bank']);
 

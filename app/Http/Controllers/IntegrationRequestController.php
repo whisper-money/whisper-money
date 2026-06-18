@@ -79,6 +79,11 @@ class IntegrationRequestController extends Controller
     {
         $user = $request->user();
 
+        // Not-doable requests are frozen: their tally can no longer be touched.
+        if ($integrationRequest->status === IntegrationRequestStatus::NotDoable) {
+            abort(404);
+        }
+
         // Only votes cast this month can be undone, so the refund maps back to
         // the current quota while earlier months' tallies stay locked in.
         $vote = $integrationRequest->votes()
