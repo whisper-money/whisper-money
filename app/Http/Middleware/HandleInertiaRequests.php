@@ -122,6 +122,14 @@ class HandleInertiaRequests extends Middleware
                     'valid_until' => $connection->valid_until?->toIso8601String(),
                     'reconnect_url' => route('open-banking.reconnect', $connection),
                 ]) : [],
+            'bankingConnections' => fn () => $user ? $user->bankingConnections()
+                ->get(['id', 'aspsp_name', 'provider', 'status'])
+                ->map(fn (BankingConnection $connection): array => [
+                    'id' => $connection->id,
+                    'aspsp_name' => $connection->aspsp_name,
+                    'provider' => $connection->provider->value,
+                    'status' => $connection->status->value,
+                ]) : [],
             'accounts' => fn () => $user ? $user->accounts()
                 ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
                 ->orderBy('name')
