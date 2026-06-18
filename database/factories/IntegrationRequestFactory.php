@@ -30,6 +30,11 @@ class IntegrationRequestFactory extends Factory
         return $this->state(['status' => IntegrationRequestStatus::Approved]);
     }
 
+    public function inProgress(): static
+    {
+        return $this->state(['status' => IntegrationRequestStatus::InProgress]);
+    }
+
     public function rejected(): static
     {
         return $this->state(['status' => IntegrationRequestStatus::Rejected]);

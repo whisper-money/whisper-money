@@ -185,7 +185,7 @@ test('the review command approves a pending request', function () {
         ->expectsChoice(
             "Review \"{$request->name}\" ({$request->url})",
             'approve',
-            ['approve', 'reject', 'not doable', 'skip'],
+            ['approve', 'in progress', 'reject', 'not doable', 'skip'],
         )
         ->assertSuccessful();
 
@@ -199,7 +199,7 @@ test('the review command rejects a pending request', function () {
         ->expectsChoice(
             "Review \"{$request->name}\" ({$request->url})",
             'reject',
-            ['approve', 'reject', 'not doable', 'skip'],
+            ['approve', 'in progress', 'reject', 'not doable', 'skip'],
         )
         ->assertSuccessful();
 
@@ -268,7 +268,7 @@ test('the review command marks a request as not doable with a comment', function
         ->expectsChoice(
             "Review \"{$request->name}\" ({$request->url})",
             'not doable',
-            ['approve', 'reject', 'not doable', 'skip'],
+            ['approve', 'in progress', 'reject', 'not doable', 'skip'],
         )
         ->expectsQuestion('Why is this integration not doable? (shown to users)', 'No public API available.')
         ->assertSuccessful();
@@ -276,4 +276,48 @@ test('the review command marks a request as not doable with a comment', function
     $request->refresh();
     expect($request->status)->toBe(IntegrationRequestStatus::NotDoable);
     expect($request->comment)->toBe('No public API available.');
+});
+
+test('the review command with --all moves any request to a new status with a comment', function () {
+    $request = IntegrationRequest::factory()->approved()->create(['name' => 'Revolut']);
+
+    $this->artisan('integration-requests:review --all')
+        ->expectsQuestion('Which request do you want to update? (number)', '1')
+        ->expectsChoice(
+            'New status for "Revolut"',
+            'in progress',
+            ['approve', 'in progress', 'reject', 'not doable'],
+        )
+        ->expectsQuestion('Add a comment for this request (optional, shown to users)', 'Building it now.')
+        ->assertSuccessful();
+
+    $request->refresh();
+    expect($request->status)->toBe(IntegrationRequestStatus::InProgress);
+    expect($request->comment)->toBe('Building it now.');
+});
+
+test('in progress requests are visible to everyone with their comment', function () {
+    IntegrationRequest::factory()->inProgress()->create([
+        'name' => 'Soon Bank',
+        'comment' => 'Working on it.',
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/integration-requests/data')
+        ->assertOk()
+        ->assertJsonCount(1, 'requests')
+        ->assertJsonPath('requests.0.status', 'in_progress')
+        ->assertJsonPath('requests.0.comment', 'Working on it.');
+});
+
+test('a user can vote on an in progress request', function () {
+    $request = IntegrationRequest::factory()->inProgress()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->postJson("/integration-requests/{$request->id}/vote")
+        ->assertOk();
+
+    $this->assertDatabaseHas('integration_request_votes', [
+        'integration_request_id' => $request->id,
+    ]);
 });

@@ -6,6 +6,7 @@ enum IntegrationRequestStatus: string
 {
     case Pending = 'pending';
     case Approved = 'approved';
+    case InProgress = 'in_progress';
     case Rejected = 'rejected';
     case NotDoable = 'not_doable';
 
@@ -14,6 +15,7 @@ enum IntegrationRequestStatus: string
         return match ($this) {
             self::Pending => 'Pending',
             self::Approved => 'Approved',
+            self::InProgress => 'In progress',
             self::Rejected => 'Rejected',
             self::NotDoable => 'Not doable',
         };
