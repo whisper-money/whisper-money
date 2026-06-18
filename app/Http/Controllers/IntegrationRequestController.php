@@ -54,7 +54,7 @@ class IntegrationRequestController extends Controller
     {
         $user = $request->user();
 
-        $canVote = $integrationRequest->status === IntegrationRequestStatus::Approved
+        $canVote = in_array($integrationRequest->status, [IntegrationRequestStatus::Approved, IntegrationRequestStatus::InProgress], true)
             || ($integrationRequest->status === IntegrationRequestStatus::Pending
                 && $integrationRequest->user_id === $user->id);
 
@@ -88,7 +88,7 @@ class IntegrationRequestController extends Controller
     {
         return IntegrationRequest::query()
             ->where(function ($query) use ($user) {
-                $query->whereIn('status', [IntegrationRequestStatus::Approved, IntegrationRequestStatus::NotDoable])
+                $query->whereIn('status', [IntegrationRequestStatus::Approved, IntegrationRequestStatus::InProgress, IntegrationRequestStatus::NotDoable])
                     ->orWhere(function ($inner) use ($user) {
                         $inner->where('status', IntegrationRequestStatus::Pending)
                             ->where('user_id', $user->id);

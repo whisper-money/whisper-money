@@ -13,12 +13,14 @@ import { getCsrfToken } from '@/lib/csrf';
 import { __ } from '@/utils/i18n';
 import { ChevronUp } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export interface IntegrationRequestItem {
     id: string;
     name: string;
     url: string;
-    status: 'pending' | 'approved' | 'rejected' | 'not_doable';
+    status: 'pending' | 'approved' | 'in_progress' | 'rejected' | 'not_doable';
     comment: string | null;
     votes_count: number;
     has_voted: boolean;
@@ -240,6 +242,9 @@ export function IntegrationRequestsBoard({
                                             {__('Pending review')}
                                         </Badge>
                                     )}
+                                    {item.status === 'in_progress' && (
+                                        <Badge>{__('In progress')}</Badge>
+                                    )}
                                     {item.status === 'not_doable' && (
                                         <Badge variant="outline">
                                             {__('Not doable')}
@@ -264,9 +269,24 @@ export function IntegrationRequestsBoard({
                                 </Button>
                             </div>
                             {item.comment && (
-                                <p className="mt-2 text-sm text-muted-foreground">
-                                    {item.comment}
-                                </p>
+                                <div className="mt-2 space-y-2 text-sm text-muted-foreground [&_a]:font-medium [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:italic [&_li]:ml-4 [&_li]:list-disc [&_strong]:font-semibold">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            a: ({ href, children }) => (
+                                                <a
+                                                    href={href}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    {children}
+                                                </a>
+                                            ),
+                                        }}
+                                    >
+                                        {item.comment}
+                                    </ReactMarkdown>
+                                </div>
                             )}
                         </li>
                     ))}
