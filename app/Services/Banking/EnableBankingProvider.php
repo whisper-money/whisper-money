@@ -3,6 +3,7 @@
 namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
+use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Client\ConnectionException;
@@ -103,6 +104,14 @@ class EnableBankingProvider implements BankingProviderInterface
                 previous: $e,
             );
         } catch (RequestException $e) {
+            if ($this->isExpiredSession($e)) {
+                throw new ExpiredBankingSessionException(
+                    'EnableBanking session expired while fetching account transactions.',
+                    provider: 'enablebanking',
+                    previous: $e,
+                );
+            }
+
             if (! $this->isAspspError($e)) {
                 throw $e;
             }
@@ -140,6 +149,14 @@ class EnableBankingProvider implements BankingProviderInterface
                 previous: $e,
             );
         } catch (RequestException $e) {
+            if ($this->isExpiredSession($e)) {
+                throw new ExpiredBankingSessionException(
+                    'EnableBanking session expired while fetching account balances.',
+                    provider: 'enablebanking',
+                    previous: $e,
+                );
+            }
+
             if (! $this->isAspspError($e)) {
                 throw $e;
             }
@@ -192,6 +209,16 @@ class EnableBankingProvider implements BankingProviderInterface
             && ($body['error'] ?? null) === 'ASPSP_ERROR';
     }
 
+    private function isExpiredSession(RequestException $e): bool
+    {
+        $body = $this->errorBody($e);
+
+        // ponytail: only the documented EXPIRED_SESSION code; widen if other
+        // terminal "reconnect required" session codes (e.g. revoked) surface.
+        return $e->response->status() === 401
+            && ($body['error'] ?? null) === 'EXPIRED_SESSION';
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -211,11 +238,11 @@ class EnableBankingProvider implements BankingProviderInterface
             ->acceptJson()
             ->throw(function ($response, $exception) {
                 $body = $response->json();
-                $isAspspError = $response->status() === 400
-                    && is_array($body)
-                    && ($body['error'] ?? null) === 'ASPSP_ERROR';
+                $error = is_array($body) ? ($body['error'] ?? null) : null;
+                $isExpected = ($response->status() === 400 && $error === 'ASPSP_ERROR')
+                    || ($response->status() === 401 && $error === 'EXPIRED_SESSION');
 
-                Log::log($isAspspError ? 'warning' : 'error', 'EnableBanking API error', [
+                Log::log($isExpected ? 'warning' : 'error', 'EnableBanking API error', [
                     'status' => $response->status(),
                     'body' => $body,
                     'exception' => get_class($exception),
