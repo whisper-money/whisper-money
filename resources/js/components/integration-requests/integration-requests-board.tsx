@@ -138,7 +138,7 @@ export function IntegrationRequestsBoard({
     };
 
     const handleRemoveVote = async (item: IntegrationRequestItem) => {
-        if (busy || !item.can_unvote) {
+        if (busy || !item.can_unvote || item.status === 'not_doable') {
             return;
         }
 
@@ -273,19 +273,22 @@ export function IntegrationRequestsBoard({
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {item.can_unvote && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            disabled={busy}
-                                            onClick={() =>
-                                                handleRemoveVote(item)
-                                            }
-                                            aria-label={__('Remove one vote')}
-                                        >
-                                            <ChevronDown className="h-4 w-4" />
-                                        </Button>
-                                    )}
+                                    {item.can_unvote &&
+                                        item.status !== 'not_doable' && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={busy}
+                                                onClick={() =>
+                                                    handleRemoveVote(item)
+                                                }
+                                                aria-label={__(
+                                                    'Remove one vote',
+                                                )}
+                                            >
+                                                <ChevronDown className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                     <Button
                                         variant={
                                             item.has_voted
