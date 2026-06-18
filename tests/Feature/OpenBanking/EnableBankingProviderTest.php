@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Services\Banking\EnableBankingProvider;
 use Illuminate\Contracts\Debug\ShouldntReport;
@@ -54,6 +55,54 @@ test('getTransactions wraps connection failures as non-reportable transient erro
     }
 
     test()->fail('Expected transient banking provider exception.');
+});
+
+test('getTransactions wraps an expired session 401 as a non-reportable expired session error', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/transactions*' => Http::response([
+            'code' => 401,
+            'message' => 'Session is expired',
+            'error' => 'EXPIRED_SESSION',
+            'detail' => null,
+        ], 401),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getTransactions('ext-123', now()->toDateString(), now()->toDateString());
+    } catch (ExpiredBankingSessionException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected expired banking session exception.');
+});
+
+test('getBalances wraps an expired session 401 as a non-reportable expired session error', function () {
+    Http::fake([
+        'api.enablebanking.com/accounts/ext-123/balances' => Http::response([
+            'code' => 401,
+            'message' => 'Session is expired',
+            'error' => 'EXPIRED_SESSION',
+            'detail' => null,
+        ], 401),
+    ]);
+
+    $provider = enableBankingProviderForTest();
+
+    try {
+        $provider->getBalances('ext-123');
+    } catch (ExpiredBankingSessionException $e) {
+        expect($e)->toBeInstanceOf(ShouldntReport::class)
+            ->and($e->getPrevious())->toBeInstanceOf(RequestException::class);
+
+        return;
+    }
+
+    test()->fail('Expected expired banking session exception.');
 });
 
 test('getTransactions keeps non-ASPSP client errors reportable', function () {

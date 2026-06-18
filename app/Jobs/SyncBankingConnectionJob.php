@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Contracts\BankingConnectionSyncer;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
+use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Mail\BankingConnectionAuthFailedEmail;
 use App\Mail\BankingConnectionExpiredEmail;
@@ -71,19 +72,7 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
         $syncer = $syncerFactory->make($connection);
 
         if ($syncer->expires() && $connection->isExpired()) {
-            $shouldNotify = $connection->status !== BankingConnectionStatus::Expired;
-
-            $connection->update(['status' => BankingConnectionStatus::Expired]);
-            Log::info('Banking connection expired, skipping sync', ['connection_id' => $connection->id]);
-
-            if ($shouldNotify && $connection->user->canReceiveEmails()) {
-                Mail::to($connection->user)->send(new BankingConnectionExpiredEmail(
-                    $connection->user,
-                    $connection,
-                ));
-            }
-
-            $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: ['reason' => 'expired']);
+            $this->markExpired($connection, $startTime);
 
             return;
         }
@@ -122,6 +111,10 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             ]);
 
             $this->logSyncAttempt($connection, BankingSyncLogStatus::Success, $startTime, metadata: $metadata ?: null);
+        } catch (ExpiredBankingSessionException) {
+            $this->markExpired($connection, $startTime);
+
+            return;
         } catch (\Throwable $e) {
             $context = [
                 'connection_id' => $connection->id,
@@ -176,6 +169,30 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
             'error_message' => $e ? $this->friendlyErrorMessage($e) : __('An unexpected error occurred during sync. Please try again later.'),
             'consecutive_sync_failures' => $connection->consecutive_sync_failures + 1,
         ]);
+    }
+
+    /**
+     * Mark the connection as expired and notify the user to reconnect.
+     *
+     * Reached both when the stored consent window lapses and when the provider
+     * reports the session itself has expired mid-sync. Either way it is an
+     * expected lifecycle event, not a failure to report.
+     */
+    private function markExpired(BankingConnection $connection, float $startTime): void
+    {
+        $shouldNotify = $connection->status !== BankingConnectionStatus::Expired;
+
+        $connection->update(['status' => BankingConnectionStatus::Expired]);
+        Log::info('Banking connection expired, skipping sync', ['connection_id' => $connection->id]);
+
+        if ($shouldNotify && $connection->user?->canReceiveEmails()) {
+            Mail::to($connection->user)->send(new BankingConnectionExpiredEmail(
+                $connection->user,
+                $connection,
+            ));
+        }
+
+        $this->logSyncAttempt($connection, BankingSyncLogStatus::Skipped, $startTime, metadata: ['reason' => 'expired']);
     }
 
     private function handlePermanentError(BankingConnection $connection, BankingConnectionSyncer $syncer, \Throwable $e): void

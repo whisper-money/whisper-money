@@ -2,6 +2,7 @@
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
+use App\Exceptions\Banking\ExpiredBankingSessionException;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
@@ -152,6 +153,48 @@ test('transient banking provider error on final attempt uses retry later message
     expect($connection->status)->toBe(BankingConnectionStatus::Error);
     expect($connection->error_message)->toContain('bank provider is temporarily unavailable');
     expect($connection->consecutive_sync_failures)->toBe(1);
+});
+
+test('expired session marks the connection expired and emails the user instead of reporting an error', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+        'valid_until' => now()->addMonths(3),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(
+        new ExpiredBankingSessionException(
+            'EnableBanking session expired while fetching account transactions.',
+        )
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    $job = new SyncBankingConnectionJob($connection);
+
+    // An expired session is an expected lifecycle event: it must not throw or be reported.
+    runSync($job, $transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Expired);
+
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
+    expect($log->status)->toBe(BankingSyncLogStatus::Skipped);
+    expect($log->metadata)->toBe(['reason' => 'expired']);
+
+    Mail::assertQueued(BankingConnectionExpiredEmail::class, function (BankingConnectionExpiredEmail $mail) use ($user, $connection) {
+        return $mail->user->is($user)
+            && $mail->bankingConnection->is($connection);
+    });
 });
 
 test('consecutive sync failures accumulate across dispatch cycles', function () {
