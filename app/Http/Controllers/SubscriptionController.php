@@ -25,7 +25,7 @@ class SubscriptionController extends Controller
         }
 
         $hasBankConnections = $user->bankingConnections()->exists();
-        $canUseFreePlan = ! $hasBankConnections;
+        $canUseFreePlan = ! $hasBankConnections && ! $user->hasActiveAiConsent();
 
         // Mark the paywall as seen so the middleware stops redirecting here.
         if ($canUseFreePlan && ! $user->hasSeenPaywall()) {
