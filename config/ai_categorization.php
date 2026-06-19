@@ -29,20 +29,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Rollout cohort
-    |--------------------------------------------------------------------------
-    |
-    | The AiCategorization Pennant feature resolves to active for users created
-    | strictly after this timestamp (parsed in the app timezone). This rolls the
-    | feature out to new signups only. Set to null to deactivate the cohort
-    | (the flag can still be activated per-user via Pennant directly).
-    |
-    */
-
-    'rollout_after' => env('AI_CATEGORIZATION_ROLLOUT_AFTER', '2026-06-13 21:00:00'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Confidence bars
     |--------------------------------------------------------------------------
     |

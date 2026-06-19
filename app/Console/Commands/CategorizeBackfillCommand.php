@@ -27,7 +27,7 @@ class CategorizeBackfillCommand extends Command
             return self::FAILURE;
         }
 
-        if (! $gate->allowsBackfill($user)) {
+        if (! $gate->allows($user)) {
             $this->warn('User is not eligible (needs the feature enabled, a pro plan and active AI consent).');
 
             return self::FAILURE;
