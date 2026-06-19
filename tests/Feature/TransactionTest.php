@@ -368,6 +368,123 @@ test('deleting a connected account transaction never changes the balance', funct
     ]);
 });
 
+test('creating a transaction updates the balance on its date when one exists', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => '2025-11-11',
+        'balance' => 100000,
+    ]);
+
+    actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'transaction_date' => '2025-11-11',
+        'amount' => 2500,
+        'currency_code' => 'USD',
+        'source' => 'manually_created',
+        'update_balance' => true,
+    ])->assertCreated();
+
+    $this->assertDatabaseCount('account_balances', 1);
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 102500,
+    ]);
+});
+
+test('creating a transaction creates a balance on its date from the closest earlier balance', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => '2025-11-01',
+        'balance' => 50000,
+    ]);
+
+    actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'transaction_date' => '2025-11-11',
+        'amount' => -1500,
+        'currency_code' => 'USD',
+        'source' => 'manually_created',
+        'update_balance' => true,
+    ])->assertCreated();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 48500,
+    ]);
+});
+
+test('creating the first transaction on an account creates a balance equal to its amount', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'transaction_date' => '2025-11-11',
+        'amount' => 7500,
+        'currency_code' => 'USD',
+        'source' => 'manually_created',
+        'update_balance' => true,
+    ])->assertCreated();
+
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 7500,
+    ]);
+});
+
+test('creating a transaction does not change the balance when not requested', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->create(['user_id' => $user->id]);
+
+    actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'transaction_date' => '2025-11-11',
+        'amount' => 7500,
+        'currency_code' => 'USD',
+        'source' => 'manually_created',
+    ])->assertCreated();
+
+    $this->assertDatabaseCount('account_balances', 0);
+});
+
+test('creating a connected account transaction never changes the balance', function () {
+    $user = User::factory()->onboarded()->create();
+    $account = Account::factory()->connected()->create(['user_id' => $user->id]);
+
+    $account->balances()->create([
+        'balance_date' => '2025-11-11',
+        'balance' => 100000,
+    ]);
+
+    actingAs($user)->postJson(route('transactions.store'), [
+        'account_id' => $account->id,
+        'description' => 'encrypted_description',
+        'transaction_date' => '2025-11-11',
+        'amount' => 2500,
+        'currency_code' => 'USD',
+        'source' => 'manually_created',
+        'update_balance' => true,
+    ])->assertCreated();
+
+    $this->assertDatabaseCount('account_balances', 1);
+    $this->assertDatabaseHas('account_balances', [
+        'account_id' => $account->id,
+        'balance_date' => '2025-11-11',
+        'balance' => 100000,
+    ]);
+});
+
 test('transactions index page passes user categories', function () {
     $user = User::factory()->onboarded()->create();
     $otherUser = User::factory()->create();

@@ -172,7 +172,7 @@ class TransactionController extends Controller
         ]);
     }
 
-    public function store(StoreTransactionRequest $request): JsonResponse
+    public function store(StoreTransactionRequest $request, ManualBalanceAdjuster $balanceAdjuster): JsonResponse
     {
         $data = $request->validated();
         $labelIds = $data['label_ids'] ?? null;
@@ -192,6 +192,10 @@ class TransactionController extends Controller
 
         if ($labelIds !== null) {
             $transaction->labels()->sync($labelIds);
+        }
+
+        if ($request->boolean('update_balance')) {
+            $balanceAdjuster->applyCreatedTransaction($transaction);
         }
 
         return response()->json([

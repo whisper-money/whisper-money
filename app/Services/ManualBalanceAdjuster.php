@@ -40,4 +40,38 @@ class ManualBalanceAdjuster
             ],
         );
     }
+
+    /**
+     * Apply a newly created transaction to its manual account's balance.
+     *
+     * Adjusts the balance on the transaction's own date. The base is that day's
+     * balance if one exists, otherwise the closest earlier balance, otherwise
+     * zero (the first transaction on the account). Connected accounts are
+     * skipped because their balances come from bank sync.
+     */
+    public function applyCreatedTransaction(Transaction $transaction): void
+    {
+        $account = $transaction->account;
+
+        if ($account === null || $account->isConnected()) {
+            return;
+        }
+
+        $transactionDate = $transaction->transaction_date->toDateString();
+
+        $baseBalance = $account->balances()
+            ->where('balance_date', '<=', $transactionDate)
+            ->orderByDesc('balance_date')
+            ->value('balance') ?? 0;
+
+        AccountBalance::updateOrCreate(
+            [
+                'account_id' => $account->id,
+                'balance_date' => $transactionDate,
+            ],
+            [
+                'balance' => $baseBalance + $transaction->amount,
+            ],
+        );
+    }
 }
