@@ -63,8 +63,12 @@ class TransactionSyncService {
 
     async create(
         data: Omit<Transaction, 'id' | 'created_at' | 'updated_at'>,
+        options?: { updateBalance?: boolean },
     ): Promise<Transaction> {
-        const response = await axios.post('/transactions', data);
+        const response = await axios.post('/transactions', {
+            ...data,
+            ...(options?.updateBalance ? { update_balance: true } : {}),
+        });
         const serverData = response.data.data || response.data;
 
         const label_ids = serverData.labels?.map((l: { id: string }) => l.id);

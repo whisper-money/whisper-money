@@ -1,7 +1,3 @@
-import {
-    index as indexBalances,
-    store as storeBalance,
-} from '@/actions/App/Http/Controllers/AccountBalanceController';
 import { LabelCombobox } from '@/components/shared/label-combobox';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AmountInput } from '@/components/ui/amount-input';
@@ -28,7 +24,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSyncContext } from '@/contexts/sync-context';
 import { useLocale } from '@/hooks/use-locale';
 import { decrypt, importKey } from '@/lib/crypto';
-import { getCsrfToken } from '@/lib/csrf';
 import { getStoredKey } from '@/lib/key-storage';
 import { evaluateRulesForNewTransaction } from '@/lib/rule-engine';
 import { appendNoteIfNotPresent } from '@/lib/utils';
@@ -102,9 +97,10 @@ export function EditTransactionDialog({
     const [updateAccountBalance, setUpdateAccountBalance] = useState(() => {
         if (typeof window !== 'undefined') {
             const stored = localStorage.getItem(STORAGE_KEY_UPDATE_BALANCE);
-            return stored === 'true';
+            // Active by default; only an explicit opt-out turns it off.
+            return stored === null ? true : stored === 'true';
         }
-        return false;
+        return true;
     });
 
     useEffect(() => {
@@ -272,68 +268,6 @@ export function EditTransactionDialog({
         localStorage.setItem(STORAGE_KEY_UPDATE_BALANCE, String(checked));
     }
 
-    async function updateBalanceForTransaction(
-        accountIdToUpdate: string,
-        transactionDateStr: string,
-        transactionAmount: number,
-    ) {
-        const xsrfToken = getCsrfToken();
-
-        try {
-            // Fetch balances from backend
-            const balancesResponse = await fetch(
-                indexBalances.url(accountIdToUpdate),
-                {
-                    headers: {
-                        Accept: 'application/json',
-                    },
-                },
-            );
-
-            if (!balancesResponse.ok) {
-                throw new Error('Failed to fetch balances');
-            }
-
-            const balancesData = await balancesResponse.json();
-            const accountBalances = (balancesData.data || []).sort(
-                (a: { balance_date: string }, b: { balance_date: string }) =>
-                    new Date(b.balance_date).getTime() -
-                    new Date(a.balance_date).getTime(),
-            );
-
-            const latestBalance =
-                accountBalances.length > 0 ? accountBalances[0].balance : 0;
-
-            const newBalance = latestBalance + transactionAmount;
-
-            // Store new balance via backend
-            const storeResponse = await fetch(
-                storeBalance.url(accountIdToUpdate),
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': xsrfToken,
-                        Accept: 'application/json',
-                    },
-                    body: JSON.stringify({
-                        balance_date: transactionDateStr,
-                        balance: newBalance,
-                    }),
-                },
-            );
-
-            if (!storeResponse.ok) {
-                throw new Error('Failed to store balance');
-            }
-        } catch (error) {
-            console.error('Failed to update account balance:', error);
-            toast.error(
-                __('Transaction created, but failed to update balance'),
-            );
-        }
-    }
-
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
 
@@ -400,23 +334,28 @@ export function EditTransactionDialog({
                     throw new Error(__('Selected account not found'));
                 }
 
-                const createdTransaction = await transactionSyncService.create({
-                    user_id: '00000000-0000-0000-0000-000000000000',
-                    account_id: accountId,
-                    category_id: finalCategoryId,
-                    description: finalDescription,
-                    description_iv: finalDescriptionIv,
-                    transaction_date: transactionDate,
-                    amount: amount,
-                    currency_code: selectedAccount.currency_code,
-                    notes: encryptedNotes,
-                    notes_iv: notesIv,
-                    creditor_name: null,
-                    debtor_name: null,
-                    source: 'manually_created' as const,
-                    label_ids:
-                        finalLabelIds.length > 0 ? finalLabelIds : undefined,
-                });
+                const createdTransaction = await transactionSyncService.create(
+                    {
+                        user_id: '00000000-0000-0000-0000-000000000000',
+                        account_id: accountId,
+                        category_id: finalCategoryId,
+                        description: finalDescription,
+                        description_iv: finalDescriptionIv,
+                        transaction_date: transactionDate,
+                        amount: amount,
+                        currency_code: selectedAccount.currency_code,
+                        notes: encryptedNotes,
+                        notes_iv: notesIv,
+                        creditor_name: null,
+                        debtor_name: null,
+                        source: 'manually_created' as const,
+                        label_ids:
+                            finalLabelIds.length > 0
+                                ? finalLabelIds
+                                : undefined,
+                    },
+                    { updateBalance: updateAccountBalance },
+                );
 
                 const updatedCategory = finalCategoryId
                     ? categories.find(
@@ -440,14 +379,6 @@ export function EditTransactionDialog({
                     labels: transactionLabels,
                     label_ids: finalLabelIds,
                 };
-
-                if (updateAccountBalance) {
-                    await updateBalanceForTransaction(
-                        accountId,
-                        transactionDate,
-                        amount,
-                    );
-                }
 
                 toast.success(__('Transaction created successfully'));
                 if (ruleResult.ruleName) {

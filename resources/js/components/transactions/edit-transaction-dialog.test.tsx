@@ -3,12 +3,6 @@ import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditTransactionDialog } from './edit-transaction-dialog';
 
-vi.mock('@/actions/App/Http/Controllers/AccountBalanceController', () => ({
-    indexBalances: () => ({ url: '/balances' }),
-    store: () => ({ url: '/balances' }),
-    index: () => ({ url: '/balances' }),
-}));
-
 vi.mock('@/components/shared/label-combobox', () => ({
     LabelCombobox: () => <div />,
 }));
@@ -214,5 +208,23 @@ describe('EditTransactionDialog', () => {
             'data-value',
             'account-1',
         );
+    });
+
+    it('checks "update account balance" by default in create mode', () => {
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[checkingAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+            />,
+        );
+
+        expect(screen.getByRole('checkbox')).toBeChecked();
     });
 });
