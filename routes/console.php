@@ -11,5 +11,6 @@ Schedule::command('loans:generate-balances')->monthlyOn(1, '00:00');
 Schedule::command('resend:sync-leads')->dailyAt('03:00');
 Schedule::command('leads:send-invitations --force --limit=150')->dailyAt('09:00');
 Schedule::command('leads:send-re-invitations --force')->dailyAt('09:00');
+Schedule::command('email:paywall-follow-up')->dailyAt('10:00')->timezone('Europe/Madrid');
 Schedule::command('stats:daily-report')->dailyAt('09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:ai-cohort-report')->monthlyOn(1, '09:00')->timezone('Europe/Madrid');
