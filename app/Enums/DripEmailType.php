@@ -11,5 +11,6 @@ enum DripEmailType: string
     case ImportHelp = 'import_help';
     case Feedback = 'feedback';
     case SubscriptionCancelled = 'subscription_cancelled';
+    case PaywallFollowUp = 'paywall_follow_up';
     case Update = 'update';
 }
