@@ -150,7 +150,7 @@ export function CategoryCell({
                         className="inline-flex"
                         aria-label={__('Let AI categorize your transactions')}
                     >
-                        <AiSparkleIcon className="h-3.5 w-3.5 opacity-50 transition-opacity hover:opacity-100" />
+                        <AiSparkleIcon className="h-3.5 w-3.5 animate-pulse transition-opacity hover:opacity-100" />
                     </button>
                 </TooltipTrigger>
                 <TooltipContent>
