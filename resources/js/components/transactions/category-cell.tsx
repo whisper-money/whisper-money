@@ -1,3 +1,4 @@
+import { showsAiUpsell } from '@/components/transactions/ai-upsell-sample';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import {
@@ -8,11 +9,14 @@ import {
 } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { billing } from '@/routes/settings';
 import { transactionSyncService } from '@/services/transaction-sync';
+import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type Category } from '@/types/category';
 import { type DecryptedTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
+import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface CategoryCellProps {
@@ -42,6 +46,16 @@ export function CategoryCell({
 }: CategoryCellProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const isMobile = useIsMobile();
+    const { auth, subscriptionsEnabled, aiCategorizationUpsellRate } =
+        usePage<SharedData>().props;
+
+    // Free-plan nudge: AI could categorize this row. Sampled to a configurable
+    // share of rows so it stays subtle instead of marking every uncategorized one.
+    const showAiUpsell =
+        !transaction.category_id &&
+        subscriptionsEnabled &&
+        !auth.hasProPlan &&
+        showsAiUpsell(transaction.id, aiCategorizationUpsellRate);
 
     async function handleCategoryChange(value: string) {
         const categoryId = value === 'null' ? null : value;
@@ -123,6 +137,29 @@ export function CategoryCell({
         </span>
     );
 
+    const aiUpsell = (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            router.visit(billing.url());
+                        }}
+                        className="inline-flex"
+                        aria-label={__('Let AI categorize your transactions')}
+                    >
+                        <AiSparkleIcon className="h-3.5 w-3.5 opacity-50 transition-opacity hover:opacity-100" />
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    {__('Let AI categorize your transactions')}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+
     return (
         <div className="flex w-full items-center gap-1">
             <div className="min-w-0 flex-1">
@@ -151,8 +188,8 @@ export function CategoryCell({
                 horizontally on every row. Desktop shows confidence on hover;
                 mobile relies on the dropdown header. */}
             <span className="flex w-3.5 shrink-0 items-center justify-center">
-                {isAiCategorized &&
-                    (isMobile ? (
+                {isAiCategorized ? (
+                    isMobile ? (
                         aiIcon
                     ) : (
                         <TooltipProvider>
@@ -163,7 +200,10 @@ export function CategoryCell({
                                 <TooltipContent>{aiNote}</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                    ))}
+                    )
+                ) : showAiUpsell ? (
+                    aiUpsell
+                ) : null}
             </span>
         </div>
     );

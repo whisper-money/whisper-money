@@ -29,20 +29,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Rollout cohort
-    |--------------------------------------------------------------------------
-    |
-    | The AiCategorization Pennant feature resolves to active for users created
-    | strictly after this timestamp (parsed in the app timezone). This rolls the
-    | feature out to new signups only. Set to null to deactivate the cohort
-    | (the flag can still be activated per-user via Pennant directly).
-    |
-    */
-
-    'rollout_after' => env('AI_CATEGORIZATION_ROLLOUT_AFTER', '2026-06-13 21:00:00'),
-
-    /*
-    |--------------------------------------------------------------------------
     | Confidence bars
     |--------------------------------------------------------------------------
     |
@@ -82,5 +68,19 @@ return [
     */
 
     'queue' => env('AI_CATEGORIZATION_QUEUE', 'ai'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Free-plan upsell nudge
+    |--------------------------------------------------------------------------
+    |
+    | Percentage (0-100) of a free user's uncategorized transactions that show
+    | the "AI could categorize this" sparkle. Sampled deterministically by
+    | transaction id so the same rows always decide the same way. Exposed to the
+    | frontend as the `aiCategorizationUpsellRate` Inertia prop.
+    |
+    */
+
+    'upsell_sample_rate' => (int) env('AI_CATEGORIZATION_UPSELL_SAMPLE_RATE', 40),
 
 ];

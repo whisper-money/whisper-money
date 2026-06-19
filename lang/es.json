@@ -31,6 +31,7 @@
     "You have reached your monthly limit of :count integration actions. Try again next month.": "Has alcanzado tu límite mensual de :count acciones de integración. Inténtalo de nuevo el mes que viene.",
     "Remove one vote": "Quitar un voto",
     "Categorized by AI": "Categorizado por IA",
+    "Let AI categorize your transactions": "Deja que la IA categorice tus transacciones",
     "Categorized by AI with :confidence% confident": "Categorizado por IA con un :confidence % de confianza",
     "Only show AI guesses": "Mostrar solo sugerencias de IA",
     "Created by AI": "Creado por IA",

@@ -4,19 +4,16 @@ use App\Ai\Agents\TransactionCategorizationAgent;
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
-use App\Features\AiCategorization;
 use App\Jobs\CategorizeOnboardingTransactionsJob;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategoryCatalog;
-use Laravel\Pennant\Feature;
 
 function eligibleOnboardedUser(): User
 {
     $user = User::factory()->onboarded()->create();
     $user->recordAiConsent();
-    Feature::for($user)->activate(AiCategorization::class);
 
     return $user;
 }
