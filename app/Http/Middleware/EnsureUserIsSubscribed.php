@@ -23,7 +23,7 @@ class EnsureUserIsSubscribed
             return $next($request);
         }
 
-        if ($user && ! $user->bankingConnections()->exists()) {
+        if ($user && ! $user->bankingConnections()->exists() && ! $user->hasActiveAiConsent()) {
             if (! $user->hasSeenPaywall()) {
                 return redirect()->route('subscribe');
             }

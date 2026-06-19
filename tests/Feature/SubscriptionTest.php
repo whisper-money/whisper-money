@@ -407,6 +407,56 @@ test('paywall shows canUseFreePlan false when user has a bank connection', funct
         );
 });
 
+test('users with active ai consent are forced to the paywall even after seeing it', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+    $user->recordAiConsent();
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertRedirect(route('subscribe'));
+    $this->get(route('accounts.list'))->assertRedirect(route('subscribe'));
+});
+
+test('paywall shows canUseFreePlan false when user has active ai consent', function () {
+    $user = User::factory()->onboarded()->create();
+    $user->recordAiConsent();
+
+    $this->actingAs($user);
+
+    $this->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('canUseFreePlan', false)
+        );
+});
+
+test('subscribed users with active ai consent can access protected routes', function () {
+    $user = User::factory()->onboarded()->create();
+    $user->recordAiConsent();
+
+    $user->subscriptions()->create([
+        'type' => 'default',
+        'stripe_id' => 'sub_ai_consent_test123',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_test123',
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertOk();
+});
+
+test('revoking ai consent lets users fall back to the free plan', function () {
+    $user = User::factory()->onboarded()->create(['paywall_seen_at' => now()]);
+    $user->recordAiConsent();
+    $user->revokeAiConsent();
+
+    $this->actingAs($user);
+
+    $this->get(route('dashboard'))->assertOk();
+});
+
 test('taxRates returns configured stripe tax rate ids', function () {
     config(['subscriptions.tax_rates' => ['txr_test_1', 'txr_test_2']]);
 
