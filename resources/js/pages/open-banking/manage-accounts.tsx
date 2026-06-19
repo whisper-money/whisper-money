@@ -28,6 +28,7 @@ import {
     Select,
     SelectContent,
     SelectItem,
+    SelectSeparator,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
@@ -40,13 +41,7 @@ import { filterTransactionalAccounts } from '@/types/account';
 import type { BankingConnection, DiscoveredBankAccount } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import {
-    ArrowLeft,
-    MoreHorizontal,
-    Plus,
-    RefreshCw,
-    Unplug,
-} from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, RefreshCw, Unplug } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -194,7 +189,7 @@ export default function ManageAccountsPage({
                     </div>
 
                     <div className="border-t pt-6">
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                             <div>
                                 <h4 className="text-sm font-medium">
                                     {__('Add accounts')}
@@ -207,6 +202,7 @@ export default function ManageAccountsPage({
                             </div>
                             <Button
                                 variant="outline"
+                                className="w-full sm:w-auto"
                                 onClick={handleRefresh}
                                 disabled={!isActive || refreshing}
                             >
@@ -363,6 +359,8 @@ function SyncedAccountCard({
     );
 }
 
+const CREATE_NEW_ACCOUNT = '__create__';
+
 function DiscoveredAccountCard({
     discoveredAccount,
     targets,
@@ -375,15 +373,16 @@ function DiscoveredAccountCard({
         existingAccountId: string | null,
     ) => void;
 }) {
-    const [linking, setLinking] = useState(false);
     const displayName =
         discoveredAccount.name || discoveredAccount.iban || __('Bank Account');
 
     return (
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                    <CardTitle className="text-base">{displayName}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
+                <div className="min-w-0">
+                    <CardTitle className="truncate text-base">
+                        {displayName}
+                    </CardTitle>
                     <CardDescription>
                         {discoveredAccount.currency}
                         {discoveredAccount.iban &&
@@ -391,47 +390,30 @@ function DiscoveredAccountCard({
                             ` · ${discoveredAccount.iban}`}
                     </CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
-                    {targets.length > 0 && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setLinking((prev) => !prev)}
-                        >
-                            {__('Link to existing')}
-                        </Button>
-                    )}
-                    <Button
-                        size="sm"
-                        onClick={() => onAdd(discoveredAccount, null)}
-                    >
-                        <Plus className="mr-1.5 h-3 w-3" />
-                        {__('Create account')}
-                    </Button>
-                </div>
+                <Select
+                    onValueChange={(value) =>
+                        onAdd(
+                            discoveredAccount,
+                            value === CREATE_NEW_ACCOUNT ? null : value,
+                        )
+                    }
+                >
+                    <SelectTrigger className="w-48 shrink-0">
+                        <SelectValue placeholder={__('Select an account')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value={CREATE_NEW_ACCOUNT}>
+                            {__('Create new account')}
+                        </SelectItem>
+                        {targets.length > 0 && <SelectSeparator />}
+                        {targets.map((target) => (
+                            <SelectItem key={target.id} value={target.id}>
+                                <AccountName account={target} />
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </CardHeader>
-            {linking && targets.length > 0 && (
-                <CardContent>
-                    <Select
-                        onValueChange={(value) =>
-                            onAdd(discoveredAccount, value)
-                        }
-                    >
-                        <SelectTrigger>
-                            <SelectValue
-                                placeholder={__('Select an account')}
-                            />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {targets.map((target) => (
-                                <SelectItem key={target.id} value={target.id}>
-                                    <AccountName account={target} />
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </CardContent>
-            )}
         </Card>
     );
 }
