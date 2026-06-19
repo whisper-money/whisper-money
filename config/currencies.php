@@ -146,5 +146,11 @@ return [
             'allows_primary' => false,
             'allows_account' => true,
         ],
+        [
+            'code' => 'RSD',
+            'name' => 'Serbian Dinar',
+            'allows_primary' => true,
+            'allows_account' => true,
+        ],
     ],
 ];
