@@ -2,10 +2,12 @@
 
 namespace App\Services\Banking\Sync;
 
+use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Jobs\SendDailyBankTransactionsSyncedEmailJob;
 use App\Models\BankingConnection;
 use App\Services\Banking\BalanceSyncService;
 use App\Services\Banking\TransactionSyncService;
+use Illuminate\Support\Facades\Log;
 
 class EnableBankingSyncer extends AbstractBankingConnectionSyncer
 {
@@ -37,28 +39,40 @@ class EnableBankingSyncer extends AbstractBankingConnectionSyncer
         $connection->load('accounts.bank');
 
         foreach ($connection->accounts as $account) {
-            if ($account->isLinked()) {
-                $lastTransaction = $account->transactions()
-                    ->latest('transaction_date')
-                    ->first();
+            try {
+                if ($account->isLinked()) {
+                    $lastTransaction = $account->transactions()
+                        ->latest('transaction_date')
+                        ->first();
 
-                $linkedDateFrom = $lastTransaction
-                    ? $lastTransaction->transaction_date->toDateString()
-                    : $dateFrom;
+                    $linkedDateFrom = $lastTransaction
+                        ? $lastTransaction->transaction_date->toDateString()
+                        : $dateFrom;
 
-                if ($linkedDateFrom > $dateTo) {
-                    $linkedDateFrom = $dateTo;
+                    if ($linkedDateFrom > $dateTo) {
+                        $linkedDateFrom = $dateTo;
+                    }
+
+                    $created = $this->transactionSync->sync($account, $linkedDateFrom, $dateTo, $strategy, saveDailyBalances: false);
+                    $this->balanceSync->sync($account);
+                } else {
+                    $created = $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
+                    $this->balanceSync->sync($account);
+
+                    if ($isFirstSync) {
+                        $this->balanceSync->calculateHistoricalBalances($account);
+                    }
                 }
+            } catch (InaccessibleBankAccountException) {
+                // A single account the bank no longer exposes must not break the
+                // whole connection sync. Skip it; the user can stop syncing it
+                // from the manage-accounts screen.
+                Log::warning('Skipping inaccessible EnableBanking account during sync', [
+                    'connection_id' => $connection->id,
+                    'account_id' => $account->id,
+                ]);
 
-                $created = $this->transactionSync->sync($account, $linkedDateFrom, $dateTo, $strategy, saveDailyBalances: false);
-                $this->balanceSync->sync($account);
-            } else {
-                $created = $this->transactionSync->sync($account, $dateFrom, $dateTo, $strategy);
-                $this->balanceSync->sync($account);
-
-                if ($isFirstSync) {
-                    $this->balanceSync->calculateHistoricalBalances($account);
-                }
+                continue;
             }
 
             if ($created > 0) {

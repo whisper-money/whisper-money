@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Contracts\BankingProviderInterface;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
+use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use Firebase\JWT\JWT;
 use Illuminate\Http\Client\ConnectionException;
@@ -111,6 +112,13 @@ class EnableBankingProvider implements BankingProviderInterface
                 );
             }
 
+            if ($this->isInaccessibleAccount($e)) {
+                throw new InaccessibleBankAccountException(
+                    'EnableBanking account is no longer accessible while fetching transactions.',
+                    previous: $e,
+                );
+            }
+
             if (! $this->isAspspError($e)) {
                 throw $e;
             }
@@ -151,6 +159,13 @@ class EnableBankingProvider implements BankingProviderInterface
             if ($this->isExpiredSession($e)) {
                 throw new ExpiredBankingSessionException(
                     'EnableBanking session expired while fetching account balances.',
+                    previous: $e,
+                );
+            }
+
+            if ($this->isInaccessibleAccount($e)) {
+                throw new InaccessibleBankAccountException(
+                    'EnableBanking account is no longer accessible while fetching balances.',
                     previous: $e,
                 );
             }
@@ -215,6 +230,17 @@ class EnableBankingProvider implements BankingProviderInterface
         // terminal "reconnect required" session codes (e.g. revoked) surface.
         return $e->response->status() === 401
             && ($body['error'] ?? null) === 'EXPIRED_SESSION';
+    }
+
+    private function isInaccessibleAccount(RequestException $e): bool
+    {
+        $detail = $this->errorBody($e)['detail'] ?? null;
+        $errorName = is_array($detail) ? ($detail['error_name'] ?? null) : null;
+
+        // ponytail: the documented per-account 400; widen if other terminal
+        // account-level codes surface for a single account.
+        return $e->response->status() === 400
+            && $errorName === 'AccountNotAccessibleException';
     }
 
     /**
