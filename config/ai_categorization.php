@@ -69,4 +69,18 @@ return [
 
     'queue' => env('AI_CATEGORIZATION_QUEUE', 'ai'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Free-plan upsell nudge
+    |--------------------------------------------------------------------------
+    |
+    | Percentage (0-100) of a free user's uncategorized transactions that show
+    | the "AI could categorize this" sparkle. Sampled deterministically by
+    | transaction id so the same rows always decide the same way. Exposed to the
+    | frontend as the `aiCategorizationUpsellRate` Inertia prop.
+    |
+    */
+
+    'upsell_sample_rate' => (int) env('AI_CATEGORIZATION_UPSELL_SAMPLE_RATE', 40),
+
 ];

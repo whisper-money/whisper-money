@@ -92,6 +92,7 @@ class HandleInertiaRequests extends Middleware
                 'password' => config('app.demo.password'),
             ] : null,
             'subscriptionsEnabled' => config('subscriptions.enabled', false),
+            'aiCategorizationUpsellRate' => (int) config('ai_categorization.upsell_sample_rate'),
             'pricing' => [
                 'plans' => config('subscriptions.plans', []),
                 'defaultPlan' => config('subscriptions.default_plan', 'monthly'),
