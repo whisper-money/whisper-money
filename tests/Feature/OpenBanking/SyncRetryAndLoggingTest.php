@@ -3,6 +3,7 @@
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingSyncLogStatus;
 use App\Exceptions\Banking\ExpiredBankingSessionException;
+use App\Exceptions\Banking\InaccessibleBankAccountException;
 use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Jobs\SyncAllBankingConnectionsJob;
 use App\Jobs\SyncBankingConnectionJob;
@@ -195,6 +196,49 @@ test('expired session marks the connection expired and emails the user instead o
         return $mail->user->is($user)
             && $mail->bankingConnection->is($connection);
     });
+});
+
+test('an inaccessible account is skipped and the rest of the connection still syncs', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'good-account',
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'dead-account',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andReturnUsing(function ($account) {
+        if ($account->external_account_id === 'dead-account') {
+            throw new InaccessibleBankAccountException('EnableBanking account is no longer accessible.');
+        }
+
+        return 2;
+    });
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+    $balanceSync->shouldReceive('sync')->once();
+
+    $job = new SyncBankingConnectionJob($connection);
+
+    // One dead account must not break the whole connection sync or be reported.
+    runSync($job, $transactionSync, $balanceSync);
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->error_message)->toBeNull();
+
+    $log = BankingSyncLog::where('banking_connection_id', $connection->id)->first();
+    expect($log->status)->toBe(BankingSyncLogStatus::Success);
+    expect($log->metadata['transactions_synced'])->toBe(2);
 });
 
 test('consecutive sync failures accumulate across dispatch cycles', function () {
