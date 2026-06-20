@@ -42,6 +42,8 @@ class DashboardController extends Controller
         $accounts = Account::query()
             ->where('user_id', $user->id)
             ->with(['bank:id,name,logo', 'realEstateDetail:account_id,linked_loan_account_id'])
+            ->orderBy('position')
+            ->orderBy('name')
             ->get();
 
         return $this->accountMetricsService->getNetWorthEvolution($user->currency_code, $accounts, $start, $end);

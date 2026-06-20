@@ -33,6 +33,7 @@ class Account extends Model
         'external_account_id',
         'iban',
         'linked_at',
+        'position',
     ];
 
     /** @var list<string> */
@@ -40,6 +41,7 @@ class Account extends Model
         'user_id',
         'bank_id',
         'iban',
+        'position',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -56,6 +58,7 @@ class Account extends Model
             'type' => AccountType::class,
             'encrypted' => 'boolean',
             'linked_at' => 'datetime',
+            'position' => 'integer',
         ];
     }
 

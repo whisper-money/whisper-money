@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AccountType;
+use App\Http\Requests\ReorderAccountsRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\LoanDetail;
 use App\Services\AccountMetricsService;
 use App\Services\LoanAmortizationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,7 +31,7 @@ class AccountController extends Controller
         $accounts = Account::query()
             ->where('user_id', $user->id)
             ->with(['bank', 'realEstateDetail:id,account_id,linked_loan_account_id'])
-            ->orderByRaw("FIELD(type, 'checking', 'savings', 'investment', 'retirement', 'real_estate', 'loan', 'credit_card', 'others')")
+            ->orderBy('position')
             ->orderBy('name')
             ->get();
 
@@ -41,6 +43,20 @@ class AccountController extends Controller
             'accounts' => $accounts,
             'accountMetrics' => Inertia::defer(fn () => $this->accountMetricsService->getAccountMetrics($user->currency_code, $accounts)),
         ]);
+    }
+
+    public function reorder(ReorderAccountsRequest $request): RedirectResponse
+    {
+        // ponytail: one update per account; fine for the handful of accounts a
+        // user has. Switch to a single CASE update if that ever grows large.
+        foreach (array_values($request->validated('ids')) as $position => $id) {
+            Account::query()
+                ->whereKey($id)
+                ->where('user_id', $request->user()->id)
+                ->update(['position' => $position]);
+        }
+
+        return back();
     }
 
     public function show(Request $request, Account $account): Response
