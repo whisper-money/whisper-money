@@ -6,6 +6,8 @@ const CLONE_ERROR_MESSAGE_PATTERN =
 const FACEBOOK_IAB_JAVA_OBJECT_GONE_PATTERN =
     /Error invoking .+: Java object is gone/i;
 const SAFARI_CASHBACK_EXTENSION_PATTERN = /response\.cashbackReminder/i;
+const BROWSER_EXTENSION_URL_PATTERN =
+    /^(chrome-extension|moz-extension|safari-web-extension|safari-extension|ms-browser-extension):\/\//i;
 
 export function isChunkLoadErrorEvent(event: Event): boolean {
     return (
@@ -52,6 +54,27 @@ export function isFacebookInAppBrowserJavaBridgeNoise(event: Event): boolean {
                         ),
                     ),
                 )
+            );
+        }) ?? false
+    );
+}
+
+export function isBrowserExtensionNoise(event: Event): boolean {
+    return (
+        event.exception?.values?.some((exception) => {
+            const frames = exception.stacktrace?.frames ?? [];
+            const crashingFrame = [...frames]
+                .reverse()
+                .find((frame) => frame.filename ?? frame.module);
+
+            if (!crashingFrame) {
+                return false;
+            }
+
+            return [crashingFrame.filename, crashingFrame.module].some(
+                (value) =>
+                    value !== undefined &&
+                    BROWSER_EXTENSION_URL_PATTERN.test(value),
             );
         }) ?? false
     );

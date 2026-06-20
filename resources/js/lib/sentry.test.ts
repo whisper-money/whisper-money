@@ -1,6 +1,7 @@
 import type { Event } from '@sentry/react';
 import { describe, expect, it } from 'vitest';
 import {
+    isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
     isPostMessageDataCloneNoise,
@@ -179,5 +180,114 @@ describe('isPostMessageDataCloneNoise', () => {
         };
 
         expect(isPostMessageDataCloneNoise(event)).toBe(false);
+    });
+});
+
+describe('isBrowserExtensionNoise', () => {
+    it('drops errors thrown entirely inside a browser extension script', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'i',
+                        value: 'Failed to connect to MetaMask',
+                        stacktrace: {
+                            frames: [
+                                {
+                                    filename:
+                                        'chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/scripts/inpage.js',
+                                    function: 'Object.connect',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        };
+
+        expect(isBrowserExtensionNoise(event)).toBe(true);
+    });
+
+    it('drops errors that crash in an injected extension script behind an app wrapper frame', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'Error',
+                        value: "Cannot read properties of undefined (reading 'sendMessage')",
+                        stacktrace: {
+                            frames: [
+                                {
+                                    filename: '/build/assets/app-DTyIdEGx.js',
+                                    function: 'a',
+                                },
+                                {
+                                    filename:
+                                        'chrome-extension://dmkamcknogkgcdfhhbddcghachkejeap/injectedScript.bundle.js',
+                                    function: 'n',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        };
+
+        expect(isBrowserExtensionNoise(event)).toBe(true);
+    });
+
+    it('keeps application errors with no extension frames', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'AxiosError',
+                        value: 'Network Error',
+                        stacktrace: {
+                            frames: [
+                                {
+                                    filename: '/build/assets/app-DWXGp9uF.js',
+                                    function: 'Za.request',
+                                },
+                                {
+                                    filename: '/build/assets/app-DWXGp9uF.js',
+                                    function: 'T.onerror',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        };
+
+        expect(isBrowserExtensionNoise(event)).toBe(false);
+    });
+
+    it('keeps application errors when the extension frame is not where it crashed', () => {
+        const event: Event = {
+            exception: {
+                values: [
+                    {
+                        type: 'TypeError',
+                        value: 'Cannot read properties of null',
+                        stacktrace: {
+                            frames: [
+                                {
+                                    filename:
+                                        'chrome-extension://abcdefghijklmnop/inject.js',
+                                    function: 'wrap',
+                                },
+                                {
+                                    filename: '/build/assets/app.js',
+                                    function: 'handleClick',
+                                },
+                            ],
+                        },
+                    },
+                ],
+            },
+        };
+
+        expect(isBrowserExtensionNoise(event)).toBe(false);
     });
 });
