@@ -23,6 +23,10 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+    alreadyConnectedBankNames,
+    hasLiveConnectionForProvider,
+} from '@/lib/banking-connections';
 import { getCsrfToken } from '@/lib/csrf';
 import type {
     BankingConnection,
@@ -86,25 +90,6 @@ const WISE_INSTITUTION: EnableBankingInstitution = {
     logo: '/images/banks/logos/wise.png',
     maximum_consent_validity: null,
 };
-
-/**
- * Names of EnableBanking ASPSPs the user already has a connection to.
- *
- * Pending connections are excluded: they are throwaway, mid-flow attempts, so a
- * stale one must not block re-adding the bank. Any other status (active, error,
- * expired, …) counts as already connected and should be re-used via reconnect.
- */
-export function alreadyConnectedBankNames(
-    connections: BankingConnection[],
-): Set<string> {
-    return new Set(
-        connections
-            .filter(
-                (c) => c.provider === 'enablebanking' && c.status !== 'pending',
-            )
-            .map((c) => c.aspsp_name),
-    );
-}
 
 interface ConnectAccountDialogProps {
     open: boolean;
@@ -228,7 +213,7 @@ export function ConnectAccountDialog({
             const data = await response.json();
 
             const hasProvider = (provider: string) =>
-                connections.some((c) => c.provider === provider);
+                hasLiveConnectionForProvider(connections, provider);
 
             const extraInstitutions = [
                 BINANCE_INSTITUTION,

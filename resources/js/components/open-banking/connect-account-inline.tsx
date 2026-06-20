@@ -11,6 +11,10 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
+import {
+    alreadyConnectedBankNames,
+    hasLiveConnectionForProvider,
+} from '@/lib/banking-connections';
 import { getCsrfToken } from '@/lib/csrf';
 import type {
     BankingConnection,
@@ -166,13 +170,10 @@ export function ConnectAccountInline({
 
             const data = await response.json();
 
-            const connectedEnableBankingNames = new Set(
-                connections
-                    .filter((c) => c.provider === 'enablebanking')
-                    .map((c) => c.aspsp_name),
-            );
+            const connectedEnableBankingNames =
+                alreadyConnectedBankNames(connections);
             const hasProvider = (provider: string) =>
-                connections.some((c) => c.provider === provider);
+                hasLiveConnectionForProvider(connections, provider);
 
             const extraInstitutions = [
                 BINANCE_INSTITUTION,
