@@ -22,6 +22,7 @@ import { initializeChartColorScheme } from './hooks/use-chart-color-scheme';
 import { installChunkLoadRecovery } from './lib/chunk-load-recovery';
 import { initializePostHog } from './lib/posthog';
 import {
+    isBrowserExtensionNoise,
     isChunkLoadErrorEvent,
     isFacebookInAppBrowserJavaBridgeNoise,
     isPostMessageDataCloneNoise,
@@ -42,6 +43,7 @@ Sentry.init({
     beforeSend(event) {
         if (
             isChunkLoadErrorEvent(event) ||
+            isBrowserExtensionNoise(event) ||
             isPostMessageDataCloneNoise(event) ||
             isFacebookInAppBrowserJavaBridgeNoise(event) ||
             isSafariCashbackExtensionNoise(event)
