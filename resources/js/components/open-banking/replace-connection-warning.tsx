@@ -42,9 +42,7 @@ export function ReplaceConnectionWarning({
                     </strong>
                 </p>
                 <p className="my-1">
-                    <strong>
-                        {__('Having trouble with this connection?')}
-                    </strong>{' '}
+                    {__('Having trouble with this connection?')}{' '}
                     <a
                         href={DISCORD_URL}
                         target="_blank"
