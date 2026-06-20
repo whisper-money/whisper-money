@@ -163,7 +163,7 @@ export function AccountListCard({
                                         />
                                     </h3>
                                 </Link>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
                                     {hasMortgage &&
                                     linkedLoanMetrics.loanAccount ? (
                                         <span className="flex items-center gap-1">
@@ -199,9 +199,9 @@ export function AccountListCard({
                                 </div>
                             </div>
                         </div>
-                        <div className="flex shrink-0 flex-col items-end">
+                        <div className="flex shrink-0 flex-col items-start sm:items-end">
                             {isConnected ? (
-                                <div className="-mr-2 px-2 py-1">
+                                <div className="-ml-2 px-2 py-1 sm:-mr-2 sm:ml-0">
                                     <AmountDisplay
                                         amountInCents={displayBalance}
                                         currencyCode={currencyCode}
@@ -213,7 +213,7 @@ export function AccountListCard({
                                 <button
                                     type="button"
                                     onClick={() => setUpdateBalanceOpen(true)}
-                                    className="-mr-2 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted"
+                                    className="-ml-2 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted sm:-mr-2 sm:ml-0"
                                 >
                                     <AmountDisplay
                                         amountInCents={displayBalance}
