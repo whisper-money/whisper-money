@@ -9,7 +9,7 @@ import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
 import { formatAccountType, supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
 import { UpdateBalanceDialog } from './update-balance-dialog';
@@ -34,6 +34,7 @@ interface AccountListCardProps {
     onBalanceUpdated?: () => void;
     linkedLoanMetrics?: LinkedLoanMetrics;
     displayCurrencyCode?: string;
+    dragHandle?: ReactNode;
 }
 
 export function AccountListCard({
@@ -42,6 +43,7 @@ export function AccountListCard({
     onBalanceUpdated,
     linkedLoanMetrics,
     displayCurrencyCode,
+    dragHandle,
 }: AccountListCardProps) {
     const currencyCode = displayCurrencyCode ?? account.currency_code;
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
@@ -134,6 +136,11 @@ export function AccountListCard({
 
     return (
         <Card className="w-full py-0">
+            {dragHandle && (
+                <span className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+                    {dragHandle}
+                </span>
+            )}
             <CardContent className="p-4">
                 <div className="flex flex-col gap-4">
                     <div className="flex max-w-full flex-col sm:flex-row sm:items-center sm:justify-between">

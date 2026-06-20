@@ -260,9 +260,10 @@ export default function Dashboard() {
                         items={orderedAccounts}
                         getId={(account) => account.id}
                         onReorder={handleReorder}
-                        renderItem={(account) => (
+                        renderItem={(account, dragHandle) => (
                             <AccountBalanceCard
                                 account={account}
+                                dragHandle={dragHandle}
                                 onBalanceUpdated={refetch}
                                 linkedLoanMetrics={
                                     linkedLoanMetricsMap[account.id]

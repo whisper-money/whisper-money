@@ -174,9 +174,10 @@ export default function AccountsIndex({ accounts, accountMetrics }: Props) {
                     items={orderedAccounts}
                     getId={(account) => account.id}
                     onReorder={handleReorder}
-                    renderItem={(account) => (
+                    renderItem={(account, dragHandle) => (
                         <AccountListCard
                             account={account}
+                            dragHandle={dragHandle}
                             loading={isLoading}
                             onBalanceUpdated={handleBalanceUpdated}
                             linkedLoanMetrics={linkedLoanMetricsMap[account.id]}

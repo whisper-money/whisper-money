@@ -24,7 +24,12 @@ import type { ReactNode } from 'react';
 interface SortableGridProps<T> {
     items: T[];
     getId: (item: T) => string;
-    renderItem: (item: T) => ReactNode;
+    /**
+     * Renders one item. The provided drag handle must be placed inside the
+     * card so it sits exactly where the card wants it (e.g. over the account
+     * icon); it only becomes visible on hover via the wrapper's `group`.
+     */
+    renderItem: (item: T, dragHandle: ReactNode) => ReactNode;
     onReorder: (orderedIds: string[]) => void;
     className?: string;
     /** Non-sortable content rendered inside the grid after the items. */
@@ -78,7 +83,7 @@ export function SortableGrid<T>({
                 <div className={className}>
                     {items.map((item) => (
                         <SortableItem key={getId(item)} id={getId(item)}>
-                            {renderItem(item)}
+                            {(dragHandle) => renderItem(item, dragHandle)}
                         </SortableItem>
                     ))}
                     {footer}
@@ -88,7 +93,13 @@ export function SortableGrid<T>({
     );
 }
 
-function SortableItem({ id, children }: { id: string; children: ReactNode }) {
+function SortableItem({
+    id,
+    children,
+}: {
+    id: string;
+    children: (dragHandle: ReactNode) => ReactNode;
+}) {
     const {
         attributes,
         listeners,
@@ -99,6 +110,19 @@ function SortableItem({ id, children }: { id: string; children: ReactNode }) {
         isDragging,
     } = useSortable({ id });
 
+    const dragHandle = (
+        <button
+            ref={setActivatorNodeRef}
+            type="button"
+            aria-label={__('Drag to reorder')}
+            className="cursor-grab touch-none text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+        >
+            <GripVertical className="size-5" />
+        </button>
+    );
+
     return (
         <div
             ref={setNodeRef}
@@ -107,19 +131,9 @@ function SortableItem({ id, children }: { id: string; children: ReactNode }) {
                 transition,
                 zIndex: isDragging ? 50 : undefined,
             }}
-            className={cn('relative', isDragging && 'opacity-60')}
+            className={cn('group relative', isDragging && 'opacity-60')}
         >
-            {children}
-            <button
-                ref={setActivatorNodeRef}
-                type="button"
-                aria-label={__('Drag to reorder')}
-                className="absolute top-1 left-1/2 -translate-x-1/2 cursor-grab touch-none rounded p-1.5 text-muted-foreground/40 transition-colors hover:text-foreground active:cursor-grabbing"
-                {...attributes}
-                {...listeners}
-            >
-                <GripVertical className="size-4" />
-            </button>
+            {children(dragHandle)}
         </div>
     );
 }
