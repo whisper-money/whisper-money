@@ -588,66 +588,16 @@ jobs:
       - name: Trigger deployment
         if: steps.deploy_guard.outputs.should_deploy == 'true'
         run: |
-          # The Coolify box rebuilds the image from git on deploy, so its API
-          # (port 8000) can be unreachable for several minutes while a prior
-          # build runs. We just need the webhook to land once: retry on
-          # connection-level failures, waiting 10 min before the second
-          # attempt and 20 min before the third so a long rebuild can finish.
-          max_attempts=3
-          attempt=1
-
-          # Separator we control, so curl's --write-out fields can never be
-          # confused with the response body.
-          marker="===CURL_META==="
-
-          while [ $attempt -le $max_attempts ]; do
-            echo "Attempt $attempt of $max_attempts..."
-
-            curl_exit=0
-            response=$(curl -sS \
-              -w "${marker}\nhttp_code=%{http_code}\ncurl_exit=%{exitcode}\nerrormsg=%{errormsg}\ntiming=DNS:%{time_namelookup}s Connect:%{time_connect}s Total:%{time_total}s Remote:%{remote_ip}:%{remote_port}" \
-              --connect-timeout 30 \
-              --max-time 300 \
-              -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_TOKEN }}" \
-              "http://147.93.126.54:8000/api/v1/deploy?uuid=ww00sswosco8w80k08c0occ8&force=false") || curl_exit=$?
-
-            body="${response%%${marker}*}"
-            meta="${response#*${marker}}"
-            http_code=$(echo "$meta" | sed -n 's/^http_code=//p')
-            curl_code=$(echo "$meta" | sed -n 's/^curl_exit=//p')
-            errormsg=$(echo "$meta" | sed -n 's/^errormsg=//p')
-            timing=$(echo "$meta" | sed -n 's/^timing=//p')
-
-            echo "Response body: $body"
-            echo "HTTP Status: ${http_code:-none}"
-            echo "curl exit: ${curl_code:-$curl_exit}"
-            echo "curl error: ${errormsg:-none}"
-            echo "Timing: $timing"
-
-            if [ "${http_code:-0}" -ge 200 ] && [ "${http_code:-0}" -lt 300 ]; then
-              echo "Deployment triggered successfully!"
-              exit 0
-            fi
-
-            # 4xx are caller errors (bad token / uuid) — retrying won't help.
-            if [ "${http_code:-0}" -ge 400 ] && [ "${http_code:-0}" -lt 500 ]; then
-              echo "Got client error $http_code — not retryable. Failing fast."
-              exit 1
-            fi
-
-            echo "Deployment request failed (http=${http_code:-none} curl_exit=${curl_code:-$curl_exit}: ${errormsg:-none})"
-
-            if [ $attempt -lt $max_attempts ]; then
-              delay=$((600 * attempt))
-              echo "Retrying in ${delay}s..."
-              sleep $delay
-            fi
-
-            attempt=$((attempt + 1))
-          done
-
-          echo "All $max_attempts attempts failed. Giving up."
-          exit 1
+          # Fire the webhook and let curl own the timeouts/retries: --max-time
+          # caps each attempt so the job can't hang, and --retry-all-errors
+          # turns a timed-out attempt into the next retry.
+          curl --fail \
+               --connect-timeout 10 \
+               --max-time 15 \
+               --retry 3 \
+               --retry-delay 10 \
+               --retry-all-errors \
+               -i -X GET "${{ secrets.COOLIFY_WEBHOOK_URL }}"
 
       - name: Install Sentry CLI
         if: steps.deploy_guard.outputs.should_deploy == 'true'
