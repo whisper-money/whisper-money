@@ -440,7 +440,9 @@ export function AccountListCard({
                                 )}
                             />
                             {dragHandle && (
-                                <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                                // The grip glyph is narrower than the type icon;
+                                // nudge it to the left edge to line up with it.
+                                <span className="absolute inset-0 flex -translate-x-1 items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
                                     {dragHandle}
                                 </span>
                             )}

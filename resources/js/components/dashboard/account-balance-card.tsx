@@ -205,7 +205,9 @@ export function AccountBalanceCard({
                         )}
                     />
                     {dragHandle && (
-                        <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                        // The grip glyph is narrower than the type icon; nudge it
+                        // to the right edge so it lines up with the icon it replaces.
+                        <span className="absolute inset-0 flex translate-x-1 items-center justify-end opacity-0 transition-opacity group-hover:opacity-100">
                             {dragHandle}
                         </span>
                     )}
