@@ -136,19 +136,15 @@ export function AccountListCard({
 
     return (
         <Card className="w-full py-0">
-            {dragHandle && (
-                <span className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
-                    {dragHandle}
-                </span>
-            )}
             <CardContent className="p-4">
                 <div className="flex flex-col gap-4">
                     <div className="flex max-w-full flex-col sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex min-w-0 items-start gap-3">
+                        <div className="flex min-w-0 items-start">
+                            {dragHandle}
                             <div className="flex min-w-0 flex-col gap-1">
                                 <Link
                                     href={show.url(account.id)}
-                                    className="-my-1 -ml-1.5 flex min-w-0 items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                                    className="-my-1 flex min-w-0 items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                                 >
                                     <h3 className="flex min-w-0 items-center gap-2 font-semibold">
                                         {account.bank && (
