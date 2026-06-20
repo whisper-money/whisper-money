@@ -43,7 +43,6 @@ export interface Features {
     cashflow: boolean;
     calculateBalancesOnImport: boolean;
     transactionAnalysis: boolean;
-    manageBankAccounts: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {
