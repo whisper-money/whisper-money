@@ -1,5 +1,7 @@
 import { BankLogo } from '@/components/bank-logo';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
+import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,11 +20,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
     alreadyConnectedBankNames,
     hasLiveConnectionForProvider,
@@ -126,6 +123,7 @@ export function ConnectAccountDialog({
     const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
     const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
     const [wiseApiToken, setWiseApiToken] = useState('');
+    const [acknowledgedReplace, setAcknowledgedReplace] = useState(false);
 
     const isIndexaCapital = useMemo(
         () => selectedBank?.name === 'Indexa Capital',
@@ -154,6 +152,15 @@ export function ConnectAccountDialog({
         [connections],
     );
 
+    const isAlreadyConnected = useMemo(
+        () => !!selectedBank && connectedBankNames.has(selectedBank.name),
+        [selectedBank, connectedBankNames],
+    );
+
+    useEffect(() => {
+        setAcknowledgedReplace(false);
+    }, [selectedBank]);
+
     const resetState = useCallback(() => {
         setStep('country');
         setCountry('');
@@ -171,6 +178,7 @@ export function ConnectAccountDialog({
         setCoinbaseKeyName('');
         setCoinbasePrivateKey('');
         setWiseApiToken('');
+        setAcknowledgedReplace(false);
     }, []);
 
     useEffect(() => {
@@ -433,51 +441,34 @@ export function ConnectAccountDialog({
                                         institution.name,
                                     );
 
-                                    const item = (
+                                    return (
                                         <button
                                             key={institution.name}
                                             type="button"
-                                            aria-disabled={isConnected}
-                                            className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                                                isConnected
-                                                    ? 'cursor-not-allowed opacity-50'
-                                                    : 'hover:bg-accent'
-                                            } ${
+                                            className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
                                                 selectedBank?.name ===
                                                 institution.name
                                                     ? 'bg-accent'
                                                     : ''
                                             }`}
-                                            onClick={() => {
-                                                if (isConnected) {
-                                                    return;
-                                                }
-                                                setSelectedBank(institution);
-                                            }}
+                                            onClick={() =>
+                                                setSelectedBank(institution)
+                                            }
                                         >
                                             <BankLogo
                                                 src={institution.logo}
                                                 className="h-6 w-6"
                                             />
                                             <span>{institution.name}</span>
+                                            {isConnected && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="ml-auto"
+                                                >
+                                                    {__('Already connected')}
+                                                </Badge>
+                                            )}
                                         </button>
-                                    );
-
-                                    if (!isConnected) {
-                                        return item;
-                                    }
-
-                                    return (
-                                        <Tooltip key={institution.name}>
-                                            <TooltipTrigger asChild>
-                                                {item}
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                {__(
-                                                    'You already have a connection with this bank. Reconnect it.',
-                                                )}
-                                            </TooltipContent>
-                                        </Tooltip>
                                     );
                                 })}
                                 {filteredInstitutions.length === 0 && (
@@ -554,6 +545,15 @@ export function ConnectAccountDialog({
                                     </div>
                                 </div>
                             </div>
+
+                            {isAlreadyConnected && (
+                                <ReplaceConnectionWarning
+                                    acknowledged={acknowledgedReplace}
+                                    onAcknowledgedChange={
+                                        setAcknowledgedReplace
+                                    }
+                                />
+                            )}
 
                             {isIndexaCapital && (
                                 <div className="space-y-2">
@@ -777,6 +777,8 @@ export function ConnectAccountDialog({
                                     onClick={handleAuthorize}
                                     disabled={
                                         isSubmitting ||
+                                        (isAlreadyConnected &&
+                                            !acknowledgedReplace) ||
                                         (isIndexaCapital && !apiToken) ||
                                         (isBinance &&
                                             (!apiKey || !apiSecret)) ||

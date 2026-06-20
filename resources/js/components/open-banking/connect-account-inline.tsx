@@ -1,4 +1,6 @@
 import { BankLogo } from '@/components/bank-logo';
+import { ReplaceConnectionWarning } from '@/components/open-banking/replace-connection-warning';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,6 +107,7 @@ export function ConnectAccountInline({
     const [bitpandaApiKey, setBitpandaApiKey] = useState('');
     const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
     const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
+    const [acknowledgedReplace, setAcknowledgedReplace] = useState(false);
 
     const isIndexaCapital = useMemo(
         () => selectedBank?.name === 'Indexa Capital',
@@ -122,6 +125,20 @@ export function ConnectAccountInline({
         () => selectedBank?.name === 'Coinbase',
         [selectedBank],
     );
+
+    const connectedBankNames = useMemo(
+        () => alreadyConnectedBankNames(connections),
+        [connections],
+    );
+
+    const isAlreadyConnected = useMemo(
+        () => !!selectedBank && connectedBankNames.has(selectedBank.name),
+        [selectedBank, connectedBankNames],
+    );
+
+    useEffect(() => {
+        setAcknowledgedReplace(false);
+    }, [selectedBank]);
 
     useEffect(() => {
         if (searchQuery) {
@@ -170,8 +187,6 @@ export function ConnectAccountInline({
 
             const data = await response.json();
 
-            const connectedEnableBankingNames =
-                alreadyConnectedBankNames(connections);
             const hasProvider = (provider: string) =>
                 hasLiveConnectionForProvider(connections, provider);
 
@@ -198,7 +213,7 @@ export function ConnectAccountInline({
                     if (institution.name === 'Indexa Capital') {
                         return !hasProvider('indexacapital');
                     }
-                    return !connectedEnableBankingNames.has(institution.name);
+                    return true;
                 })
                 .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -358,6 +373,14 @@ export function ConnectAccountInline({
                                     className="h-6 w-6"
                                 />
                                 <span>{institution.name}</span>
+                                {connectedBankNames.has(institution.name) && (
+                                    <Badge
+                                        variant="secondary"
+                                        className="ml-auto"
+                                    >
+                                        {__('Already connected')}
+                                    </Badge>
+                                )}
                             </button>
                         ))}
                         {filteredInstitutions.length === 0 && (
@@ -428,6 +451,13 @@ export function ConnectAccountInline({
                             </div>
                         </div>
                     </div>
+
+                    {isAlreadyConnected && (
+                        <ReplaceConnectionWarning
+                            acknowledged={acknowledgedReplace}
+                            onAcknowledgedChange={setAcknowledgedReplace}
+                        />
+                    )}
 
                     {isIndexaCapital && (
                         <div className="space-y-2">
@@ -593,6 +623,7 @@ export function ConnectAccountInline({
                         onClick={handleAuthorize}
                         disabled={
                             isSubmitting ||
+                            (isAlreadyConnected && !acknowledgedReplace) ||
                             (isIndexaCapital && !apiToken) ||
                             (isBinance && (!apiKey || !apiSecret)) ||
                             (isBitpanda && !bitpandaApiKey) ||
