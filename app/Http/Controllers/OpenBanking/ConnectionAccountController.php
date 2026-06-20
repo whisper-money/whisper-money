@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\OpenBanking;
 
 use App\Contracts\BankingProviderInterface;
-use App\Features\ManageBankAccounts;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OpenBanking\MapConnectionAccountRequest;
 use App\Jobs\SyncBankingConnectionJob;
@@ -16,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Pennant\Feature;
 
 class ConnectionAccountController extends Controller
 {
@@ -24,7 +22,6 @@ class ConnectionAccountController extends Controller
 
     public function index(Request $request, BankingConnection $connection): Response
     {
-        $this->ensureFeatureEnabled();
         $this->authorizeConnection($connection);
 
         $user = $request->user();
@@ -44,8 +41,6 @@ class ConnectionAccountController extends Controller
 
     public function map(MapConnectionAccountRequest $request, BankingConnection $connection, AccountUserCurrencyService $accountUserCurrencyService): RedirectResponse
     {
-        $this->ensureFeatureEnabled();
-
         $validated = $request->validated();
         $uid = $validated['bank_account_uid'];
 
@@ -109,7 +104,6 @@ class ConnectionAccountController extends Controller
 
     public function unlink(BankingConnection $connection, Account $account): RedirectResponse
     {
-        $this->ensureFeatureEnabled();
         $this->authorizeConnection($connection);
 
         if ($account->banking_connection_id !== $connection->id) {
@@ -122,11 +116,6 @@ class ConnectionAccountController extends Controller
         ]);
 
         return back()->with('success', __('Account is no longer syncing. It is now a manual account.'));
-    }
-
-    private function ensureFeatureEnabled(): void
-    {
-        abort_unless(Feature::for(auth()->user())->active(ManageBankAccounts::class), 403);
     }
 
     private function authorizeConnection(BankingConnection $connection): void

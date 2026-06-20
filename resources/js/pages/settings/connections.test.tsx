@@ -29,7 +29,6 @@ vi.mock('@inertiajs/react', () => ({
                 cashflow: true,
                 calculateBalancesOnImport: false,
                 transactionAnalysis: false,
-                manageBankAccounts: true,
             },
         },
     }),
