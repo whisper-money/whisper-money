@@ -64,11 +64,8 @@ import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
-import { decrypt, importKey } from '@/lib/crypto';
 import { consoleDebug } from '@/lib/debug';
 import { db } from '@/lib/dexie-db';
-import { getStoredKey } from '@/lib/key-storage';
 import { captureEvent } from '@/lib/posthog';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { transactionSyncService } from '@/services/transaction-sync';
@@ -260,7 +257,6 @@ export function TransactionList({
     hideColumns = [],
     onBalanceUpdated,
 }: TransactionListProps) {
-    const { isKeySet } = useEncryptionKey();
     const locale = useLocale();
     const [labels, setLabels] = useState<Label[]>(() => initialLabels ?? []);
 
@@ -354,85 +350,26 @@ export function TransactionList({
 
     useEffect(() => {
         async function processTransactions() {
-            // If transactions are provided directly, use them as-is (already decrypted from backend)
+            // If transactions are provided directly, use them as-is.
             if (providedTransactions) {
                 setIsLoading(true);
                 try {
-                    const keyString = getStoredKey();
-                    let key: CryptoKey | null = null;
-
-                    if (keyString && isKeySet) {
-                        try {
-                            key = await importKey(keyString);
-                        } catch (error) {
-                            console.error(
-                                'Failed to import encryption key:',
-                                error,
-                            );
-                        }
-                    }
-
-                    const decrypted = await Promise.all(
-                        providedTransactions.map(async (transaction) => {
-                            try {
-                                let decryptedDescription = '';
-                                let decryptedNotes: string | null = null;
-
-                                if (!transaction.description_iv) {
-                                    decryptedDescription =
-                                        transaction.description;
-                                    decryptedNotes = transaction.notes || null;
-                                } else if (key) {
-                                    try {
-                                        decryptedDescription = await decrypt(
-                                            transaction.description,
-                                            key,
-                                            transaction.description_iv,
-                                        );
-                                        if (
-                                            transaction.notes &&
-                                            transaction.notes_iv
-                                        ) {
-                                            decryptedNotes = await decrypt(
-                                                transaction.notes,
-                                                key,
-                                                transaction.notes_iv,
-                                            );
-                                        }
-                                    } catch (error) {
-                                        console.error(
-                                            'Failed to decrypt transaction:',
-                                            error,
-                                        );
-                                    }
-                                }
-
-                                return {
-                                    ...transaction,
-                                    decryptedDescription,
-                                    decryptedNotes,
-                                    label_ids:
-                                        transaction.label_ids ??
-                                        transaction.labels?.map(
-                                            (label) => label.id,
-                                        ) ??
-                                        [],
-                                } as DecryptedTransaction;
-                            } catch (error) {
-                                console.error(
-                                    'Error processing transaction:',
-                                    error,
-                                );
-                                return null;
-                            }
-                        }),
+                    const processed = providedTransactions.map(
+                        (transaction) =>
+                            ({
+                                ...transaction,
+                                decryptedDescription: transaction.description,
+                                decryptedNotes: transaction.notes || null,
+                                label_ids:
+                                    transaction.label_ids ??
+                                    transaction.labels?.map(
+                                        (label) => label.id,
+                                    ) ??
+                                    [],
+                            }) as DecryptedTransaction,
                     );
 
-                    const validTransactions = decrypted.filter(
-                        (t): t is DecryptedTransaction => t !== null,
-                    );
-
-                    setTransactions(validTransactions);
+                    setTransactions(processed);
                 } catch (error) {
                     console.error('Error processing transactions:', error);
                 } finally {
@@ -465,20 +402,6 @@ export function TransactionList({
                 );
                 const banksMap = new Map(banks.map((bank) => [bank.id, bank]));
 
-                const keyString = getStoredKey();
-                let key: CryptoKey | null = null;
-
-                if (keyString && isKeySet) {
-                    try {
-                        key = await importKey(keyString);
-                    } catch (error) {
-                        console.error(
-                            'Failed to import encryption key:',
-                            error,
-                        );
-                    }
-                }
-
                 const transformedTransactions = filteredServerData.map(
                     (serverRecord: Transaction) => {
                         const label_ids = serverRecord.labels?.map(
@@ -498,75 +421,26 @@ export function TransactionList({
                     },
                 );
 
-                const decrypted = await Promise.all(
-                    transformedTransactions.map(async (transaction) => {
-                        try {
-                            let decryptedDescription = '';
-                            let decryptedNotes: string | null = null;
+                const processed = transformedTransactions.map((transaction) => {
+                    const account = accountsMap.get(transaction.account_id);
+                    const category = transaction.category_id
+                        ? categoriesMap.get(transaction.category_id)
+                        : null;
+                    const bank = account?.bank?.id
+                        ? banksMap.get(account.bank!.id)
+                        : undefined;
 
-                            if (!transaction.description_iv) {
-                                decryptedDescription = transaction.description;
-                                decryptedNotes = transaction.notes || null;
-                            } else if (key) {
-                                try {
-                                    decryptedDescription = await decrypt(
-                                        transaction.description,
-                                        key,
-                                        transaction.description_iv,
-                                    );
+                    return {
+                        ...transaction,
+                        decryptedDescription: transaction.description,
+                        decryptedNotes: transaction.notes || null,
+                        account,
+                        category: category || null,
+                        bank,
+                    } as DecryptedTransaction;
+                });
 
-                                    if (
-                                        transaction.notes &&
-                                        transaction.notes_iv
-                                    ) {
-                                        decryptedNotes = await decrypt(
-                                            transaction.notes,
-                                            key,
-                                            transaction.notes_iv,
-                                        );
-                                    }
-                                } catch (error) {
-                                    console.error(
-                                        'Failed to decrypt transaction:',
-                                        transaction.id,
-                                        error,
-                                    );
-                                }
-                            }
-
-                            const account = accountsMap.get(
-                                transaction.account_id,
-                            );
-                            const category = transaction.category_id
-                                ? categoriesMap.get(transaction.category_id)
-                                : null;
-                            const bank = account?.bank?.id
-                                ? banksMap.get(account.bank!.id)
-                                : undefined;
-
-                            return {
-                                ...transaction,
-                                decryptedDescription,
-                                decryptedNotes,
-                                account,
-                                category: category || null,
-                                bank,
-                            } as DecryptedTransaction;
-                        } catch (error) {
-                            console.error(
-                                'Failed to process transaction:',
-                                transaction.id,
-                                error,
-                            );
-                            return null;
-                        }
-                    }),
-                );
-
-                const validTransactions = decrypted.filter(
-                    (transaction): transaction is DecryptedTransaction =>
-                        transaction !== null,
-                );
+                const validTransactions = processed;
 
                 validTransactions.sort((a, b) => {
                     const dateA = parseISO(a.transaction_date).getTime();
@@ -588,7 +462,6 @@ export function TransactionList({
         accounts,
         banks,
         categories,
-        isKeySet,
         accountId,
         providedTransactions,
     ]);
@@ -607,79 +480,6 @@ export function TransactionList({
         }
     }, [columnVisibility]);
 
-    useEffect(() => {
-        async function reDecryptTransactions() {
-            if (transactions.length === 0) {
-                return;
-            }
-
-            const keyString = getStoredKey();
-            let key: CryptoKey | null = null;
-
-            if (keyString && isKeySet) {
-                try {
-                    key = await importKey(keyString);
-                } catch (error) {
-                    console.error('Failed to import encryption key:', error);
-                }
-            }
-
-            const reDecrypted = await Promise.all(
-                transactions.map(async (transaction) => {
-                    try {
-                        let decryptedDescription = '';
-                        let decryptedNotes: string | null = null;
-
-                        if (!transaction.description_iv) {
-                            decryptedDescription = transaction.description;
-                            decryptedNotes = transaction.notes || null;
-                        } else if (key) {
-                            try {
-                                decryptedDescription = await decrypt(
-                                    transaction.description,
-                                    key,
-                                    transaction.description_iv,
-                                );
-
-                                if (transaction.notes && transaction.notes_iv) {
-                                    decryptedNotes = await decrypt(
-                                        transaction.notes,
-                                        key,
-                                        transaction.notes_iv,
-                                    );
-                                }
-                            } catch (error) {
-                                console.error(
-                                    'Failed to decrypt transaction:',
-                                    transaction.id,
-                                    error,
-                                );
-                            }
-                        }
-
-                        return {
-                            ...transaction,
-                            decryptedDescription,
-                            decryptedNotes,
-                        } as DecryptedTransaction;
-                    } catch (error) {
-                        console.error(
-                            'Failed to process transaction:',
-                            transaction.id,
-                            error,
-                        );
-                        return transaction;
-                    }
-                }),
-            );
-
-            setTransactions(reDecrypted);
-        }
-
-        reDecryptTransactions();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isKeySet]);
-
     const [searchMatchedIds, setSearchMatchedIds] = useState<Set<string>>(
         new Set(),
     );
@@ -687,7 +487,7 @@ export function TransactionList({
 
     useEffect(() => {
         async function searchInIndexedDB() {
-            if (!filters.searchText || !isKeySet) {
+            if (!filters.searchText) {
                 setSearchMatchedIds(new Set());
                 setIsSearching(false);
                 return;
@@ -695,13 +495,6 @@ export function TransactionList({
 
             setIsSearching(true);
             try {
-                const keyString = getStoredKey();
-                if (!keyString) {
-                    setSearchMatchedIds(new Set());
-                    return;
-                }
-
-                const key = await importKey(keyString);
                 const searchLower = filters.searchText.toLowerCase();
 
                 let allIndexedTransactions = await db.transactions.toArray();
@@ -715,46 +508,14 @@ export function TransactionList({
                 const matchedIds = new Set<string>();
 
                 for (const tx of allIndexedTransactions) {
-                    try {
-                        let decryptedDescription = '';
-                        let decryptedNotes: string | null = null;
+                    const matchesDescription = tx.description
+                        .toLowerCase()
+                        .includes(searchLower);
+                    const matchesNotes =
+                        tx.notes?.toLowerCase().includes(searchLower) || false;
 
-                        try {
-                            if (!tx.description_iv) {
-                                decryptedDescription = tx.description;
-                                decryptedNotes = tx.notes || null;
-                            } else {
-                                decryptedDescription = await decrypt(
-                                    tx.description,
-                                    key,
-                                    tx.description_iv,
-                                );
-
-                                if (tx.notes && tx.notes_iv) {
-                                    decryptedNotes = await decrypt(
-                                        tx.notes,
-                                        key,
-                                        tx.notes_iv,
-                                    );
-                                }
-                            }
-                        } catch {
-                            continue;
-                        }
-
-                        const matchesDescription = decryptedDescription
-                            .toLowerCase()
-                            .includes(searchLower);
-                        const matchesNotes =
-                            decryptedNotes
-                                ?.toLowerCase()
-                                .includes(searchLower) || false;
-
-                        if (matchesDescription || matchesNotes) {
-                            matchedIds.add(tx.id);
-                        }
-                    } catch {
-                        continue;
+                    if (matchesDescription || matchesNotes) {
+                        matchedIds.add(tx.id);
                     }
                 }
 
@@ -768,7 +529,7 @@ export function TransactionList({
         }
 
         searchInIndexedDB();
-    }, [filters.searchText, isKeySet, accountId]);
+    }, [filters.searchText, accountId]);
 
     const manualAccountIds = useMemo(
         () =>
@@ -782,11 +543,7 @@ export function TransactionList({
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter((transaction) => {
-            if (filters.searchText && isKeySet) {
-                if (!searchMatchedIds.has(transaction.id)) {
-                    return false;
-                }
-            } else if (filters.searchText && !isKeySet) {
+            if (filters.searchText && !searchMatchedIds.has(transaction.id)) {
                 return false;
             }
 
@@ -858,7 +615,7 @@ export function TransactionList({
 
             return true;
         });
-    }, [transactions, filters, isKeySet, accountId, searchMatchedIds]);
+    }, [transactions, filters, accountId, searchMatchedIds]);
 
     const sortedTransactions = useMemo(() => {
         if (sorting.length === 0) {
@@ -1157,13 +914,6 @@ export function TransactionList({
     }
 
     async function handleBulkCategoryChange(categoryId: number | null) {
-        if (!isKeySet) {
-            toast.error(
-                'Please unlock your encryption key to update transactions',
-            );
-            return;
-        }
-
         const selectedIds = Object.keys(rowSelection);
         if (selectedIds.length === 0) {
             return;
@@ -1331,7 +1081,6 @@ export function TransactionList({
                     categories={categories}
                     labels={labels}
                     accounts={accounts}
-                    isKeySet={isKeySet}
                     hideAccountFilter={hideAccountFilter}
                     actions={
                         <div className="flex justify-end gap-2">

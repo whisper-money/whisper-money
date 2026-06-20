@@ -6,10 +6,12 @@ import { ArrowDown, ArrowUp, ArrowUpDown, MoreHorizontal } from 'lucide-react';
 
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
-import { EncryptedText } from '@/components/encrypted-text';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
-import { EncryptedTransactionDescription } from '@/components/transactions/encrypted-transaction-description';
+import {
+    ENCRYPTED_PLACEHOLDER,
+    TransactionDescription,
+} from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -207,18 +209,15 @@ export function createTransactionColumns({
                     .filter(Boolean) as Label[];
 
                 const hasLabels = transactionLabels.length > 0;
-                const hasNotes =
-                    transaction.decryptedNotes ||
-                    (transaction.notes && transaction.notes_iv);
+                const hasNotes = !!transaction.notes;
 
                 return (
                     <div className="flex flex-col gap-0.5">
                         <div className="flex flex-row justify-between gap-1">
                             <div className="flex-grow truncate">
-                                <EncryptedTransactionDescription
-                                    encryptedText={transaction.description}
-                                    iv={transaction.description_iv}
-                                    length={{ min: 20, max: 80 }}
+                                <TransactionDescription
+                                    text={transaction.description}
+                                    encrypted={!!transaction.description_iv}
                                 />
                             </div>
                             {showLabels && hasLabels && (
@@ -231,19 +230,11 @@ export function createTransactionColumns({
                         {showNotes && hasNotes && (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                                 <div className="truncate text-muted-foreground/80">
-                                    {transaction.decryptedNotes ? (
-                                        <span>
-                                            {transaction.decryptedNotes}
-                                        </span>
-                                    ) : (
-                                        <EncryptedText
-                                            encryptedText={
-                                                transaction.notes || ''
-                                            }
-                                            iv={transaction.notes_iv || ''}
-                                            length={{ min: 10, max: 30 }}
-                                        />
-                                    )}
+                                    <span>
+                                        {transaction.notes_iv
+                                            ? ENCRYPTED_PLACEHOLDER
+                                            : transaction.notes}
+                                    </span>
                                 </div>
                             </div>
                         )}

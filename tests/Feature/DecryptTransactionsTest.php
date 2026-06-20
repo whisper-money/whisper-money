@@ -27,23 +27,6 @@ test('encrypted transactions endpoint returns only encrypted transactions', func
     expect($data[0]['id'])->toBe($encrypted->id);
 });
 
-test('plaintext filter returns only plaintext transactions', function () {
-    Transaction::factory()->create([
-        'user_id' => $this->user->id,
-        'description_iv' => 'some-iv',
-    ]);
-    $plaintext = Transaction::factory()->plaintext()->create([
-        'user_id' => $this->user->id,
-    ]);
-
-    $response = $this->getJson('/api/transactions?encrypted=false');
-
-    $response->assertOk();
-    $data = $response->json('data');
-    expect($data)->toHaveCount(1);
-    expect($data[0]['id'])->toBe($plaintext->id);
-});
-
 test('encrypted transactions endpoint paginates correctly', function () {
     $account = Account::factory()->create(['user_id' => $this->user->id]);
     $category = Category::factory()->create(['user_id' => $this->user->id]);

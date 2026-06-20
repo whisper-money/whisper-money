@@ -48,11 +48,20 @@ export function useDecryptTransactions() {
 
                 const key = await importKey(keyString);
 
-                let url: string | null = '/api/transactions?encrypted=true';
+                // Always re-fetch the first page: each bulk update clears the
+                // rows' IVs, removing them from the encrypted set, so an
+                // offset-based cursor (next_page_url) would skip the rows that
+                // shift into the freed slots. Stop when nothing is left, or
+                // when a page yields nothing we can decrypt — otherwise rows
+                // that always fail to decrypt would loop forever.
+                while (true) {
+                    const { data: page } = await axios.get<PaginatedResponse>(
+                        '/api/transactions?encrypted=true',
+                    );
 
-                while (url) {
-                    const { data: page } =
-                        await axios.get<PaginatedResponse>(url);
+                    if (page.data.length === 0) {
+                        break;
+                    }
 
                     const batch: BulkUpdateItem[] = [];
 
@@ -86,17 +95,17 @@ export function useDecryptTransactions() {
                         }
                     }
 
-                    if (batch.length > 0) {
-                        // Send in chunks of 50
-                        for (let i = 0; i < batch.length; i += 50) {
-                            const chunk = batch.slice(i, i + 50);
-                            await axios.patch('/api/transactions/bulk', {
-                                transactions: chunk,
-                            });
-                        }
+                    if (batch.length === 0) {
+                        break;
                     }
 
-                    url = page.next_page_url;
+                    // Send in chunks of 50
+                    for (let i = 0; i < batch.length; i += 50) {
+                        const chunk = batch.slice(i, i + 50);
+                        await axios.patch('/api/transactions/bulk', {
+                            transactions: chunk,
+                        });
+                    }
                 }
 
                 window.location.reload();

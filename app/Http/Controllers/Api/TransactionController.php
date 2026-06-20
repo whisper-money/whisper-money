@@ -21,8 +21,6 @@ class TransactionController extends Controller
 
         if ($request->query('encrypted') === 'true') {
             $query->where(fn ($q) => $q->whereNotNull('description_iv')->orWhereNotNull('notes_iv'));
-        } elseif ($request->query('encrypted') === 'false') {
-            $query->whereNull('description_iv')->whereNull('notes_iv');
         }
 
         $transactions = $query->simplePaginate(100);

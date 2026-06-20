@@ -45,7 +45,6 @@ interface TransactionFiltersProps {
     categories: Category[];
     labels: Label[];
     accounts: Account[];
-    isKeySet: boolean;
     actions?: ReactNode;
     hideAccountFilter?: boolean;
     enableSavedFilters?: boolean;

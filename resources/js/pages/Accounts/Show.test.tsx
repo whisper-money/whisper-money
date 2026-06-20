@@ -24,10 +24,6 @@ vi.mock('@/actions/App/Http/Controllers/RealEstateDetailController', () => ({
     },
 }));
 
-vi.mock('@/contexts/encryption-key-context', () => ({
-    useEncryptionKey: () => ({ isKeySet: true }),
-}));
-
 vi.mock('@/layouts/app/app-sidebar-layout', () => ({
     default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));

@@ -37,31 +37,6 @@ export async function getAESKeyFromPBKDF(
     );
 }
 
-export async function encrypt(
-    plaintext: string,
-    key: CryptoKey,
-): Promise<{ encrypted: string; iv: string }> {
-    ensureCryptoAvailable();
-    const encoder = new TextEncoder();
-    const data = encoder.encode(plaintext);
-
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-
-    const encryptedBuffer = await window.crypto.subtle.encrypt(
-        {
-            name: 'AES-GCM',
-            iv,
-        },
-        key,
-        data,
-    );
-
-    return {
-        encrypted: bufferToBase64(encryptedBuffer),
-        iv: bufferToBase64(iv),
-    };
-}
-
 export async function decrypt(
     encrypted: string,
     key: CryptoKey,
@@ -82,11 +57,6 @@ export async function decrypt(
 
     const decoder = new TextDecoder();
     return decoder.decode(decryptedBuffer);
-}
-
-export function generateSalt(): Uint8Array {
-    ensureCryptoAvailable();
-    return window.crypto.getRandomValues(new Uint8Array(16));
 }
 
 export function bufferToBase64(buffer: ArrayBuffer | Uint8Array): string {

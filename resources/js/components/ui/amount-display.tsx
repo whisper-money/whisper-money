@@ -1,4 +1,3 @@
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useLocale } from '@/hooks/use-locale';
 import { cn } from '@/lib/utils';
@@ -57,38 +56,16 @@ export function AmountDisplay({
     monospace = false,
     highlightPositive = false,
 }: AmountDisplayProps) {
-    const { isKeySet } = useEncryptionKey();
     const { isPrivacyModeEnabled } = usePrivacyMode();
     const locale = useLocale();
     const isPositive = amountInCents > 0;
 
-    const shouldHideAmount = !isKeySet;
-
-    const displayAmountInCents = useMemo(() => {
-        if (shouldHideAmount) {
-            const length = Math.max(3, amountInCents.toString().length);
-            return parseInt('8'.repeat(length - 2) + '00');
-        }
-
-        return amountInCents;
-    }, [amountInCents, shouldHideAmount]);
-
     const formatted = useMemo(() => {
-        return formatCurrency(displayAmountInCents, currencyCode, locale, minimumFractionDigits, maximumFractionDigits);
-    }, [locale, displayAmountInCents, currencyCode, minimumFractionDigits, maximumFractionDigits]);
+        return formatCurrency(amountInCents, currencyCode, locale, minimumFractionDigits, maximumFractionDigits);
+    }, [locale, amountInCents, currencyCode, minimumFractionDigits, maximumFractionDigits]);
 
-    const getBackgroundClass = (shouldHideAmount: boolean) => {
-        if (!highlightPositive && !shouldHideAmount) return '';
-
-        if (shouldHideAmount) {
-            if (variant === 'positive-highlight' && isPositive) {
-                return 'rounded-xs bg-green-400 dark:bg-green-900 text-green-400 dark:text-green-900 opacity-20 dark:opacity-100';
-            }
-
-            return 'rounded-xs bg-zinc-950 dark:bg-zinc-700 dark:text-zinc-700';
-        }
-
-        if (variant === 'positive-highlight') {
+    const getBackgroundClass = () => {
+        if (highlightPositive && variant === 'positive-highlight') {
             return 'bg-green-100/70 dark:bg-green-900';
         }
 
@@ -103,7 +80,7 @@ export function AmountDisplay({
                 variantStyles[variant],
                 size && sizeStyles[size],
                 weight && weightStyles[weight],
-                getBackgroundClass(shouldHideAmount),
+                getBackgroundClass(),
                 { 'font-mono tabular-nums': monospace },
                 className,
             )}

@@ -40,7 +40,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import AppSidebarLayout from '@/layouts/app/app-sidebar-layout';
 import { BreadcrumbItem } from '@/types';
@@ -67,7 +66,6 @@ import { Head, router } from '@inertiajs/react';
 import { ChevronDown, Pencil, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { toast } from 'sonner';
 
 interface AccountWithDetails extends Account {
     real_estate_detail?: RealEstateDetail;
@@ -106,7 +104,6 @@ export default function AccountShow({
     const [transactionRefreshKey, setTransactionRefreshKey] = useState(0);
     const [chartComputedData, setChartComputedData] =
         useState<ChartComputedData | null>(null);
-    const { isKeySet } = useEncryptionKey();
 
     const handleChartDataLoaded = useCallback((data: ChartComputedData) => {
         setChartComputedData(data);
@@ -117,13 +114,6 @@ export default function AccountShow({
     }
 
     function handleAddTransaction() {
-        if (!isKeySet) {
-            toast.error(
-                __('Please unlock your encryption key to add transactions'),
-            );
-            return;
-        }
-
         setCreateTransactionOpen(true);
     }
 

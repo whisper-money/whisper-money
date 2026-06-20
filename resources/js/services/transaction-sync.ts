@@ -1,6 +1,4 @@
-import { importKey } from '@/lib/crypto';
 import { db } from '@/lib/dexie-db';
-import { getStoredKey } from '@/lib/key-storage';
 import { TransactionSyncManager } from '@/lib/sync-manager';
 import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
@@ -233,42 +231,14 @@ class TransactionSyncService {
                 return txDate >= minDate && txDate <= maxDate;
             });
 
-            const keyString = getStoredKey();
-            const key = keyString ? await importKey(keyString) : null;
-
-            const decryptedTransactions = await Promise.all(
-                transactionsInRange.map(async (t) => {
-                    try {
-                        let decryptedDescription: string;
-                        if (t.description_iv && key) {
-                            const { decrypt } = await import('@/lib/crypto');
-                            decryptedDescription = await decrypt(
-                                t.description,
-                                key,
-                                t.description_iv,
-                            );
-                        } else if (t.description_iv && !key) {
-                            return null;
-                        } else {
-                            decryptedDescription = t.description;
-                        }
-                        return {
-                            transaction_date: normalizeDate(t.transaction_date),
-                            amount: parseFloat(t.amount),
-                            description: decryptedDescription
-                                .toLowerCase()
-                                .trim()
-                                .replace(/\s+/g, ' '),
-                        };
-                    } catch {
-                        return null;
-                    }
-                }),
-            );
-
-            const validDecryptedTransactions = decryptedTransactions.filter(
-                (t) => t !== null,
-            );
+            const existingTransactions = transactionsInRange.map((t) => ({
+                transaction_date: normalizeDate(t.transaction_date),
+                amount: parseFloat(t.amount),
+                description: t.description
+                    .toLowerCase()
+                    .trim()
+                    .replace(/\s+/g, ' '),
+            }));
 
             return transactions.map((importingTx) => {
                 const normalizedDescription = importingTx.description
@@ -276,7 +246,7 @@ class TransactionSyncService {
                     .trim()
                     .replace(/\s+/g, ' ');
 
-                return validDecryptedTransactions.some(
+                return existingTransactions.some(
                     (existing) =>
                         existing.transaction_date ===
                             importingTx.transaction_date &&

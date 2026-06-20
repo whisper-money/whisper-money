@@ -1,4 +1,3 @@
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { cn } from '@/lib/utils';
 import { BirdIcon, Birdhouse, SVGAttributes } from 'lucide-react';
@@ -10,7 +9,6 @@ export default function AppLogoIcon({
     className?: SVGAttributes['className'];
     animated?: boolean;
 }) {
-    const { isKeySet } = useEncryptionKey();
     const { isPrivacyModeEnabled } = usePrivacyMode();
 
     const iconClasses = cn(
@@ -19,7 +17,7 @@ export default function AppLogoIcon({
         'fill-transparent',
     );
 
-    const showBirdhouse = !isKeySet || isPrivacyModeEnabled;
+    const showBirdhouse = isPrivacyModeEnabled;
 
     if (!animated) {
         return <BirdIcon className={iconClasses} />;

@@ -10,10 +10,6 @@ vi.mock('@/actions/App/Http/Controllers/TransactionController', () => ({
     categorize: { url: () => '/transactions/categorize' },
 }));
 
-vi.mock('@/contexts/encryption-key-context', () => ({
-    useEncryptionKey: () => ({ isKeySet: true }),
-}));
-
 vi.mock('@/hooks/use-mobile', () => ({
     useIsMobile: () => false,
 }));

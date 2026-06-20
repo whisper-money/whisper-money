@@ -1,5 +1,3 @@
-import { EncryptedText } from '@/components/encrypted-text';
-import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import { usePrivacyMode } from '@/contexts/privacy-mode-context';
 import { useMemo } from 'react';
 
@@ -37,44 +35,34 @@ function getFakeDescription(seed: string): string {
     return FAKE_DESCRIPTIONS[index];
 }
 
-interface EncryptedTransactionDescriptionProps {
-    encryptedText: string;
-    iv: string | null;
+/**
+ * Shown in place of a still-encrypted legacy value before the user unlocks and
+ * the decrypt-migration runs, so the list never renders raw ciphertext.
+ */
+export const ENCRYPTED_PLACEHOLDER = '••••••••••';
+
+interface TransactionDescriptionProps {
+    text: string;
     className?: string;
-    length?: number | { min: number; max: number } | null;
+    encrypted?: boolean;
 }
 
-export function EncryptedTransactionDescription({
-    encryptedText,
-    iv,
+export function TransactionDescription({
+    text,
     className = '',
-    length = null,
-}: EncryptedTransactionDescriptionProps) {
-    const { isKeySet } = useEncryptionKey();
+    encrypted = false,
+}: TransactionDescriptionProps) {
     const { isPrivacyModeEnabled } = usePrivacyMode();
 
-    const fakeDescription = useMemo(
-        () => getFakeDescription(encryptedText),
-        [encryptedText],
-    );
+    const fakeDescription = useMemo(() => getFakeDescription(text), [text]);
 
-    if (!iv) {
-        if (isPrivacyModeEnabled) {
-            return <span className={className}>{fakeDescription}</span>;
-        }
-        return <span className={className}>{encryptedText}</span>;
-    }
-
-    if (isPrivacyModeEnabled && isKeySet) {
-        return <span className={className}>{fakeDescription}</span>;
+    if (encrypted) {
+        return <span className={className}>{ENCRYPTED_PLACEHOLDER}</span>;
     }
 
     return (
-        <EncryptedText
-            encryptedText={encryptedText}
-            iv={iv}
-            className={className}
-            length={length}
-        />
+        <span className={className}>
+            {isPrivacyModeEnabled ? fakeDescription : text}
+        </span>
     );
 }
