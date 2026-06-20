@@ -6,6 +6,7 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { cn } from '@/lib/utils';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -157,54 +158,57 @@ export function AccountBalanceCard({
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex min-w-0 items-start">
-                    {dragHandle}
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                        <CardTitle className="text-sm font-medium">
-                            <Link
-                                href={show.url(account.id)}
-                                className="-my-1 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
-                            >
-                                <BankLogo
-                                    src={account.bank?.logo ?? null}
-                                    name={account.bank?.name}
-                                    className="mr-2 inline-block size-5"
-                                />
+                <div className="flex flex-col gap-0.5">
+                    <CardTitle className="text-sm font-medium">
+                        <Link
+                            href={show.url(account.id)}
+                            className="-my-1 -ml-1.5 flex items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                        >
+                            <BankLogo
+                                src={account.bank?.logo ?? null}
+                                name={account.bank?.name}
+                                className="mr-2 inline-block size-5"
+                            />
 
-                                <AccountName
-                                    account={account}
-                                    length={{ min: 5, max: 15 }}
+                            <AccountName
+                                account={account}
+                                length={{ min: 5, max: 15 }}
+                            />
+                        </Link>
+                    </CardTitle>
+                    {hasMortgage && linkedLoanMetrics.loanAccount && (
+                        <span className="flex items-center gap-1 pt-0.5 text-xs text-muted-foreground">
+                            {__('Mortgage at')}{' '}
+                            {linkedLoanMetrics.loanAccount.bank && (
+                                <BankLogo
+                                    src={
+                                        linkedLoanMetrics.loanAccount.bank.logo
+                                    }
+                                    name={
+                                        linkedLoanMetrics.loanAccount.bank.name
+                                    }
+                                    className="size-3.5 shrink-0"
+                                    fallback="letter"
                                 />
-                            </Link>
-                        </CardTitle>
-                        {hasMortgage && linkedLoanMetrics.loanAccount && (
-                            <span className="flex items-center gap-1 pt-0.5 text-xs text-muted-foreground">
-                                {__('Mortgage at')}{' '}
-                                {linkedLoanMetrics.loanAccount.bank && (
-                                    <BankLogo
-                                        src={
-                                            linkedLoanMetrics.loanAccount.bank
-                                                .logo
-                                        }
-                                        name={
-                                            linkedLoanMetrics.loanAccount.bank
-                                                .name
-                                        }
-                                        className="size-3.5 shrink-0"
-                                        fallback="letter"
-                                    />
-                                )}
-                                {linkedLoanMetrics.loanAccount.bank?.name ??
-                                    linkedLoanMetrics.loanAccount.name}
-                            </span>
-                        )}
-                    </div>
+                            )}
+                            {linkedLoanMetrics.loanAccount.bank?.name ??
+                                linkedLoanMetrics.loanAccount.name}
+                        </span>
+                    )}
                 </div>
-                <div className="text-xs font-medium text-muted-foreground">
+                <div className="relative mr-1 size-5 shrink-0">
                     <AccountTypeIcon
                         type={account.type}
-                        className="mr-1 inline-block"
+                        className={cn(
+                            'transition-opacity',
+                            dragHandle && 'group-hover:opacity-0',
+                        )}
                     />
+                    {dragHandle && (
+                        <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                            {dragHandle}
+                        </span>
+                    )}
                 </div>
             </CardHeader>
             <CardContent>

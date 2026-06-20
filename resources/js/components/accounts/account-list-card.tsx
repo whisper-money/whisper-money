@@ -1,11 +1,13 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
+import { AccountTypeIcon } from '@/components/dashboard/account-type-icon';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { cn } from '@/lib/utils';
 import { formatAccountType, supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
@@ -139,12 +141,11 @@ export function AccountListCard({
             <CardContent className="p-4">
                 <div className="flex flex-col gap-4">
                     <div className="flex max-w-full flex-col sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex min-w-0 items-start">
-                            {dragHandle}
+                        <div className="flex min-w-0 items-start gap-3">
                             <div className="flex min-w-0 flex-col gap-1">
                                 <Link
                                     href={show.url(account.id)}
-                                    className="-my-1 flex min-w-0 items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
+                                    className="-my-1 -ml-1.5 flex min-w-0 items-center rounded-md px-1.5 py-1 transition-colors hover:bg-muted"
                                 >
                                     <h3 className="flex min-w-0 items-center gap-2 font-semibold">
                                         {account.bank && (
@@ -429,7 +430,22 @@ export function AccountListCard({
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="relative size-5 shrink-0 text-muted-foreground">
+                            <AccountTypeIcon
+                                type={account.type}
+                                className={cn(
+                                    'transition-opacity',
+                                    dragHandle && 'group-hover:opacity-0',
+                                )}
+                            />
+                            {dragHandle && (
+                                <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                                    {dragHandle}
+                                </span>
+                            )}
+                        </div>
+
                         {!isConnected && (
                             <Button
                                 className="cursor-pointer"
@@ -444,10 +460,7 @@ export function AccountListCard({
                             </Button>
                         )}
 
-                        <Link
-                            href={show.url(account.id)}
-                            className={isConnected ? 'ml-auto' : ''}
-                        >
+                        <Link href={show.url(account.id)} className="ml-auto">
                             <Button className="cursor-pointer" variant="ghost">
                                 {__('Details')} &rarr;
                             </Button>

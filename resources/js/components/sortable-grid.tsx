@@ -110,14 +110,12 @@ function SortableItem({
         isDragging,
     } = useSortable({ id });
 
-    // Collapsed to zero width by default; on card hover it expands and slides
-    // in, pushing the card's leading content (logo + name) to the right.
     const dragHandle = (
         <button
             ref={setActivatorNodeRef}
             type="button"
             aria-label={__('Drag to reorder')}
-            className="flex w-0 shrink-0 cursor-grab touch-none items-center overflow-hidden text-muted-foreground/70 opacity-0 transition-all duration-200 ease-out group-hover:w-6 group-hover:opacity-100 hover:text-foreground active:cursor-grabbing"
+            className="cursor-grab touch-none text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
             {...attributes}
             {...listeners}
         >
