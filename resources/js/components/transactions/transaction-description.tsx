@@ -35,18 +35,30 @@ function getFakeDescription(seed: string): string {
     return FAKE_DESCRIPTIONS[index];
 }
 
+/**
+ * Shown in place of a still-encrypted legacy value before the user unlocks and
+ * the decrypt-migration runs, so the list never renders raw ciphertext.
+ */
+export const ENCRYPTED_PLACEHOLDER = '••••••••••';
+
 interface TransactionDescriptionProps {
     text: string;
     className?: string;
+    encrypted?: boolean;
 }
 
 export function TransactionDescription({
     text,
     className = '',
+    encrypted = false,
 }: TransactionDescriptionProps) {
     const { isPrivacyModeEnabled } = usePrivacyMode();
 
     const fakeDescription = useMemo(() => getFakeDescription(text), [text]);
+
+    if (encrypted) {
+        return <span className={className}>{ENCRYPTED_PLACEHOLDER}</span>;
+    }
 
     return (
         <span className={className}>

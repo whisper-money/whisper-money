@@ -8,7 +8,10 @@ import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
 import { LabelBadges } from '@/components/shared/label-combobox';
 import { CategoryCell } from '@/components/transactions/category-cell';
-import { TransactionDescription } from '@/components/transactions/transaction-description';
+import {
+    ENCRYPTED_PLACEHOLDER,
+    TransactionDescription,
+} from '@/components/transactions/transaction-description';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -214,6 +217,7 @@ export function createTransactionColumns({
                             <div className="flex-grow truncate">
                                 <TransactionDescription
                                     text={transaction.description}
+                                    encrypted={!!transaction.description_iv}
                                 />
                             </div>
                             {showLabels && hasLabels && (
@@ -226,7 +230,11 @@ export function createTransactionColumns({
                         {showNotes && hasNotes && (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                                 <div className="truncate text-muted-foreground/80">
-                                    <span>{transaction.notes}</span>
+                                    <span>
+                                        {transaction.notes_iv
+                                            ? ENCRYPTED_PLACEHOLDER
+                                            : transaction.notes}
+                                    </span>
                                 </div>
                             </div>
                         )}
