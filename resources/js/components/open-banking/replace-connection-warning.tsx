@@ -33,11 +33,18 @@ export function ReplaceConnectionWarning({
             <AlertDescription>
                 <p>
                     {__(
-                        'You already have an active connection with this bank. If you authorize with the same bank login, the previous connection will stop working. Only continue if you are connecting a different account.',
-                    )}
+                        'You already have an active connection with this bank. If you authorize with the same bank login, the previous connection will stop working.',
+                    )}{' '}
+                    <strong>
+                        {__(
+                            'Only continue if you are connecting a different account.',
+                        )}
+                    </strong>
                 </p>
-                <p>{__('Having trouble with this connection?')}</p>
-                <p className="flex flex-wrap gap-x-4">
+                <p className="my-1">
+                    <strong>
+                        {__('Having trouble with this connection?')}
+                    </strong>{' '}
                     <a
                         href={DISCORD_URL}
                         target="_blank"
@@ -45,10 +52,12 @@ export function ReplaceConnectionWarning({
                         className="text-primary underline"
                     >
                         {__('Join the community')}
-                    </a>
+                    </a>{' '}
+                    or{' '}
                     <a href={SUPPORT_MAILTO} className="text-primary underline">
-                        {__('Email support')}
+                        {__('mail support')}
                     </a>
+                    .
                 </p>
                 <label className="mt-2 flex items-start gap-2 text-foreground">
                     <Checkbox
@@ -57,11 +66,7 @@ export function ReplaceConnectionWarning({
                             onAcknowledgedChange(checked === true)
                         }
                     />
-                    <span>
-                        {__(
-                            'I understand the existing connection may stop working.',
-                        )}
-                    </span>
+                    <span>{__('I will use a different bank login')}</span>
                 </label>
             </AlertDescription>
         </Alert>
