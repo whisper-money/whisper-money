@@ -127,7 +127,7 @@ describe('ConnectAccountDialog', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
         expect(
-            screen.getByText('This will replace your existing connection'),
+            screen.getByText('This may replace your existing connection'),
         ).toBeInTheDocument();
 
         const connect = screen.getByRole('button', { name: 'Connect' });
@@ -144,7 +144,7 @@ describe('ConnectAccountDialog', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
         expect(
-            screen.queryByText('This will replace your existing connection'),
+            screen.queryByText('This may replace your existing connection'),
         ).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled();
     });
