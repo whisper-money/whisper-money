@@ -1,3 +1,4 @@
+import { useWebHaptics } from '@/hooks/use-web-haptics';
 import { cn } from '@/lib/utils';
 import { __ } from '@/utils/i18n';
 import {
@@ -45,6 +46,7 @@ export function SortableGrid<T>({
     footer,
 }: SortableGridProps<T>) {
     const ids = items.map(getId);
+    const { trigger } = useWebHaptics();
 
     // Pointer drag starts after a small move (so clicks still work); touch drag
     // starts on a long press, leaving quick swipes free to scroll the page.
@@ -77,6 +79,7 @@ export function SortableGrid<T>({
         <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragStart={() => trigger('selection')}
             onDragEnd={handleDragEnd}
         >
             <SortableContext items={ids} strategy={rectSortingStrategy}>
