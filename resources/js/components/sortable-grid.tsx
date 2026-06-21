@@ -6,7 +6,6 @@ import {
     type DragEndEvent,
     KeyboardSensor,
     PointerSensor,
-    TouchSensor,
     closestCenter,
     useSensor,
     useSensors,
@@ -48,13 +47,11 @@ export function SortableGrid<T>({
     const ids = items.map(getId);
     const { trigger } = useWebHaptics();
 
-    // Pointer drag starts after a small move (so clicks still work); touch drag
-    // starts on a long press, leaving quick swipes free to scroll the page.
+    // A small move starts the drag, so taps/clicks still work. Touch is handled
+    // via pointer events and only the handle has touch-action: none, so the rest
+    // of the card scrolls normally on mobile (no long-press, which blocked it).
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-        useSensor(TouchSensor, {
-            activationConstraint: { delay: 200, tolerance: 8 },
-        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         }),
