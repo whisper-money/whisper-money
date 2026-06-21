@@ -1,15 +1,17 @@
 import { show } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountName } from '@/components/accounts/account-name';
 import { BankLogo } from '@/components/bank-logo';
+import { AccountTypeIcon } from '@/components/dashboard/account-type-icon';
 import { AmountTrendIndicator } from '@/components/dashboard/amount-trend-indicator';
 import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { cn } from '@/lib/utils';
 import { formatAccountType, supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Button } from '../ui/button';
 import { UpdateBalanceDialog } from './update-balance-dialog';
@@ -34,6 +36,7 @@ interface AccountListCardProps {
     onBalanceUpdated?: () => void;
     linkedLoanMetrics?: LinkedLoanMetrics;
     displayCurrencyCode?: string;
+    dragHandle?: ReactNode;
 }
 
 export function AccountListCard({
@@ -42,6 +45,7 @@ export function AccountListCard({
     onBalanceUpdated,
     linkedLoanMetrics,
     displayCurrencyCode,
+    dragHandle,
 }: AccountListCardProps) {
     const currencyCode = displayCurrencyCode ?? account.currency_code;
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
@@ -159,7 +163,7 @@ export function AccountListCard({
                                         />
                                     </h3>
                                 </Link>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <div className="hidden items-center gap-2 text-sm text-muted-foreground sm:flex">
                                     {hasMortgage &&
                                     linkedLoanMetrics.loanAccount ? (
                                         <span className="flex items-center gap-1">
@@ -195,9 +199,9 @@ export function AccountListCard({
                                 </div>
                             </div>
                         </div>
-                        <div className="flex shrink-0 flex-col items-end">
+                        <div className="flex shrink-0 flex-col items-start sm:items-end">
                             {isConnected ? (
-                                <div className="-mr-2 px-2 py-1">
+                                <div className="-ml-2 px-2 py-1 sm:-mr-2 sm:ml-0">
                                     <AmountDisplay
                                         amountInCents={displayBalance}
                                         currencyCode={currencyCode}
@@ -209,7 +213,7 @@ export function AccountListCard({
                                 <button
                                     type="button"
                                     onClick={() => setUpdateBalanceOpen(true)}
-                                    className="-mr-2 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted"
+                                    className="-ml-2 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted sm:-mr-2 sm:ml-0"
                                 >
                                     <AmountDisplay
                                         amountInCents={displayBalance}
@@ -426,7 +430,24 @@ export function AccountListCard({
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="relative size-5 shrink-0 text-muted-foreground">
+                            <AccountTypeIcon
+                                type={account.type}
+                                className={cn(
+                                    'transition-opacity',
+                                    dragHandle && 'group-hover:opacity-0',
+                                )}
+                            />
+                            {dragHandle && (
+                                // The grip glyph is narrower than the type icon;
+                                // nudge it to the left edge to line up with it.
+                                <span className="absolute inset-0 flex -translate-x-1 items-center justify-start opacity-0 transition-opacity group-hover:opacity-100">
+                                    {dragHandle}
+                                </span>
+                            )}
+                        </div>
+
                         {!isConnected && (
                             <Button
                                 className="cursor-pointer"
@@ -441,10 +462,7 @@ export function AccountListCard({
                             </Button>
                         )}
 
-                        <Link
-                            href={show.url(account.id)}
-                            className={isConnected ? 'ml-auto' : ''}
-                        >
+                        <Link href={show.url(account.id)} className="ml-auto">
                             <Button className="cursor-pointer" variant="ghost">
                                 {__('Details')} &rarr;
                             </Button>

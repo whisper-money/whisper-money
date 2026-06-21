@@ -1,9 +1,11 @@
+import { reorder } from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
 import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-card';
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
 import HeadingSmall from '@/components/heading-small';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
+import { SortableGrid } from '@/components/sortable-grid';
 import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
@@ -85,6 +87,36 @@ export default function Dashboard() {
         () => accountMetrics.filter((a) => !linkedLoanAccountIds.has(a.id)),
         [accountMetrics, linkedLoanAccountIds],
     );
+
+    // Optimistic ordering layered on top of the server order. Null means "use
+    // the server order"; a drag sets the new id order and persists it.
+    const [order, setOrder] = useState<string[] | null>(null);
+    const orderedAccounts = useMemo(() => {
+        if (!order) {
+            return visibleAccounts;
+        }
+        const byId = new Map(visibleAccounts.map((a) => [a.id, a]));
+        const ordered = order
+            .map((id) => byId.get(id))
+            .filter((a) => a !== undefined);
+        const rest = visibleAccounts.filter((a) => !order.includes(a.id));
+        return [...ordered, ...rest];
+    }, [visibleAccounts, order]);
+
+    const handleReorder = useCallback((ids: string[]) => {
+        setOrder(ids);
+        // Persist only; keep the deferred netWorthEvolution prop in place by
+        // requesting an unrelated cheap prop so it isn't refetched (skeleton).
+        router.patch(
+            reorder.url(),
+            { ids },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['showEncryptionPrompt'],
+            },
+        );
+    }, []);
 
     // Build linked loan metrics map keyed by real estate account ID
     const linkedLoanMetricsMap = useMemo(() => {
@@ -223,11 +255,15 @@ export default function Dashboard() {
                 >
                     <NetWorthChartComponent data={netWorthEvolution} />
 
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {visibleAccounts.map((account) => (
+                    <SortableGrid
+                        className="grid gap-4 md:grid-cols-2"
+                        items={orderedAccounts}
+                        getId={(account) => account.id}
+                        onReorder={handleReorder}
+                        renderItem={(account, dragHandle) => (
                             <AccountBalanceCard
-                                key={account.id}
                                 account={account}
+                                dragHandle={dragHandle}
                                 onBalanceUpdated={refetch}
                                 linkedLoanMetrics={
                                     linkedLoanMetricsMap[account.id]
@@ -236,8 +272,8 @@ export default function Dashboard() {
                                     netWorthEvolution.currency_code
                                 }
                             />
-                        ))}
-                    </div>
+                        )}
+                    />
                 </Deferred>
 
                 <div className="flex flex-col gap-6">

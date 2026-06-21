@@ -58,21 +58,21 @@ test('accounts index returns accounts grouped by type', function () {
         );
 });
 
-test('accounts are ordered by type then name', function () {
-    Account::factory()->create([
+test('accounts are ordered by position then name', function () {
+    $third = Account::factory()->create([
         'user_id' => $this->user->id,
-        'type' => AccountType::Savings,
-        'name' => 'A Savings',
+        'name' => 'Third',
+        'position' => 2,
     ]);
-    Account::factory()->create([
+    $first = Account::factory()->create([
         'user_id' => $this->user->id,
-        'type' => AccountType::Checking,
-        'name' => 'B Checking',
+        'name' => 'First',
+        'position' => 0,
     ]);
-    Account::factory()->create([
+    $second = Account::factory()->create([
         'user_id' => $this->user->id,
-        'type' => AccountType::Checking,
-        'name' => 'A Checking',
+        'name' => 'Second',
+        'position' => 1,
     ]);
 
     $response = $this->get(route('accounts.list'));
@@ -81,12 +81,34 @@ test('accounts are ordered by type then name', function () {
         ->assertInertia(fn ($page) => $page
             ->component('Accounts/Index')
             ->has('accounts', 3)
-            ->where('accounts.0.type', 'checking')
-            ->where('accounts.0.name', 'A Checking')
-            ->where('accounts.1.type', 'checking')
-            ->where('accounts.1.name', 'B Checking')
-            ->where('accounts.2.type', 'savings')
+            ->where('accounts.0.id', $first->id)
+            ->where('accounts.1.id', $second->id)
+            ->where('accounts.2.id', $third->id)
         );
+});
+
+test('users can reorder their accounts', function () {
+    $a = Account::factory()->create(['user_id' => $this->user->id, 'position' => 0]);
+    $b = Account::factory()->create(['user_id' => $this->user->id, 'position' => 1]);
+    $c = Account::factory()->create(['user_id' => $this->user->id, 'position' => 2]);
+
+    $this->patch(route('accounts.reorder'), ['ids' => [$c->id, $a->id, $b->id]])
+        ->assertRedirect();
+
+    expect($c->fresh()->position)->toBe(0);
+    expect($a->fresh()->position)->toBe(1);
+    expect($b->fresh()->position)->toBe(2);
+});
+
+test('users cannot reorder accounts they do not own', function () {
+    $other = Account::factory()->create([
+        'user_id' => User::factory()->create()->id,
+    ]);
+
+    $this->patch(route('accounts.reorder'), ['ids' => [$other->id]])
+        ->assertSessionHasErrors('ids.0');
+
+    expect($other->fresh()->position)->toBe(0);
 });
 
 test('accounts index only shows user accounts', function () {

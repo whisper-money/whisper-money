@@ -6,10 +6,11 @@ import { AmountDisplay } from '@/components/ui/amount-display';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useChartColors } from '@/hooks/use-chart-color-scheme';
 import { AccountWithMetrics } from '@/hooks/use-dashboard-data';
+import { cn } from '@/lib/utils';
 import { supportsInvestedAmount } from '@/types/account';
 import { __ } from '@/utils/i18n';
 import { Link } from '@inertiajs/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { AccountTypeIcon } from './account-type-icon';
 import { AmountTrendIndicator } from './amount-trend-indicator';
@@ -34,6 +35,7 @@ interface AccountBalanceCardProps {
     onBalanceUpdated?: () => void;
     linkedLoanMetrics?: LinkedLoanMetrics;
     displayCurrencyCode?: string;
+    dragHandle?: ReactNode;
 }
 
 export function AccountBalanceCard({
@@ -42,6 +44,7 @@ export function AccountBalanceCard({
     onBalanceUpdated,
     linkedLoanMetrics,
     displayCurrencyCode,
+    dragHandle,
 }: AccountBalanceCardProps) {
     const currencyCode = displayCurrencyCode ?? account.currency_code;
     const { accountMainLineColor, accountGainLineColor, mortgageLineColor } =
@@ -193,11 +196,21 @@ export function AccountBalanceCard({
                         </span>
                     )}
                 </div>
-                <div className="text-xs font-medium text-muted-foreground">
+                <div className="relative mr-1 size-5 shrink-0">
                     <AccountTypeIcon
                         type={account.type}
-                        className="mr-1 inline-block"
+                        className={cn(
+                            'transition-opacity',
+                            dragHandle && 'group-hover:opacity-0',
+                        )}
                     />
+                    {dragHandle && (
+                        // The grip glyph is narrower than the type icon; nudge it
+                        // to the right edge so it lines up with the icon it replaces.
+                        <span className="absolute inset-0 flex translate-x-1 items-center justify-end opacity-0 transition-opacity group-hover:opacity-100">
+                            {dragHandle}
+                        </span>
+                    )}
                 </div>
             </CardHeader>
             <CardContent>

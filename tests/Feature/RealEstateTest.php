@@ -348,17 +348,20 @@ it('includes real estate accounts in index ordered correctly', function () {
         'user_id' => $this->user->id,
         'type' => AccountType::Loan,
         'name' => 'Mortgage',
+        'position' => 2,
     ]);
 
     Account::factory()->realEstate()->create([
         'user_id' => $this->user->id,
         'name' => 'Beach House',
+        'position' => 1,
     ]);
 
     Account::factory()->create([
         'user_id' => $this->user->id,
         'type' => AccountType::Checking,
         'name' => 'Main Account',
+        'position' => 0,
     ]);
 
     $response = $this->get(route('accounts.list'));
