@@ -93,7 +93,7 @@ const WISE_INSTITUTION: EnableBankingInstitution = {
 const INTERACTIVE_BROKERS_INSTITUTION: EnableBankingInstitution = {
     name: 'Interactive Brokers',
     country: 'ALL',
-    logo: '/images/banks/logos/interactive-brokers.svg',
+    logo: '/images/banks/logos/interactive-brokers.png',
     maximum_consent_validity: null,
 };
 

@@ -143,7 +143,7 @@ class BankingConnectionFactory extends Factory
             'api_secret' => (string) fake()->numberBetween(100000, 999999),
             'aspsp_name' => 'Interactive Brokers',
             'aspsp_country' => 'US',
-            'aspsp_logo' => '/images/banks/logos/interactive-brokers.svg',
+            'aspsp_logo' => '/images/banks/logos/interactive-brokers.png',
             'valid_until' => null,
         ]);
     }

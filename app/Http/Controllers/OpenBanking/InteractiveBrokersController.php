@@ -56,7 +56,7 @@ class InteractiveBrokersController extends Controller
 
         $bank = Bank::firstOrCreate(
             ['name' => 'Interactive Brokers', 'user_id' => null],
-            ['name' => 'Interactive Brokers', 'logo' => '/images/banks/logos/interactive-brokers.svg'],
+            ['name' => 'Interactive Brokers', 'logo' => '/images/banks/logos/interactive-brokers.png'],
         );
 
         $connection = $user->bankingConnections()->create([

@@ -14,7 +14,7 @@ beforeEach(function () {
     Bank::factory()->create([
         'name' => 'Interactive Brokers',
         'user_id' => null,
-        'logo' => '/images/banks/logos/interactive-brokers.svg',
+        'logo' => '/images/banks/logos/interactive-brokers.png',
     ]);
 });
 
