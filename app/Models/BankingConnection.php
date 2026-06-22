@@ -129,6 +129,11 @@ class BankingConnection extends Model
         return $this->provider === BankingProvider::EnableBanking;
     }
 
+    public function isInteractiveBrokers(): bool
+    {
+        return $this->provider === BankingProvider::InteractiveBrokers;
+    }
+
     public function usesApiKey(): bool
     {
         return $this->provider->usesApiKey();
