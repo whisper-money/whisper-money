@@ -51,7 +51,7 @@ class IndexaCapitalController extends Controller
 
         $connection = $user->bankingConnections()->create([
             'provider' => BankingProvider::IndexaCapital,
-            'api_token' => $validated['api_token'],
+            ...BankingProvider::IndexaCapital->credentialColumns($validated),
             'aspsp_name' => 'Indexa Capital',
             'aspsp_country' => 'ES',
             'aspsp_logo' => $bank->logo,

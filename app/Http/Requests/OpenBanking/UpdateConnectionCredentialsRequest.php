@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\OpenBanking;
 
-use App\Enums\BankingProvider;
 use App\Models\BankingConnection;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -27,26 +26,12 @@ class UpdateConnectionCredentialsRequest extends FormRequest
             return [];
         }
 
-        return match ($connection->provider) {
-            BankingProvider::IndexaCapital => [
-                'api_token' => ['required', 'string', 'min:10'],
-            ],
-            BankingProvider::Binance => [
-                'api_key' => ['required', 'string', 'min:10'],
-                'api_secret' => ['required', 'string', 'min:10'],
-            ],
-            BankingProvider::Bitpanda => [
-                'api_key' => ['required', 'string', 'min:10'],
-            ],
-            BankingProvider::InteractiveBrokers => [
-                'token' => ['required', 'string', 'min:10'],
-                'query_id' => ['required', 'string', 'min:3'],
-            ],
-            BankingProvider::Coinbase => [
-                'api_key_name' => ['required', 'string', 'regex:/^(organizations\/[a-z0-9-]+\/apiKeys\/[a-z0-9-]+|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i'],
-                'private_key' => ['required', 'string', 'min:40'],
-            ],
-            default => [],
-        };
+        $rules = [];
+
+        foreach ($connection->provider->credentialFields() as $field) {
+            $rules[$field->input] = $field->rules;
+        }
+
+        return $rules;
     }
 }

@@ -61,8 +61,7 @@ class InteractiveBrokersController extends Controller
 
         $connection = $user->bankingConnections()->create([
             'provider' => BankingProvider::InteractiveBrokers,
-            'api_token' => $validated['token'],
-            'api_secret' => $validated['query_id'],
+            ...BankingProvider::InteractiveBrokers->credentialColumns($validated),
             'aspsp_name' => 'Interactive Brokers',
             'aspsp_country' => 'US',
             'aspsp_logo' => $bank->logo,

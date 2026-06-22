@@ -95,17 +95,8 @@ class ConnectionController extends Controller
             return back()->withErrors(['credentials' => $validationError]);
         }
 
-        $updateData = match ($connection->provider) {
-            BankingProvider::IndexaCapital => ['api_token' => $validated['api_token']],
-            BankingProvider::Binance => ['api_token' => $validated['api_key'], 'api_secret' => $validated['api_secret']],
-            BankingProvider::Bitpanda => ['api_token' => $validated['api_key']],
-            BankingProvider::Coinbase => ['api_token' => $validated['api_key_name'], 'api_secret' => $validated['private_key']],
-            BankingProvider::InteractiveBrokers => ['api_token' => $validated['token'], 'api_secret' => $validated['query_id']],
-            default => [],
-        };
-
         $connection->update([
-            ...$updateData,
+            ...$connection->provider->credentialColumns($validated),
             'status' => BankingConnectionStatus::Active,
             'error_message' => null,
             'consecutive_sync_failures' => 0,

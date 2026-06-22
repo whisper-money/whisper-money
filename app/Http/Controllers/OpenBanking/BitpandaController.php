@@ -51,7 +51,7 @@ class BitpandaController extends Controller
 
         $connection = $user->bankingConnections()->create([
             'provider' => BankingProvider::Bitpanda,
-            'api_token' => $validated['api_key'],
+            ...BankingProvider::Bitpanda->credentialColumns($validated),
             'aspsp_name' => 'Bitpanda',
             'aspsp_country' => $validated['country'],
             'aspsp_logo' => $bank->logo,

@@ -51,8 +51,7 @@ class CoinbaseController extends Controller
 
         $connection = $user->bankingConnections()->create([
             'provider' => BankingProvider::Coinbase,
-            'api_token' => $validated['api_key_name'],
-            'api_secret' => $validated['private_key'],
+            ...BankingProvider::Coinbase->credentialColumns($validated),
             'aspsp_name' => 'Coinbase',
             'aspsp_country' => $validated['country'],
             'aspsp_logo' => $bank->logo,

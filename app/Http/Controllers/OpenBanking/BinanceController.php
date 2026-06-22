@@ -51,8 +51,7 @@ class BinanceController extends Controller
 
         $connection = $user->bankingConnections()->create([
             'provider' => BankingProvider::Binance,
-            'api_token' => $validated['api_key'],
-            'api_secret' => $validated['api_secret'],
+            ...BankingProvider::Binance->credentialColumns($validated),
             'aspsp_name' => 'Binance',
             'aspsp_country' => $validated['country'],
             'aspsp_logo' => $bank->logo,
