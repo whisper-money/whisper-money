@@ -8,6 +8,7 @@ enum BankingProvider: string
     case Binance = 'binance';
     case Bitpanda = 'bitpanda';
     case Coinbase = 'coinbase';
+    case InteractiveBrokers = 'interactivebrokers';
     case Wise = 'wise';
     case EnableBanking = 'enablebanking';
 
@@ -26,7 +27,7 @@ enum BankingProvider: string
     public function defaultAccountType(): AccountType
     {
         return match ($this) {
-            self::IndexaCapital, self::Binance, self::Bitpanda, self::Coinbase => AccountType::Investment,
+            self::IndexaCapital, self::Binance, self::Bitpanda, self::Coinbase, self::InteractiveBrokers => AccountType::Investment,
             self::Wise, self::EnableBanking => AccountType::Checking,
         };
     }

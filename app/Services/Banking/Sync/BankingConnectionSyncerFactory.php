@@ -16,6 +16,7 @@ class BankingConnectionSyncerFactory
             BankingProvider::Wise => WiseSyncer::class,
             BankingProvider::Bitpanda => BitpandaSyncer::class,
             BankingProvider::Coinbase => CoinbaseSyncer::class,
+            BankingProvider::InteractiveBrokers => InteractiveBrokersSyncer::class,
             BankingProvider::EnableBanking => EnableBankingSyncer::class,
         };
 

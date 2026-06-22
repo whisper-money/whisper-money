@@ -9,6 +9,7 @@ use App\Services\Banking\Sync\BitpandaSyncer;
 use App\Services\Banking\Sync\CoinbaseSyncer;
 use App\Services\Banking\Sync\EnableBankingSyncer;
 use App\Services\Banking\Sync\IndexaCapitalSyncer;
+use App\Services\Banking\Sync\InteractiveBrokersSyncer;
 use App\Services\Banking\Sync\WiseSyncer;
 
 dataset('providers', [
@@ -17,6 +18,7 @@ dataset('providers', [
     'wise' => [BankingProvider::Wise, WiseSyncer::class],
     'bitpanda' => [BankingProvider::Bitpanda, BitpandaSyncer::class],
     'coinbase' => [BankingProvider::Coinbase, CoinbaseSyncer::class],
+    'interactivebrokers' => [BankingProvider::InteractiveBrokers, InteractiveBrokersSyncer::class],
     'enablebanking' => [BankingProvider::EnableBanking, EnableBankingSyncer::class],
 ]);
 
@@ -46,6 +48,8 @@ it('notifies on auth failure for every API-key provider but not EnableBanking', 
         ->and(app(BinanceSyncer::class)->notifiesOnAuthFailure())->toBeTrue()
         ->and(app(BitpandaSyncer::class)->notifiesOnAuthFailure())->toBeTrue()
         ->and(app(CoinbaseSyncer::class)->notifiesOnAuthFailure())->toBeTrue()
+        ->and(app(InteractiveBrokersSyncer::class)->notifiesOnAuthFailure())->toBeTrue()
+        ->and(app(InteractiveBrokersSyncer::class)->expires())->toBeFalse()
         ->and(app(WiseSyncer::class)->notifiesOnAuthFailure())->toBeTrue()
         ->and(app(EnableBankingSyncer::class)->notifiesOnAuthFailure())->toBeFalse();
 });

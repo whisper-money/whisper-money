@@ -10,6 +10,7 @@ it('uses an API key for non-EnableBanking providers', function (BankingProvider 
     'binance' => BankingProvider::Binance,
     'bitpanda' => BankingProvider::Bitpanda,
     'coinbase' => BankingProvider::Coinbase,
+    'interactive brokers' => BankingProvider::InteractiveBrokers,
     'wise' => BankingProvider::Wise,
 ]);
 
@@ -24,6 +25,7 @@ it('defaults investment providers to an investment account', function (BankingPr
     'binance' => BankingProvider::Binance,
     'bitpanda' => BankingProvider::Bitpanda,
     'coinbase' => BankingProvider::Coinbase,
+    'interactive brokers' => BankingProvider::InteractiveBrokers,
 ]);
 
 it('defaults cash providers to a checking account', function (BankingProvider $provider) {
