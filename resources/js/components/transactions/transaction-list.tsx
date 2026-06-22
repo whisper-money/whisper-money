@@ -820,6 +820,7 @@ export function TransactionList({
             onUpdate: updateTransaction,
             onCategorized: showAutomatizeToast,
             onReEvaluateRules: handleReEvaluateRules,
+            isDateHidden: columnVisibility.transaction_date === false,
         });
 
         if (hideColumns.length === 0) {
@@ -841,6 +842,7 @@ export function TransactionList({
         showAutomatizeToast,
         handleReEvaluateRules,
         hideColumns,
+        columnVisibility,
     ]);
 
     const table = useReactTable({

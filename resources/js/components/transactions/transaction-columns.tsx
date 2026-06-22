@@ -42,6 +42,7 @@ interface CreateColumnsOptions {
         source: 'transaction_table',
     ) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
+    isDateHidden?: boolean;
 }
 
 export function createTransactionColumns({
@@ -55,6 +56,7 @@ export function createTransactionColumns({
     onUpdate,
     onCategorized,
     onReEvaluateRules,
+    isDateHidden = false,
 }: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
     return [
         {
@@ -138,8 +140,7 @@ export function createTransactionColumns({
             accessorKey: 'category_id',
             meta: {
                 label: __('Category'),
-                cellClassName:
-                    'pl-0 first:pl-2 max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
+                cellClassName: `${isDateHidden ? 'pl-2' : 'pl-0'} max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal`,
             },
             header: () => __('Category'),
             cell: ({ row }) => {
