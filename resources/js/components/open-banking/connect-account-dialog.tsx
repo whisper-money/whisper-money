@@ -25,11 +25,13 @@ import {
     hasLiveConnectionForProvider,
 } from '@/lib/banking-connections';
 import { getCsrfToken } from '@/lib/csrf';
+import type { SharedData } from '@/types';
 import type {
     BankingConnection,
     EnableBankingInstitution,
 } from '@/types/banking';
 import { __ } from '@/utils/i18n';
+import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const COUNTRIES = [
@@ -88,6 +90,13 @@ const WISE_INSTITUTION: EnableBankingInstitution = {
     maximum_consent_validity: null,
 };
 
+const INTERACTIVE_BROKERS_INSTITUTION: EnableBankingInstitution = {
+    name: 'Interactive Brokers',
+    country: 'ALL',
+    logo: '/images/banks/logos/interactive-brokers.svg',
+    maximum_consent_validity: null,
+};
+
 interface ConnectAccountDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -101,6 +110,8 @@ export function ConnectAccountDialog({
     onOpenChange,
     connections = [],
 }: ConnectAccountDialogProps) {
+    const { features } = usePage<SharedData>().props;
+    const interactiveBrokersEnabled = features.interactiveBrokers;
     const [step, setStep] = useState<Step>('country');
     const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(false);
     const [country, setCountry] = useState<string>('');
@@ -123,6 +134,8 @@ export function ConnectAccountDialog({
     const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
     const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
     const [wiseApiToken, setWiseApiToken] = useState('');
+    const [ibToken, setIbToken] = useState('');
+    const [ibQueryId, setIbQueryId] = useState('');
     const [acknowledgedReplace, setAcknowledgedReplace] = useState(false);
 
     const isIndexaCapital = useMemo(
@@ -146,6 +159,11 @@ export function ConnectAccountDialog({
     );
 
     const isWise = useMemo(() => selectedBank?.name === 'Wise', [selectedBank]);
+
+    const isInteractiveBrokers = useMemo(
+        () => selectedBank?.name === 'Interactive Brokers',
+        [selectedBank],
+    );
 
     const connectedBankNames = useMemo(
         () => alreadyConnectedBankNames(connections),
@@ -178,6 +196,8 @@ export function ConnectAccountDialog({
         setCoinbaseKeyName('');
         setCoinbasePrivateKey('');
         setWiseApiToken('');
+        setIbToken('');
+        setIbQueryId('');
         setAcknowledgedReplace(false);
     }, []);
 
@@ -229,6 +249,9 @@ export function ConnectAccountDialog({
                 COINBASE_INSTITUTION,
                 WISE_INSTITUTION,
             ];
+            if (interactiveBrokersEnabled) {
+                extraInstitutions.push(INTERACTIVE_BROKERS_INSTITUTION);
+            }
             if (countryCode === 'ES') {
                 extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
             }
@@ -246,6 +269,9 @@ export function ConnectAccountDialog({
                     }
                     if (institution.name === 'Indexa Capital') {
                         return !hasProvider('indexacapital');
+                    }
+                    if (institution.name === 'Interactive Brokers') {
+                        return !hasProvider('interactivebrokers');
                     }
                     return true;
                 })
@@ -278,7 +304,9 @@ export function ConnectAccountDialog({
                       ? '/open-banking/coinbase/connect'
                       : isWise
                         ? '/open-banking/wise/connect'
-                        : '/open-banking/authorize';
+                        : isInteractiveBrokers
+                          ? '/open-banking/interactive-brokers/connect'
+                          : '/open-banking/authorize';
 
             const body = isBitpanda
                 ? { api_key: bitpandaApiKey, country: country }
@@ -294,11 +322,13 @@ export function ConnectAccountDialog({
                         }
                       : isWise
                         ? { api_token: wiseApiToken }
-                        : {
-                              aspsp_name: selectedBank.name,
-                              country: country,
-                              logo: selectedBank.logo,
-                          };
+                        : isInteractiveBrokers
+                          ? { token: ibToken, query_id: ibQueryId }
+                          : {
+                                aspsp_name: selectedBank.name,
+                                country: country,
+                                logo: selectedBank.logo,
+                            };
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -352,8 +382,14 @@ export function ConnectAccountDialog({
                                 !isBitpanda &&
                                 !isCoinbase &&
                                 !isWise &&
+                                !isInteractiveBrokers &&
                                 __(
                                     'You will be redirected to your bank to authorize access.',
+                                )}
+                            {step === 'confirm' &&
+                                isInteractiveBrokers &&
+                                __(
+                                    'Enter your Flex Web Service token and Query ID to connect your Interactive Brokers account.',
                                 )}
                             {step === 'confirm' &&
                                 isIndexaCapital &&
@@ -538,9 +574,13 @@ export function ConnectAccountDialog({
                                                         ? __(
                                                               'Connect your Wise account using a Personal API token.',
                                                           )
-                                                        : __(
-                                                              'You will be redirected to authorize access to your account data.',
-                                                          )}
+                                                        : isInteractiveBrokers
+                                                          ? __(
+                                                                'Connect your Interactive Brokers account using a Flex Web Service token and Query ID.',
+                                                            )
+                                                          : __(
+                                                                'You will be redirected to authorize access to your account data.',
+                                                            )}
                                         </p>
                                     </div>
                                 </div>
@@ -710,6 +750,59 @@ export function ConnectAccountDialog({
                                 </div>
                             )}
 
+                            {isInteractiveBrokers && (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="ib-token">
+                                            {__('Flex Web Service Token')}
+                                        </Label>
+                                        <Input
+                                            id="ib-token"
+                                            type="password"
+                                            value={ibToken}
+                                            onChange={(e) =>
+                                                setIbToken(e.target.value)
+                                            }
+                                            className="mt-1"
+                                            placeholder={__(
+                                                'Paste your Flex Web Service token',
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="ib-query-id">
+                                            {__('Flex Query ID')}
+                                        </Label>
+                                        <Input
+                                            id="ib-query-id"
+                                            type="text"
+                                            value={ibQueryId}
+                                            onChange={(e) =>
+                                                setIbQueryId(e.target.value)
+                                            }
+                                            className="mt-1 font-mono"
+                                            placeholder="123456"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {__(
+                                            'In Client Portal, create an Activity Flex Query including the "Net Asset Value (NAV)" and "Open Positions" sections, then generate a Flex Web Service token under',
+                                        )}{' '}
+                                        <a
+                                            href="https://www.ibkrguides.com/clientportal/performanceandstatements/flex3.htm"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline"
+                                        >
+                                            {__(
+                                                'Performance & Reports → Flex Queries',
+                                            )}
+                                        </a>
+                                        .
+                                    </p>
+                                </div>
+                            )}
+
                             {isCoinbase && (
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -786,7 +879,9 @@ export function ConnectAccountDialog({
                                         (isCoinbase &&
                                             (!coinbaseKeyName ||
                                                 !coinbasePrivateKey)) ||
-                                        (isWise && !wiseApiToken)
+                                        (isWise && !wiseApiToken) ||
+                                        (isInteractiveBrokers &&
+                                            (!ibToken || !ibQueryId))
                                     }
                                 >
                                     {isSubmitting

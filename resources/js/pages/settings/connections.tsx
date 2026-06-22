@@ -129,6 +129,7 @@ export default function ConnectionsPage({ connections }: Props) {
             'bitpanda',
             'coinbase',
             'wise',
+            'interactivebrokers',
         ].includes(connection.provider);
     }
 
@@ -388,8 +389,12 @@ export default function ConnectionsPage({ connections }: Props) {
                                               !connection.last_synced_at ? (
                                                 <span className="flex items-center gap-1.5">
                                                     <Spinner className="size-3" />
-                                                    {connection.provider ===
-                                                    'indexacapital'
+                                                    {[
+                                                        'indexacapital',
+                                                        'interactivebrokers',
+                                                    ].includes(
+                                                        connection.provider,
+                                                    )
                                                         ? __(
                                                               'Syncing balances…',
                                                           )

@@ -32,12 +32,15 @@ export function UpdateCredentialsDialog({
     const [apiSecret, setApiSecret] = useState('');
     const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
     const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
+    const [ibToken, setIbToken] = useState('');
+    const [ibQueryId, setIbQueryId] = useState('');
     const [error, setError] = useState<string | null>(null);
 
     const isIndexaCapital = connection.provider === 'indexacapital';
     const isBinance = connection.provider === 'binance';
     const isBitpanda = connection.provider === 'bitpanda';
     const isCoinbase = connection.provider === 'coinbase';
+    const isInteractiveBrokers = connection.provider === 'interactivebrokers';
 
     const isValid = isIndexaCapital
         ? apiToken.length > 0
@@ -47,7 +50,9 @@ export function UpdateCredentialsDialog({
             ? apiKey.length > 0
             : isCoinbase
               ? coinbaseKeyName.length > 0 && coinbasePrivateKey.length > 0
-              : false;
+              : isInteractiveBrokers
+                ? ibToken.length > 0 && ibQueryId.length > 0
+                : false;
 
     function handleSubmit() {
         setIsSubmitting(true);
@@ -62,7 +67,9 @@ export function UpdateCredentialsDialog({
                       api_key_name: coinbaseKeyName,
                       private_key: coinbasePrivateKey,
                   }
-                : { api_key: apiKey };
+                : isInteractiveBrokers
+                  ? { token: ibToken, query_id: ibQueryId }
+                  : { api_key: apiKey };
 
         router.patch(
             `/settings/connections/${connection.id}/credentials`,
@@ -80,6 +87,8 @@ export function UpdateCredentialsDialog({
                             errors.api_secret ??
                             errors.api_key_name ??
                             errors.private_key ??
+                            errors.token ??
+                            errors.query_id ??
                             __(
                                 'Failed to update credentials. Please try again.',
                             ),
@@ -98,6 +107,8 @@ export function UpdateCredentialsDialog({
         setApiSecret('');
         setCoinbaseKeyName('');
         setCoinbasePrivateKey('');
+        setIbToken('');
+        setIbQueryId('');
         setError(null);
     }
 
@@ -226,6 +237,54 @@ export function UpdateCredentialsDialog({
                                     className="underline"
                                 >
                                     {__('API Key Management')}
+                                </a>
+                                .
+                            </p>
+                        </div>
+                    )}
+
+                    {isInteractiveBrokers && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="update-ib-token">
+                                    {__('Flex Web Service Token')}
+                                </Label>
+                                <Input
+                                    id="update-ib-token"
+                                    type="password"
+                                    value={ibToken}
+                                    onChange={(e) => setIbToken(e.target.value)}
+                                    placeholder={__(
+                                        'Paste your Flex Web Service token',
+                                    )}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="update-ib-query-id">
+                                    {__('Flex Query ID')}
+                                </Label>
+                                <Input
+                                    id="update-ib-query-id"
+                                    type="text"
+                                    value={ibQueryId}
+                                    onChange={(e) =>
+                                        setIbQueryId(e.target.value)
+                                    }
+                                    className="font-mono"
+                                    placeholder="123456"
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {__(
+                                    'Generate a Flex Web Service token in Client Portal under',
+                                )}{' '}
+                                <a
+                                    href="https://www.ibkrguides.com/clientportal/performanceandstatements/flex3.htm"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline"
+                                >
+                                    {__('Performance & Reports → Flex Queries')}
                                 </a>
                                 .
                             </p>
