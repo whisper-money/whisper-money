@@ -139,7 +139,7 @@ export function createTransactionColumns({
             meta: {
                 label: __('Category'),
                 cellClassName:
-                    'pl-0 max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
+                    'pl-0 first:pl-2 max-w-[170px] !sm:max-w-[170px] md:max-w-[190px] !min-w-[170px] whitespace-normal',
             },
             header: () => __('Category'),
             cell: ({ row }) => {
