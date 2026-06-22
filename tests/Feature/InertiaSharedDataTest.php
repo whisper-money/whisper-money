@@ -43,6 +43,7 @@ test('shared feature flags do not include coinbase flag', function () {
     expect($props['features'])->toBe([
         'cashflow' => true,
         'calculateBalancesOnImport' => false,
+        'interactiveBrokers' => false,
     ]);
 });
 
