@@ -120,13 +120,16 @@ function SortableItem({
             ref={setActivatorNodeRef}
             type="button"
             aria-label={__('Drag to reorder')}
-            className="cursor-grab touch-none text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+            className="cursor-grab touch-none text-muted-foreground transition-colors select-none hover:text-foreground active:cursor-grabbing"
             {...attributes}
             {...listeners}
             onPointerDown={(event) => {
                 onActivate();
                 listeners?.onPointerDown?.(event);
             }}
+            // Holding the handle otherwise fires Android Chrome's long-press
+            // haptic, a second buzz on top of the one we fire on pointer down.
+            onContextMenu={(event) => event.preventDefault()}
         >
             <GripVertical className="size-5" />
         </button>
