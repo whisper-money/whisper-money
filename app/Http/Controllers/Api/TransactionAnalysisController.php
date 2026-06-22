@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Features\TransactionAnalysis;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Models\Label;
@@ -12,7 +11,6 @@ use App\Services\ExchangeRateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
-use Laravel\Pennant\Feature;
 
 class TransactionAnalysisController extends Controller
 {
@@ -36,8 +34,6 @@ class TransactionAnalysisController extends Controller
     public function summary(IndexTransactionRequest $request): JsonResponse
     {
         $user = $request->user();
-
-        abort_unless(Feature::for($user)->active(TransactionAnalysis::class), 403);
 
         $validated = $request->validated();
         $currency = $user->currency_code;

@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\CategoryType;
-use App\Features\TransactionAnalysis;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Category;
@@ -9,14 +8,12 @@ use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     Http::fake();
 
     $this->user = User::factory()->create(['currency_code' => 'USD']);
     $this->actingAs($this->user);
-    Feature::for($this->user)->activate(TransactionAnalysis::class);
 
     $this->account = Account::factory()->create([
         'user_id' => $this->user->id,
@@ -33,12 +30,6 @@ function makeTransaction(array $attributes = []): Transaction
         ...$attributes,
     ]);
 }
-
-test('analysis endpoint is gated behind the TransactionAnalysis feature flag', function () {
-    Feature::for($this->user)->deactivate(TransactionAnalysis::class);
-
-    $this->getJson('/api/transactions/analysis')->assertForbidden();
-});
 
 test('analysis response is not cached between users', function () {
     $this->getJson('/api/transactions/analysis')

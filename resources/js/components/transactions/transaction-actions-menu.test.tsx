@@ -1,10 +1,8 @@
 import { type TransactionFilters } from '@/types/transaction';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TransactionActionsMenu } from './transaction-actions-menu';
-
-const features = { transactionAnalysis: true };
 
 vi.mock('@/actions/App/Http/Controllers/TransactionController', () => ({
     categorize: { url: () => '/transactions/categorize' },
@@ -22,7 +20,6 @@ vi.mock('@inertiajs/react', () => ({
     Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
         <a href={href}>{children}</a>
     ),
-    usePage: () => ({ props: { features } }),
 }));
 
 vi.mock('./import-transactions-drawer', () => ({
@@ -61,17 +58,6 @@ function renderMenu(filters: TransactionFilters) {
 }
 
 describe('TransactionActionsMenu analysis button', () => {
-    beforeEach(() => {
-        features.transactionAnalysis = true;
-    });
-
-    it('is hidden when the TransactionAnalysis feature flag is off', () => {
-        features.transactionAnalysis = false;
-        renderMenu(emptyFilters);
-
-        expect(screen.queryByText('Analysis')).not.toBeInTheDocument();
-    });
-
     it('is disabled when no filter is applied', () => {
         renderMenu(emptyFilters);
 

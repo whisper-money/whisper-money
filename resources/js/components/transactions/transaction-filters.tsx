@@ -1,5 +1,4 @@
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
 import * as Icons from 'lucide-react';
 import { ChevronsUpDown, Tag, X } from 'lucide-react';
@@ -32,7 +31,6 @@ import {
     toggleCategorySelection,
 } from '@/lib/category-tree';
 import { cn } from '@/lib/utils';
-import { type SharedData } from '@/types';
 import { type Account } from '@/types/account';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { getLabelColorClasses, type Label } from '@/types/label';
@@ -60,7 +58,6 @@ export function TransactionFilters({
     hideAccountFilter = false,
     enableSavedFilters = false,
 }: TransactionFiltersProps) {
-    const { features } = usePage<SharedData>().props;
     const [isOpen, setIsOpen] = useState(false);
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
     const [categorySearch, setCategorySearch] = useState('');
@@ -733,7 +730,7 @@ export function TransactionFilters({
                     />
 
                     <div className="ml-auto flex items-center gap-2">
-                        {enableSavedFilters && features.transactionAnalysis && (
+                        {enableSavedFilters && (
                             <SavedFilters
                                 filters={filters}
                                 onLoad={onFiltersChange}
