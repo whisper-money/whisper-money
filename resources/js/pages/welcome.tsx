@@ -1943,7 +1943,12 @@ export default function Welcome({
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
 
-    const testimonials = [
+    const testimonials: {
+        name: string;
+        gravatar: string;
+        text: string;
+        avatar?: string;
+    }[] = [
         {
             name: 'Brian Bansuela',
             gravatar: '9314f776a17ae977871076ac71f2ff60',
@@ -1994,7 +1999,10 @@ export default function Welcome({
         {
             name: 'Haru',
             gravatar: '3e52d6b2cbefb0fa2a572a588b3f7953',
-            text: __('I love this project!'),
+            avatar: 'https://cdn.discordapp.com/avatars/313325435687534594/4c5f74503bfc5942732c5c9d415ed255.webp?size=128',
+            text: __(
+                'I used to keep everything in a spreadsheet and it took forever — now I have my bank under control and add cash payments manually. Great work!',
+            ),
         },
         {
             name: 'Tom',
@@ -2582,7 +2590,10 @@ export default function Welcome({
                                                         <div className="flex items-center gap-3">
                                                             <Avatar className="size-10">
                                                                 <AvatarImage
-                                                                    src={`https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`}
+                                                                    src={
+                                                                        testimonial.avatar ??
+                                                                        `https://www.gravatar.com/avatar/${testimonial.gravatar}?s=160&d=404`
+                                                                    }
                                                                     alt={
                                                                         testimonial.name
                                                                     }
