@@ -1938,7 +1938,7 @@ export default function Welcome({
     hideAuthButtons?: boolean;
     popularBanks: PopularBank[];
 }) {
-    const { appUrl, auth, subscriptionsEnabled, pricing, locale } =
+    const { appUrl, auth, subscriptionsEnabled, demoEnabled, pricing, locale } =
         usePage<SharedData>().props;
     const planEntries = Object.entries(pricing.plans);
     const { isMobile } = usePwaInstall();
@@ -2269,15 +2269,17 @@ export default function Welcome({
                                                     {__('Get Started')}
                                                 </Button>
                                             </Link>
-                                            <Link href="/login?demo=1">
-                                                <Button
-                                                    variant={'secondary'}
-                                                    size={'lg'}
-                                                    className="h-14"
-                                                >
-                                                    {__('Check Demo')}
-                                                </Button>
-                                            </Link>
+                                            {demoEnabled && (
+                                                <Link href="/login?demo=1">
+                                                    <Button
+                                                        variant={'secondary'}
+                                                        size={'lg'}
+                                                        className="h-14"
+                                                    >
+                                                        {__('Check Demo')}
+                                                    </Button>
+                                                </Link>
+                                            )}
                                         </div>
                                     )}
                                     <p className="text-xs text-[#706f6c] dark:text-[#A1A09A]">
