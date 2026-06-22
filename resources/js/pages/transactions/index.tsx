@@ -847,6 +847,7 @@ export default function Transactions({
                 onUpdate: updateTransaction,
                 onCategorized: showAutomatizeToast,
                 onReEvaluateRules: handleReEvaluateRules,
+                isDateHidden: columnVisibility.transaction_date === false,
             }),
         [
             accounts,
@@ -857,6 +858,7 @@ export default function Transactions({
             updateTransaction,
             showAutomatizeToast,
             handleReEvaluateRules,
+            columnVisibility,
         ],
     );
 
