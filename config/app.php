@@ -124,6 +124,7 @@ return [
     ],
 
     'demo' => [
+        'enabled' => env('DEMO_ENABLED', true),
         'email' => env('DEMO_EMAIL', 'demo@whisper.money'),
         'password' => env('DEMO_PASSWORD', 'demo'),
     ],

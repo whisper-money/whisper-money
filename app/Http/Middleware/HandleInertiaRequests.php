@@ -86,7 +86,8 @@ class HandleInertiaRequests extends Middleware
                 'status' => 'past_due',
                 'action_url' => route('settings.billing.portal'),
             ] : null,
-            'demoCredentials' => ($isDemoQuery || $isDemoAccount) ? [
+            'demoEnabled' => (bool) config('app.demo.enabled'),
+            'demoCredentials' => config('app.demo.enabled') && ($isDemoQuery || $isDemoAccount) ? [
                 'email' => config('app.demo.email'),
                 'password' => config('app.demo.password'),
             ] : null,

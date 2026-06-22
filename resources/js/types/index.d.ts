@@ -77,6 +77,7 @@ export interface SharedData {
     includeLoansInNetWorthChart: boolean;
     includeRealEstateInNetWorthChart: boolean;
     subscriptionsEnabled: boolean;
+    demoEnabled: boolean;
     aiCategorizationUpsellRate: number;
     subscriptionPaymentIssue: SubscriptionPaymentIssueNotification | null;
     pricing: PricingConfig;
