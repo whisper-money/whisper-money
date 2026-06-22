@@ -11,12 +11,18 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useWebHaptics } from '@/hooks/use-web-haptics';
 import {
     alreadyConnectedBankNames,
     hasLiveConnectionForProvider,
 } from '@/lib/banking-connections';
+import {
+    CONNECT_PROVIDERS,
+    connectProviderForBank,
+    credentialPayload,
+    isProviderComplete,
+    ProviderCredentialFields,
+} from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
 import type { SharedData } from '@/types';
 import type {
@@ -49,41 +55,6 @@ const COUNTRIES = [
     { code: 'GB', name: 'United Kingdom' },
 ] as const;
 
-const INDEXA_CAPITAL_INSTITUTION: EnableBankingInstitution = {
-    name: 'Indexa Capital',
-    country: 'ES',
-    logo: '/images/banks/logos/indexa-capital.jpg',
-    maximum_consent_validity: null,
-};
-
-const BINANCE_INSTITUTION: EnableBankingInstitution = {
-    name: 'Binance',
-    country: 'ALL',
-    logo: 'https://whisper.money/storage/banks/logos/t1h5rqi19dJTPl6ZadziPjNwm0lrcdTFBRzB3iCy.png',
-    maximum_consent_validity: null,
-};
-
-const BITPANDA_INSTITUTION: EnableBankingInstitution = {
-    name: 'Bitpanda',
-    country: 'ALL',
-    logo: 'https://whisper.money/storage/banks/logos/7Y6gl0gaFH1mStJMcUQ9VpgzX1kduyumm0dDhGlf.png',
-    maximum_consent_validity: null,
-};
-
-const COINBASE_INSTITUTION: EnableBankingInstitution = {
-    name: 'Coinbase',
-    country: 'ALL',
-    logo: 'https://whisper.money/storage/banks/logos/coinbase.png',
-    maximum_consent_validity: null,
-};
-
-const INTERACTIVE_BROKERS_INSTITUTION: EnableBankingInstitution = {
-    name: 'Interactive Brokers',
-    country: 'ALL',
-    logo: '/images/banks/logos/interactive-brokers.png',
-    maximum_consent_validity: null,
-};
-
 type Step = 'country' | 'bank' | 'confirm';
 
 interface ConnectAccountInlineProps {
@@ -96,7 +67,6 @@ export function ConnectAccountInline({
     connections = [],
 }: ConnectAccountInlineProps) {
     const { features } = usePage<SharedData>().props;
-    const interactiveBrokersEnabled = features.interactiveBrokers;
     const [step, setStep] = useState<Step>('country');
     const { trigger } = useWebHaptics();
     const [country, setCountry] = useState<string>('');
@@ -112,34 +82,11 @@ export function ConnectAccountInline({
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [apiToken, setApiToken] = useState('');
-    const [apiKey, setApiKey] = useState('');
-    const [apiSecret, setApiSecret] = useState('');
-    const [bitpandaApiKey, setBitpandaApiKey] = useState('');
-    const [coinbaseKeyName, setCoinbaseKeyName] = useState('');
-    const [coinbasePrivateKey, setCoinbasePrivateKey] = useState('');
-    const [ibToken, setIbToken] = useState('');
-    const [ibQueryId, setIbQueryId] = useState('');
+    const [credentials, setCredentials] = useState<Record<string, string>>({});
     const [acknowledgedReplace, setAcknowledgedReplace] = useState(false);
 
-    const isIndexaCapital = useMemo(
-        () => selectedBank?.name === 'Indexa Capital',
-        [selectedBank],
-    );
-    const isBinance = useMemo(
-        () => selectedBank?.name === 'Binance',
-        [selectedBank],
-    );
-    const isBitpanda = useMemo(
-        () => selectedBank?.name === 'Bitpanda',
-        [selectedBank],
-    );
-    const isCoinbase = useMemo(
-        () => selectedBank?.name === 'Coinbase',
-        [selectedBank],
-    );
-    const isInteractiveBrokers = useMemo(
-        () => selectedBank?.name === 'Interactive Brokers',
+    const provider = useMemo(
+        () => connectProviderForBank(selectedBank?.name),
         [selectedBank],
     );
 
@@ -152,6 +99,10 @@ export function ConnectAccountInline({
         () => !!selectedBank && connectedBankNames.has(selectedBank.name),
         [selectedBank, connectedBankNames],
     );
+
+    const setCredential = useCallback((key: string, value: string) => {
+        setCredentials((current) => ({ ...current, [key]: value }));
+    }, []);
 
     useEffect(() => {
         setAcknowledgedReplace(false);
@@ -204,41 +155,16 @@ export function ConnectAccountInline({
 
             const data = await response.json();
 
-            const hasProvider = (provider: string) =>
-                hasLiveConnectionForProvider(connections, provider);
+            const extraInstitutions = CONNECT_PROVIDERS.filter(
+                (p) =>
+                    (!p.feature || features[p.feature]) &&
+                    (!p.onlyCountry || p.onlyCountry === countryCode) &&
+                    !hasLiveConnectionForProvider(connections, p.providerKey),
+            ).map((p) => p.institution);
 
-            const extraInstitutions = [
-                BINANCE_INSTITUTION,
-                BITPANDA_INSTITUTION,
-                COINBASE_INSTITUTION,
-            ];
-            if (interactiveBrokersEnabled) {
-                extraInstitutions.push(INTERACTIVE_BROKERS_INSTITUTION);
-            }
-            if (countryCode === 'ES') {
-                extraInstitutions.push(INDEXA_CAPITAL_INSTITUTION);
-            }
-
-            const allInstitutions = [...extraInstitutions, ...data]
-                .filter((institution) => {
-                    if (institution.name === 'Binance') {
-                        return !hasProvider('binance');
-                    }
-                    if (institution.name === 'Bitpanda') {
-                        return !hasProvider('bitpanda');
-                    }
-                    if (institution.name === 'Coinbase') {
-                        return !hasProvider('coinbase');
-                    }
-                    if (institution.name === 'Indexa Capital') {
-                        return !hasProvider('indexacapital');
-                    }
-                    if (institution.name === 'Interactive Brokers') {
-                        return !hasProvider('interactivebrokers');
-                    }
-                    return true;
-                })
-                .sort((a, b) => a.name.localeCompare(b.name));
+            const allInstitutions = [...extraInstitutions, ...data].sort(
+                (a, b) => a.name.localeCompare(b.name),
+            );
 
             setInstitutions(allInstitutions);
             setFilteredInstitutions(allInstitutions);
@@ -259,37 +185,20 @@ export function ConnectAccountInline({
         setError(null);
 
         try {
-            const url = isBitpanda
-                ? '/open-banking/bitpanda/connect'
-                : isBinance
-                  ? '/open-banking/binance/connect'
-                  : isIndexaCapital
-                    ? '/open-banking/indexa-capital/connect'
-                    : isCoinbase
-                      ? '/open-banking/coinbase/connect'
-                      : isInteractiveBrokers
-                        ? '/open-banking/interactive-brokers/connect'
-                        : '/open-banking/authorize';
+            const url = provider
+                ? provider.endpoint
+                : '/open-banking/authorize';
 
-            const body = isBitpanda
-                ? { api_key: bitpandaApiKey, country }
-                : isBinance
-                  ? { api_key: apiKey, api_secret: apiSecret, country }
-                  : isIndexaCapital
-                    ? { api_token: apiToken }
-                    : isCoinbase
-                      ? {
-                            api_key_name: coinbaseKeyName,
-                            private_key: coinbasePrivateKey,
-                            country,
-                        }
-                      : isInteractiveBrokers
-                        ? { token: ibToken, query_id: ibQueryId }
-                        : {
-                              aspsp_name: selectedBank.name,
-                              country,
-                              logo: selectedBank.logo,
-                          };
+            const body = provider
+                ? {
+                      ...credentialPayload(provider, credentials),
+                      ...(provider.sendsCountry ? { country } : {}),
+                  }
+                : {
+                      aspsp_name: selectedBank.name,
+                      country,
+                      logo: selectedBank.logo,
+                  };
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -319,6 +228,11 @@ export function ConnectAccountInline({
             setIsSubmitting(false);
         }
     }
+
+    const canSubmit =
+        !isSubmitting &&
+        !(isAlreadyConnected && !acknowledgedReplace) &&
+        (!provider || isProviderComplete(provider, credentials));
 
     return (
         <div className="w-full max-w-md space-y-4">
@@ -455,29 +369,11 @@ export function ConnectAccountInline({
                                     {selectedBank.name}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {isBitpanda
-                                        ? __(
-                                              'Connect your Bitpanda account using your API Key.',
-                                          )
-                                        : isBinance
-                                          ? __(
-                                                'Connect your Binance account using your API Key and Secret.',
-                                            )
-                                          : isIndexaCapital
-                                            ? __(
-                                                  'Connect your Indexa Capital account using your API token.',
-                                              )
-                                            : isCoinbase
-                                              ? __(
-                                                    'Connect your Coinbase account using a CDP API key.',
-                                                )
-                                              : isInteractiveBrokers
-                                                ? __(
-                                                      'Connect your Interactive Brokers account using a Flex Web Service token and Query ID.',
-                                                  )
-                                                : __(
-                                                      'You will be redirected to authorize access to your account data.',
-                                                  )}
+                                    {provider
+                                        ? __(provider.cardDescription)
+                                        : __(
+                                              'You will be redirected to authorize access to your account data.',
+                                          )}
                                 </p>
                             </div>
                         </div>
@@ -490,226 +386,20 @@ export function ConnectAccountInline({
                         />
                     )}
 
-                    {isIndexaCapital && (
-                        <div className="space-y-2">
-                            <Label htmlFor="api-token">{__('API Token')}</Label>
-                            <Input
-                                id="api-token"
-                                type="password"
-                                value={apiToken}
-                                onChange={(e) => setApiToken(e.target.value)}
-                                placeholder={__(
-                                    'Paste your Indexa Capital API token',
-                                )}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                {__(
-                                    'You can generate your API token from your Indexa Capital dashboard under',
-                                )}{' '}
-                                <a
-                                    href="https://indexacapital.com/es/u/user#settings-apps"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline"
-                                >
-                                    {__('Settings > Applications')}
-                                </a>
-                                .
-                            </p>
-                        </div>
-                    )}
-
-                    {isBinance && (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="api-key">{__('API Key')}</Label>
-                                <Input
-                                    id="api-key"
-                                    type="password"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    placeholder={__(
-                                        'Paste your Binance API Key',
-                                    )}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="api-secret">
-                                    {__('API Secret')}
-                                </Label>
-                                <Input
-                                    id="api-secret"
-                                    type="password"
-                                    value={apiSecret}
-                                    onChange={(e) =>
-                                        setApiSecret(e.target.value)
-                                    }
-                                    placeholder={__(
-                                        'Paste your Binance API Secret',
-                                    )}
-                                />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {__(
-                                    'You can create API keys from your Binance account under',
-                                )}{' '}
-                                <a
-                                    href="https://www.binance.com/es/my/settings/api-management"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline"
-                                >
-                                    {__('API Management')}
-                                </a>
-                                .
-                            </p>
-                        </div>
-                    )}
-
-                    {isBitpanda && (
-                        <div className="space-y-2">
-                            <Label htmlFor="bitpanda-api-key">
-                                {__('API Key')}
-                            </Label>
-                            <Input
-                                id="bitpanda-api-key"
-                                type="password"
-                                value={bitpandaApiKey}
-                                onChange={(e) =>
-                                    setBitpandaApiKey(e.target.value)
-                                }
-                                placeholder={__('Paste your Bitpanda API Key')}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                {__(
-                                    'You can create API keys from your Bitpanda account under',
-                                )}{' '}
-                                <a
-                                    href="https://web.bitpanda.com/apikey"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline"
-                                >
-                                    {__('API Key Management')}
-                                </a>
-                                .
-                            </p>
-                        </div>
-                    )}
-
-                    {isInteractiveBrokers && (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="ib-token">
-                                    {__('Flex Web Service Token')}
-                                </Label>
-                                <Input
-                                    id="ib-token"
-                                    type="password"
-                                    value={ibToken}
-                                    onChange={(e) => setIbToken(e.target.value)}
-                                    placeholder={__(
-                                        'Paste your Flex Web Service token',
-                                    )}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="ib-query-id">
-                                    {__('Flex Query ID')}
-                                </Label>
-                                <Input
-                                    id="ib-query-id"
-                                    type="text"
-                                    value={ibQueryId}
-                                    onChange={(e) =>
-                                        setIbQueryId(e.target.value)
-                                    }
-                                    className="font-mono"
-                                    placeholder="123456"
-                                />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {__(
-                                    'In Client Portal, create an Activity Flex Query including the "Net Asset Value (NAV)" and "Open Positions" sections, then generate a Flex Web Service token under',
-                                )}{' '}
-                                <a
-                                    href="https://www.ibkrguides.com/clientportal/performanceandstatements/flex3.htm"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline"
-                                >
-                                    {__('Performance & Reports → Flex Queries')}
-                                </a>
-                                .
-                            </p>
-                        </div>
-                    )}
-
-                    {isCoinbase && (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="coinbase-key-name">
-                                    {__('App Key ID')}
-                                </Label>
-                                <Input
-                                    id="coinbase-key-name"
-                                    type="text"
-                                    value={coinbaseKeyName}
-                                    onChange={(e) =>
-                                        setCoinbaseKeyName(e.target.value)
-                                    }
-                                    className="font-mono text-xs"
-                                    placeholder="00000000-0000-0000-0000-000000000000"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="coinbase-private-key">
-                                    {__('Secret')}
-                                </Label>
-                                <Textarea
-                                    id="coinbase-private-key"
-                                    value={coinbasePrivateKey}
-                                    onChange={(e) =>
-                                        setCoinbasePrivateKey(e.target.value)
-                                    }
-                                    rows={6}
-                                    className="font-mono text-xs"
-                                    placeholder={
-                                        'Paste your CDP API key secret'
-                                    }
-                                />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {__(
-                                    'Create a CDP API key (Ed25519 recommended) in the Coinbase Developer Platform under',
-                                )}{' '}
-                                <a
-                                    href="https://portal.cdp.coinbase.com/access/api"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="underline"
-                                >
-                                    {__('API Keys')}
-                                </a>
-                                . {__('Use a view-only key.')}
-                            </p>
-                        </div>
+                    {provider && (
+                        <ProviderCredentialFields
+                            provider={provider}
+                            values={credentials}
+                            onChange={setCredential}
+                            idPrefix="inline"
+                        />
                     )}
 
                     <Button
                         className="w-full"
                         size="lg"
                         onClick={handleAuthorize}
-                        disabled={
-                            isSubmitting ||
-                            (isAlreadyConnected && !acknowledgedReplace) ||
-                            (isIndexaCapital && !apiToken) ||
-                            (isBinance && (!apiKey || !apiSecret)) ||
-                            (isBitpanda && !bitpandaApiKey) ||
-                            (isCoinbase &&
-                                (!coinbaseKeyName || !coinbasePrivateKey)) ||
-                            (isInteractiveBrokers && (!ibToken || !ibQueryId))
-                        }
+                        disabled={!canSubmit}
                     >
                         {isSubmitting ? __('Connecting...') : __('Connect')}
                     </Button>

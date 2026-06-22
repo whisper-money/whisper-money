@@ -161,6 +161,26 @@ describe('ConnectAccountDialog', () => {
         expect(connect).toBeEnabled();
     });
 
+    it('requires every provider credential before connecting', async () => {
+        await reachBankStep([]);
+
+        fireEvent.click(screen.getByRole('button', { name: /Binance/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        const connect = screen.getByRole('button', { name: 'Connect' });
+        expect(connect).toBeDisabled();
+
+        fireEvent.change(screen.getByLabelText('API Key'), {
+            target: { value: 'key' },
+        });
+        expect(connect).toBeDisabled();
+
+        fireEvent.change(screen.getByLabelText('API Secret'), {
+            target: { value: 'secret' },
+        });
+        expect(connect).toBeEnabled();
+    });
+
     it('does not warn when connecting a fresh bank', async () => {
         await reachBankStep([liveBbvaConnection()]);
 
