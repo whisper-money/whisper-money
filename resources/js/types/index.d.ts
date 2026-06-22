@@ -42,7 +42,6 @@ export interface NavDivider {
 export interface Features {
     cashflow: boolean;
     calculateBalancesOnImport: boolean;
-    transactionAnalysis: boolean;
 }
 
 export interface ExpiredBankingConnectionNotification {

@@ -17,7 +17,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useReEvaluateAllTransactions } from '@/hooks/use-re-evaluate-all-transactions';
 import { hasActiveFilters } from '@/lib/transaction-filter-serialization';
 
-import { type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -26,7 +25,7 @@ import {
     type TransactionFilters,
 } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import {
     BarChart3,
     ChevronDown,
@@ -61,7 +60,6 @@ export function TransactionActionsMenu({
     onImportComplete,
     filters,
 }: TransactionActionsMenuProps) {
-    const { features } = usePage<SharedData>().props;
     const isMobile = useIsMobile();
     const [importDrawerOpen, setImportDrawerOpen] = useState(false);
     const [analysisDrawerOpen, setAnalysisDrawerOpen] = useState(false);
@@ -106,65 +104,60 @@ export function TransactionActionsMenu({
     return (
         <>
             <ButtonGroup>
-                {features.transactionAnalysis &&
-                    (isMobile ? (
-                        <TooltipProvider>
-                            <Tooltip
-                                open={!canAnalyze && analysisHintOpen}
-                                onOpenChange={setAnalysisHintOpen}
-                            >
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={
-                                            !canAnalyze
-                                                ? 'cursor-not-allowed opacity-50'
-                                                : ''
-                                        }
-                                        aria-disabled={!canAnalyze}
-                                        onClick={handleAnalysisClick}
-                                    >
-                                        <BarChart3 className="h-5 w-5" />
-                                        {__('Analysis')}
-                                    </Button>
-                                </TooltipTrigger>
-                                {!canAnalyze && (
-                                    <TooltipContent>
-                                        {__(
-                                            'Apply a filter to enable this button',
-                                        )}
-                                    </TooltipContent>
-                                )}
-                            </Tooltip>
-                        </TooltipProvider>
-                    ) : (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={
-                                            !canAnalyze
-                                                ? 'cursor-not-allowed opacity-50'
-                                                : ''
-                                        }
-                                        aria-disabled={!canAnalyze}
-                                        onClick={handleAnalysisClick}
-                                    >
-                                        <BarChart3 className="h-5 w-5" />
-                                        {__('Analysis')}
-                                    </Button>
-                                </TooltipTrigger>
-                                {!canAnalyze && (
-                                    <TooltipContent>
-                                        {__(
-                                            'Apply a filter to enable this button',
-                                        )}
-                                    </TooltipContent>
-                                )}
-                            </Tooltip>
-                        </TooltipProvider>
-                    ))}
+                {isMobile ? (
+                    <TooltipProvider>
+                        <Tooltip
+                            open={!canAnalyze && analysisHintOpen}
+                            onOpenChange={setAnalysisHintOpen}
+                        >
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className={
+                                        !canAnalyze
+                                            ? 'cursor-not-allowed opacity-50'
+                                            : ''
+                                    }
+                                    aria-disabled={!canAnalyze}
+                                    onClick={handleAnalysisClick}
+                                >
+                                    <BarChart3 className="h-5 w-5" />
+                                    {__('Analysis')}
+                                </Button>
+                            </TooltipTrigger>
+                            {!canAnalyze && (
+                                <TooltipContent>
+                                    {__('Apply a filter to enable this button')}
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
+                ) : (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className={
+                                        !canAnalyze
+                                            ? 'cursor-not-allowed opacity-50'
+                                            : ''
+                                    }
+                                    aria-disabled={!canAnalyze}
+                                    onClick={handleAnalysisClick}
+                                >
+                                    <BarChart3 className="h-5 w-5" />
+                                    {__('Analysis')}
+                                </Button>
+                            </TooltipTrigger>
+                            {!canAnalyze && (
+                                <TooltipContent>
+                                    {__('Apply a filter to enable this button')}
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
 
                 <TooltipProvider>
                     <Tooltip>
@@ -273,13 +266,11 @@ export function TransactionActionsMenu({
                 onImportComplete={onImportComplete}
             />
 
-            {features.transactionAnalysis && (
-                <TransactionAnalysisDrawer
-                    open={analysisDrawerOpen}
-                    onOpenChange={setAnalysisDrawerOpen}
-                    filters={filters}
-                />
-            )}
+            <TransactionAnalysisDrawer
+                open={analysisDrawerOpen}
+                onOpenChange={setAnalysisDrawerOpen}
+                filters={filters}
+            />
         </>
     );
 }

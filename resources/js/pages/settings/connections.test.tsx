@@ -28,7 +28,6 @@ vi.mock('@inertiajs/react', () => ({
             features: {
                 cashflow: true,
                 calculateBalancesOnImport: false,
-                transactionAnalysis: false,
             },
         },
     }),
