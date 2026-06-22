@@ -76,13 +76,16 @@ export function SortableGrid<T>({
         <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragStart={() => trigger('selection')}
             onDragEnd={handleDragEnd}
         >
             <SortableContext items={ids} strategy={rectSortingStrategy}>
                 <div className={className}>
                     {items.map((item) => (
-                        <SortableItem key={getId(item)} id={getId(item)}>
+                        <SortableItem
+                            key={getId(item)}
+                            id={getId(item)}
+                            onActivate={() => trigger('selection')}
+                        >
                             {(dragHandle) => renderItem(item, dragHandle)}
                         </SortableItem>
                     ))}
@@ -95,9 +98,11 @@ export function SortableGrid<T>({
 
 function SortableItem({
     id,
+    onActivate,
     children,
 }: {
     id: string;
+    onActivate: () => void;
     children: (dragHandle: ReactNode) => ReactNode;
 }) {
     const {
@@ -118,6 +123,10 @@ function SortableItem({
             className="cursor-grab touch-none text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
             {...attributes}
             {...listeners}
+            onPointerDown={(event) => {
+                onActivate();
+                listeners?.onPointerDown?.(event);
+            }}
         >
             <GripVertical className="size-5" />
         </button>
