@@ -61,7 +61,7 @@ provider differs:
 
 | Provider kind | `expires()` | `notifiesOnAuthFailure()` | Example |
 | --- | --- | --- | --- |
-| API-key (user supplies a key/token) | `false` (default) | `true` (default) | Binance, Coinbase, Bitpanda, Indexa Capital, Wise |
+| API-key (user supplies a key/token) | `false` (default) | `true` (default) | Binance, Coinbase, Bitpanda, Indexa Capital, Wise, Interactive Brokers |
 | Consent-based (OAuth, expires) | **`true`** | **`false`** | EnableBanking |
 
 This matches `BankingProvider::usesApiKey()` (everything except EnableBanking).
@@ -289,12 +289,28 @@ account, you also need the pieces below. Use an existing API-key provider
    `Concerns/CreatesAccountsFromPending`). You already set this in Step 4 when you
    added the enum case, so there is nothing extra to wire here.
 
-4. **Frontend** — the connect flow lives under `resources/js/pages/` /
-   `resources/js/components/`. Mirror an existing provider's form and provider
-   list entry.
+4. **Frontend — one registry entry.** The connect dialog, the inline connect
+   flow, and the update-credentials dialog are all driven by a single registry:
+   `resources/js/lib/connect-providers.tsx`. Add **one** `CONNECT_PROVIDERS`
+   entry describing the provider — `institution` (name/country/logo), the
+   connect `endpoint`, the credential `fields`, and the on-screen copy. There is
+   **no per-component wiring**: the fields render the form *and* define the POST
+   body (each field `key` is the body key), so you don't touch the dialogs.
 
-> Search the codebase for an existing provider's identifier
-> (e.g. `grep -rn "'binance'" app resources`) to find every touchpoint to mirror.
+   Useful per-entry flags:
+
+   - `onlyCountry` — offer only when connecting from that country (e.g. Indexa: `'ES'`).
+   - `sendsCountry` — also POST the selected `country` (banks/crypto that need it).
+   - `feature` — hide behind a Pennant flag (a `keyof Features`) until it's ready.
+   - `updatable: false` — the provider has no credential-update path on the backend.
+
+> Copy in the registry is plain English wrapped with `__()` at render (like
+> `COUNTRIES`), so it is **not** auto-detected by `LocalizationTest` — add the
+> Spanish strings to `lang/es.json` yourself or the UI renders them untranslated.
+
+> The backend touchpoints (controller, Form Request, route, optional model
+> helper) are still per-provider. `grep -rn "'binance'" app routes` finds them
+> to mirror; the frontend is just the registry entry above.
 
 ---
 
