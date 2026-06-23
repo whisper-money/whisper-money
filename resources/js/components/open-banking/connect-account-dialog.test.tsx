@@ -70,23 +70,27 @@ function liveBbvaConnection(): BankingConnection {
     };
 }
 
-async function reachBankStep(connections: BankingConnection[]) {
+type Institution = {
+    name: string;
+    country: string;
+    logo: string;
+    maximum_consent_validity: null;
+};
+
+function institution(name: string, logo = ''): Institution {
+    return { name, country: 'ES', logo, maximum_consent_validity: null };
+}
+
+async function reachBankStep(
+    connections: BankingConnection[],
+    institutions: Institution[] = [
+        institution('BBVA'),
+        institution('CaixaBank'),
+    ],
+) {
     global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => [
-            {
-                name: 'BBVA',
-                country: 'ES',
-                logo: '',
-                maximum_consent_validity: null,
-            },
-            {
-                name: 'CaixaBank',
-                country: 'ES',
-                logo: '',
-                maximum_consent_validity: null,
-            },
-        ],
+        json: async () => institutions,
     }) as unknown as typeof fetch;
 
     render(
@@ -104,7 +108,7 @@ async function reachBankStep(connections: BankingConnection[]) {
 
     await waitFor(() =>
         expect(
-            screen.getByRole('button', { name: /BBVA/ }),
+            screen.getByPlaceholderText('Search banks...'),
         ).toBeInTheDocument(),
     );
 }
@@ -191,5 +195,35 @@ describe('ConnectAccountDialog', () => {
             screen.queryByText('This may replace your existing connection'),
         ).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled();
+    });
+
+    it('shows Wise once, preferring the native integration over the aggregator', async () => {
+        await reachBankStep(
+            [],
+            [institution('Abanca'), institution('Wise', 'aggregator-logo')],
+        );
+
+        expect(screen.getAllByText('Wise')).toHaveLength(1);
+        // The surviving entry is the native provider, with its own logo —
+        // not the aggregator's.
+        const wiseButton = screen.getByRole('button', { name: 'Wise' });
+        expect(wiseButton.querySelector('img')).toHaveAttribute(
+            'src',
+            'https://enablebanking.com/brands/BE/Wise/',
+        );
+    });
+
+    it('does not duplicate banks when the search is filtered repeatedly', async () => {
+        await reachBankStep(
+            [],
+            [institution('Abanca'), institution('Wise', 'aggregator-logo')],
+        );
+        const search = screen.getByPlaceholderText('Search banks...');
+
+        for (const query of ['wise', '', 'wise', '']) {
+            fireEvent.change(search, { target: { value: query } });
+        }
+
+        expect(screen.getAllByText('Wise')).toHaveLength(1);
     });
 });
