@@ -209,7 +209,7 @@ describe('ConnectAccountDialog', () => {
         const wiseButton = screen.getByRole('button', { name: 'Wise' });
         expect(wiseButton.querySelector('img')).toHaveAttribute(
             'src',
-            'https://enablebanking.com/brands/BE/Wise/',
+            '/images/banks/logos/wise.png',
         );
     });
 
