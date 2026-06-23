@@ -71,6 +71,23 @@ enum BankingProvider: string
     }
 
     /**
+     * Validation rules for this provider's credential inputs, keyed by input
+     * name. Shared by the connect Form Requests and the update request.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    public function credentialRules(): array
+    {
+        $rules = [];
+
+        foreach ($this->credentialFields() as $field) {
+            $rules[$field->input] = $field->rules;
+        }
+
+        return $rules;
+    }
+
+    /**
      * Map validated request input to the encrypted connection columns.
      *
      * @param  array<string, mixed>  $input

@@ -26,12 +26,6 @@ class UpdateConnectionCredentialsRequest extends FormRequest
             return [];
         }
 
-        $rules = [];
-
-        foreach ($connection->provider->credentialFields() as $field) {
-            $rules[$field->input] = $field->rules;
-        }
-
-        return $rules;
+        return $connection->provider->credentialRules();
     }
 }

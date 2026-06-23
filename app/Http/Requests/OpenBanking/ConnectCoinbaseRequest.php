@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OpenBanking;
 
+use App\Enums\BankingProvider;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConnectCoinbaseRequest extends FormRequest
@@ -17,8 +18,7 @@ class ConnectCoinbaseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'api_key_name' => ['required', 'string', 'regex:/^(organizations\/[a-z0-9-]+\/apiKeys\/[a-z0-9-]+|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i'],
-            'private_key' => ['required', 'string', 'min:40'],
+            ...BankingProvider::Coinbase->credentialRules(),
             'country' => ['required', 'string', 'size:2'],
         ];
     }

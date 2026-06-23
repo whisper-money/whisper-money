@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OpenBanking;
 
+use App\Enums\BankingProvider;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConnectBitpandaRequest extends FormRequest
@@ -17,7 +18,7 @@ class ConnectBitpandaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'api_key' => ['required', 'string', 'min:10'],
+            ...BankingProvider::Bitpanda->credentialRules(),
             'country' => ['required', 'string', 'size:2'],
         ];
     }

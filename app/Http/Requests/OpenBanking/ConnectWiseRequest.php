@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OpenBanking;
 
+use App\Enums\BankingProvider;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConnectWiseRequest extends FormRequest
@@ -12,13 +13,11 @@ class ConnectWiseRequest extends FormRequest
     }
 
     /**
-     * @return array<string, array<int, string>>
+     * @return array<string, array<mixed>>
      */
     public function rules(): array
     {
-        return [
-            'api_token' => ['required', 'string', 'min:10'],
-        ];
+        return BankingProvider::Wise->credentialRules();
     }
 
     /**
