@@ -113,4 +113,35 @@ describe('ConnectionsPage', () => {
             screen.getAllByRole('button', { name: /reconnect/i }),
         ).toHaveLength(2);
     });
+
+    it('offers Update Credentials only for providers with an update path', () => {
+        render(
+            <ConnectionsPage
+                connections={[
+                    makeConnection({
+                        id: 'c-indexa',
+                        provider: 'indexacapital',
+                        aspsp_name: 'Indexa Capital',
+                        status: 'error',
+                        error_message:
+                            'Authentication failed. Your credentials may have expired or been revoked.',
+                    }),
+                    makeConnection({
+                        id: 'c-wise',
+                        provider: 'wise',
+                        aspsp_name: 'Wise',
+                        status: 'error',
+                        error_message:
+                            'Authentication failed. Your credentials may have expired or been revoked.',
+                    }),
+                ]}
+            />,
+        );
+
+        // Indexa Capital is updatable; Wise has no update path, so only one
+        // Update Credentials button is rendered.
+        expect(
+            screen.getAllByRole('button', { name: /update credentials/i }),
+        ).toHaveLength(1);
+    });
 });

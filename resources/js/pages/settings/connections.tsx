@@ -141,6 +141,18 @@ export default function ConnectionsPage({ connections }: Props) {
         );
     }
 
+    function canUpdateCredentials(connection: BankingConnection): boolean {
+        // Wise authenticates with an API key but has no credential-update path
+        // (neither the dialog nor the backend handle it), so don't offer the
+        // button for it — it would open an empty, unusable dialog.
+        return (
+            hasAuthError(connection) &&
+            ['indexacapital', 'binance', 'bitpanda', 'coinbase'].includes(
+                connection.provider,
+            )
+        );
+    }
+
     function isEnableBankingAuthError(connection: BankingConnection): boolean {
         return (
             connection.status === 'error' &&
@@ -302,7 +314,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                             )}
                                                         </DropdownMenuItem>
                                                     )}
-                                                    {hasAuthError(
+                                                    {canUpdateCredentials(
                                                         connection,
                                                     ) && (
                                                         <DropdownMenuItem
@@ -426,7 +438,7 @@ export default function ConnectionsPage({ connections }: Props) {
                                                                 )}
                                                         </p>
                                                         <div className="flex flex-wrap items-center gap-3">
-                                                            {hasAuthError(
+                                                            {canUpdateCredentials(
                                                                 connection,
                                                             ) && (
                                                                 <Button
