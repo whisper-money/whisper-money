@@ -19,47 +19,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    alreadyConnectedBankNames,
-    hasLiveConnectionForProvider,
-} from '@/lib/banking-connections';
-import {
-    CONNECT_PROVIDERS,
-    connectProviderForBank,
-    credentialPayload,
-    isProviderComplete,
-    ProviderCredentialFields,
-} from '@/lib/connect-providers';
-import { getCsrfToken } from '@/lib/csrf';
-import type { SharedData } from '@/types';
-import type {
-    BankingConnection,
-    EnableBankingInstitution,
-} from '@/types/banking';
+import { CONNECT_COUNTRIES, useConnectFlow } from '@/hooks/use-connect-flow';
+import { ProviderCredentialFields } from '@/lib/connect-providers';
+import type { BankingConnection } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-
-const COUNTRIES = [
-    { code: 'ES', name: 'Spain' },
-    { code: 'DE', name: 'Germany' },
-    { code: 'FR', name: 'France' },
-    { code: 'IT', name: 'Italy' },
-    { code: 'NL', name: 'Netherlands' },
-    { code: 'PT', name: 'Portugal' },
-    { code: 'BE', name: 'Belgium' },
-    { code: 'AT', name: 'Austria' },
-    { code: 'FI', name: 'Finland' },
-    { code: 'IE', name: 'Ireland' },
-    { code: 'LT', name: 'Lithuania' },
-    { code: 'LV', name: 'Latvia' },
-    { code: 'EE', name: 'Estonia' },
-    { code: 'SE', name: 'Sweden' },
-    { code: 'NO', name: 'Norway' },
-    { code: 'DK', name: 'Denmark' },
-    { code: 'PL', name: 'Poland' },
-    { code: 'GB', name: 'United Kingdom' },
-] as const;
+import { useEffect, useState } from 'react';
 
 interface ConnectAccountDialogProps {
     open: boolean;
@@ -67,184 +31,44 @@ interface ConnectAccountDialogProps {
     connections?: BankingConnection[];
 }
 
-type Step = 'country' | 'bank' | 'confirm';
-
 export function ConnectAccountDialog({
     open,
     onOpenChange,
     connections = [],
 }: ConnectAccountDialogProps) {
-    const { features } = usePage<SharedData>().props;
-    const [step, setStep] = useState<Step>('country');
+    const {
+        step,
+        setStep,
+        country,
+        setCountry,
+        filteredInstitutions,
+        searchQuery,
+        setSearchQuery,
+        selectedBank,
+        setSelectedBank,
+        isLoading,
+        isSubmitting,
+        error,
+        credentials,
+        setCredential,
+        provider,
+        connectedBankNames,
+        isAlreadyConnected,
+        acknowledgedReplace,
+        setAcknowledgedReplace,
+        canSubmit,
+        fetchInstitutions,
+        handleAuthorize,
+        reset,
+    } = useConnectFlow(connections);
+
     const [integrationDrawerOpen, setIntegrationDrawerOpen] = useState(false);
-    const [country, setCountry] = useState<string>('');
-    const [institutions, setInstitutions] = useState<
-        EnableBankingInstitution[]
-    >([]);
-    const [filteredInstitutions, setFilteredInstitutions] = useState<
-        EnableBankingInstitution[]
-    >([]);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedBank, setSelectedBank] =
-        useState<EnableBankingInstitution | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [credentials, setCredentials] = useState<Record<string, string>>({});
-    const [acknowledgedReplace, setAcknowledgedReplace] = useState(false);
-
-    const provider = useMemo(
-        () => connectProviderForBank(selectedBank?.name),
-        [selectedBank],
-    );
-
-    const connectedBankNames = useMemo(
-        () => alreadyConnectedBankNames(connections),
-        [connections],
-    );
-
-    const isAlreadyConnected = useMemo(
-        () => !!selectedBank && connectedBankNames.has(selectedBank.name),
-        [selectedBank, connectedBankNames],
-    );
-
-    const setCredential = useCallback((key: string, value: string) => {
-        setCredentials((current) => ({ ...current, [key]: value }));
-    }, []);
-
-    useEffect(() => {
-        setAcknowledgedReplace(false);
-    }, [selectedBank]);
-
-    const resetState = useCallback(() => {
-        setStep('country');
-        setCountry('');
-        setInstitutions([]);
-        setFilteredInstitutions([]);
-        setSearchQuery('');
-        setSelectedBank(null);
-        setIsLoading(false);
-        setIsSubmitting(false);
-        setError(null);
-        setCredentials({});
-        setAcknowledgedReplace(false);
-    }, []);
 
     useEffect(() => {
         if (!open) {
-            resetState();
+            reset();
         }
-    }, [open, resetState]);
-
-    useEffect(() => {
-        if (searchQuery) {
-            setFilteredInstitutions(
-                institutions.filter((i) =>
-                    i.name.toLowerCase().includes(searchQuery.toLowerCase()),
-                ),
-            );
-        } else {
-            setFilteredInstitutions(institutions);
-        }
-    }, [searchQuery, institutions]);
-
-    async function fetchInstitutions(countryCode: string) {
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const response = await fetch(
-                `/open-banking/institutions?country=${countryCode}`,
-                {
-                    headers: {
-                        Accept: 'application/json',
-                        'X-XSRF-TOKEN': getCsrfToken(),
-                    },
-                },
-            );
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch banks');
-            }
-
-            const data = await response.json();
-
-            const extraInstitutions = CONNECT_PROVIDERS.filter(
-                (p) =>
-                    (!p.feature || features[p.feature]) &&
-                    (!p.onlyCountry || p.onlyCountry === countryCode) &&
-                    !hasLiveConnectionForProvider(connections, p.providerKey),
-            ).map((p) => p.institution);
-
-            const allInstitutions = [...extraInstitutions, ...data].sort(
-                (a, b) => a.name.localeCompare(b.name),
-            );
-
-            setInstitutions(allInstitutions);
-            setFilteredInstitutions(allInstitutions);
-            setStep('bank');
-        } catch {
-            setError(__('Failed to load banks. Please try again.'));
-        } finally {
-            setIsLoading(false);
-        }
-    }
-
-    async function handleAuthorize() {
-        if (!selectedBank) return;
-
-        setIsSubmitting(true);
-        setError(null);
-
-        try {
-            const url = provider
-                ? provider.endpoint
-                : '/open-banking/authorize';
-
-            const body = provider
-                ? {
-                      ...credentialPayload(provider, credentials),
-                      ...(provider.sendsCountry ? { country } : {}),
-                  }
-                : {
-                      aspsp_name: selectedBank.name,
-                      country,
-                      logo: selectedBank.logo,
-                  };
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'X-XSRF-TOKEN': getCsrfToken(),
-                },
-                body: JSON.stringify(body),
-            });
-
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(
-                    data.message || 'Failed to start authorization',
-                );
-            }
-
-            const data = await response.json();
-            window.location.href = data.redirect_url;
-        } catch (e) {
-            setError(
-                e instanceof Error
-                    ? e.message
-                    : __('Failed to connect. Please try again.'),
-            );
-            setIsSubmitting(false);
-        }
-    }
-
-    const canSubmit =
-        !isSubmitting &&
-        !(isAlreadyConnected && !acknowledgedReplace) &&
-        (!provider || isProviderComplete(provider, credentials));
+    }, [open, reset]);
 
     return (
         <>
@@ -285,7 +109,7 @@ export function ConnectAccountDialog({
                                         />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {COUNTRIES.map((c) => (
+                                        {CONNECT_COUNTRIES.map((c) => (
                                             <SelectItem
                                                 key={c.code}
                                                 value={c.code}
