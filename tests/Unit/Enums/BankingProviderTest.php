@@ -55,3 +55,16 @@ it('maps credential inputs onto the encrypted connection columns', function () {
 
     expect(BankingProvider::EnableBanking->credentialColumns([]))->toBe([]);
 });
+
+it('defines credential fields for every API-key provider', function () {
+    foreach (BankingProvider::cases() as $provider) {
+        if (! $provider->usesApiKey()) {
+            continue;
+        }
+
+        // Every API-key provider must declare its credential shape; this is
+        // what drives connect/update rules, the column mapping and the update
+        // dialog — so a new provider can't be added without an update path.
+        expect($provider->credentialFields())->not->toBeEmpty();
+    }
+});

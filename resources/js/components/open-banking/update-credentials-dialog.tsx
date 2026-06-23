@@ -34,9 +34,6 @@ export function UpdateCredentialsDialog({
     const [error, setError] = useState<string | null>(null);
 
     const provider = connectProviderByKey(connection.provider);
-    // Only providers the backend exposes a credential-update path for (Wise has none).
-    const updatableProvider =
-        provider && provider.updatable !== false ? provider : undefined;
 
     const setCredential = useCallback((key: string, value: string) => {
         setCredentials((current) => ({ ...current, [key]: value }));
@@ -55,7 +52,7 @@ export function UpdateCredentialsDialog({
     }
 
     function handleSubmit() {
-        if (!updatableProvider) {
+        if (!provider) {
             return;
         }
 
@@ -64,14 +61,14 @@ export function UpdateCredentialsDialog({
 
         router.patch(
             `/settings/connections/${connection.id}/credentials`,
-            credentialPayload(updatableProvider, credentials),
+            credentialPayload(provider, credentials),
             {
                 onSuccess: () => {
                     onOpenChange(false);
                     resetState();
                 },
                 onError: (errors) => {
-                    const fieldError = updatableProvider.fields
+                    const fieldError = provider.fields
                         .map((f) => errors[f.key])
                         .find(Boolean);
 
@@ -90,8 +87,8 @@ export function UpdateCredentialsDialog({
         );
     }
 
-    const isValid = updatableProvider
-        ? isProviderComplete(updatableProvider, credentials)
+    const isValid = provider
+        ? isProviderComplete(provider, credentials)
         : false;
 
     return (
@@ -108,9 +105,9 @@ export function UpdateCredentialsDialog({
 
                 {error && <p className="text-sm text-destructive">{error}</p>}
 
-                {updatableProvider && (
+                {provider && (
                     <ProviderCredentialFields
-                        provider={updatableProvider}
+                        provider={provider}
                         values={credentials}
                         onChange={setCredential}
                         idPrefix="update"

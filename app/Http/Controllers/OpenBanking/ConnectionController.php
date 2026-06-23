@@ -17,6 +17,7 @@ use App\Services\Banking\BitpandaClient;
 use App\Services\Banking\CoinbaseClient;
 use App\Services\Banking\IndexaCapitalClient;
 use App\Services\Banking\InteractiveBrokersClient;
+use App\Services\Banking\WiseClient;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -119,6 +120,7 @@ class ConnectionController extends Controller
                 BankingProvider::Bitpanda => (new BitpandaClient($validated['api_key']))->getCryptoWallets(),
                 BankingProvider::Coinbase => (new CoinbaseClient($validated['api_key_name'], $validated['private_key']))->getAccounts(limit: 1),
                 BankingProvider::InteractiveBrokers => (new InteractiveBrokersClient($validated['token'], $validated['query_id']))->fetchStatement(),
+                BankingProvider::Wise => (new WiseClient($validated['api_token']))->getProfiles(),
                 default => throw new \InvalidArgumentException('Unsupported provider for credential update.'),
             };
         } catch (\InvalidArgumentException $e) {

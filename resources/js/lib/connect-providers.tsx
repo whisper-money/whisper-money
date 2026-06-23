@@ -43,8 +43,6 @@ export type ConnectProvider = {
     onlyCountry?: string;
     /** Hidden unless this Pennant feature is active. */
     feature?: keyof Features;
-    /** Backend exposes a credential-update path for this provider. */
-    updatable?: boolean;
     /** Confirm-step header copy (i18n key). */
     headerDescription: string;
     /** Confirm-card copy (i18n key). */
@@ -190,7 +188,6 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
             maximum_consent_validity: null,
         },
         endpoint: '/open-banking/wise/connect',
-        updatable: false,
         headerDescription:
             'Enter your Wise Personal API token to connect your account.',
         cardDescription:
