@@ -8,6 +8,7 @@ use App\Models\BankingConnection;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
 use Laravel\Pennant\Feature;
 
 beforeEach(function () {
@@ -154,4 +155,38 @@ test('requires authentication', function () {
         'token' => 'flex-token-1234567890',
         'query_id' => '123456',
     ])->assertUnauthorized();
+});
+
+test('reports a friendly message while the statement is still generating', function () {
+    Sleep::fake();
+
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate(InteractiveBrokers::class);
+
+    Http::fake([
+        '*SendRequest*' => Http::response('<FlexStatementResponse><Status>Success</Status><ReferenceCode>999</ReferenceCode></FlexStatementResponse>'),
+        '*GetStatement*' => Http::response('<FlexStatementResponse><Status>Warn</Status><ErrorCode>1019</ErrorCode><ErrorMessage>Statement generation in progress. Please try again shortly.</ErrorMessage></FlexStatementResponse>'),
+    ]);
+
+    $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect())
+        ->assertUnprocessable()
+        ->assertJsonFragment(['message' => 'Interactive Brokers is still preparing your statement. Please try again in a moment.']);
+
+    $this->assertDatabaseMissing('banking_connections', [
+        'user_id' => $user->id,
+        'provider' => 'interactivebrokers',
+    ]);
+});
+
+test('reports a rate-limit message when IB throttles the request', function () {
+    $user = User::factory()->onboarded()->create();
+    Feature::for($user)->activate(InteractiveBrokers::class);
+
+    Http::fake([
+        '*SendRequest*' => Http::response('<FlexStatementResponse><Status>Fail</Status><ErrorCode>1018</ErrorCode><ErrorMessage>Too many requests have been made from this token.</ErrorMessage></FlexStatementResponse>'),
+    ]);
+
+    $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect())
+        ->assertUnprocessable()
+        ->assertJsonFragment(['message' => 'Interactive Brokers is rate limiting requests. Please wait a few minutes and try again.']);
 });

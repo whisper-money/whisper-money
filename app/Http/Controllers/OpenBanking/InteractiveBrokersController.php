@@ -4,6 +4,7 @@ namespace App\Http\Controllers\OpenBanking;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
+use App\Exceptions\Banking\TransientBankingProviderException;
 use App\Features\InteractiveBrokers;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
@@ -13,6 +14,7 @@ use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Services\AccountUserCurrencyService;
 use App\Services\Banking\InteractiveBrokersClient;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
@@ -44,7 +46,7 @@ class InteractiveBrokersController extends Controller
             Log::warning('Interactive Brokers connection validation failed', ['error' => $e->getMessage()]);
 
             return response()->json([
-                'message' => 'Invalid Flex token or query ID, or failed to connect to Interactive Brokers.',
+                'message' => $this->connectErrorMessage($e),
             ], 422);
         }
 
@@ -87,6 +89,27 @@ class InteractiveBrokersController extends Controller
             'redirect_url' => route('open-banking.map-accounts', $connection),
             'connection_id' => $connection->id,
         ]);
+    }
+
+    /**
+     * Turn a Flex failure into a message the user can act on: bad credentials,
+     * a busy/rate-limited service, or a statement that is still generating.
+     */
+    private function connectErrorMessage(\Throwable $e): string
+    {
+        if ($e instanceof RequestException && in_array($e->response->status(), [401, 403], true)) {
+            return 'Invalid Flex token or query ID, or failed to connect to Interactive Brokers.';
+        }
+
+        if ($e instanceof RequestException && $e->response->status() === 429) {
+            return 'Interactive Brokers is rate limiting requests. Please wait a few minutes and try again.';
+        }
+
+        if ($e instanceof TransientBankingProviderException) {
+            return 'Interactive Brokers is still preparing your statement. Please try again in a moment.';
+        }
+
+        return 'Invalid Flex token or query ID, or failed to connect to Interactive Brokers.';
     }
 
     /**

@@ -21,6 +21,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
 import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
@@ -123,14 +124,9 @@ export default function ConnectionsPage({ connections }: Props) {
     }
 
     function isApiKeyProvider(connection: BankingConnection): boolean {
-        return [
-            'indexacapital',
-            'binance',
-            'bitpanda',
-            'coinbase',
-            'wise',
-            'interactivebrokers',
-        ].includes(connection.provider);
+        return CONNECT_PROVIDERS.some(
+            (provider) => provider.providerKey === connection.provider,
+        );
     }
 
     function hasAuthError(connection: BankingConnection): boolean {

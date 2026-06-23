@@ -263,3 +263,43 @@ test('skips an account without an external_account_id', function () {
 
     expect($account->balances()->count())->toBe(0);
 });
+
+test('classifies an invalid or deleted query id as an auth error', function () {
+    Http::fake([
+        '*SendRequest*' => Http::response(
+            ibFlexError('1020', 'Invalid request or unable to validate request.'),
+        ),
+    ]);
+
+    $client = new InteractiveBrokersClient('token', 'deleted-query');
+
+    try {
+        $client->fetchStatement();
+        $this->fail('Expected a RequestException');
+    } catch (RequestException $e) {
+        expect($e->response->status())->toBe(401);
+    }
+});
+
+test('skips NAV rows that have no total', function () {
+    [$user, $connection] = ibSetup();
+    $account = ibAccount($user, $connection);
+
+    $statement = '<FlexQueryResponse queryName="Whisper" type="AF"><FlexStatements count="1">'
+        .'<FlexStatement accountId="U1234567"><AccountInformation accountId="U1234567" currency="USD" />'
+        .'<EquitySummaryInBase>'
+        .'<EquitySummaryByReportDateInBase reportDate="20250114" cash="0" />'
+        .'<EquitySummaryByReportDateInBase reportDate="20250115" cash="0" total="10000.00" />'
+        .'</EquitySummaryInBase></FlexStatement></FlexStatements></FlexQueryResponse>';
+
+    Http::fake([
+        '*SendRequest*' => Http::response(ibSendRequestXml()),
+        '*GetStatement*' => Http::response($statement),
+    ]);
+
+    $accounts = (new InteractiveBrokersClient('token', '123456'))->fetchStatement();
+    app(InteractiveBrokersBalanceSyncService::class)->sync($account, $accounts);
+
+    expect($account->balances()->count())->toBe(1);
+    expect($account->balances()->first()->balance_date->toDateString())->toBe('2025-01-15');
+});

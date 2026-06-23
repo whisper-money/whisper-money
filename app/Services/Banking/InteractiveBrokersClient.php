@@ -4,6 +4,7 @@ namespace App\Services\Banking;
 
 use App\Exceptions\Banking\TransientBankingProviderException;
 use GuzzleHttp\Psr7\Response as PsrResponse;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -31,6 +32,10 @@ class InteractiveBrokersClient
 
     private const STATEMENT_RETRY_SECONDS = 3;
 
+    private const HTTP_CONNECT_TIMEOUT_SECONDS = 5;
+
+    private const HTTP_TIMEOUT_SECONDS = 15;
+
     public function __construct(
         private string $token,
         private string $queryId,
@@ -51,7 +56,7 @@ class InteractiveBrokersClient
 
     private function sendRequest(): string
     {
-        $response = Http::get(self::BASE_URL.'/SendRequest', [
+        $response = $this->http()->get(self::BASE_URL.'/SendRequest', [
             't' => $this->token,
             'q' => $this->queryId,
             'v' => self::VERSION,
@@ -80,7 +85,7 @@ class InteractiveBrokersClient
     private function getStatement(string $referenceCode): SimpleXMLElement
     {
         for ($attempt = 1; $attempt <= self::MAX_STATEMENT_ATTEMPTS; $attempt++) {
-            $response = Http::get(self::BASE_URL.'/GetStatement', [
+            $response = $this->http()->get(self::BASE_URL.'/GetStatement', [
                 't' => $this->token,
                 'q' => $referenceCode,
                 'v' => self::VERSION,
@@ -137,12 +142,13 @@ class InteractiveBrokersClient
             if (isset($statement->EquitySummaryInBase->EquitySummaryByReportDateInBase)) {
                 foreach ($statement->EquitySummaryInBase->EquitySummaryByReportDateInBase as $row) {
                     $date = $this->normalizeDate((string) $row['reportDate']);
+                    $total = (string) $row['total'];
 
-                    if ($date === null) {
+                    if ($date === null || $total === '') {
                         continue;
                     }
 
-                    $navByDate[$date] = (float) $row['total'];
+                    $navByDate[$date] = (float) $total;
                     $cashByDate[$date] = (float) $row['cash'];
                 }
             }
@@ -178,6 +184,12 @@ class InteractiveBrokersClient
         }
 
         return $accounts;
+    }
+
+    private function http(): PendingRequest
+    {
+        return Http::connectTimeout(self::HTTP_CONNECT_TIMEOUT_SECONDS)
+            ->timeout(self::HTTP_TIMEOUT_SECONDS);
     }
 
     private function loadXml(string $body): SimpleXMLElement
@@ -230,9 +242,11 @@ class InteractiveBrokersClient
             );
         }
 
-        if (str_contains($text, 'token')) {
+        // Bad token or bad/deleted query ID: surface as an auth failure so the
+        // user is prompted to fix the credentials instead of retrying forever.
+        if (str_contains($text, 'token') || str_contains($text, 'invalid') || $code === '1020') {
             throw new RequestException(
-                new Response(new PsrResponse(401, [], $message ?: 'Invalid Flex token')),
+                new Response(new PsrResponse(401, [], $message ?: 'Invalid Flex token or query ID')),
             );
         }
 
