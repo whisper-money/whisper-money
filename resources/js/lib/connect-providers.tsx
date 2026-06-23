@@ -184,7 +184,7 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
         institution: {
             name: 'Wise',
             country: 'ALL',
-            logo: '/images/banks/logos/wise.png',
+            logo: 'https://enablebanking.com/brands/BE/Wise/',
             maximum_consent_validity: null,
         },
         endpoint: '/open-banking/wise/connect',

@@ -131,9 +131,9 @@ export function ConnectAccountInline({
                     />
 
                     <div className="max-h-[300px] space-y-1 overflow-y-auto rounded-lg border p-1">
-                        {filteredInstitutions.map((institution) => (
+                        {filteredInstitutions.map((institution, index) => (
                             <button
-                                key={institution.name}
+                                key={`${institution.name}-${institution.country}-${index}`}
                                 type="button"
                                 className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
                                     selectedBank?.name === institution.name

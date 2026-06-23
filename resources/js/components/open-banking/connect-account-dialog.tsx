@@ -149,41 +149,46 @@ export function ConnectAccountDialog({
                             />
 
                             <div className="max-h-[300px] space-y-1 overflow-y-auto">
-                                {filteredInstitutions.map((institution) => {
-                                    const isConnected = connectedBankNames.has(
-                                        institution.name,
-                                    );
+                                {filteredInstitutions.map(
+                                    (institution, index) => {
+                                        const isConnected =
+                                            connectedBankNames.has(
+                                                institution.name,
+                                            );
 
-                                    return (
-                                        <button
-                                            key={institution.name}
-                                            type="button"
-                                            className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
-                                                selectedBank?.name ===
-                                                institution.name
-                                                    ? 'bg-accent'
-                                                    : ''
-                                            }`}
-                                            onClick={() =>
-                                                setSelectedBank(institution)
-                                            }
-                                        >
-                                            <BankLogo
-                                                src={institution.logo}
-                                                className="h-6 w-6"
-                                            />
-                                            <span>{institution.name}</span>
-                                            {isConnected && (
-                                                <Badge
-                                                    variant="secondary"
-                                                    className="ml-auto"
-                                                >
-                                                    {__('Already connected')}
-                                                </Badge>
-                                            )}
-                                        </button>
-                                    );
-                                })}
+                                        return (
+                                            <button
+                                                key={`${institution.name}-${institution.country}-${index}`}
+                                                type="button"
+                                                className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
+                                                    selectedBank?.name ===
+                                                    institution.name
+                                                        ? 'bg-accent'
+                                                        : ''
+                                                }`}
+                                                onClick={() =>
+                                                    setSelectedBank(institution)
+                                                }
+                                            >
+                                                <BankLogo
+                                                    src={institution.logo}
+                                                    className="h-6 w-6"
+                                                />
+                                                <span>{institution.name}</span>
+                                                {isConnected && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="ml-auto"
+                                                    >
+                                                        {__(
+                                                            'Already connected',
+                                                        )}
+                                                    </Badge>
+                                                )}
+                                            </button>
+                                        );
+                                    },
+                                )}
                                 {filteredInstitutions.length === 0 && (
                                     <p className="py-4 text-center text-sm text-muted-foreground">
                                         {__('No banks found.')}

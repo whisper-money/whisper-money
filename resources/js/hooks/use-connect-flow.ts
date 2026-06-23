@@ -152,9 +152,19 @@ export function useConnectFlow(connections: BankingConnection[]) {
                         ),
                 ).map((p) => p.institution);
 
-                const allInstitutions = [...extraInstitutions, ...data].sort(
-                    (a, b) => a.name.localeCompare(b.name),
+                // A provider we integrate natively (e.g. Wise) must surface only
+                // through its own entry, never the bank-aggregator's duplicate.
+                const nativeNames = new Set(
+                    CONNECT_PROVIDERS.map((p) => p.institution.name),
                 );
+                const fromProvider = (
+                    data as EnableBankingInstitution[]
+                ).filter((institution) => !nativeNames.has(institution.name));
+
+                const allInstitutions = [
+                    ...extraInstitutions,
+                    ...fromProvider,
+                ].sort((a, b) => a.name.localeCompare(b.name));
 
                 setInstitutions(allInstitutions);
                 setFilteredInstitutions(allInstitutions);
