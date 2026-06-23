@@ -327,6 +327,34 @@ test('users can update bitpanda credentials with valid api key', function () {
     expect($connection->api_token)->toBe('new-valid-bitpanda-key-12345');
 });
 
+test('users can update wise credentials with valid api token', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->wise()->error()->create([
+        'user_id' => $user->id,
+        'error_message' => 'Authentication failed. Your credentials may have expired or been revoked.',
+    ]);
+
+    Http::fake([
+        'api.wise.com/v1/profiles' => Http::response([
+            ['id' => 1, 'type' => 'personal', 'details' => []],
+        ]),
+    ]);
+
+    $response = $this->actingAs($user)->patch("/settings/connections/{$connection->id}/credentials", [
+        'api_token' => 'new-valid-wise-token-12345',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($connection->error_message)->toBeNull();
+    expect($connection->api_token)->toBe('new-valid-wise-token-12345');
+});
+
 test('updating credentials with invalid token returns validation error', function () {
     $user = User::factory()->onboarded()->create();
     $connection = BankingConnection::factory()->indexaCapital()->error()->create([
