@@ -889,6 +889,70 @@ test('indexa capital sync does not send email', function () {
     Mail::assertNothingQueued();
 });
 
+test('interactive brokers sync stores NAV balances through the real factory', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->interactiveBrokers()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => null,
+    ]);
+    $account = Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'U1234567',
+        'currency_code' => 'USD',
+    ]);
+
+    $sendXml = '<FlexStatementResponse><Status>Success</Status><ReferenceCode>999</ReferenceCode></FlexStatementResponse>';
+    $statementXml = '<FlexQueryResponse queryName="Whisper" type="AF"><FlexStatements count="1">'
+        .'<FlexStatement accountId="U1234567"><AccountInformation accountId="U1234567" currency="USD" />'
+        .'<EquitySummaryInBase><EquitySummaryByReportDateInBase reportDate="20250115" cash="0" total="12345.67" /></EquitySummaryInBase>'
+        .'</FlexStatement></FlexStatements></FlexQueryResponse>';
+
+    Http::fake([
+        '*SendRequest*' => Http::response($sendXml),
+        '*GetStatement*' => Http::response($statementXml),
+    ]);
+
+    $job = new SyncBankingConnectionJob($connection);
+    runSync($job);
+
+    $connection->refresh();
+    expect($connection->last_synced_at)->not->toBeNull();
+    expect($connection->status)->toBe(BankingConnectionStatus::Active);
+    expect($account->balances()->first()->balance)->toBe(1234567);
+});
+
+test('interactive brokers invalid token sends auth failed email', function () {
+    Mail::fake();
+
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->interactiveBrokers()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'U1234567',
+    ]);
+
+    Http::fake([
+        '*SendRequest*' => Http::response('<FlexStatementResponse><Status>Fail</Status><ErrorCode>1015</ErrorCode><ErrorMessage>Invalid token.</ErrorMessage></FlexStatementResponse>'),
+    ]);
+
+    $job = new SyncBankingConnectionJob($connection);
+
+    try {
+        runSync($job);
+    } catch (RequestException) {
+        // The job rethrows after flagging the permanent auth failure.
+    }
+
+    $connection->refresh();
+    expect($connection->status)->toBe(BankingConnectionStatus::Error);
+    Mail::assertQueued(BankingConnectionAuthFailedEmail::class);
+});
+
 test('binance first sync gets current balance immediately and dispatches historical job', function () {
     Queue::fake(SyncBinanceHistoricalBalancesJob::class);
 

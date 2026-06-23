@@ -60,8 +60,7 @@ class WiseController extends Controller
 
         $connection = $user->bankingConnections()->create([
             'provider' => BankingProvider::Wise,
-            'api_token' => $request->api_token,
-            'api_secret' => null,
+            ...BankingProvider::Wise->credentialColumns($request->validated()),
             'aspsp_name' => 'Wise',
             'aspsp_country' => 'GB',
             'aspsp_logo' => $bank->logo,

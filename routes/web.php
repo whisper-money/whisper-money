@@ -18,6 +18,7 @@ use App\Http\Controllers\OpenBanking\CoinbaseController;
 use App\Http\Controllers\OpenBanking\ConnectionAccountController;
 use App\Http\Controllers\OpenBanking\IndexaCapitalController;
 use App\Http\Controllers\OpenBanking\InstitutionController;
+use App\Http\Controllers\OpenBanking\InteractiveBrokersController;
 use App\Http\Controllers\OpenBanking\WiseController;
 use App\Http\Controllers\RealEstateDetailController;
 use App\Http\Controllers\ReEvaluateTransactionRulesController;
@@ -175,6 +176,8 @@ Route::middleware(['auth', 'verified'])->prefix('open-banking')->group(function 
         ->name('open-banking.coinbase.connect');
     Route::post('wise/connect', [WiseController::class, 'store'])
         ->name('open-banking.wise.connect');
+    Route::post('interactive-brokers/connect', [InteractiveBrokersController::class, 'store'])
+        ->name('open-banking.interactive-brokers.connect');
 });
 
 Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(function () {

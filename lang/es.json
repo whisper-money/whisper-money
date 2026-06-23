@@ -2145,5 +2145,12 @@
     "or": "o",
     "Create rule": "Crear regla",
     "Ignore rule": "Ignorar regla",
-    ":count matches": ":count coincidencias"
+    ":count matches": ":count coincidencias",
+    "Flex Web Service Token": "Token del Flex Web Service",
+    "Flex Query ID": "Query ID de Flex",
+    "Paste your Flex Web Service token": "Pega tu token del Flex Web Service",
+    "Connect your Interactive Brokers account using a Flex Web Service token and Query ID.": "Conecta tu cuenta de Interactive Brokers usando un token del Flex Web Service y un Query ID.",
+    "Enter your Flex Web Service token and Query ID to connect your Interactive Brokers account.": "Introduce tu token del Flex Web Service y el Query ID para conectar tu cuenta de Interactive Brokers.",
+    "In Client Portal, create an Activity Flex Query including the \"Net Asset Value (NAV)\" and \"Open Positions\" sections, then generate a Flex Web Service token under": "En el Client Portal, crea una Activity Flex Query que incluya las secciones \"Net Asset Value (NAV)\" y \"Open Positions\", y luego genera un token del Flex Web Service en",
+    "Performance & Reports → Flex Queries": "Rendimiento e Informes → Flex Queries"
 }

@@ -21,6 +21,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { CONNECT_PROVIDERS } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
 import type { SharedData } from '@/types';
 import type { BankingConnection } from '@/types/banking';
@@ -123,13 +124,9 @@ export default function ConnectionsPage({ connections }: Props) {
     }
 
     function isApiKeyProvider(connection: BankingConnection): boolean {
-        return [
-            'indexacapital',
-            'binance',
-            'bitpanda',
-            'coinbase',
-            'wise',
-        ].includes(connection.provider);
+        return CONNECT_PROVIDERS.some(
+            (provider) => provider.providerKey === connection.provider,
+        );
     }
 
     function hasAuthError(connection: BankingConnection): boolean {
@@ -388,8 +385,12 @@ export default function ConnectionsPage({ connections }: Props) {
                                               !connection.last_synced_at ? (
                                                 <span className="flex items-center gap-1.5">
                                                     <Spinner className="size-3" />
-                                                    {connection.provider ===
-                                                    'indexacapital'
+                                                    {[
+                                                        'indexacapital',
+                                                        'interactivebrokers',
+                                                    ].includes(
+                                                        connection.provider,
+                                                    )
                                                         ? __(
                                                               'Syncing balances…',
                                                           )

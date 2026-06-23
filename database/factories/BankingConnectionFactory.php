@@ -133,6 +133,21 @@ class BankingConnectionFactory extends Factory
         ]);
     }
 
+    public function interactiveBrokers(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'provider' => BankingProvider::InteractiveBrokers,
+            'authorization_id' => null,
+            'session_id' => null,
+            'api_token' => 'test-ib-token-'.fake()->uuid(),
+            'api_secret' => (string) fake()->numberBetween(100000, 999999),
+            'aspsp_name' => 'Interactive Brokers',
+            'aspsp_country' => 'US',
+            'aspsp_logo' => '/images/banks/logos/interactive-brokers.png',
+            'valid_until' => null,
+        ]);
+    }
+
     public function wise(): static
     {
         return $this->state(fn (array $attributes) => [
