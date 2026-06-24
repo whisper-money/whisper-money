@@ -1,6 +1,6 @@
 import { useLocale } from '@/hooks/use-locale';
 import { __ } from '@/utils/i18n';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Cell,
     Row,
@@ -13,6 +13,7 @@ import {
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, parseISO } from 'date-fns';
+import { SparklesIcon } from 'lucide-react';
 import {
     createElement,
     useCallback,
@@ -40,6 +41,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -84,8 +86,9 @@ import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
+import { billing } from '@/routes/settings';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
 import { type Category } from '@/types/category';
@@ -126,6 +129,7 @@ interface Props {
     banks: Bank[];
     labels: Label[];
     automationRules: AutomationRule[];
+    hasAiConsent: boolean;
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
@@ -403,8 +407,12 @@ export default function Transactions({
     banks,
     labels: initialLabels,
     automationRules,
+    hasAiConsent,
 }: Props) {
     const locale = useLocale();
+    const { auth, features } = usePage<SharedData>().props;
+    const showAiConsentBanner =
+        auth.hasProPlan && features.aiConsentSettings && !hasAiConsent;
     const [labels, setLabels] = useState<Label[]>(() => initialLabels);
 
     useEffect(() => {
@@ -1166,6 +1174,28 @@ export default function Transactions({
                     title={__('Transactions')}
                     description={__('View and manage your transactions')}
                 />
+
+                {showAiConsentBanner && (
+                    <Alert>
+                        <SparklesIcon className="h-4 w-4" />
+                        <AlertTitle>
+                            {__('Let AI categorize your transactions')}
+                        </AlertTitle>
+                        <AlertDescription>
+                            <span>
+                                {__(
+                                    'Give your consent and our AI will suggest categories for your transactions automatically.',
+                                )}
+                            </span>
+                            <Link
+                                href={billing().url}
+                                className="font-medium text-primary underline-offset-4 hover:underline"
+                            >
+                                {__('Manage AI consent')}
+                            </Link>
+                        </AlertDescription>
+                    </Alert>
+                )}
 
                 <div className="space-y-4">
                     <TransactionFiltersComponent

@@ -44,6 +44,7 @@ test('shared feature flags do not include coinbase flag', function () {
         'cashflow' => true,
         'calculateBalancesOnImport' => false,
         'interactiveBrokers' => false,
+        'aiConsentSettings' => false,
     ]);
 });
 

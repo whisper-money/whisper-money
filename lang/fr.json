@@ -1,4 +1,13 @@
 {
+    "AI Categorization": "Catégorisation par IA",
+    "Let AI suggest categories for your transactions automatically.": "Laissez l'IA suggérer automatiquement des catégories pour vos transactions.",
+    "Allow AI categorization": "Autoriser la catégorisation par IA",
+    "With your permission, we send merchant names from your transactions to our AI provider so it can suggest categories. You can revoke this at any time.": "Avec votre permission, nous envoyons les noms des commerçants de vos transactions à notre fournisseur d'IA afin qu'il puisse suggérer des catégories. Vous pouvez révoquer cela à tout moment.",
+    "AI categorization enabled": "Catégorisation par IA activée",
+    "AI categorization disabled": "Catégorisation par IA désactivée",
+    "Let AI categorize your transactions": "Laissez l'IA catégoriser vos transactions",
+    "Give your consent and our AI will suggest categories for your transactions automatically.": "Donnez votre consentement et notre IA suggérera automatiquement des catégories pour vos transactions.",
+    "Manage AI consent": "Gérer le consentement à l'IA",
     "Manage Accounts": "Gérer les comptes",
     "Choose which accounts from this bank are synced and where their transactions go.": "Choisissez quels comptes de cette banque sont synchronisés et où vont leurs transactions.",
     "No accounts are syncing yet.": "Aucun compte n'est encore synchronisé.",
