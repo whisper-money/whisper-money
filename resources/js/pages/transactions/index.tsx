@@ -93,6 +93,10 @@ import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
+import {
+    type AiConsentResponse,
+    type CategorizationProgress,
+} from '@/types/categorization';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
@@ -646,12 +650,9 @@ export default function Transactions({
             startCategorizationPoll(async () => {
                 let data;
                 try {
-                    ({ data } = await axios.get<{
-                        status: 'pending' | 'processing' | 'done' | 'failed';
-                        processed: number;
-                        total: number;
-                        applied: number;
-                    }>(categorizationStatus(jobId).url));
+                    ({ data } = await axios.get<CategorizationProgress>(
+                        categorizationStatus(jobId).url,
+                    ));
                 } catch {
                     dismiss();
                     return 'stop';
@@ -708,10 +709,9 @@ export default function Transactions({
     const handleEnableAi = useCallback(async () => {
         setAiConsentSaving(true);
         try {
-            const { data } = await axios.post<{
-                consented: boolean;
-                categorization: { job_id: string; total: number } | null;
-            }>(storeConsent.url());
+            const { data } = await axios.post<AiConsentResponse>(
+                storeConsent.url(),
+            );
             setAiConsentGiven(true);
 
             if (data.categorization) {
