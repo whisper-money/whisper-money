@@ -43,6 +43,8 @@ interface CreateColumnsOptions {
     ) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
     isDateHidden?: boolean;
+    /** Ids of transactions AI is categorizing in the background right now. */
+    categorizingIds?: Set<string>;
 }
 
 export function createTransactionColumns({
@@ -57,6 +59,7 @@ export function createTransactionColumns({
     onCategorized,
     onReEvaluateRules,
     isDateHidden = false,
+    categorizingIds,
 }: CreateColumnsOptions): ColumnDef<DecryptedTransaction>[] {
     return [
         {
@@ -154,6 +157,7 @@ export function createTransactionColumns({
                         onCategorized={onCategorized}
                         className="relative -top-0.5 max-w-[150px] md:max-w-[180px]"
                         withoutChevronIcon
+                        isCategorizing={categorizingIds?.has(row.original.id)}
                     />
                 );
             },

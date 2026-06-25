@@ -86,6 +86,7 @@ import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
+import { status as categorizationStatus } from '@/routes/ai/categorization';
 import { store as storeConsent } from '@/routes/ai/consent';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem, type SharedData } from '@/types';
@@ -418,19 +419,14 @@ export default function Transactions({
         features.aiConsentSettings &&
         !hasAiConsent &&
         !aiConsentGiven;
-
-    const handleEnableAi = useCallback(async () => {
-        setAiConsentSaving(true);
-        try {
-            await axios.post(storeConsent.url());
-            setAiConsentGiven(true);
-            toast.success(__('AI categorization enabled'));
-        } catch {
-            toast.error(__('Something went wrong.'));
-        } finally {
-            setAiConsentSaving(false);
-        }
-    }, []);
+    const [categorizingIds, setCategorizingIds] = useState<Set<string>>(
+        () => new Set(),
+    );
+    const categorizationTimerRef =
+        useRef<ReturnType<typeof setTimeout>>(undefined);
+    const categorizationToastRef = useRef<string | number | undefined>(
+        undefined,
+    );
 
     const [labels, setLabels] = useState<Label[]>(() => initialLabels);
 
@@ -615,6 +611,126 @@ export default function Transactions({
                 setNextCursor(txns.next_cursor);
             },
         });
+    }, []);
+
+    // Clear the spinner for any row AI has finished categorizing.
+    useEffect(() => {
+        setCategorizingIds((previous) => {
+            if (previous.size === 0) {
+                return previous;
+            }
+
+            let changed = false;
+            const next = new Set(previous);
+            for (const transaction of allTransactions) {
+                if (next.has(transaction.id) && transaction.category_id) {
+                    next.delete(transaction.id);
+                    changed = true;
+                }
+            }
+
+            return changed ? next : previous;
+        });
+    }, [allTransactions]);
+
+    const pollCategorizationStatus = useCallback(
+        (jobId: string, fallbackTotal: number) => {
+            const tick = async () => {
+                try {
+                    const { data } = await axios.get<{
+                        status: 'pending' | 'processing' | 'done';
+                        processed: number;
+                        total: number;
+                        applied: number;
+                    }>(categorizationStatus(jobId).url);
+
+                    const total = data.total || fallbackTotal;
+                    categorizationToastRef.current = toast.loading(
+                        __('Categorizing :processed of :total transactions…', {
+                            processed: data.processed,
+                            total,
+                        }),
+                        { id: categorizationToastRef.current },
+                    );
+
+                    // Pull whatever AI has applied so far into the visible rows.
+                    refreshTransactions();
+
+                    if (data.status === 'done') {
+                        setCategorizingIds(new Set());
+                        if (data.applied > 0) {
+                            toast.success(
+                                __('AI categorized :count transactions', {
+                                    count: data.applied,
+                                }),
+                                { id: categorizationToastRef.current },
+                            );
+                        } else {
+                            toast.dismiss(categorizationToastRef.current);
+                        }
+                        categorizationToastRef.current = undefined;
+                        return;
+                    }
+
+                    categorizationTimerRef.current = setTimeout(tick, 2000);
+                } catch {
+                    setCategorizingIds(new Set());
+                    toast.dismiss(categorizationToastRef.current);
+                    categorizationToastRef.current = undefined;
+                }
+            };
+
+            tick();
+        },
+        [refreshTransactions],
+    );
+
+    const handleEnableAi = useCallback(async () => {
+        setAiConsentSaving(true);
+        try {
+            const { data } = await axios.post<{
+                consented: boolean;
+                categorization: { job_id: string; total: number } | null;
+            }>(storeConsent.url());
+            setAiConsentGiven(true);
+
+            if (data.categorization) {
+                // Spin every currently-visible uncategorized row while the
+                // backfill runs; the prune effect clears each as it lands.
+                setCategorizingIds(
+                    new Set(
+                        allTransactions
+                            .filter((transaction) => !transaction.category_id)
+                            .map((transaction) => transaction.id),
+                    ),
+                );
+                categorizationToastRef.current = toast.loading(
+                    __('Categorizing :processed of :total transactions…', {
+                        processed: 0,
+                        total: data.categorization.total,
+                    }),
+                );
+                pollCategorizationStatus(
+                    data.categorization.job_id,
+                    data.categorization.total,
+                );
+            } else {
+                toast.success(__('AI categorization enabled'));
+            }
+        } catch {
+            toast.error(__('Something went wrong.'));
+        } finally {
+            setAiConsentSaving(false);
+        }
+    }, [allTransactions, pollCategorizationStatus]);
+
+    // Stop polling if the user leaves mid-categorization.
+    useEffect(() => {
+        return () => {
+            if (categorizationTimerRef.current) {
+                clearTimeout(categorizationTimerRef.current);
+            }
+        };
     }, []);
 
     // Load More with cursor pagination (fetch directly to avoid cursor in URL)
@@ -875,6 +991,7 @@ export default function Transactions({
                 onCategorized: showAutomatizeToast,
                 onReEvaluateRules: handleReEvaluateRules,
                 isDateHidden: columnVisibility.transaction_date === false,
+                categorizingIds,
             }),
         [
             accounts,
@@ -886,6 +1003,7 @@ export default function Transactions({
             showAutomatizeToast,
             handleReEvaluateRules,
             columnVisibility,
+            categorizingIds,
         ],
     );
 

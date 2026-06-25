@@ -1,6 +1,7 @@
 import { showsAiUpsell } from '@/components/transactions/ai-upsell-sample';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Tooltip,
     TooltipContent,
@@ -32,6 +33,8 @@ interface CategoryCellProps {
     ) => void;
     className?: string;
     withoutChevronIcon?: boolean;
+    /** AI is currently categorizing this row in the background. */
+    isCategorizing?: boolean;
 }
 
 export function CategoryCell({
@@ -43,6 +46,7 @@ export function CategoryCell({
     onCategorized,
     className,
     withoutChevronIcon,
+    isCategorizing,
 }: CategoryCellProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const isMobile = useIsMobile();
@@ -159,6 +163,20 @@ export function CategoryCell({
             </Tooltip>
         </TooltipProvider>
     );
+
+    if (isCategorizing) {
+        return (
+            <div
+                className={cn(
+                    'flex w-full animate-pulse items-center gap-2 text-muted-foreground',
+                    className,
+                )}
+            >
+                <Spinner className="size-4 shrink-0" />
+                <span className="truncate text-sm">{__('Categorizing…')}</span>
+            </div>
+        );
+    }
 
     return (
         <div className="flex w-full items-center gap-1">
