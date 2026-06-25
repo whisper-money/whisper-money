@@ -1,4 +1,5 @@
 import { useLocale } from '@/hooks/use-locale';
+import { usePollJobStatus } from '@/hooks/use-poll-job-status';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
@@ -13,6 +14,7 @@ import {
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, parseISO } from 'date-fns';
+import { ChevronRight } from 'lucide-react';
 import {
     createElement,
     useCallback,
@@ -40,6 +42,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
+import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -84,10 +87,16 @@ import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
+import { status as categorizationStatus } from '@/routes/ai/categorization';
+import { store as storeConsent } from '@/routes/ai/consent';
 import { transactionSyncService } from '@/services/transaction-sync';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
 import { type AutomationRule } from '@/types/automation-rule';
+import {
+    type AiConsentResponse,
+    type CategorizationProgress,
+} from '@/types/categorization';
 import { type Category } from '@/types/category';
 import { type Label } from '@/types/label';
 import {
@@ -126,6 +135,7 @@ interface Props {
     banks: Bank[];
     labels: Label[];
     automationRules: AutomationRule[];
+    hasAiConsent: boolean;
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
@@ -403,8 +413,25 @@ export default function Transactions({
     banks,
     labels: initialLabels,
     automationRules,
+    hasAiConsent,
 }: Props) {
     const locale = useLocale();
+    const { auth, features } = usePage<SharedData>().props;
+    const [aiConsentGiven, setAiConsentGiven] = useState(false);
+    const [aiConsentSaving, setAiConsentSaving] = useState(false);
+    const showAiConsentBanner =
+        auth.hasProPlan &&
+        features.aiConsentSettings &&
+        !hasAiConsent &&
+        !aiConsentGiven;
+    const [categorizingIds, setCategorizingIds] = useState<Set<string>>(
+        () => new Set(),
+    );
+    const categorizationToastRef = useRef<string | number | undefined>(
+        undefined,
+    );
+    const { start: startCategorizationPoll } = usePollJobStatus();
+
     const [labels, setLabels] = useState<Label[]>(() => initialLabels);
 
     useEffect(() => {
@@ -589,6 +616,133 @@ export default function Transactions({
             },
         });
     }, []);
+
+    // Clear the spinner for any row AI has finished categorizing.
+    useEffect(() => {
+        setCategorizingIds((previous) => {
+            if (previous.size === 0) {
+                return previous;
+            }
+
+            let changed = false;
+            const next = new Set(previous);
+            for (const transaction of allTransactions) {
+                if (next.has(transaction.id) && transaction.category_id) {
+                    next.delete(transaction.id);
+                    changed = true;
+                }
+            }
+
+            return changed ? next : previous;
+        });
+    }, [allTransactions]);
+
+    const pollCategorizationStatus = useCallback(
+        (jobId: string, fallbackTotal: number) => {
+            let pendingTicks = 0;
+
+            const dismiss = () => {
+                setCategorizingIds(new Set());
+                toast.dismiss(categorizationToastRef.current);
+                categorizationToastRef.current = undefined;
+            };
+
+            startCategorizationPoll(async () => {
+                let data;
+                try {
+                    ({ data } = await axios.get<CategorizationProgress>(
+                        categorizationStatus(jobId).url,
+                    ));
+                } catch {
+                    dismiss();
+                    return 'stop';
+                }
+
+                // The job never started (e.g. no queue worker running) — give up
+                // instead of polling forever.
+                if (data.status === 'pending' && ++pendingTicks > 15) {
+                    dismiss();
+                    return 'stop';
+                }
+
+                const total = data.total || fallbackTotal;
+                categorizationToastRef.current = toast.loading(
+                    __('Categorizing :processed of :total transactions…', {
+                        processed: data.processed,
+                        total,
+                    }),
+                    { id: categorizationToastRef.current },
+                );
+
+                // Pull whatever AI has applied so far into the visible rows.
+                if (data.status === 'processing' || data.status === 'done') {
+                    refreshTransactions();
+                }
+
+                if (data.status === 'done' || data.status === 'failed') {
+                    setCategorizingIds(new Set());
+                    if (data.status === 'failed') {
+                        toast.error(
+                            __('AI categorization failed. Please try again.'),
+                            { id: categorizationToastRef.current },
+                        );
+                    } else if (data.applied > 0) {
+                        toast.success(
+                            __('AI categorized :count transactions', {
+                                count: data.applied,
+                            }),
+                            { id: categorizationToastRef.current },
+                        );
+                    } else {
+                        toast.dismiss(categorizationToastRef.current);
+                    }
+                    categorizationToastRef.current = undefined;
+                    return 'stop';
+                }
+
+                return 'continue';
+            }, 2000);
+        },
+        [startCategorizationPoll, refreshTransactions],
+    );
+
+    const handleEnableAi = useCallback(async () => {
+        setAiConsentSaving(true);
+        try {
+            const { data } = await axios.post<AiConsentResponse>(
+                storeConsent.url(),
+            );
+            setAiConsentGiven(true);
+
+            if (data.categorization) {
+                // Spin every currently-visible uncategorized row while the
+                // backfill runs; the prune effect clears each as it lands.
+                setCategorizingIds(
+                    new Set(
+                        allTransactions
+                            .filter((transaction) => !transaction.category_id)
+                            .map((transaction) => transaction.id),
+                    ),
+                );
+                categorizationToastRef.current = toast.loading(
+                    __('Categorizing :processed of :total transactions…', {
+                        processed: 0,
+                        total: data.categorization.total,
+                    }),
+                );
+                pollCategorizationStatus(
+                    data.categorization.job_id,
+                    data.categorization.total,
+                );
+            } else {
+                toast.success(__('AI categorization enabled'));
+            }
+        } catch {
+            toast.error(__('Something went wrong.'));
+        } finally {
+            setAiConsentSaving(false);
+        }
+    }, [allTransactions, pollCategorizationStatus]);
 
     // Load More with cursor pagination (fetch directly to avoid cursor in URL)
     const { component, version } = usePage();
@@ -848,6 +1002,7 @@ export default function Transactions({
                 onCategorized: showAutomatizeToast,
                 onReEvaluateRules: handleReEvaluateRules,
                 isDateHidden: columnVisibility.transaction_date === false,
+                categorizingIds,
             }),
         [
             accounts,
@@ -859,6 +1014,7 @@ export default function Transactions({
             showAutomatizeToast,
             handleReEvaluateRules,
             columnVisibility,
+            categorizingIds,
         ],
     );
 
@@ -1248,6 +1404,38 @@ export default function Transactions({
                                 renderDateHeader={(date, colSpan) => (
                                     <DateHeader date={date} colSpan={colSpan} />
                                 )}
+                                topRow={
+                                    showAiConsentBanner ? (
+                                        <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
+                                            <div className="flex gap-3">
+                                                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80 shadow-sm dark:bg-white/10">
+                                                    <AiSparkleIcon className="h-5 w-5" />
+                                                </div>
+                                                <div className="max-w-80">
+                                                    <p className="font-medium">
+                                                        {__(
+                                                            'Let AI categorize your transactions',
+                                                        )}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {__(
+                                                            'Give your consent and our AI will suggest categories for your transactions automatically.',
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                onClick={handleEnableAi}
+                                                disabled={aiConsentSaving}
+                                                variant="secondary"
+                                                className="max-w-[calc(var(--spacing)_*_86)] bg-white px-6!"
+                                            >
+                                                {__('Enable AI')}
+                                                <ChevronRight />
+                                            </Button>
+                                        </div>
+                                    ) : null
+                                }
                             />
 
                             <DataTablePagination

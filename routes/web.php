@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Ai\AiConsentController;
+use App\Http\Controllers\Ai\CategorizationController;
 use App\Http\Controllers\Ai\RuleSuggestionController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\BudgetController;
@@ -118,6 +119,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // AI rule suggestions — accessible during onboarding (auto-apply) and after.
     Route::post('ai/consent', [AiConsentController::class, 'store'])->name('ai.consent.store');
     Route::delete('ai/consent', [AiConsentController::class, 'destroy'])->name('ai.consent.destroy');
+    Route::get('ai/categorization/{jobId}/status', [CategorizationController::class, 'status'])->name('ai.categorization.status');
     Route::prefix('ai/rule-suggestions')->name('ai.rule-suggestions.')->group(function () {
         Route::get('/', [RuleSuggestionController::class, 'show'])->name('show');
         Route::post('generate', [RuleSuggestionController::class, 'generate'])->name('generate');

@@ -1,9 +1,15 @@
 import HeadingSmall from '@/components/heading-small';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { cn } from '@/lib/utils';
+import {
+    destroy as revokeConsent,
+    store as storeConsent,
+} from '@/routes/ai/consent';
 import { billing } from '@/routes/settings';
 import { portal } from '@/routes/settings/billing';
 import { checkout } from '@/routes/subscribe';
@@ -12,6 +18,7 @@ import { Plan } from '@/types/pricing';
 import { formatCurrency } from '@/utils/currency';
 import { __ } from '@/utils/i18n';
 import { Head, usePage } from '@inertiajs/react';
+import axios from 'axios';
 import {
     CheckIcon,
     CreditCardIcon,
@@ -23,6 +30,7 @@ import {
     ZapIcon,
 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -298,8 +306,96 @@ function SubscribedSection({
     );
 }
 
+function AiConsentSection({
+    initialConsent,
+    hasProPlan,
+}: {
+    initialConsent: boolean;
+    hasProPlan: boolean;
+}) {
+    const [consented, setConsented] = useState(initialConsent);
+    const [saving, setSaving] = useState(false);
+
+    const handleToggle = async (checked: boolean) => {
+        setSaving(true);
+        try {
+            if (checked) {
+                await axios.post(storeConsent.url());
+            } else {
+                await axios.delete(revokeConsent.url());
+            }
+            setConsented(checked);
+            toast.success(
+                checked
+                    ? __('AI categorization enabled')
+                    : __('AI categorization disabled'),
+            );
+        } catch {
+            toast.error(__('Something went wrong.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <header>
+                <div className="mb-0.5 flex items-center gap-2">
+                    <h3 className="text-base font-medium">
+                        {__('AI Categorization')}
+                    </h3>
+                    <Badge
+                        variant="secondary"
+                        className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                    >
+                        PRO
+                    </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                    {__(
+                        'Let AI suggest categories for your transactions automatically.',
+                    )}
+                </p>
+            </header>
+
+            <div className="rounded-lg border bg-card p-5">
+                <label className="flex items-start gap-3">
+                    <Checkbox
+                        checked={consented}
+                        disabled={saving}
+                        onCheckedChange={(checked) =>
+                            handleToggle(checked === true)
+                        }
+                        className="mt-0.5"
+                    />
+                    <div>
+                        <span className="font-medium">
+                            {__('Allow AI categorization')}
+                        </span>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {__(
+                                'With your permission, we send merchant names from your transactions to our AI provider so it can suggest categories. You can revoke this at any time.',
+                            )}
+                        </p>
+                    </div>
+                </label>
+
+                {!hasProPlan && (
+                    <p className="mt-3 border-t pt-3 text-sm text-amber-600 dark:text-amber-400">
+                        {__(
+                            'You can give consent now, but AI categorization only runs while you have a paid plan.',
+                        )}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function Billing() {
-    const { auth, pricing, locale } = usePage<SharedData>().props;
+    const { auth, pricing, locale, features, hasAiConsent } = usePage<
+        SharedData & { hasAiConsent: boolean }
+    >().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
     const hasProPlan = auth?.hasProPlan ?? false;
     const planEntries = Object.entries(pricing.plans);
@@ -310,21 +406,30 @@ export default function Billing() {
             <Head title={__('Manage Plan')} />
 
             <SettingsLayout>
-                {hasProPlan ? (
-                    <SubscribedSection
-                        isDemoAccount={isDemoAccount}
-                        defaultPlan={defaultPlan}
-                        currency={pricing.currency}
-                        locale={locale}
-                    />
-                ) : (
-                    <UpgradeSection
-                        planEntries={planEntries}
-                        defaultPlan={pricing.defaultPlan}
-                        currency={pricing.currency}
-                        locale={locale}
-                    />
-                )}
+                <div className="space-y-8">
+                    {hasProPlan ? (
+                        <SubscribedSection
+                            isDemoAccount={isDemoAccount}
+                            defaultPlan={defaultPlan}
+                            currency={pricing.currency}
+                            locale={locale}
+                        />
+                    ) : (
+                        <UpgradeSection
+                            planEntries={planEntries}
+                            defaultPlan={pricing.defaultPlan}
+                            currency={pricing.currency}
+                            locale={locale}
+                        />
+                    )}
+
+                    {features.aiConsentSettings && (
+                        <AiConsentSection
+                            initialConsent={hasAiConsent}
+                            hasProPlan={hasProPlan}
+                        />
+                    )}
+                </div>
             </SettingsLayout>
         </AppLayout>
     );

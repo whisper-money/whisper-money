@@ -127,6 +127,7 @@ class TransactionController extends Controller
             'banks' => $banks,
             'labels' => $labels,
             'automationRules' => $automationRules,
+            'hasAiConsent' => $user->hasActiveAiConsent(),
         ]);
     }
 

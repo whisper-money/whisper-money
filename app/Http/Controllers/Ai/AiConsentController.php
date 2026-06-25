@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ai;
 
+use App\Actions\Ai\StartCategorizationBackfill;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -9,13 +10,18 @@ use Illuminate\Http\Request;
 class AiConsentController extends Controller
 {
     /**
-     * Record the user's broad "use AI to help understand my finances" consent.
+     * Record the user's broad "use AI to help understand my finances" consent
+     * and kick off a backfill of their uncategorized transactions.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, StartCategorizationBackfill $startBackfill): JsonResponse
     {
-        $request->user()->recordAiConsent();
+        $user = $request->user();
+        $user->recordAiConsent();
 
-        return response()->json(['consented' => true]);
+        return response()->json([
+            'consented' => true,
+            'categorization' => $startBackfill->handle($user),
+        ]);
     }
 
     /**

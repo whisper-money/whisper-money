@@ -176,7 +176,9 @@ class SubscriptionController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return Inertia::render('settings/billing');
+        return Inertia::render('settings/billing', [
+            'hasAiConsent' => $request->user()->hasActiveAiConsent(),
+        ]);
     }
 
     public function billingPortal(Request $request): RedirectResponse

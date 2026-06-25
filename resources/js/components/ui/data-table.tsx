@@ -41,6 +41,8 @@ interface DataTableProps<TData, TValue> {
     ) => React.ReactNode;
     getRowDate?: (row: TData) => string;
     maxHeight?: number;
+    /** Static content pinned as the first row of the table body, spanning all columns. */
+    topRow?: React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -51,6 +53,7 @@ export function DataTable<TData, TValue>({
     renderDateHeader,
     getRowDate,
     maxHeight,
+    topRow,
 }: DataTableProps<TData, TValue>) {
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const rows = table.getRowModel().rows;
@@ -121,6 +124,16 @@ export function DataTable<TData, TValue>({
                         ))}
                     </TableHeader>
                     <TableBody>
+                        {topRow && (
+                            <TableRow className="hover:bg-transparent">
+                                <TableCell
+                                    colSpan={visibleColumnCount}
+                                    className="p-0 whitespace-normal"
+                                >
+                                    {topRow}
+                                </TableCell>
+                            </TableRow>
+                        )}
                         {rows.length ? (
                             <>
                                 {paddingTop > 0 && (

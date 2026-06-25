@@ -163,6 +163,18 @@ class Transaction extends Model
     }
 
     /**
+     * Transactions the AI backfill can act on: still uncategorized and stored
+     * in plaintext (encrypted descriptions are never sent to the AI provider).
+     *
+     * @param  Builder<Transaction>  $query
+     * @return Builder<Transaction>
+     */
+    public function scopePendingAiCategorization(Builder $query): Builder
+    {
+        return $query->whereNull('category_id')->whereNull('description_iv');
+    }
+
+    /**
      * @param  Builder<Transaction>  $query
      * @param  array<string, mixed>  $filters
      * @return Builder<Transaction>

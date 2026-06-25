@@ -2,12 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\Ai\AiCategorizer;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
@@ -40,24 +38,6 @@ class CategorizeOnboardingTransactionsJob implements ShouldQueue
             return;
         }
 
-        $pendingIds = Transaction::query()
-            ->where('user_id', $this->user->id)
-            ->whereNull('category_id')
-            ->whereNull('description_iv')
-            ->pluck('id');
-
-        if ($pendingIds->isEmpty()) {
-            return;
-        }
-
-        $batchSize = max(1, (int) config('ai_categorization.group_batch_size'));
-
-        // Chunk a fixed snapshot of ids so transactions left blank (below the
-        // confidence bar) are never re-processed on a later iteration.
-        foreach ($pendingIds->chunk($batchSize) as $chunkIds) {
-            $chunk = Transaction::query()->whereIn('id', $chunkIds->all())->get();
-
-            $categorizer->run($this->user, new Collection($chunk->all()));
-        }
+        $categorizer->backfill($this->user);
     }
 }
