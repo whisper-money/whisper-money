@@ -1,6 +1,6 @@
 import { useLocale } from '@/hooks/use-locale';
 import { __ } from '@/utils/i18n';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Cell,
     Row,
@@ -41,7 +41,7 @@ import { EditTransactionDialog } from '@/components/transactions/edit-transactio
 import { TransactionActionsMenu } from '@/components/transactions/transaction-actions-menu';
 import { createTransactionColumns } from '@/components/transactions/transaction-columns';
 import { TransactionFilters as TransactionFiltersComponent } from '@/components/transactions/transaction-filters';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -86,7 +86,7 @@ import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
-import { billing } from '@/routes/settings';
+import { store as storeConsent } from '@/routes/ai/consent';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
@@ -411,8 +411,27 @@ export default function Transactions({
 }: Props) {
     const locale = useLocale();
     const { auth, features } = usePage<SharedData>().props;
+    const [aiConsentGiven, setAiConsentGiven] = useState(false);
+    const [aiConsentSaving, setAiConsentSaving] = useState(false);
     const showAiConsentBanner =
-        auth.hasProPlan && features.aiConsentSettings && !hasAiConsent;
+        auth.hasProPlan &&
+        features.aiConsentSettings &&
+        !hasAiConsent &&
+        !aiConsentGiven;
+
+    const handleEnableAi = useCallback(async () => {
+        setAiConsentSaving(true);
+        try {
+            await axios.post(storeConsent.url());
+            setAiConsentGiven(true);
+            toast.success(__('AI categorization enabled'));
+        } catch {
+            toast.error(__('Something went wrong.'));
+        } finally {
+            setAiConsentSaving(false);
+        }
+    }, []);
+
     const [labels, setLabels] = useState<Label[]>(() => initialLabels);
 
     useEffect(() => {
@@ -1175,28 +1194,6 @@ export default function Transactions({
                     description={__('View and manage your transactions')}
                 />
 
-                {showAiConsentBanner && (
-                    <Alert>
-                        <SparklesIcon className="h-4 w-4" />
-                        <AlertTitle>
-                            {__('Let AI categorize your transactions')}
-                        </AlertTitle>
-                        <AlertDescription>
-                            <span>
-                                {__(
-                                    'Give your consent and our AI will suggest categories for your transactions automatically.',
-                                )}
-                            </span>
-                            <Link
-                                href={billing().url}
-                                className="font-medium text-primary underline-offset-4 hover:underline"
-                            >
-                                {__('Manage AI consent')}
-                            </Link>
-                        </AlertDescription>
-                    </Alert>
-                )}
-
                 <div className="space-y-4">
                     <TransactionFiltersComponent
                         filters={filters}
@@ -1278,6 +1275,35 @@ export default function Transactions({
                                 renderDateHeader={(date, colSpan) => (
                                     <DateHeader date={date} colSpan={colSpan} />
                                 )}
+                                topRow={
+                                    showAiConsentBanner ? (
+                                        <div className="flex items-center gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-3 dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
+                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80 shadow-sm dark:bg-white/10">
+                                                <AiSparkleIcon className="h-5 w-5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-medium">
+                                                    {__(
+                                                        'Let AI categorize your transactions',
+                                                    )}
+                                                </p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {__(
+                                                        'Give your consent and our AI will suggest categories for your transactions automatically.',
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <Button
+                                                onClick={handleEnableAi}
+                                                disabled={aiConsentSaving}
+                                                className="shrink-0 bg-gradient-to-r from-violet-600 to-sky-600 text-white hover:from-violet-700 hover:to-sky-700"
+                                            >
+                                                <SparklesIcon className="h-4 w-4" />
+                                                {__('Enable AI')}
+                                            </Button>
+                                        </div>
+                                    ) : null
+                                }
                             />
 
                             <DataTablePagination
