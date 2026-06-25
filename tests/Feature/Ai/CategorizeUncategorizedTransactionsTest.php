@@ -48,6 +48,24 @@ it('does not dispatch a backfill when nothing is uncategorized', function () {
     Bus::assertNotDispatched(CategorizeUncategorizedTransactionsJob::class);
 });
 
+it('does not dispatch a backfill for a user without a paid plan', function () {
+    config(['subscriptions.enabled' => true]);
+    Bus::fake();
+    $user = User::factory()->create();
+    Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+    ]);
+
+    actingAs($user)->postJson(route('ai.consent.store'))
+        ->assertOk()
+        ->assertJson(['consented' => true])
+        ->assertJsonPath('categorization', null);
+
+    expect($user->hasActiveAiConsent())->toBeTrue();
+    Bus::assertNotDispatched(CategorizeUncategorizedTransactionsJob::class);
+});
+
 it('does not dispatch a backfill when AI categorization is disabled', function () {
     config(['ai_categorization.enabled' => false]);
     Bus::fake();
