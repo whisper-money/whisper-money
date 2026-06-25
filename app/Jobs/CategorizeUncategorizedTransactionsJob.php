@@ -53,6 +53,8 @@ class CategorizeUncategorizedTransactionsJob implements ShouldQueue
             ->where('user_id', $this->user->id)
             ->whereNull('category_id')
             ->whereNull('description_iv')
+            ->orderByDesc('transaction_date')
+            ->orderByDesc('id')
             ->pluck('id');
 
         $total = $pendingIds->count();

@@ -7,6 +7,7 @@ use App\Jobs\CategorizeUncategorizedTransactionsJob;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Ai\AiCategorizer;
 use App\Services\Ai\CategoryCatalog;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -126,4 +127,42 @@ it('records progress while categorizing the uncategorized transactions', functio
         ->and($progress['total'])->toBe(2)
         ->and($progress['processed'])->toBe(2)
         ->and($progress['applied'])->toBe(2);
+});
+
+it('categorizes the most recent transactions first', function () {
+    config(['ai_categorization.group_batch_size' => 1]);
+
+    $user = User::factory()->create();
+    $user->recordAiConsent();
+
+    $oldest = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+        'transaction_date' => '2026-01-01',
+    ]);
+    $newest = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+        'transaction_date' => '2026-06-01',
+    ]);
+    $middle = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+        'transaction_date' => '2026-03-01',
+    ]);
+
+    $order = [];
+    $this->mock(AiCategorizer::class, function ($mock) use (&$order) {
+        $mock->shouldReceive('run')->andReturnUsing(function ($user, $transactions) use (&$order) {
+            foreach ($transactions as $transaction) {
+                $order[] = $transaction->id;
+            }
+
+            return [];
+        });
+    });
+
+    app()->call([new CategorizeUncategorizedTransactionsJob($user, 'order-job'), 'handle']);
+
+    expect($order)->toBe([$newest->id, $middle->id, $oldest->id]);
 });
