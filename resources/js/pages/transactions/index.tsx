@@ -13,7 +13,7 @@ import {
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, parseISO } from 'date-fns';
-import { SparklesIcon } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import {
     createElement,
     useCallback,
@@ -1277,29 +1277,32 @@ export default function Transactions({
                                 )}
                                 topRow={
                                     showAiConsentBanner ? (
-                                        <div className="flex items-center gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-3 dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
-                                            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80 shadow-sm dark:bg-white/10">
-                                                <AiSparkleIcon className="h-5 w-5" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="font-medium">
-                                                    {__(
-                                                        'Let AI categorize your transactions',
-                                                    )}
-                                                </p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {__(
-                                                        'Give your consent and our AI will suggest categories for your transactions automatically.',
-                                                    )}
-                                                </p>
+                                        <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
+                                            <div className="flex gap-3">
+                                                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80 shadow-sm dark:bg-white/10">
+                                                    <AiSparkleIcon className="h-5 w-5" />
+                                                </div>
+                                                <div className="max-w-80">
+                                                    <p className="font-medium">
+                                                        {__(
+                                                            'Let AI categorize your transactions',
+                                                        )}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {__(
+                                                            'Give your consent and our AI will suggest categories for your transactions automatically.',
+                                                        )}
+                                                    </p>
+                                                </div>
                                             </div>
                                             <Button
                                                 onClick={handleEnableAi}
                                                 disabled={aiConsentSaving}
-                                                className="shrink-0 bg-gradient-to-r from-violet-600 to-sky-600 text-white hover:from-violet-700 hover:to-sky-700"
+                                                variant="secondary"
+                                                className="max-w-[calc(var(--spacing)_*_86)] bg-white px-6!"
                                             >
-                                                <SparklesIcon className="h-4 w-4" />
                                                 {__('Enable AI')}
+                                                <ChevronRight />
                                             </Button>
                                         </div>
                                     ) : null

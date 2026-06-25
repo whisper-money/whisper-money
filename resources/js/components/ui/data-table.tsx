@@ -126,7 +126,10 @@ export function DataTable<TData, TValue>({
                     <TableBody>
                         {topRow && (
                             <TableRow className="hover:bg-transparent">
-                                <TableCell colSpan={visibleColumnCount} className="p-0">
+                                <TableCell
+                                    colSpan={visibleColumnCount}
+                                    className="p-0 whitespace-normal"
+                                >
                                     {topRow}
                                 </TableCell>
                             </TableRow>
