@@ -2,6 +2,7 @@
     "AI Categorization": "Catégorisation par IA",
     "Let AI suggest categories for your transactions automatically.": "Laissez l'IA suggérer automatiquement des catégories pour vos transactions.",
     "Allow AI categorization": "Autoriser la catégorisation par IA",
+    "You can give consent now, but AI categorization only runs while you have a paid plan.": "Vous pouvez donner votre consentement maintenant, mais la catégorisation par IA ne fonctionne que tant que vous avez un forfait payant.",
     "With your permission, we send merchant names from your transactions to our AI provider so it can suggest categories. You can revoke this at any time.": "Avec votre permission, nous envoyons les noms des commerçants de vos transactions à notre fournisseur d'IA afin qu'il puisse suggérer des catégories. Vous pouvez révoquer cela à tout moment.",
     "AI categorization enabled": "Catégorisation par IA activée",
     "AI categorization disabled": "Catégorisation par IA désactivée",
