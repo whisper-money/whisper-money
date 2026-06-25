@@ -7,7 +7,7 @@ use App\Jobs\CategorizeUncategorizedTransactionsJob;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Services\Ai\AiCategorizer;
+use App\Services\Ai\CategorizeTransactions;
 use App\Services\Ai\CategoryCatalog;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -172,8 +172,8 @@ it('categorizes the most recent transactions first', function () {
     ]);
 
     $order = [];
-    $this->mock(AiCategorizer::class, function ($mock) use (&$order) {
-        $mock->shouldReceive('run')->andReturnUsing(function ($user, $transactions) use (&$order) {
+    $this->mock(CategorizeTransactions::class, function ($mock) use (&$order) {
+        $mock->shouldReceive('forTransactions')->andReturnUsing(function ($user, $transactions) use (&$order) {
             foreach ($transactions as $transaction) {
                 $order[] = $transaction->id;
             }

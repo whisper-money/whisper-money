@@ -2,12 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\AiCategorizationGate;
 use App\Services\Ai\AiCategorizer;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -56,41 +54,12 @@ class CategorizeUncategorizedTransactionsJob implements ShouldQueue
             return;
         }
 
-        $pendingIds = Transaction::query()
-            ->where('user_id', $this->user->id)
-            ->whereNull('category_id')
-            ->whereNull('description_iv')
-            ->orderByDesc('transaction_date')
-            ->orderByDesc('id')
-            ->pluck('id');
+        $result = $categorizer->backfill(
+            $this->user,
+            fn (int $processed, int $total, int $applied) => $this->updateProgress('processing', $processed, $total, $applied),
+        );
 
-        $total = $pendingIds->count();
-
-        if ($total === 0) {
-            $this->updateProgress('done', 0, 0, 0);
-
-            return;
-        }
-
-        $this->updateProgress('processing', 0, $total, 0);
-
-        $batchSize = max(1, (int) config('ai_categorization.group_batch_size'));
-        $processed = 0;
-        $applied = 0;
-
-        // Chunk a fixed snapshot of ids so transactions left blank (below the
-        // confidence bar) are never re-processed on a later iteration.
-        foreach ($pendingIds->chunk($batchSize) as $chunkIds) {
-            $chunk = Transaction::query()->whereIn('id', $chunkIds->all())->get();
-
-            $outcomes = $categorizer->run($this->user, new Collection($chunk->all()));
-            $applied += count(array_filter($outcomes, fn ($outcome): bool => $outcome->applied));
-            $processed += $chunkIds->count();
-
-            $this->updateProgress('processing', $processed, $total, $applied);
-        }
-
-        $this->updateProgress('done', $processed, $total, $applied);
+        $this->updateProgress('done', $result['processed'], $result['total'], $result['applied']);
     }
 
     /**
