@@ -1,4 +1,5 @@
 import { useLocale } from '@/hooks/use-locale';
+import { usePollJobStatus } from '@/hooks/use-poll-job-status';
 import { __ } from '@/utils/i18n';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
@@ -422,11 +423,10 @@ export default function Transactions({
     const [categorizingIds, setCategorizingIds] = useState<Set<string>>(
         () => new Set(),
     );
-    const categorizationTimerRef =
-        useRef<ReturnType<typeof setTimeout>>(undefined);
     const categorizationToastRef = useRef<string | number | undefined>(
         undefined,
     );
+    const { start: startCategorizationPoll } = usePollJobStatus();
 
     const [labels, setLabels] = useState<Label[]>(() => initialLabels);
 
@@ -637,77 +637,72 @@ export default function Transactions({
         (jobId: string, fallbackTotal: number) => {
             let pendingTicks = 0;
 
-            const stopSpinners = () => {
+            const dismiss = () => {
                 setCategorizingIds(new Set());
-                categorizationTimerRef.current = undefined;
+                toast.dismiss(categorizationToastRef.current);
+                categorizationToastRef.current = undefined;
             };
 
-            const tick = async () => {
+            startCategorizationPoll(async () => {
+                let data;
                 try {
-                    const { data } = await axios.get<{
+                    ({ data } = await axios.get<{
                         status: 'pending' | 'processing' | 'done' | 'failed';
                         processed: number;
                         total: number;
                         applied: number;
-                    }>(categorizationStatus(jobId).url);
-
-                    // The job never started (e.g. no queue worker running) — give
-                    // up instead of polling forever.
-                    if (data.status === 'pending' && ++pendingTicks > 15) {
-                        stopSpinners();
-                        toast.dismiss(categorizationToastRef.current);
-                        categorizationToastRef.current = undefined;
-                        return;
-                    }
-
-                    const total = data.total || fallbackTotal;
-                    categorizationToastRef.current = toast.loading(
-                        __('Categorizing :processed of :total transactions…', {
-                            processed: data.processed,
-                            total,
-                        }),
-                        { id: categorizationToastRef.current },
-                    );
-
-                    // Pull whatever AI has applied so far into the visible rows.
-                    if (data.status === 'processing' || data.status === 'done') {
-                        refreshTransactions();
-                    }
-
-                    if (data.status === 'done' || data.status === 'failed') {
-                        stopSpinners();
-                        if (data.status === 'failed') {
-                            toast.error(
-                                __(
-                                    'AI categorization failed. Please try again.',
-                                ),
-                                { id: categorizationToastRef.current },
-                            );
-                        } else if (data.applied > 0) {
-                            toast.success(
-                                __('AI categorized :count transactions', {
-                                    count: data.applied,
-                                }),
-                                { id: categorizationToastRef.current },
-                            );
-                        } else {
-                            toast.dismiss(categorizationToastRef.current);
-                        }
-                        categorizationToastRef.current = undefined;
-                        return;
-                    }
-
-                    categorizationTimerRef.current = setTimeout(tick, 2000);
+                    }>(categorizationStatus(jobId).url));
                 } catch {
-                    stopSpinners();
-                    toast.dismiss(categorizationToastRef.current);
-                    categorizationToastRef.current = undefined;
+                    dismiss();
+                    return 'stop';
                 }
-            };
 
-            tick();
+                // The job never started (e.g. no queue worker running) — give up
+                // instead of polling forever.
+                if (data.status === 'pending' && ++pendingTicks > 15) {
+                    dismiss();
+                    return 'stop';
+                }
+
+                const total = data.total || fallbackTotal;
+                categorizationToastRef.current = toast.loading(
+                    __('Categorizing :processed of :total transactions…', {
+                        processed: data.processed,
+                        total,
+                    }),
+                    { id: categorizationToastRef.current },
+                );
+
+                // Pull whatever AI has applied so far into the visible rows.
+                if (data.status === 'processing' || data.status === 'done') {
+                    refreshTransactions();
+                }
+
+                if (data.status === 'done' || data.status === 'failed') {
+                    setCategorizingIds(new Set());
+                    if (data.status === 'failed') {
+                        toast.error(
+                            __('AI categorization failed. Please try again.'),
+                            { id: categorizationToastRef.current },
+                        );
+                    } else if (data.applied > 0) {
+                        toast.success(
+                            __('AI categorized :count transactions', {
+                                count: data.applied,
+                            }),
+                            { id: categorizationToastRef.current },
+                        );
+                    } else {
+                        toast.dismiss(categorizationToastRef.current);
+                    }
+                    categorizationToastRef.current = undefined;
+                    return 'stop';
+                }
+
+                return 'continue';
+            }, 2000);
         },
-        [refreshTransactions],
+        [startCategorizationPoll, refreshTransactions],
     );
 
     const handleEnableAi = useCallback(async () => {
@@ -748,15 +743,6 @@ export default function Transactions({
             setAiConsentSaving(false);
         }
     }, [allTransactions, pollCategorizationStatus]);
-
-    // Stop polling if the user leaves mid-categorization.
-    useEffect(() => {
-        return () => {
-            if (categorizationTimerRef.current) {
-                clearTimeout(categorizationTimerRef.current);
-            }
-        };
-    }, []);
 
     // Load More with cursor pagination (fetch directly to avoid cursor in URL)
     const { component, version } = usePage();
