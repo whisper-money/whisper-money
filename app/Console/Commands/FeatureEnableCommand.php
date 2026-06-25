@@ -11,7 +11,7 @@ class FeatureEnableCommand extends Command
 {
     use ResolvesFeatures;
 
-    protected $signature = 'feature:enable {feature : The feature name (class name or string-based feature)} {target : User email or "all" for everyone}';
+    protected $signature = 'feature:enable {feature : The feature name (class name or string-based feature)} {target : User email, "all" for everyone, or a percentage like "25%" for a random rollout}';
 
     protected $description = 'Enable a feature for a specific user or all users';
 
@@ -36,6 +36,10 @@ class FeatureEnableCommand extends Command
             return self::SUCCESS;
         }
 
+        if (preg_match('/^(\d{1,3})%$/', $target, $matches)) {
+            return $this->enableForPercentage($featureClass, $featureName, (int) $matches[1]);
+        }
+
         $user = User::where('email', $target)->first();
 
         if (! $user) {
@@ -46,6 +50,25 @@ class FeatureEnableCommand extends Command
 
         Feature::for($user)->activate($featureClass);
         $this->info("Feature '{$featureName}' enabled for user '{$user->email}'.");
+
+        return self::SUCCESS;
+    }
+
+    private function enableForPercentage(string $featureClass, string $featureName, int $percentage): int
+    {
+        if ($percentage < 1 || $percentage > 100) {
+            $this->error('Percentage must be between 1 and 100.');
+
+            return self::FAILURE;
+        }
+
+        $count = (int) ceil(User::count() * $percentage / 100);
+
+        User::inRandomOrder()
+            ->take($count)
+            ->each(fn (User $user) => Feature::for($user)->activate($featureClass));
+
+        $this->info("Feature '{$featureName}' enabled for {$count} users (~{$percentage}% of current users).");
 
         return self::SUCCESS;
     }
