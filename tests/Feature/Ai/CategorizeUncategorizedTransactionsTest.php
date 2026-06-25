@@ -129,6 +129,26 @@ it('records progress while categorizing the uncategorized transactions', functio
         ->and($progress['applied'])->toBe(2);
 });
 
+it('marks the cache as failed and preserves counts when the job fails', function () {
+    $user = User::factory()->create();
+    $jobId = 'failed-job';
+    Cache::put(
+        CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($jobId),
+        ['status' => 'processing', 'processed' => 3, 'total' => 10, 'applied' => 2],
+        now()->addHour(),
+    );
+
+    (new CategorizeUncategorizedTransactionsJob($user, $jobId))
+        ->failed(new RuntimeException('boom'));
+
+    $progress = Cache::get(CategorizeUncategorizedTransactionsJob::cacheKeyForJobId($jobId));
+
+    expect($progress['status'])->toBe('failed')
+        ->and($progress['processed'])->toBe(3)
+        ->and($progress['total'])->toBe(10)
+        ->and($progress['applied'])->toBe(2);
+});
+
 it('categorizes the most recent transactions first', function () {
     config(['ai_categorization.group_batch_size' => 1]);
 

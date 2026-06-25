@@ -11,6 +11,7 @@
     "Categorizing…": "Catégorisation…",
     "Categorizing :processed of :total transactions…": "Catégorisation de :processed sur :total transactions…",
     "AI categorized :count transactions": "L'IA a catégorisé :count transactions",
+    "AI categorization failed. Please try again.": "La catégorisation par IA a échoué. Veuillez réessayer.",
     "Manage Accounts": "Gérer les comptes",
     "Choose which accounts from this bank are synced and where their transactions go.": "Choisissez quels comptes de cette banque sont synchronisés et où vont leurs transactions.",
     "No accounts are syncing yet.": "Aucun compte n'est encore synchronisé.",

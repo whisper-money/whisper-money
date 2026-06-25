@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 /**
  * Categorize every uncategorized transaction for a user who has just granted AI
@@ -28,6 +29,12 @@ class CategorizeUncategorizedTransactionsJob implements ShouldQueue
      * A backfill can span many model calls, so give the batch plenty of room.
      */
     public int $timeout = 300;
+
+    /**
+     * Re-running a partially completed backfill resets progress and re-bills the
+     * model, so never retry — surface the failure to the client instead.
+     */
+    public int $tries = 1;
 
     public function __construct(public User $user, public string $jobId) {}
 
@@ -87,7 +94,27 @@ class CategorizeUncategorizedTransactionsJob implements ShouldQueue
     }
 
     /**
-     * @param  'processing'|'done'  $status
+     * Mark the run as failed so the polling client stops waiting instead of
+     * spinning until the cache entry expires.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $progress = Cache::get(self::cacheKeyForJobId($this->jobId), [
+            'processed' => 0,
+            'total' => 0,
+            'applied' => 0,
+        ]);
+
+        $this->updateProgress(
+            'failed',
+            $progress['processed'] ?? 0,
+            $progress['total'] ?? 0,
+            $progress['applied'] ?? 0,
+        );
+    }
+
+    /**
+     * @param  'processing'|'done'|'failed'  $status
      */
     private function updateProgress(string $status, int $processed, int $total, int $applied): void
     {

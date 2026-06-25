@@ -11,6 +11,7 @@
     "Categorizing…": "Categorizando…",
     "Categorizing :processed of :total transactions…": "Categorizando :processed de :total transacciones…",
     "AI categorized :count transactions": "La IA categorizó :count transacciones",
+    "AI categorization failed. Please try again.": "La categorización con IA falló. Inténtalo de nuevo.",
     "Drag to reorder": "Arrastra para reordenar",
     "Manage Accounts": "Gestionar cuentas",
     "Choose which accounts from this bank are synced and where their transactions go.": "Elige qué cuentas de este banco se sincronizan y a dónde van sus transacciones.",

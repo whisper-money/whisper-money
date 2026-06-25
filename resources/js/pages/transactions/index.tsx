@@ -635,14 +635,30 @@ export default function Transactions({
 
     const pollCategorizationStatus = useCallback(
         (jobId: string, fallbackTotal: number) => {
+            let pendingTicks = 0;
+
+            const stopSpinners = () => {
+                setCategorizingIds(new Set());
+                categorizationTimerRef.current = undefined;
+            };
+
             const tick = async () => {
                 try {
                     const { data } = await axios.get<{
-                        status: 'pending' | 'processing' | 'done';
+                        status: 'pending' | 'processing' | 'done' | 'failed';
                         processed: number;
                         total: number;
                         applied: number;
                     }>(categorizationStatus(jobId).url);
+
+                    // The job never started (e.g. no queue worker running) — give
+                    // up instead of polling forever.
+                    if (data.status === 'pending' && ++pendingTicks > 15) {
+                        stopSpinners();
+                        toast.dismiss(categorizationToastRef.current);
+                        categorizationToastRef.current = undefined;
+                        return;
+                    }
 
                     const total = data.total || fallbackTotal;
                     categorizationToastRef.current = toast.loading(
@@ -654,11 +670,20 @@ export default function Transactions({
                     );
 
                     // Pull whatever AI has applied so far into the visible rows.
-                    refreshTransactions();
+                    if (data.status === 'processing' || data.status === 'done') {
+                        refreshTransactions();
+                    }
 
-                    if (data.status === 'done') {
-                        setCategorizingIds(new Set());
-                        if (data.applied > 0) {
+                    if (data.status === 'done' || data.status === 'failed') {
+                        stopSpinners();
+                        if (data.status === 'failed') {
+                            toast.error(
+                                __(
+                                    'AI categorization failed. Please try again.',
+                                ),
+                                { id: categorizationToastRef.current },
+                            );
+                        } else if (data.applied > 0) {
                             toast.success(
                                 __('AI categorized :count transactions', {
                                     count: data.applied,
@@ -674,7 +699,7 @@ export default function Transactions({
 
                     categorizationTimerRef.current = setTimeout(tick, 2000);
                 } catch {
-                    setCategorizingIds(new Set());
+                    stopSpinners();
                     toast.dismiss(categorizationToastRef.current);
                     categorizationToastRef.current = undefined;
                 }
