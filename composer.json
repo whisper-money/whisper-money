@@ -64,12 +64,12 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "URL=$(npx --no-install portless get dev.whisper.money 2>/dev/null); if [ -n \"$URL\" ]; then if command -v pbcopy >/dev/null 2>&1; then printf %s \"$URL\" | pbcopy; elif command -v wl-copy >/dev/null 2>&1; then printf %s \"$URL\" | wl-copy; elif command -v xclip >/dev/null 2>&1; then printf %s \"$URL\" | xclip -selection clipboard; fi; echo \"\u2713 $URL copied to clipboard\"; fi; PORT=$(awk 'BEGIN{srand(); print 8000 + int(rand()*1000)}'); npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#2dd4bf\" \"npx portless run --name dev.whisper.money --app-port $PORT php artisan serve --port=$PORT\" \"php artisan queue:listen --tries=1 --queue=emails\" \"php artisan pail --timeout=0\" \"bun run dev\" \"stripe listen --forward-to https://dev.whisper.money.localhost/stripe/webhook\" --names=server,emails-queue,logs,vite,stripe"
+            "URL=$(npx --no-install portless get dev.whisper.money 2>/dev/null); if [ -n \"$URL\" ]; then if command -v pbcopy >/dev/null 2>&1; then printf %s \"$URL\" | pbcopy; elif command -v wl-copy >/dev/null 2>&1; then printf %s \"$URL\" | wl-copy; elif command -v xclip >/dev/null 2>&1; then printf %s \"$URL\" | xclip -selection clipboard; fi; echo \"\u2713 $URL copied to clipboard\"; fi; PORT=$(awk 'BEGIN{srand(); print 8000 + int(rand()*1000)}'); npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#2dd4bf\" \"npx portless run --name dev.whisper.money --app-port $PORT php artisan serve --port=$PORT\" \"php artisan queue:listen --tries=1 --queue=emails,ai\" \"php artisan pail --timeout=0\" \"bun run dev\" \"stripe listen --forward-to https://dev.whisper.money.localhost/stripe/webhook\" --names=server,queue,logs,vite,stripe"
         ],
         "dev:ssr": [
             "bun run build:ssr",
             "Composer\\Config::disableProcessTimeout",
-            "PORT=$(awk 'BEGIN{srand(); print 8000 + int(rand()*1000)}'); npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#2dd4bf\" \"npx portless run --name dev.whisper.money --app-port $PORT php artisan serve --port=$PORT\" \"php artisan queue:listen --tries=1 --queue=emails\" \"php artisan pail --timeout=0\" \"php artisan inertia:start-ssr --runtime=bun\" --names=server,emails-queue,logs,ssr,stripe --kill-others"
+            "PORT=$(awk 'BEGIN{srand(); print 8000 + int(rand()*1000)}'); npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74,#2dd4bf\" \"npx portless run --name dev.whisper.money --app-port $PORT php artisan serve --port=$PORT\" \"php artisan queue:listen --tries=1 --queue=emails,ai\" \"php artisan pail --timeout=0\" \"php artisan inertia:start-ssr --runtime=bun\" --names=server,queue,logs,ssr,stripe --kill-others"
         ],
         "test": [
             "@php artisan config:clear --ansi",
