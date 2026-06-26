@@ -699,9 +699,7 @@ export function TransactionFilters({
                                                                             key={
                                                                                 account.id
                                                                             }
-                                                                            value={
-                                                                                account.name
-                                                                            }
+                                                                            value={`${account.name} ${account.id}`}
                                                                             onSelect={() =>
                                                                                 handleAccountToggle(
                                                                                     account.id,
@@ -727,7 +725,7 @@ export function TransactionFilters({
                                                                                             ?.name
                                                                                     }
                                                                                     fallback="icon"
-                                                                                    className="h-5 w-5 shrink-0"
+                                                                                    className="h-5 w-5 shrink-0 rounded-full"
                                                                                 />
                                                                                 <AccountName
                                                                                     account={
