@@ -354,7 +354,11 @@ export function EditTransactionDialog({
                                 ? finalLabelIds
                                 : undefined,
                     },
-                    { updateBalance: updateAccountBalance },
+                    {
+                        updateBalance: selectedAccount.banking_connection_id
+                            ? false
+                            : updateAccountBalance,
+                    },
                 );
 
                 const updatedCategory = finalCategoryId
@@ -523,6 +527,42 @@ export function EditTransactionDialog({
 
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4 py-4">
+                        {mode === 'create' && (
+                            <div className="space-y-2">
+                                <FormLabel htmlFor="account">
+                                    {__('Account')}
+                                </FormLabel>
+                                <Select
+                                    value={accountId}
+                                    onValueChange={setAccountId}
+                                    disabled={isSubmitting}
+                                >
+                                    <SelectTrigger
+                                        id="account"
+                                        data-testid="account-select"
+                                    >
+                                        <SelectValue
+                                            placeholder={__('Select account')}
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {transactionalAccounts.map(
+                                            (account) => (
+                                                <SelectItem
+                                                    key={account.id}
+                                                    value={String(account.id)}
+                                                >
+                                                    {decryptedAccountNames.get(
+                                                        account.id,
+                                                    ) || __('[Loading...]')}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <FormLabel
                                 htmlFor="date"
@@ -683,29 +723,32 @@ export function EditTransactionDialog({
                                             selectedAccount?.currency_code ||
                                             'USD'
                                         }
+                                        placeholder="-25.00"
                                         disabled={isSubmitting}
                                         required
                                     />
 
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
-                                            id="update-balance"
-                                            checked={updateAccountBalance}
-                                            onCheckedChange={(checked) =>
-                                                handleUpdateBalanceChange(
-                                                    checked === true,
-                                                )
-                                            }
-                                            disabled={isSubmitting}
-                                        />
+                                    {!selectedAccount?.banking_connection_id && (
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id="update-balance"
+                                                checked={updateAccountBalance}
+                                                onCheckedChange={(checked) =>
+                                                    handleUpdateBalanceChange(
+                                                        checked === true,
+                                                    )
+                                                }
+                                                disabled={isSubmitting}
+                                            />
 
-                                        <FormLabel
-                                            htmlFor="update-balance"
-                                            className="cursor-pointer font-normal"
-                                        >
-                                            {__('Update account balance')}
-                                        </FormLabel>
-                                    </div>
+                                            <FormLabel
+                                                htmlFor="update-balance"
+                                                className="cursor-pointer font-normal"
+                                            >
+                                                {__('Update account balance')}
+                                            </FormLabel>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 <div className="text-sm font-medium">
@@ -719,42 +762,6 @@ export function EditTransactionDialog({
                                 </div>
                             )}
                         </div>
-
-                        {mode === 'create' && (
-                            <div className="space-y-2">
-                                <FormLabel htmlFor="account">
-                                    {__('Account')}
-                                </FormLabel>
-                                <Select
-                                    value={accountId}
-                                    onValueChange={setAccountId}
-                                    disabled={isSubmitting}
-                                >
-                                    <SelectTrigger
-                                        id="account"
-                                        data-testid="account-select"
-                                    >
-                                        <SelectValue
-                                            placeholder={__('Select account')}
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {transactionalAccounts.map(
-                                            (account) => (
-                                                <SelectItem
-                                                    key={account.id}
-                                                    value={String(account.id)}
-                                                >
-                                                    {decryptedAccountNames.get(
-                                                        account.id,
-                                                    ) || __('[Loading...]')}
-                                                </SelectItem>
-                                            ),
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
 
                         <div className="space-y-2">
                             <FormLabel htmlFor="category">
