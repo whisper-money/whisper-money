@@ -5,7 +5,6 @@ namespace App\Http\Controllers\OpenBanking;
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Exceptions\Banking\TransientBankingProviderException;
-use App\Features\InteractiveBrokers;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\OpenBanking\Concerns\CreatesAccountsFromPending;
 use App\Http\Controllers\OpenBanking\Concerns\HandlesSubscriptionGate;
@@ -17,7 +16,6 @@ use App\Services\Banking\InteractiveBrokersClient;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Laravel\Pennant\Feature;
 
 class InteractiveBrokersController extends Controller
 {
@@ -31,8 +29,6 @@ class InteractiveBrokersController extends Controller
     {
         $validated = $request->validated();
         $user = auth()->user();
-
-        abort_unless(Feature::for($user)->active(InteractiveBrokers::class), 403);
 
         if ($this->shouldBlockOpenBankingAccess($user)) {
             return $this->subscribeJsonResponse();

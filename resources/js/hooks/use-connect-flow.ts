@@ -9,13 +9,11 @@ import {
     isProviderComplete,
 } from '@/lib/connect-providers';
 import { getCsrfToken } from '@/lib/csrf';
-import type { SharedData } from '@/types';
 import type {
     BankingConnection,
     EnableBankingInstitution,
 } from '@/types/banking';
 import { __ } from '@/utils/i18n';
-import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export const CONNECT_COUNTRIES = [
@@ -48,7 +46,6 @@ export type ConnectStep = 'country' | 'bank' | 'confirm';
  * the components.
  */
 export function useConnectFlow(connections: BankingConnection[]) {
-    const { features } = usePage<SharedData>().props;
     const [step, setStep] = useState<ConnectStep>('country');
     const [country, setCountry] = useState('');
     const [institutions, setInstitutions] = useState<
@@ -144,7 +141,6 @@ export function useConnectFlow(connections: BankingConnection[]) {
 
                 const extraInstitutions = CONNECT_PROVIDERS.filter(
                     (p) =>
-                        (!p.feature || features[p.feature]) &&
                         (!p.onlyCountry || p.onlyCountry === countryCode) &&
                         !hasLiveConnectionForProvider(
                             connections,
@@ -175,7 +171,7 @@ export function useConnectFlow(connections: BankingConnection[]) {
                 setIsLoading(false);
             }
         },
-        [connections, features],
+        [connections],
     );
 
     const handleAuthorize = useCallback(async () => {
