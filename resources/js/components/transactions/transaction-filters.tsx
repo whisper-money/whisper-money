@@ -5,6 +5,7 @@ import { ChevronsUpDown, Tag, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { AccountName } from '@/components/accounts/account-name';
+import { BankLogo } from '@/components/bank-logo';
 import { SavedFilters } from '@/components/transactions/saved-filters';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,7 @@ import { type Account } from '@/types/account';
 import { type Category, getCategoryColorClasses } from '@/types/category';
 import { getLabelColorClasses, type Label } from '@/types/label';
 import { type TransactionFilters as FiltersType } from '@/types/transaction';
+import { type UUID } from '@/types/uuid';
 import { CategoryIcon } from '../shared/category-combobox';
 
 interface TransactionFiltersProps {
@@ -62,6 +64,7 @@ export function TransactionFilters({
     const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
     const [categorySearch, setCategorySearch] = useState('');
     const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+    const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
     const [searchText, setSearchText] = useState(filters.searchText);
     const [creditorName, setCreditorName] = useState(filters.creditorName);
     const [debtorName, setDebtorName] = useState(filters.debtorName);
@@ -187,7 +190,7 @@ export function TransactionFilters({
         });
     }
 
-    function handleAccountToggle(accountId: number) {
+    function handleAccountToggle(accountId: UUID) {
         const newAccountIds = filters.accountIds.includes(accountId)
             ? filters.accountIds.filter((id) => id !== accountId)
             : [...filters.accountIds, accountId];
@@ -363,28 +366,6 @@ export function TransactionFilters({
                                                 })
                                             }
                                             placeholder={__('Max')}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <FormLabel>
-                                        {__('Counterparties')}
-                                    </FormLabel>
-                                    <div className="grid grid-cols-2 gap-2 pt-2">
-                                        <Input
-                                            value={creditorName}
-                                            onChange={(e) =>
-                                                setCreditorName(e.target.value)
-                                            }
-                                            placeholder={__('Creditor name')}
-                                        />
-                                        <Input
-                                            value={debtorName}
-                                            onChange={(e) =>
-                                                setDebtorName(e.target.value)
-                                            }
-                                            placeholder={__('Debtor name')}
                                         />
                                     </div>
                                 </div>
@@ -658,37 +639,109 @@ export function TransactionFilters({
                                 {!hideAccountFilter && (
                                     <div className="space-y-2">
                                         <FormLabel>{__('Accounts')}</FormLabel>
-                                        <div className="flex flex-wrap gap-2 pt-2">
-                                            {accounts.map((account) => {
-                                                const isSelected =
-                                                    filters.accountIds.includes(
-                                                        account.id,
-                                                    );
-                                                return (
-                                                    <Badge
-                                                        key={account.id}
-                                                        variant={
-                                                            isSelected
-                                                                ? 'default'
-                                                                : 'outline'
-                                                        }
-                                                        className="cursor-pointer px-2 py-1"
-                                                        onClick={() =>
-                                                            handleAccountToggle(
-                                                                account.id,
-                                                            )
-                                                        }
+                                        <div className="pt-2">
+                                            <Popover
+                                                open={accountDropdownOpen}
+                                                onOpenChange={
+                                                    setAccountDropdownOpen
+                                                }
+                                            >
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        className="w-full justify-between"
                                                     >
-                                                        <AccountName
-                                                            account={account}
-                                                            length={{
-                                                                min: 6,
-                                                                max: 28,
-                                                            }}
+                                                        {filters.accountIds
+                                                            .length > 0 ? (
+                                                            <span className="truncate">
+                                                                {
+                                                                    filters
+                                                                        .accountIds
+                                                                        .length
+                                                                }{' '}
+                                                                selected
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">
+                                                                {__(
+                                                                    'Select accounts...',
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent
+                                                    className="w-full p-0"
+                                                    align="start"
+                                                >
+                                                    <Command>
+                                                        <CommandInput
+                                                            placeholder={__(
+                                                                'Search accounts...',
+                                                            )}
                                                         />
-                                                    </Badge>
-                                                );
-                                            })}
+                                                        <CommandList>
+                                                            <CommandEmpty>
+                                                                {__(
+                                                                    'No accounts found.',
+                                                                )}
+                                                            </CommandEmpty>
+                                                            {accounts.map(
+                                                                (account) => {
+                                                                    const isSelected =
+                                                                        filters.accountIds.includes(
+                                                                            account.id,
+                                                                        );
+                                                                    return (
+                                                                        <CommandItem
+                                                                            key={
+                                                                                account.id
+                                                                            }
+                                                                            value={`${account.name} ${account.id}`}
+                                                                            onSelect={() =>
+                                                                                handleAccountToggle(
+                                                                                    account.id,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <Checkbox
+                                                                                checked={
+                                                                                    isSelected
+                                                                                }
+                                                                                className="pointer-events-none mr-1"
+                                                                            />
+                                                                            <div className="flex min-w-0 items-center gap-2">
+                                                                                <BankLogo
+                                                                                    src={
+                                                                                        account
+                                                                                            .bank
+                                                                                            ?.logo
+                                                                                    }
+                                                                                    name={
+                                                                                        account
+                                                                                            .bank
+                                                                                            ?.name
+                                                                                    }
+                                                                                    fallback="icon"
+                                                                                    className="h-5 w-5 shrink-0 rounded-full"
+                                                                                />
+                                                                                <AccountName
+                                                                                    account={
+                                                                                        account
+                                                                                    }
+                                                                                    className="truncate"
+                                                                                />
+                                                                            </div>
+                                                                        </CommandItem>
+                                                                    );
+                                                                },
+                                                            )}
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
                                         </div>
                                     </div>
                                 )}
@@ -716,6 +769,28 @@ export function TransactionFilters({
                                             <AiSparkleIcon className="h-3.5 w-3.5" />
                                             {__('Only show AI guesses')}
                                         </Badge>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <FormLabel>
+                                        {__('Counterparties')}
+                                    </FormLabel>
+                                    <div className="grid grid-cols-2 gap-2 pt-2">
+                                        <Input
+                                            value={creditorName}
+                                            onChange={(e) =>
+                                                setCreditorName(e.target.value)
+                                            }
+                                            placeholder={__('Creditor name')}
+                                        />
+                                        <Input
+                                            value={debtorName}
+                                            onChange={(e) =>
+                                                setDebtorName(e.target.value)
+                                            }
+                                            placeholder={__('Debtor name')}
+                                        />
                                     </div>
                                 </div>
                             </div>
