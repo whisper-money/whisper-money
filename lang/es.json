@@ -2166,5 +2166,14 @@
     "Connect your Interactive Brokers account using a Flex Web Service token and Query ID.": "Conecta tu cuenta de Interactive Brokers usando un token del Flex Web Service y un Query ID.",
     "Enter your Flex Web Service token and Query ID to connect your Interactive Brokers account.": "Introduce tu token del Flex Web Service y el Query ID para conectar tu cuenta de Interactive Brokers.",
     "In Client Portal, create an Activity Flex Query including the \"Net Asset Value (NAV)\" and \"Open Positions\" sections, then generate a Flex Web Service token under": "En el Client Portal, crea una Activity Flex Query que incluya las secciones \"Net Asset Value (NAV)\" y \"Open Positions\", y luego genera un token del Flex Web Service en",
-    "Performance & Reports → Flex Queries": "Rendimiento e Informes → Flex Queries"
+    "Performance & Reports → Flex Queries": "Rendimiento e Informes → Flex Queries",
+    "Putting AI to work on your finances": "Ponemos la IA a trabajar en tus finanzas",
+    "Your AI assistant is hard at work, :name": "Tu asistente de IA está trabajando duro, :name",
+    "A couple of days ago you turned on AI-powered insights in Whisper Money. We wanted to check in and show you what it has been doing for you behind the scenes.": "Hace un par de días activaste los análisis con IA en Whisper Money. Queríamos saber cómo te va y enseñarte lo que ha estado haciendo por ti entre bastidores.",
+    "Your transactions, categorised automatically": "Tus transacciones, categorizadas automáticamente",
+    "Instead of sorting every transaction by hand, our AI suggests a category for each one — so your spending breakdown stays accurate and up to date with almost no effort from you.": "En lugar de ordenar cada transacción a mano, nuestra IA sugiere una categoría para cada una, para que el desglose de tus gastos se mantenga preciso y actualizado casi sin esfuerzo por tu parte.",
+    "See your categorised transactions": "Ver tus transacciones categorizadas",
+    "Private by design, always": "Privado por diseño, siempre",
+    "Turning on AI never changes who owns your data — you do. We only use it to help you understand your own finances, and you can revoke this consent at any time from your settings.": "Activar la IA nunca cambia quién es el dueño de tus datos: lo eres tú. Solo la usamos para ayudarte a entender tus propias finanzas, y puedes revocar este consentimiento cuando quieras desde tus ajustes.",
+    "If you have any questions, **just reply to this email**. We personally read every message.": "Si tienes cualquier duda, **responde a este correo**. Leemos personalmente cada mensaje."
 }
