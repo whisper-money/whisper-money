@@ -9,6 +9,8 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Ai\CategorizeTransactions;
 use App\Services\Ai\CategoryCatalog;
+use Illuminate\Support\Facades\Exceptions;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
 
 function leafIndex(CategoryCatalog $catalog, string $categoryId): int
 {
@@ -130,6 +132,41 @@ it('never sends client-side encrypted transactions to the model', function () {
 
     expect($outcomes)->toBe([])
         ->and($encrypted->category_id)->toBeNull();
+});
+
+it('drops the chunk without reporting when the provider is transiently overloaded', function () {
+    $user = User::factory()->create();
+    groceries($user);
+    $transaction = uncategorized($user);
+
+    Exceptions::fake();
+
+    TransactionCategorizationAgent::fake(fn () => throw ProviderOverloadedException::forProvider('gemini'));
+
+    $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    $transaction->refresh();
+
+    expect($outcomes)->toBe([])
+        ->and($transaction->category_id)->toBeNull();
+
+    Exceptions::assertNothingReported();
+});
+
+it('reports unexpected failures so real bugs are not swallowed', function () {
+    $user = User::factory()->create();
+    groceries($user);
+    $transaction = uncategorized($user);
+
+    Exceptions::fake();
+
+    TransactionCategorizationAgent::fake(fn () => throw new RuntimeException('malformed response'));
+
+    $outcomes = app(CategorizeTransactions::class)->forTransactions($user, collect([$transaction]));
+
+    expect($outcomes)->toBe([]);
+
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'malformed response');
 });
 
 it('skips results whose category index does not resolve', function () {

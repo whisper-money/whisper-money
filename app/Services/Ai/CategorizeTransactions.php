@@ -7,7 +7,9 @@ use App\Enums\CategorySource;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Exceptions\FailoverableException;
 use Throwable;
 
 /**
@@ -116,6 +118,10 @@ class CategorizeTransactions
                 foreach ($this->resolveChunkWithRetry($chunk, $catalog) as $result) {
                     $results[] = $result;
                 }
+            } catch (FailoverableException $exception) {
+                Log::warning('AI categorization chunk dropped: provider transient failure.', [
+                    'exception' => $exception->getMessage(),
+                ]);
             } catch (Throwable $exception) {
                 report($exception);
             }
