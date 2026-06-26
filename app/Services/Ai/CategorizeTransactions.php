@@ -42,6 +42,7 @@ class CategorizeTransactions
         $results = $this->resolve($transactions, $catalog);
 
         $labelBar = (float) config('ai_categorization.label_confidence');
+        $model = (string) config('ai_categorization.model');
         $outcomes = [];
 
         foreach ($results as $result) {
@@ -62,7 +63,7 @@ class CategorizeTransactions
             $confidence = (float) ($result['confidence'] ?? 0.0);
             $applied = $confidence >= $labelBar;
 
-            $this->recordOutcome($transaction, $categoryId, $confidence, $applied);
+            $this->recordOutcome($transaction, $categoryId, $confidence, $applied, $model);
 
             $outcomes[] = new CategorizationOutcome(
                 transaction: $transaction,
@@ -82,11 +83,12 @@ class CategorizeTransactions
      * suggestion is kept (for confidence-bar tuning and a future confirm UI);
      * at or above it the category is also auto-applied.
      */
-    private function recordOutcome(Transaction $transaction, string $categoryId, float $confidence, bool $applied): void
+    private function recordOutcome(Transaction $transaction, string $categoryId, float $confidence, bool $applied, string $model): void
     {
         $transaction->ai_suggested_category_id = $categoryId;
         $transaction->ai_confidence = $confidence;
         $transaction->ai_suggested_category_at = now();
+        $transaction->ai_model = $model;
 
         if ($applied) {
             $transaction->category_id = $categoryId;
