@@ -4,10 +4,13 @@ namespace App\Services\Ai;
 
 use App\Ai\Agents\TransactionCategorizationAgent;
 use App\Enums\CategorySource;
+use App\Jobs\RetryTransientAiCategorizationJob;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Exceptions\FailoverableException;
 use Throwable;
 
 /**
@@ -39,7 +42,7 @@ class CategorizeTransactions
         }
 
         $byRef = $transactions->keyBy(fn (Transaction $transaction): string => $transaction->id);
-        $results = $this->resolve($transactions, $catalog);
+        $results = $this->resolve($user, $transactions, $catalog);
 
         $labelBar = (float) config('ai_categorization.label_confidence');
         $model = (string) config('ai_categorization.model');
@@ -101,12 +104,13 @@ class CategorizeTransactions
     /**
      * Send the transactions to the model in bounded chunks and merge the
      * results. A chunk that fails after a retry is dropped without discarding
-     * the chunks that succeeded.
+     * the chunks that succeeded; a transient provider failure additionally
+     * schedules a deferred retry of the user's still-pending transactions.
      *
      * @param  Collection<int, Transaction>  $transactions
      * @return list<array<string, mixed>>
      */
-    private function resolve(Collection $transactions, CategoryCatalog $catalog): array
+    private function resolve(User $user, Collection $transactions, CategoryCatalog $catalog): array
     {
         $batchSize = max(1, (int) config('ai_categorization.group_batch_size'));
         $results = [];
@@ -116,6 +120,13 @@ class CategorizeTransactions
                 foreach ($this->resolveChunkWithRetry($chunk, $catalog) as $result) {
                     $results[] = $result;
                 }
+            } catch (FailoverableException $exception) {
+                Log::warning('AI categorization chunk dropped: provider transient failure.', [
+                    'exception' => $exception->getMessage(),
+                ]);
+
+                RetryTransientAiCategorizationJob::dispatch($user)
+                    ->delay(now()->addMinutes((int) config('ai_categorization.retry_delay')));
             } catch (Throwable $exception) {
                 report($exception);
             }
