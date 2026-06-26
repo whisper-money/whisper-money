@@ -69,6 +69,7 @@ it('auto-applies the category when confidence clears the label bar', function ()
         ->and($transaction->ai_confidence)->toEqual(0.95)
         ->and($transaction->ai_suggested_category_id)->toBe($category->id)
         ->and($transaction->ai_suggested_category_at)->not->toBeNull()
+        ->and($transaction->ai_model)->toBe((string) config('ai_categorization.model'))
         ->and($outcomes)->toHaveCount(1)
         ->and($outcomes[0]->applied)->toBeTrue()
         ->and($outcomes[0]->merchantUnambiguous)->toBeTrue();
@@ -99,6 +100,7 @@ it('leaves the transaction blank but records the suggestion when confidence is b
         ->and($transaction->ai_suggested_category_id)->toBe($category->id)
         ->and($transaction->ai_confidence)->toEqual(0.5)
         ->and($transaction->ai_suggested_category_at)->not->toBeNull()
+        ->and($transaction->ai_model)->toBe((string) config('ai_categorization.model'))
         ->and($outcomes)->toHaveCount(1)
         ->and($outcomes[0]->applied)->toBeFalse();
 });

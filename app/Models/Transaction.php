@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property ?string $categorized_by_rule_id
  * @property ?string $ai_suggested_category_id
  * @property ?Carbon $ai_suggested_category_at
+ * @property ?string $ai_model
  */
 class Transaction extends Model
 {
@@ -51,6 +52,7 @@ class Transaction extends Model
         'categorized_by_rule_id',
         'ai_suggested_category_id',
         'ai_suggested_category_at',
+        'ai_model',
         'description',
         'description_iv',
         'original_description',
@@ -79,6 +81,7 @@ class Transaction extends Model
         'dedup_fingerprint',
         'raw_data',
         'categorized_by_rule_id',
+        'ai_model',
         'deleted_at',
     ];
 
