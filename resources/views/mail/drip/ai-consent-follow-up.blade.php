@@ -7,7 +7,7 @@
 
 {{ __('Instead of sorting every transaction by hand, our AI suggests a category for each one — so your spending breakdown stays accurate and up to date with almost no effort from you.') }}
 
-<x-mail::button :url="route('transactions.index')">
+<x-mail::button :url="route('transactions.index', ['category_source' => 'ai'])">
 {{ __('See your categorised transactions') }}
 </x-mail::button>
 

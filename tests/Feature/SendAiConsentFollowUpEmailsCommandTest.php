@@ -115,6 +115,7 @@ it('renders the email in the user locale', function () {
     app()->setLocale('en');
 
     expect($html)->toContain('Tu asistente de IA está trabajando duro');
+    expect($html)->toContain('category_source=ai');
 });
 
 it('does not resend if the user already received it', function () {
