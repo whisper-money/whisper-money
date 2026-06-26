@@ -71,6 +71,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Transient-failure retry delay
+    |--------------------------------------------------------------------------
+    |
+    | Minutes to wait before retrying a user's still-pending transactions after
+    | the AI provider dropped a chunk with a transient failure (overload / rate
+    | limit). The delay lets the provider recover before we try again.
+    |
+    */
+
+    'retry_delay' => (int) env('AI_CATEGORIZATION_RETRY_DELAY', 10),
+
+    /*
+    |--------------------------------------------------------------------------
     | Free-plan upsell nudge
     |--------------------------------------------------------------------------
     |
