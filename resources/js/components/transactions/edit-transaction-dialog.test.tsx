@@ -222,9 +222,35 @@ describe('EditTransactionDialog', () => {
                 onOpenChange={vi.fn()}
                 onSuccess={vi.fn()}
                 mode="create"
+                initialAccountId="account-1"
             />,
         );
 
         expect(screen.getByRole('checkbox')).toBeChecked();
+    });
+
+    it('hides "update account balance" for a connected account', () => {
+        const connectedAccount = {
+            ...checkingAccount,
+            id: 'account-connected',
+            banking_connection_id: 'connection-1',
+        };
+
+        render(
+            <EditTransactionDialog
+                transaction={null}
+                categories={[]}
+                accounts={[connectedAccount]}
+                banks={[]}
+                labels={[]}
+                open
+                onOpenChange={vi.fn()}
+                onSuccess={vi.fn()}
+                mode="create"
+                initialAccountId="account-connected"
+            />,
+        );
+
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 });
