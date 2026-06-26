@@ -12,6 +12,7 @@ Schedule::command('resend:sync-leads')->dailyAt('03:00');
 Schedule::command('leads:send-invitations --force --limit=150')->dailyAt('09:00');
 Schedule::command('leads:send-re-invitations --force')->dailyAt('09:00');
 Schedule::command('email:paywall-follow-up')->dailyAt('10:00')->timezone('Europe/Madrid');
+Schedule::command('email:ai-consent-follow-up')->dailyAt('10:15')->timezone('Europe/Madrid');
 Schedule::command('stats:daily-report')->dailyAt('09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:ai-cohort-report')->monthlyOn(1, '09:00')->timezone('Europe/Madrid');
 Schedule::command('stats:stuck-cohort-report')->weekly()->mondays()->at('09:00')->timezone('Europe/Madrid');
