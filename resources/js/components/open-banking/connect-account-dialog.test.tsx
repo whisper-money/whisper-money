@@ -9,10 +9,8 @@ globalThis.ResizeObserver ??= class {
     disconnect() {}
 };
 
-const mockFeatures = { interactiveBrokers: false };
-
 vi.mock('@inertiajs/react', () => ({
-    usePage: () => ({ props: { features: mockFeatures } }),
+    usePage: () => ({ props: { features: {} } }),
 }));
 
 vi.mock('@/utils/i18n', () => ({
@@ -116,24 +114,14 @@ async function reachBankStep(
 describe('ConnectAccountDialog', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockFeatures.interactiveBrokers = false;
     });
 
-    it('shows Interactive Brokers only when the feature flag is enabled', async () => {
-        mockFeatures.interactiveBrokers = true;
+    it('shows Interactive Brokers as a connectable provider', async () => {
         await reachBankStep([]);
 
         expect(
             screen.getByRole('button', { name: /Interactive Brokers/ }),
         ).toBeInTheDocument();
-    });
-
-    it('hides Interactive Brokers when the feature flag is disabled', async () => {
-        await reachBankStep([]);
-
-        expect(
-            screen.queryByRole('button', { name: /Interactive Brokers/ }),
-        ).not.toBeInTheDocument();
     });
 
     it('keeps an already-connected bank selectable and badges it', async () => {

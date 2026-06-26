@@ -2,7 +2,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { Features } from '@/types';
 import type { EnableBankingInstitution } from '@/types/banking';
 import { __ } from '@/utils/i18n';
 
@@ -41,8 +40,6 @@ export type ConnectProvider = {
     sendsCountry?: boolean;
     /** Only offered when connecting from this country (e.g. Indexa: ES). */
     onlyCountry?: string;
-    /** Hidden unless this Pennant feature is active. */
-    feature?: keyof Features;
     /** Confirm-step header copy (i18n key). */
     headerDescription: string;
     /** Confirm-card copy (i18n key). */
@@ -215,7 +212,6 @@ export const CONNECT_PROVIDERS: ConnectProvider[] = [
             maximum_consent_validity: null,
         },
         endpoint: '/open-banking/interactive-brokers/connect',
-        feature: 'interactiveBrokers',
         headerDescription:
             'Enter your Flex Web Service token and Query ID to connect your Interactive Brokers account.',
         cardDescription:

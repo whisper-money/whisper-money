@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\BankingConnectionStatus;
-use App\Features\InteractiveBrokers;
 use App\Jobs\SyncBankingConnectionJob;
 use App\Models\Bank;
 use App\Models\BankingConnection;
@@ -9,7 +8,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Sleep;
-use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     Bank::factory()->create([
@@ -41,23 +39,10 @@ function ibConnect(): array
     return ['token' => 'flex-token-1234567890', 'query_id' => '123456'];
 }
 
-test('is blocked when the feature flag is off', function () {
-    $user = User::factory()->onboarded()->create();
-
-    $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect())
-        ->assertForbidden();
-
-    $this->assertDatabaseMissing('banking_connections', [
-        'user_id' => $user->id,
-        'provider' => 'interactivebrokers',
-    ]);
-});
-
 test('users can connect with valid flex credentials', function () {
     Queue::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(InteractiveBrokers::class);
     ibFakeFlex();
 
     $response = $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect());
@@ -79,8 +64,6 @@ test('users can connect with valid flex credentials', function () {
 
 test('invalid flex credentials return 422', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(InteractiveBrokers::class);
-
     Http::fake([
         '*SendRequest*' => Http::response('<FlexStatementResponse><Status>Fail</Status><ErrorCode>1015</ErrorCode><ErrorMessage>Invalid token.</ErrorMessage></FlexStatementResponse>'),
     ]);
@@ -99,8 +82,6 @@ test('free tier users cannot connect after onboarding when subscriptions are ena
     config(['subscriptions.enabled' => true]);
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(InteractiveBrokers::class);
-
     $response = $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect());
 
     $response->assertStatus(402);
@@ -109,8 +90,6 @@ test('free tier users cannot connect after onboarding when subscriptions are ena
 
 test('token and query_id are required', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(InteractiveBrokers::class);
-
     $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['token', 'query_id']);
@@ -121,7 +100,6 @@ test('auto-creates accounts during onboarding', function () {
     Queue::fake();
 
     $user = User::factory()->notOnboarded()->create();
-    Feature::for($user)->activate(InteractiveBrokers::class);
     ibFakeFlex(['U1111111', 'U2222222']);
 
     $response = $this->actingAs($user)->postJson('/open-banking/interactive-brokers/connect', ibConnect());
@@ -161,8 +139,6 @@ test('reports a friendly message while the statement is still generating', funct
     Sleep::fake();
 
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(InteractiveBrokers::class);
-
     Http::fake([
         '*SendRequest*' => Http::response('<FlexStatementResponse><Status>Success</Status><ReferenceCode>999</ReferenceCode></FlexStatementResponse>'),
         '*GetStatement*' => Http::response('<FlexStatementResponse><Status>Warn</Status><ErrorCode>1019</ErrorCode><ErrorMessage>Statement generation in progress. Please try again shortly.</ErrorMessage></FlexStatementResponse>'),
@@ -180,8 +156,6 @@ test('reports a friendly message while the statement is still generating', funct
 
 test('reports a rate-limit message when IB throttles the request', function () {
     $user = User::factory()->onboarded()->create();
-    Feature::for($user)->activate(InteractiveBrokers::class);
-
     Http::fake([
         '*SendRequest*' => Http::response('<FlexStatementResponse><Status>Fail</Status><ErrorCode>1018</ErrorCode><ErrorMessage>Too many requests have been made from this token.</ErrorMessage></FlexStatementResponse>'),
     ]);

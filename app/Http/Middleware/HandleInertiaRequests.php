@@ -6,7 +6,6 @@ use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
 use App\Features\AiConsentSettings;
 use App\Features\CalculateBalancesOnImport;
-use App\Features\InteractiveBrokers;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
 use Illuminate\Foundation\Inspiring;
@@ -180,21 +179,18 @@ class HandleInertiaRequests extends Middleware
             return [
                 'cashflow' => true,
                 'calculateBalancesOnImport' => false,
-                'interactiveBrokers' => false,
                 'aiConsentSettings' => false,
             ];
         }
 
         $features = Feature::for($user)->values([
             CalculateBalancesOnImport::class,
-            InteractiveBrokers::class,
             AiConsentSettings::class,
         ]);
 
         return [
             'cashflow' => true,
             'calculateBalancesOnImport' => $features[CalculateBalancesOnImport::class] !== false,
-            'interactiveBrokers' => $features[InteractiveBrokers::class] !== false,
             'aiConsentSettings' => $features[AiConsentSettings::class] !== false,
         ];
     }
