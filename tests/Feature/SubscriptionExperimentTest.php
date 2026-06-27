@@ -24,6 +24,10 @@ it('keeps users who registered before the experiment as legacy', function () {
     expect(app(ExperimentOffer::class)->variantFor($user))->toBe(SubscriptionExperiment::LEGACY);
 });
 
+it('treats a null (guest) scope as legacy', function () {
+    expect((new SubscriptionExperiment)->resolve(null))->toBe(SubscriptionExperiment::LEGACY);
+});
+
 it('treats everyone as legacy while the experiment is off', function () {
     config(['subscriptions.experiment.started_at' => null]);
 

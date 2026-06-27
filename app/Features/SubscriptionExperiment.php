@@ -29,11 +29,11 @@ class SubscriptionExperiment
 
     public const PAY_NOW = 'pay_now';
 
-    public function resolve(User $user): string
+    public function resolve(?User $user): string
     {
         $startedAt = config('subscriptions.experiment.started_at');
 
-        if ($startedAt === null || $user->created_at?->lt(CarbonImmutable::parse($startedAt))) {
+        if ($user === null || $startedAt === null || $user->created_at?->lt(CarbonImmutable::parse($startedAt))) {
             return self::LEGACY;
         }
 

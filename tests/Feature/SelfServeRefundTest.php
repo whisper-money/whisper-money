@@ -94,6 +94,7 @@ it('refunds the charge, cancels the subscription and disconnects connections', f
     $payment = new Payment(new PaymentIntent('pi_test_123'));
 
     $subscription = Mockery::mock(Subscription::class);
+    $subscription->shouldReceive('getAttribute')->with('refunded_at')->andReturn(null);
     $subscription->shouldReceive('latestPayment')->once()->andReturn($payment);
     $subscription->shouldReceive('cancelNow')->once();
     $subscription->shouldReceive('forceFill')->once()
@@ -116,6 +117,40 @@ it('refunds the charge, cancels the subscription and disconnects connections', f
     $disconnect->shouldReceive('handle')->twice();
 
     (new RefundSelfServe($disconnect))->handle($user);
+});
+
+it('records the refund before cleanup so a cleanup failure cannot double-refund', function () {
+    $payment = new Payment(new PaymentIntent('pi_test_123'));
+
+    $subscription = Mockery::mock(Subscription::class);
+    $subscription->shouldReceive('getAttribute')->with('refunded_at')->andReturn(null);
+    $subscription->shouldReceive('latestPayment')->andReturn($payment);
+    $subscription->shouldReceive('forceFill')
+        ->with(Mockery::on(fn ($attrs) => array_key_exists('refunded_at', $attrs)))
+        ->once()->andReturnSelf();
+    $subscription->shouldReceive('save')->once();
+    $subscription->shouldReceive('cancelNow')->once()->andThrow(new RuntimeException('stripe down'));
+
+    $user = Mockery::mock(User::class)->shouldIgnoreMissing();
+    $user->shouldReceive('subscription')->with('default')->andReturn($subscription);
+    $user->shouldReceive('refund')->once()->with('pi_test_123');
+
+    $disconnect = Mockery::mock(DisconnectBankingConnection::class);
+    $disconnect->shouldNotReceive('handle');
+
+    // refunded_at is saved before cancelNow throws, and the failure is swallowed.
+    expect(fn () => (new RefundSelfServe($disconnect))->handle($user))->not->toThrow(RuntimeException::class);
+});
+
+it('skips a subscription that was already refunded', function () {
+    $user = payNowSubscriber(['refunded_at' => now()]);
+
+    $disconnect = Mockery::mock(DisconnectBankingConnection::class);
+    $disconnect->shouldNotReceive('handle');
+
+    expect(fn () => (new RefundSelfServe($disconnect))->handle($user))->not->toThrow(Exception::class);
+
+    expect(app(ExperimentOffer::class)->canSelfRefund($user))->toBeFalse();
 });
 
 it('does nothing when there is no subscription to refund', function () {

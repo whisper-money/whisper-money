@@ -26,7 +26,12 @@ class ExperimentOffer
      */
     public function trialDaysFor(User $user, string $planKey): int
     {
-        return match ($this->variantFor($user)) {
+        return $this->trialDaysForVariant($this->variantFor($user), $planKey);
+    }
+
+    private function trialDaysForVariant(string $variant, string $planKey): int
+    {
+        return match ($variant) {
             SubscriptionExperiment::PAY_NOW => 0,
             SubscriptionExperiment::REDUCED_TRIAL => (int) config(
                 "subscriptions.experiment.reduced_trial.{$planKey}",
@@ -56,8 +61,8 @@ class ExperimentOffer
             'payNow' => $variant === SubscriptionExperiment::PAY_NOW,
             'refundWindowDays' => $this->refundWindowDays(),
             'trialDays' => [
-                'monthly' => $this->trialDaysFor($user, 'monthly'),
-                'yearly' => $this->trialDaysFor($user, 'yearly'),
+                'monthly' => $this->trialDaysForVariant($variant, 'monthly'),
+                'yearly' => $this->trialDaysForVariant($variant, 'yearly'),
             ],
         ];
     }

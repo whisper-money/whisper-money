@@ -3,8 +3,9 @@
 namespace App\Actions\Subscription;
 
 use App\Actions\OpenBanking\DisconnectBankingConnection;
+use App\Models\BankingConnection;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Self-service "money-back guarantee" for the pay_now experiment variant:
@@ -12,6 +13,9 @@ use Illuminate\Support\Facades\DB;
  * the user's bank connections (keeping the data they already imported).
  *
  * Eligibility is enforced by the caller via ExperimentOffer::canSelfRefund().
+ * The refund is stamped before the cancel/disconnect steps run so that a
+ * failure in those steps can never leave a refunded-but-active subscription
+ * that could be refunded a second time; the cleanup is best-effort and logged.
  */
 class RefundSelfServe
 {
@@ -21,7 +25,7 @@ class RefundSelfServe
     {
         $subscription = $user->subscription('default');
 
-        if ($subscription === null) {
+        if ($subscription === null || $subscription->refunded_at !== null) {
             return;
         }
 
@@ -31,14 +35,20 @@ class RefundSelfServe
             $user->refund($payment->id);
         }
 
-        $subscription->cancelNow();
+        $subscription->forceFill(['refunded_at' => now()])->save();
 
-        DB::transaction(function () use ($subscription): void {
-            $subscription->forceFill(['refunded_at' => now()])->save();
-        });
+        try {
+            $subscription->cancelNow();
 
-        $user->bankingConnections()->get()->each(function ($connection): void {
-            $this->disconnect->handle($connection, deleteAccounts: false);
-        });
+            $user->bankingConnections()->get()->each(function (BankingConnection $connection): void {
+                $this->disconnect->handle($connection, deleteAccounts: false);
+            });
+        } catch (\Throwable $exception) {
+            Log::error('Self-serve refund issued but post-refund cleanup failed', [
+                'user_id' => $user->getKey(),
+                'subscription_id' => $subscription->getKey(),
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }

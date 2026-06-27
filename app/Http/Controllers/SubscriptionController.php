@@ -200,11 +200,6 @@ class SubscriptionController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isDemoAccount()) {
-            return redirect()->route('settings.billing')
-                ->withErrors(['refund' => 'Refunds are not available on the demo account.']);
-        }
-
         if (! $this->experimentOffer->canSelfRefund($user)) {
             return redirect()->route('settings.billing')
                 ->withErrors(['refund' => __('This subscription is no longer eligible for a self-service refund.')]);

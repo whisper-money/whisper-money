@@ -5,6 +5,7 @@ namespace App\Services\Stats;
 use App\Features\SubscriptionExperiment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Laravel\Pennant\Feature;
 
 class ExperimentFunnelCollector
 {
@@ -16,10 +17,12 @@ class ExperimentFunnelCollector
 
     /**
      * Per-variant funnel for the trial/pricing experiment. Users are attributed
-     * by the same deterministic bucket the runtime uses, so manual Pennant
-     * overrides (QA only) are intentionally not reflected here. "Net active" is
-     * a live, non-refunded subscription — an exact, heuristic-free metric that is
-     * comparable across variants once each cohort clears its own decision window.
+     * by the variant Pennant resolved for them — the same value the runtime
+     * served at checkout/paywall — so the report can't drift from what users
+     * actually experienced (including any QA override or a legacy bucket that
+     * predates the experiment). "Net active" is a live, non-refunded
+     * subscription — an exact, heuristic-free metric that is comparable across
+     * variants once each cohort clears its own decision window.
      *
      * @return array{
      *     startedAt: ?CarbonImmutable,
@@ -62,8 +65,15 @@ class ExperimentFunnelCollector
             ->with(['subscriptions' => fn ($query) => $query->where('type', 'default')])
             ->select(['id', 'created_at'])
             ->chunkById(500, function ($users) use (&$variants, $windows, $now): void {
+                Feature::for($users)->load([SubscriptionExperiment::class]);
+
                 foreach ($users as $user) {
-                    $variant = SubscriptionExperiment::bucket((string) $user->getKey());
+                    $variant = Feature::for($user)->value(SubscriptionExperiment::class);
+
+                    if (! isset($variants[$variant])) {
+                        continue;
+                    }
+
                     $row = &$variants[$variant];
 
                     $row['assigned']++;

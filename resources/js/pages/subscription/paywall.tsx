@@ -49,15 +49,17 @@ interface PaywallPageProps extends SharedData {
 function TrialTerms({
     offer,
     planKey,
+    amount,
 }: {
     offer: ExperimentOffer;
     planKey: string;
+    amount: string;
 }) {
     if (offer.payNow) {
         return (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center text-sm dark:border-emerald-900 dark:bg-emerald-950/40">
                 <p className="font-medium text-emerald-900 dark:text-emerald-200">
-                    {__("You'll be charged today")}
+                    {__("You'll be charged :amount today", { amount })}
                 </p>
                 <p className="mt-1 text-emerald-800/80 dark:text-emerald-300/80">
                     {__(
@@ -398,10 +400,15 @@ function PricingSection({
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
     const [freeButtonVisible, setFreeButtonVisible] = useState(false);
+    const locale = useLocale();
 
     const selectedPlanData = planEntries.find(
         ([key]) => key === selectedPlan,
     )?.[1];
+
+    const selectedAmount = selectedPlanData
+        ? formatCurrency(selectedPlanData.price * 100, currency, locale)
+        : '';
 
     useEffect(() => {
         if (!canUseFreePlan) {
@@ -433,7 +440,11 @@ function PricingSection({
                 ))}
             </div>
 
-            <TrialTerms offer={offer} planKey={selectedPlan} />
+            <TrialTerms
+                offer={offer}
+                planKey={selectedPlan}
+                amount={selectedAmount}
+            />
 
             <a href={checkout.url({ query: { plan: selectedPlan } })}>
                 <Button
