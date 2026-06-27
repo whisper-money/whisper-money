@@ -182,6 +182,45 @@ test('store creates investment accounts for crypto provider connections', functi
     'coinbase' => ['coinbase', 'Coinbase', 'coinbase-portfolio'],
 ]);
 
+test('store falls back to the user currency when the bank reports XXX', function () {
+    Queue::fake();
+
+    $user = User::factory()->onboarded()->create(['currency_code' => 'USD']);
+    Account::factory()->create(['user_id' => $user->id, 'currency_code' => 'USD']);
+
+    $connection = BankingConnection::factory()->awaitingMapping()->create([
+        'user_id' => $user->id,
+        'aspsp_name' => 'Test Bank',
+        'pending_accounts_data' => [
+            [
+                'uid' => 'ext-1',
+                'currency' => 'XXX',
+                'name' => 'No-currency Account',
+                'account_id' => [],
+            ],
+        ],
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('open-banking.map-accounts.store', $connection), [
+            'mappings' => [
+                [
+                    'bank_account_uid' => 'ext-1',
+                    'action' => 'create',
+                    'existing_account_id' => null,
+                ],
+            ],
+        ])
+        ->assertRedirect(route('settings.connections.index'));
+
+    $this->assertDatabaseHas('accounts', [
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-1',
+        'currency_code' => 'USD',
+    ]);
+    $this->assertDatabaseMissing('accounts', ['currency_code' => 'XXX']);
+});
+
 test('store updates user currency from first account created from mapping', function () {
     Queue::fake();
 
