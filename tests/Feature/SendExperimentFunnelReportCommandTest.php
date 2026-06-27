@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Services\Stats\ExperimentFunnelCollector;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -21,6 +22,9 @@ beforeEach(function () {
         'ai_suggestions.report.excluded_emails' => [],
     ]);
     Carbon::setTestNow(CarbonImmutable::parse('2026-06-30 12:00:00'));
+
+    // Seed the price→monthly-equivalent map so revenue is computed without Stripe.
+    Cache::put('experiment_funnel_monthly_equiv', ['price_test' => 399], now()->addHour());
 });
 
 /**
@@ -87,6 +91,43 @@ it('attributes users and their subscription status to the right variant', functi
         ->and($variants[SubscriptionExperiment::PAY_NOW]['active'])->toBe(1)
         ->and($variants[SubscriptionExperiment::PAY_NOW]['refunded'])->toBe(1)
         ->and($variants[SubscriptionExperiment::PAY_NOW]['activeMature'])->toBe(1);
+});
+
+it('computes MRR and ARPU from the net-active subscriptions', function () {
+    $signup = CarbonImmutable::parse('2026-06-05');
+
+    // One control assigned with no plan, one converted (€3.99/mo net-active).
+    experimentUser(SubscriptionExperiment::CONTROL, $signup);
+    experimentUser(SubscriptionExperiment::CONTROL, $signup, ['status' => 'active', 'at' => $signup->addDay()]);
+    // A refunded pay_now contributes no revenue.
+    experimentUser(SubscriptionExperiment::PAY_NOW, $signup, [
+        'status' => 'canceled', 'at' => $signup, 'endsAt' => $signup->addDay(), 'refundedAt' => $signup->addDay(),
+    ]);
+
+    $report = app(ExperimentFunnelCollector::class)->collect();
+    $control = $report['variants'][SubscriptionExperiment::CONTROL];
+    $payNow = $report['variants'][SubscriptionExperiment::PAY_NOW];
+
+    expect($report['revenueAvailable'])->toBeTrue()
+        ->and($report['currency'])->toBe('EUR')
+        ->and($control['mrrCents'])->toBe(399)           // one €3.99 net-active sub
+        ->and($control['arpuCents'])->toBe(200)          // 399 / 2 assigned, rounded
+        ->and($payNow['mrrCents'])->toBe(0)              // refunded → no revenue
+        ->and($payNow['arpuCents'])->toBe(0);
+});
+
+it('marks revenue unavailable when Stripe prices cannot be loaded', function () {
+    Cache::forget('experiment_funnel_monthly_equiv');
+    Cache::put('experiment_funnel_monthly_equiv', [], now()->addHour()); // empty = unavailable
+
+    experimentUser(SubscriptionExperiment::CONTROL, CarbonImmutable::parse('2026-06-05'), [
+        'status' => 'active', 'at' => CarbonImmutable::parse('2026-06-05'),
+    ]);
+
+    $report = app(ExperimentFunnelCollector::class)->collect();
+
+    expect($report['revenueAvailable'])->toBeFalse()
+        ->and($report['variants'][SubscriptionExperiment::CONTROL]['mrrCents'])->toBe(0);
 });
 
 it('leaves young cohorts out of the mature net-active rate', function () {

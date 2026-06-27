@@ -50,37 +50,49 @@ class SendExperimentFunnelReportCommand extends Command
     }
 
     /**
-     * @param  array{startedAt: ?CarbonImmutable, variants: array<string, array<string, mixed>>}  $report
+     * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, variants: array<string, array<string, mixed>>}  $report
      * @return list<string>
      */
     private function tableLines(array $report): array
     {
-        $lines = [sprintf('%-8s %5s %4s %5s %5s %5s %5s %5s %5s', 'Variant', 'Assg', 'Sub', 'Trial', 'Actv', 'Cncl', 'PstD', 'Rfnd', 'Net%')];
+        $revenue = $report['revenueAvailable'];
+        $lines = [sprintf('%-8s %5s %4s %5s %5s %5s %5s %8s %8s', 'Variant', 'Assg', 'Sub', 'Actv', 'Cncl', 'Rfnd', 'Net%', 'MRR', 'ARPU')];
 
         foreach (self::LABELS as $key => $label) {
             $row = $report['variants'][$key];
+            $mature = $row['assignedMature'] > 0;
 
             $lines[] = sprintf(
-                '%-8s %5d %4d %5d %5d %5d %5d %5d %5s',
+                '%-8s %5d %4d %5d %5d %5d %5s %8s %8s',
                 $label,
                 $row['assigned'],
                 $row['subscribed'],
-                $row['trialing'],
                 $row['active'],
                 $row['canceled'],
-                $row['pastDue'],
                 $row['refunded'],
-                $row['assignedMature'] === 0
-                    ? 'pend'
-                    : ((int) round($row['netActiveRate'] * 100)).'%',
+                $mature ? ((int) round($row['netActiveRate'] * 100)).'%' : 'pend',
+                $revenue ? $this->money($row['mrrCents'], $report['currency']) : '—',
+                $revenue && $mature ? $this->money((int) $row['arpuCents'], $report['currency']) : '—',
             );
         }
 
         return $lines;
     }
 
+    private function money(int $cents, string $currency): string
+    {
+        $symbol = match (strtolower($currency)) {
+            'eur' => '€',
+            'gbp' => '£',
+            'usd' => '$',
+            default => $currency.' ',
+        };
+
+        return $symbol.number_format($cents / 100, 2);
+    }
+
     /**
-     * @param  array{startedAt: ?CarbonImmutable, variants: array<string, array<string, mixed>>}  $report
+     * @param  array{startedAt: ?CarbonImmutable, currency: string, revenueAvailable: bool, variants: array<string, array<string, mixed>>}  $report
      * @return array<string, mixed>
      */
     private function buildEmbed(array $report): array
@@ -97,12 +109,12 @@ class SendExperimentFunnelReportCommand extends Command
                 ],
                 [
                     'name' => 'Legend',
-                    'value' => 'Assg = assigned to the variant · Sub = started a plan · Trial/Actv/Cncl/PstD = current subscription status · Rfnd = self-service refunds (pay_now) · Net% = live, non-refunded subscriptions ÷ assigned, counting only users past their decision window · `pend` = no mature users yet.',
+                    'value' => 'Assg = assigned · Sub = started a plan · Actv/Cncl = current status · Rfnd = self-service refunds (pay_now) · Net% = live, non-refunded subs ÷ assigned (mature users only) · MRR = monthly run-rate of those subs (yearly ÷ 12) · ARPU = MRR ÷ assigned · `pend`/`—` = no mature data yet.',
                     'inline' => false,
                 ],
                 [
-                    'name' => '⚠️ Read at equal age',
-                    'value' => 'Net% gates each variant by its own decision window (control 15d, reduced 7d, pay_now 3d), so pay_now matures first. Compare Net% only once all three have meaningful mature volume.',
+                    'name' => '⚠️ How to read it',
+                    'value' => 'Each variant is gated by its own decision window (control 15d, reduced 7d, pay_now 3d), so pay_now matures first — compare only once all three have mature volume, and check significance before calling a winner. **ARPU is the revenue metric to compare.** MRR is run-rate, so it does not credit pay_now\'s yearly upfront cash; true LTV also needs a churn rate the experiment is too young to have.',
                     'inline' => false,
                 ],
             ],

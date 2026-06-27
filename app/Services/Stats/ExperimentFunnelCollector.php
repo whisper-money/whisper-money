@@ -5,6 +5,8 @@ namespace App\Services\Stats;
 use App\Features\SubscriptionExperiment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
+use Laravel\Cashier\Cashier;
 use Laravel\Pennant\Feature;
 
 class ExperimentFunnelCollector
@@ -24,8 +26,17 @@ class ExperimentFunnelCollector
      * subscription — an exact, heuristic-free metric that is comparable across
      * variants once each cohort clears its own decision window.
      *
+     * Revenue is the monthly-recurring run-rate (MRR) of the mature, net-active
+     * subscriptions, with yearly plans normalised to a monthly equivalent, plus
+     * ARPU = MRR ÷ assigned (mature) — the per-signup revenue each variant earns.
+     * This is run-rate, not realised cash, so it does not credit pay_now's yearly
+     * upfront payment any differently from a monthly one. Full LTV needs a churn
+     * rate the experiment is too young to have; ARPU is the proxy until then.
+     *
      * @return array{
      *     startedAt: ?CarbonImmutable,
+     *     currency: string,
+     *     revenueAvailable: bool,
      *     variants: array<string, array{
      *         assigned: int,
      *         subscribed: int,
@@ -37,6 +48,8 @@ class ExperimentFunnelCollector
      *         assignedMature: int,
      *         activeMature: int,
      *         netActiveRate: ?float,
+     *         mrrCents: int,
+     *         arpuCents: ?int,
      *     }>
      * }
      */
@@ -44,6 +57,7 @@ class ExperimentFunnelCollector
     {
         $startedValue = config('subscriptions.experiment.started_at');
         $startedAt = $startedValue !== null ? CarbonImmutable::parse($startedValue) : null;
+        $currency = strtoupper((string) config('cashier.currency', 'eur'));
 
         $variants = [
             SubscriptionExperiment::CONTROL => $this->emptyRow(),
@@ -52,19 +66,20 @@ class ExperimentFunnelCollector
         ];
 
         if ($startedAt === null) {
-            return ['startedAt' => null, 'variants' => $variants];
+            return ['startedAt' => null, 'currency' => $currency, 'revenueAvailable' => false, 'variants' => $variants];
         }
 
         $now = CarbonImmutable::now('UTC');
         $excluded = (array) config('ai_suggestions.report.excluded_emails', []);
         $windows = $this->decisionWindows();
+        $monthlyEquiv = $this->monthlyEquivByPriceId();
 
         User::query()
             ->where('users.created_at', '>=', $startedAt)
             ->when($excluded !== [], fn ($query) => $query->whereNotIn('email', $excluded))
             ->with(['subscriptions' => fn ($query) => $query->where('type', 'default')])
             ->select(['id', 'created_at'])
-            ->chunkById(500, function ($users) use (&$variants, $windows, $now): void {
+            ->chunkById(500, function ($users) use (&$variants, $windows, $now, $monthlyEquiv): void {
                 Feature::for($users)->load([SubscriptionExperiment::class]);
 
                 foreach ($users as $user) {
@@ -97,7 +112,11 @@ class ExperimentFunnelCollector
 
                     if ($mature) {
                         $row['assignedMature']++;
-                        $row['activeMature'] += $netActive ? 1 : 0;
+
+                        if ($netActive) {
+                            $row['activeMature']++;
+                            $row['mrrCents'] += (int) ($monthlyEquiv[$subscription->stripe_price] ?? 0);
+                        }
                     }
 
                     unset($row);
@@ -108,13 +127,21 @@ class ExperimentFunnelCollector
             $variants[$key]['netActiveRate'] = $row['assignedMature'] > 0
                 ? $row['activeMature'] / $row['assignedMature']
                 : null;
+            $variants[$key]['arpuCents'] = $row['assignedMature'] > 0
+                ? (int) round($row['mrrCents'] / $row['assignedMature'])
+                : null;
         }
 
-        return ['startedAt' => $startedAt, 'variants' => $variants];
+        return [
+            'startedAt' => $startedAt,
+            'currency' => $currency,
+            'revenueAvailable' => $monthlyEquiv !== [],
+            'variants' => $variants,
+        ];
     }
 
     /**
-     * @return array{assigned: int, subscribed: int, trialing: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activeMature: int, netActiveRate: ?float}
+     * @return array{assigned: int, subscribed: int, trialing: int, active: int, canceled: int, pastDue: int, refunded: int, assignedMature: int, activeMature: int, netActiveRate: ?float, mrrCents: int, arpuCents: ?int}
      */
     private function emptyRow(): array
     {
@@ -129,7 +156,54 @@ class ExperimentFunnelCollector
             'assignedMature' => 0,
             'activeMature' => 0,
             'netActiveRate' => null,
+            'mrrCents' => 0,
+            'arpuCents' => null,
         ];
+    }
+
+    /**
+     * Monthly-equivalent amount (in cents) for each plan price id, from Stripe.
+     * Yearly prices are divided by 12. Cached for an hour; returns [] (revenue
+     * unavailable) if Stripe can't be reached, without caching the failure.
+     *
+     * @return array<string, int>
+     */
+    private function monthlyEquivByPriceId(): array
+    {
+        $key = 'experiment_funnel_monthly_equiv';
+
+        if (Cache::has($key)) {
+            return Cache::get($key);
+        }
+
+        $lookups = array_values(array_filter([
+            config('subscriptions.plans.monthly.stripe_lookup_key'),
+            config('subscriptions.plans.yearly.stripe_lookup_key'),
+        ]));
+
+        if ($lookups === []) {
+            return [];
+        }
+
+        try {
+            $prices = Cashier::stripe()->prices->all(['lookup_keys' => $lookups, 'limit' => 10]);
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($prices->data as $price) {
+            $amount = (int) ($price->unit_amount ?? 0);
+            $map[$price->id] = ($price->recurring->interval ?? 'month') === 'year'
+                ? intdiv($amount, 12)
+                : $amount;
+        }
+
+        if ($map !== []) {
+            Cache::put($key, $map, now()->addHour());
+        }
+
+        return $map;
     }
 
     /**
