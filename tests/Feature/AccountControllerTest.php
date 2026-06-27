@@ -111,6 +111,42 @@ test('users cannot reorder accounts they do not own', function () {
     expect($other->fresh()->position)->toBe(0);
 });
 
+test('users can toggle dashboard visibility of their accounts', function () {
+    $account = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'hidden_on_dashboard' => false,
+    ]);
+
+    $this->patch(route('accounts.visibility', $account), ['hidden' => true])
+        ->assertRedirect();
+
+    expect($account->fresh()->hidden_on_dashboard)->toBeTrue();
+
+    $this->patch(route('accounts.visibility', $account), ['hidden' => false])
+        ->assertRedirect();
+
+    expect($account->fresh()->hidden_on_dashboard)->toBeFalse();
+});
+
+test('the hidden flag is required when toggling visibility', function () {
+    $account = Account::factory()->create(['user_id' => $this->user->id]);
+
+    $this->patch(route('accounts.visibility', $account), [])
+        ->assertSessionHasErrors('hidden');
+});
+
+test('users cannot toggle visibility of accounts they do not own', function () {
+    $other = Account::factory()->create([
+        'user_id' => User::factory()->create()->id,
+        'hidden_on_dashboard' => false,
+    ]);
+
+    $this->patch(route('accounts.visibility', $other), ['hidden' => true])
+        ->assertForbidden();
+
+    expect($other->fresh()->hidden_on_dashboard)->toBeFalse();
+});
+
 test('accounts index only shows user accounts', function () {
     $myAccount = Account::factory()->create([
         'user_id' => $this->user->id,

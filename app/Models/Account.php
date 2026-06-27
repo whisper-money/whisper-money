@@ -34,6 +34,7 @@ class Account extends Model
         'iban',
         'linked_at',
         'position',
+        'hidden_on_dashboard',
     ];
 
     /** @var list<string> */
@@ -42,6 +43,7 @@ class Account extends Model
         'bank_id',
         'iban',
         'position',
+        'hidden_on_dashboard',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -59,6 +61,7 @@ class Account extends Model
             'encrypted' => 'boolean',
             'linked_at' => 'datetime',
             'position' => 'integer',
+            'hidden_on_dashboard' => 'boolean',
         ];
     }
 
