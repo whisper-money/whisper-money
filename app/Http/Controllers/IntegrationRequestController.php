@@ -79,8 +79,8 @@ class IntegrationRequestController extends Controller
     {
         $user = $request->user();
 
-        // Not-doable requests are frozen: their tally can no longer be touched.
-        if ($integrationRequest->status === IntegrationRequestStatus::NotDoable) {
+        // Closed requests (not-doable or done) are frozen: their tally can no longer be touched.
+        if (in_array($integrationRequest->status, [IntegrationRequestStatus::NotDoable, IntegrationRequestStatus::Done], true)) {
             abort(404);
         }
 
@@ -106,7 +106,7 @@ class IntegrationRequestController extends Controller
     {
         return IntegrationRequest::query()
             ->where(function ($query) use ($user) {
-                $query->whereIn('status', [IntegrationRequestStatus::Approved, IntegrationRequestStatus::InProgress, IntegrationRequestStatus::NotDoable])
+                $query->whereIn('status', [IntegrationRequestStatus::Approved, IntegrationRequestStatus::InProgress, IntegrationRequestStatus::NotDoable, IntegrationRequestStatus::Done])
                     ->orWhere(function ($inner) use ($user) {
                         $inner->where('status', IntegrationRequestStatus::Pending)
                             ->where('user_id', $user->id);
@@ -118,8 +118,8 @@ class IntegrationRequestController extends Controller
                 'votes as can_unvote' => fn ($query) => $query->where('user_id', $user->id)
                     ->where('created_at', '>=', now()->startOfMonth()),
             ])
-            // Not-doable requests sink to the bottom regardless of their votes.
-            ->orderByRaw('CASE WHEN status = ? THEN 1 ELSE 0 END', [IntegrationRequestStatus::NotDoable->value])
+            // Closed requests (not-doable or done) sink to the bottom regardless of their votes.
+            ->orderByRaw('CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END', [IntegrationRequestStatus::NotDoable->value, IntegrationRequestStatus::Done->value])
             ->orderByDesc('votes_count')
             ->orderByDesc('created_at')
             ->get();

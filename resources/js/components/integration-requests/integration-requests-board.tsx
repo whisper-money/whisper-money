@@ -21,7 +21,13 @@ export interface IntegrationRequestItem {
     id: string;
     name: string;
     url: string;
-    status: 'pending' | 'approved' | 'in_progress' | 'rejected' | 'not_doable';
+    status:
+        | 'pending'
+        | 'approved'
+        | 'in_progress'
+        | 'rejected'
+        | 'not_doable'
+        | 'done';
     comment: string | null;
     votes_count: number;
     has_voted: boolean;
@@ -32,6 +38,11 @@ export interface IntegrationRequestItem {
 interface BoardPayload {
     requests: IntegrationRequestItem[];
     actionsRemaining: number;
+}
+
+// Closed requests (not-doable or done) are frozen: no more votes in or out.
+function isFrozen(status: IntegrationRequestItem['status']): boolean {
+    return status === 'not_doable' || status === 'done';
 }
 
 interface Props {
@@ -115,7 +126,7 @@ export function IntegrationRequestsBoard({
     };
 
     const handleVote = async (item: IntegrationRequestItem) => {
-        if (busy || item.status === 'not_doable' || actionsRemaining <= 0) {
+        if (busy || isFrozen(item.status) || actionsRemaining <= 0) {
             return;
         }
 
@@ -138,7 +149,7 @@ export function IntegrationRequestsBoard({
     };
 
     const handleRemoveVote = async (item: IntegrationRequestItem) => {
-        if (busy || !item.can_unvote || item.status === 'not_doable') {
+        if (busy || !item.can_unvote || isFrozen(item.status)) {
             return;
         }
 
@@ -271,10 +282,13 @@ export function IntegrationRequestsBoard({
                                             {__('Not doable')}
                                         </Badge>
                                     )}
+                                    {item.status === 'done' && (
+                                        <Badge>{__('Done')}</Badge>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-1">
                                     {item.can_unvote &&
-                                        item.status !== 'not_doable' && (
+                                        !isFrozen(item.status) && (
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -298,7 +312,7 @@ export function IntegrationRequestsBoard({
                                         size="sm"
                                         disabled={
                                             busy ||
-                                            item.status === 'not_doable' ||
+                                            isFrozen(item.status) ||
                                             outOfActions
                                         }
                                         onClick={() => handleVote(item)}
