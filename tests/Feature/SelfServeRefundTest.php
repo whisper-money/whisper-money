@@ -9,6 +9,7 @@ use App\Services\Subscriptions\ExperimentOffer;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 use Laravel\Cashier\Payment;
 use Laravel\Cashier\Subscription;
 use Laravel\Pennant\Feature;
@@ -88,6 +89,40 @@ it('rejects the refund request when not eligible', function () {
         ->post(route('settings.billing.refund'))
         ->assertRedirect(route('settings.billing'))
         ->assertSessionHasErrors(['refund']);
+});
+
+it('announces a successful refund to discord', function () {
+    config(['services.discord.webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+
+    $user = payNowSubscriber();
+    $action = Mockery::mock(RefundSelfServe::class);
+    $action->shouldReceive('handle')->once();
+    app()->instance(RefundSelfServe::class, $action);
+
+    $this->actingAs($user)
+        ->post(route('settings.billing.refund'))
+        ->assertRedirect(route('settings.billing'));
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://discord.test/hook'
+        && str_contains(strtolower($request['embeds'][0]['title']), 'refund processed'));
+});
+
+it('announces a failed refund to discord and surfaces the error', function () {
+    config(['services.discord.webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+
+    $user = payNowSubscriber();
+    $action = Mockery::mock(RefundSelfServe::class);
+    $action->shouldReceive('handle')->once()->andThrow(new RuntimeException('stripe down'));
+    app()->instance(RefundSelfServe::class, $action);
+
+    $this->actingAs($user)
+        ->post(route('settings.billing.refund'))
+        ->assertStatus(500);
+
+    Http::assertSent(fn ($request) => isset($request['embeds'][0]['title'])
+        && str_contains(strtolower($request['embeds'][0]['title']), 'failed'));
 });
 
 it('refunds the charge, cancels the subscription and disconnects connections', function () {

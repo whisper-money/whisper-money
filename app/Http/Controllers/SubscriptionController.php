@@ -7,6 +7,7 @@ use App\Features\SubscriptionExperiment;
 use App\Models\AccountBalance;
 use App\Models\User;
 use App\Models\UserLead;
+use App\Services\Discord\DiscordWebhook;
 use App\Services\Subscriptions\ExperimentOffer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,10 @@ use Laravel\Cashier\Checkout;
 
 class SubscriptionController extends Controller
 {
-    public function __construct(private ExperimentOffer $experimentOffer) {}
+    public function __construct(
+        private ExperimentOffer $experimentOffer,
+        private DiscordWebhook $discord,
+    ) {}
 
     public function index(Request $request): Response|RedirectResponse
     {
@@ -205,10 +209,45 @@ class SubscriptionController extends Controller
                 ->withErrors(['refund' => __('This subscription is no longer eligible for a self-service refund.')]);
         }
 
-        app(RefundSelfServe::class)->handle($user);
+        try {
+            app(RefundSelfServe::class)->handle($user);
+        } catch (\Throwable $exception) {
+            $this->discord->send('', [$this->refundEmbed($user, success: false, detail: $exception->getMessage())]);
+
+            throw $exception;
+        }
+
+        $this->discord->send('', [$this->refundEmbed($user, success: true)]);
 
         return redirect()->route('settings.billing')
             ->with('status', __('Your payment was refunded, your subscription was canceled, and your bank connections were disconnected.'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function refundEmbed(User $user, bool $success, ?string $detail = null): array
+    {
+        if (! $success) {
+            return [
+                'title' => '🔴 Self-service refund FAILED',
+                'description' => 'A pay_now refund threw — the user may have been charged without a refund. Check Stripe and Sentry now.',
+                'color' => 0xED4245,
+                'fields' => [
+                    ['name' => 'User', 'value' => $user->email, 'inline' => false],
+                    ['name' => 'Error', 'value' => substr((string) $detail, 0, 1000), 'inline' => false],
+                ],
+            ];
+        }
+
+        return [
+            'title' => '💸 Self-service refund processed',
+            'description' => 'A pay_now user refunded within the money-back window — subscription canceled and bank connections disconnected.',
+            'color' => 0xFAA61A,
+            'fields' => [
+                ['name' => 'User', 'value' => $user->email, 'inline' => false],
+            ],
+        ];
     }
 
     public function billingPortal(Request $request): RedirectResponse
