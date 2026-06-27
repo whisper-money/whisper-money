@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AccountBalance;
 use App\Models\User;
 use App\Models\UserLead;
+use App\Services\Subscriptions\ExperimentOffer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,8 @@ use Laravel\Cashier\Checkout;
 
 class SubscriptionController extends Controller
 {
+    public function __construct(private ExperimentOffer $experimentOffer) {}
+
     public function index(Request $request): Response|RedirectResponse
     {
         /** @var User $user */
@@ -38,6 +41,7 @@ class SubscriptionController extends Controller
             'canManageConnectionsForFreePlan' => $user->isOnboarded()
                 && $hasBankConnections
                 && $user->hasCanceledSubscription(),
+            'offer' => $this->experimentOffer->offerFor($user),
         ]);
     }
 
@@ -91,7 +95,7 @@ class SubscriptionController extends Controller
             $subscriptionBuilder->allowPromotionCodes();
         }
 
-        $trialDays = (int) ($plan['trial_days'] ?? 0);
+        $trialDays = $this->experimentOffer->trialDaysFor($request->user(), $planKey);
         if ($trialDays > 0) {
             $subscriptionBuilder->trialDays($trialDays);
         }

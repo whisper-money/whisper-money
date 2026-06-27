@@ -8,6 +8,7 @@ use Laravel\Pennant\Feature;
 
 beforeEach(function () {
     config([
+        'subscriptions.enabled' => true,
         'subscriptions.experiment.started_at' => '2026-06-01',
         'subscriptions.experiment.reduced_trial.monthly' => 3,
         'subscriptions.experiment.reduced_trial.yearly' => 7,
@@ -66,6 +67,21 @@ it('applies the trial days that match each variant', function () {
     Feature::for($user)->activate(SubscriptionExperiment::class, SubscriptionExperiment::PAY_NOW);
     expect($offer->trialDaysFor($user, 'monthly'))->toBe(0)
         ->and($offer->trialDaysFor($user, 'yearly'))->toBe(0);
+});
+
+it('exposes the experiment offer on the paywall', function () {
+    $user = User::factory()->onboarded()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
+    Feature::for($user)->activate(SubscriptionExperiment::class, SubscriptionExperiment::REDUCED_TRIAL);
+
+    $this->actingAs($user)
+        ->get(route('subscribe'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('subscription/paywall')
+            ->where('offer.variant', SubscriptionExperiment::REDUCED_TRIAL)
+            ->where('offer.payNow', false)
+            ->where('offer.trialDays.monthly', 3)
+            ->where('offer.trialDays.yearly', 7));
 });
 
 it('describes a pay-now offer for the frontend', function () {
