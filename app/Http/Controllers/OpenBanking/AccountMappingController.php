@@ -88,7 +88,7 @@ class AccountMappingController extends Controller
             }
 
             if ($action === 'create') {
-                $currency = $accountData['currency'] ?? 'EUR';
+                $currency = $accountUserCurrencyService->resolveImportedCurrency($accountData['currency'] ?? null, $user);
                 $name = $accountData['name']
                     ?? $accountData['account_id']['iban']
                     ?? $connection->aspsp_name.' Account';
