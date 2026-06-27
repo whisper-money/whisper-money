@@ -137,7 +137,9 @@ class ReviewIntegrationRequestsCommand extends Command
     {
         return $query
             ->withCount('votes')
-            ->with('user:id,email')
+            // Authors who deleted their account are soft-deleted, but their requests
+            // linger; load them trashed so the table still shows who submitted each one.
+            ->with(['user' => fn ($user) => $user->withTrashed()->select('id', 'email')])
             ->orderBy('created_at')
             ->get();
     }
@@ -158,7 +160,7 @@ class ReviewIntegrationRequestsCommand extends Command
                 $request->name,
                 $request->url,
                 $request->status->label(),
-                $request->user?->email ?? '—',
+                $request->user->email,
                 $request->votes_count,
                 $request->created_at?->format('Y-m-d') ?? '—',
             ];

@@ -3,8 +3,6 @@
 use App\Enums\IntegrationRequestStatus;
 use App\Models\IntegrationRequest;
 use App\Models\User;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 // With subscriptions enabled, a freshly created user is on the free plan
 // (three monthly actions). Subscribed users get the pro quota of nine.
@@ -464,14 +462,16 @@ test('the review command marks a request as done and drops its comment', functio
     expect($request->comment)->toBeNull();
 });
 
-test('the review command lists requests whose author no longer exists', function () {
-    $request = IntegrationRequest::factory()->approved()->create();
+test('the review command still shows the author of requests whose account was deleted', function () {
+    $author = User::factory()->create(['email' => 'gone@whisper.test']);
+    IntegrationRequest::factory()->approved()->create(['user_id' => $author->id]);
 
-    Schema::withoutForeignKeyConstraints(function () use ($request) {
-        $request->forceFill(['user_id' => (string) Str::uuid()])->saveQuietly();
-    });
+    // Soft-deleting the account would otherwise null the user relation and crash
+    // the table render; the command loads trashed authors so their email stays visible.
+    $author->delete();
 
     $this->artisan('integration-requests:review --all')
+        ->expectsOutputToContain('gone@whisper.test')
         ->expectsQuestion('Which request do you want to update? (number)', '0')
         ->expectsOutput('That number is not on the list.')
         ->assertFailed();
