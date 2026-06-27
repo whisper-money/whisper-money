@@ -7,6 +7,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Cashier\Cashier;
+use Laravel\Cashier\Subscription;
 use Laravel\Pennant\Feature;
 
 class ExperimentFunnelCollector
@@ -93,6 +94,7 @@ class ExperimentFunnelCollector
 
                     $row['assigned']++;
 
+                    /** @var Subscription|null $subscription */
                     $subscription = $user->subscriptions->sortByDesc('created_at')->first();
                     $status = $subscription?->stripe_status;
                     $netActive = $status === 'active' && $subscription->refunded_at === null;

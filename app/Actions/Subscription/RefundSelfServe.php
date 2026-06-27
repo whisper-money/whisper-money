@@ -32,7 +32,7 @@ class RefundSelfServe
         $payment = $subscription->latestPayment();
 
         if ($payment !== null) {
-            $user->refund($payment->id);
+            $user->refund($payment->asStripePaymentIntent()->id);
         }
 
         $subscription->forceFill(['refunded_at' => now()])->save();

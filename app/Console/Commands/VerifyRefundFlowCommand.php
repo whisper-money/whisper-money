@@ -69,7 +69,7 @@ class VerifyRefundFlowCommand extends Command
             $check('subscription active after immediate charge', $subscription->active() && $subscription->stripe_status === 'active');
             $check('canSelfRefund is true before refund', $this->offer->canSelfRefund($user));
 
-            $paymentIntentId = $subscription->latestPayment()?->id;
+            $paymentIntentId = $subscription->latestPayment()?->asStripePaymentIntent()->id;
             $check('latestPayment() resolves a payment intent', $paymentIntentId !== null);
 
             app(RefundSelfServe::class)->handle($user->fresh());
