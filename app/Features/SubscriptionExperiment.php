@@ -37,7 +37,17 @@ class SubscriptionExperiment
             return self::LEGACY;
         }
 
-        return match (crc32((string) $user->getKey()) % 3) {
+        return self::bucket((string) $user->getKey());
+    }
+
+    /**
+     * Deterministic, evenly-split bucket for a post-start user. The funnel report
+     * mirrors this in PHP to attribute users without reading Pennant per row, so
+     * keep the formula here as the single source of truth.
+     */
+    public static function bucket(string $key): string
+    {
+        return match (crc32($key) % 3) {
             0 => self::CONTROL,
             1 => self::REDUCED_TRIAL,
             default => self::PAY_NOW,
