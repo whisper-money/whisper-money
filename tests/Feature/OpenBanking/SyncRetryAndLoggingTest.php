@@ -18,6 +18,7 @@ use GuzzleHttp\Psr7\Response;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
@@ -107,6 +108,86 @@ test('temporary error on final attempt sets error status and increments consecut
     expect($connection->status)->toBe(BankingConnectionStatus::Error);
     expect($connection->error_message)->toContain('provider is experiencing issues');
     expect($connection->consecutive_sync_failures)->toBe(1);
+});
+
+test('temporary error on non-final attempt is not logged', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(
+        new RequestException(
+            new Illuminate\Http\Client\Response(new Response(500))
+        )
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    Log::spy();
+
+    // Attempt 1 of 3: the retry will recover, so nothing should be reported yet.
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(1);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        runSync($job, $transactionSync, $balanceSync);
+    } catch (RequestException) {
+        // Expected: rethrown so the queue retries it.
+    }
+
+    Log::shouldNotHaveReceived('log');
+});
+
+test('temporary error on final attempt is logged', function () {
+    $user = User::factory()->onboarded()->create();
+    $connection = BankingConnection::factory()->create([
+        'user_id' => $user->id,
+        'last_synced_at' => now()->subDay(),
+    ]);
+    Account::factory()->connected()->create([
+        'user_id' => $user->id,
+        'banking_connection_id' => $connection->id,
+        'external_account_id' => 'ext-123',
+    ]);
+
+    $transactionSync = Mockery::mock(TransactionSyncService::class);
+    $transactionSync->shouldReceive('sync')->andThrow(
+        new RequestException(
+            new Illuminate\Http\Client\Response(new Response(500))
+        )
+    );
+
+    $balanceSync = Mockery::mock(BalanceSyncService::class);
+
+    Log::spy();
+
+    // Final attempt (3 of 3): the connection gives up, so it must be reported.
+    $job = new SyncBankingConnectionJob($connection);
+    $job->job = Mockery::mock(Job::class);
+    $job->job->shouldReceive('attempts')->andReturn(3);
+    $job->job->shouldReceive('isReleased')->andReturn(false);
+    $job->job->shouldReceive('isDeletedOrReleased')->andReturn(false);
+    $job->job->shouldReceive('hasFailed')->andReturn(false);
+
+    try {
+        runSync($job, $transactionSync, $balanceSync);
+    } catch (RequestException) {
+        // Expected
+    }
+
+    Log::shouldHaveReceived('log')->with('error', 'Banking sync failed', Mockery::any())->once();
 });
 
 test('transient banking provider error on final attempt uses retry later message', function () {

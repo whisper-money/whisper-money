@@ -128,7 +128,12 @@ class SyncBankingConnectionJob implements ShouldBeUnique, ShouldQueue
                 $context['provider_code'] = $e->providerCode;
             }
 
-            Log::log($e instanceof TransientBankingProviderException ? 'warning' : 'error', 'Banking sync failed', $context);
+            // Only report once the connection actually gives up. Transient errors on a
+            // non-final attempt are recovered by the retry and would otherwise spam one
+            // warning per scheduled cycle for connections that ultimately sync fine.
+            if ($this->attempts() >= $this->tries || $this->isAuthError($e)) {
+                Log::log($e instanceof TransientBankingProviderException ? 'warning' : 'error', 'Banking sync failed', $context);
+            }
 
             if ($this->isRateLimitError($e)) {
                 $this->applyRateLimitBackoff($connection, $e);
