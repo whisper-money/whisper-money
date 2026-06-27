@@ -142,6 +142,7 @@ class AccountMetricsService
                 'currency_code' => $account->currency_code,
                 'bank' => $account->bank,
                 'banking_connection_id' => $account->banking_connection_id,
+                'hidden_on_dashboard' => $account->hidden_on_dashboard,
             ];
 
             if ($account->type === AccountType::RealEstate && $account->relationLoaded('realEstateDetail') && $account->realEstateDetail?->linked_loan_account_id) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\AccountType;
 use App\Http\Requests\ReorderAccountsRequest;
+use App\Http\Requests\UpdateAccountVisibilityRequest;
 use App\Models\Account;
 use App\Models\AccountBalance;
 use App\Models\LoanDetail;
@@ -55,6 +56,13 @@ class AccountController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->update(['position' => $position]);
         }
+
+        return back();
+    }
+
+    public function updateVisibility(UpdateAccountVisibilityRequest $request, Account $account): RedirectResponse
+    {
+        $account->update(['hidden_on_dashboard' => $request->validated('hidden')]);
 
         return back();
     }

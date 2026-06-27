@@ -1,14 +1,19 @@
-import { reorder } from '@/actions/App/Http/Controllers/AccountController';
+import {
+    reorder,
+    updateVisibility,
+} from '@/actions/App/Http/Controllers/AccountController';
 import { AccountBalanceCard } from '@/components/dashboard/account-balance-card';
+import { AccountsManagerDialog } from '@/components/dashboard/accounts-manager-dialog';
 import { CashflowSummaryCard } from '@/components/dashboard/cashflow-summary-card';
 import { NetWorthChart as NetWorthChartComponent } from '@/components/dashboard/net-worth-chart';
 import { TopCategoriesCard } from '@/components/dashboard/top-categories-card';
 import HeadingSmall from '@/components/heading-small';
 import { IntegrationRequestsDrawer } from '@/components/integration-requests/integration-requests-drawer';
-import { SortableGrid } from '@/components/sortable-grid';
+import { Button } from '@/components/ui/button';
 import UnlockMessageDialog from '@/components/unlock-message-dialog';
 import { useEncryptionKey } from '@/contexts/encryption-key-context';
 import {
+    type AccountWithMetrics,
     type NetWorthEvolutionData,
     deriveAccountMetrics,
 } from '@/hooks/use-dashboard-data';
@@ -19,6 +24,7 @@ import { BreadcrumbItem, SharedData } from '@/types';
 import { Category } from '@/types/category';
 import { __ } from '@/utils/i18n';
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
+import { Pencil } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface CashflowSummary {
@@ -83,25 +89,43 @@ export default function Dashboard() {
         return ids;
     }, [accountMetrics]);
 
-    const visibleAccounts = useMemo(
+    const manageableAccounts = useMemo(
         () => accountMetrics.filter((a) => !linkedLoanAccountIds.has(a.id)),
         [accountMetrics, linkedLoanAccountIds],
     );
+
+    const [editOpen, setEditOpen] = useState(false);
 
     // Optimistic ordering layered on top of the server order. Null means "use
     // the server order"; a drag sets the new id order and persists it.
     const [order, setOrder] = useState<string[] | null>(null);
     const orderedAccounts = useMemo(() => {
         if (!order) {
-            return visibleAccounts;
+            return manageableAccounts;
         }
-        const byId = new Map(visibleAccounts.map((a) => [a.id, a]));
+        const byId = new Map(manageableAccounts.map((a) => [a.id, a]));
         const ordered = order
             .map((id) => byId.get(id))
             .filter((a) => a !== undefined);
-        const rest = visibleAccounts.filter((a) => !order.includes(a.id));
+        const rest = manageableAccounts.filter((a) => !order.includes(a.id));
         return [...ordered, ...rest];
-    }, [visibleAccounts, order]);
+    }, [manageableAccounts, order]);
+
+    // Optimistic visibility overrides keyed by account id; falls back to the
+    // server flag until the next full reload.
+    const [hiddenOverrides, setHiddenOverrides] = useState<
+        Record<string, boolean>
+    >({});
+    const isHidden = useCallback(
+        (account: AccountWithMetrics) =>
+            hiddenOverrides[account.id] ?? account.hidden_on_dashboard,
+        [hiddenOverrides],
+    );
+
+    const gridAccounts = useMemo(
+        () => orderedAccounts.filter((a) => !isHidden(a)),
+        [orderedAccounts, isHidden],
+    );
 
     const handleReorder = useCallback((ids: string[]) => {
         setOrder(ids);
@@ -117,6 +141,22 @@ export default function Dashboard() {
             },
         );
     }, []);
+
+    const handleToggleVisibility = useCallback(
+        (id: string, hidden: boolean) => {
+            setHiddenOverrides((prev) => ({ ...prev, [id]: hidden }));
+            router.patch(
+                updateVisibility.url(id),
+                { hidden },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    only: ['showEncryptionPrompt'],
+                },
+            );
+        },
+        [],
+    );
 
     // Build linked loan metrics map keyed by real estate account ID
     const linkedLoanMetricsMap = useMemo(() => {
@@ -255,15 +295,27 @@ export default function Dashboard() {
                 >
                     <NetWorthChartComponent data={netWorthEvolution} />
 
-                    <SortableGrid
-                        className="grid gap-4 md:grid-cols-2"
-                        items={orderedAccounts}
-                        getId={(account) => account.id}
-                        onReorder={handleReorder}
-                        renderItem={(account, dragHandle) => (
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">
+                            {__('Accounts')}
+                        </h2>
+                        {orderedAccounts.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => setEditOpen(true)}
+                                aria-label={__('Edit accounts')}
+                            >
+                                <Pencil className="size-4" />
+                            </Button>
+                        )}
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {gridAccounts.map((account) => (
                             <AccountBalanceCard
+                                key={account.id}
                                 account={account}
-                                dragHandle={dragHandle}
                                 onBalanceUpdated={refetch}
                                 linkedLoanMetrics={
                                     linkedLoanMetricsMap[account.id]
@@ -272,7 +324,16 @@ export default function Dashboard() {
                                     netWorthEvolution.currency_code
                                 }
                             />
-                        )}
+                        ))}
+                    </div>
+
+                    <AccountsManagerDialog
+                        open={editOpen}
+                        onOpenChange={setEditOpen}
+                        accounts={orderedAccounts}
+                        isHidden={isHidden}
+                        onReorder={handleReorder}
+                        onToggleVisibility={handleToggleVisibility}
                     />
                 </Deferred>
 

@@ -17,6 +17,7 @@ export interface NetWorthEvolutionAccount {
     banking_connection_id: string | null;
     invested_amount?: number | null;
     linked_loan_account_id?: string | null;
+    hidden_on_dashboard?: boolean;
 }
 
 export interface OriginalAmount {
@@ -40,6 +41,7 @@ export interface AccountWithMetrics extends Account {
         investedAmount?: number | null;
     }>;
     investedAmount: number | null;
+    hidden_on_dashboard: boolean;
 }
 
 export interface DashboardData {
@@ -100,6 +102,7 @@ export function deriveAccountMetrics(
             diff: currentBalance - previousBalance,
             history,
             investedAmount: account.invested_amount ?? null,
+            hidden_on_dashboard: account.hidden_on_dashboard ?? false,
         } as AccountWithMetrics;
     });
 }

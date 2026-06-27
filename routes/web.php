@@ -142,6 +142,7 @@ Route::middleware(['auth', 'verified', 'onboarded', 'subscribed'])->group(functi
 
     Route::get('accounts', [AccountController::class, 'index'])->name('accounts.list');
     Route::patch('accounts/reorder', [AccountController::class, 'reorder'])->name('accounts.reorder');
+    Route::patch('accounts/{account}/visibility', [AccountController::class, 'updateVisibility'])->name('accounts.visibility');
     Route::get('accounts/{account}', [AccountController::class, 'show'])->name('accounts.show');
     Route::patch('accounts/{account}/real-estate-detail', [RealEstateDetailController::class, 'update'])->name('accounts.real-estate-detail.update');
     Route::patch('accounts/{account}/loan-detail', [LoanDetailController::class, 'update'])->name('accounts.loan-detail.update');
