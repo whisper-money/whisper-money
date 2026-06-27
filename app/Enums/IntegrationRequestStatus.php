@@ -9,6 +9,7 @@ enum IntegrationRequestStatus: string
     case InProgress = 'in_progress';
     case Rejected = 'rejected';
     case NotDoable = 'not_doable';
+    case Done = 'done';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum IntegrationRequestStatus: string
             self::InProgress => 'In progress',
             self::Rejected => 'Rejected',
             self::NotDoable => 'Not doable',
+            self::Done => 'Done',
         };
     }
 }

@@ -247,7 +247,7 @@ test('the review command approves a pending request', function () {
         ->expectsChoice(
             "Review \"{$request->name}\" ({$request->url})",
             'approve',
-            ['approve', 'in progress', 'reject', 'not doable', 'skip'],
+            ['approve', 'in progress', 'reject', 'not doable', 'done', 'skip'],
         )
         ->assertSuccessful();
 
@@ -261,7 +261,7 @@ test('the review command rejects a pending request', function () {
         ->expectsChoice(
             "Review \"{$request->name}\" ({$request->url})",
             'reject',
-            ['approve', 'in progress', 'reject', 'not doable', 'skip'],
+            ['approve', 'in progress', 'reject', 'not doable', 'done', 'skip'],
         )
         ->assertSuccessful();
 
@@ -344,7 +344,7 @@ test('the review command marks a request as not doable with a comment', function
         ->expectsChoice(
             "Review \"{$request->name}\" ({$request->url})",
             'not doable',
-            ['approve', 'in progress', 'reject', 'not doable', 'skip'],
+            ['approve', 'in progress', 'reject', 'not doable', 'done', 'skip'],
         )
         ->expectsQuestion('Why is this integration not doable? (shown to users)', 'No public API available.')
         ->assertSuccessful();
@@ -362,7 +362,7 @@ test('the review command with --all moves any request to a new status with a com
         ->expectsChoice(
             'New status for "Revolut"',
             'in progress',
-            ['approve', 'in progress', 'reject', 'not doable'],
+            ['approve', 'in progress', 'reject', 'not doable', 'done'],
         )
         ->expectsQuestion('Add a comment for this request (optional, shown to users)', 'Building it now.')
         ->assertSuccessful();
@@ -396,4 +396,83 @@ test('a user can vote on an in progress request', function () {
     $this->assertDatabaseHas('integration_request_votes', [
         'integration_request_id' => $request->id,
     ]);
+});
+
+test('done requests are visible to everyone without a comment', function () {
+    IntegrationRequest::factory()->done()->create(['name' => 'Shipped Bank']);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/integration-requests/data')
+        ->assertOk()
+        ->assertJsonCount(1, 'requests')
+        ->assertJsonPath('requests.0.status', 'done')
+        ->assertJsonPath('requests.0.comment', null);
+});
+
+test('done requests are listed after the rest', function () {
+    IntegrationRequest::factory()->done()->create(['name' => 'Done']);
+    $approved = IntegrationRequest::factory()->approved()->create(['name' => 'Approved']);
+
+    $this->actingAs(User::factory()->create())
+        ->getJson('/integration-requests/data')
+        ->assertOk()
+        ->assertJsonPath('requests.0.id', $approved->id)
+        ->assertJsonPath('requests.1.name', 'Done');
+});
+
+test('nobody can vote on a done request', function () {
+    $request = IntegrationRequest::factory()->done()->create();
+
+    $this->actingAs(User::factory()->create())
+        ->postJson("/integration-requests/{$request->id}/vote")
+        ->assertNotFound();
+});
+
+test('a vote on a request later marked done cannot be removed', function () {
+    $user = User::factory()->create();
+    $request = IntegrationRequest::factory()->approved()->create();
+    $request->votes()->create(['user_id' => $user->id]);
+
+    $request->update(['status' => IntegrationRequestStatus::Done]);
+
+    $this->actingAs($user)
+        ->deleteJson("/integration-requests/{$request->id}/vote")
+        ->assertNotFound();
+
+    expect($request->votes()->count())->toBe(1);
+});
+
+test('the review command marks a request as done and drops its comment', function () {
+    $request = IntegrationRequest::factory()->inProgress()->create([
+        'name' => 'Revolut',
+        'comment' => 'Working on it.',
+    ]);
+
+    $this->artisan('integration-requests:review --all')
+        ->expectsQuestion('Which request do you want to update? (number)', '1')
+        ->expectsChoice(
+            'New status for "Revolut"',
+            'done',
+            ['approve', 'in progress', 'reject', 'not doable', 'done'],
+        )
+        ->assertSuccessful();
+
+    $request->refresh();
+    expect($request->status)->toBe(IntegrationRequestStatus::Done);
+    expect($request->comment)->toBeNull();
+});
+
+test('the review command still shows the author of requests whose account was deleted', function () {
+    $author = User::factory()->create(['email' => 'gone@whisper.test']);
+    IntegrationRequest::factory()->approved()->create(['user_id' => $author->id]);
+
+    // Soft-deleting the account would otherwise null the user relation and crash
+    // the table render; the command loads trashed authors so their email stays visible.
+    $author->delete();
+
+    $this->artisan('integration-requests:review --all')
+        ->expectsOutputToContain('gone@whisper.test')
+        ->expectsQuestion('Which request do you want to update? (number)', '0')
+        ->expectsOutput('That number is not on the list.')
+        ->assertFailed();
 });

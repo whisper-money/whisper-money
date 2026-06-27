@@ -47,4 +47,9 @@ class IntegrationRequestFactory extends Factory
             'comment' => fake()->sentence(),
         ]);
     }
+
+    public function done(): static
+    {
+        return $this->state(['status' => IntegrationRequestStatus::Done]);
+    }
 }

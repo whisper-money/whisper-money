@@ -42,7 +42,7 @@ class ReviewIntegrationRequestsCommand extends Command
         foreach ($pending as $request) {
             $decision = $this->choice(
                 "Review \"{$request->name}\" ({$request->url})",
-                ['approve', 'in progress', 'reject', 'not doable', 'skip'],
+                ['approve', 'in progress', 'reject', 'not doable', 'done', 'skip'],
                 'skip',
             );
 
@@ -78,7 +78,7 @@ class ReviewIntegrationRequestsCommand extends Command
 
         $this->apply($request, $this->choice(
             "New status for \"{$request->name}\"",
-            ['approve', 'in progress', 'reject', 'not doable'],
+            ['approve', 'in progress', 'reject', 'not doable', 'done'],
         ));
 
         $this->info("\"{$request->name}\" is now {$request->status->label()}.");
@@ -93,6 +93,7 @@ class ReviewIntegrationRequestsCommand extends Command
             'in progress' => IntegrationRequestStatus::InProgress,
             'reject' => IntegrationRequestStatus::Rejected,
             'not doable' => IntegrationRequestStatus::NotDoable,
+            'done' => IntegrationRequestStatus::Done,
             default => null,
         };
 
@@ -124,7 +125,7 @@ class ReviewIntegrationRequestsCommand extends Command
             return $this->ask('Add a comment for this request (optional, shown to users)') ?: null;
         }
 
-        // Approving, rejecting or re-queuing drops any stale public comment.
+        // Approving, rejecting, re-queuing or marking done drops any stale public comment.
         return null;
     }
 
@@ -136,7 +137,9 @@ class ReviewIntegrationRequestsCommand extends Command
     {
         return $query
             ->withCount('votes')
-            ->with('user:id,email')
+            // Authors who deleted their account are soft-deleted, but their requests
+            // linger; load them trashed so the table still shows who submitted each one.
+            ->with(['user' => fn ($user) => $user->withTrashed()->select('id', 'email')])
             ->orderBy('created_at')
             ->get();
     }
