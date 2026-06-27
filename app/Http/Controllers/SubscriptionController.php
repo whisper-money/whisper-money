@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Subscription\RefundSelfServe;
+use App\Features\SubscriptionExperiment;
 use App\Models\AccountBalance;
 use App\Models\User;
 use App\Models\UserLead;
@@ -180,9 +182,38 @@ class SubscriptionController extends Controller
             return redirect()->route('dashboard');
         }
 
+        $user = $request->user();
+        $subscription = $user->subscription('default');
+
         return Inertia::render('settings/billing', [
-            'hasAiConsent' => $request->user()->hasActiveAiConsent(),
+            'hasAiConsent' => $user->hasActiveAiConsent(),
+            'refund' => [
+                'canSelfRefund' => $this->experimentOffer->canSelfRefund($user),
+                'deadline' => $subscription !== null && $this->experimentOffer->variantFor($user) === SubscriptionExperiment::PAY_NOW
+                    ? $this->experimentOffer->refundDeadlineFor($subscription)->toIso8601String()
+                    : null,
+            ],
         ]);
+    }
+
+    public function refund(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->isDemoAccount()) {
+            return redirect()->route('settings.billing')
+                ->withErrors(['refund' => 'Refunds are not available on the demo account.']);
+        }
+
+        if (! $this->experimentOffer->canSelfRefund($user)) {
+            return redirect()->route('settings.billing')
+                ->withErrors(['refund' => __('This subscription is no longer eligible for a self-service refund.')]);
+        }
+
+        app(RefundSelfServe::class)->handle($user);
+
+        return redirect()->route('settings.billing')
+            ->with('status', __('Your payment was refunded, your subscription was canceled, and your bank connections were disconnected.'));
     }
 
     public function billingPortal(Request $request): RedirectResponse
