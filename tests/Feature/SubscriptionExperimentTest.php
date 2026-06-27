@@ -36,6 +36,26 @@ it('treats everyone as legacy while the experiment is off', function () {
     expect(app(ExperimentOffer::class)->variantFor($user))->toBe(SubscriptionExperiment::LEGACY);
 });
 
+it('pins every user to the forced winner variant', function () {
+    config(['subscriptions.experiment.force_variant' => SubscriptionExperiment::PAY_NOW]);
+    $offer = app(ExperimentOffer::class);
+
+    $legacy = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-05-01')]);
+    $fresh = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-06-10')]);
+
+    expect($offer->variantFor($legacy))->toBe(SubscriptionExperiment::PAY_NOW)
+        ->and($offer->variantFor($fresh))->toBe(SubscriptionExperiment::PAY_NOW)
+        ->and($offer->trialDaysFor($fresh, 'monthly'))->toBe(0);
+});
+
+it('ignores an invalid forced variant', function () {
+    config(['subscriptions.experiment.force_variant' => 'bogus']);
+
+    $user = User::factory()->create(['created_at' => CarbonImmutable::parse('2026-05-01')]);
+
+    expect(app(ExperimentOffer::class)->variantFor($user))->toBe(SubscriptionExperiment::LEGACY);
+});
+
 it('splits post-start users across all three variants and stays stable per user', function () {
     $offer = app(ExperimentOffer::class);
     $variants = [];

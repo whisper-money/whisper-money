@@ -13,9 +13,8 @@ use Carbon\CarbonImmutable;
  * registered on or after the start is split evenly into the three variants by a
  * stable hash of their id, so the bucket never changes for a given user.
  *
- * The split is deterministic (crc32(id) % 3); the funnel report mirrors the same
- * formula in SQL. Manual overrides via `feature:enable` are honoured at runtime
- * but are not reflected in that report — keep overrides to QA accounts.
+ * The split is deterministic (crc32(id) % 3) and persisted by Pennant; the funnel
+ * report reads that persisted value so it always matches what the user was served.
  *
  * @api
  */
@@ -28,6 +27,21 @@ class SubscriptionExperiment
     public const REDUCED_TRIAL = 'reduced_trial';
 
     public const PAY_NOW = 'pay_now';
+
+    /**
+     * In-memory override that pins every user to the winning variant once the
+     * experiment is decided. Returning non-null skips both storage and resolve,
+     * so flipping SUBSCRIPTION_EXPERIMENT_FORCE_VARIANT rolls the winner out to
+     * everyone without a deploy and without rewriting stored assignments.
+     */
+    public function before(?User $user): ?string
+    {
+        $forced = config('subscriptions.experiment.force_variant');
+
+        return in_array($forced, [self::CONTROL, self::REDUCED_TRIAL, self::PAY_NOW], true)
+            ? $forced
+            : null;
+    }
 
     public function resolve(?User $user): string
     {

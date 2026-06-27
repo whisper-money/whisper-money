@@ -35,6 +35,9 @@ return [
 
     'experiment' => [
         'started_at' => env('SUBSCRIPTION_EXPERIMENT_STARTED_AT'),
+        // Once a winner is chosen, set this to control / reduced_trial / pay_now
+        // to give every user that variant and end the split (env-only, no deploy).
+        'force_variant' => env('SUBSCRIPTION_EXPERIMENT_FORCE_VARIANT'),
         'reduced_trial' => [
             'monthly' => (int) env('SUBSCRIPTION_EXPERIMENT_REDUCED_TRIAL_MONTHLY', 3),
             'yearly' => (int) env('SUBSCRIPTION_EXPERIMENT_REDUCED_TRIAL_YEARLY', 7),
