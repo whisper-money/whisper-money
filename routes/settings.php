@@ -87,6 +87,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/billing', [SubscriptionController::class, 'billing'])->name('settings.billing');
     Route::get('settings/billing/portal', [SubscriptionController::class, 'billingPortal'])->name('settings.billing.portal');
+    Route::post('settings/billing/refund', [SubscriptionController::class, 'refund'])
+        ->middleware(['throttle:6,1', 'block-demo'])
+        ->name('settings.billing.refund');
 
     Route::get('settings/delete-account', function (Request $request) {
         return Inertia::render('settings/delete-account', [

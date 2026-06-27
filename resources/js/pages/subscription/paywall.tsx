@@ -32,10 +32,64 @@ interface PaywallStats {
     balancesByCurrency: Record<string, number>;
 }
 
+interface ExperimentOffer {
+    variant: string;
+    payNow: boolean;
+    refundWindowDays: number;
+    trialDays: Record<string, number>;
+}
+
 interface PaywallPageProps extends SharedData {
     stats: PaywallStats;
     canUseFreePlan: boolean;
     canManageConnectionsForFreePlan: boolean;
+    offer: ExperimentOffer;
+}
+
+function TrialTerms({
+    offer,
+    planKey,
+    amount,
+}: {
+    offer: ExperimentOffer;
+    planKey: string;
+    amount: string;
+}) {
+    if (offer.payNow) {
+        return (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center text-sm dark:border-emerald-900 dark:bg-emerald-950/40">
+                <p className="font-medium text-emerald-900 dark:text-emerald-200">
+                    {__("You'll be charged :amount today", { amount })}
+                </p>
+                <p className="mt-1 text-emerald-800/80 dark:text-emerald-300/80">
+                    {__(
+                        'Changed your mind? Get a full refund yourself from Settings within the first :days days — no questions asked.',
+                        { days: offer.refundWindowDays },
+                    )}
+                </p>
+            </div>
+        );
+    }
+
+    const days = offer.trialDays[planKey] ?? 0;
+
+    if (days <= 0) {
+        return null;
+    }
+
+    return (
+        <div className="rounded-lg border bg-muted/30 p-3 text-center text-sm">
+            <p className="font-medium">
+                {__(':days-day free trial', { days })}
+            </p>
+            <p className="mt-1 text-muted-foreground">
+                {__(
+                    "You won't be charged until your :days-day trial ends. Cancel anytime before then.",
+                    { days },
+                )}
+            </p>
+        </div>
+    );
 }
 
 function getEquivalentBillingLabel(
@@ -335,19 +389,26 @@ function PricingSection({
     currency,
     canUseFreePlan,
     canManageConnectionsForFreePlan,
+    offer,
 }: {
     planEntries: [string, Plan][];
     defaultPlan: string;
     currency: string;
     canUseFreePlan: boolean;
     canManageConnectionsForFreePlan: boolean;
+    offer: ExperimentOffer;
 }) {
     const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
     const [freeButtonVisible, setFreeButtonVisible] = useState(false);
+    const locale = useLocale();
 
     const selectedPlanData = planEntries.find(
         ([key]) => key === selectedPlan,
     )?.[1];
+
+    const selectedAmount = selectedPlanData
+        ? formatCurrency(selectedPlanData.price * 100, currency, locale)
+        : '';
 
     useEffect(() => {
         if (!canUseFreePlan) {
@@ -378,6 +439,12 @@ function PricingSection({
                     />
                 ))}
             </div>
+
+            <TrialTerms
+                offer={offer}
+                planKey={selectedPlan}
+                amount={selectedAmount}
+            />
 
             <a href={checkout.url({ query: { plan: selectedPlan } })}>
                 <Button
@@ -428,8 +495,13 @@ function PricingSection({
 }
 
 export default function Paywall() {
-    const { pricing, stats, canUseFreePlan, canManageConnectionsForFreePlan } =
-        usePage<PaywallPageProps>().props;
+    const {
+        pricing,
+        stats,
+        canUseFreePlan,
+        canManageConnectionsForFreePlan,
+        offer,
+    } = usePage<PaywallPageProps>().props;
     const planEntries = Object.entries(pricing.plans);
 
     if (planEntries.length === 0) {
@@ -454,6 +526,7 @@ export default function Paywall() {
                         canManageConnectionsForFreePlan={
                             canManageConnectionsForFreePlan
                         }
+                        offer={offer}
                     />
                 </div>
             </div>
