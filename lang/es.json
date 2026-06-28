@@ -1,8 +1,9 @@
 {
     "This subscription is no longer eligible for a self-service refund.": "Esta suscripción ya no es elegible para una devolución automática.",
     "Your payment was refunded, your subscription was canceled, and your bank connections were disconnected.": "Te hemos devuelto el pago, cancelado la suscripción y desconectado tus cuentas bancarias.",
-    "You'll be charged :amount today": "Se te cobrará :amount hoy",
-    "Changed your mind? Get a full refund yourself from Settings within the first :days days — no questions asked.": "¿Cambias de idea? Solicita tú mismo la devolución completa desde Ajustes durante los primeros :days días, sin preguntas.",
+    "Try it for :days days": "Pruébalo durante :days días",
+    "Don't like it? Get a full refund with one tap from Settings — no questions asked.": "¿No te gusta? Obtén la devolución completa con un click desde Ajustes, sin preguntas.",
+    "You pay :amount today, refunded in full if you cancel within :days days.": "Pagas :amount hoy y te lo devolvemos íntegro si cancelas en los primeros :days días.",
     ":days-day free trial": "Prueba gratis de :days días",
     "You won't be charged until your :days-day trial ends. Cancel anytime before then.": "No se te cobrará hasta que termine tu prueba de :days días. Cancela cuando quieras antes de eso.",
     "Money-back guarantee": "Garantía de devolución",

@@ -59,12 +59,19 @@ function TrialTerms({
         return (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-center text-sm dark:border-emerald-900 dark:bg-emerald-950/40">
                 <p className="font-medium text-emerald-900 dark:text-emerald-200">
-                    {__("You'll be charged :amount today", { amount })}
+                    {__('Try it for :days days', {
+                        days: offer.refundWindowDays,
+                    })}
                 </p>
                 <p className="mt-1 text-emerald-800/80 dark:text-emerald-300/80">
                     {__(
-                        'Changed your mind? Get a full refund yourself from Settings within the first :days days — no questions asked.',
-                        { days: offer.refundWindowDays },
+                        "Don't like it? Get a full refund with one tap from Settings — no questions asked.",
+                    )}
+                </p>
+                <p className="mt-1 text-xs text-emerald-700/70 dark:text-emerald-300/60">
+                    {__(
+                        'You pay :amount today, refunded in full if you cancel within :days days.',
+                        { amount, days: offer.refundWindowDays },
                     )}
                 </p>
             </div>
