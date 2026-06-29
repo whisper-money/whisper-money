@@ -32,6 +32,20 @@ test('posts yesterday user counts and stripe stats to discord', function () {
     });
 });
 
+test('prints to the console without posting when --no-discord is set', function () {
+    Http::fake();
+    bindMockStripeClientForStats([
+        'active' => [makeStripeSubscription('eur', 1000, 'month')],
+        'trialing' => [],
+    ]);
+
+    User::factory()->create(['created_at' => Carbon::now('Europe/Madrid')->subDay()->setTime(12, 0)->utc()]);
+
+    $this->artisan('stats:daily-report', ['--no-discord' => true])->assertSuccessful();
+
+    Http::assertNothingSent();
+});
+
 test('total reflects users at end of yesterday and excludes users created today', function () {
     Http::fake();
     bindMockStripeClientForStats(['active' => [], 'trialing' => []]);

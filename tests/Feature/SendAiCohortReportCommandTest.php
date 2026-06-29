@@ -211,6 +211,17 @@ it('posts the cohort report embed to the configured discord webhook', function (
     });
 });
 
+it('prints to the console without posting when --no-discord is set', function () {
+    config(['services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+
+    cohortUser(referenceNow()->subWeeks(6), ['transactions' => 3, 'lastActiveAt' => referenceNow()->subWeeks(3)]);
+
+    artisan('stats:ai-cohort-report', ['--no-discord' => true])->assertSuccessful();
+
+    Http::assertNothingSent();
+});
+
 it('falls back to the default discord webhook when no dedicated one is set', function () {
     config([
         'services.discord.ai_cohort_webhook_url' => null,

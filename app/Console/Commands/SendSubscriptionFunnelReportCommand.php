@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 
 class SendSubscriptionFunnelReportCommand extends Command
 {
-    protected $signature = 'stats:subscription-funnel {--weeks= : Number of weekly cohorts to include}';
+    protected $signature = 'stats:subscription-funnel {--weeks= : Number of weekly cohorts to include} {--no-discord : Print the report to the console only, without posting to Discord}';
 
     protected $description = 'Post the weekly registration -> subscription -> paid funnel to Discord';
 
@@ -25,6 +25,12 @@ class SendSubscriptionFunnelReportCommand extends Command
 
         foreach ($this->tableLines($report) as $line) {
             $this->line($line);
+        }
+
+        if ($this->option('no-discord')) {
+            $this->info('Skipped Discord (--no-discord).');
+
+            return self::SUCCESS;
         }
 
         $webhookUrl = config('services.discord.ai_cohort_webhook_url')

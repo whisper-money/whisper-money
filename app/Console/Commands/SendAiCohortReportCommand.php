@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\RendersReportToConsole;
 use App\Services\Ai\AiCohortReportCollector;
 use App\Services\Discord\DiscordWebhook;
 use Carbon\CarbonImmutable;
@@ -9,7 +10,9 @@ use Illuminate\Console\Command;
 
 class SendAiCohortReportCommand extends Command
 {
-    protected $signature = 'stats:ai-cohort-report {--weeks= : Number of weekly cohorts to include}';
+    use RendersReportToConsole;
+
+    protected $signature = 'stats:ai-cohort-report {--weeks= : Number of weekly cohorts to include} {--no-discord : Print the report to the console only, without posting to Discord}';
 
     protected $description = 'Post the weekly AI-suggestions cohort retention/conversion report to Discord';
 
@@ -23,11 +26,19 @@ class SendAiCohortReportCommand extends Command
         $weeks = $this->option('weeks') !== null ? (int) $this->option('weeks') : null;
 
         $report = $this->collector->collect($weeks);
+        $embed = $this->buildEmbed($report);
+
+        if ($this->option('no-discord')) {
+            $this->printEmbeds([$embed]);
+            $this->info('Skipped Discord (--no-discord).');
+
+            return self::SUCCESS;
+        }
 
         $webhookUrl = config('services.discord.ai_cohort_webhook_url')
             ?: config('services.discord.webhook_url');
 
-        (new DiscordWebhook($webhookUrl))->send('', [$this->buildEmbed($report)]);
+        (new DiscordWebhook($webhookUrl))->send('', [$embed]);
 
         $this->info('AI cohort report sent to Discord.');
 

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\RendersReportToConsole;
 use App\Models\User;
 use App\Services\Discord\DiscordWebhook;
 use App\Services\Stripe\SubscriptionStatsCollector;
@@ -11,7 +12,9 @@ use Stripe\Exception\ApiErrorException;
 
 class SendDailyStatsReportCommand extends Command
 {
-    protected $signature = 'stats:daily-report';
+    use RendersReportToConsole;
+
+    protected $signature = 'stats:daily-report {--no-discord : Print the report to the console only, without posting to Discord}';
 
     protected $description = 'Post yesterday\'s user and Stripe subscription stats to the Discord admin channel';
 
@@ -45,9 +48,16 @@ class SendDailyStatsReportCommand extends Command
             ->where('created_at', '<', $todayStart->copy()->utc())
             ->count();
 
-        $this->discord->send('', [
-            $this->buildEmbed($stats, $newUsers, $totalUsers, $yesterdayStart),
-        ]);
+        $embed = $this->buildEmbed($stats, $newUsers, $totalUsers, $yesterdayStart);
+
+        if ($this->option('no-discord')) {
+            $this->printEmbeds([$embed]);
+            $this->info('Skipped Discord (--no-discord).');
+
+            return self::SUCCESS;
+        }
+
+        $this->discord->send('', [$embed]);
 
         $this->info('Daily stats report sent to Discord.');
 
