@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 
 class SendExperimentFunnelReportCommand extends Command
 {
-    protected $signature = 'stats:experiment-funnel';
+    protected $signature = 'stats:experiment-funnel {--no-discord : Print the report to the console only, without posting to Discord}';
 
     protected $description = 'Post the trial/pricing experiment funnel (per variant) to Discord';
 
@@ -37,6 +37,12 @@ class SendExperimentFunnelReportCommand extends Command
 
         foreach ($this->tableLines($report) as $line) {
             $this->line($line);
+        }
+
+        if ($this->option('no-discord')) {
+            $this->info('Skipped Discord (--no-discord).');
+
+            return self::SUCCESS;
         }
 
         $webhookUrl = config('services.discord.ai_cohort_webhook_url')

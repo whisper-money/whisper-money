@@ -168,3 +168,19 @@ it('does not post when the experiment has not started', function () {
 
     Http::assertNothingSent();
 });
+
+it('prints the report without posting to discord when --no-discord is set', function () {
+    config(['services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+
+    experimentUser(SubscriptionExperiment::CONTROL, CarbonImmutable::parse('2026-06-05'), [
+        'status' => 'active',
+        'at' => CarbonImmutable::parse('2026-06-05'),
+    ]);
+
+    artisan('stats:experiment-funnel', ['--no-discord' => true])
+        ->expectsOutputToContain('control')
+        ->assertSuccessful();
+
+    Http::assertNothingSent();
+});
