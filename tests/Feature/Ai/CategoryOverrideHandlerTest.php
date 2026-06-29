@@ -310,3 +310,73 @@ it('self-heals but learns nothing when correcting to uncategorized', function ()
         ->and(AutomationRule::query()->find($aiRuleId))->toBeNull()
         ->and(AutomationRule::query()->origin(RuleOrigin::Correction)->count())->toBe(0);
 });
+
+it('learns a debtor_name rule when only the debtor is present', function () {
+    $user = User::factory()->create();
+    $to = cohCategory($user);
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => cohCategory($user)->id,
+        'category_source' => CategorySource::Ai,
+        'ai_confidence' => 0.9,
+        'creditor_name' => null,
+        'debtor_name' => 'Juan Perez',
+        'description' => 'Bizum recibido',
+    ]);
+
+    $learned = app(CategoryOverrideHandler::class)->record($transaction, $to->id);
+
+    expect($learned->rules_json)->toBe(['==' => [['var' => 'debtor_name'], 'juan perez']]);
+
+    $next = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+        'creditor_name' => null,
+        'debtor_name' => 'Juan Perez',
+        'description' => 'Bizum recibido de nuevo',
+    ]);
+    app(AutomationRuleService::class)->applyRules($next);
+
+    expect($next->refresh()->category_id)->toBe($to->id);
+});
+
+it('learns a single-token description rule as a bare contains clause', function () {
+    $user = User::factory()->create();
+    $to = cohCategory($user);
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => cohCategory($user)->id,
+        'category_source' => CategorySource::Ai,
+        'ai_confidence' => 0.9,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => 'Spotify',
+    ]);
+
+    $learned = app(CategoryOverrideHandler::class)->record($transaction, $to->id);
+
+    expect($learned->rules_json)->toBe(['in' => ['spotify', ['var' => 'description']]]);
+});
+
+it('learns nothing from an encrypted-description transaction without a merchant', function () {
+    $user = User::factory()->create();
+    $to = cohCategory($user);
+
+    $transaction = Transaction::factory()->create([
+        'user_id' => $user->id,
+        'category_id' => cohCategory($user)->id,
+        'category_source' => CategorySource::Ai,
+        'ai_confidence' => 0.9,
+        'creditor_name' => null,
+        'debtor_name' => null,
+    ]);
+
+    expect($transaction->description_iv)->not->toBeNull();
+
+    $learned = app(CategoryOverrideHandler::class)->record($transaction, $to->id);
+
+    expect($learned)->toBeNull()
+        ->and(AutomationRule::query()->origin(RuleOrigin::Correction)->count())->toBe(0);
+});
