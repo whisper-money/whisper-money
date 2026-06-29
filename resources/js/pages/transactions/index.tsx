@@ -84,7 +84,8 @@ import {
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
 import {
-    firstSeenTransactionIndex,
+    countNewSince,
+    isNewSince,
     loadLastVisit,
     newestCreatedAt,
     saveLastVisit,
@@ -270,6 +271,7 @@ interface TransactionRowProps {
     row: Row<DecryptedTransaction>;
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
+    isNew: boolean;
     onEdit: (transaction: DecryptedTransaction) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
@@ -279,6 +281,7 @@ function TransactionRowComponent({
     row,
     virtualRow,
     rowVirtualizer,
+    isNew,
     onEdit,
     onReEvaluateRules,
     onDelete,
@@ -306,7 +309,7 @@ function TransactionRowComponent({
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
-                    className="cursor-pointer"
+                    className={cn('cursor-pointer', isNew && 'bg-primary/5')}
                     onClick={handleRowClick}
                 >
                     {row
@@ -321,29 +324,37 @@ function TransactionRowComponent({
                                 | undefined;
                             return !meta?.isVirtual;
                         })
-                        .map((cell: Cell<DecryptedTransaction, unknown>) => {
-                            const meta = cell.column.columnDef.meta as
-                                | {
-                                      cellClassName?: string;
-                                      cellStyle?: React.CSSProperties;
-                                  }
-                                | undefined;
-                            return (
-                                <TableCell
-                                    key={cell.id}
-                                    className={cn(
-                                        meta?.cellClassName,
-                                        'pt-2.5 pb-2',
-                                    )}
-                                    style={meta?.cellStyle}
-                                >
-                                    {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext(),
-                                    )}
-                                </TableCell>
-                            );
-                        })}
+                        .map(
+                            (
+                                cell: Cell<DecryptedTransaction, unknown>,
+                                cellIndex: number,
+                            ) => {
+                                const meta = cell.column.columnDef.meta as
+                                    | {
+                                          cellClassName?: string;
+                                          cellStyle?: React.CSSProperties;
+                                      }
+                                    | undefined;
+                                return (
+                                    <TableCell
+                                        key={cell.id}
+                                        className={cn(
+                                            meta?.cellClassName,
+                                            'pt-2.5 pb-2',
+                                            isNew &&
+                                                cellIndex === 0 &&
+                                                'border-l-2 border-l-primary',
+                                        )}
+                                        style={meta?.cellStyle}
+                                    >
+                                        {flexRender(
+                                            cell.column.columnDef.cell,
+                                            cell.getContext(),
+                                        )}
+                                    </TableCell>
+                                );
+                            },
+                        )}
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>
@@ -390,22 +401,6 @@ function getInitialColumnVisibility(): VisibilityState {
         );
     }
     return defaultVisibility;
-}
-
-function LastVisitDivider({ colSpan }: { colSpan: number }) {
-    return (
-        <tr className="hover:bg-transparent">
-            <td colSpan={colSpan} className="px-4 py-1.5">
-                <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-red-500/50" />
-                    <span className="text-xs font-medium tracking-wide text-red-600 uppercase dark:text-red-400">
-                        {__('Last visit')}
-                    </span>
-                    <div className="h-px flex-1 bg-red-500/50" />
-                </div>
-            </td>
-        </tr>
-    );
 }
 
 function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
@@ -492,18 +487,14 @@ export default function Transactions({
         appliedFilters.sort || '-transaction_date',
     );
 
-    // Frozen at mount so the "Last visit" divider stays put for the whole visit.
+    // Frozen at mount so per-row "new" marks stay stable for the whole visit.
     const [lastVisitAtMount] = useState<string | null>(loadLastVisit);
 
-    // Index of the first already-seen row. Rows above it arrived since the last
-    // visit and sit above the "Last visit" divider. Only meaningful under the
-    // default newest-first sort.
-    const newTransactionsBoundary = useMemo(() => {
-        if (sortParam !== '-transaction_date') {
-            return -1;
-        }
-        return firstSeenTransactionIndex(allTransactions, lastVisitAtMount);
-    }, [allTransactions, sortParam, lastVisitAtMount]);
+    // Count of loaded transactions that arrived since the last visit.
+    const newCount = useMemo(
+        () => countNewSince(allTransactions, lastVisitAtMount),
+        [allTransactions, lastVisitAtMount],
+    );
 
     // Mark this visit as seen, once, using the newest created_at from the
     // initial payload. Rows that arrive later in the same visit (load-more,
@@ -1345,32 +1336,20 @@ export default function Transactions({
             virtualRow: VirtualItem,
             rowVirtualizer: Virtualizer<HTMLDivElement, Element>,
         ) => {
-            const transactionRow = (
+            return (
                 <TransactionRowComponent
                     key={row.id}
                     row={row}
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
+                    isNew={isNewSince(row.original, lastVisitAtMount)}
                     onEdit={setEditTransaction}
                     onReEvaluateRules={handleReEvaluateRules}
                     onDelete={setDeleteTransaction}
                 />
             );
-
-            if (virtualRow.index !== newTransactionsBoundary) {
-                return transactionRow;
-            }
-
-            return (
-                <>
-                    <LastVisitDivider
-                        colSpan={table.getVisibleLeafColumns().length}
-                    />
-                    {transactionRow}
-                </>
-            );
         },
-        [handleReEvaluateRules, newTransactionsBoundary, table],
+        [handleReEvaluateRules, lastVisitAtMount],
     );
 
     return (
@@ -1455,6 +1434,17 @@ export default function Transactions({
                         </div>
                     ) : (
                         <>
+                            {newCount > 0 && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <span className="inline-block size-2 rounded-full bg-primary" />
+                                    {newCount === 1
+                                        ? __('1 new since your last visit')
+                                        : __(
+                                              ':count new since your last visit',
+                                              { count: newCount },
+                                          )}
+                                </div>
+                            )}
                             <DataTable
                                 table={table}
                                 columns={columns}

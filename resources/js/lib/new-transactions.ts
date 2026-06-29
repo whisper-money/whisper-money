@@ -46,30 +46,42 @@ export function newestCreatedAt(
 }
 
 /**
- * Index of the first transaction that was already present at the given visit
- * timestamp, assuming the list is sorted newest-first. Transactions above this
- * index arrived since the last visit and sit above the "Last visit" divider.
- *
- * Returns -1 when there is no meaningful divider to draw: no recorded visit, an
- * unparseable timestamp, nothing new (the first row is already seen), or every
- * loaded row is new (the boundary lives in a not-yet-loaded page).
+ * Whether a transaction was inserted after the given visit timestamp, i.e. it
+ * arrived since the user last opened the list. Compared per-row (not as a
+ * positional boundary) because the list is sorted by transaction_date, which
+ * does not correlate with created_at — a newly synced row can have an old date
+ * and sit anywhere in the list.
  */
-export function firstSeenTransactionIndex(
-    transactions: Pick<Transaction, 'created_at'>[],
+export function isNewSince(
+    transaction: Pick<Transaction, 'created_at'>,
     lastVisit: string | null,
-): number {
+): boolean {
     if (!lastVisit) {
-        return -1;
+        return false;
     }
 
     const lastVisitMs = Date.parse(lastVisit);
     if (Number.isNaN(lastVisitMs)) {
-        return -1;
+        return false;
     }
 
-    const firstSeen = transactions.findIndex(
-        (transaction) => Date.parse(transaction.created_at) <= lastVisitMs,
-    );
+    const createdMs = Date.parse(transaction.created_at);
 
-    return firstSeen > 0 ? firstSeen : -1;
+    return !Number.isNaN(createdMs) && createdMs > lastVisitMs;
+}
+
+/**
+ * How many of the given transactions arrived since the last visit. Counts only
+ * the loaded transactions, so it can undercount when newer rows live in a
+ * not-yet-loaded page.
+ */
+export function countNewSince(
+    transactions: Pick<Transaction, 'created_at'>[],
+    lastVisit: string | null,
+): number {
+    return transactions.reduce(
+        (count, transaction) =>
+            isNewSince(transaction, lastVisit) ? count + 1 : count,
+        0,
+    );
 }

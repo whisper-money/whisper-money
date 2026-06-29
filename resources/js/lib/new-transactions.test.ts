@@ -1,42 +1,58 @@
 import { describe, expect, it } from 'vitest';
 
-import { firstSeenTransactionIndex, newestCreatedAt } from './new-transactions';
+import { countNewSince, isNewSince, newestCreatedAt } from './new-transactions';
 
 const tx = (created_at: string) => ({ created_at });
 
-// Newest-first, like the transactions table default sort.
-const transactions = [
-    tx('2026-06-29T10:00:00Z'), // new
-    tx('2026-06-29T09:00:00Z'), // new
-    tx('2026-06-20T08:00:00Z'), // seen
-    tx('2026-06-19T08:00:00Z'), // seen
-];
-
-describe('firstSeenTransactionIndex', () => {
-    it('returns the boundary between new and seen rows', () => {
+describe('isNewSince', () => {
+    it('is true when created after the last visit', () => {
         expect(
-            firstSeenTransactionIndex(transactions, '2026-06-25T00:00:00Z'),
-        ).toBe(2);
+            isNewSince(tx('2026-06-29T10:00:00Z'), '2026-06-25T00:00:00Z'),
+        ).toBe(true);
     });
 
-    it('returns -1 when nothing is new (first row already seen)', () => {
+    it('is false when created at or before the last visit', () => {
         expect(
-            firstSeenTransactionIndex(transactions, '2026-06-30T00:00:00Z'),
-        ).toBe(-1);
+            isNewSince(tx('2026-06-20T08:00:00Z'), '2026-06-25T00:00:00Z'),
+        ).toBe(false);
     });
 
-    it('returns -1 when every loaded row is new', () => {
+    it('does not rely on list order (a new row can be back-dated)', () => {
+        // A row synced now but dated weeks ago is still "new".
         expect(
-            firstSeenTransactionIndex(transactions, '2026-06-01T00:00:00Z'),
-        ).toBe(-1);
+            isNewSince(tx('2026-06-29T10:00:00Z'), '2026-06-25T00:00:00Z'),
+        ).toBe(true);
     });
 
-    it('returns -1 on a first visit (no stored timestamp)', () => {
-        expect(firstSeenTransactionIndex(transactions, null)).toBe(-1);
+    it('is false on a first visit (no stored timestamp)', () => {
+        expect(isNewSince(tx('2026-06-29T10:00:00Z'), null)).toBe(false);
     });
 
-    it('returns -1 on an unparseable timestamp', () => {
-        expect(firstSeenTransactionIndex(transactions, 'not-a-date')).toBe(-1);
+    it('is false on an unparseable timestamp', () => {
+        expect(isNewSince(tx('2026-06-29T10:00:00Z'), 'not-a-date')).toBe(
+            false,
+        );
+    });
+});
+
+describe('countNewSince', () => {
+    const transactions = [
+        tx('2026-06-29T10:00:00Z'),
+        tx('2026-06-20T08:00:00Z'), // seen, interleaved
+        tx('2026-06-28T09:00:00Z'),
+        tx('2026-06-19T08:00:00Z'), // seen
+    ];
+
+    it('counts every new row regardless of position', () => {
+        expect(countNewSince(transactions, '2026-06-25T00:00:00Z')).toBe(2);
+    });
+
+    it('returns 0 when nothing is new', () => {
+        expect(countNewSince(transactions, '2026-06-30T00:00:00Z')).toBe(0);
+    });
+
+    it('returns 0 on a first visit', () => {
+        expect(countNewSince(transactions, null)).toBe(0);
     });
 });
 
