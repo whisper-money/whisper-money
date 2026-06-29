@@ -21,13 +21,4 @@ enum RuleOrigin: string
     {
         return $this === self::Ai;
     }
-
-    /**
-     * Rules the AI categorizer is allowed to mutate or self-heal. A user's own
-     * rules are sacred; a correction the user made is sacred too.
-     */
-    public function isManagedByAi(): bool
-    {
-        return $this === self::Ai;
-    }
 }

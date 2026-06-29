@@ -10,15 +10,20 @@ use App\Services\Ai\Contracts\TransactionMatcher;
 use Illuminate\Support\Str;
 
 /**
- * Tier 2 of AI auto-categorization: turn a confident, unambiguous, merchant-keyed
- * categorization into a deterministic rule so every future transaction from the
- * same merchant is categorized for free and consistently — no repeat model call.
+ * Owns the deterministic rules that back AI auto-categorization, in two flavours:
  *
- * To avoid rule sprawl, all of a user's AI-categorizations for one category live
- * in a SINGLE ai-owned rule whose conditions are OR'd together; a new merchant is
- * appended to that rule rather than spawning another. AI never touches a rule the
- * user created or edited (origin = user). New ai rules sit at the lowest priority
- * (highest number) so a user's own rules always win.
+ * - Tier 2 (learn): turn a confident, unambiguous, merchant-keyed categorization
+ *   into an ai-owned rule so every future transaction from the same merchant is
+ *   categorized for free and consistently — no repeat model call.
+ * - Learning from corrections (learnFromCorrection): turn a user's correction of
+ *   an AI categorization into a correction-owned rule keyed on the merchant or the
+ *   description's distinctive tokens, so the same mistake is never repeated.
+ *
+ * To avoid rule sprawl, all of a user's rules for one category and origin live in
+ * a SINGLE rule whose conditions are OR'd together; a new key is appended rather
+ * than spawning another. AI never touches a rule the user created or edited
+ * (origin = user). New ai/correction rules sit at the lowest priority (highest
+ * number) so a user's own rules always win.
  */
 class AiRuleLearner
 {
@@ -373,20 +378,7 @@ class AiRuleLearner
 
     private function appendCondition(AutomationRule $rule, string $field, string $token): void
     {
-        $clause = ['==' => [['var' => $field], $token]];
-        $clauses = $this->clauses($rule->rules_json);
-
-        foreach ($clauses as $existing) {
-            if ($existing == $clause) {
-                return;
-            }
-        }
-
-        $clauses[] = $clause;
-
-        $rule->rules_json = count($clauses) === 1 ? $clauses[0] : ['or' => $clauses];
-        $rule->title = $this->title((string) $rule->action_category_id, $this->tokens($clauses));
-        $rule->save();
+        $this->appendClause($rule, ['==' => [['var' => $field], $token]]);
     }
 
     /**
