@@ -505,13 +505,17 @@ export default function Transactions({
         return firstSeenTransactionIndex(allTransactions, lastVisitAtMount);
     }, [allTransactions, sortParam, lastVisitAtMount]);
 
-    // Mark this visit as seen: store the newest created_at currently loaded.
+    // Mark this visit as seen, once, using the newest created_at from the
+    // initial payload. Rows that arrive later in the same visit (load-more,
+    // refresh after a sync, categorization) must NOT advance the marker, or
+    // they'd be recorded as already-seen and never flagged on the next visit.
     useEffect(() => {
-        const latest = newestCreatedAt(allTransactions);
+        const latest = newestCreatedAt(serverTransactions.data);
         if (latest) {
             saveLastVisit(latest);
         }
-    }, [allTransactions]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Sync filter state when appliedFilters prop changes
     useEffect(() => {
