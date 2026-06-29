@@ -103,18 +103,11 @@ export function CategoryCell({
 
             onUpdate(updatedTransaction);
 
-            if (updatedCategory) {
-                onCategorized?.(
-                    updatedTransaction,
-                    updatedCategory,
-                    'transaction_table',
-                );
-            }
-
-            // The correction taught the system a forward rule: similar
-            // transactions are now categorized automatically. Offer an instant
-            // undo in case the learned rule is broader than intended.
             if (result.learned_rule) {
+                // The correction already taught the system a forward rule, so
+                // confirm that and offer an instant undo — and skip the
+                // "Automatize" prompt, which would only offer to create a rule
+                // that now exists.
                 const ruleId = result.learned_rule.id;
 
                 toast.success(
@@ -122,6 +115,8 @@ export function CategoryCell({
                         'Learned: similar transactions will be categorized automatically.',
                     ),
                     {
+                        closeButton: true,
+                        duration: 10000,
                         action: {
                             label: __('Undo'),
                             onClick: () => {
@@ -132,6 +127,12 @@ export function CategoryCell({
                             },
                         },
                     },
+                );
+            } else if (updatedCategory) {
+                onCategorized?.(
+                    updatedTransaction,
+                    updatedCategory,
+                    'transaction_table',
                 );
             }
         } catch (error) {
@@ -227,6 +228,7 @@ export function CategoryCell({
                     showUncategorized={true}
                     withoutChevronIcon={withoutChevronIcon}
                     header={aiHeader}
+                    data-testid="row-category-select"
                 />
             </div>
 
