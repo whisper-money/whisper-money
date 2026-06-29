@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\CategoryType;
+use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Models\Label;
@@ -15,6 +16,8 @@ use Illuminate\Support\Collection;
 
 class TransactionAnalysisController extends Controller
 {
+    use ConvertsTransactionCurrency;
+
     /**
      * A daily breakdown is used while the filtered set spans this many days or
      * fewer; beyond that the chart switches to monthly buckets.
@@ -374,7 +377,7 @@ class TransactionAnalysisController extends Controller
     private function isExpense(Transaction $transaction): bool
     {
         return $transaction->amount < 0
-            && in_array($this->categoryType($transaction), [CategoryType::Expense, null], true);
+            && in_array($transaction->categoryType(), [CategoryType::Expense, null], true);
     }
 
     /**
@@ -385,42 +388,6 @@ class TransactionAnalysisController extends Controller
     private function isIncome(Transaction $transaction): bool
     {
         return $transaction->amount > 0
-            && in_array($this->categoryType($transaction), [CategoryType::Income, null], true);
-    }
-
-    private function categoryType(Transaction $transaction): ?CategoryType
-    {
-        $type = $transaction->category?->getAttribute('type');
-
-        if ($type instanceof CategoryType) {
-            return $type;
-        }
-
-        return is_string($type) ? CategoryType::tryFrom($type) : null;
-    }
-
-    private function convertTransactionAmount(Transaction $transaction, string $currency): int
-    {
-        return $this->exchangeRateService->convert(
-            $transaction->currency_code ?: $transaction->account?->currency_code ?: $currency,
-            $currency,
-            $transaction->amount,
-            $transaction->transaction_date->toDateString(),
-        );
-    }
-
-    private function preloadExchangeRates(Collection $transactions, string $currency): void
-    {
-        $dates = $transactions
-            ->filter(fn (Transaction $transaction): bool => strcasecmp($transaction->currency_code ?: $transaction->account?->currency_code ?: $currency, $currency) !== 0)
-            ->map(fn (Transaction $transaction): string => $transaction->transaction_date->toDateString())
-            ->unique()
-            ->values();
-
-        if ($dates->isEmpty()) {
-            return;
-        }
-
-        $this->exchangeRateService->preloadRates($currency, $dates);
+            && in_array($transaction->categoryType(), [CategoryType::Income, null], true);
     }
 }

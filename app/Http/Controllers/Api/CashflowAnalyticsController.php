@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategoryType;
+use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Transaction;
@@ -17,6 +18,8 @@ use Illuminate\Support\Collection;
 
 class CashflowAnalyticsController extends Controller
 {
+    use ConvertsTransactionCurrency;
+
     private const MAX_TREND_MONTHS = 24;
 
     public function __construct(
@@ -222,7 +225,7 @@ class CashflowAnalyticsController extends Controller
     {
         return $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {
-                if ($this->categoryType($transaction) === $type) {
+                if ($transaction->categoryType() === $type) {
                     return true;
                 }
 
@@ -235,7 +238,7 @@ class CashflowAnalyticsController extends Controller
     private function sumOutflowTransactions(Collection $transactions, string $userCurrency, CategoryType $type): int
     {
         return abs($transactions
-            ->filter(fn (Transaction $transaction): bool => $this->categoryType($transaction) === $type
+            ->filter(fn (Transaction $transaction): bool => $transaction->categoryType() === $type
                 && $transaction->amount < 0)
             ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency)));
     }
@@ -254,7 +257,7 @@ class CashflowAnalyticsController extends Controller
 
         $regularCategories = $transactions
             ->filter(function (Transaction $transaction) use ($type): bool {
-                $categoryType = $this->categoryType($transaction);
+                $categoryType = $transaction->categoryType();
 
                 return $transaction->category_id !== null
                     && ($categoryType === $type
@@ -282,7 +285,7 @@ class CashflowAnalyticsController extends Controller
         $transferCategories = $transactions
             ->filter(function (Transaction $transaction) use ($isIncome): bool {
                 return $transaction->category_id !== null
-                    && $this->categoryType($transaction) === CategoryType::Transfer
+                    && $transaction->categoryType() === CategoryType::Transfer
                     && $this->categoryCashflowDirection($transaction) === ($isIncome
                         ? CategoryCashflowDirection::Inflow
                         : CategoryCashflowDirection::Outflow);
@@ -359,7 +362,7 @@ class CashflowAnalyticsController extends Controller
 
                 foreach ($categorized as $categoryTransactions) {
                     $firstTransaction = $categoryTransactions->first();
-                    $type = $this->categoryType($firstTransaction);
+                    $type = $firstTransaction->categoryType();
 
                     if (! in_array($type, [CategoryType::Income, CategoryType::Expense], true)) {
                         continue;
@@ -406,7 +409,7 @@ class CashflowAnalyticsController extends Controller
         $this->preloadExchangeRates($transactions, $userCurrency);
 
         $categorized = $transactions
-            ->filter(fn (Transaction $transaction): bool => $this->categoryType($transaction) === $type)
+            ->filter(fn (Transaction $transaction): bool => $transaction->categoryType() === $type)
             ->groupBy('category_id')
             ->map(function (Collection $transactions) use ($userCurrency): array {
                 $totalAmount = $transactions->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $userCurrency));
@@ -459,42 +462,6 @@ class CashflowAnalyticsController extends Controller
         return $transactions->filter(function (Transaction $transaction) use ($from, $to): bool {
             return $transaction->transaction_date->betweenIncluded($from, $to);
         });
-    }
-
-    private function convertTransactionAmount(Transaction $transaction, string $userCurrency): int
-    {
-        return $this->exchangeRateService->convert(
-            $transaction->currency_code ?: $transaction->account?->currency_code ?: $userCurrency,
-            $userCurrency,
-            $transaction->amount,
-            $transaction->transaction_date->toDateString(),
-        );
-    }
-
-    private function preloadExchangeRates(Collection $transactions, string $userCurrency): void
-    {
-        $dates = $transactions
-            ->filter(fn (Transaction $transaction): bool => strcasecmp($transaction->currency_code ?: $transaction->account?->currency_code ?: $userCurrency, $userCurrency) !== 0)
-            ->map(fn (Transaction $transaction): string => $transaction->transaction_date->toDateString())
-            ->unique()
-            ->values();
-
-        if ($dates->isEmpty()) {
-            return;
-        }
-
-        $this->exchangeRateService->preloadRates($userCurrency, $dates);
-    }
-
-    private function categoryType(Transaction $transaction): ?CategoryType
-    {
-        $type = $transaction->category?->getAttribute('type');
-
-        if ($type instanceof CategoryType) {
-            return $type;
-        }
-
-        return is_string($type) ? CategoryType::tryFrom($type) : null;
     }
 
     private function categoryCashflowDirection(Transaction $transaction): ?CategoryCashflowDirection
