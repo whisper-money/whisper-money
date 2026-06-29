@@ -99,7 +99,7 @@ export function createTransactionColumns({
             accessorKey: 'transaction_date',
             meta: {
                 label: __('Date'),
-                cellClassName: 'max-w-[90px] whitespace-normal pr-1',
+                cellClassName: 'whitespace-normal',
             },
             header: ({ column }) => {
                 return (
