@@ -95,12 +95,18 @@ class TransactionAnalysisController extends Controller
         $expense = 0;
 
         foreach ($transactions as $transaction) {
-            if ($this->isIncome($transaction)) {
+            if ($this->isIncomeSide($transaction)) {
                 $income += $this->convertTransactionAmount($transaction, $currency);
-            } elseif ($this->isExpense($transaction)) {
-                $expense += abs($this->convertTransactionAmount($transaction, $currency));
+            } elseif ($this->isExpenseSide($transaction)) {
+                $expense += $this->convertTransactionAmount($transaction, $currency);
             }
         }
+
+        // Refunds net against their side before it is clamped, so a credit in
+        // an expense category lowers spending instead of inflating income —
+        // matching how the cashflow screen reconciles the same transactions.
+        $income = max(0, $income);
+        $expense = max(0, -$expense);
 
         $days = $this->spanInDays($transactions);
 
@@ -122,7 +128,7 @@ class TransactionAnalysisController extends Controller
     private function categoryBreakdown(Collection $transactions, string $currency, string $userId): Collection
     {
         $expenses = $transactions->filter(
-            fn (Transaction $transaction): bool => $this->isExpense($transaction),
+            fn (Transaction $transaction): bool => $this->isExpenseSide($transaction),
         );
 
         $grouped = $expenses
@@ -130,8 +136,9 @@ class TransactionAnalysisController extends Controller
             ->groupBy('category_id')
             ->map(fn (Collection $group): array => [
                 'category_id' => $group->first()->category_id,
-                'amount' => abs($group->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency))),
+                'amount' => -$group->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency)),
             ])
+            ->filter(fn (array $node): bool => $node['amount'] > 0)
             ->values()
             ->all();
 
@@ -150,9 +157,9 @@ class TransactionAnalysisController extends Controller
             ], $node['children']),
         ], $this->tree->spendingBreakdown($grouped, $userId));
 
-        $uncategorized = abs($expenses
+        $uncategorized = -$expenses
             ->filter(fn (Transaction $transaction): bool => $transaction->category_id === null)
-            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency)));
+            ->sum(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency));
 
         if ($uncategorized > 0) {
             $rows[] = [
@@ -180,15 +187,15 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            if (! $this->isExpense($transaction)) {
+            if (! $this->isExpenseSide($transaction)) {
                 continue;
             }
 
-            $amount = $this->convertTransactionAmount($transaction, $currency);
+            $amount = -$this->convertTransactionAmount($transaction, $currency);
 
             foreach ($transaction->labels as $label) {
                 $totals[$label->id] ??= ['id' => $label->id, 'name' => $label->name, 'color' => $label->color, 'amount' => 0];
-                $totals[$label->id]['amount'] += abs($amount);
+                $totals[$label->id]['amount'] += $amount;
             }
         }
 
@@ -208,11 +215,11 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            if (! $this->isExpense($transaction)) {
+            if (! $this->isExpenseSide($transaction)) {
                 continue;
             }
 
-            $amount = $this->convertTransactionAmount($transaction, $currency);
+            $amount = -$this->convertTransactionAmount($transaction, $currency);
 
             $name = trim((string) $transaction->creditor_name);
 
@@ -221,10 +228,11 @@ class TransactionAnalysisController extends Controller
             }
 
             $totals[$name] ??= ['name' => $name, 'amount' => 0];
-            $totals[$name]['amount'] += abs($amount);
+            $totals[$name]['amount'] += $amount;
         }
 
         return collect($totals)
+            ->filter(fn (array $payee): bool => $payee['amount'] > 0)
             ->sortByDesc('amount')
             ->values();
     }
@@ -238,11 +246,11 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            if (! $this->isExpense($transaction)) {
+            if (! $this->isExpenseSide($transaction)) {
                 continue;
             }
 
-            $amount = $this->convertTransactionAmount($transaction, $currency);
+            $amount = -$this->convertTransactionAmount($transaction, $currency);
 
             $account = $transaction->account;
 
@@ -252,10 +260,11 @@ class TransactionAnalysisController extends Controller
                 'bank' => $account->bank ? ['name' => $account->bank->name, 'logo' => $account->bank->logo] : null,
                 'amount' => 0,
             ];
-            $totals[$account->id]['amount'] += abs($amount);
+            $totals[$account->id]['amount'] += $amount;
         }
 
         return collect($totals)
+            ->filter(fn (array $account): bool => $account['amount'] > 0)
             ->sortByDesc('amount')
             ->values();
     }
@@ -270,7 +279,7 @@ class TransactionAnalysisController extends Controller
     private function largestExpenses(Collection $transactions, string $currency): array
     {
         return $transactions
-            ->filter(fn (Transaction $transaction): bool => $this->isExpense($transaction))
+            ->filter(fn (Transaction $transaction): bool => $this->isExpenseSide($transaction) && $transaction->amount < 0)
             ->sortBy(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency))
             ->take(self::LARGEST_EXPENSES_LIMIT)
             ->map(fn (Transaction $transaction): array => [
@@ -323,10 +332,10 @@ class TransactionAnalysisController extends Controller
             $key = $transaction->transaction_date->format($keyFormat);
             $buckets[$key] ??= ['income' => 0, 'expense' => 0];
 
-            if ($this->isIncome($transaction)) {
+            if ($this->isIncomeSide($transaction)) {
                 $buckets[$key]['income'] += $this->convertTransactionAmount($transaction, $currency);
-            } elseif ($this->isExpense($transaction)) {
-                $buckets[$key]['expense'] += abs($this->convertTransactionAmount($transaction, $currency));
+            } elseif ($this->isExpenseSide($transaction)) {
+                $buckets[$key]['expense'] -= $this->convertTransactionAmount($transaction, $currency);
             }
         }
 
@@ -370,24 +379,25 @@ class TransactionAnalysisController extends Controller
     }
 
     /**
-     * Spending is an outflow booked to an expense category or to no category
-     * at all. Transfers, savings and investments are internal movements, so
-     * they never count as expenses — matching the cashflow screen.
+     * Whether a transaction belongs to the expense side: anything booked to an
+     * expense category (a refund there nets back out), plus uncategorized
+     * outflows. Transfers, savings and investments are internal movements, so
+     * they sit on neither side — matching the cashflow screen.
      */
-    private function isExpense(Transaction $transaction): bool
+    private function isExpenseSide(Transaction $transaction): bool
     {
-        return $transaction->amount < 0
-            && in_array($transaction->categoryType(), [CategoryType::Expense, null], true);
+        return $transaction->categoryType() === CategoryType::Expense
+            || ($transaction->category_id === null && $transaction->amount < 0);
     }
 
     /**
-     * Income is an inflow booked to an income category or to no category at
-     * all. Transfers, savings and investments are excluded for the same reason
-     * as expenses.
+     * Whether a transaction belongs to the income side: anything booked to an
+     * income category (a reversal there nets back out), plus uncategorized
+     * inflows. Internal movements are excluded for the same reason as expenses.
      */
-    private function isIncome(Transaction $transaction): bool
+    private function isIncomeSide(Transaction $transaction): bool
     {
-        return $transaction->amount > 0
-            && in_array($transaction->categoryType(), [CategoryType::Income, null], true);
+        return $transaction->categoryType() === CategoryType::Income
+            || ($transaction->category_id === null && $transaction->amount > 0);
     }
 }

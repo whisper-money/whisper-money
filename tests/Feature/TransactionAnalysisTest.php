@@ -4,6 +4,7 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
@@ -350,4 +351,58 @@ test('over time buckets ignore transfer categories', function () {
     $day = $points->firstWhere('date', '2026-01-10');
 
     expect($day)->toMatchArray(['income' => 30000, 'expense' => 10000]);
+});
+
+test('refunds net against spending within an expense category, matching cashflow', function () {
+    $shopping = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Shopping']);
+
+    makeTransaction(['amount' => -10000, 'category_id' => $shopping->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => 3000, 'category_id' => $shopping->id, 'transaction_date' => '2026-01-15']);
+
+    $response = $this->getJson('/api/transactions/analysis')->assertOk();
+
+    // The +3000 refund is not income: it nets the expense down to 7000.
+    $response->assertJson(['summary' => ['income' => 0, 'expense' => 7000, 'net' => -7000]]);
+    expect($response->json('distinct_category_count'))->toBe(1);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Shopping', 'amount' => 7000]);
+});
+
+test('reversals net against income within an income category', function () {
+    $salary = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Income, 'name' => 'Salary']);
+
+    makeTransaction(['amount' => 10000, 'category_id' => $salary->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -2000, 'category_id' => $salary->id, 'transaction_date' => '2026-01-15']);
+
+    $this->getJson('/api/transactions/analysis')
+        ->assertOk()
+        ->assertJson(['summary' => ['income' => 8000, 'expense' => 0, 'net' => 8000]]);
+});
+
+test('an uncategorized inflow is income, never an expense category row', function () {
+    makeTransaction(['amount' => 5000, 'transaction_date' => '2026-01-10']);
+
+    $response = $this->getJson('/api/transactions/analysis')->assertOk();
+
+    $response->assertJson(['summary' => ['income' => 5000, 'expense' => 0, 'net' => 5000]]);
+    expect($response->json('distinct_category_count'))->toBe(0);
+    expect($response->json('by_category'))->toBe([]);
+});
+
+test('foreign currency expenses are converted to the user currency', function () {
+    $shopping = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $eurAccount = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => '2026-01-10',
+        'rates' => ['eur' => 0.80],
+    ]);
+
+    makeTransaction(['amount' => -5000, 'category_id' => $shopping->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -4000, 'category_id' => $shopping->id, 'account_id' => $eurAccount->id, 'currency_code' => 'EUR', 'transaction_date' => '2026-01-10']);
+
+    // 4000 EUR / 0.80 = 5000 USD, on top of the 5000 USD spend.
+    $this->getJson('/api/transactions/analysis')
+        ->assertOk()
+        ->assertJson(['summary' => ['expense' => 10000]]);
 });
