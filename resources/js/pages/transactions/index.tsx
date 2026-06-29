@@ -83,6 +83,12 @@ import {
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
+import {
+    isNewSince,
+    loadLastVisit,
+    newestCreatedAt,
+    saveLastVisit,
+} from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
@@ -264,6 +270,7 @@ interface TransactionRowProps {
     row: Row<DecryptedTransaction>;
     virtualRow: VirtualItem;
     rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
+    isNew: boolean;
     onEdit: (transaction: DecryptedTransaction) => void;
     onReEvaluateRules: (transaction: DecryptedTransaction) => void;
     onDelete: (transaction: DecryptedTransaction) => void;
@@ -273,6 +280,7 @@ function TransactionRowComponent({
     row,
     virtualRow,
     rowVirtualizer,
+    isNew,
     onEdit,
     onReEvaluateRules,
     onDelete,
@@ -300,7 +308,10 @@ function TransactionRowComponent({
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
-                    className="cursor-pointer"
+                    className={cn(
+                        'cursor-pointer',
+                        isNew && 'bg-blue-500/5 dark:bg-blue-500/10',
+                    )}
                     onClick={handleRowClick}
                 >
                     {row
@@ -315,29 +326,37 @@ function TransactionRowComponent({
                                 | undefined;
                             return !meta?.isVirtual;
                         })
-                        .map((cell: Cell<DecryptedTransaction, unknown>) => {
-                            const meta = cell.column.columnDef.meta as
-                                | {
-                                      cellClassName?: string;
-                                      cellStyle?: React.CSSProperties;
-                                  }
-                                | undefined;
-                            return (
-                                <TableCell
-                                    key={cell.id}
-                                    className={cn(
-                                        meta?.cellClassName,
-                                        'pt-2.5 pb-2',
-                                    )}
-                                    style={meta?.cellStyle}
-                                >
-                                    {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext(),
-                                    )}
-                                </TableCell>
-                            );
-                        })}
+                        .map(
+                            (
+                                cell: Cell<DecryptedTransaction, unknown>,
+                                cellIndex: number,
+                            ) => {
+                                const meta = cell.column.columnDef.meta as
+                                    | {
+                                          cellClassName?: string;
+                                          cellStyle?: React.CSSProperties;
+                                      }
+                                    | undefined;
+                                return (
+                                    <TableCell
+                                        key={cell.id}
+                                        className={cn(
+                                            meta?.cellClassName,
+                                            'pt-2.5 pb-2',
+                                            isNew &&
+                                                cellIndex === 0 &&
+                                                'border-l-2 border-l-blue-500',
+                                        )}
+                                        style={meta?.cellStyle}
+                                    >
+                                        {flexRender(
+                                            cell.column.columnDef.cell,
+                                            cell.getContext(),
+                                        )}
+                                    </TableCell>
+                                );
+                            },
+                        )}
                 </TableRow>
             </ContextMenuTrigger>
             <ContextMenuContent>
@@ -469,6 +488,21 @@ export default function Transactions({
     const [sortParam, setSortParam] = useState(
         appliedFilters.sort || '-transaction_date',
     );
+
+    // Frozen at mount so per-row "new" marks stay stable for the whole visit.
+    const [lastVisitAtMount] = useState<string | null>(loadLastVisit);
+
+    // Mark this visit as seen, once, using the newest created_at from the
+    // initial payload. Rows that arrive later in the same visit (load-more,
+    // refresh after a sync, categorization) must NOT advance the marker, or
+    // they'd be recorded as already-seen and never flagged on the next visit.
+    useEffect(() => {
+        const latest = newestCreatedAt(serverTransactions.data);
+        if (latest) {
+            saveLastVisit(latest);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Sync filter state when appliedFilters prop changes
     useEffect(() => {
@@ -1304,13 +1338,14 @@ export default function Transactions({
                     row={row}
                     virtualRow={virtualRow}
                     rowVirtualizer={rowVirtualizer}
+                    isNew={isNewSince(row.original, lastVisitAtMount)}
                     onEdit={setEditTransaction}
                     onReEvaluateRules={handleReEvaluateRules}
                     onDelete={setDeleteTransaction}
                 />
             );
         },
-        [handleReEvaluateRules],
+        [handleReEvaluateRules, lastVisitAtMount],
     );
 
     return (
