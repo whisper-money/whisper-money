@@ -83,7 +83,12 @@ import {
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
-import { firstSeenTransactionIndex } from '@/lib/new-transactions';
+import {
+    firstSeenTransactionIndex,
+    loadLastVisit,
+    newestCreatedAt,
+    saveLastVisit,
+} from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
@@ -140,7 +145,6 @@ interface Props {
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
-const LAST_VISIT_KEY = 'transactions-last-visit';
 
 function serverToClientFilters(applied: AppliedFilters): Filters {
     return {
@@ -388,17 +392,6 @@ function getInitialColumnVisibility(): VisibilityState {
     return defaultVisibility;
 }
 
-function getStoredLastVisit(): string | null {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-    try {
-        return localStorage.getItem(LAST_VISIT_KEY);
-    } catch {
-        return null;
-    }
-}
-
 function LastVisitDivider({ colSpan }: { colSpan: number }) {
     return (
         <tr className="hover:bg-transparent">
@@ -500,7 +493,7 @@ export default function Transactions({
     );
 
     // Frozen at mount so the "Last visit" divider stays put for the whole visit.
-    const [lastVisitAtMount] = useState<string | null>(getStoredLastVisit);
+    const [lastVisitAtMount] = useState<string | null>(loadLastVisit);
 
     // Index of the first already-seen row. Rows above it arrived since the last
     // visit and sit above the "Last visit" divider. Only meaningful under the
@@ -514,18 +507,9 @@ export default function Transactions({
 
     // Mark this visit as seen: store the newest created_at currently loaded.
     useEffect(() => {
-        if (allTransactions.length === 0) {
-            return;
-        }
-        const latest = allTransactions.reduce(
-            (max, transaction) =>
-                transaction.created_at > max ? transaction.created_at : max,
-            allTransactions[0].created_at,
-        );
-        try {
-            localStorage.setItem(LAST_VISIT_KEY, latest);
-        } catch (error) {
-            console.error('Failed to save last visit to localStorage:', error);
+        const latest = newestCreatedAt(allTransactions);
+        if (latest) {
+            saveLastVisit(latest);
         }
     }, [allTransactions]);
 

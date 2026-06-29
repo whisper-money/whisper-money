@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { firstSeenTransactionIndex } from './new-transactions';
+import { firstSeenTransactionIndex, newestCreatedAt } from './new-transactions';
 
 const tx = (created_at: string) => ({ created_at });
 
@@ -37,5 +37,33 @@ describe('firstSeenTransactionIndex', () => {
 
     it('returns -1 on an unparseable timestamp', () => {
         expect(firstSeenTransactionIndex(transactions, 'not-a-date')).toBe(-1);
+    });
+});
+
+describe('newestCreatedAt', () => {
+    it('returns null for an empty list', () => {
+        expect(newestCreatedAt([])).toBeNull();
+    });
+
+    it('returns the only created_at for a single item', () => {
+        expect(newestCreatedAt([tx('2026-06-29T10:00:00Z')])).toBe(
+            '2026-06-29T10:00:00Z',
+        );
+    });
+
+    it('finds the latest regardless of input order', () => {
+        expect(
+            newestCreatedAt([
+                tx('2026-06-20T08:00:00Z'),
+                tx('2026-06-29T10:00:00Z'),
+                tx('2026-06-25T09:00:00Z'),
+            ]),
+        ).toBe('2026-06-29T10:00:00Z');
+    });
+
+    it('ignores unparseable timestamps', () => {
+        expect(
+            newestCreatedAt([tx('not-a-date'), tx('2026-06-20T08:00:00Z')]),
+        ).toBe('2026-06-20T08:00:00Z');
     });
 });
