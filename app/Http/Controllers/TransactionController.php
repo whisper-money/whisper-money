@@ -221,13 +221,15 @@ class TransactionController extends Controller
         $hasLabelUpdate = $request->has('label_ids');
         unset($data['label_ids']);
 
-        // A user-set category overrides any AI assignment: log the correction,
-        // self-heal the ai rule, and reset the provenance to manual.
+        $learnedRule = null;
+
+        // A user-set category overrides any AI assignment: learn the correction as
+        // a forward-looking rule, log/self-heal as needed, and reset provenance.
         if ($request->has('category_id')) {
             $newCategoryId = $data['category_id'] ?? null;
 
             if ($newCategoryId !== $transaction->category_id) {
-                app(CategoryOverrideHandler::class)->record($transaction, $newCategoryId);
+                $learnedRule = app(CategoryOverrideHandler::class)->record($transaction, $newCategoryId);
 
                 $data['category_source'] = $newCategoryId === null ? null : CategorySource::Manual->value;
                 $data['ai_confidence'] = null;
@@ -259,6 +261,11 @@ class TransactionController extends Controller
 
         return response()->json([
             'data' => $transaction->fresh()->load('labels'),
+            'learned_rule' => $learnedRule === null ? null : [
+                'id' => $learnedRule->id,
+                'title' => $learnedRule->title,
+                'category_id' => $learnedRule->action_category_id,
+            ],
         ]);
     }
 

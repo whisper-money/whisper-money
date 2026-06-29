@@ -1,3 +1,4 @@
+import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { showsAiUpsell } from '@/components/transactions/ai-upsell-sample';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
@@ -19,6 +20,7 @@ import { type DecryptedTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface CategoryCellProps {
     transaction: DecryptedTransaction;
@@ -72,7 +74,10 @@ export function CategoryCell({
                 category_id: categoryId,
             };
 
-            await transactionSyncService.update(transaction.id, updateData);
+            const result = await transactionSyncService.update(
+                transaction.id,
+                updateData,
+            );
 
             const updatedCategory = categoryId
                 ? categories.find((c) => c.id === categoryId) || null
@@ -98,7 +103,32 @@ export function CategoryCell({
 
             onUpdate(updatedTransaction);
 
-            if (updatedCategory) {
+            if (result.learned_rule) {
+                // The correction already taught the system a forward rule, so
+                // confirm that and offer an instant undo — and skip the
+                // "Automatize" prompt, which would only offer to create a rule
+                // that now exists.
+                const ruleId = result.learned_rule.id;
+
+                toast.success(
+                    __(
+                        'Learned: similar transactions will be categorized automatically.',
+                    ),
+                    {
+                        closeButton: true,
+                        duration: 10000,
+                        action: {
+                            label: __('Undo'),
+                            onClick: () => {
+                                router.delete(destroy(ruleId).url, {
+                                    preserveScroll: true,
+                                    preserveState: true,
+                                });
+                            },
+                        },
+                    },
+                );
+            } else if (updatedCategory) {
                 onCategorized?.(
                     updatedTransaction,
                     updatedCategory,
@@ -198,6 +228,7 @@ export function CategoryCell({
                     showUncategorized={true}
                     withoutChevronIcon={withoutChevronIcon}
                     header={aiHeader}
+                    data-testid="row-category-select"
                 />
             </div>
 

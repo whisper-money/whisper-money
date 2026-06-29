@@ -33,6 +33,13 @@ interface TransactionMatcher
     public function countMatchingAny(User $user, array $conditions): int;
 
     /**
+     * Count uncategorized transactions matching ALL of the given conditions (AND).
+     *
+     * @param  list<array{field: string, operator: string, token: string}>  $conditions
+     */
+    public function countMatchingAll(User $user, array $conditions): int;
+
+    /**
      * The uncategorized transactions matching ANY of the given conditions (OR).
      *
      * @param  list<array{field: string, operator: string, token: string}>  $conditions

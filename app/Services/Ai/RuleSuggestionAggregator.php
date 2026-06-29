@@ -19,7 +19,7 @@ class RuleSuggestionAggregator
      */
     private const SAMPLE_LIMIT = 5;
 
-    private const MIN_TOKEN_LENGTH = 3;
+    public function __construct(private readonly DescriptionTokenizer $tokenizer) {}
 
     /**
      * Build the bounded set of transaction groups worth suggesting a rule for.
@@ -42,7 +42,7 @@ class RuleSuggestionAggregator
         foreach ($transactions as $transaction) {
             [$field, $rawKey] = $this->groupingSignal($transaction);
             $key = $field === 'description'
-                ? $this->distinctiveKey($rawKey, $documentFrequency, $noiseThreshold)
+                ? $this->tokenizer->distinctiveKey($rawKey, $documentFrequency, $noiseThreshold)
                 : $this->normalizeWhitespace($rawKey);
 
             if ($key === '') {
@@ -144,75 +144,13 @@ class RuleSuggestionAggregator
      */
     private function descriptionDocumentFrequency(Collection $transactions): array
     {
-        $frequency = [];
+        $descriptions = $transactions
+            ->map(fn (Transaction $transaction): array => $this->groupingSignal($transaction))
+            ->filter(fn (array $signal): bool => $signal[0] === 'description')
+            ->map(fn (array $signal): string => $signal[1])
+            ->all();
 
-        foreach ($transactions as $transaction) {
-            [$field, $rawKey] = $this->groupingSignal($transaction);
-
-            if ($field !== 'description') {
-                continue;
-            }
-
-            foreach (array_unique($this->descriptionTokens($rawKey)) as $token) {
-                $frequency[$token] = ($frequency[$token] ?? 0) + 1;
-            }
-        }
-
-        return $frequency;
-    }
-
-    /**
-     * Split a free-text description into comparable tokens (lowercased, digits
-     * and punctuation stripped, very short tokens dropped).
-     *
-     * @return list<string>
-     */
-    private function descriptionTokens(string $value): array
-    {
-        $value = $this->normalizeWhitespace($value);
-        $value = preg_replace('/[0-9]+/', ' ', $value) ?? $value;
-        $value = preg_replace('/[^\p{L}\s]+/u', ' ', $value) ?? $value;
-        $value = $this->normalizeWhitespace($value);
-
-        if ($value === '') {
-            return [];
-        }
-
-        return array_values(array_filter(
-            explode(' ', $value),
-            fn (string $token): bool => mb_strlen($token) >= self::MIN_TOKEN_LENGTH,
-        ));
-    }
-
-    /**
-     * Build a description's grouping key from only its distinctive tokens: words
-     * appearing in more than the noise threshold of transactions are dropped so
-     * variants of the same merchant collapse together. Language-agnostic — if
-     * every token is common, the full token set is kept as a fallback.
-     *
-     * @param  array<string, int>  $documentFrequency
-     */
-    private function distinctiveKey(string $value, array $documentFrequency, float $noiseThreshold): string
-    {
-        $tokens = $this->descriptionTokens($value);
-
-        if ($tokens === []) {
-            return '';
-        }
-
-        $distinctive = array_values(array_filter(
-            $tokens,
-            fn (string $token): bool => ($documentFrequency[$token] ?? 0) <= $noiseThreshold,
-        ));
-
-        if ($distinctive === []) {
-            $distinctive = $tokens;
-        }
-
-        $distinctive = array_values(array_unique($distinctive));
-        sort($distinctive);
-
-        return implode(' ', $distinctive);
+        return $this->tokenizer->documentFrequency($descriptions);
     }
 
     /**

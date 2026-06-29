@@ -9,7 +9,7 @@ use App\Services\Ai\RuleSuggestionAggregator;
 beforeEach(function () {
     config()->set('ai_suggestions.min_group_count', 3);
     config()->set('ai_suggestions.max_groups_sent', 15);
-    $this->aggregator = new RuleSuggestionAggregator;
+    $this->aggregator = app(RuleSuggestionAggregator::class);
 });
 
 function makeTxn(User $user, Account $account, array $attributes): void
