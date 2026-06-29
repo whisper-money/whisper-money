@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Commands\Concerns\RendersReportToConsole;
 use App\Models\StuckCohortSnapshot;
 use App\Services\Discord\DiscordWebhook;
 use App\Services\Stats\StuckCohortReportCollector;
@@ -9,7 +10,9 @@ use Illuminate\Console\Command;
 
 class SendStuckCohortReportCommand extends Command
 {
-    protected $signature = 'stats:stuck-cohort-report';
+    use RendersReportToConsole;
+
+    protected $signature = 'stats:stuck-cohort-report {--no-discord : Print the report to the console only, without posting to Discord}';
 
     protected $description = 'Post the weekly paywall stuck-cohort report (banked users without a valid subscription) to Discord';
 
@@ -21,11 +24,19 @@ class SendStuckCohortReportCommand extends Command
     public function handle(): int
     {
         $report = $this->collector->collect();
+        $embed = $this->buildEmbed($report);
+
+        if ($this->option('no-discord')) {
+            $this->printEmbeds([$embed]);
+            $this->info('Skipped Discord (--no-discord).');
+
+            return self::SUCCESS;
+        }
 
         $webhookUrl = config('services.discord.ai_cohort_webhook_url')
             ?: config('services.discord.webhook_url');
 
-        (new DiscordWebhook($webhookUrl))->send('', [$this->buildEmbed($report)]);
+        (new DiscordWebhook($webhookUrl))->send('', [$embed]);
 
         $this->info('Stuck cohort report sent to Discord.');
 

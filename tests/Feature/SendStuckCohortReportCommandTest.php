@@ -132,6 +132,15 @@ it('upserts a single snapshot per day across runs', function () {
     expect(StuckCohortSnapshot::query()->whereDate('date', today())->count())->toBe(1);
 });
 
+it('prints to the console without posting when --no-discord is set', function () {
+    stuckUser();
+    subscribedUser('active');
+
+    artisan('stats:stuck-cohort-report', ['--no-discord' => true])->assertSuccessful();
+
+    Http::assertNothingSent();
+});
+
 it('posts the stuck cohort embed to the configured discord webhook', function () {
     stuckUser();
     subscribedUser('active');

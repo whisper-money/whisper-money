@@ -142,3 +142,14 @@ it('posts the funnel embed to the configured discord webhook', function () {
             && str_contains($request['embeds'][0]['title'], 'Subscription Funnel');
     });
 });
+
+it('prints to the console without posting when --no-discord is set', function () {
+    config(['services.discord.ai_cohort_webhook_url' => 'https://discord.test/hook']);
+    Http::fake(['discord.test/*' => Http::response('', 204)]);
+
+    funnelUser(funnelNow()->subWeeks(10), ['status' => 'active', 'at' => funnelNow()->subWeeks(10)->addDays(2)]);
+
+    artisan('stats:subscription-funnel', ['--no-discord' => true])->assertSuccessful();
+
+    Http::assertNothingSent();
+});
