@@ -30,6 +30,8 @@ class TransactionController extends Controller
         $user = $request->user();
         $validated = $request->validated();
 
+        $lastVisitAt = $user->transactions_last_visited_at;
+
         $perPage = (int) ($validated['per_page'] ?? 50);
         $sortParam = $validated['sort'] ?? '-transaction_date';
 
@@ -76,6 +78,11 @@ class TransactionController extends Controller
             $transaction->makeHidden(['creditor_name_sort', 'debtor_name_sort'])
                 ->append('ai_categorized');
         });
+
+        $newestServed = $transactions->getCollection()->max('created_at');
+        if ($newestServed && (! $lastVisitAt || $newestServed->gt($lastVisitAt))) {
+            $user->forceFill(['transactions_last_visited_at' => $newestServed])->save();
+        }
 
         $appliedFilters = [
             'date_from' => $validated['date_from'] ?? null,
@@ -128,6 +135,7 @@ class TransactionController extends Controller
             'labels' => $labels,
             'automationRules' => $automationRules,
             'hasAiConsent' => $user->hasActiveAiConsent(),
+            'lastVisitAt' => $lastVisitAt?->toISOString(),
         ]);
     }
 

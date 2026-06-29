@@ -83,12 +83,7 @@ import {
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
-import {
-    isNewSince,
-    loadLastVisit,
-    newestCreatedAt,
-    saveLastVisit,
-} from '@/lib/new-transactions';
+import { isNewSince } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
@@ -142,6 +137,7 @@ interface Props {
     labels: Label[];
     automationRules: AutomationRule[];
     hasAiConsent: boolean;
+    lastVisitAt: string | null;
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
@@ -433,6 +429,7 @@ export default function Transactions({
     labels: initialLabels,
     automationRules,
     hasAiConsent,
+    lastVisitAt,
 }: Props) {
     const locale = useLocale();
     const { auth, features } = usePage<SharedData>().props;
@@ -490,19 +487,9 @@ export default function Transactions({
     );
 
     // Frozen at mount so per-row "new" marks stay stable for the whole visit.
-    const [lastVisitAtMount] = useState<string | null>(loadLastVisit);
-
-    // Mark this visit as seen, once, using the newest created_at from the
-    // initial payload. Rows that arrive later in the same visit (load-more,
-    // refresh after a sync, categorization) must NOT advance the marker, or
-    // they'd be recorded as already-seen and never flagged on the next visit.
-    useEffect(() => {
-        const latest = newestCreatedAt(serverTransactions.data);
-        if (latest) {
-            saveLastVisit(latest);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    // The marker is server-side (per user), so it's shared across devices; the
+    // controller advances it on load using the newest created_at it served.
+    const [lastVisitAtMount] = useState<string | null>(() => lastVisitAt);
 
     // Sync filter state when appliedFilters prop changes
     useEffect(() => {
