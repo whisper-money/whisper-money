@@ -27,6 +27,7 @@ use Laravel\Pennant\Concerns\HasFeatures;
 /**
  * @property ?Carbon $last_logged_in_at
  * @property ?Carbon $last_active_at
+ * @property ?Carbon $transactions_last_visited_at
  */
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
@@ -77,6 +78,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'paywall_seen_at' => 'datetime',
             'last_logged_in_at' => 'datetime',
             'last_active_at' => 'datetime',
+            'transactions_last_visited_at' => 'datetime',
         ];
     }
 
