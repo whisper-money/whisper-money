@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { countNewSince, isNewSince, newestCreatedAt } from './new-transactions';
+import { isNewSince, newestCreatedAt } from './new-transactions';
 
 const tx = (created_at: string) => ({ created_at });
 
@@ -32,27 +32,6 @@ describe('isNewSince', () => {
         expect(isNewSince(tx('2026-06-29T10:00:00Z'), 'not-a-date')).toBe(
             false,
         );
-    });
-});
-
-describe('countNewSince', () => {
-    const transactions = [
-        tx('2026-06-29T10:00:00Z'),
-        tx('2026-06-20T08:00:00Z'), // seen, interleaved
-        tx('2026-06-28T09:00:00Z'),
-        tx('2026-06-19T08:00:00Z'), // seen
-    ];
-
-    it('counts every new row regardless of position', () => {
-        expect(countNewSince(transactions, '2026-06-25T00:00:00Z')).toBe(2);
-    });
-
-    it('returns 0 when nothing is new', () => {
-        expect(countNewSince(transactions, '2026-06-30T00:00:00Z')).toBe(0);
-    });
-
-    it('returns 0 on a first visit', () => {
-        expect(countNewSince(transactions, null)).toBe(0);
     });
 });
 

@@ -69,19 +69,3 @@ export function isNewSince(
 
     return !Number.isNaN(createdMs) && createdMs > lastVisitMs;
 }
-
-/**
- * How many of the given transactions arrived since the last visit. Counts only
- * the loaded transactions, so it can undercount when newer rows live in a
- * not-yet-loaded page.
- */
-export function countNewSince(
-    transactions: Pick<Transaction, 'created_at'>[],
-    lastVisit: string | null,
-): number {
-    return transactions.reduce(
-        (count, transaction) =>
-            isNewSince(transaction, lastVisit) ? count + 1 : count,
-        0,
-    );
-}

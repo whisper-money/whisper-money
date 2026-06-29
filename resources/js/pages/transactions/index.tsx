@@ -84,7 +84,6 @@ import {
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
 import {
-    countNewSince,
     isNewSince,
     loadLastVisit,
     newestCreatedAt,
@@ -309,7 +308,10 @@ function TransactionRowComponent({
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
-                    className={cn('cursor-pointer', isNew && 'bg-blue-500/5 dark:bg-blue-500/10')}
+                    className={cn(
+                        'cursor-pointer',
+                        isNew && 'bg-blue-500/5 dark:bg-blue-500/10',
+                    )}
                     onClick={handleRowClick}
                 >
                     {row
