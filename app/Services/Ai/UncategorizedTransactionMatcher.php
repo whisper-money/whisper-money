@@ -69,6 +69,13 @@ class UncategorizedTransactionMatcher implements TransactionMatcher
         return $query->get();
     }
 
+    public function countMatchingAll(User $user, array $conditions): int
+    {
+        $query = $this->allQuery($user, $conditions);
+
+        return $query === null ? 0 : $query->count();
+    }
+
     /**
      * @return Builder<Transaction>
      */
@@ -133,6 +140,44 @@ class UncategorizedTransactionMatcher implements TransactionMatcher
                 $builder->orWhereRaw("LOWER({$field}) LIKE ?", ['%'.$this->escapeLike($token).'%']);
             }
         });
+    }
+
+    /**
+     * Build a single query matching ALL of the conditions (AND). Invalid
+     * conditions (unknown field or blank token) are skipped; returns null when
+     * none remain.
+     *
+     * @param  list<array{field: string, operator: string, token: string}>  $conditions
+     * @return Builder<Transaction>|null
+     */
+    private function allQuery(User $user, array $conditions): ?Builder
+    {
+        $valid = array_values(array_filter(
+            $conditions,
+            fn (array $condition): bool => in_array($condition['field'], self::ALLOWED_FIELDS, true)
+                && trim($condition['token']) !== '',
+        ));
+
+        if ($valid === []) {
+            return null;
+        }
+
+        $query = $this->baseQuery($user);
+
+        foreach ($valid as $condition) {
+            $field = $condition['field'];
+            $token = mb_strtolower(trim($condition['token']));
+
+            if ($condition['operator'] === 'equals') {
+                $query->whereRaw("LOWER({$field}) = ?", [$token]);
+
+                continue;
+            }
+
+            $query->whereRaw("LOWER({$field}) LIKE ?", ['%'.$this->escapeLike($token).'%']);
+        }
+
+        return $query;
     }
 
     private function escapeLike(string $value): string

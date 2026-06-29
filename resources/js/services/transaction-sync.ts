@@ -1,8 +1,14 @@
 import { db } from '@/lib/dexie-db';
 import { TransactionSyncManager } from '@/lib/sync-manager';
+import type { LearnedRuleNotice } from '@/types/automation-rule';
 import type { Transaction } from '@/types/transaction';
 import type { UUID } from '@/types/uuid';
 import axios from 'axios';
+
+/** A transaction update plus any rule the correction just taught the system. */
+export type UpdatedTransaction = Transaction & {
+    learned_rule?: LearnedRuleNotice | null;
+};
 
 interface TransactionUpdateData extends Partial<Transaction> {
     label_ids?: string[];
@@ -96,7 +102,7 @@ class TransactionSyncService {
     async update(
         id: string,
         data: TransactionUpdateData,
-    ): Promise<Transaction> {
+    ): Promise<UpdatedTransaction> {
         const { label_ids, ...transactionData } = data;
 
         const response = await axios.patch(`/transactions/${id}`, {
@@ -116,7 +122,8 @@ class TransactionSyncService {
             ...restServerData,
             transaction_date: String(serverData.transaction_date).slice(0, 10),
             label_ids: serverLabelIds || [],
-        } as Transaction;
+            learned_rule: response.data.learned_rule ?? null,
+        } as UpdatedTransaction;
     }
 
     async updateMany(

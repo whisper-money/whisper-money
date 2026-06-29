@@ -3,6 +3,7 @@
 use App\Enums\CategoryCashflowDirection;
 use App\Enums\CategorySource;
 use App\Enums\CategoryType;
+use App\Enums\RuleOrigin;
 use App\Models\AutomationRule;
 use App\Models\Category;
 use App\Models\CategoryCorrection;
@@ -152,4 +153,133 @@ it('does nothing when the category is unchanged', function () {
     app(CategoryOverrideHandler::class)->record($transaction, $category->id);
 
     expect(CategoryCorrection::query()->count())->toBe(0);
+});
+
+it('learns a forward rule from an ai correction so the next merchant transaction skips ai', function () {
+    $user = User::factory()->create();
+    $wrong = cohCategory($user);
+    $right = cohCategory($user);
+
+    cohLearnRule($user, $wrong->id, 'Mercadona');
+    $matched = cohMatched($user, 'Mercadona');
+
+    $learned = app(CategoryOverrideHandler::class)->record($matched, $right->id);
+
+    expect($learned)->not->toBeNull()
+        ->and($learned->origin)->toBe(RuleOrigin::Correction)
+        ->and($learned->action_category_id)->toBe($right->id)
+        ->and($learned->rules_json)->toBe(['==' => [['var' => 'creditor_name'], 'mercadona']]);
+
+    $next = cohMerchantTxn($user, 'Mercadona');
+    app(AutomationRuleService::class)->applyRules($next);
+    $next->refresh();
+
+    expect($next->category_id)->toBe($right->id)
+        ->and($next->category_source)->toBe(CategorySource::Rule)
+        ->and($next->categorized_by_rule_id)->toBe($learned->id);
+});
+
+it('learns a description rule when there is no merchant key', function () {
+    $user = User::factory()->create();
+    $to = cohCategory($user);
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => cohCategory($user)->id,
+        'category_source' => CategorySource::Ai,
+        'ai_confidence' => 0.9,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => 'Netflix subscription',
+    ]);
+
+    $learned = app(CategoryOverrideHandler::class)->record($transaction, $to->id);
+
+    expect($learned)->not->toBeNull()
+        ->and($learned->origin)->toBe(RuleOrigin::Correction)
+        ->and($learned->rules_json)->toBe([
+            'and' => [
+                ['in' => ['netflix', ['var' => 'description']]],
+                ['in' => ['subscription', ['var' => 'description']]],
+            ],
+        ]);
+
+    $next = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => null,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => 'NETFLIX SUBSCRIPTION 12,99',
+    ]);
+    app(AutomationRuleService::class)->applyRules($next);
+
+    expect($next->refresh()->category_id)->toBe($to->id);
+});
+
+it('does not learn an over-broad description rule', function () {
+    config()->set('ai_suggestions.overbroad_fraction', 0.1);
+
+    $user = User::factory()->create();
+    $to = cohCategory($user);
+
+    foreach (range(1, 5) as $ignored) {
+        Transaction::factory()->plaintext()->create([
+            'user_id' => $user->id,
+            'category_id' => null,
+            'creditor_name' => null,
+            'debtor_name' => null,
+            'description' => 'Generic payment note',
+        ]);
+    }
+
+    $transaction = Transaction::factory()->plaintext()->create([
+        'user_id' => $user->id,
+        'category_id' => cohCategory($user)->id,
+        'category_source' => CategorySource::Ai,
+        'ai_confidence' => 0.9,
+        'creditor_name' => null,
+        'debtor_name' => null,
+        'description' => 'Generic payment note',
+    ]);
+
+    $learned = app(CategoryOverrideHandler::class)->record($transaction, $to->id);
+
+    expect($learned)->toBeNull()
+        ->and(AutomationRule::query()->origin(RuleOrigin::Correction)->count())->toBe(0);
+});
+
+it('moves a merchant key to the new category when the user changes their mind', function () {
+    $user = User::factory()->create();
+    $first = cohCategory($user);
+    $second = cohCategory($user);
+
+    cohLearnRule($user, cohCategory($user)->id, 'Mercadona');
+    $matched = cohMatched($user, 'Mercadona');
+    $firstRule = app(CategoryOverrideHandler::class)->record($matched, $first->id);
+
+    $later = cohMerchantTxn($user, 'Mercadona');
+    app(AutomationRuleService::class)->applyRules($later);
+    $later->refresh();
+
+    expect($later->categorized_by_rule_id)->toBe($firstRule->id);
+
+    $secondRule = app(CategoryOverrideHandler::class)->record($later, $second->id);
+
+    expect($secondRule->action_category_id)->toBe($second->id)
+        ->and($secondRule->rules_json)->toBe(['==' => [['var' => 'creditor_name'], 'mercadona']])
+        ->and(AutomationRule::query()->find($firstRule->id))->toBeNull()
+        ->and(CategoryCorrection::query()->count())->toBe(1);
+});
+
+it('self-heals but learns nothing when correcting to uncategorized', function () {
+    $user = User::factory()->create();
+    cohLearnRule($user, cohCategory($user)->id, 'Mercadona');
+    $matched = cohMatched($user, 'Mercadona');
+    $aiRuleId = $matched->categorized_by_rule_id;
+
+    $learned = app(CategoryOverrideHandler::class)->record($matched, null);
+
+    expect($learned)->toBeNull()
+        ->and(AutomationRule::query()->find($aiRuleId))->toBeNull()
+        ->and(AutomationRule::query()->origin(RuleOrigin::Correction)->count())->toBe(0);
 });

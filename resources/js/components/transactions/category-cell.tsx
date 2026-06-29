@@ -1,3 +1,4 @@
+import { destroy } from '@/actions/App/Http/Controllers/Settings/AutomationRuleController';
 import { showsAiUpsell } from '@/components/transactions/ai-upsell-sample';
 import { CategorySelect } from '@/components/transactions/category-select';
 import { AiSparkleIcon } from '@/components/ui/ai-sparkle-icon';
@@ -19,6 +20,7 @@ import { type DecryptedTransaction } from '@/types/transaction';
 import { __ } from '@/utils/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface CategoryCellProps {
     transaction: DecryptedTransaction;
@@ -72,7 +74,10 @@ export function CategoryCell({
                 category_id: categoryId,
             };
 
-            await transactionSyncService.update(transaction.id, updateData);
+            const result = await transactionSyncService.update(
+                transaction.id,
+                updateData,
+            );
 
             const updatedCategory = categoryId
                 ? categories.find((c) => c.id === categoryId) || null
@@ -103,6 +108,30 @@ export function CategoryCell({
                     updatedTransaction,
                     updatedCategory,
                     'transaction_table',
+                );
+            }
+
+            // The correction taught the system a forward rule: similar
+            // transactions are now categorized automatically. Offer an instant
+            // undo in case the learned rule is broader than intended.
+            if (result.learned_rule) {
+                const ruleId = result.learned_rule.id;
+
+                toast.success(
+                    __(
+                        'Learned: similar transactions will be categorized automatically.',
+                    ),
+                    {
+                        action: {
+                            label: __('Undo'),
+                            onClick: () => {
+                                router.delete(destroy(ruleId).url, {
+                                    preserveScroll: true,
+                                    preserveState: true,
+                                });
+                            },
+                        },
+                    },
                 );
             }
         } catch (error) {

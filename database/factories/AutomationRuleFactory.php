@@ -43,4 +43,14 @@ class AutomationRuleFactory extends Factory
             'origin' => RuleOrigin::Ai,
         ]);
     }
+
+    /**
+     * A rule learned from a user's category correction.
+     */
+    public function correction(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'origin' => RuleOrigin::Correction,
+        ]);
+    }
 }
