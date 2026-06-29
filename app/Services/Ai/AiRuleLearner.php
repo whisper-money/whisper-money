@@ -196,9 +196,9 @@ class AiRuleLearner
     private function createCorrectionRule(string $userId, string $categoryId): AutomationRule
     {
         // Appended at the bottom, like ai rules. A correction and an ai rule never
-        // compete on the same key — forget() strips it from the ai rule the moment
-        // the correction is made. ponytail: cross-key precedence is creation-order;
-        // band correction above ai explicitly only if that ever bites.
+        // compete on the same key — forgetFromAiRules() strips the merchant from
+        // every ai rule the moment the correction is made. ponytail: cross-key
+        // precedence is creation-order; band correction above ai only if it bites.
         $priority = (int) AutomationRule::query()->where('user_id', $userId)->max('priority');
 
         return AutomationRule::create([
@@ -305,6 +305,26 @@ class AiRuleLearner
             'rules_json' => [],
             'action_category_id' => $categoryId,
         ]);
+    }
+
+    /**
+     * Self-heal every one of the user's ai rules that carries this transaction's
+     * merchant — not just the rule that happened to label this transaction. A
+     * merchant can be forced by an ai rule even when the corrected transaction was
+     * a direct model label (no rule id) or labeled by a different rule; unless all
+     * of them release the merchant, an ai rule could out-rank the correction and
+     * re-apply the wrong category to the next transaction from that merchant.
+     */
+    public function forgetFromAiRules(Transaction $transaction): void
+    {
+        $rules = AutomationRule::query()
+            ->where('user_id', $transaction->user_id)
+            ->origin(RuleOrigin::Ai)
+            ->get();
+
+        foreach ($rules as $rule) {
+            $this->forget($rule, $transaction);
+        }
     }
 
     /**

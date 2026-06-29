@@ -57,11 +57,11 @@ class CategoryOverrideHandler
             ]);
         }
 
-        // Stop the ai rule from forcing the wrong category on this merchant again.
-        // Correction rules self-correct instead, when the key is re-learned below.
-        if ($ruleOrigin === RuleOrigin::Ai && $rule !== null) {
-            $this->learner->forget($rule, $transaction);
-        }
+        // Stop every ai rule from forcing the wrong category on this merchant
+        // again — including ai rules that did not label this transaction — so none
+        // can out-rank the correction learned below. Correction rules self-correct
+        // separately, when the key is re-learned.
+        $this->learner->forgetFromAiRules($transaction);
 
         return $this->learner->learnFromCorrection($transaction, $newCategoryId);
     }

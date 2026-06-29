@@ -271,6 +271,33 @@ it('moves a merchant key to the new category when the user changes their mind', 
         ->and(CategoryCorrection::query()->count())->toBe(1);
 });
 
+it('out-ranks an ai rule when a direct ai label is corrected for the same merchant', function () {
+    $user = User::factory()->create();
+    $wrong = cohCategory($user);
+    $right = cohCategory($user);
+
+    // An ai rule already maps mercadona -> wrong (learned from an earlier txn).
+    $aiRule = cohLearnRule($user, $wrong->id, 'Mercadona');
+
+    // A different mercadona transaction was labeled DIRECTLY by the model: it
+    // carries no rule id, so the old self-heal would have left the ai rule intact.
+    $direct = cohMerchantTxn($user, 'Mercadona');
+    $direct->update([
+        'category_id' => $wrong->id,
+        'category_source' => CategorySource::Ai,
+        'ai_confidence' => 0.8,
+    ]);
+
+    app(CategoryOverrideHandler::class)->record($direct, $right->id);
+
+    $next = cohMerchantTxn($user, 'Mercadona');
+    app(AutomationRuleService::class)->applyRules($next);
+    $next->refresh();
+
+    expect($next->category_id)->toBe($right->id)
+        ->and(AutomationRule::query()->find($aiRule->id))->toBeNull();
+});
+
 it('self-heals but learns nothing when correcting to uncategorized', function () {
     $user = User::factory()->create();
     cohLearnRule($user, cohCategory($user)->id, 'Mercadona');
