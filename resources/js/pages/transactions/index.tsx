@@ -309,7 +309,7 @@ function TransactionRowComponent({
                         (row.getIsSelected() || contextMenuOpen) && 'selected'
                     }
                     data-index={virtualRow.index}
-                    className={cn('cursor-pointer', isNew && 'bg-primary/5')}
+                    className={cn('cursor-pointer', isNew && 'bg-blue-500/5 dark:bg-blue-500/10')}
                     onClick={handleRowClick}
                 >
                     {row
@@ -343,7 +343,7 @@ function TransactionRowComponent({
                                             'pt-2.5 pb-2',
                                             isNew &&
                                                 cellIndex === 0 &&
-                                                'border-l-2 border-l-primary',
+                                                'border-l-2 border-l-blue-500',
                                         )}
                                         style={meta?.cellStyle}
                                     >
@@ -489,12 +489,6 @@ export default function Transactions({
 
     // Frozen at mount so per-row "new" marks stay stable for the whole visit.
     const [lastVisitAtMount] = useState<string | null>(loadLastVisit);
-
-    // Count of loaded transactions that arrived since the last visit.
-    const newCount = useMemo(
-        () => countNewSince(allTransactions, lastVisitAtMount),
-        [allTransactions, lastVisitAtMount],
-    );
 
     // Mark this visit as seen, once, using the newest created_at from the
     // initial payload. Rows that arrive later in the same visit (load-more,
@@ -1434,17 +1428,6 @@ export default function Transactions({
                         </div>
                     ) : (
                         <>
-                            {newCount > 0 && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <span className="inline-block size-2 rounded-full bg-primary" />
-                                    {newCount === 1
-                                        ? __('1 new since your last visit')
-                                        : __(
-                                              ':count new since your last visit',
-                                              { count: newCount },
-                                          )}
-                                </div>
-                            )}
                             <DataTable
                                 table={table}
                                 columns={columns}
