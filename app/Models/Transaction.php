@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\CategorySource;
+use App\Enums\CategoryType;
 use App\Enums\RuleOrigin;
 use App\Enums\TransactionSource;
 use App\Events\TransactionCreated;
@@ -114,6 +115,22 @@ class Transaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * The type of the assigned category, resilient to phantom categories that
+     * are force-filled with a raw string type (e.g. the synthetic
+     * "uncategorized" rows the analytics controllers build).
+     */
+    public function categoryType(): ?CategoryType
+    {
+        $type = $this->category?->getAttribute('type');
+
+        if ($type instanceof CategoryType) {
+            return $type;
+        }
+
+        return is_string($type) ? CategoryType::tryFrom($type) : null;
     }
 
     /** @return BelongsTo<AutomationRule, $this> */

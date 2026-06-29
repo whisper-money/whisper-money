@@ -4,6 +4,7 @@ use App\Enums\CategoryType;
 use App\Models\Account;
 use App\Models\Bank;
 use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\Label;
 use App\Models\Transaction;
 use App\Models\User;
@@ -27,6 +28,7 @@ function makeTransaction(array $attributes = []): Transaction
         'user_id' => test()->user->id,
         'account_id' => test()->account->id,
         'currency_code' => 'USD',
+        'category_id' => null,
         ...$attributes,
     ]);
 }
@@ -254,4 +256,153 @@ test('account breakdown sums expenses per funding account', function () {
     $response->assertOk();
     expect($response->json('distinct_account_count'))->toBe(2);
     expect($response->json('by_account.0'))->toMatchArray(['name' => 'Travel card', 'amount' => 6000]);
+});
+
+test('summary excludes transfer category transactions from income and expense', function () {
+    $transfer = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Transfer]);
+
+    makeTransaction(['amount' => 100000, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -40000, 'transaction_date' => '2026-01-11']);
+
+    // Internal movements between own accounts: must not move income or expense.
+    makeTransaction(['amount' => 70000, 'category_id' => $transfer->id, 'transaction_date' => '2026-01-12']);
+    makeTransaction(['amount' => -70000, 'category_id' => $transfer->id, 'transaction_date' => '2026-01-13']);
+
+    $this->getJson('/api/transactions/analysis')
+        ->assertOk()
+        ->assertJson([
+            'summary' => [
+                'income' => 100000,
+                'expense' => 40000,
+                'net' => 60000,
+            ],
+        ]);
+});
+
+test('summary excludes savings and investment outflows from expense, matching cashflow', function () {
+    $savings = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Savings]);
+    $investment = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Investment]);
+
+    makeTransaction(['amount' => -40000, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -25000, 'category_id' => $savings->id, 'transaction_date' => '2026-01-11']);
+    makeTransaction(['amount' => -15000, 'category_id' => $investment->id, 'transaction_date' => '2026-01-12']);
+
+    $this->getJson('/api/transactions/analysis')
+        ->assertOk()
+        ->assertJson(['summary' => ['expense' => 40000]]);
+});
+
+test('category breakdown ignores transfer, savings and investment categories', function () {
+    $expense = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Groceries']);
+    $transfer = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Transfer, 'name' => 'Move money']);
+    $savings = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Savings, 'name' => 'Rainy day']);
+
+    makeTransaction(['amount' => -30000, 'category_id' => $expense->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -50000, 'category_id' => $transfer->id, 'transaction_date' => '2026-01-11']);
+    makeTransaction(['amount' => -20000, 'category_id' => $savings->id, 'transaction_date' => '2026-01-12']);
+
+    $response = $this->getJson('/api/transactions/analysis')->assertOk();
+
+    expect($response->json('distinct_category_count'))->toBe(1);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Groceries', 'amount' => 30000]);
+});
+
+test('tag, payee and account breakdowns ignore transfer categories', function () {
+    $label = Label::factory()->create(['user_id' => $this->user->id]);
+    $transfer = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Transfer]);
+
+    makeTransaction(['amount' => -10000, 'creditor_name' => 'Shop', 'transaction_date' => '2026-01-10'])
+        ->labels()->attach($label);
+
+    $tagged = makeTransaction(['amount' => -90000, 'category_id' => $transfer->id, 'creditor_name' => 'My other account', 'transaction_date' => '2026-01-11']);
+    $tagged->labels()->attach($label);
+
+    $response = $this->getJson('/api/transactions/analysis')->assertOk();
+
+    expect($response->json('distinct_label_count'))->toBe(1);
+    expect($response->json('by_tag.0.amount'))->toBe(10000);
+    expect($response->json('distinct_payee_count'))->toBe(1);
+    expect($response->json('by_payee.0'))->toMatchArray(['name' => 'Shop', 'amount' => 10000]);
+    expect($response->json('distinct_account_count'))->toBe(1);
+    expect($response->json('by_account.0.amount'))->toBe(10000);
+});
+
+test('largest expenses ignores transfer category outflows', function () {
+    $transfer = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Transfer]);
+
+    makeTransaction(['amount' => -5000, 'description' => 'Dinner', 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -99000, 'category_id' => $transfer->id, 'description' => 'Transfer out', 'transaction_date' => '2026-01-11']);
+
+    $largest = $this->getJson('/api/transactions/analysis')->assertOk()->json('largest_expenses');
+
+    expect($largest)->toHaveCount(1);
+    expect($largest[0])->toMatchArray(['description' => 'Dinner', 'amount' => 5000]);
+});
+
+test('over time buckets ignore transfer categories', function () {
+    $transfer = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Transfer]);
+
+    makeTransaction(['amount' => 30000, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -10000, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => 50000, 'category_id' => $transfer->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -50000, 'category_id' => $transfer->id, 'transaction_date' => '2026-01-10']);
+
+    $points = collect($this->getJson('/api/transactions/analysis')->assertOk()->json('over_time.points'));
+    $day = $points->firstWhere('date', '2026-01-10');
+
+    expect($day)->toMatchArray(['income' => 30000, 'expense' => 10000]);
+});
+
+test('refunds net against spending within an expense category, matching cashflow', function () {
+    $shopping = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense, 'name' => 'Shopping']);
+
+    makeTransaction(['amount' => -10000, 'category_id' => $shopping->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => 3000, 'category_id' => $shopping->id, 'transaction_date' => '2026-01-15']);
+
+    $response = $this->getJson('/api/transactions/analysis')->assertOk();
+
+    // The +3000 refund is not income: it nets the expense down to 7000.
+    $response->assertJson(['summary' => ['income' => 0, 'expense' => 7000, 'net' => -7000]]);
+    expect($response->json('distinct_category_count'))->toBe(1);
+    expect($response->json('by_category.0'))->toMatchArray(['name' => 'Shopping', 'amount' => 7000]);
+});
+
+test('reversals net against income within an income category', function () {
+    $salary = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Income, 'name' => 'Salary']);
+
+    makeTransaction(['amount' => 10000, 'category_id' => $salary->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -2000, 'category_id' => $salary->id, 'transaction_date' => '2026-01-15']);
+
+    $this->getJson('/api/transactions/analysis')
+        ->assertOk()
+        ->assertJson(['summary' => ['income' => 8000, 'expense' => 0, 'net' => 8000]]);
+});
+
+test('an uncategorized inflow is income, never an expense category row', function () {
+    makeTransaction(['amount' => 5000, 'transaction_date' => '2026-01-10']);
+
+    $response = $this->getJson('/api/transactions/analysis')->assertOk();
+
+    $response->assertJson(['summary' => ['income' => 5000, 'expense' => 0, 'net' => 5000]]);
+    expect($response->json('distinct_category_count'))->toBe(0);
+    expect($response->json('by_category'))->toBe([]);
+});
+
+test('foreign currency expenses are converted to the user currency', function () {
+    $shopping = Category::factory()->create(['user_id' => $this->user->id, 'type' => CategoryType::Expense]);
+    $eurAccount = Account::factory()->create(['user_id' => $this->user->id, 'currency_code' => 'EUR']);
+
+    ExchangeRate::factory()->create([
+        'base_currency' => 'usd',
+        'date' => '2026-01-10',
+        'rates' => ['eur' => 0.80],
+    ]);
+
+    makeTransaction(['amount' => -5000, 'category_id' => $shopping->id, 'transaction_date' => '2026-01-10']);
+    makeTransaction(['amount' => -4000, 'category_id' => $shopping->id, 'account_id' => $eurAccount->id, 'currency_code' => 'EUR', 'transaction_date' => '2026-01-10']);
+
+    // 4000 EUR / 0.80 = 5000 USD, on top of the 5000 USD spend.
+    $this->getJson('/api/transactions/analysis')
+        ->assertOk()
+        ->assertJson(['summary' => ['expense' => 10000]]);
 });

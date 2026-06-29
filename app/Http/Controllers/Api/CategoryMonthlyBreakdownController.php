@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\CategoryType;
+use App\Http\Controllers\Api\Concerns\ConvertsTransactionCurrency;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Transaction;
@@ -14,6 +15,8 @@ use Illuminate\Support\Collection;
 
 class CategoryMonthlyBreakdownController extends Controller
 {
+    use ConvertsTransactionCurrency;
+
     /**
      * The rolling window shown on the chart, in months (including the current).
      */
@@ -275,33 +278,5 @@ class CategoryMonthlyBreakdownController extends Controller
         }
 
         return $months;
-    }
-
-    private function convertTransactionAmount(Transaction $transaction, string $currency): int
-    {
-        return $this->exchangeRateService->convert(
-            $transaction->currency_code ?: $transaction->account?->currency_code ?: $currency,
-            $currency,
-            $transaction->amount,
-            $transaction->transaction_date->toDateString(),
-        );
-    }
-
-    /**
-     * @param  Collection<int, Transaction>  $transactions
-     */
-    private function preloadExchangeRates(Collection $transactions, string $currency): void
-    {
-        $dates = $transactions
-            ->filter(fn (Transaction $transaction): bool => strcasecmp($transaction->currency_code ?: $transaction->account?->currency_code ?: $currency, $currency) !== 0)
-            ->map(fn (Transaction $transaction): string => $transaction->transaction_date->toDateString())
-            ->unique()
-            ->values();
-
-        if ($dates->isEmpty()) {
-            return;
-        }
-
-        $this->exchangeRateService->preloadRates($currency, $dates);
     }
 }
