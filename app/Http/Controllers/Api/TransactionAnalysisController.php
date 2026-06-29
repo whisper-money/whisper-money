@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\CategoryType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\IndexTransactionRequest;
 use App\Models\Label;
@@ -91,12 +92,10 @@ class TransactionAnalysisController extends Controller
         $expense = 0;
 
         foreach ($transactions as $transaction) {
-            $amount = $this->convertTransactionAmount($transaction, $currency);
-
-            if ($amount > 0) {
-                $income += $amount;
-            } else {
-                $expense += abs($amount);
+            if ($this->isIncome($transaction)) {
+                $income += $this->convertTransactionAmount($transaction, $currency);
+            } elseif ($this->isExpense($transaction)) {
+                $expense += abs($this->convertTransactionAmount($transaction, $currency));
             }
         }
 
@@ -120,7 +119,7 @@ class TransactionAnalysisController extends Controller
     private function categoryBreakdown(Collection $transactions, string $currency, string $userId): Collection
     {
         $expenses = $transactions->filter(
-            fn (Transaction $transaction): bool => $this->convertTransactionAmount($transaction, $currency) < 0,
+            fn (Transaction $transaction): bool => $this->isExpense($transaction),
         );
 
         $grouped = $expenses
@@ -178,11 +177,11 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            $amount = $this->convertTransactionAmount($transaction, $currency);
-
-            if ($amount >= 0) {
+            if (! $this->isExpense($transaction)) {
                 continue;
             }
+
+            $amount = $this->convertTransactionAmount($transaction, $currency);
 
             foreach ($transaction->labels as $label) {
                 $totals[$label->id] ??= ['id' => $label->id, 'name' => $label->name, 'color' => $label->color, 'amount' => 0];
@@ -206,11 +205,11 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            $amount = $this->convertTransactionAmount($transaction, $currency);
-
-            if ($amount >= 0) {
+            if (! $this->isExpense($transaction)) {
                 continue;
             }
+
+            $amount = $this->convertTransactionAmount($transaction, $currency);
 
             $name = trim((string) $transaction->creditor_name);
 
@@ -236,11 +235,11 @@ class TransactionAnalysisController extends Controller
         $totals = [];
 
         foreach ($transactions as $transaction) {
-            $amount = $this->convertTransactionAmount($transaction, $currency);
-
-            if ($amount >= 0) {
+            if (! $this->isExpense($transaction)) {
                 continue;
             }
+
+            $amount = $this->convertTransactionAmount($transaction, $currency);
 
             $account = $transaction->account;
 
@@ -268,7 +267,7 @@ class TransactionAnalysisController extends Controller
     private function largestExpenses(Collection $transactions, string $currency): array
     {
         return $transactions
-            ->filter(fn (Transaction $transaction): bool => $this->convertTransactionAmount($transaction, $currency) < 0)
+            ->filter(fn (Transaction $transaction): bool => $this->isExpense($transaction))
             ->sortBy(fn (Transaction $transaction): int => $this->convertTransactionAmount($transaction, $currency))
             ->take(self::LARGEST_EXPENSES_LIMIT)
             ->map(fn (Transaction $transaction): array => [
@@ -319,13 +318,12 @@ class TransactionAnalysisController extends Controller
         $buckets = [];
         foreach ($transactions as $transaction) {
             $key = $transaction->transaction_date->format($keyFormat);
-            $amount = $this->convertTransactionAmount($transaction, $currency);
             $buckets[$key] ??= ['income' => 0, 'expense' => 0];
 
-            if ($amount > 0) {
-                $buckets[$key]['income'] += $amount;
-            } else {
-                $buckets[$key]['expense'] += abs($amount);
+            if ($this->isIncome($transaction)) {
+                $buckets[$key]['income'] += $this->convertTransactionAmount($transaction, $currency);
+            } elseif ($this->isExpense($transaction)) {
+                $buckets[$key]['expense'] += abs($this->convertTransactionAmount($transaction, $currency));
             }
         }
 
@@ -366,6 +364,39 @@ class TransactionAnalysisController extends Controller
         $dates = $transactions->map(fn (Transaction $transaction): Carbon => $transaction->transaction_date);
 
         return (int) $dates->min()->diffInDays($dates->max()) + 1;
+    }
+
+    /**
+     * Spending is an outflow booked to an expense category or to no category
+     * at all. Transfers, savings and investments are internal movements, so
+     * they never count as expenses — matching the cashflow screen.
+     */
+    private function isExpense(Transaction $transaction): bool
+    {
+        return $transaction->amount < 0
+            && in_array($this->categoryType($transaction), [CategoryType::Expense, null], true);
+    }
+
+    /**
+     * Income is an inflow booked to an income category or to no category at
+     * all. Transfers, savings and investments are excluded for the same reason
+     * as expenses.
+     */
+    private function isIncome(Transaction $transaction): bool
+    {
+        return $transaction->amount > 0
+            && in_array($this->categoryType($transaction), [CategoryType::Income, null], true);
+    }
+
+    private function categoryType(Transaction $transaction): ?CategoryType
+    {
+        $type = $transaction->category?->getAttribute('type');
+
+        if ($type instanceof CategoryType) {
+            return $type;
+        }
+
+        return is_string($type) ? CategoryType::tryFrom($type) : null;
     }
 
     private function convertTransactionAmount(Transaction $transaction, string $currency): int
