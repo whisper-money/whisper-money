@@ -83,6 +83,7 @@ import {
     type CursorPaginatedResponse,
 } from '@/lib/cursor-pagination';
 import { consoleDebug } from '@/lib/debug';
+import { firstSeenTransactionIndex } from '@/lib/new-transactions';
 import { captureEvent } from '@/lib/posthog';
 import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirmation';
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
@@ -139,6 +140,7 @@ interface Props {
 }
 
 const COLUMN_VISIBILITY_KEY = 'transactions-column-visibility';
+const LAST_VISIT_KEY = 'transactions-last-visit';
 
 function serverToClientFilters(applied: AppliedFilters): Filters {
     return {
@@ -386,6 +388,33 @@ function getInitialColumnVisibility(): VisibilityState {
     return defaultVisibility;
 }
 
+function getStoredLastVisit(): string | null {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+    try {
+        return localStorage.getItem(LAST_VISIT_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function LastVisitDivider({ colSpan }: { colSpan: number }) {
+    return (
+        <tr className="hover:bg-transparent">
+            <td colSpan={colSpan} className="px-4 py-1.5">
+                <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-red-500/50" />
+                    <span className="text-xs font-medium tracking-wide text-red-600 uppercase dark:text-red-400">
+                        {__('Last visit')}
+                    </span>
+                    <div className="h-px flex-1 bg-red-500/50" />
+                </div>
+            </td>
+        </tr>
+    );
+}
+
 function DateHeader({ date, colSpan }: { date: string; colSpan: number }) {
     const parsedDate = parseISO(date);
     const currentYear = getYear(new Date());
@@ -469,6 +498,36 @@ export default function Transactions({
     const [sortParam, setSortParam] = useState(
         appliedFilters.sort || '-transaction_date',
     );
+
+    // Frozen at mount so the "Last visit" divider stays put for the whole visit.
+    const [lastVisitAtMount] = useState<string | null>(getStoredLastVisit);
+
+    // Index of the first already-seen row. Rows above it arrived since the last
+    // visit and sit above the "Last visit" divider. Only meaningful under the
+    // default newest-first sort.
+    const newTransactionsBoundary = useMemo(() => {
+        if (sortParam !== '-transaction_date') {
+            return -1;
+        }
+        return firstSeenTransactionIndex(allTransactions, lastVisitAtMount);
+    }, [allTransactions, sortParam, lastVisitAtMount]);
+
+    // Mark this visit as seen: store the newest created_at currently loaded.
+    useEffect(() => {
+        if (allTransactions.length === 0) {
+            return;
+        }
+        const latest = allTransactions.reduce(
+            (max, transaction) =>
+                transaction.created_at > max ? transaction.created_at : max,
+            allTransactions[0].created_at,
+        );
+        try {
+            localStorage.setItem(LAST_VISIT_KEY, latest);
+        } catch (error) {
+            console.error('Failed to save last visit to localStorage:', error);
+        }
+    }, [allTransactions]);
 
     // Sync filter state when appliedFilters prop changes
     useEffect(() => {
@@ -1298,7 +1357,7 @@ export default function Transactions({
             virtualRow: VirtualItem,
             rowVirtualizer: Virtualizer<HTMLDivElement, Element>,
         ) => {
-            return (
+            const transactionRow = (
                 <TransactionRowComponent
                     key={row.id}
                     row={row}
@@ -1309,8 +1368,21 @@ export default function Transactions({
                     onDelete={setDeleteTransaction}
                 />
             );
+
+            if (virtualRow.index !== newTransactionsBoundary) {
+                return transactionRow;
+            }
+
+            return (
+                <>
+                    <LastVisitDivider
+                        colSpan={table.getVisibleLeafColumns().length}
+                    />
+                    {transactionRow}
+                </>
+            );
         },
-        [handleReEvaluateRules],
+        [handleReEvaluateRules, newTransactionsBoundary, table],
     );
 
     return (
