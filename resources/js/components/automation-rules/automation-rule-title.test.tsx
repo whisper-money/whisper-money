@@ -30,12 +30,24 @@ describe('AutomationRuleTitle', () => {
         expect(screen.getByLabelText('Created by AI')).toBeInTheDocument();
     });
 
+    it('prefixes the title with the AI sparkle when the rule was learned from a correction', () => {
+        render(<AutomationRuleTitle rule={makeRule('correction')} />);
+
+        expect(screen.getByText('Supermarket')).toBeInTheDocument();
+        expect(
+            screen.getByLabelText('Learned from your correction'),
+        ).toBeInTheDocument();
+    });
+
     it('shows no marker for user-created rules', () => {
         render(<AutomationRuleTitle rule={makeRule('user')} />);
 
         expect(screen.getByText('Supermarket')).toBeInTheDocument();
         expect(
             screen.queryByLabelText('Created by AI'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Learned from your correction'),
         ).not.toBeInTheDocument();
     });
 });
