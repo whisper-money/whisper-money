@@ -57,7 +57,7 @@ test('account show page does not exceed query threshold', function () {
 });
 
 test('transactions index page does not exceed query threshold', function () {
-    assertMaxQueries(20, function () {
+    assertMaxQueries(21, function () {
         $this->get(route('transactions.index'))->assertOk();
     }, 'Transactions Index');
 });

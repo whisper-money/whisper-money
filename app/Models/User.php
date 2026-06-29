@@ -27,6 +27,7 @@ use Laravel\Pennant\Concerns\HasFeatures;
 /**
  * @property ?Carbon $last_logged_in_at
  * @property ?Carbon $last_active_at
+ * @property ?Carbon $transactions_last_visited_at
  */
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
