@@ -52,6 +52,8 @@
     "Not doable": "No viable",
     "In progress": "En proceso",
     "Done": "Hecho",
+    "Done! You can continue now, or keep categorizing if you want.": "¡Listo! Ya puedes continuar, o seguir categorizando si quieres.",
+    "You do not need to categorize all of them.": "No necesitas categorizarlas todas.",
     "Something went wrong.": "Algo salió mal.",
     "Integration requests": "Solicitudes de integración",
     "Request integration": "Solicitar integración",
