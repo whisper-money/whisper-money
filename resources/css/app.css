@@ -100,8 +100,8 @@
     --chart-6: var(--color-zinc-400);
     --chart-7: var(--color-zinc-300);
     --chart-8: var(--color-zinc-200);
-    --chart-9: var(--color-zinc-100);
-    --chart-10: var(--color-zinc-50);
+    --chart-9: var(--color-zinc-700);
+    --chart-10: var(--color-zinc-600);
     --spent: var(--color-zinc-800);
     --allocated: var(--color-zinc-200);
     --spent-prev: var(--color-zinc-400);
@@ -142,8 +142,8 @@
     --chart-4: var(--color-zinc-500);
     --chart-5: var(--color-zinc-600);
     --chart-6: var(--color-zinc-700);
-    --chart-7: var(--color-zinc-800);
-    --chart-8: var(--color-zinc-900);
+    --chart-7: var(--color-zinc-200);
+    --chart-8: var(--color-zinc-300);
     --chart-9: var(--color-zinc-50);
     --chart-10: var(--color-zinc-100);
     --spent: var(--color-zinc-200);
