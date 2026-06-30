@@ -155,7 +155,10 @@ function AutomationRuleRow({
                         {row
                             .getVisibleCells()
                             .map((cell: Cell<AutomationRule, unknown>) => (
-                                <TableCell key={cell.id}>
+                                <TableCell
+                                    key={cell.id}
+                                    className="align-middle"
+                                >
                                     {flexRender(
                                         cell.column.columnDef.cell,
                                         cell.getContext(),
