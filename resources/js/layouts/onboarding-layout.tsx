@@ -55,7 +55,7 @@ export default function OnboardingLayout({
 
             <main
                 className={cn(
-                    'flex flex-1 flex-col items-center justify-start px-4 pt-12 pb-12 md:px-6',
+                    'flex flex-1 flex-col items-center justify-start px-4 pt-4 pb-12 md:px-6 md:pt-12',
                     align === 'center' && 'sm:justify-center',
                 )}
             >
