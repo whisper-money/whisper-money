@@ -2026,6 +2026,48 @@ export default function Welcome({
             ),
         },
         {
+            name: 'Priya Nair',
+            gravatar: '299c92b453769c8805a14f3044157f22',
+            text: __(
+                'Categorizing transactions used to eat my whole Sunday. Now the AI does it and gets most of them right, and the few it misses it remembers after I fix them once. I barely touch it anymore.',
+            ),
+        },
+        {
+            name: 'Sofía Romero',
+            gravatar: '51bd48ebe85a4f936b1f2ac38ee39238',
+            text: __(
+                "My accounts sync on their own and everything lands already sorted, so checking my budget takes two minutes instead of an hour. I didn't think I'd keep up with it, but I have.",
+            ),
+        },
+        {
+            name: 'Daniel Okafor',
+            gravatar: '292ce946081970493a65fae7cf406427',
+            text: __(
+                "I was wary of letting any app run AI on my bank data. What changed my mind was that it only works for me and isn't fed into some model. Turns out it's accurate too.",
+            ),
+        },
+        {
+            name: 'Lena Hoffmann',
+            gravatar: '708c64d04836b9a1e25a9caddc13f97b',
+            text: __(
+                'I drop in my bank’s CSV and it works out the columns and categories on its own. The part of doing my finances I used to dread is just gone.',
+            ),
+        },
+        {
+            name: 'Marc Dubois',
+            gravatar: '226dbaa3b8d04f4641b99ab90884bb9d',
+            text: __(
+                "I had three apps and a spreadsheet before this. Getting every account in one place is the first time I've actually understood where my money goes.",
+            ),
+        },
+        {
+            name: 'Kenji Saito',
+            gravatar: '13440a401468cb05cf2c123d48202c1e',
+            text: __(
+                "Fast, clean, and a dark mode that doesn't fry my eyes at night. And it isn't trying to sell my data. That's everything I wanted.",
+            ),
+        },
+        {
             name: 'Víctor Falcón (co-owner)',
             gravatar: '50901af884c50a8f12804b0cf3aeb98a',
             text: __(
@@ -2434,7 +2476,7 @@ export default function Welcome({
                                     </h3>
                                     <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'Search, filter, and categorize with ease. Understand exactly where your money goes.',
+                                            'Search, filter, and let AI categorize automatically. Understand exactly where your money goes.',
                                         )}
                                     </p>
                                 </div>
@@ -2450,7 +2492,7 @@ export default function Welcome({
                                     </h3>
                                     <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
+                                            'Our own AI categorizes for you, never training on your data or sharing it with third parties. Your finances belong to you and only you.',
                                         )}
                                     </p>
                                 </div>
@@ -2786,6 +2828,14 @@ export default function Welcome({
                                     )}
                                     answer={__(
                                         "Your data is stored securely and never shared with third parties. We don't use your financial data for AI training, advertising, or any purpose other than providing you the service.",
+                                    )}
+                                />
+                                <FaqItem
+                                    question={__(
+                                        'Do you use AI, and is my data safe?',
+                                    )}
+                                    answer={__(
+                                        'Yes. Whisper Money uses AI to automatically categorize transactions and suggest budgets, so you spend less time on data entry. It works only to serve you: your data is never used to train models, sold, or shared with third parties.',
                                     )}
                                 />
                                 <FaqItem
