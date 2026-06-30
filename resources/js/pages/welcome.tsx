@@ -2434,7 +2434,7 @@ export default function Welcome({
                                     </h3>
                                     <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'Search, filter, and categorize with ease. Understand exactly where your money goes.',
+                                            'Search, filter, and let AI categorize automatically. Understand exactly where your money goes.',
                                         )}
                                     </p>
                                 </div>
@@ -2450,7 +2450,7 @@ export default function Welcome({
                                     </h3>
                                     <p className="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                                         {__(
-                                            'No third-party sharing, no AI snooping. Your financial data belongs to you and only you.',
+                                            'Our own AI categorizes for you, never training on your data or sharing it with third parties. Your finances belong to you and only you.',
                                         )}
                                     </p>
                                 </div>
@@ -2786,6 +2786,12 @@ export default function Welcome({
                                     )}
                                     answer={__(
                                         "Your data is stored securely and never shared with third parties. We don't use your financial data for AI training, advertising, or any purpose other than providing you the service.",
+                                    )}
+                                />
+                                <FaqItem
+                                    question={__('Do you use AI, and is my data safe?')}
+                                    answer={__(
+                                        'Yes. Whisper Money uses AI to automatically categorize transactions and suggest budgets, so you spend less time on data entry. It works only to serve you: your data is never used to train models, sold, or shared with third parties.',
                                     )}
                                 />
                                 <FaqItem
