@@ -121,7 +121,10 @@ function LabelRow({ row }: { row: Row<Label> }) {
                         {row
                             .getVisibleCells()
                             .map((cell: Cell<Label, unknown>) => (
-                                <TableCell key={cell.id}>
+                                <TableCell
+                                    key={cell.id}
+                                    className="align-middle"
+                                >
                                     {flexRender(
                                         cell.column.columnDef.cell,
                                         cell.getContext(),
