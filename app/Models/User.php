@@ -28,6 +28,7 @@ use Laravel\Pennant\Concerns\HasFeatures;
  * @property ?Carbon $last_logged_in_at
  * @property ?Carbon $last_active_at
  * @property ?Carbon $transactions_last_visited_at
+ * @property ?Carbon $ai_consent_prompt_dismissed_at
  */
 class User extends Authenticatable implements HasLocalePreference, MustVerifyEmail
 {
@@ -79,6 +80,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'last_logged_in_at' => 'datetime',
             'last_active_at' => 'datetime',
             'transactions_last_visited_at' => 'datetime',
+            'ai_consent_prompt_dismissed_at' => 'datetime',
         ];
     }
 
@@ -191,6 +193,25 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     public function revokeAiConsent(string $scope = AiConsent::SCOPE_FINANCE): void
     {
         $this->aiConsents()->active($scope)->update(['revoked_at' => now()]);
+    }
+
+    /**
+     * Whether the user has already answered the AI consent prompt (accepted or
+     * dismissed it), so the transactions banner should no longer be shown.
+     */
+    public function hasDismissedAiConsentPrompt(): bool
+    {
+        return $this->ai_consent_prompt_dismissed_at !== null;
+    }
+
+    /**
+     * Permanently dismiss the AI consent prompt (idempotent).
+     */
+    public function dismissAiConsentPrompt(): void
+    {
+        if ($this->ai_consent_prompt_dismissed_at === null) {
+            $this->forceFill(['ai_consent_prompt_dismissed_at' => now()])->save();
+        }
     }
 
     /** @return HasMany<Label, $this> */

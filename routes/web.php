@@ -118,6 +118,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // AI rule suggestions — accessible during onboarding (auto-apply) and after.
     Route::post('ai/consent', [AiConsentController::class, 'store'])->name('ai.consent.store');
+    Route::post('ai/consent/dismiss', [AiConsentController::class, 'dismiss'])->name('ai.consent.dismiss');
     Route::delete('ai/consent', [AiConsentController::class, 'destroy'])->name('ai.consent.destroy');
     Route::get('ai/categorization/{jobId}/status', [CategorizationController::class, 'status'])->name('ai.categorization.status');
     Route::prefix('ai/rule-suggestions')->name('ai.rule-suggestions.')->group(function () {

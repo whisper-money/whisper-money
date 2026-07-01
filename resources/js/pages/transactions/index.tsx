@@ -14,7 +14,7 @@ import {
 import { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import axios from 'axios';
 import { format, getYear, parseISO } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, X } from 'lucide-react';
 import {
     createElement,
     useCallback,
@@ -89,7 +89,10 @@ import { getBulkDeleteConfirmationText } from '@/lib/transaction-delete-confirma
 import { mergeReEvaluatedTransaction } from '@/lib/transaction-re-evaluation';
 import { cn } from '@/lib/utils';
 import { status as categorizationStatus } from '@/routes/ai/categorization';
-import { store as storeConsent } from '@/routes/ai/consent';
+import {
+    dismiss as dismissConsent,
+    store as storeConsent,
+} from '@/routes/ai/consent';
 import { transactionSyncService } from '@/services/transaction-sync';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { type Account, type Bank } from '@/types/account';
@@ -137,6 +140,7 @@ interface Props {
     labels: Label[];
     automationRules: AutomationRule[];
     hasAiConsent: boolean;
+    aiConsentPromptDismissed: boolean;
     lastVisitAt: string | null;
 }
 
@@ -429,17 +433,19 @@ export default function Transactions({
     labels: initialLabels,
     automationRules,
     hasAiConsent,
+    aiConsentPromptDismissed,
     lastVisitAt,
 }: Props) {
     const locale = useLocale();
     const { auth, features } = usePage<SharedData>().props;
-    const [aiConsentGiven, setAiConsentGiven] = useState(false);
+    const [aiConsentResolved, setAiConsentResolved] = useState(false);
     const [aiConsentSaving, setAiConsentSaving] = useState(false);
     const showAiConsentBanner =
         auth.hasProPlan &&
         features.aiConsentSettings &&
         !hasAiConsent &&
-        !aiConsentGiven;
+        !aiConsentPromptDismissed &&
+        !aiConsentResolved;
     const [categorizingIds, setCategorizingIds] = useState<Set<string>>(
         () => new Set(),
     );
@@ -733,7 +739,12 @@ export default function Transactions({
             const { data } = await axios.post<AiConsentResponse>(
                 storeConsent.url(),
             );
-            setAiConsentGiven(true);
+            setAiConsentResolved(true);
+            toast.success(
+                __(
+                    'AI enabled. You can change this anytime in Settings > Manage Plan.',
+                ),
+            );
 
             if (data.categorization) {
                 // Spin every currently-visible uncategorized row while the
@@ -755,8 +766,6 @@ export default function Transactions({
                     data.categorization.job_id,
                     data.categorization.total,
                 );
-            } else {
-                toast.success(__('AI categorization enabled'));
             }
         } catch {
             toast.error(__('Something went wrong.'));
@@ -764,6 +773,18 @@ export default function Transactions({
             setAiConsentSaving(false);
         }
     }, [allTransactions, pollCategorizationStatus]);
+
+    const handleDismissAiConsent = useCallback(() => {
+        setAiConsentResolved(true);
+        axios.post(dismissConsent.url()).catch(() => {
+            // Best-effort: the banner is already hidden for this session.
+        });
+        toast(
+            __(
+                'AI not enabled. You can turn it on anytime in Settings > Manage Plan.',
+            ),
+        );
+    }, []);
 
     // Load More with cursor pagination (fetch directly to avoid cursor in URL)
     const { component, version } = usePage();
@@ -1428,12 +1449,12 @@ export default function Transactions({
                                 )}
                                 topRow={
                                     showAiConsentBanner ? (
-                                        <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
-                                            <div className="flex gap-3">
+                                        <div className="flex flex-col gap-3 bg-gradient-to-r from-violet-50 via-sky-50 to-rose-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:from-violet-950/30 dark:via-sky-950/20 dark:to-rose-950/20">
+                                            <div className="flex gap-3 sm:flex-1">
                                                 <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/80 shadow-sm dark:bg-white/10">
                                                     <AiSparkleIcon className="h-5 w-5" />
                                                 </div>
-                                                <div className="max-w-80">
+                                                <div className="max-w-80 sm:max-w-none">
                                                     <p className="font-medium">
                                                         {__(
                                                             'Let AI categorize your transactions',
@@ -1446,15 +1467,29 @@ export default function Transactions({
                                                     </p>
                                                 </div>
                                             </div>
-                                            <Button
-                                                onClick={handleEnableAi}
-                                                disabled={aiConsentSaving}
-                                                variant="secondary"
-                                                className="max-w-[calc(var(--spacing)_*_86)] bg-white px-6!"
-                                            >
-                                                {__('Enable AI')}
-                                                <ChevronRight />
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    onClick={
+                                                        handleDismissAiConsent
+                                                    }
+                                                    disabled={aiConsentSaving}
+                                                    className="opacity-20 hover:opacity-100 transition-all duration-300"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    aria-label={__('Dismiss')}
+                                                >
+                                                    <X />
+                                                </Button>
+                                                <Button
+                                                    onClick={handleEnableAi}
+                                                    disabled={aiConsentSaving}
+                                                    variant="secondary"
+                                                    className="max-w-[calc(var(--spacing)_*_86)] bg-white px-6!"
+                                                >
+                                                    {__('Enable AI')}
+                                                    <ChevronRight />
+                                                </Button>
+                                            </div>
                                         </div>
                                     ) : null
                                 }
