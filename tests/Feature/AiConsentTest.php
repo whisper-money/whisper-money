@@ -3,6 +3,8 @@
 use App\Models\AiConsent;
 use App\Models\User;
 
+use function Pest\Laravel\actingAs;
+
 it('records a consent and reports it as active', function () {
     $user = User::factory()->create();
 
@@ -40,4 +42,38 @@ it('treats consent from a previous version as inactive', function () {
     AiConsent::factory()->for($user)->create(['version' => 'legacy-0']);
 
     expect($user->hasActiveAiConsent())->toBeFalse();
+});
+
+it('dismisses the consent prompt idempotently', function () {
+    $user = User::factory()->create();
+
+    expect($user->hasDismissedAiConsentPrompt())->toBeFalse();
+
+    $user->dismissAiConsentPrompt();
+    $dismissedAt = $user->ai_consent_prompt_dismissed_at;
+
+    $user->dismissAiConsentPrompt();
+
+    expect($user->hasDismissedAiConsentPrompt())->toBeTrue()
+        ->and($user->ai_consent_prompt_dismissed_at->equalTo($dismissedAt))->toBeTrue();
+});
+
+it('marks the prompt as dismissed when consent is granted', function () {
+    $user = User::factory()->create();
+
+    actingAs($user)->postJson(route('ai.consent.store'))->assertOk();
+
+    expect($user->refresh()->hasDismissedAiConsentPrompt())->toBeTrue()
+        ->and($user->hasActiveAiConsent())->toBeTrue();
+});
+
+it('dismisses the prompt without granting consent', function () {
+    $user = User::factory()->create();
+
+    actingAs($user)->postJson(route('ai.consent.dismiss'))
+        ->assertOk()
+        ->assertJson(['dismissed' => true]);
+
+    expect($user->refresh()->hasDismissedAiConsentPrompt())->toBeTrue()
+        ->and($user->hasActiveAiConsent())->toBeFalse();
 });

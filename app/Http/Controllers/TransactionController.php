@@ -135,6 +135,7 @@ class TransactionController extends Controller
             'labels' => $labels,
             'automationRules' => $automationRules,
             'hasAiConsent' => $user->hasActiveAiConsent(),
+            'aiConsentPromptDismissed' => $user->hasDismissedAiConsentPrompt(),
             'lastVisitAt' => $lastVisitAt?->toISOString(),
         ]);
     }

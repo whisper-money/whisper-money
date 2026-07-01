@@ -17,11 +17,22 @@ class AiConsentController extends Controller
     {
         $user = $request->user();
         $user->recordAiConsent();
+        $user->dismissAiConsentPrompt();
 
         return response()->json([
             'consented' => true,
             'categorization' => $startBackfill->handle($user),
         ]);
+    }
+
+    /**
+     * Permanently dismiss the AI consent prompt without granting consent.
+     */
+    public function dismiss(Request $request): JsonResponse
+    {
+        $request->user()->dismissAiConsentPrompt();
+
+        return response()->json(['dismissed' => true]);
     }
 
     /**
