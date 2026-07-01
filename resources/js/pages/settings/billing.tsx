@@ -476,7 +476,7 @@ function AiConsentSection({
 }
 
 export default function Billing() {
-    const { auth, pricing, locale, features, hasAiConsent, refund } = usePage<
+    const { auth, pricing, locale, hasAiConsent, refund } = usePage<
         SharedData & { hasAiConsent: boolean; refund?: RefundInfo }
     >().props;
     const isDemoAccount = auth?.isDemoAccount ?? false;
@@ -507,12 +507,10 @@ export default function Billing() {
                         />
                     )}
 
-                    {features.aiConsentSettings && (
-                        <AiConsentSection
-                            initialConsent={hasAiConsent}
-                            hasProPlan={hasProPlan}
-                        />
-                    )}
+                    <AiConsentSection
+                        initialConsent={hasAiConsent}
+                        hasProPlan={hasProPlan}
+                    />
                 </div>
             </SettingsLayout>
         </AppLayout>

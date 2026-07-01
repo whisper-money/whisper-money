@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use App\Enums\BankingConnectionStatus;
 use App\Enums\BankingProvider;
-use App\Features\AiConsentSettings;
 use App\Features\CalculateBalancesOnImport;
 use App\Models\BankingConnection;
 use App\Services\CurrencyOptions;
@@ -179,19 +178,16 @@ class HandleInertiaRequests extends Middleware
             return [
                 'cashflow' => true,
                 'calculateBalancesOnImport' => false,
-                'aiConsentSettings' => false,
             ];
         }
 
         $features = Feature::for($user)->values([
             CalculateBalancesOnImport::class,
-            AiConsentSettings::class,
         ]);
 
         return [
             'cashflow' => true,
             'calculateBalancesOnImport' => $features[CalculateBalancesOnImport::class] !== false,
-            'aiConsentSettings' => $features[AiConsentSettings::class] !== false,
         ];
     }
 
