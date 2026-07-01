@@ -437,12 +437,11 @@ export default function Transactions({
     lastVisitAt,
 }: Props) {
     const locale = useLocale();
-    const { auth, features } = usePage<SharedData>().props;
+    const { auth } = usePage<SharedData>().props;
     const [aiConsentResolved, setAiConsentResolved] = useState(false);
     const [aiConsentSaving, setAiConsentSaving] = useState(false);
     const showAiConsentBanner =
         auth.hasProPlan &&
-        features.aiConsentSettings &&
         !hasAiConsent &&
         !aiConsentPromptDismissed &&
         !aiConsentResolved;
