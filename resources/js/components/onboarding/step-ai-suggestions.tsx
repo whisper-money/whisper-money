@@ -39,11 +39,13 @@ interface AcceptResponse {
 
 interface StepAiSuggestionsProps {
     categories: Category[];
+    hasConnectedAccount: boolean;
     onComplete: () => void;
 }
 
 export function StepAiSuggestions({
     categories,
+    hasConnectedAccount,
     onComplete,
 }: StepAiSuggestionsProps) {
     const [state, setState] = useState<SuggestionState | null>(null);
@@ -130,6 +132,16 @@ export function StepAiSuggestions({
                     !data.run
                 ) {
                     startGenerate();
+                } else if (!data.consented && hasConnectedAccount) {
+                    // A linked bank already commits the user to a paid plan, so
+                    // enabling AI adds no cost — skip the consent prompt and turn
+                    // it on directly. setBusy batches with applyState above, so
+                    // the consent screen never flashes.
+                    setBusy(true);
+                    await axios.post(storeConsent().url);
+                    if (!cancelled) {
+                        startGenerate();
+                    }
                 }
             } catch {
                 // Never block onboarding if the AI step can't load.
@@ -438,7 +450,7 @@ function UpgradeNotice() {
         <div className="w-full max-w-md rounded-lg border border-emerald-100 bg-emerald-50 p-3 dark:border-emerald-900/50 dark:bg-emerald-900/20">
             <p className="text-center text-sm text-balance text-emerald-700 dark:text-emerald-300">
                 {__(
-                    "AI suggestions are a Standard Plan feature. You'll choose a plan at the end of the onboarding.",
+                    "AI suggestions are a paid feature. Enable them and you'll choose a plan at the end of the onboarding.",
                 )}
             </p>
             {cheapestMonthlyPrice !== null && (

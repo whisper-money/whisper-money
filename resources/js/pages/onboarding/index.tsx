@@ -223,6 +223,7 @@ export default function Onboarding({
                 return (
                     <StepAiSuggestions
                         categories={categories}
+                        hasConnectedAccount={hasConnectedAccount}
                         onComplete={goNext}
                     />
                 );
